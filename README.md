@@ -3,7 +3,7 @@
 
 ## Overview
 
-JUDI is a framework for large-scale seismic modeling and inversion and designed for researchers who want to translate mathematical concepts and algorithms into fast and efficient code that scales to industry-size 3D problems. The main focus of the package lies on modeling seismic data as well as full-waveform inversion (FWI) and imaging (LS-RTM). Wave equations in Julia Devito are solved using [Devito](https://github.com/opesci/devito), a Python DSL for symbolically setting up PDEs and automatic code generation.
+JUDI is a framework for large-scale seismic modeling and inversion and designed for researchers who want to translate mathematical concepts and algorithms into fast and efficient code that scales to industry-size 3D problems. The main focus of the package lies on modeling seismic data as well as full-waveform inversion (FWI) and imaging (LS-RTM). Wave equations in JUDI are solved using [Devito](https://github.com/opesci/devito), a Python DSL for symbolically setting up PDEs and automatic code generation.
 
 ## Installation and prerequisites
 
@@ -32,9 +32,13 @@ Pkg.clone("git@github.com:slimgroup/SeisIO.jl.git")
 Pkg.clone("https://github.com/slimgroup/JOLI.jl.git")
 ```
 
-## Example 1: Full-waveform inversion
+## Data IO and matrix-free linear opeartors
 
-Julia Devito is designed to let you set up objective functions that can be passed to standard packages for (gradient-based) optimization. The following example demonstrates how to perform FWI on the 2D Overthrust model using a spectral projected gradient algorithm from the minConf library, which is included in the software. A small test dataset (62 MB) and the model can be downloaded from this FTP server:
+
+
+## Full-waveform inversion
+
+JUDI is designed to let you set up objective functions that can be passed to standard packages for (gradient-based) optimization. The following example demonstrates how to perform FWI on the 2D Overthrust model using a spectral projected gradient algorithm from the minConf library, which is included in the software. A small test dataset (62 MB) and the model can be downloaded from this FTP server:
 
 ```julia
 run(`wget ftp://slim.eos.ubc.ca/data/SoftwareRelease/WaveformInversion.jl/2DFWI/overthrust_2D.segy`)
@@ -110,9 +114,9 @@ figure(); plot(fvals); title("Function value")
 ![](docs/fwi.png){width=70%} 
 
 
-## Example 2: Least-squares RTM
+## Least squares reverse-time migration
 
-Julia Devito includes matrix-free linear operators for modeling and linearized (Born) modeling, that let you write algorithms for migration that follow the mathematical notation of standard least squares problems. This example demonstrates how to use Julia Devito to perform least-squares reverse-time migration on the 2D Marmousi model. Start by downloading the test data set (1.1 GB) and the model:
+JUDI includes matrix-free linear operators for modeling and linearized (Born) modeling, that let you write algorithms for migration that follow the mathematical notation of standard least squares problems. This example demonstrates how to use Julia Devito to perform least-squares reverse-time migration on the 2D Marmousi model. Start by downloading the test data set (1.1 GB) and the model:
 
 ```julia
 run(`wget ftp://slim.eos.ubc.ca/data/SoftwareRelease/Imaging.jl/2DLSRTM/marmousi_2D.segy`)

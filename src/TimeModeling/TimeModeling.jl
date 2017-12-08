@@ -38,6 +38,9 @@ include("judiPDEfull.jl")	# modeling operator with source and receiver projectio
 include("judiPDE.jl")	# modeling operator with lhs projection only: P*F
 include("judiJacobian.jl")	# linearized modeling operator J
 
+#############################################################################
+# Preconditioners and optimization
+include("seismic_preconditioners.jl")
 
 end
 
