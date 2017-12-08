@@ -1,9 +1,9 @@
 
-# The Julia Devito Inversion framework (JUDI) - A scalable research framework for seismic inversion
+# The Julia Devito Inversion framework (JUDI)
 
 ## Overview
 
-JUDI is a framework for large-scale seismic modeling and inversion and designed for researchers who want to translate mathematical concepts and algorithms into fast and efficient code that scales to industry-size 3D problems. The main focus of the package lies on modeling seismic data as well as full-waveform inversion (FWI) and imaging (LS-RTM). Wave equations in JUDI are solved using [Devito](https://github.com/opesci/devito), a Python DSL for symbolically setting up PDEs and automatic code generation.
+JUDI is a framework for large-scale seismic modeling and inversion and designed to enable rapid translations of algorithms to fast and efficient code that scales to industry-size 3D problems. The focus of the package lies on seismic modeling as well as PDE-constrained optimization such as full-waveform inversion (FWI) and imaging (LS-RTM). Wave equations in JUDI are solved with [Devito](https://github.com/opesci/devito), a Python domain-specific language for automated finite-difference (FD) computations.
 
 ## Installation and prerequisites
 
@@ -13,11 +13,11 @@ First, install Devito using `pip`, or see the [Devito homepage](https://github.c
 pip install --user git+https://github.com/opesci/devito.git@v3.0.3
 ```
 
-Once devito is installed you can install the JUDI with Julia's `Pkg.clone`:
+Once Devito is installed, you can install JUDI with Julia's `Pkg.clone`:
 
 ```julia
 Pkg.clone("https://github.com/slimgroup/JUDI.jl")
-
+```
 
 Devito uses just-in-time compilation for the underlying wave equation solves. The default compiler is intel, but can be changed to any other specified compiler such as `gnu`. Either run the following command from the command line or add it to your ~/.bashrc file:
 
@@ -32,10 +32,6 @@ Pkg.clone("git@github.com:slimgroup/SeisIO.jl.git")
 Pkg.clone("https://github.com/slimgroup/JOLI.jl.git")
 ```
 
-## Data IO and matrix-free linear opeartors
-
-
-
 ## Full-waveform inversion
 
 JUDI is designed to let you set up objective functions that can be passed to standard packages for (gradient-based) optimization. The following example demonstrates how to perform FWI on the 2D Overthrust model using a spectral projected gradient algorithm from the minConf library, which is included in the software. A small test dataset (62 MB) and the model can be downloaded from this FTP server:
@@ -48,7 +44,7 @@ run(`wget ftp://slim.eos.ubc.ca/data/SoftwareRelease/WaveformInversion.jl/2DFWI/
 The first step is to load the velocity model and the observed data into Julia, as well as setting up bound constraints for the inversion, which prevent too high or low velocities in the final result. Furthermore, we define an 8 Hertz Ricker wavelet as the source function:
 
 ```julia
-using PyCall, PyPlot, HDF5, SeisIO, opesciSLIM.TimeModeling, opesciSLIM.SLIM_optim
+using PyCall, PyPlot, HDF5, SeisIO, JUDI.TimeModeling, JUDI.SLIM_optim
 
 # Load starting model
 n,d,o,m0 = read(h5open("overthrust_2D_initial_model.h5","r"), "n", "d", "o", "m0")
@@ -62,12 +58,12 @@ mmax = vec((1f0./vmin).^2)
 
 # Load segy data
 block = segy_read("overthrust_2D.segy")
-dobs = joData(block)
+dobs = judiVector(block)
 
 # Set up wavelet
 src_geometry = Geometry(block; key="source", segy_depth_key="SourceDepth")	# read source position geometry
-wavelet = source(src_geometry.t[1],src_geometry.dt[1],0.008f0)	# 8 Hz wavelet
-q = joData(src_geometry,wavelet)
+wavelet = ricker_wavelet(src_geometry.t[1],src_geometry.dt[1],0.008f0)	# 8 Hz wavelet
+q = judiVector(src_geometry,wavelet)
 
 ```
 
@@ -79,7 +75,6 @@ srand(1)	# reset seed of random number generator
 fevals = 20	# number of function evaluations
 batchsize = 20	# number of sources per iteration
 fvals = zeros(21)
-opt = Options(save_rate=14f0)	# save forward wavefields every 14 ms
 
 # Objective function for minConf library
 count = 0
@@ -87,8 +82,8 @@ function objective_function(x)
 	model0.m = reshape(x,model0.n);
 
 	# fwi function value and gradient
-	idx = randperm(dobs.nsrc)[1:batchsize]
-	fval,grad = fwi_objective(model0, subsample(q,idx), subsample(dobs,idx); options=opt)
+	i = randperm(dobs.nsrc)[1:batchsize]
+	fval,grad = fwi_objective(model0, q[i], dobs[i])
 	grad = reshape(grad, model0.n); grad[:,1:21] = 0f0	# reset gradient in water column to 0.
 	grad = .1f0*grad/maximum(abs.(grad))	# scale gradient for line search
 	
@@ -126,7 +121,7 @@ run(`wget ftp://slim.eos.ubc.ca/data/SoftwareRelease/Imaging.jl/2DLSRTM/marmousi
 Once again, load the starting model and the data and set up the source wavelet. For this example, we use a Ricker wavelet with 30 Hertz peak frequency. For setting up matrix-free linear operators, an `info` structure with the dimensions of the problem is required:
 
 ```julia
-using PyCall,PyPlot,HDF5,opesciSLIM.TimeModeling,opesciSLIM.LeastSquaresMigration,SeisIO
+using PyCall, PyPlot, HDF5, JUDI.TimeModeling, SeisIO
 
 # Load smooth migration velocity model
 n,d,o,m0 = read(h5open("marmousi_migration_velocity.h5","r"), "n", "d", "o", "m0")
@@ -134,12 +129,12 @@ model0 = Model((n[1],n[2]), (d[1],d[2]), (o[1],o[2]), m0)
 
 # Load data
 block = segy_read("marmousi_2D.segy")
-dD = joData(block)
+dD = judiVector(block)
 
 # Set up wavelet
 src_geometry = Geometry(block; key="source", segy_depth_key="SourceDepth")
-wavelet = source(src_geometry.t[1],src_geometry.dt[1],0.03)	# 30 Hz wavelet
-q = joData(src_geometry,wavelet)
+wavelet = ricker_wavelet(src_geometry.t[1],src_geometry.dt[1],0.03)	# 30 Hz wavelet
+q = judiVector(src_geometry,wavelet)
 
 # Set up info structure
 ntComp = get_computational_nt(q.geometry,dD.geometry,model0)	# no. of computational time steps
@@ -150,11 +145,11 @@ To speed up the convergence of our imaging example, we set up a basic preconditi
 
 ```julia
 # Set up matrix-free linear operators
-F = joModeling(info,model0,q.geometry,dD.geometry)
-J = joJacobian(F,q)
+F = judiModeling(info,model0,q.geometry,dD.geometry)
+J = judiJacobian(F,q)
 
 # Right-hand preconditioners (model topmute)
-Mr = opTopmute(model0.n,42,10)	# mute up to grid point 42, with 10 point taper
+Mr = judiTopmute(model0.n,42,10)	# mute up to grid point 42, with 10 point taper
 
 # Stochastic gradient
 x = zeros(Float32,info.n)	# zero initial guess
@@ -165,14 +160,12 @@ for j=1:niter
 	println("Iteration: ", j)
 
 	# Select batch and set up left-hand preconditioner
-	idx = randperm(dD.nsrc)[1:batchsize]
-	Jsub = subsample(J,idx)
-	dsub = subsample(dD,idx)
-	Ml = opMarineTopmute(30,dsub.geometry)	# data topmute starting at time sample 30
+	i = randperm(dD.nsrc)[1:batchsize]
+	Ml = judiMarineTopmute2D(30,dD[i].geometry)	# data topmute starting at time sample 30
 
 	# Compute residual and gradient
-	r = Ml*Jsub*Mr*x - Ml*dsub
-	g = Mr'*Jsub'*Ml'*r
+	r = Ml*J[i]*Mr*x - Ml*dD[i]
+	g = Mr'*J[i]'*Ml'*r
 
 	# Step size and update variable
 	fval[j] = .5*norm(r)^2
