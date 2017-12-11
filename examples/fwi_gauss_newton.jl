@@ -3,7 +3,7 @@
 # Date: May 2017
 #
 
-using HDF5, JUDI.TimeModeling, JUDI.SLIM_optim, SeisIO, PyPlot, JLD, IterativeSolvers
+using JUDI.TimeModeling, JUDI.SLIM_optim, HDF5, SeisIO, PyPlot, IterativeSolvers
 
 # Load starting model
 n,d,o,m0 = read(h5open("/scratch/slim/pwitte/models/overthrust_mini.h5","r"), "n", "d", "o", "m0")
@@ -42,26 +42,27 @@ J = judiJacobian(Pr*F*Ps',q)
 # Optimization parameters
 maxiter = 10
 maxiter_GN = 8
-batchsize = 4
+batchsize = 8
 fhistory_GN = zeros(Float32,maxiter)
 proj(x) = reshape(median([vec(mmin) vec(x) vec(mmax)],2),model0.n)
 
 # Gauss-Newton method
-#for j=1:maxiter
-#    println("Iteration: ",j)
+for j=1:maxiter
+    println("Iteration: ",j)
 
     # Model predicted data for subset of sources
     i = randperm(d_obs.nsrc)[1:batchsize]
     d_pred = Pr[i]*F[i]*Ps[i]'*q[i]
-#    fhistory_GN[j] = .5f0*norm(d_pred - d_obs)^2
+    fhistory_GN[j] = .5f0*norm(d_pred - d_obs[i])^2
                         
     # GN update direction
-#    p = lsqr(J, d_pred - d_obs; maxiter=maxiter_GN, verbose=true)
+    p = lsqr(J[i], d_pred - d_obs[i]; maxiter=maxiter_GN, verbose=true)
                                                                                 
     # update model and bound constraints
-#    model0.m = proj(model0.m - reshape(p, model0.n))    # alpha=1
-    #figure(); imshow(sqrt.(1f0./model0.m)'); title(join(["FWI iteration: ",string(j)]))
-#end
+    model0.m = proj(model0.m - reshape(p, model0.n))    # alpha=1
+    figure(); imshow(sqrt.(1f0./model0.m)'); title(string(j))
+end
 
-#save("result_GN_lsqr_iter_10_gniter_8.jld","m0",m0,"x",sqrt.(1f0./model0.m),"fhistory",fhistory_GN)
+figure(); imshow(sqrt(1f0./model0.m)'); title("FWI with SGD")
+
 

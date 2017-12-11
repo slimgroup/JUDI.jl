@@ -4,7 +4,7 @@
 # Date: January 2017
 #
 
-using PyCall, PyPlot, JUDI.TimeModeling
+using JUDI.TimeModeling
 
 ## Set up model structure
 n = (120,100,90)	# (x,y,z) or (x,z)
@@ -77,6 +77,7 @@ q = judiVector(srcGeometry,wavelet)
 d = Pr*F*Ps'*q	
 qad = Ps*F*Pr'*d
 
+# Linearied modeling
 J = judiJacobian(Pr*F*Ps',q)
 dD = J*dm
 rtm = J'*dD

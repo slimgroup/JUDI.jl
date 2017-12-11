@@ -3,7 +3,7 @@
 # Date: May 2017
 #
 
-using HDF5, JUDI.TimeModeling, JUDI.SLIM_optim, SeisIO, PyPlot
+using JUDI.TimeModeling, JUDI.SLIM_optim, HDF5, SeisIO, PyPlot
 
 # Load starting model
 n,d,o,m0 = read(h5open("/scratch/slim/pwitte/models/overthrust_mini.h5","r"), "n", "d", "o", "m0")
@@ -54,7 +54,8 @@ for j=1:niterations
 	
 	# Update model and bound projection
 	model0.m = proj(model0.m + reshape(step,model0.n))
-    figure(); imshow(sqrt.(1f0./model0.m)'); title(string(j))
 end
+
+figure(); imshow(sqrt(1f0./model0.m)'); title("FWI with SGD")
 
 

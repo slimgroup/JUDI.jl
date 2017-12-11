@@ -4,7 +4,7 @@
 # Date: January 2017
 #
 
-using PyCall, PyPlot, JUDI.TimeModeling, SeisIO
+using JUDI.TimeModeling
 
 ## Set up model structure
 n = (120,100)	# (x,y,z) or (x,z)
@@ -75,6 +75,7 @@ J = judiJacobian(Pr*F0*Ps',q)
 d = Pr*F*Ps'*q
 qad = Ps*F'*Pr'*d
 
+# Linearized modeling 
 dD = J*dm
 rtm = J'*dD
 
