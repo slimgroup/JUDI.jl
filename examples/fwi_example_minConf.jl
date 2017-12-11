@@ -1,4 +1,4 @@
-# 2D FWI on Overthrust model using minConf library 
+# 2D FWI on Overthrust model with SPG using minConf library 
 # Author: Philipp Witte, pwitte@eoas.ubc.ca
 # Date: December 2017
 #
@@ -31,32 +31,31 @@ q = judiVector(src_geometry,wavelet)
 
 ############################### FWI ###########################################
 
+
 # Optimization parameters
-niterations = 10
-batchsize = 6
-fhistory_SGD = zeros(Float32,niterations)
+srand(1)	# set seed of random number generator
+fevals = 20
+batchsize = 8
 
-# Projection operator for bound constraints
-proj(x) = reshape(median([vec(mmin) vec(x) vec(mmax)],2),model0.n)
+# Objective function for minConf library
+count = 0
+function objective_function(x)
+	model0.m = reshape(x,model0.n);
 
-
-# Main loop
-for j=1:niterations
-
-	# get fwi objective function value and gradient
+	# fwi function value and gradient
 	i = randperm(d_obs.nsrc)[1:batchsize]
-	fval, gradient = fwi_objective(model0,q[i],d_obs[i])
-	println("FWI iteration no: ",j,"; function value: ",fval)
-    fhistory_SGD[j] = fval
-
-	# linesearch
-	step = backtracking_linesearch(model0,q[i],d_obs[i],fval,gradient,proj;alpha=1f0)
+	fval, grad = fwi_objective(model0, q[i], d_obs[i])
+	grad = .125f0*grad/maximum(abs.(grad))  # scale for line search
 	
-	# Update model and bound projection
-	model0.m = proj(model0.m + reshape(step,model0.n))
-    figure(); imshow(sqrt.(1f0./model0.m)'); title(string(j))
+	global count; count+= 1
+    return fval, vec(grad)
 end
 
-figure(); imshow(sqrt.(1f0./model0.m)'); title("FWI with SGD")
+# Bound projection
+ProjBound(x) = median([mmin x mmax],2)
+
+# FWI with SPG
+options = spg_options(verbose=3, maxIter=fevals, memory=3)
+x, fsave, funEvals= minConf_SPG(objective_function, vec(model0.m), ProjBound, options)
 
 

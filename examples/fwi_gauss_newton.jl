@@ -1,6 +1,6 @@
 # FWI on Overthrust model using minConf library 
 # Author: Philipp Witte, pwitte@eoas.ubc.ca
-# Date: May 2017
+# Date: December 2017
 #
 
 using JUDI.TimeModeling, JUDI.SLIM_optim, HDF5, SeisIO, PyPlot, IterativeSolvers
@@ -25,7 +25,7 @@ block = segy_read("/scratch/slim/pwitte/overthrust2D/overthrust_mini.segy")
 d_obs = judiVector(block)
 
 # Set up wavelet
-src_geometry = Geometry(block; key="source")#, segy_depth_key="SourceDepth")
+src_geometry = Geometry(block; key="source")
 wavelet = ricker_wavelet(src_geometry.t[1],src_geometry.dt[1],0.008f0)	# 8 Hz wavelet
 q = judiVector(src_geometry,wavelet)
 
@@ -41,8 +41,8 @@ J = judiJacobian(Pr*F*Ps',q)
 
 # Optimization parameters
 maxiter = 10
-maxiter_GN = 8
-batchsize = 8
+maxiter_GN = 5
+#batchsize = 8
 fhistory_GN = zeros(Float32,maxiter)
 proj(x) = reshape(median([vec(mmin) vec(x) vec(mmax)],2),model0.n)
 
@@ -51,18 +51,17 @@ for j=1:maxiter
     println("Iteration: ",j)
 
     # Model predicted data for subset of sources
-    i = randperm(d_obs.nsrc)[1:batchsize]
-    d_pred = Pr[i]*F[i]*Ps[i]'*q[i]
-    fhistory_GN[j] = .5f0*norm(d_pred - d_obs[i])^2
+    d_pred = Pr*F*Ps'*q
+    fhistory_GN[j] = .5f0*norm(d_pred - d_obs)^2
                         
     # GN update direction
-    p = lsqr(J[i], d_pred - d_obs[i]; maxiter=maxiter_GN, verbose=true)
+    p = lsqr(J, d_pred - d_obs; maxiter=maxiter_GN, verbose=true)
                                                                                 
     # update model and bound constraints
     model0.m = proj(model0.m - reshape(p, model0.n))    # alpha=1
     figure(); imshow(sqrt.(1f0./model0.m)'); title(string(j))
 end
 
-figure(); imshow(sqrt(1f0./model0.m)'); title("FWI with SGD")
+figure(); imshow(sqrt.(1f0./model0.m)'); title("FWI with SGD")
 
 

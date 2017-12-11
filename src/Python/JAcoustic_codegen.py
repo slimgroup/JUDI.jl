@@ -31,7 +31,7 @@ def forward_modeling(shape, spacing, origin, slowness_sqr, src_coords, wavelet, 
     if save is False:
         u = TimeFunction(name='u', grid=model.grid, time_order=2, space_order=space_order)
     else:
-        u = TimeFunction(name='u', grid=model.grid, time_order=2, space_order=space_order, save=nt)
+        u = TimeFunction(name='u', grid=model.grid, time_order=2, space_order=space_order, save=True, time_dim=nt)
 
     # Set up PDE and rearrange 
     eqn = m * u.dt2 - u.laplace + damp * u.dt
