@@ -44,7 +44,7 @@ run(`wget ftp://slim.eos.ubc.ca/data/SoftwareRelease/WaveformInversion.jl/2DFWI/
 The first step is to load the velocity model and the observed data into Julia, as well as setting up bound constraints for the inversion, which prevent too high or low velocities in the final result. Furthermore, we define an 8 Hertz Ricker wavelet as the source function:
 
 ```julia
-using PyCall, PyPlot, HDF5, SeisIO, JUDI.TimeModeling, JUDI.SLIM_optim
+using PyPlot, HDF5, SeisIO, JUDI.TimeModeling, JUDI.SLIM_optim
 
 # Load starting model
 n,d,o,m0 = read(h5open("overthrust_2D_initial_model.h5","r"), "n", "d", "o", "m0")
@@ -121,7 +121,7 @@ run(`wget ftp://slim.eos.ubc.ca/data/SoftwareRelease/Imaging.jl/2DLSRTM/marmousi
 Once again, load the starting model and the data and set up the source wavelet. For this example, we use a Ricker wavelet with 30 Hertz peak frequency. For setting up matrix-free linear operators, an `info` structure with the dimensions of the problem is required:
 
 ```julia
-using PyCall, PyPlot, HDF5, JUDI.TimeModeling, SeisIO
+using PyPlot, HDF5, JUDI.TimeModeling, SeisIO
 
 # Load smooth migration velocity model
 n,d,o,m0 = read(h5open("marmousi_migration_velocity.h5","r"), "n", "d", "o", "m0")

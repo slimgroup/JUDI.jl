@@ -62,7 +62,7 @@ info = Info(prod(n),nsrc,ntComp)
 
 ######################## WITHOUT DENSITY ############################################
 
-opt = Options()#sum_padding=true,save_rate=4f0)
+opt = Options()
 
 # Setup operators
 Pr = judiProjection(info,recGeometry)

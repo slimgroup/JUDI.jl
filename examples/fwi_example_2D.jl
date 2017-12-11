@@ -3,7 +3,7 @@
 # Date: May 2017
 #
 
-using PyCall, HDF5, opesciSLIM.TimeModeling, opesciSLIM.SLIM_optim, SeisIO, PyPlot
+using HDF5, JUDI.TimeModeling, JUDI.SLIM_optim, SeisIO, PyPlot
 
 # Load starting model
 n,d,o,m0 = read(h5open("/scratch/slim/pwitte/models/overthrust_mini.h5","r"), "n", "d", "o", "m0")
@@ -22,52 +22,23 @@ mmax = vec((1f0./vmin).^2)
 
 # Load data
 block = segy_read("/scratch/slim/pwitte/overthrust2D/overthrust_mini.segy")
-dobs = joData(block)
+dobs = judiVector(block)
 
 # Set up wavelet
 src_geometry = Geometry(block; key="source")#, segy_depth_key="SourceDepth")
 wavelet = ricker_wavelet(src_geometry.t[1],src_geometry.dt[1],0.008f0)	# 8 Hz wavelet
-q = joData(src_geometry,wavelet)
+q = judiVector(src_geometry,wavelet)
 
 ############################### FWI ###########################################
 
 # Optimization parameters
-srand(10)
 niterations = 10
-batchsize = 10
+batchsize = 8
 fhistory_SGD = zeros(Float32,niterations)
 
 # Projection operator for bound constraints
 proj(x) = reshape(median([vec(mmin) vec(x) vec(mmax)],2),model0.n)
 
-function backtracking_linesearch(model_orig, q, dobs, f_prev, g, proj; alpha=1f0, tau=.1f0, c1=1f-4, maxiter=10)
-
-    # evaluate FWI objective as function of step size alpha
-    function objective(alpha,p)
-        model.m = proj(model_orig.m + alpha*reshape(p,model.n))
-
-        # Set up linear operator and calculate data residual
-        info = Info(prod(model.n), dobs.nsrc, get_computational_nt(q.geometry,dobs.geometry,model))
-        F = joModeling(info,model,q.geometry,dobs.geometry)
-        dpred = F*q
-        return .5f0*norm(dpred - dobs)^2
-    end
-    
-    model = deepcopy(model_orig)    # don't modify original model
-    p = -g/norm(g,Inf)  # normalized descent direction
-    f_new = objective(alpha,p)
-    iter = 1
-    println("	Iter LS: ", iter, "; ", f_new, " <= ", f_prev + c1*alpha*dot(g,p), "; alpha: ", alpha)
-
-    # sufficient decrease (Armijo) condition
-    while f_new > f_prev + c1*alpha*dot(g,p) && iter < maxiter
-        alpha *= tau
-        f_new = objective(alpha,p)
-        iter += 1
-        println("	Iter LS: ", iter, "; ", f_new, " <= ", f_prev + c1*alpha*dot(g,p), "; alpha: ", alpha)
-    end
-    return alpha*p
-end
 
 # Main loop
 for j=1:niterations

@@ -127,6 +127,15 @@ function *{ADDT,ARDT}(a::Number,A::judiJacobian{ADDT,ARDT})
 								)
 end
 
+function A_mul_B!(x::judiVector,J::judiJacobian,y::Array)
+    z = J*y
+    x.data = z.data
+end
+
+function Ac_mul_B!(x::Array,J::judiJacobian,y::judiVector)
+    x[:] = J'*y
+end
+
 ############################################################
 ## overloaded Bases +(...judiJacobian...), -(...judiJacobian...)
 

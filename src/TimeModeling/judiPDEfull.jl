@@ -112,6 +112,15 @@ function *{ADDT,ARDT}(a::Number,A::judiPDEfull{ADDT,ARDT})
 		)
 end
 
+function A_mul_B!(x::judiVector,A::judiPDEfull,y::judiVector)
+    z = A*y
+    x.data = z.data
+end
+
+function Ac_mul_B!(x::judiVector,A::judiPDEfull,y::judiVector)
+    z = A'*y
+    x.data = z.data
+end
 
 ############################################################
 ## overloaded Bases +(...judiPDEfull...), -(...judiPDEfull...)

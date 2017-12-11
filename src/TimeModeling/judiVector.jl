@@ -589,10 +589,33 @@ function judiTimeInterpolation(geometry::Geometry,dt_coarse,dt_fine)
 	return I
 end
 
-similar(x::judiVector, kwargs...) = judiVector(x.geometry, x.data.*0f0)
+function scale!(a::Number,x::judiVector)
+    for j=1:x.nsrc
+        x.data[j] *= a
+    end
+end
 
-scale!(a,x::judiVector) = a*x
-scale!(x::judiVector,a) = a*x
+function scale!(x::judiVector,a::Number)
+    for j=1:x.nsrc
+        x.data[j] *= a
+    end
+end
+
+function copy!(x::judiVector,y::judiVector)
+    for j=1:x.nsrc
+        x.data[j] = y.data[j]
+    end
+    x.geometry = deepcopy(y.geometry)
+end
+
+function axpy!(a::Number,X::judiVector,Y::judiVector)
+    for j=1:Y.nsrc
+        Y.data[j] = a*X.data[j] + Y.data[j]
+    end
+end
+
+similar(x::judiVector, kwargs...) = judiVector(x.geometry, x.data)*0f0
+
 
 ###########################################################################################################
 
