@@ -6,7 +6,7 @@
 using JUDI.TimeModeling, JUDI.SLIM_optim, HDF5, SeisIO, PyPlot, IterativeSolvers
 
 # Load starting model
-n,d,o,m0 = read(h5open("/scratch/slim/pwitte/models/overthrust_mini.h5","r"), "n", "d", "o", "m0")
+n,d,o,m0 = read(h5open("../data/overthrust_model.h5","r"), "n", "d", "o", "m0")
 model0 = Model((n[1],n[2]), (d[1],d[2]), (o[1],o[2]), m0)
 
 # Bound constraints
@@ -21,7 +21,7 @@ mmin = vec((1f0./vmax).^2)
 mmax = vec((1f0./vmin).^2)
 
 # Load data
-block = segy_read("/scratch/slim/pwitte/overthrust2D/overthrust_mini.segy")
+block = segy_read("../data/overthrust_shot_records.segy")
 d_obs = judiVector(block)
 
 # Set up wavelet
@@ -42,7 +42,7 @@ J = judiJacobian(Pr*F*Ps',q)
 # Optimization parameters
 maxiter = 10
 maxiter_GN = 5
-#batchsize = 8
+batchsize = 8
 fhistory_GN = zeros(Float32,maxiter)
 proj(x) = reshape(median([vec(mmin) vec(x) vec(mmax)],2),model0.n)
 
@@ -51,17 +51,18 @@ for j=1:maxiter
     println("Iteration: ",j)
 
     # Model predicted data for subset of sources
-    d_pred = Pr*F*Ps'*q
-    fhistory_GN[j] = .5f0*norm(d_pred - d_obs)^2
+    i = randperm(d_obs.nsrc)[1:batchsize]
+    d_pred = Pr[i]*F[i]*Ps[i]'*q[i]
+    fhistory_GN[j] = .5f0*norm(d_pred - d_obs[i])^2
                         
     # GN update direction
-    p = lsqr(J, d_pred - d_obs; maxiter=maxiter_GN, verbose=true)
+    p = lsqr(J[i], d_pred - d_obs[i]; maxiter=maxiter_GN, verbose=true)
                                                                                 
     # update model and bound constraints
     model0.m = proj(model0.m - reshape(p, model0.n))    # alpha=1
     figure(); imshow(sqrt.(1f0./model0.m)'); title(string(j))
 end
 
-figure(); imshow(sqrt.(1f0./model0.m)'); title("FWI with SGD")
+figure(); imshow(sqrt.(1f0./model0.m)'); title("FWI with Gauss-Newton")
 
 
