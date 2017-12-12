@@ -1,7 +1,7 @@
 
 export backtracking_linesearch
 
-function backtracking_linesearch(model_orig, q, dobs, f_prev, g, proj; alpha=1f0, tau=.1f0, c1=1f-4, maxiter=10)
+function backtracking_linesearch(model_orig, q, dobs, f_prev, g, proj; alpha=1f0, tau=.1f0, c1=1f-4, maxiter=10, verbose=false)
 
     # evaluate FWI objective as function of step size alpha
     function objective(alpha,p)
@@ -18,14 +18,14 @@ function backtracking_linesearch(model_orig, q, dobs, f_prev, g, proj; alpha=1f0
     p = -g/norm(g,Inf)  # normalized descent direction
     f_new = objective(alpha,p)
     iter = 1
-    println("	Iter LS: ", iter, "; ", f_new, " <= ", f_prev + c1*alpha*dot(g,p), "; alpha: ", alpha)
+    verbose == true && println("	Iter LS: ", iter, "; ", f_new, " <= ", f_prev + c1*alpha*dot(g,p), "; alpha: ", alpha)
 
     # sufficient decrease (Armijo) condition
     while f_new > f_prev + c1*alpha*dot(g,p) && iter < maxiter
         alpha *= tau
         f_new = objective(alpha,p)
         iter += 1
-        println("	Iter LS: ", iter, "; ", f_new, " <= ", f_prev + c1*alpha*dot(g,p), "; alpha: ", alpha)
+        verbose == true && println("	Iter LS: ", iter, "; ", f_new, " <= ", f_prev + c1*alpha*dot(g,p), "; alpha: ", alpha)
     end
     return alpha*p
 end
