@@ -601,12 +601,25 @@ function scale!(x::judiVector,a::Number)
     end
 end
 
+broadcast!(.*, x::judiVector, y::judiVector, a::Number) = scale!(y, a)
+
+function broadcast!(identity, x::judiVector, y::judiVector)
+    copy!(x,y)
+end
+
+function broadcast!(identity, x::judiVector, a::Number, y::judiVector, z::judiVector)
+    scale!(y,a)
+    copy!(x, y + z)
+end
+
 function copy!(x::judiVector,y::judiVector)
     for j=1:x.nsrc
         x.data[j] = y.data[j]
     end
     x.geometry = deepcopy(y.geometry)
 end
+
+#broadcast!(identity, x::judiVector, y::judiVector) = copy!(x,y)
 
 function axpy!(a::Number,X::judiVector,Y::judiVector)
     for j=1:Y.nsrc

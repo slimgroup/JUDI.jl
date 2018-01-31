@@ -10,7 +10,7 @@ using PyCall,JOLI,SeisIO,Dierckx
 @pyimport PyModel as pm
 @pyimport JAcoustic_codegen as ac
 import Base.*, Base./, Base.+, Base.-, Base.ctranspose, Base.conj, Base.vcat, Base.vec, Base.dot, Base.norm, Base.abs, Base.getindex, Base.similar, Base.copy!
-import Base.LinAlg.scale!, Base.LinAlg.A_mul_B!, Base.LinAlg.Ac_mul_B!, Base.BLAS.axpy!
+import Base.LinAlg.scale!, Base.LinAlg.A_mul_B!, Base.LinAlg.Ac_mul_B!, Base.BLAS.axpy!, Base.broadcast!
 
 
 #############################################################################

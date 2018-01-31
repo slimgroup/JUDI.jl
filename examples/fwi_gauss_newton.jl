@@ -51,15 +51,14 @@ for j=1:maxiter
     println("Iteration: ",j)
 
     # Model predicted data for subset of sources
-    i = randperm(d_obs.nsrc)[1:batchsize]
-    d_pred = Pr[i]*F[i]*Ps[i]'*q[i]
-    fhistory_GN[j] = .5f0*norm(d_pred - d_obs[i])^2
+    d_pred = Pr*F*Ps'*q
+    fhistory_GN[j] = .5f0*norm(d_pred - d_obs)^2
                         
     # GN update direction
-    p = lsqr(J[i], d_pred - d_obs[i]; maxiter=maxiter_GN, verbose=true)
+    p = lsqr(J, d_pred - d_obs; maxiter=maxiter_GN, verbose=true)
                                                                                 
     # update model and bound constraints
-    model0.m = proj(model0.m - reshape(p, model0.n))    # alpha=1
+    model0.m = model0.m - reshape(p, model0.n)    # alpha=1
     figure(); imshow(sqrt.(1f0./model0.m)'); title(string(j))
 end
 
