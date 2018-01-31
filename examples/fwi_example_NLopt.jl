@@ -24,7 +24,7 @@ d_obs = judiVector(block)
 
 # Set up wavelet
 src_geometry = Geometry(block; key="source")
-wavelet = ricker_wavelet(src_geometry.t[1], src_geometry.dt[1], 0.008f0)	# 8 Hz wavelet
+wavelet = ricker_wavelet(src_geometry.t[1], src_geometry.dt[1], 0.008f0)    # 8 Hz wavelet
 q = judiVector(src_geometry,wavelet)
 
 ############################### FWI ###########################################

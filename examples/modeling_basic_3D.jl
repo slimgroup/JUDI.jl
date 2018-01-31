@@ -7,7 +7,7 @@
 using JUDI.TimeModeling
 
 ## Set up model structure
-n = (120,100,90)	# (x,y,z) or (x,z)
+n = (120,100,90)    # (x,y,z) or (x,z)
 d = (10.,10.,10.)
 o = (0.,0.,0.)
 
@@ -24,7 +24,7 @@ dm = vec(m - m0)
 
 # Setup info and model structure
 nsrc = 4
-model = Model(n,d,o,m)	# to include density call Model(n,d,o,m,rho)
+model = Model(n,d,o,m)  # to include density call Model(n,d,o,m,rho)
 model0 = Model(n,d,o,m0)
 
 ## Set up 3D receiver geometry by defining one receiver vector in each x and y direction
@@ -38,8 +38,8 @@ zrec = 50
 (xrec, yrec, zrec) = setup_3D_grid(xrec, yrec, zrec)
 
 # receiver sampling and recording time
-timeR = 1000.	# receiver recording time [ms]
-dtR = 4.	# receiver sampling interval
+timeR = 1000.   # receiver recording time [ms]
+dtR = 4.    # receiver sampling interval
 
 # Set up receiver structure
 recGeometry = Geometry(xrec,yrec,zrec;dt=dtR,t=timeR,nsrc=nsrc)
@@ -50,8 +50,8 @@ ysrc = convertToCell([200. 400. 600. 800.])
 zsrc = convertToCell([50. 60. 70. 80.])
 
 # source sampling and number of time steps
-timeS = 1000.	# source length in [ms]
-dtS = 2.	# source sampling interval
+timeS = 1000.   # source length in [ms]
+dtS = 2.    # source sampling interval
 
 # Set up source structure
 srcGeometry = Geometry(xsrc,ysrc,zsrc;dt=dtS,t=timeS)
@@ -61,11 +61,10 @@ f0 = 0.01
 wavelet = ricker_wavelet(timeS,dtS,f0)
 
 # Info structure for linear operators
-ntComp = get_computational_nt(srcGeometry,recGeometry,model)	# no. of computational time steps
+ntComp = get_computational_nt(srcGeometry,recGeometry,model)    # no. of computational time steps
 info = Info(prod(n),nsrc,ntComp)
 
 ###################################################################################################
-
 
 # Setup operators
 Pr = judiProjection(info,recGeometry)
@@ -74,7 +73,7 @@ Ps = judiProjection(info,srcGeometry)
 q = judiVector(srcGeometry,wavelet)
 
 # Nonlinear modeling
-d = Pr*F*Ps'*q	
+d = Pr*F*Ps'*q  
 qad = Ps*F*Pr'*d
 
 # Linearied modeling

@@ -11,8 +11,8 @@ import JUDI
 
 #############################################################################
 # Optimization algorithms
-include("SPGSlim.jl")	# minConf_SPG
-include("PQNSlim.jl")	# minConf_PQN
+include("SPGSlim.jl")   # minConf_SPG
+include("PQNSlim.jl")   # minConf_PQN
 include("OptimizationFunctions.jl") # common functions
 include("Constraints.jl") # Constriaints projection
 include("fwi_linesearch.jl")

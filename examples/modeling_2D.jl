@@ -7,7 +7,7 @@
 using JUDI.TimeModeling
 
 ## Set up model structure
-n = (120,100)	# (x,y,z) or (x,z)
+n = (120,100)   # (x,y,z) or (x,z)
 d = (10.,10.)
 o = (0.,0.)
 
@@ -22,8 +22,8 @@ m0 = (1./v0).^2
 dm = vec(m - m0)
 
 # Setup info and model structure
-nsrc = 1	# number of sources
-model = Model(n,d,o,m)	
+nsrc = 4    # number of sources
+model = Model(n,d,o,m)  
 model0 = Model(n,d,o,m0)
 
 ## Set up receiver geometry
@@ -33,8 +33,8 @@ yrec = 0.
 zrec = linspace(50.,50.,nxrec)
 
 # receiver sampling and recording time
-timeR = 1000.	# receiver recording time [ms]
-dtR = 4.	# receiver sampling interval
+timeR = 1000.   # receiver recording time [ms]
+dtR = 4.    # receiver sampling interval
 
 # Set up receiver structure
 recGeometry = Geometry(xrec,yrec,zrec;dt=dtR,t=timeR,nsrc=nsrc)
@@ -46,7 +46,7 @@ zsrc = convertToCell(linspace(20.,20.,nsrc))
 
 # source sampling and number of time steps
 timeS = 1000.
-dtS = 2	
+dtS = 4
 
 # Set up source structure
 srcGeometry = Geometry(xsrc,ysrc,zsrc;dt=dtS,t=timeS)
@@ -72,11 +72,26 @@ Ps = judiProjection(info,srcGeometry)
 J = judiJacobian(Pr*F0*Ps',q)
 
 # Nonlinear modeling
-d = Pr*F*Ps'*q
-qad = Ps*F'*Pr'*d
+dobs = Pr*F*Ps'*q
+qad = Ps*F'*Pr'*dobs
 
 # Linearized modeling 
 dD = J*dm
-rtm = J'*dD
+rtm1 = J'*dD
 
+# Again, but w/ optimal checkpointing
+#J.options.optimal_checkpointing = true
+#rtm2 = J'*dD
+
+#println("Error: ", norm(rtm1 - rtm2))
+
+
+# evaluate FWI objective function 
+f,g1 = fwi_objective(model0, q, dobs; options=opt)
+
+# evaluate FWI objective function w/ optimal checkpointing
+#opt.optimal_checkpointing = true
+#f,g2 = fwi_objective(model0, q, dobs; options=opt)
+
+#println("Error: ", norm(g1 - g2))
 

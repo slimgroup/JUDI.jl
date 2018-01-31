@@ -1,6 +1,6 @@
 module JUDI
 
-using PyCall,JOLI,SeisIO,Dierckx
+using PyCall, JOLI, SeisIO, Dierckx, ApproXD
 
 # function to prepend Python paths
 function prependMyPyPath(d::String)

@@ -13,7 +13,7 @@ model0 = Model((n[1],n[2]), (d[1],d[2]), (o[1],o[2]), m0)
 v0 = sqrt.(1./model0.m)
 vmin = ones(Float32,model0.n) * 1.3f0
 vmax = ones(Float32,model0.n) * 6.5f0
-vmin[:,1:21] = v0[:,1:21]	# keep water column fixed
+vmin[:,1:21] = v0[:,1:21]   # keep water column fixed
 vmax[:,1:21] = v0[:,1:21]
 
 # Slowness squared [s^2/km^2]
@@ -26,28 +26,28 @@ d_obs = judiVector(block)
 
 # Set up wavelet
 src_geometry = Geometry(block; key="source")
-wavelet = ricker_wavelet(src_geometry.t[1],src_geometry.dt[1],0.008f0)	# 8 Hz wavelet
+wavelet = ricker_wavelet(src_geometry.t[1],src_geometry.dt[1],0.008f0)  # 8 Hz wavelet
 q = judiVector(src_geometry,wavelet)
 
 ############################### FWI ###########################################
 
 
 # Optimization parameters
-srand(1)	# set seed of random number generator
+srand(1)    # set seed of random number generator
 fevals = 16
 batchsize = 8
 
 # Objective function for minConf library
 count = 0
 function objective_function(x)
-	model0.m = reshape(x,model0.n);
+    model0.m = reshape(x,model0.n);
 
-	# fwi function value and gradient
-	i = randperm(d_obs.nsrc)[1:batchsize]
-	fval, grad = fwi_objective(model0, q[i], d_obs[i])
-	grad = .125f0*grad/maximum(abs.(grad))  # scale for line search
-	
-	global count; count+= 1
+    # fwi function value and gradient
+    i = randperm(d_obs.nsrc)[1:batchsize]
+    fval, grad = fwi_objective(model0, q[i], d_obs[i])
+    grad = .125f0*grad/maximum(abs.(grad))  # scale for line search
+    
+    global count; count+= 1
     return fval, vec(grad)
 end
 
