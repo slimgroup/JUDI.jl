@@ -42,7 +42,6 @@ J = judiJacobian(Pr*F*Ps',q)
 # Optimization parameters
 maxiter = 10
 maxiter_GN = 5
-batchsize = 8
 fhistory_GN = zeros(Float32,maxiter)
 proj(x) = reshape(median([vec(mmin) vec(x) vec(mmax)],2),model0.n)
 
