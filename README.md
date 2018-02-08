@@ -28,7 +28,7 @@ export DEVITO_ARCH=gnu
 For reading and writing seismic SEG-Y data, Julia Devito uses the [SeisIO](https://github.com/slimgroup/SeisIO.jl) package and matrix-free linear operators are based the [Julia Operator LIbrary](https://github.com/slimgroup/JOLI.jl/tree/master/src) (JOLI):
 
 ```julia
-Pkg.clone("git@github.com:slimgroup/SeisIO.jl.git")
+Pkg.clone("https://github.com/slimgroup/SeisIO.jl.git")
 Pkg.clone("https://github.com/slimgroup/JOLI.jl.git")
 ```
 
