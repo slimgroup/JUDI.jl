@@ -33,7 +33,7 @@ def forward_modeling(shape, spacing, origin, slowness_sqr, src_coords, wavelet, 
     else:
         u = TimeFunction(name='u', grid=model.grid, time_order=2, space_order=space_order, save=True, time_dim=nt)
 
-    # Set up PDE and rearrange 
+    # Set up PDE and rearrange
     eqn = m * u.dt2 - u.laplace + damp * u.dt
     stencil = solve(eqn, u.forward)[0]
     expression = [Eq(u.forward, stencil)]
@@ -42,13 +42,13 @@ def forward_modeling(shape, spacing, origin, slowness_sqr, src_coords, wavelet, 
     src = PointSource(name='src', grid=model.grid, ntime=nt, coordinates=src_coords)
     src.data[:] = wavelet[:]
     src_term = src.inject(field=u.forward, offset=model.nbpml, expr=src * dt**2 / m)
-    
+
     # Data is sampled at receiver locations
     rec = Receiver(name='rec', grid=model.grid, ntime=nt, coordinates=rec_coords)
     rec_term = rec.interpolate(expr=u, offset=model.nbpml)
 
     # Create operator and run
-    set_log_level('ERROR')
+    set_log_level('INFO')
     expression += src_term + rec_term
     op = Operator(expression, subs=model.spacing_map, dse='advanced', dle='advanced',
                   time_axis=Forward, name="Forward%s" % randint(1e5))
@@ -67,15 +67,15 @@ def adjoint_modeling(shape, spacing, origin, slowness_sqr, src_coords, rec_coord
     nt = rec_data.shape[0]
     dt = model.critical_dt
     m, damp = model.m, model.damp
- 
+
     # Create the adjoint wavefield
     v = TimeFunction(name="v", grid=model.grid, time_order=2, space_order=space_order)
 
-    # Set up PDE and rearrange 
+    # Set up PDE and rearrange
     eqn = m * v.dt2 - v.laplace - damp * v.dt
     stencil = solve(eqn, v.backward)[0]
     expression = [Eq(v.backward, stencil)]
-    
+
     # Adjoint source is injected at receiver locations
     rec = Receiver(name='rec', grid=model.grid, ntime=nt, coordinates=rec_coords)
     rec.data[:] = rec_data[:]
@@ -86,12 +86,12 @@ def adjoint_modeling(shape, spacing, origin, slowness_sqr, src_coords, rec_coord
     adj_rec = src.interpolate(expr=v, offset=model.nbpml)
 
     # Create operator and run
-    set_log_level('ERROR')
+    set_log_level('INFO')
     expression += adj_src + adj_rec
     op = Operator(expression, subs=model.spacing_map, dse='advanced', dle='advanced',
                   time_axis=Backward, name="Backward%s" % randint(1e5))
     op(dt=dt)
-    
+
     return src.data
 
 
@@ -110,7 +110,7 @@ def forward_born(shape, spacing, origin, slowness_sqr, src_coords, wavelet, rec_
     u = TimeFunction(name="u", grid=model.grid, time_order=2, space_order=space_order)
     du = TimeFunction(name="du", grid=model.grid, time_order=2, space_order=space_order)
 
-    # Set up PDEs and rearrange 
+    # Set up PDEs and rearrange
     eqn = m * u.dt2 - u.laplace + damp * u.dt
     stencil1 = solve(eqn, u.forward)[0]
     eqn_lin = m * du.dt2 - du.laplace + damp * du.dt + dm * u.dt2
@@ -122,13 +122,13 @@ def forward_born(shape, spacing, origin, slowness_sqr, src_coords, wavelet, rec_
     src = PointSource(name='src', grid=model.grid, ntime=nt, coordinates=src_coords)
     src.data[:] = wavelet[:]
     src_term = src.inject(field=u.forward, offset=model.nbpml, expr=src * dt**2 / m)
-    
+
     # Define receiver symbol
     rec = Receiver(name='rec', grid=model.grid, ntime=nt, coordinates=rec_coords)
     rec_term = rec.interpolate(expr=du, offset=model.nbpml)
 
     # Create operator and run
-    set_log_level('ERROR')
+    set_log_level('INFO')
     expression = expression_u + src_term + expression_du + rec_term
     op = Operator(expression, subs=model.spacing_map, dse='advanced', dle='advanced',
                   time_axis=Forward, name="Born%s" % randint(1e5))
@@ -139,7 +139,7 @@ def forward_born(shape, spacing, origin, slowness_sqr, src_coords, wavelet, rec_
 
 def adjoint_born(shape, spacing, origin, slowness_sqr, src_coords, rec_coords, rec_data, u, space_order=8, nb=40):
     clear_cache()
-    
+
     # Model
     model = Model(vp=np.sqrt(1/slowness_sqr), origin=origin, shape=shape, spacing=spacing, nbpml=nb)
 
@@ -152,7 +152,7 @@ def adjoint_born(shape, spacing, origin, slowness_sqr, src_coords, rec_coords, r
     v = TimeFunction(name='v', grid=model.grid, time_order=2, space_order=space_order)
     gradient = Function(name="gradient", grid=model.grid)
 
-    # Set up PDE and rearrange 
+    # Set up PDE and rearrange
     eqn = m * v.dt2 - v.laplace - damp * v.dt
     stencil = solve(eqn, v.backward)[0]
     expression = [Eq(v.backward, stencil)]
@@ -166,7 +166,7 @@ def adjoint_born(shape, spacing, origin, slowness_sqr, src_coords, rec_coords, r
     gradient_update = [Eq(gradient, gradient - u * v.dt2)]
 
     # Create operator and run
-    set_log_level('ERROR')
+    set_log_level('INFO')
     expression += adj_src + gradient_update
     op = Operator(expression, subs=model.spacing_map, dse='advanced', dle='advanced',
                   time_axis=Backward, name="Gradient%s" % randint(1e5))
@@ -174,5 +174,3 @@ def adjoint_born(shape, spacing, origin, slowness_sqr, src_coords, rec_coords, r
     clear_cache()
 
     return gradient.data
-
-  

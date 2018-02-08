@@ -2,8 +2,8 @@
 export fwi_objective
 
 function fwi_objective(model_full::Model, source::judiVector, dObs::judiVector, srcnum::Int64; options=Options(), frequencies=[])
-# Setup time-domain linear or nonlinear foward and adjoint modeling and interface to OPESCI/devito 
- 	
+# Setup time-domain linear or nonlinear foward and adjoint modeling and interface to OPESCI/devito
+
 	# Load full geometry for out-of-core geometry containers
 	typeof(dObs.geometry) == GeometryOOC && (dObs.geometry = Geometry(dObs.geometry))
 	typeof(source.geometry) == GeometryOOC && (source.geometry = Geometry(source.geometry))
@@ -16,7 +16,7 @@ function fwi_objective(model_full::Model, source::judiVector, dObs::judiVector, 
 	else
 		model = model_full
 	end
-	
+
 	# Source/receiver parameters
 	tmaxSrc = source.geometry.t[1]
 	tmaxRec = dObs.geometry.t[1]
@@ -39,10 +39,10 @@ function fwi_objective(model_full::Model, source::judiVector, dObs::judiVector, 
 
 	# Forward modeling to generate synthetic data and background wavefields
     if isempty(frequencies)
-        dPredicted, u0 = pycall(ac.forward_modeling, PyObject, model.n, model.d, model.o, PyReverseDims(permutedims(model.m,dims)), 
+        dPredicted, u0 = pycall(ac.forward_modeling, PyObject, model.n, model.d, model.o, PyReverseDims(permutedims(model.m,dims)),
                                 PyReverseDims(src_coords'), PyReverseDims(qIn'), PyReverseDims(rec_coords'), save=true)
     else
-        dPredicted, ufr, ufi = pycall(ac.forward_freq_modeling, PyObject, model.n, model.d, model.o, PyReverseDims(permutedims(model.m,dims)), 
+        dPredicted, ufr, ufi = pycall(ac.forward_freq_modeling, PyObject, model.n, model.d, model.o, PyReverseDims(permutedims(model.m,dims)),
             PyReverseDims(src_coords'), PyReverseDims(qIn'), PyReverseDims(rec_coords'), length(frequencies), frequencies)
     end
 
@@ -50,12 +50,14 @@ function fwi_objective(model_full::Model, source::judiVector, dObs::judiVector, 
 	# Data misfit
 	argout1 = .5f0*norm(vec(dPredicted) - vec(dObserved),2)^2.f0
 
+    figure();imshow(dPredicted' - dObserved', vmin=-1. vmax=1)
+
 	# Backpropagation of data residual
     if isempty(frequencies)
-    	argout2 = pycall(ac.adjoint_born, Array{Float32,length(model.n)}, model.n, model.d, model.o, PyReverseDims(permutedims(model.m,dims)), 
+    	argout2 = pycall(ac.adjoint_born, Array{Float32,length(model.n)}, model.n, model.d, model.o, PyReverseDims(permutedims(model.m,dims)),
                          PyReverseDims(src_coords'), PyReverseDims(rec_coords'), PyReverseDims((dPredicted  - dObserved)'), u0)
     else
-	    argout2 = pycall(ac.adjoint_freq_born, Array{Float32,length(model.n)}, model.n, model.d, model.o, PyReverseDims(permutedims(model.m,dims)), 
+	    argout2 = pycall(ac.adjoint_freq_born, Array{Float32,length(model.n)}, model.n, model.d, model.o, PyReverseDims(permutedims(model.m,dims)),
                          PyReverseDims(src_coords'), PyReverseDims(rec_coords'), PyReverseDims((dPredicted  - dObserved)'), frequencies, ufr, ufi)
     end
     argout2 = remove_padding(argout2,model.nb,true_adjoint=options.sum_padding)
@@ -64,5 +66,3 @@ function fwi_objective(model_full::Model, source::judiVector, dObs::judiVector, 
 	end
 	return [argout1; vec(argout2)]
 end
-
-
