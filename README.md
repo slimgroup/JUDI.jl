@@ -28,7 +28,7 @@ export DEVITO_ARCH=gnu
 For reading and writing seismic SEG-Y data, Julia Devito uses the [SeisIO](https://github.com/slimgroup/SeisIO.jl) package and matrix-free linear operators are based the [Julia Operator LIbrary](https://github.com/slimgroup/JOLI.jl/tree/master/src) (JOLI):
 
 ```julia
-Pkg.clone("git@github.com:slimgroup/SeisIO.jl.git")
+Pkg.clone("https://github.com/slimgroup/SeisIO.jl.git")
 Pkg.clone("https://github.com/slimgroup/JOLI.jl.git")
 ```
 
@@ -100,8 +100,8 @@ x, fsave, funEvals= minConf_SPG(objective_function, vec(model0.m), ProjBound, op
 This example script can be run in parallel and requires roughly 220 MB of memory per source location. Execute the following code to generate figures of the initial model and the result, as well as the function values:
 
 ```julia
-figure(); imshow(sqrt.(1./model0.m)'); title("Initial model")
-figure(); imshow(sqrt.(1./x)'); title("FWI")
+figure(); imshow(sqrt.(1./m0)'); title("Initial model")
+figure(); imshow(sqrt.(1./reshape(x, model0.n))'); title("FWI")
 figure(); plot(fvals); title("Function value")
 ```
 
