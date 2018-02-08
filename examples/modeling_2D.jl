@@ -22,7 +22,7 @@ m0 = (1./v0).^2
 dm = vec(m - m0)
 
 # Setup info and model structure
-nsrc = 1	# number of sources
+nsrc = 2	# number of sources
 model = Model(n,d,o,m)	
 model0 = Model(n,d,o,m0)
 
@@ -40,7 +40,7 @@ dtR = 4.	# receiver sampling interval
 recGeometry = Geometry(xrec,yrec,zrec;dt=dtR,t=timeR,nsrc=nsrc)
 
 ## Set up source geometry (cell array with source locations for each shot)
-xsrc = convertToCell(linspace(600.,600.,nsrc))
+xsrc = convertToCell(linspace(400.,800.,nsrc))
 ysrc = convertToCell(linspace(0.,0.,nsrc))
 zsrc = convertToCell(linspace(20.,20.,nsrc))
 
@@ -62,7 +62,8 @@ info = Info(prod(n),nsrc,ntComp)
 
 ######################## WITHOUT DENSITY ############################################
 
-opt = Options()
+# Write shots as segy files to disk
+opt = Options(save_data_to_disk=true, file_path=pwd(), file_name="observed_shot")
 
 # Setup operators
 Pr = judiProjection(info,recGeometry)
@@ -75,7 +76,8 @@ J = judiJacobian(Pr*F0*Ps',q)
 d = Pr*F*Ps'*q
 qad = Ps*F'*Pr'*d
 
-# Linearized modeling 
+# Linearized modeling
+J.options.file_name="linearized_shot"
 dD = J*dm
 rtm = J'*dD
 
