@@ -5,7 +5,7 @@
 # Authors: Philipp Witte (pwitte@eos.ubc.ca), Henryk Modzelewski (hmodzelewski@eos.ubc.ca)
 # Date: January 2017
 
-export judiVector, judiVectorException, subsample, judiVector_to_SeisBlock, time_resample, time_resample!, judiTimeInterpolation
+export judiVector, judiVectorException, subsample, judiVector_to_SeisBlock, time_resample, time_resample!, judiTimeInterpolation, write_shot_record
 
 ############################################################
 
@@ -532,6 +532,17 @@ function judiVector_to_SeisBlock{avDT}(d::judiVector{avDT},q::judiVector{avDT}; 
     end
     return fullblock
 end
+
+function write_shot_record(srcGeometry,srcData,recGeometry,recData,options)
+    q = judiVector(srcGeometry,srcData)
+    d = judiVector(recGeometry,recData)
+    file = join([string(options.file_name),"_",string(srcGeometry.xloc[1][1]),"_",string(srcGeometry.yloc[1][1]),".segy"])
+    block_out = judiVector_to_SeisBlock(d,q)
+    segy_write(join([options.file_path,"/",file]), block_out)
+    container = scan_file(join([options.file_path,"/",file]),["GroupX","GroupY","dt","SourceSurfaceElevation","RecGroupElevation"])
+    return container
+end
+
 
 function time_resample!(x::judiVector,dt_new;order=2)
     for j=1:x.nsrc

@@ -5,7 +5,7 @@
 
 export ricker_wavelet, get_computational_nt, smooth10, damp_boundary, calculate_dt, setup_grid, setup_3D_grid
 export convertToCell, limit_model_to_receiver_area, extend_gradient, plot_geometry_map
-export time_resample, write_shot_record, remove_padding, backtracking_linesearch
+export time_resample, remove_padding, backtracking_linesearch
 export generate_distribution, select_frequencies
 
 function limit_model_to_receiver_area(srcGeometry::Geometry,recGeometry::Geometry,model::Model,buffer;pert=[])
@@ -293,15 +293,6 @@ function time_resample(data::Array,dt_in, geometry_out::Geometry;order=2)
     return dataInterp
 end
 
-function write_shot_record(srcGeometry,srcData,recGeometry,recData,options)
-    q = judiVector(srcGeometry,srcData)
-    d = judiVector(recGeometry,recData)
-    file = join([string(options.file_name),"_",string(srcGeometry.xloc[1][1]),"_",string(srcGeometry.yloc[1][1]),".segy"])
-    block_out = judiData_to_SeisBlock(d,q)
-    segy_write(join([options.file_path,"/",file]), block_out)
-    container = scan_file(join([options.file_path,"/",file]),["GroupX","GroupY","dt","SourceSurfaceElevation","RecGroupElevation"])
-    return container
-end
 
 function generate_distribution(x; src_no=1)
 	# Generate interpolator to sample from probability distribution given
