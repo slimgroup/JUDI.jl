@@ -11,7 +11,7 @@ from PyModel import Model
 from checkpoint import DevitoCheckpoint, CheckpointOperator
 from pyrevolve import Revolver
 import matplotlib.pyplot as plt
-from JAcoustic_codegen import forward_modeling, adjoint_born, adjoint_born_checkpointing
+from JAcoustic_codegen import forward_modeling, adjoint_born
 
 # Model
 shape = (101, 101)
@@ -44,8 +44,7 @@ rec_t.coordinates.data[:, 0] = np.linspace(0, model.domain_size[0], num=101)
 rec_t.coordinates.data[:, 1] = 20.
 
 # Observed data
-dobs, uTrue = forward_modeling(model, src.coordinates.data, src.data, rec_t.coordinates.data)
-
+dobs, utrue = forward_modeling(model, src.coordinates.data, src.data, rec_t.coordinates.data)
 
 ##################################################################################################################
 
@@ -56,11 +55,11 @@ rec.coordinates.data[:, 1] = 20.
 
 # Save wavefields
 dpred_data, u0 = forward_modeling(model0, src.coordinates.data, src.data, rec.coordinates.data, save=True, dt=dt)
-g1 = adjoint_born_checkpointing(model0, rec.coordinates.data, dpred_data[:] - dobs.data[:], u=u0, dt=dt)
+g1 = adjoint_born(model0, rec.coordinates.data, dpred_data[:] - dobs.data[:], u=u0, dt=dt)
 
 # Checkpointing
 op_predicted = forward_modeling(model0, src.coordinates.data, src.data, rec.coordinates.data, op_return=True, dt=dt)
-g2 = adjoint_born_checkpointing(model0, rec.coordinates.data, dobs.data, op_forward=op_predicted, dt=dt)
+f2, g2 = adjoint_born(model0, rec.coordinates.data, dobs.data, op_forward=op_predicted, dt=dt)
 
 print('Error: ', np.linalg.norm(g1 - g2))
 
