@@ -40,7 +40,7 @@ dtR = 4.    # receiver sampling interval
 recGeometry = Geometry(xrec,yrec,zrec;dt=dtR,t=timeR,nsrc=nsrc)
 
 ## Set up source geometry (cell array with source locations for each shot)
-xsrc = convertToCell(linspace(800.,800.,nsrc))
+xsrc = convertToCell(linspace(600.,600.,nsrc))
 ysrc = convertToCell(linspace(0.,0.,nsrc))
 zsrc = convertToCell(linspace(20.,20.,nsrc))
 
@@ -62,7 +62,7 @@ info = Info(prod(n),nsrc,ntComp)
 
 ######################## WITHOUT DENSITY ############################################
 
-opt = Options(save_data_to_disk=true, file_path=pwd(), file_name="shot_records")
+opt = Options()#save_data_to_disk=true, file_path=pwd(), file_name="shot_records")
 
 # Setup operators
 Pr = judiProjection(info,recGeometry)
@@ -87,6 +87,7 @@ println("Error: ", norm(rtm1 - rtm2))
 
 
 # evaluate FWI objective function 
+opt.optimal_checkpointing = false
 f,g1 = fwi_objective(model0, q, dobs; options=opt)
 
 # evaluate FWI objective function w/ optimal checkpointing
