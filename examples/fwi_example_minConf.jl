@@ -3,7 +3,7 @@
 # Date: December 2017
 #
 
-using JUDI.TimeModeling, JUDI.SLIM_optim, HDF5, SeisIO, PyPlot
+using JUDI.TimeModeling, JUDI.SLIM_optim, HDF5, SeisIO
 
 # Load starting model
 n,d,o,m0 = read(h5open("../data/overthrust_model.h5","r"), "n", "d", "o", "m0")

@@ -58,7 +58,6 @@ for j=1:maxiter
                                                                                 
     # update model and bound constraints
     model0.m = model0.m - reshape(p, model0.n)    # alpha=1
-    figure(); imshow(sqrt.(1f0./model0.m)'); title(string(j))
 end
 
 figure(); imshow(sqrt.(1f0./model0.m)'); title("FWI with Gauss-Newton")

@@ -30,7 +30,7 @@ q = judiVector(src_geometry,wavelet)
 ############################### FWI ###########################################
 
 # optimization parameters
-batchsize = 16
+batchsize = 4
 count = 0
 
 # NLopt objective function
@@ -50,7 +50,7 @@ function f!(x,grad)
           
     global count; count += 1
     println(count, "    ", fval, "    ", norm(grad))
-    return convert(Float64,fval)
+    return convert(Float64, fval)
 end
 
 # Optimization parameters

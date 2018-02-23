@@ -4,7 +4,7 @@
 # Date: January 2017
 #
 
-using PyCall, PyPlot, opesciSLIM.TimeModeling, SeisIO
+using PyCall, PyPlot, JUDI.TimeModeling, SeisIO
 
 ## Set up model structure
 n = (120,100)	# (x,y,z) or (x,z)
@@ -53,7 +53,7 @@ srcGeometry = Geometry(xsrc,ysrc,zsrc;dt=dtS,t=timeS)
 
 # setup wavelet
 f0 = 0.01
-wavelet = source(timeS,dtS,f0)
+wavelet = ricker_wavelet(timeS,dtS,f0)
 
 # Set up info structure for linear operators
 ntComp = get_computational_nt(srcGeometry,recGeometry,model)

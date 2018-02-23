@@ -56,7 +56,7 @@ info = Info(prod(n), nsrc, ntComp)
 
 # setup wavelet
 f0 = 0.008f0
-wavelet = source(timeS,dtS,f0)
+wavelet = ricker_wavelet(timeS,dtS,f0)
 wave_rand = wavelet.*rand(Float32,size(wavelet))
 
 ###################################################################################################
