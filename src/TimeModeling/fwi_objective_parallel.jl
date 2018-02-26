@@ -20,6 +20,7 @@ function fwi_objective(model::Model, source::judiVector, dObs::judiVector; optio
 # fwi_objective function for multiple sources. The function distributes the sources and the input data amongst the available workers.
 
     # Process shots from source channel asynchronously
+    fwi_objective = retry(TimeModeling.fwi_objective)
     results = Array{Any}(dObs.nsrc)
     @sync begin
         for j=1:dObs.nsrc

@@ -339,6 +339,5 @@ function select_frequencies(L;fmin=0.,fmax=Inf,nf=1)
 	return freq
 end
 
-wrap_retry(f,n) = retry(f;n=n)
 
 
