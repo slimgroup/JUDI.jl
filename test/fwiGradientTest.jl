@@ -55,7 +55,7 @@ srcGeometry = Geometry(xsrc,ysrc,zsrc;dt=dtS,t=timeS)
 
 # setup wavelet
 f0 = 0.01f0
-wavelet = source(timeS,dtS,f0)
+wavelet = ricker_wavelet(timeS,dtS,f0)
 
 ###################################################################################################
 

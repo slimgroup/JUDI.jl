@@ -12,7 +12,7 @@ from numpy.random import randint
 from sympy import solve, cos, sin
 from sympy import Function as fint
 from devito.logger import set_log_level
-from devito import Eq, Function, TimeFunction, Forward, Backward, Dimension, Operator, clear_cache
+from devito import Eq, Function, TimeFunction, Dimension, Operator, clear_cache
 from PySource import PointSource, Receiver
 from PyModel import Model
 from checkpoint import DevitoCheckpoint, CheckpointOperator
@@ -51,7 +51,7 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
     set_log_level('ERROR')
     expression += src_term + rec_term
     op = Operator(expression, subs=model.spacing_map, dse='advanced', dle='advanced',
-                  time_axis=Forward, name="Forward%s" % randint(1e5))
+                  name="Forward%s" % randint(1e5))
     if op_return is False:
         op(dt=dt)
         return rec.data, u
@@ -88,7 +88,7 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=8, nb=
     set_log_level('ERROR')
     expression += adj_src + adj_rec
     op = Operator(expression, subs=model.spacing_map, dse='advanced', dle='advanced',
-                  time_axis=Backward, name="Backward%s" % randint(1e5))
+                  name="Backward%s" % randint(1e5))
     op(dt=dt)
     
     return src.data
@@ -127,7 +127,7 @@ def forward_born(model, src_coords, wavelet, rec_coords, perturbation, space_ord
     set_log_level('ERROR')
     expression = expression_u + src_term + expression_du + rec_term
     op = Operator(expression, subs=model.spacing_map, dse='advanced', dle='advanced',
-                  time_axis=Forward, name="Born%s" % randint(1e5))
+                  name="Born%s" % randint(1e5))
     op(dt=dt)
 
     return rec.data
@@ -166,7 +166,7 @@ def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residu
     set_log_level('ERROR')
     expression += adj_src + gradient_update
     op = Operator(expression, subs=model.spacing_map, dse='advanced', dle='advanced',
-                  time_axis=Backward, name="Gradient%s" % randint(1e5))
+                  name="Gradient%s" % randint(1e5))
     
     # Optimal checkpointing
     if op_forward is not None:  
@@ -239,7 +239,7 @@ def forward_freq_modeling(model, src_coords, wavelet, rec_coords, freq, space_or
     set_log_level('ERROR')
     expression += src_term + rec_term
     op = Operator(expression, subs=model.spacing_map, dse='advanced', dle='advanced',
-                  time_axis=Forward, name="Forward%s" % randint(1e5))
+                  name="Forward%s" % randint(1e5))
     op(dt=dt)
 
     return rec.data, ufr, ufi
@@ -279,7 +279,7 @@ def adjoint_freq_born(model, rec_coords, rec_data, freq, ufr, ufi, space_order=8
     set_log_level('ERROR')
     expression += adj_src + gradient_update
     op = Operator(expression, subs=model.spacing_map, dse='advanced', dle='advanced',
-                  time_axis=Backward, name="Gradient%s" % randint(1e5))
+                  name="Gradient%s" % randint(1e5))
     op(dt=dt)
     clear_cache()
 
