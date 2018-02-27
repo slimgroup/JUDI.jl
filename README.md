@@ -47,12 +47,12 @@ The first step is to load the velocity model and the observed data into Julia, a
 using PyPlot, HDF5, SeisIO, JUDI.TimeModeling, JUDI.SLIM_optim
 
 # Load starting model
-n,d,o,m0 = read(h5open("overthrust_2D_initial_model.h5","r"), "n", "d", "o", "m0")
-model0 = Model((n[1],n[2]), (d[1],d[2]), (o[1],o[2]), m0)	# need n,d,o as tuples and m0 as array
+n, d, o, m0 = read(h5open("overthrust_2D_initial_model.h5", "r"), "n", "d", "o", "m0")
+model0 = Model((n[1], n[2]), (d[1], d[2]), (o[1], o[2]), m0)	# need n, d, o as tuples and m0 as array
 
 # Bound constraints
-vmin = ones(Float32,model0.n) + 0.3f0
-vmax = ones(Float32,model0.n) + 5.5f0
+vmin = ones(Float32, model0.n) + 0.3f0
+vmax = ones(Float32, model0.n) + 5.5f0
 mmin = vec((1f0./vmax).^2)	# convert to slowness squared [s^2/km^2]
 mmax = vec((1f0./vmin).^2)
 
@@ -62,8 +62,8 @@ dobs = judiVector(block)
 
 # Set up wavelet
 src_geometry = Geometry(block; key="source", segy_depth_key="SourceDepth")	# read source position geometry
-wavelet = ricker_wavelet(src_geometry.t[1],src_geometry.dt[1],0.008f0)	# 8 Hz wavelet
-q = judiVector(src_geometry,wavelet)
+wavelet = ricker_wavelet(src_geometry.t[1], src_geometry.dt[1], 0.008f0)	# 8 Hz wavelet
+q = judiVector(src_geometry, wavelet)
 
 ```
 
@@ -75,16 +75,17 @@ srand(1)	# reset seed of random number generator
 fevals = 20	# number of function evaluations
 batchsize = 20	# number of sources per iteration
 fvals = zeros(21)
+opt = Options(optimal_checkpointing = false)    # set to true to enable checkpointing
 
 # Objective function for minConf library
 count = 0
 function objective_function(x)
-	model0.m = reshape(x,model0.n);
+	model0.m = reshape(x, model0.n);
 
 	# fwi function value and gradient
 	i = randperm(dobs.nsrc)[1:batchsize]
-	fval,grad = fwi_objective(model0, q[i], dobs[i])
-	grad = reshape(grad, model0.n); grad[:,1:21] = 0f0	# reset gradient in water column to 0.
+	fval, grad = fwi_objective(model0, q[i], dobs[i]; options=opt)
+	grad = reshape(grad, model0.n); grad[:, 1:21] = 0f0	# reset gradient in water column to 0.
 	grad = .1f0*grad/maximum(abs.(grad))	# scale gradient for line search
 	
 	global count; count += 1; fvals[count] = fval
@@ -92,7 +93,7 @@ function objective_function(x)
 end
 
 # FWI with SPG
-ProjBound(x) = median([mmin x mmax],2)	# Bound projection
+ProjBound(x) = median([mmin x mmax], 2)	# Bound projection
 options = spg_options(verbose=3, maxIter=fevals, memory=3)
 x, fsave, funEvals= minConf_SPG(objective_function, vec(model0.m), ProjBound, options)
 ```
@@ -145,23 +146,25 @@ To speed up the convergence of our imaging example, we set up a basic preconditi
 
 ```julia
 # Set up matrix-free linear operators
-F = judiModeling(info,model0,q.geometry,dD.geometry)
-J = judiJacobian(F,q)
+opt = Options(optimal_checkpointing = false)    # set to true to enable checkpointing
+F = judiModeling(info, model0, q.geometry, dD.geometry; options=opt)
+J = judiJacobian(F, q)
 
 # Right-hand preconditioners (model topmute)
-Mr = judiTopmute(model0.n,42,10)	# mute up to grid point 42, with 10 point taper
+Mr = judiTopmute(model0.n, 42, 10)	# mute up to grid point 42, with 10 point taper
 
 # Stochastic gradient
-x = zeros(Float32,info.n)	# zero initial guess
+x = zeros(Float32, info.n)	# zero initial guess
 batchsize = 10	# use subset of 10 shots per iteration
 niter = 32
-fval = zeros(Float32,niter)
+fval = zeros(Float32, niter)
+
 for j=1:niter
 	println("Iteration: ", j)
 
 	# Select batch and set up left-hand preconditioner
 	i = randperm(dD.nsrc)[1:batchsize]
-	Ml = judiMarineTopmute2D(30,dD[i].geometry)	# data topmute starting at time sample 30
+	Ml = judiMarineTopmute2D(30, dD[i].geometry)	# data topmute starting at time sample 30
 
 	# Compute residual and gradient
 	r = Ml*J[i]*Mr*x - Ml*dD[i]
