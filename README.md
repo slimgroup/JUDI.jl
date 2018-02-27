@@ -7,10 +7,10 @@ JUDI is a framework for large-scale seismic modeling and inversion and designed 
 
 ## Installation and prerequisites
 
-First, install Devito using `pip`, or see the [Devito homepage](https://github.com/opesci/devito) for installation with Conda and further information:
+First, install Devito using `pip`, or see the [Devito homepage](https://github.com/opesci/devito) for installation with Conda and further information. The current release of JUDI requires Python 3 and Devito v.3.2-beta:
 
 ```julia
-pip install --user git+https://github.com/opesci/devito.git
+pip install --user git+https://github.com/opesci/devito.git@3.2-beta
 ```
 
 Once Devito is installed, you can install JUDI with Julia's `Pkg.clone`:

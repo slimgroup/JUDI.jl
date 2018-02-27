@@ -4,7 +4,7 @@
 #
 
 export ricker_wavelet, get_computational_nt, smooth10, damp_boundary, calculate_dt, setup_grid, setup_3D_grid
-export convertToCell, limit_model_to_receiver_area, extend_gradient, plot_geometry_map
+export convertToCell, limit_model_to_receiver_area, extend_gradient
 export time_resample, remove_padding, backtracking_linesearch
 export generate_distribution, select_frequencies
 
@@ -239,30 +239,6 @@ vec(x::Float32) = x;
 vec(x::Int64) = x;
 vec(x::Int32) = x;
 
-function plot_geometry_map(model,srcGeometry,recGeometry,shot_no;colormap="viridis")
-    close("all")
-    map = zeros(Float32,model.n[1],model.n[2])
-
-    xmin = minimum(vec(recGeometry.xloc[shot_no]))
-    xmax = maximum(vec(recGeometry.xloc[shot_no]))
-    ymin = minimum(vec(recGeometry.yloc[shot_no]))
-    ymax = maximum(vec(recGeometry.yloc[shot_no]))
-
-    xmin_n = Int(round((xmin-model.o[1])/model.d[1] + 1))
-    xmax_n = Int(round((xmax-model.o[1])/model.d[1] + 1))
-    ymin_n = Int(round((ymin-model.o[2])/model.d[2] + 1))
-    ymax_n = Int(round((ymax-model.o[2])/model.d[2] + 1))
-
-    src_x = Int(round((srcGeometry.xloc[shot_no][1]-model.o[1])/model.d[1] + 1))
-    src_y = Int(round((srcGeometry.yloc[shot_no][1]-model.o[2])/model.d[2] + 1))
-
-    map[xmin_n:xmax_n,ymin_n:ymax_n] = 1.
-    #map[src_x,src_y] = -1.
-    imshow(map; cmap=colormap); colorbar()
-    xlabel("y-coordinate")
-    ylabel("x-coordinate")
-    plot(src_y,src_x,"x")
-end
 
 function time_resample(data::Array,geometry_in::Geometry,dt_new;order=2)
     geometry = deepcopy(geometry_in)

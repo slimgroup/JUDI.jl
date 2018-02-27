@@ -216,8 +216,8 @@ def forward_freq_modeling(model, src_coords, wavelet, rec_coords, freq, space_or
     u = TimeFunction(name='u', grid=model.grid, time_order=2, space_order=space_order)
     f = Function(name='f', dimensions=(freq_dim,), shape=(nfreq,))
     f.data[:] = freq[:]
-    ufr = Function(name='ufr', dimensions=u.indices[1:] + (freq_dim,), shape=model.shape_domain + (nfreq,))
-    ufi = Function(name='ufi', dimensions=u.indices[1:] + (freq_dim,), shape=model.shape_domain + (nfreq,))
+    ufr = Function(name='ufr', dimensions=(freq_dim,) + u.indices[1:], shape=(nfreq,) + model.shape_domain)
+    ufi = Function(name='ufi', dimensions=(freq_dim,) + u.indices[1:], shape=(nfreq,) + model.shape_domain)
 
     # Set up PDE and rearrange 
     eqn = m * u.dt2 - u.laplace + damp * u.dt
@@ -253,12 +253,12 @@ def adjoint_freq_born(model, rec_coords, rec_data, freq, ufr, ufi, space_order=8
     if dt is None:
         dt = model.critical_dt
     m, damp = model.m, model.damp
-    nfreq = ufr.shape[-1]
+    nfreq = ufr.shape[0]
     time = model.grid.time_dim
 
     # Create the forward and adjoint wavefield
     v = TimeFunction(name='v', grid=model.grid, time_order=2, space_order=space_order)
-    f = Function(name='f', dimensions=(ufr.indices[-1],), shape=(nfreq,))
+    f = Function(name='f', dimensions=(ufr.indices[0],), shape=(nfreq,))
     f.data[:] = freq[:]
     gradient = Function(name="gradient", grid=model.grid)
 
