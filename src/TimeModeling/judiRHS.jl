@@ -10,16 +10,16 @@ export judiRHS, judiRHSexception
 ############################################################
 
 struct judiRHS{vDT<:Number} <: joAbstractLinearOperator{vDT,vDT}
-	name::String
-	m::Integer
-	n::Integer
-	info::Info
-	geometry::Geometry
-	data
+    name::String
+    m::Integer
+    n::Integer
+    info::Info
+    geometry::Geometry
+    data
 end
 
 mutable struct judiRHSexception <: Exception
-	msg :: String
+    msg :: String
 end
 
 
@@ -56,11 +56,11 @@ seismic vectors of type `judiVector`, then a `judiRHS` vector can be created as 
 
 """
 function judiRHS(info,geometry,data;vDT::DataType=Float32)
-	vDT == Float32 || throw(judiRHSexception("Domain type not supported"))
-	# length of vector
-	m = info.n * sum(info.nt)
-	n = 1
-	return judiRHS{Float32}("judiRHS",m,n,info,geometry,data)
+    vDT == Float32 || throw(judiRHSexception("Domain type not supported"))
+    # length of vector
+    m = info.n * sum(info.nt)
+    n = 1
+    return judiRHS{Float32}("judiRHS",m,n,info,geometry,data)
 end
 
 ####################################################################
@@ -68,92 +68,92 @@ end
 
 # conj(jo)
 conj{vDT}(A::judiRHS{vDT}) =
-	judiRHS{vDT}("conj("*A.name*")",A.m,A.n,A.info,A.geometry,A.data)
+    judiRHS{vDT}("conj("*A.name*")",A.m,A.n,A.info,A.geometry,A.data)
 
 # transpose(jo)
 transpose{vDT}(A::judiRHS{vDT}) =
-	judiRHS{vDT}(""*A.name*".'",A.n,A.m,A.info,A.geometry,A.data)
+    judiRHS{vDT}(""*A.name*".'",A.n,A.m,A.info,A.geometry,A.data)
    
 # ctranspose(jo)
 ctranspose{vDT}(A::judiRHS{vDT}) =
-	judiRHS{vDT}(""*A.name*"'",A.n,A.m,A.info,A.geometry,A.data)
+    judiRHS{vDT}(""*A.name*"'",A.n,A.m,A.info,A.geometry,A.data)
 
 ####################################################################
 
 # +(judiRHS,judiRHS)
 function +{avDT,bvDT}(A::judiRHS{avDT}, B::judiRHS{bvDT})
 
-	# Error checking
-	size(A) == size(B) || throw(judiRHSexception("shape mismatch"))
-	compareInfo(A.info, B.info) == true || throw(judiRHSexception("info mismatch"))
-	isequal(A.geometry.nt,B.geometry.nt) == true || throw(judiRHSexception("sample number mismatch"))
-	isequal(A.geometry.dt,B.geometry.dt) == true || throw(judiRHSexception("sample interval mismatch"))
-	isequal(A.geometry.t,B.geometry.t) == true || throw(judiRHSexception("recording time mismatch"))
+    # Error checking
+    size(A) == size(B) || throw(judiRHSexception("shape mismatch"))
+    compareInfo(A.info, B.info) == true || throw(judiRHSexception("info mismatch"))
+    isequal(A.geometry.nt,B.geometry.nt) == true || throw(judiRHSexception("sample number mismatch"))
+    isequal(A.geometry.dt,B.geometry.dt) == true || throw(judiRHSexception("sample interval mismatch"))
+    isequal(A.geometry.t,B.geometry.t) == true || throw(judiRHSexception("recording time mismatch"))
 
-	# Size
-	m = A.info.n * sum(A.info.nt)
-	n = 1
+    # Size
+    m = A.info.n * sum(A.info.nt)
+    n = 1
 
-	# merge geometries and data
-	xloc = Array{Any}(A.info.nsrc)
-	yloc = Array{Any}(A.info.nsrc)
-	zloc = Array{Any}(A.info.nsrc)
-	dt = Array{Any}(A.info.nsrc)
-	nt = Array{Any}(A.info.nsrc)
-	t = Array{Any}(A.info.nsrc)
-	data = Array{Any}(A.info.nsrc)
+    # merge geometries and data
+    xloc = Array{Any}(A.info.nsrc)
+    yloc = Array{Any}(A.info.nsrc)
+    zloc = Array{Any}(A.info.nsrc)
+    dt = Array{Any}(A.info.nsrc)
+    nt = Array{Any}(A.info.nsrc)
+    t = Array{Any}(A.info.nsrc)
+    data = Array{Any}(A.info.nsrc)
 
-	for j=1:A.info.nsrc
-		xloc[j] = [vec(A.geometry.xloc[j])' vec(B.geometry.xloc[j])']
-		yloc[j] = [vec(A.geometry.yloc[j])' vec(B.geometry.yloc[j])']
-		zloc[j] = [vec(A.geometry.zloc[j])' vec(B.geometry.zloc[j])']
-		dt[j] = A.geometry.dt[j]
-		nt[j] = A.geometry.nt[j]
-		t[j] = A.geometry.t[j]
-		data[j] = [A.data[j] B.data[j]]
-	end
-	geometry = Geometry(xloc,yloc,zloc,dt,nt,t)
-	nvDT = promote_type(avDT,bvDT)
+    for j=1:A.info.nsrc
+        xloc[j] = [vec(A.geometry.xloc[j])' vec(B.geometry.xloc[j])']
+        yloc[j] = [vec(A.geometry.yloc[j])' vec(B.geometry.yloc[j])']
+        zloc[j] = [vec(A.geometry.zloc[j])' vec(B.geometry.zloc[j])']
+        dt[j] = A.geometry.dt[j]
+        nt[j] = A.geometry.nt[j]
+        t[j] = A.geometry.t[j]
+        data[j] = [A.data[j] B.data[j]]
+    end
+    geometry = Geometry(xloc,yloc,zloc,dt,nt,t)
+    nvDT = promote_type(avDT,bvDT)
 
-	return judiRHS{nvDT}("judiRHS",m,n,A.info,geometry,data)
+    return judiRHS{nvDT}("judiRHS",m,n,A.info,geometry,data)
 end
 
 # -(judiRHS,judiRHS)
 function -{avDT,bvDT}(A::judiRHS{avDT}, B::judiRHS{bvDT})
 
-	# Error checking
-	size(A) == size(B) || throw(judiRHSexception("shape mismatch"))
-	compareInfo(A.info, B.info) == true || throw(judiRHSexception("info mismatch"))
-	isequal(A.geometry.nt,B.geometry.nt) == true || throw(judiRHSexception("sample number mismatch"))
-	isequal(A.geometry.dt,B.geometry.dt) == true || throw(judiRHSexception("sample interval mismatch"))
-	isequal(A.geometry.t,B.geometry.t) == true || throw(judiRHSexception("recording time mismatch"))
+    # Error checking
+    size(A) == size(B) || throw(judiRHSexception("shape mismatch"))
+    compareInfo(A.info, B.info) == true || throw(judiRHSexception("info mismatch"))
+    isequal(A.geometry.nt,B.geometry.nt) == true || throw(judiRHSexception("sample number mismatch"))
+    isequal(A.geometry.dt,B.geometry.dt) == true || throw(judiRHSexception("sample interval mismatch"))
+    isequal(A.geometry.t,B.geometry.t) == true || throw(judiRHSexception("recording time mismatch"))
 
-	# Size
-	m = A.info.n * sum(A.info.nt)
-	n = 1
+    # Size
+    m = A.info.n * sum(A.info.nt)
+    n = 1
 
-	# merge geometries and data
-	xloc = Array{Any}(A.info.nsrc)
-	yloc = Array{Any}(A.info.nsrc)
-	zloc = Array{Any}(A.info.nsrc)
-	dt = Array{Any}(A.info.nsrc)
-	nt = Array{Any}(A.info.nsrc)
-	t = Array{Any}(A.info.nsrc)
-	data = Array{Any}(A.info.nsrc)
+    # merge geometries and data
+    xloc = Array{Any}(A.info.nsrc)
+    yloc = Array{Any}(A.info.nsrc)
+    zloc = Array{Any}(A.info.nsrc)
+    dt = Array{Any}(A.info.nsrc)
+    nt = Array{Any}(A.info.nsrc)
+    t = Array{Any}(A.info.nsrc)
+    data = Array{Any}(A.info.nsrc)
 
-	for j=1:A.info.nsrc
-		xloc[j] = [vec(A.geometry.xloc[j])' vec(B.geometry.xloc[j])']
-		yloc[j] = [vec(A.geometry.yloc[j])' vec(B.geometry.yloc[j])']
-		zloc[j] = [vec(A.geometry.zloc[j])' vec(B.geometry.zloc[j])']
-		dt[j] = A.geometry.dt[j]
-		nt[j] = A.geometry.nt[j]
-		t[j] = A.geometry.t[j]
-		data[j] = [A.data[j] -B.data[j]]
-	end
-	geometry = Geometry(xloc,yloc,zloc,dt,nt,t)
-	nvDT = promote_type(avDT,bvDT)
+    for j=1:A.info.nsrc
+        xloc[j] = [vec(A.geometry.xloc[j])' vec(B.geometry.xloc[j])']
+        yloc[j] = [vec(A.geometry.yloc[j])' vec(B.geometry.yloc[j])']
+        zloc[j] = [vec(A.geometry.zloc[j])' vec(B.geometry.zloc[j])']
+        dt[j] = A.geometry.dt[j]
+        nt[j] = A.geometry.nt[j]
+        t[j] = A.geometry.t[j]
+        data[j] = [A.data[j] -B.data[j]]
+    end
+    geometry = Geometry(xloc,yloc,zloc,dt,nt,t)
+    nvDT = promote_type(avDT,bvDT)
 
-	return judiRHS{nvDT}("judiRHS",m,n,A.info,geometry,data)
+    return judiRHS{nvDT}("judiRHS",m,n,A.info,geometry,data)
 end
 
 

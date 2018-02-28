@@ -12,16 +12,16 @@ export judiProjection, judiProjectionException
 # Type for linear operator representing  Pr*A(m)^-1*Ps, 
 # i.e. it includes source and receiver projections
 struct judiProjection{DDT<:Number,RDT<:Number} <: joAbstractLinearOperator{DDT,RDT}
-	name::String
-	m::Integer
-	n::Integer
-	info::Info
-	geometry::Geometry
+    name::String
+    m::Integer
+    n::Integer
+    info::Info
+    geometry::Geometry
 end
 
 
 mutable struct judiProjectionException <: Exception
-	msg :: String
+    msg :: String
 end
 
 
@@ -47,22 +47,22 @@ Examples
 
 """
 function judiProjection(info::Info, geometry::GeometryIC; DDT::DataType=Float32, RDT::DataType=DDT)
-	(DDT == Float32 && RDT == Float32) || throw(judiProjectionException("Domain and range types not supported"))
-	m = 0
-	for j=1:length(geometry.xloc)
-		m += length(geometry.xloc[j])*geometry.nt[j]
-	end
-	n = info.n * sum(info.nt)
+    (DDT == Float32 && RDT == Float32) || throw(judiProjectionException("Domain and range types not supported"))
+    m = 0
+    for j=1:length(geometry.xloc)
+        m += length(geometry.xloc[j])*geometry.nt[j]
+    end
+    n = info.n * sum(info.nt)
 
-	return judiProjection{Float32,Float32}("restriction operator",m,n,info,geometry)
+    return judiProjection{Float32,Float32}("restriction operator",m,n,info,geometry)
 end
 
 function judiProjection(info::Info, geometry::GeometryOOC; DDT::DataType=Float32, RDT::DataType=DDT)
-	(DDT == Float32 && RDT == Float32) || throw(judiProjectionException("Domain and range types not supported"))
-	m = sum(geometry.nsamples)
-	n = info.n * sum(info.nt)
+    (DDT == Float32 && RDT == Float32) || throw(judiProjectionException("Domain and range types not supported"))
+    m = sum(geometry.nsamples)
+    n = info.n * sum(info.nt)
 
-	return judiProjection{Float32,Float32}("restriction operator",m,n,info,geometry)
+    return judiProjection{Float32,Float32}("restriction operator",m,n,info,geometry)
 end
 
 
@@ -71,52 +71,52 @@ end
 
 # conj(judiProjection)
 conj{DDT,RDT}(A::judiProjection{DDT,RDT}) =
-	judiProjection{DDT,RDT}("conj("*A.name*")",A.m,A.n,A.info,A.geometry)
+    judiProjection{DDT,RDT}("conj("*A.name*")",A.m,A.n,A.info,A.geometry)
 
 # transpose(judiProjection)
 transpose{DDT,RDT}(A::judiProjection{DDT,RDT}) =
-	judiProjection{DDT,RDT}("injection operator",A.n,A.m,A.info,A.geometry)
+    judiProjection{DDT,RDT}("injection operator",A.n,A.m,A.info,A.geometry)
 
 # ctranspose(judiProjection)
 ctranspose{DDT,RDT}(A::judiProjection{DDT,RDT}) =
-	judiProjection{DDT,RDT}("injection operator",A.n,A.m,A.info,A.geometry)
+    judiProjection{DDT,RDT}("injection operator",A.n,A.m,A.info,A.geometry)
 
 ############################################################
 ## overloaded Base *(...judiProjection...)
 
 # *(judiProjection,judiVector)
 function *{ADDT,ARDT,vDT}(A::judiProjection{ADDT,ARDT},v::judiVector{vDT})
-	A.n == size(v,1) || throw(judiProjectionException("shape mismatch"))
-	compareGeometry(A.geometry,v.geometry) == true || throw(judiProjectionException("geometry mismatch"))
-	jo_check_type_match(ADDT,vDT,join(["DDT for *(judiProjection,judiVector):",A.name,typeof(A),vDT]," / "))
-	V = judiRHS(A.info,v.geometry,v.data)
-	jo_check_type_match(ARDT,eltype(V),join(["RDT from *(judiProjection,judiVector):",A.name,typeof(A),eltype(V)]," / "))
-	return V
+    A.n == size(v,1) || throw(judiProjectionException("shape mismatch"))
+    compareGeometry(A.geometry,v.geometry) == true || throw(judiProjectionException("geometry mismatch"))
+    jo_check_type_match(ADDT,vDT,join(["DDT for *(judiProjection,judiVector):",A.name,typeof(A),vDT]," / "))
+    V = judiRHS(A.info,v.geometry,v.data)
+    jo_check_type_match(ARDT,eltype(V),join(["RDT from *(judiProjection,judiVector):",A.name,typeof(A),eltype(V)]," / "))
+    return V
 end
 
 # *(judiProjection,judiModeling)
 function *{ARDT,BDDT,CDT}(A::judiProjection{CDT,ARDT},B::judiModeling{BDDT,CDT})
-	A.n == size(B,1) || throw(judiProjectionException("shape mismatch"))
-	compareInfo(A.info, B.info) == true || throw(judiProjectionException("info mismatch"))
-	if typeof(A.geometry) == GeometryOOC
-		m = sum(A.geometry.nsamples)
-	else
-		m = 0; for j=1:B.info.nsrc m+= length(A.geometry.xloc[j])*A.geometry.nt[j] end
-	end
-	n = B.info.n * sum(B.info.nt)
-	return judiPDE("judiProjection*judiModeling",B.info,B.model,A.geometry;options=B.options,DDT=CDT,RDT=ARDT)
+    A.n == size(B,1) || throw(judiProjectionException("shape mismatch"))
+    compareInfo(A.info, B.info) == true || throw(judiProjectionException("info mismatch"))
+    if typeof(A.geometry) == GeometryOOC
+        m = sum(A.geometry.nsamples)
+    else
+        m = 0; for j=1:B.info.nsrc m+= length(A.geometry.xloc[j])*A.geometry.nt[j] end
+    end
+    n = B.info.n * sum(B.info.nt)
+    return judiPDE("judiProjection*judiModeling",B.info,B.model,A.geometry;options=B.options,DDT=CDT,RDT=ARDT)
 end
 
 function *{ARDT,BDDT,CDT}(A::judiProjection{CDT,ARDT},B::judiModelingAdjoint{BDDT,CDT})
-	A.n == size(B,1) || throw(judiProjectionException("shape mismatch"))
-	compareInfo(A.info, B.info) == true || throw(judiProjectionException("info mismatch"))
-	if typeof(A.geometry) == GeometryOOC
-		m = sum(A.geometry.nsamples)
-	else
-		m = 0; for j=1:B.info.nsrc m+= length(A.geometry.xloc[j])*A.geometry.nt[j] end
-	end
-	n = B.info.n * sum(B.info.nt)
-	return judiPDEadjoint("judiProjection*judiModelingAdjoint",B.info,B.model,A.geometry;options=B.options,DDT=CDT,RDT=ARDT)
+    A.n == size(B,1) || throw(judiProjectionException("shape mismatch"))
+    compareInfo(A.info, B.info) == true || throw(judiProjectionException("info mismatch"))
+    if typeof(A.geometry) == GeometryOOC
+        m = sum(A.geometry.nsamples)
+    else
+        m = 0; for j=1:B.info.nsrc m+= length(A.geometry.xloc[j])*A.geometry.nt[j] end
+    end
+    n = B.info.n * sum(B.info.nt)
+    return judiPDEadjoint("judiProjection*judiModelingAdjoint",B.info,B.model,A.geometry;options=B.options,DDT=CDT,RDT=ARDT)
 end
 
 ############################################################
@@ -124,9 +124,9 @@ end
 
 # Subsample Modeling operator
 function subsample{ADDT,ARDT}(P::judiProjection{ADDT,ARDT}, srcnum)
-	geometry = subsample(P.geometry,srcnum)		# Geometry of subsampled data container
-	info = Info(P.info.n, length(srcnum), P.info.nt[srcnum])
-	return judiProjection(info, geometry;DDT=ADDT,RDT=ARDT)
+    geometry = subsample(P.geometry,srcnum)     # Geometry of subsampled data container
+    info = Info(P.info.n, length(srcnum), P.info.nt[srcnum])
+    return judiProjection(info, geometry;DDT=ADDT,RDT=ARDT)
 end
 
 getindex(P::judiProjection,a) = subsample(P,a)

@@ -7,7 +7,7 @@
 using JUDI.TimeModeling, SeisIO
 
 ## Set up model structure
-n = (120,100)	# (x,y,z) or (x,z)
+n = (120,100)   # (x,y,z) or (x,z)
 d = (10.,10.)
 o = (0.,0.)
 
@@ -33,8 +33,8 @@ yrec = 0.
 zrec = linspace(50.,50.,nxrec)
 
 # receiver sampling and recording time
-timeR = 1000.	# receiver recording time [ms]
-dtR = 4.	# receiver sampling interval
+timeR = 1000.   # receiver recording time [ms]
+dtR = 4.    # receiver sampling interval
 
 # Set up receiver structure
 recGeometry = Geometry(xrec,yrec,zrec;dt=dtR,t=timeR,nsrc=nsrc)
@@ -46,7 +46,7 @@ zsrc = convertToCell(linspace(20.,20.,nsrc))
 
 # source sampling and number of time steps
 timeS = 1000.
-dtS = 2	
+dtS = 4
 
 # Set up source structure
 srcGeometry = Geometry(xsrc,ysrc,zsrc;dt=dtS,t=timeS)
@@ -63,7 +63,7 @@ info = Info(prod(n),nsrc,ntComp)
 ######################## WITHOUT DENSITY ############################################
 
 # Write shots as segy files to disk
-opt = Options(save_data_to_disk=true, file_path=pwd(), file_name="observed_shot")
+opt = Options(save_data_to_disk=true, file_path=pwd(), file_name="observed_shot", optimal_checkpointing=true)
 
 # Setup operators
 Pr = judiProjection(info,recGeometry)
@@ -73,12 +73,15 @@ Ps = judiProjection(info,srcGeometry)
 J = judiJacobian(Pr*F0*Ps',q)
 
 # Nonlinear modeling
-d = Pr*F*Ps'*q
-qad = Ps*F'*Pr'*d
+dobs = Pr*F*Ps'*q
+qad = Ps*F'*Pr'*dobs
 
 # Linearized modeling
 J.options.file_name="linearized_shot"
 dD = J*dm
-rtm = J'*dD
+rtm1 = J'*dD
+
+# evaluate FWI objective function 
+f,g = fwi_objective(model0, q, dobs; options=opt)
 
 

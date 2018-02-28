@@ -10,11 +10,11 @@ export Model
 
 # Object for velocity/slowness models
 mutable struct Model
-	n::IntTuple
-	d::RealTuple
-	o::RealTuple
-	nb::Integer	# number of absorbing boundaries points on each side
-	m	# slowness squared
+    n::IntTuple
+    d::RealTuple
+    o::RealTuple
+    nb::Integer # number of absorbing boundaries points on each side
+    m   # slowness squared
 end
 
 

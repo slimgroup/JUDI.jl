@@ -9,9 +9,9 @@ export Info, compareInfo
 
 # Object for velocity/slowness models
 mutable struct Info
-	n::IntNum
-	nsrc::Integer
-	nt::Array{Any,1}
+    n::IntNum
+    nsrc::Integer
+    nt::Array{Any,1}
 end
 
 # Constructor if nt is not passed as a cell
@@ -34,22 +34,22 @@ number of computational time steps `nt` (either as single integer or cell array)
 
 """
 function Info(n::IntNum, nsrc::Integer, nt::Integer)
-	ntCell = Array{Any}(nsrc)
-	for j=1:nsrc 
-		ntCell[j] = nt 
-	end
-	return Info(n,nsrc,ntCell)
+    ntCell = Array{Any}(nsrc)
+    for j=1:nsrc 
+        ntCell[j] = nt 
+    end
+    return Info(n,nsrc,ntCell)
 end
 
 ##########################################################################################################
 
 function compareInfo(info_A, info_B)
 # Compare two info structures. Return true if structures are the same and false otherwise
-	if isequal(info_A.n, info_B.n) && isequal(info_A.nsrc, info_B.nsrc) && isequal(info_A.nt, info_B.nt)
-		return true
-	else
-		return false
-	end
+    if isequal(info_A.n, info_B.n) && isequal(info_A.nsrc, info_B.nsrc) && isequal(info_A.nt, info_B.nt)
+        return true
+    else
+        return false
+    end
 end
 
 
