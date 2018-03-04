@@ -94,7 +94,7 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=8, nb=
     return src.data
 
 
-def forward_born(model, src_coords, wavelet, rec_coords, perturbation, space_order=8, nb=40):
+def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, nb=40, isic=False):
     clear_cache()
 
     # Parameters
@@ -105,11 +105,25 @@ def forward_born(model, src_coords, wavelet, rec_coords, perturbation, space_ord
     # Create the forward and linearized wavefield
     u = TimeFunction(name="u", grid=model.grid, time_order=2, space_order=space_order)
     du = TimeFunction(name="du", grid=model.grid, time_order=2, space_order=space_order)
+    if len(model.shape) == 2:
+        x,y = u.space_dimensions
+    else:
+        x,y,z = u.space_dimensions
 
     # Set up PDEs and rearrange 
     eqn = m * u.dt2 - u.laplace + damp * u.dt
     stencil1 = solve(eqn, u.forward)[0]
-    eqn_lin = m * du.dt2 - du.laplace + damp * du.dt + dm * u.dt2
+    if isic is not True:
+        eqn_lin = m * du.dt2 - du.laplace + damp * du.dt + dm * u.dt2
+    else:
+        du_aux_x = first_derivative(u.dx * dm, order=space_order, dim=x)
+        du_aux_y = first_derivative(u.dy * dm, order=space_order, dim=y)
+
+        if len(model.shape) == 2:
+            eqn_lin = m * du.dt2 - du.laplace + damp * du.dt + (dm * u.dt2 * m - du_aux_x - du_aux_y)
+        else:
+            du_aux_z = first_derivative(u.dz * dm, order=space_order, dim=z)
+            eqn_lin = m * du.dt2 - du.laplace + damp * du.dt + (dm * u.dt2 * m - du_aux_x - du_aux_y - du_aux_z)
     stencil2 = solve(eqn_lin, du.forward)[0]
     expression_u = [Eq(u.forward, stencil1)]
     expression_du = [Eq(du.forward, stencil2)]
@@ -133,7 +147,7 @@ def forward_born(model, src_coords, wavelet, rec_coords, perturbation, space_ord
     return rec.data
 
 
-def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residual=False, space_order=8, nb=40, dt=None):
+def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residual=False, space_order=8, nb=40, isic=False, dt=None):
     clear_cache()
 
     # Parameters
@@ -160,7 +174,13 @@ def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residu
     # Gradient update
     if u is None:
         u = TimeFunction(name='u', grid=model.grid, time_order=2, space_order=space_order)
-    gradient_update = [Eq(gradient, gradient - u * v.dt2)]
+    if isic is not True:
+        gradient_update = [Eq(gradient, gradient - u * v.dt2)]
+    else:
+        if len(model.shape) == 2:
+            gradient_update = [Eq(gradient, gradient - (u * v.dt2 * m + u.dx * v.dx + u.dy * v.dy))]
+        else:
+            gradient_update = [Eq(gradient, gradient - (u * v.dt2 * m + u.dx * v.dx + u.dy * v.dy + u.dz * v.dz))]
 
     # Create operator and run
     set_log_level('ERROR')

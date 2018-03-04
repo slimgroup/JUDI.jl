@@ -67,7 +67,8 @@ function time_modeling(model_full::Model, srcGeometry::Geometry, srcData, recGeo
         if mode==1
             # forward modeling
             #println("Nonlinear forward modeling (source no. ",srcnum,")")
-            dOut = pycall(ac.forward_modeling, PyObject, modelPy, PyReverseDims(src_coords'), PyReverseDims(qIn'), PyReverseDims(rec_coords'))[1]
+            dOut = pycall(ac.forward_modeling, PyObject, modelPy, PyReverseDims(src_coords'), PyReverseDims(qIn'), PyReverseDims(rec_coords'), 
+                          space_order=options.space_order, nb=model.nb)[1]
             ntRec > ntComp && (dOut = [dOut zeros(size(dOut,1), ntRec - ntComp)])
             dOut = time_resample(dOut,dtComp,recGeometry)
             if options.save_data_to_disk
@@ -79,7 +80,8 @@ function time_modeling(model_full::Model, srcGeometry::Geometry, srcData, recGeo
         else
             # adjoint modeling
             #println("Nonlinear adjoint modeling (source no. ",srcnum,")")
-            qOut = pycall(ac.adjoint_modeling, Array{Float32,2}, modelPy, PyReverseDims(src_coords'), PyReverseDims(rec_coords'), PyReverseDims(dIn'))
+            qOut = pycall(ac.adjoint_modeling, Array{Float32,2}, modelPy, PyReverseDims(src_coords'), PyReverseDims(rec_coords'), PyReverseDims(dIn'),
+                          space_order=options.space_order, nb=model.nb)
             ntSrc > ntComp && (qOut = [qOut zeros(size(qOut), ntSrc - ntComp)])
             qOut = time_resample(qOut,dtComp,srcGeometry)
             return judiVector(srcGeometry,qOut)
@@ -88,8 +90,8 @@ function time_modeling(model_full::Model, srcGeometry::Geometry, srcData, recGeo
         if mode==1
             # forward linearized modeling
             #println("Linearized forward modeling (source no. ",srcnum,")")
-            dOut = pycall(ac.forward_born, Array{Float32,2}, modelPy, PyReverseDims(src_coords'), PyReverseDims(qIn'), PyReverseDims(rec_coords'), 
-                          PyReverseDims(permutedims(reshape(dm,model.n),dims)))
+            dOut = pycall(ac.forward_born, Array{Float32,2}, modelPy, PyReverseDims(src_coords'), PyReverseDims(qIn'), PyReverseDims(rec_coords'),
+                          space_order=options.space_order, nb=model.nb, isic=options.isic)
             ntRec > ntComp && (dOut = [dOut zeros(size(dOut,1), ntRec - ntComp)])
             dOut = time_resample(dOut,dtComp,recGeometry)
             if options.save_data_to_disk
@@ -102,8 +104,10 @@ function time_modeling(model_full::Model, srcGeometry::Geometry, srcData, recGeo
             # adjoint linearized modeling
             #println("Linearized adjoint modeling (source no. ",srcnum,")")
             if options.optimal_checkpointing == true
-                op_F = pycall(ac.forward_modeling, PyObject, modelPy, PyReverseDims(src_coords'), PyReverseDims(qIn'), PyReverseDims(rec_coords'), op_return=true)
-                grad = pycall(ac.adjoint_born, Array{Float32, length(model.n)}, modelPy, PyReverseDims(rec_coords'), PyReverseDims(dIn'), op_forward=op_F, is_residual=true)
+                op_F = pycall(ac.forward_modeling, PyObject, modelPy, PyReverseDims(src_coords'), PyReverseDims(qIn'), PyReverseDims(rec_coords'), 
+                              op_return=true, space_order=options.space_order, nb=model.nb)
+                grad = pycall(ac.adjoint_born, Array{Float32, length(model.n)}, modelPy, PyReverseDims(rec_coords'), PyReverseDims(dIn'), op_forward=op_F, 
+                              space_order=options.space_order, nb=model.nb, is_residual=true, isic=options.isic)
             elseif ~isempty(options.frequencies)
                 typeof(options.frequencies) == Array{Any,1} && (options.frequencies = options.frequencies[srcnum])
                 d_pred, uf_real, uf_imag = pycall(ac.forward_freq_modeling, PyObject, modelPy, PyReverseDims(src_coords'), PyReverseDims(qIn'), PyReverseDims(rec_coords'), 
@@ -111,9 +115,12 @@ function time_modeling(model_full::Model, srcGeometry::Geometry, srcData, recGeo
                 grad = pycall(ac.adjoint_freq_born, Array{Float32, length(model.n)}, modelPy, PyReverseDims(rec_coords'), PyReverseDims(dIn'), 
                               options.frequencies, uf_real, uf_imag, space_order=options.space_order, nb=model.nb)
             else
-                u0 = pycall(ac.forward_modeling, PyObject, modelPy, PyReverseDims(src_coords'), PyReverseDims(qIn'), PyReverseDims(rec_coords'), save=true)[2]
-                grad = pycall(ac.adjoint_born, Array{Float32, length(model.n)}, modelPy, PyReverseDims(rec_coords'), PyReverseDims(dIn'), u=u0)
+                u0 = pycall(ac.forward_modeling, PyObject, modelPy, PyReverseDims(src_coords'), PyReverseDims(qIn'), PyReverseDims(rec_coords'), 
+                            space_order=options.space_order, nb=model.nb, save=true)[2]
+                grad = pycall(ac.adjoint_born, Array{Float32, length(model.n)}, modelPy, PyReverseDims(rec_coords'), PyReverseDims(dIn'), u=u0, 
+                              space_order=options.space_order, nb=model.nb, isic=options.isic)
             end
+
             grad = remove_padding(grad,model.nb,true_adjoint=options.sum_padding)
             if options.limit_m == true && length(model_full.n) == 3
                 grad = extend_gradient(model_full,model,grad)

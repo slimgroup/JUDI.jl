@@ -18,6 +18,7 @@ type Options
     save_wavefield::Bool
     optimal_checkpointing::Bool
     frequencies::Array
+    isic::Bool
 end
 
 """
@@ -33,7 +34,8 @@ end
         sum_padding::Bool
         optimal_checkpointing::Bool
         frequencies::Array
-        
+        isic::Bool
+
 
 Options structure for seismic modeling.
 
@@ -59,16 +61,19 @@ Options structure for seismic modeling.
 
 `frequencies`: calculate the FWI/LS-RTM gradient in the frequency domain for a given set of frequencies
 
+isic`: use linearized inverse scattering imaging condition
+
+
 Constructor
 ==========
 
 All arguments are optional keyword arguments with the following default values:
 
     Options(;retry_n=0, limit_m=false, buffer_size=1e3, save_data_to_disk=false, file_path=pwd(), 
-            file_name="shot", sum_padding=false, save_wavefield=false, optimal_checkpointing=false, frequencies=[])
+            file_name="shot", sum_padding=false, save_wavefield=false, optimal_checkpointing=false, frequencies=[], isic=false)
 
 """
-Options(;space_order=8,retry_n=0,limit_m=false,buffer_size=1e3, save_data_to_disk=false, file_path="", file_name="shot", sum_padding=false, save_wavefield=false, optimal_checkpointing=false, frequencies=[]) = 
-    Options(space_order,retry_n,limit_m,buffer_size,save_data_to_disk,file_path,file_name, sum_padding, save_wavefield, optimal_checkpointing, frequencies)
+Options(;space_order=8,retry_n=0,limit_m=false,buffer_size=1e3, save_data_to_disk=false, file_path="", file_name="shot", sum_padding=false, save_wavefield=false, optimal_checkpointing=false, frequencies=[], isic=false) = 
+    Options(space_order,retry_n,limit_m,buffer_size,save_data_to_disk,file_path,file_name, sum_padding, save_wavefield, optimal_checkpointing, frequencies, isic)
 
 
