@@ -10,7 +10,7 @@ function time_modeling(model_full::Model, srcGeometry::Geometry, srcData, recGeo
     length(model_full.n) == 3 ? dims = (3,2,1) : dims = (2,1)   # model dimensions for Python are (z,y,x) and (z,x)
 
     # for 3D modeling, limit model to area with sources/receivers
-    if options.limit_m == true && length(model_full.n) == 2 # only supported for 3D
+    if options.limit_m == true
         model = deepcopy(model_full)
         if op=='J' && mode==1
             model,dm = limit_model_to_receiver_area(srcGeometry,recGeometry,model,options.buffer_size;pert=dm)
@@ -122,7 +122,7 @@ function time_modeling(model_full::Model, srcGeometry::Geometry, srcData, recGeo
             end
 
             grad = remove_padding(grad,model.nb,true_adjoint=options.sum_padding)
-            if options.limit_m == true && length(model_full.n) == 3
+            if options.limit_m == true
                 grad = extend_gradient(model_full,model,grad)
             end
             return vec(grad)

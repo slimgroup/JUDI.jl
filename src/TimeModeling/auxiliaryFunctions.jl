@@ -10,49 +10,75 @@ export generate_distribution, select_frequencies
 
 function limit_model_to_receiver_area(srcGeometry::Geometry,recGeometry::Geometry,model::Model,buffer;pert=[])
     # Restrict full velocity model to area that contains either sources and receivers
+    ndim = length(model.n)
+    println("N orig: ", model.n)
 
     # scan for minimum and maximum x and y source/receiver coordinates
     min_x = minimum([vec(recGeometry.xloc[1]); vec(srcGeometry.xloc[1])])
     max_x = maximum([vec(recGeometry.xloc[1]); vec(srcGeometry.xloc[1])])
-    min_y = minimum([vec(recGeometry.yloc[1]); vec(srcGeometry.yloc[1])])
-    max_y = maximum([vec(recGeometry.yloc[1]); vec(srcGeometry.yloc[1])])
+    if ndim == 3
+        min_y = minimum([vec(recGeometry.yloc[1]); vec(srcGeometry.yloc[1])])
+        max_y = maximum([vec(recGeometry.yloc[1]); vec(srcGeometry.yloc[1])])
+    end
 
     # add buffer zone if possible
     min_x = max(model.o[1],min_x-buffer)
     max_x = min(model.o[1] + model.d[1]*(model.n[1]-1),max_x+buffer)
-    min_y = max(model.o[2],min_y-buffer)
-    max_y = min(model.o[2] + model.d[2]*(model.n[2]-1),max_y+buffer)
+    if ndim == 3
+        min_y = max(model.o[2],min_y-buffer)
+        max_y = min(model.o[2] + model.d[2]*(model.n[2]-1),max_y+buffer)
+    end
 
     # extract part of the model that contains sources/receivers
     nx_min = Int(round(min_x/model.d[1])) + 1
     nx_max = Int(round(max_x/model.d[1])) + 1
-    ny_min = Int(round(min_y/model.d[2])) + 1
-    ny_max = Int(round(max_y/model.d[2])) + 1
-    ox = (nx_min - 1)*model.d[1]
-    oy = (ny_min - 1)*model.d[2]
-    oz = model.o[3]
+    if ndim == 2
+        ox = (nx_min - 1)*model.d[1]
+        oz = model.o[2]
+    else
+        ny_min = Int(round(min_y/model.d[2])) + 1
+        ny_max = Int(round(max_y/model.d[2])) + 1
+        ox = (nx_min - 1)*model.d[1]
+        oy = (ny_min - 1)*model.d[2]
+        oz = model.o[3]
+    end
 
     # Extract relevant model part from full domain
     n_orig = model.n
-    model.m = model.m[nx_min:nx_max,ny_min:ny_max,:]
-    model.o = (ox,oy,oz)
+    if ndim == 2
+        model.m = model.m[nx_min: nx_max, :]
+        model.o = (ox, oz)
+    else
+        model.m = model.m[nx_min:nx_max,ny_min:ny_max,:]
+        model.o = (ox,oy,oz)
+    end
     model.n = size(model.m)
+    println("N new: ", model.n)
     if isempty(pert)
         return model
     else
-        pert = reshape(pert,n_orig)[nx_min:nx_max,ny_min:ny_max,:]
+        if ndim==2
+            pert = reshape(pert,n_orig)[nx_min: nx_max, :]
+        else
+            pert = reshape(pert,n_orig)[nx_min: nx_max,ny_min: ny_max, :]
+        end
         return model,vec(pert)
     end
 end
 
 function extend_gradient(model_full::Model,model::Model,gradient::Array)
     # Extend gradient back to full model size
+    ndim = length(model.n)
     full_gradient = zeros(Float32,model_full.n)
     nx_start = Int((model.o[1] - model_full.o[1])/model.d[1] + 1)
     nx_end = nx_start + model.n[1] - 1
-    ny_start = Int((model.o[2] - model_full.o[2])/model.d[2] + 1)
-    ny_end = ny_start + model.n[2] - 1 
-    full_gradient[nx_start:nx_end,ny_start:ny_end,:] = gradient
+    if ndim == 2
+        full_gradient[nx_start:nx_end,:] = gradient
+    else
+        ny_start = Int((model.o[2] - model_full.o[2])/model.d[2] + 1)
+        ny_end = ny_start + model.n[2] - 1 
+        full_gradient[nx_start:nx_end,ny_start:ny_end,:] = gradient
+    end
     return full_gradient
 end
 
