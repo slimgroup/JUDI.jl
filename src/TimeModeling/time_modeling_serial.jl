@@ -35,7 +35,7 @@ function time_modeling(model_full::Model, srcGeometry::Geometry, srcData, recGeo
     tmaxRec = recGeometry.t[1]
 
     # Extrapolate input data to computational grid
-    if mode==1
+    if mode==1  # F and J
         qIn = time_resample(srcData[1],srcGeometry,dtComp)[1]
         ntComp = size(qIn,1)
     elseif op=='F' &&  mode==-1
@@ -58,7 +58,14 @@ function time_modeling(model_full::Model, srcGeometry::Geometry, srcData, recGeo
     end
     ntSrc = Int(trunc(tmaxSrc/dtComp + 1))
     ntRec = Int(trunc(tmaxRec/dtComp + 1))
-    
+
+    # Only accept receivers within model
+    if mode==1
+        recGeometry = remove_out_of_bounds_receivers(recGeometry, model)
+    else
+        recGeometry, dIn = remove_out_of_bounds_receivers(recGeometry, dIn, model)
+    end
+
     # Set up coordinates
     src_coords = setup_grid(srcGeometry, model.n, model.o)
     rec_coords = setup_grid(recGeometry, model.n, model.o)

@@ -4,7 +4,7 @@
 #
 
 export ricker_wavelet, get_computational_nt, smooth10, damp_boundary, calculate_dt, setup_grid, setup_3D_grid
-export convertToCell, limit_model_to_receiver_area, extend_gradient
+export convertToCell, limit_model_to_receiver_area, extend_gradient, remove_out_of_bounds_receivers
 export time_resample, remove_padding, backtracking_linesearch
 export generate_distribution, select_frequencies
 
@@ -81,6 +81,49 @@ function extend_gradient(model_full::Model,model::Model,gradient::Array)
     end
     return full_gradient
 end
+
+function remove_out_of_bounds_receivers(recGeometry::Geometry, model::Model)
+    
+    # Only keep receivers within the model
+    xmin = model.o[1]
+    if typeof(recGeometry.xloc[1]) <: Array
+        idx_xrec = find(x -> x > xmin, recGeometry.xloc[1])
+        recGeometry.xloc[1] = recGeometry.xloc[1][idx_xrec]
+        recGeometry.zloc[1] = recGeometry.zloc[1][idx_xrec]
+    end
+
+    # For 3D shot records, scan also y-receivers
+    if length(model.n) == 3 && typeof(recGeometry.yloc[1]) <: Array
+        ymin = model.o[2]
+        idx_yrec = find(x -> x > ymin, recGeometry.yloc[1])
+        recGeometry.yloc[1] = recGeometry.yloc[1][idx_yrec]
+        recGeometry.zloc[1] = recGeometry.zloc[1][idx_yrec]
+    end
+    return recGeometry
+end
+
+function remove_out_of_bounds_receivers(recGeometry::Geometry, recData::Array, model::Model)
+
+    # Only keep receivers within the model
+    xmin = model.o[1]
+    if typeof(recGeometry.xloc[1]) <: Array
+        idx_xrec = find(x -> x > xmin, recGeometry.xloc[1])
+        recGeometry.xloc[1] = recGeometry.xloc[1][idx_xrec]
+        recGeometry.zloc[1] = recGeometry.zloc[1][idx_xrec]
+        recData = recData[:, idx_xrec]
+    end
+
+    # For 3D shot records, scan also y-receivers
+    if length(model.n) == 3 && typeof(recGeometry.yloc[1]) <: Array
+        ymin = model.o[2]
+        idx_yrec = find(x -> x > ymin, recGeometry.yloc[1])
+        recGeometry.yloc[1] = recGeometry.yloc[1][idx_yrec]
+        recGeometry.zloc[1] = recGeometry.zloc[1][idx_yrec]
+        recData = recData[:, idx_yrec]
+    end
+    return recGeometry, recData
+end
+
 
 """
     convertToCell(x)

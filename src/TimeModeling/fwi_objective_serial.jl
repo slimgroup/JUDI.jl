@@ -10,7 +10,7 @@ function fwi_objective(model_full::Model, source::judiVector, dObs::judiVector, 
     length(model_full.n) == 3 ? dims = (3,2,1) : dims = (2,1)   # model dimensions for Python are (z,y,x) and (z,x)
 
     # for 3D modeling, limit model to area with sources/receivers
-    if options.limit_m == true && length(model_full.n) == 3 # only supported for 3D
+    if options.limit_m == true 
         model = deepcopy(model_full)
         model = limit_model_to_receiver_area(source.geometry,dObs.geometry,model,options.buffer_size)
     else
@@ -59,7 +59,7 @@ function fwi_objective(model_full::Model, source::judiVector, dObs::judiVector, 
                          u=u0, is_residual=true)
     end
     argout2 = remove_padding(argout2, model.nb, true_adjoint=options.sum_padding)
-    if options.limit_m==true && length(model_full.n) == 3
+    if options.limit_m==true
         argout2 = extend_gradient(model_full,model,argout2)
     end
     return [argout1; vec(argout2)]

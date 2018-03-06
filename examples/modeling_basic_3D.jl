@@ -76,8 +76,8 @@ Ps = judiProjection(info,srcGeometry)
 q = judiVector(srcGeometry,wavelet)
 
 # Nonlinear modeling
-dobs = Pr*F*Ps'*q  
-qad = Ps*F*Pr'*dobs
+dobs = Pr*F*Ps'*q
+qad = Ps*F'*Pr'*dobs
 
 # Linearied modeling
 J = judiJacobian(Pr*F*Ps',q)
