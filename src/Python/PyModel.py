@@ -50,7 +50,7 @@ class Model(object):
     :param m: The square slowness of the wave
     :param damp: The damping field for absorbing boundarycondition
     """
-    def __init__(self, origin, spacing, shape, vp, nbpml=20, dtype=np.float32, dm=None):
+    def __init__(self, origin, spacing, shape, vp, rho, nbpml=20, dtype=np.float32, dm=None):
         self.shape = shape
         self.nbpml = int(nbpml)
 
@@ -65,6 +65,12 @@ class Model(object):
             self.m = Function(name="m", grid=self.grid)
         else:
             self.m = Constant(name="m", value=1/vp**2)
+
+        if isinstance(rho, np.ndarray):
+            self.rho = Function(name="rho", grid=self.grid)
+            self.rho.data[:] = self.pad(rho)
+        else:
+            self.rho = Constant(name="rho", value=rho)
 
         # Set model velocity, which will also set `m`
         self.vp = vp

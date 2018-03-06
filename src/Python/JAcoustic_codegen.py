@@ -18,6 +18,30 @@ from PyModel import Model
 from checkpoint import DevitoCheckpoint, CheckpointOperator
 from pyrevolve import Revolver
 
+def acoustic_laplacian(v, rho):
+    
+    if rho is not None:
+        if isinstance(rho, Function):
+            if len(v.shape[:-1]) == 3:
+                Lap = (1/rho * v.dx2 - (1/rho)**2 * rho.dx * v.dx +
+                       1/rho * v.dy2 - (1/rho)**2 * rho.dy * v.dy +
+                       1/rho * v.dz2 - (1/rho)**2 * rho.dz * v.dz)
+            else:
+                Lap = (1/rho * v.dx2 - (1/rho)**2 * rho.dx * v.dx +
+                       1/rho * v.dy2 - (1/rho)**2 * rho.dy * v.dy)
+        else:
+            if len(v.shape[:-1]) == 3:
+                Lap = (1/rho * v.dx2 +
+                       1/rho * v.dy2 +
+                       1/rho * v.dz2)
+            else:
+                Lap = (1/rho * v.dx2 +
+                       1/rho * v.dy2)
+    else:
+        Lap = v.laplace
+        rho = 1
+    return Lap, rho
+
 def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_order=8, nb=40, op_return=False, dt=None):
     clear_cache()
 
@@ -25,7 +49,7 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
     nt = wavelet.shape[0]
     if dt is None:
         dt = model.critical_dt
-    m, damp = model.m, model.damp
+    m, rho, damp = model.m, model.rho, model.damp
 
     # Create the forward wavefield
     if save is False:
@@ -34,7 +58,8 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
         u = TimeFunction(name='u', grid=model.grid, time_order=2, space_order=space_order, save=nt)
 
     # Set up PDE and rearrange 
-    eqn = m * u.dt2 - u.laplace + damp * u.dt
+    ulaplace, rho = acoustic_laplacian(u, rho)
+    eqn = m / rho * u.dt2 - ulaplace + damp * u.dt
     stencil = solve(eqn, u.forward)[0]
     expression = [Eq(u.forward, stencil)]
 
@@ -59,19 +84,21 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
         return op
 
 
-def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=8, nb=40):
+def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=8, nb=40, dt=None):
     clear_cache()
 
     # Parameters
     nt = rec_data.shape[0]
-    dt = model.critical_dt
+    if dt is None:
+        dt = model.critical_dt
     m, damp = model.m, model.damp
  
     # Create the adjoint wavefield
     v = TimeFunction(name="v", grid=model.grid, time_order=2, space_order=space_order)
 
     # Set up PDE and rearrange 
-    eqn = m * v.dt2 - v.laplace - damp * v.dt
+    vlaplace, rho = acoustic_laplacian(v, rho)
+    eqn = m / rho * v.dt2 - vlaplace - damp * v.dt
     stencil = solve(eqn, v.backward)[0]
     expression = [Eq(v.backward, stencil)]
     
@@ -94,12 +121,13 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=8, nb=
     return src.data
 
 
-def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, nb=40, isic=False):
+def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, nb=40, isic=False, dt=None):
     clear_cache()
 
     # Parameters
     nt = wavelet.shape[0]
-    dt = model.critical_dt
+    if dt is None:
+        dt = model.critical_dt
     m, dm, damp = model.m, model.dm, model.damp
 
     # Create the forward and linearized wavefield
