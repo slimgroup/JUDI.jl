@@ -20,7 +20,7 @@ spacing = (10., 10.)
 origin = (0., 0.)
 v = np.empty(shape, dtype=np.float32)
 v[:, :51] = 1.5
-v[:, 51:] = 4.5
+v[:, 51:] = 3.5
 
 # Density
 rho = np.empty(shape, dtype=np.float32)
@@ -83,7 +83,7 @@ dm_hat = model0.dm.data
 dD = forward_born(model0, src.coordinates.data, src.data, rec_t.coordinates.data, isic=False, dt=dt)
 
 # Adjoint
-d0, u0 = forward_modeling(model0, src.coordinates.data, src.data, rec_t.coordinates.data, dt=dt)
+d0, u0 = forward_modeling(model0, src.coordinates.data, src.data, rec_t.coordinates.data, save=True, dt=dt)
 dm = adjoint_born(model0, rec_t.coordinates.data, dD_hat.data, u0, isic=False, dt=dt)
 
 # Adjoint test
@@ -91,4 +91,19 @@ a = np.dot(dD_hat.flatten(), dD.flatten())
 b = np.dot(dm_hat.flatten(), dm.flatten())
 print("Difference: ", a - b)
 print("Relative error: ", a/b - 1)
+
+plt.figure(); plt.imshow(np.transpose(model.m.data))
+plt.figure(); plt.imshow(np.transpose(model0.m.data))
+plt.figure(); plt.imshow(np.transpose(model_const.m.data))
+
+plt.figure(); plt.imshow(np.transpose(model0.dm.data))
+plt.figure(); plt.imshow(np.transpose(model_const.dm.data))
+
+plt.figure(); plt.imshow(dD_hat)
+plt.figure(); plt.imshow(dD)
+
+plt.figure(); plt.imshow(np.transpose(dm_hat))
+plt.figure(); plt.imshow(np.transpose(dm))
+
+
 

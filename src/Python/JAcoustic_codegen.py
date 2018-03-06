@@ -60,6 +60,7 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
     # Set up PDE and rearrange 
     ulaplace, rho = acoustic_laplacian(u, rho)
     eqn = m / rho * u.dt2 - ulaplace + damp * u.dt
+    #eqn = m * u.dt2 - u.laplace + damp * u.dt
     stencil = solve(eqn, u.forward)[0]
     expression = [Eq(u.forward, stencil)]
 
@@ -139,10 +140,12 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, nb=40, i
         x,y,z = u.space_dimensions
 
     # Set up PDEs and rearrange 
-    eqn = m * u.dt2 - u.laplace + damp * u.dt
+    ulaplace, rho = acoustic_laplacian(u, rho)
+    dulaplace, _ = acoustic_laplacian(du, rho)
+    eqn = m /rho * u.dt2 - ulaplace + damp * u.dt
     stencil1 = solve(eqn, u.forward)[0]
     if isic is not True:
-        eqn_lin = m * du.dt2 - du.laplace + damp * du.dt + dm * u.dt2
+        eqn_lin = m / rho * du.dt2 - dulaplace + damp * du.dt + dm / rho * u.dt2
     else:
         du_aux_x = first_derivative(u.dx * dm, order=space_order, dim=x)
         du_aux_y = first_derivative(u.dy * dm, order=space_order, dim=y)
@@ -189,7 +192,8 @@ def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residu
     gradient = Function(name='gradient', grid=model.grid)
     
     # Set up PDE and rearrange 
-    eqn = m * v.dt2 - v.laplace - damp * v.dt
+    vlaplace, rho = acoustic_laplacian(v, rho)
+    eqn = m / rho * v.dt2 - vlaplace - damp * v.dt
     stencil = solve(eqn, v.backward)[0]
     expression = [Eq(v.backward, stencil)]
 

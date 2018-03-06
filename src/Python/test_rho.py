@@ -21,7 +21,7 @@ origin = (0., 0.)
 # Velocity
 v = np.empty(shape, dtype=np.float32)
 v[:, :51] = 1.5
-v[:, 51:] = 2.5
+v[:, 51:] = 1.5
 v0 = np.empty(shape, dtype=np.float32)
 v0[:, :] = 1.5
 
@@ -65,9 +65,11 @@ rec.coordinates.data[:, 0] = np.linspace(0, model0.domain_size[0], num=101)
 rec.coordinates.data[:, 1] = 20.
 
 # Save wavefields
-dpred_data, u0 = forward_modeling(model, src.coordinates.data, src.data, rec.coordinates.data, save=True, dt=dt)
-g1 = adjoint_born(model0, rec.coordinates.data, dpred_data[:] - dobs.data[:], u=u0, dt=dt)
+d0, u0 = forward_modeling(model, src.coordinates.data, src.data, rec.coordinates.data, save=True, dt=dt)
+#g = adjoint_born(model0, rec.coordinates.data, dpred_data[:] - dobs.data[:], u=u0, dt=dt)
 
-plt.imshow(dpred_data, vmin=-1, vmax=1); plt.show()
-
+plt.figure(); plt.imshow(d0, vmin=-1, vmax=1)
+plt.figure(); plt.imshow(np.transpose(model.rho.data))
+plt.figure(); plt.imshow(np.transpose(model.m.data))
+plt.show()
 
