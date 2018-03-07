@@ -75,13 +75,22 @@ rec_t.coordinates.data[:, 0] = np.linspace(100, 900, num=401)
 rec_t.coordinates.data[:, 1] = 20.
 
 # Linearized data
+print("Forward J")
+t1 = time.time()
 dD_hat = forward_born(model_const, src.coordinates.data, src.data, rec_t.coordinates.data, isic=False, dt=dt)
 dm_hat = model0.dm.data
+t2 = time.time()
+print(t2 - t1)
 
 # Forward
+print("Forward J")
+t1 = time.time()
 dD = forward_born(model0, src.coordinates.data, src.data, rec_t.coordinates.data, isic=False, dt=dt)
+t2 = time.time()
+print(t2 - t1)
 
 # Adjoint
+print("Adjoint J")
 d0, u0 = forward_modeling(model0, src.coordinates.data, src.data, rec_t.coordinates.data, dt=dt, save=True)
 dm = adjoint_born(model0, rec_t.coordinates.data, dD_hat.data, u0, isic=False, dt=dt)
 
