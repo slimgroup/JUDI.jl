@@ -60,7 +60,7 @@ q = judiVector(srcGeometry,wavelet)
 ntComp = get_computational_nt(srcGeometry,recGeometry,model)
 info = Info(prod(n),nsrc,ntComp)
 
-######################## WITHOUT DENSITY ############################################
+######################## WITH DENSITY ############################################
 
 # Write shots as segy files to disk
 opt = Options(save_data_to_disk=true, file_path=pwd(), file_name="observed_shot", optimal_checkpointing=true)

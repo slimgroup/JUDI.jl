@@ -116,9 +116,9 @@ function ricker_wavelet(tmax, dt, f0)
     return q
 end
 
-function calculate_dt(n,d,o,v; epsilon=0)
+function calculate_dt(n,d,o,v,rho; epsilon=0)
     length(n) == 2 ? pyDim = (n[2], n[1]) : pyDim = (n[3],n[2],n[1])
-    modelPy = pm.Model(o, d, pyDim, PyReverseDims(v))
+    modelPy = pm.Model(o, d, pyDim, PyReverseDims(v), PyReverseDims(rho))
     dtComp = modelPy[:critical_dt]
 end
 
@@ -139,7 +139,7 @@ function get_computational_nt(srcGeometry, recGeometry, model::Model)
         nsrc = length(srcGeometry.xloc)
     end
     nt = Array{Any}(nsrc)
-    dtComp = calculate_dt(model.n,model.d,model.o,sqrt.(1./model.m))
+    dtComp = calculate_dt(model.n,model.d,model.o,sqrt.(1./model.m),model.rho)
     for j=1:nsrc
         ntRec = Int(trunc(recGeometry.dt[j]*(recGeometry.nt[j]-1))) / dtComp
         ntSrc = Int(trunc(srcGeometry.dt[j]*(srcGeometry.nt[j]-1))) / dtComp

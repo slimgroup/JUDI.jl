@@ -24,9 +24,10 @@ function time_modeling(model_full::Model, srcGeometry::Geometry, srcData, recGeo
     # Set up Python model structure
     if op=='J' && mode == 1
         modelPy = pm.Model(origin=(0.,0.,0.), spacing=model.d, shape=model.n, vp=PyReverseDims(permutedims(sqrt.(1f0./model.m), dims)), nbpml=model.nb, 
-                           dm=PyReverseDims(permutedims(reshape(dm,model.n), dims)))
+                           rho=PyReverseDims(permutedims(model.rho, dims)), dm=PyReverseDims(permutedims(reshape(dm,model.n), dims)))
     else
-        modelPy = pm.Model(origin=(0.,0.,0.), spacing=model.d, shape=model.n, vp=PyReverseDims(permutedims(sqrt.(1f0./model.m), dims)), nbpml=model.nb)
+        modelPy = pm.Model(origin=(0.,0.,0.), spacing=model.d, shape=model.n, vp=PyReverseDims(permutedims(sqrt.(1f0./model.m), dims)), nbpml=model.nb,
+                           rho=PyReverseDims(permutedims(model.rho, dims)))
     end
     dtComp = modelPy[:critical_dt]
 

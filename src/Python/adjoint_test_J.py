@@ -85,14 +85,14 @@ print(t2 - t1)
 # Forward
 print("Forward J")
 t1 = time.time()
-dD = forward_born(model0, src.coordinates.data, src.data, rec_t.coordinates.data, isic=False, dt=dt)
+dD = forward_born(model0, src.coordinates.data, src.data, rec_t.coordinates.data, isic=True, dt=dt)
 t2 = time.time()
 print(t2 - t1)
 
 # Adjoint
 print("Adjoint J")
 d0, u0 = forward_modeling(model0, src.coordinates.data, src.data, rec_t.coordinates.data, dt=dt, save=True)
-dm = adjoint_born(model0, rec_t.coordinates.data, dD_hat.data, u0, isic=False, dt=dt)
+dm = adjoint_born(model0, rec_t.coordinates.data, dD_hat.data, u0, isic=True, dt=dt)
 
 # Adjoint test
 a = np.dot(dD_hat.flatten(), dD.flatten())

@@ -15,6 +15,8 @@ o = (0.,0.)
 v = ones(Float32,n) * 2.0f0
 v[:,Int(round(end/2)):end] = 3.0f0
 v0 = smooth10(v,n)
+rho = ones(Float32, n)
+rho[:, Int(round(end/2)):end] = 1.5f0
 
 # Slowness squared [s^2/km^2]
 m = (1f0./v).^2
@@ -25,8 +27,8 @@ dm = m0 - m
 nsrc = 1	# number of sources
 ntComp = 250
 info = Info(prod(n), nsrc, ntComp)	# number of gridpoints, number of experiments, number of computational time steps
-model = Model(n,d,o,m)
-model0 = Model(n,d,o,m0)
+model = Model(n,d,o,m;rho=rho)
+model0 = Model(n,d,o,m0;rho=rho)
 
 ## Set up receiver geometry
 nxrec = 81
@@ -36,7 +38,7 @@ zrec = linspace(100f0,100f0,nxrec)
 
 # receiver sampling and recording time
 timeR = 1000f0	# receiver recording time [ms]
-dtR = calculate_dt(n,d,o,v)	# receiver sampling interval
+dtR = calculate_dt(n,d,o,v,rho)	# receiver sampling interval
 
 # Set up receiver structure
 recGeometry = Geometry(xrec,yrec,zrec;dt=dtR,t=timeR,nsrc=nsrc)
@@ -48,7 +50,7 @@ zsrc = convertToCell([50f0])
 
 # source sampling and number of time steps
 timeS = 1000f0
-dtS = calculate_dt(n,d,o,v)	# receiver sampling interval
+dtS = calculate_dt(n,d,o,v,rho)	# receiver sampling interval
 
 # Set up source structure
 srcGeometry = Geometry(xsrc,ysrc,zsrc;dt=dtS,t=timeS)

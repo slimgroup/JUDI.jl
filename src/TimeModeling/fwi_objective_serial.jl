@@ -22,7 +22,8 @@ function fwi_objective(model_full::Model, source::judiVector, dObs::judiVector, 
     tmaxRec = dObs.geometry.t[1]
     
     # Set up Python model structure (force origin to be zero due to current devito bug)
-    modelPy = pm.Model(origin=(0.,0.,0.), spacing=model.d, shape=model.n, vp=PyReverseDims(permutedims(sqrt.(1f0./model.m), dims)), nbpml=model.nb)
+    modelPy = pm.Model(origin=(0.,0.,0.), spacing=model.d, shape=model.n, vp=PyReverseDims(permutedims(sqrt.(1f0./model.m), dims)), 
+                       rho=PyReverseDims(permutedims(model.rho, dims)), nbpml=model.nb)
     dtComp = modelPy[:critical_dt]
 
     # Extrapolate input data to computational grid
