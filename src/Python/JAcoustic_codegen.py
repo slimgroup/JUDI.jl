@@ -67,7 +67,7 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
     # Source symbol with input wavelet
     src = PointSource(name='src', grid=model.grid, ntime=nt, coordinates=src_coords)
     src.data[:] = wavelet[:]
-    src_term = src.inject(field=u.forward, offset=model.nbpml, expr=src * dt**2 / m)
+    src_term = src.inject(field=u.forward, offset=model.nbpml, expr=src * rho * dt**2 / m)
     
     # Data is sampled at receiver locations
     rec = Receiver(name='rec', grid=model.grid, ntime=nt, coordinates=rec_coords)
@@ -92,7 +92,7 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=8, nb=
     nt = rec_data.shape[0]
     if dt is None:
         dt = model.critical_dt
-    m, damp = model.m, model.damp
+    m, rho, damp = model.m, model.rho, model.damp
  
     # Create the adjoint wavefield
     v = TimeFunction(name="v", grid=model.grid, time_order=2, space_order=space_order)
@@ -106,7 +106,7 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=8, nb=
     # Adjoint source is injected at receiver locations
     rec = Receiver(name='rec', grid=model.grid, ntime=nt, coordinates=rec_coords)
     rec.data[:] = rec_data[:]
-    adj_src = rec.inject(field=v.backward, offset=model.nbpml, expr=rec * dt**2 / m)
+    adj_src = rec.inject(field=v.backward, offset=model.nbpml, expr=rec * rho * dt**2 / m)
 
     # Data is sampled at source locations
     src = PointSource(name='src', grid=model.grid, ntime=nt, coordinates=src_coords)
@@ -129,7 +129,7 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, nb=40, i
     nt = wavelet.shape[0]
     if dt is None:
         dt = model.critical_dt
-    m, dm, damp = model.m, model.dm, model.damp
+    m, rho, dm, damp = model.m, model.rho, model.dm, model.damp
 
     # Create the forward and linearized wavefield
     u = TimeFunction(name="u", grid=model.grid, time_order=2, space_order=space_order)
@@ -142,7 +142,7 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, nb=40, i
     # Set up PDEs and rearrange 
     ulaplace, rho = acoustic_laplacian(u, rho)
     dulaplace, _ = acoustic_laplacian(du, rho)
-    eqn = m /rho * u.dt2 - ulaplace + damp * u.dt
+    eqn = m / rho * u.dt2 - ulaplace + damp * u.dt
     stencil1 = solve(eqn, u.forward)[0]
     if isic is not True:
         eqn_lin = m / rho * du.dt2 - dulaplace + damp * du.dt + dm / rho * u.dt2
@@ -162,7 +162,7 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, nb=40, i
     # Define source symbol with wavelet
     src = PointSource(name='src', grid=model.grid, ntime=nt, coordinates=src_coords)
     src.data[:] = wavelet[:]
-    src_term = src.inject(field=u.forward, offset=model.nbpml, expr=src * dt**2 / m)
+    src_term = src.inject(field=u.forward, offset=model.nbpml, expr=src * rho * dt**2 / m)
     
     # Define receiver symbol
     rec = Receiver(name='rec', grid=model.grid, ntime=nt, coordinates=rec_coords)
@@ -185,7 +185,7 @@ def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residu
     nt = rec_data.shape[0]
     if dt is None:
         dt = model.critical_dt
-    m, damp = model.m, model.damp
+    m, rho, damp = model.m, model.rho, model.damp
 
     # Create adjoint wavefield and gradient
     v = TimeFunction(name='v', grid=model.grid, time_order=2, space_order=space_order)
@@ -201,13 +201,13 @@ def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residu
     rec_g = Receiver(name='rec_g', grid=model.grid, ntime=nt, coordinates=rec_coords)
     if op_forward is None:
         rec_g.data[:] = rec_data[:]
-    adj_src = rec_g.inject(field=v.backward, offset=model.nbpml, expr=rec_g * dt**2 / m)
+    adj_src = rec_g.inject(field=v.backward, offset=model.nbpml, expr=rec_g * rho * dt**2 / m)
 
     # Gradient update
     if u is None:
         u = TimeFunction(name='u', grid=model.grid, time_order=2, space_order=space_order)
     if isic is not True:
-        gradient_update = [Eq(gradient, gradient - u * v.dt2)]
+        gradient_update = [Eq(gradient, gradient - u.dt2 / rho * v)]
     else:
         if len(model.shape) == 2:
             gradient_update = [Eq(gradient, gradient - (u * v.dt2 * m + u.dx * v.dx + u.dy * v.dy))]

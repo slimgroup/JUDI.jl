@@ -20,15 +20,13 @@ spacing = (10., 10.)
 origin = (0., 0.)
 v = np.empty(shape, dtype=np.float32)
 v[:, :51] = 1.5
-v[:, 51:] = 3.5
+v[:, 51:] = 4.5
 
 # Density
 rho = np.empty(shape, dtype=np.float32)
 rho[:, :51] = 1.0
-rho[:, 51:] = 2.0
+rho[:, 51:] = 1.5
 
-# Set up model structures
-model = Model(shape=shape, origin=origin, spacing=spacing, vp=v, rho=rho)
 
 def smooth10(vel, shape):
     if np.isscalar(vel):
@@ -43,19 +41,20 @@ def smooth10(vel, shape):
             out[:, :, a] = np.sum(vel[:, :, a - 5:a + 5], axis=2) / 10
     return out
 
+# Set up model structures
+rho0 = smooth10(rho, shape)
+model = Model(shape=shape, origin=origin, spacing=spacing, vp=v, rho=rho0)
+
 # Smooth background model
 v0 = smooth10(v, shape)
-rho0 = smooth10(rho, shape)
 dm = (1/v)**2 - (1/v0)**2
-model0 = Model(shape=shape, origin=origin, spacing=spacing, vp=v0, rho=rho0, dm=dm)
+model0 = Model(shape=shape, origin=origin, spacing=spacing, vp=v0, dm=dm, rho=rho0)
 
 # Constant background model
 v_const = np.empty(shape, dtype=np.float32)
 v_const[:,:] = 1.5
-rho_const = np.empty(shape, dtype=np.float32)
-rho_const[:, :] = 1.0
 dm_const =  (1/v)**2 - (1/v_const)**2
-model_const = Model(shape=shape, origin=origin, spacing=spacing, vp=v_const, rho=rho_const, dm=dm_const)
+model_const = Model(shape=shape, origin=origin, spacing=spacing, vp=v_const, rho=rho0, dm=dm_const)
 
 # Time axis
 t0 = 0.
@@ -83,27 +82,13 @@ dm_hat = model0.dm.data
 dD = forward_born(model0, src.coordinates.data, src.data, rec_t.coordinates.data, isic=False, dt=dt)
 
 # Adjoint
-d0, u0 = forward_modeling(model0, src.coordinates.data, src.data, rec_t.coordinates.data, save=True, dt=dt)
+d0, u0 = forward_modeling(model0, src.coordinates.data, src.data, rec_t.coordinates.data, dt=dt, save=True)
 dm = adjoint_born(model0, rec_t.coordinates.data, dD_hat.data, u0, isic=False, dt=dt)
 
 # Adjoint test
 a = np.dot(dD_hat.flatten(), dD.flatten())
 b = np.dot(dm_hat.flatten(), dm.flatten())
+print("Adjoint test J")
 print("Difference: ", a - b)
 print("Relative error: ", a/b - 1)
-
-plt.figure(); plt.imshow(np.transpose(model.m.data))
-plt.figure(); plt.imshow(np.transpose(model0.m.data))
-plt.figure(); plt.imshow(np.transpose(model_const.m.data))
-
-plt.figure(); plt.imshow(np.transpose(model0.dm.data))
-plt.figure(); plt.imshow(np.transpose(model_const.dm.data))
-
-plt.figure(); plt.imshow(dD_hat)
-plt.figure(); plt.imshow(dD)
-
-plt.figure(); plt.imshow(np.transpose(dm_hat))
-plt.figure(); plt.imshow(np.transpose(dm))
-
-
 
