@@ -47,9 +47,11 @@ function limit_model_to_receiver_area(srcGeometry::Geometry,recGeometry::Geometr
     n_orig = model.n
     if ndim == 2
         model.m = model.m[nx_min: nx_max, :]
+        model.rho = model.rho[nx_min: nx_max, :]
         model.o = (ox, oz)
     else
         model.m = model.m[nx_min:nx_max,ny_min:ny_max,:]
+        model.rho = model.rho[nx_min:nx_max,ny_min:ny_max,:]
         model.o = (ox,oy,oz)
     end
     model.n = size(model.m)
