@@ -12,7 +12,7 @@ from numpy.random import randint
 from sympy import solve, cos, sin
 from sympy import Function as fint
 from devito.logger import set_log_level
-from devito import Eq, Function, TimeFunction, Dimension, Operator, clear_cache
+from devito import Eq, Function, TimeFunction, Dimension, Operator, clear_cache, first_derivative
 from PySource import PointSource, Receiver
 from PyModel import Model
 from checkpoint import DevitoCheckpoint, CheckpointOperator
@@ -114,17 +114,23 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, nb=40, i
     eqn = m * u.dt2 - u.laplace + damp * u.dt
     stencil1 = solve(eqn, u.forward)[0]
     if isic is not True:
-        eqn_lin = m * du.dt2 - du.laplace + damp * du.dt + dm * u.dt2
+        eqn_lin = m * du.dt2 - du.laplace + damp * du.dt + dm * u.dt2   # born modeling
     else:
         du_aux_x = first_derivative(u.dx * dm, order=space_order, dim=x)
         du_aux_y = first_derivative(u.dy * dm, order=space_order, dim=y)
-
+        
+        # adjoint of the linearized inverse scattering imaging operator (Op't Root et al., 2010; Witte et al., 2017)
         if len(model.shape) == 2:
             eqn_lin = m * du.dt2 - du.laplace + damp * du.dt + (dm * u.dt2 * m - du_aux_x - du_aux_y)
         else:
             du_aux_z = first_derivative(u.dz * dm, order=space_order, dim=z)
             eqn_lin = m * du.dt2 - du.laplace + damp * du.dt + (dm * u.dt2 * m - du_aux_x - du_aux_y - du_aux_z)
-    stencil2 = solve(eqn_lin, du.forward)[0]
+
+    if isic is not True:
+        stencil2 = solve(eqn_lin, du.forward)[0]
+    else:
+        stencil2 = solve(eqn_lin, du.forward)[0], simplify=False, rational=False)[0]
+
     expression_u = [Eq(u.forward, stencil1)]
     expression_du = [Eq(du.forward, stencil2)]
 
@@ -174,9 +180,11 @@ def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residu
     # Gradient update
     if u is None:
         u = TimeFunction(name='u', grid=model.grid, time_order=2, space_order=space_order)
+
     if isic is not True:
-        gradient_update = [Eq(gradient, gradient - u * v.dt2)]
+        gradient_update = [Eq(gradient, gradient - u * v.dt2)]  # zero-lag cross-correlation imaging condition
     else:
+        # linearized inverse scattering imaging condition (Op't Root et al. 2010; Whitmore and Crawley 2012)
         if len(model.shape) == 2:
             gradient_update = [Eq(gradient, gradient - (u * v.dt2 * m + u.dx * v.dx + u.dy * v.dy))]
         else:
