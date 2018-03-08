@@ -129,7 +129,7 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, nb=40, i
     if isic is not True:
         stencil2 = solve(eqn_lin, du.forward)[0]
     else:
-        stencil2 = solve(eqn_lin, du.forward)[0], simplify=False, rational=False)[0]
+        stencil2 = solve(eqn_lin, du.forward, simplify=False, rational=False)[0]
 
     expression_u = [Eq(u.forward, stencil1)]
     expression_du = [Eq(du.forward, stencil2)]
