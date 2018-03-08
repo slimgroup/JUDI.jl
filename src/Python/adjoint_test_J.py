@@ -92,7 +92,10 @@ print(t2 - t1)
 # Adjoint
 print("Adjoint J")
 d0, u0 = forward_modeling(model0, src.coordinates.data, src.data, rec_t.coordinates.data, dt=dt, save=True)
+t1 = time.time()
 dm = adjoint_born(model0, rec_t.coordinates.data, dD_hat.data, u0, isic=True, dt=dt)
+t2 = time.time()
+print(t2 - t1)
 
 # Adjoint test
 a = np.dot(dD_hat.flatten(), dD.flatten())

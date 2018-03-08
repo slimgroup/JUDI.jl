@@ -13,7 +13,7 @@ from sympy import solve, cos, sin, expand, symbols
 from sympy import Function as fint
 from devito.logger import set_log_level
 from devito import Eq, Function, TimeFunction, Dimension, Operator, clear_cache
-from devito import first_derivative
+from devito import first_derivative, left, right
 from PySource import PointSource, Receiver
 from PyModel import Model
 from checkpoint import DevitoCheckpoint, CheckpointOperator
@@ -25,9 +25,8 @@ def acoustic_laplacian(v, rho):
         rho = 1
     else:
         if isinstance(rho, Function):
-            Lap = sum([first_derivative(getattr(v, 'd%s' %d)/rho,
-                                        order=v.space_order, dim=d)
-                       for d in v.space_dimensions])
+            Lap = sum([first_derivative(first_derivative(v, order=int(v.space_order/2), side=left, dim=d) / rho,
+                       order=int(v.space_order/2), dim=d, side=right) for d in v.space_dimensions])
         else:
             Lap = 1 / rho * v.laplace
     return Lap, rho
@@ -140,14 +139,15 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, nb=40, i
     if isic is not True:
         eqn_lin = m / rho * du.dt2 - H + damp * du.dt + dm / rho * u.dt2
     else:
-        du_aux_x = first_derivative(u.dx * dm, order=space_order, dim=x)
-        du_aux_y = first_derivative(u.dy * dm, order=space_order, dim=y)
+        du_aux_x = first_derivative(u.dx * dm / rho, order=space_order, dim=x)
+        du_aux_y = first_derivative(u.dy * dm / rho, order=space_order, dim=y)
 
         if len(model.shape) == 2:
-            eqn_lin = m * du.dt2 - H + damp * du.dt + (dm * u.dt2 * m - du_aux_x - du_aux_y)
+            eqn_lin = m / rho * du.dt2 - H + damp * du.dt + (dm * u.dt2 * m / rho - du_aux_x - du_aux_y)
         else:
             du_aux_z = first_derivative(u.dz * dm, order=space_order, dim=z)
-            eqn_lin = m * du.dt2 - H + damp * du.dt + (dm * u.dt2 * m - du_aux_x - du_aux_y - du_aux_z)
+            eqn_lin = m / rho * du.dt2 - H + damp * du.dt + (dm * u.dt2 * m / rho - du_aux_x - du_aux_y - du_aux_z)
+
     stencil2 = solve(eqn_lin, du.forward, simplify=False, rational=False)[0]
     expression_u = [Eq(u.forward, stencil1.subs({H: ulaplace}))]
     expression_du = [Eq(du.forward, stencil2.subs({H: dulaplace}))]
@@ -204,9 +204,9 @@ def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residu
         gradient_update = [Eq(gradient, gradient - u.dt2 / rho * v)]
     else:
         if len(model.shape) == 2:
-            gradient_update = [Eq(gradient, gradient - (u * v.dt2 * m + u.dx * v.dx + u.dy * v.dy))]
+            gradient_update = [Eq(gradient, gradient - (u * v.dt2 * m + u.dx * v.dx + u.dy * v.dy) / rho)]
         else:
-            gradient_update = [Eq(gradient, gradient - (u * v.dt2 * m + u.dx * v.dx + u.dy * v.dy + u.dz * v.dz))]
+            gradient_update = [Eq(gradient, gradient - (u * v.dt2 * m + u.dx * v.dx + u.dy * v.dy + u.dz * v.dz) / rho)]
 
     # Create operator and run
     set_log_level('ERROR')
