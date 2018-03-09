@@ -5,7 +5,7 @@
 # Authors: Philipp Witte (pwitte@eos.ubc.ca), Henryk Modzelewski (hmodzelewski@eos.ubc.ca)
 # Date: January 2017
 
-export judiVector, judiVectorException, subsample, judiVector_to_SeisBlock, time_resample, time_resample!, judiTimeInterpolation, write_shot_record
+export judiVector, judiVectorException, subsample, judiVector_to_SeisBlock, time_resample, time_resample!, judiTimeInterpolation, write_shot_record, get_data
 
 ############################################################
 
@@ -640,6 +640,16 @@ end
 
 similar(x::judiVector, kwargs...) = judiVector(x.geometry, x.data)*0f0
 
+function get_data(x::judiVector)
+
+    shots = Array{Any}(x.nsrc)
+    rec_geometry = Geometry(x.geometry)
+
+    for j=1:x.nsrc
+        shots[j] = convert(Array{Float32, 2}, x.data[j][1].data)
+    end
+    return judiVector(rec_geometry, shots)
+end
 
 ###########################################################################################################
 

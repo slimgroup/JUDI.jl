@@ -27,7 +27,7 @@ function marineTopmute2D(Dobs::judiVector, muteStart::Integer; mute=Array{Any}(3
 
     if j==1 && ~isassigned(mute)
         z0 = muteStart - Int(round(muteStart/10))
-        slope = 1.1f0*(nt - z0)/dx
+        slope = 1f0*(nt - z0)/dx
         mute[1] = x0
         mute[2] = z0
         mute[3] = slope
@@ -116,6 +116,8 @@ function model_topmute(n::Tuple{Int64,Int64},mute_end::Int64,length::Int64,x)
     return vec(x)
 end
 
+model_topmute(n::Tuple{Int64,Int64}, mute_end::Array{Float32, 2}, length, x) = vec(mute_end) .* vec(x)
+
 function judiTopmute(n,mute_start,length)
     # JOLI wrapper for model domain topmute
     N = prod(n)
@@ -147,7 +149,7 @@ end
 function depth_scaling(m,model)
 # Linear depth scaling function for seismic images
     m = reshape(m,model.n)
-    filter = sqrt(0f0:model.d[2]:model.d[2]*(model.n[2]-1))
+    filter = sqrt.(0f0:model.d[2]:model.d[2]*(model.n[2]-1))
     F = spdiagm(filter)
     for j=1:model.n[1]
         m[j,:] = F*m[j,:]
