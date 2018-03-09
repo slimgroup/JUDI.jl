@@ -27,7 +27,7 @@ function marineTopmute2D(Dobs::judiVector, muteStart::Integer; mute=Array{Any}(3
 
     if j==1 && ~isassigned(mute)
         z0 = muteStart - Int(round(muteStart/10))
-        slope = 1f0*(nt - z0)/dx
+        slope = 1f1*(nt - z0)/dx
         mute[1] = x0
         mute[2] = z0
         mute[3] = slope
