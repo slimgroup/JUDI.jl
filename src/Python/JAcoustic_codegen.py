@@ -59,12 +59,13 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
         return op
 
 
-def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=8, nb=40):
+def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=8, nb=40, dt=None):
     clear_cache()
 
     # Parameters
     nt = rec_data.shape[0]
-    dt = model.critical_dt
+    if dt is None:
+        dt = model.critical_dt
     m, damp = model.m, model.damp
  
     # Create the adjoint wavefield
@@ -94,12 +95,13 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=8, nb=
     return src.data
 
 
-def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, nb=40, isic=False):
+def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, nb=40, isic=False, dt=None):
     clear_cache()
 
     # Parameters
     nt = wavelet.shape[0]
-    dt = model.critical_dt
+    if dt is None:
+        dt = model.critical_dt
     m, dm, damp = model.m, model.dm, model.damp
 
     # Create the forward and linearized wavefield
