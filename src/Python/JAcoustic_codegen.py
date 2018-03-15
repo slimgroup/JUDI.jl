@@ -64,12 +64,14 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
     rec_term = rec.interpolate(expr=u, offset=model.nbpml)
 
     # Create operator and run
-    set_log_level('ERROR')
+    set_log_level('INFO')
     expression += src_term + rec_term
-    op = Operator(expression, subs=model.spacing_map, dse='advanced', dle='advanced',
+    subs = model.spacing_map
+    subs[u.grid.time_dim.spacing] = dt
+    op = Operator(expression, subs=subs, dse='advanced', dle='advanced',
                   name="Forward%s" % randint(1e5))
     if op_return is False:
-        op(dt=dt)
+        op()
         return rec.data, u
     else:
         return op
@@ -104,9 +106,11 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=8, nb=
     adj_rec = src.interpolate(expr=v, offset=model.nbpml)
 
     # Create operator and run
-    set_log_level('ERROR')
+    set_log_level('INFO')
     expression += adj_src + adj_rec
-    op = Operator(expression, subs=model.spacing_map, dse='advanced', dle='advanced',
+    subs = model.spacing_map
+    subs[v.grid.time_dim.spacing] = dt
+    op = Operator(expression, subs=subs, dse='advanced', dle='advanced',
                   name="Backward%s" % randint(1e5))
     op(dt=dt)
 
@@ -139,14 +143,10 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, nb=40, i
     stencil1 = solve(eqn, u.forward, simplify=False, rational=False)[0]
     eqn_lin = m / rho * du.dt2 - H + damp * du.dt + S
     if isic:
-        du_aux_x = first_derivative(u.dx * dm / rho, order=space_order, dim=x)
-        du_aux_y = first_derivative(u.dy * dm / rho, order=space_order, dim=y)
-
-        if len(model.shape) == 2:
-            lin_source = (dm /rho * u.dt2 * m - du_aux_x - du_aux_y)
-        else:
-            du_aux_z = first_derivative(u.dz * dm, order=space_order, dim=z)
-            lin_source = (dm /rho * u.dt2 * m - du_aux_x - du_aux_y - du_aux_z)
+        du_aux = sum([first_derivative(first_derivative(u, dim=d, order=space_order//2) * dm / rho,
+                                       order=space_order//2, dim=d)
+                      for d in u.space_dimensions])
+        lin_source = dm /rho * u.dt2 * m - du_aux
     else:
         lin_source = dm / rho * u.dt2
 
@@ -164,9 +164,11 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, nb=40, i
     rec_term = rec.interpolate(expr=du, offset=model.nbpml)
 
     # Create operator and run
-    set_log_level('ERROR')
+    set_log_level('INFO')
     expression = expression_u + src_term + expression_du + rec_term
-    op = Operator(expression, subs=model.spacing_map, dse='advanced', dle='advanced',
+    subs = model.spacing_map
+    subs[u.grid.time_dim.spacing] = dt
+    op = Operator(expression, subs=subs, dse='advanced', dle='advanced',
                   name="Born%s" % randint(1e5))
     op(dt=dt)
 
@@ -205,15 +207,17 @@ def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residu
     if isic is not True:
         gradient_update = [Eq(gradient, gradient - u.dt2 / rho * v)]
     else:
-        if len(model.shape) == 2:
-            gradient_update = [Eq(gradient, gradient - (u * v.dt2 * m + u.dx * v.dx + u.dy * v.dy) / rho)]
-        else:
-            gradient_update = [Eq(gradient, gradient - (u * v.dt2 * m + u.dx * v.dx + u.dy * v.dy + u.dz * v.dz) / rho)]
+        diff_u_v = sum([first_derivative(u, dim=d, order=space_order//2)*
+                        first_derivative(v, dim=d, order=space_order//2)
+                        for d in u.space_dimensions])
+        gradient_update = [Eq(gradient, gradient - (u * v.dt2 * m + diff_u_v) / rho)]
 
     # Create operator and run
-    set_log_level('ERROR')
+    set_log_level('INFO')
     expression += adj_src + gradient_update
-    op = Operator(expression, subs=model.spacing_map, dse='advanced', dle='advanced',
+    subs = model.spacing_map
+    subs[u.grid.time_dim.spacing] = dt
+    op = Operator(expression, subs=subs, dse='advanced', dle='advanced',
                   name="Gradient%s" % randint(1e5))
 
     # Optimal checkpointing
@@ -236,7 +240,7 @@ def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residu
             fval = .5*np.linalg.norm(rec_g.data[:])**2
         wrp.apply_reverse()
     else:
-        op(dt=dt)
+        op()
     clear_cache()
 
     if op_forward is not None and is_residual is not True:
@@ -284,7 +288,7 @@ def forward_freq_modeling(model, src_coords, wavelet, rec_coords, freq, space_or
     rec_term = rec.interpolate(expr=u, offset=model.nbpml)
 
     # Create operator and run
-    set_log_level('ERROR')
+    set_log_level('INFO')
     expression += src_term + rec_term
     op = Operator(expression, subs=model.spacing_map, dse='advanced', dle='advanced',
                   name="Forward%s" % randint(1e5))
@@ -324,7 +328,7 @@ def adjoint_freq_born(model, rec_coords, rec_data, freq, ufr, ufi, space_order=8
     gradient_update = [Eq(gradient, gradient + (2*np.pi*f)**2/nt*(ufr*cos(2*np.pi*f*time*dt) + ufi*sin(2*np.pi*f*time*dt))*v)]
 
     # Create operator and run
-    set_log_level('ERROR')
+    set_log_level('INFO')
     expression += adj_src + gradient_update
     op = Operator(expression, subs=model.spacing_map, dse='advanced', dle='advanced',
                   name="Gradient%s" % randint(1e5))
@@ -332,4 +336,3 @@ def adjoint_freq_born(model, rec_coords, rec_data, freq, ufr, ufi, space_order=8
     clear_cache()
 
     return gradient.data
-		
