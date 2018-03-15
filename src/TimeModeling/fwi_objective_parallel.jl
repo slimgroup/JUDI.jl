@@ -16,7 +16,7 @@ Example
     function_value, gradient = fwi_objective(model, source, dobs)
 
 """
-function fwi_objective(model::Model, source::judiVector, dObs::judiVector; options=Options(), frequencies=[])
+function fwi_objective(model::Modelall, source::judiVector, dObs::judiVector; options=Options(), frequencies=[])
 # fwi_objective function for multiple sources. The function distributes the sources and the input data amongst the available workers.
 
     # Process shots from source channel asynchronously
@@ -24,7 +24,7 @@ function fwi_objective(model::Model, source::judiVector, dObs::judiVector; optio
     results = Array{Any}(dObs.nsrc)
     @sync begin
         for j=1:dObs.nsrc
-            results[j] = @spawn fwi_objective(model, source[j], dObs[j], j; options=options, frequencies=frequencies)   
+            results[j] = @spawn fwi_objective(model, source[j], dObs[j], j; options=options, frequencies=frequencies)
         end
     end
 
@@ -37,5 +37,3 @@ function fwi_objective(model::Model, source::judiVector, dObs::judiVector; optio
     # first value corresponds to function value, the rest to the gradient
     return gradient[1], gradient[2:end]
 end
-
-

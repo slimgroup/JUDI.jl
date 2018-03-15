@@ -68,7 +68,74 @@ function limit_model_to_receiver_area(srcGeometry::Geometry,recGeometry::Geometr
     end
 end
 
-function extend_gradient(model_full::Model,model::Model,gradient::Array)
+function limit_model_to_receiver_area(srcGeometry::Geometry,recGeometry::Geometry,model::Model_TTI,buffer;pert=[])
+    # Restrict full velocity model to area that contains either sources and receivers
+    ndim = length(model.n)
+    println("N orig: ", model.n)
+
+    # scan for minimum and maximum x and y source/receiver coordinates
+    min_x = minimum([vec(recGeometry.xloc[1]); vec(srcGeometry.xloc[1])])
+    max_x = maximum([vec(recGeometry.xloc[1]); vec(srcGeometry.xloc[1])])
+    if ndim == 3
+        min_y = minimum([vec(recGeometry.yloc[1]); vec(srcGeometry.yloc[1])])
+        max_y = maximum([vec(recGeometry.yloc[1]); vec(srcGeometry.yloc[1])])
+    end
+
+    # add buffer zone if possible
+    min_x = max(model.o[1],min_x-buffer)
+    max_x = min(model.o[1] + model.d[1]*(model.n[1]-1),max_x+buffer)
+    if ndim == 3
+        min_y = max(model.o[2],min_y-buffer)
+        max_y = min(model.o[2] + model.d[2]*(model.n[2]-1),max_y+buffer)
+    end
+
+    # extract part of the model that contains sources/receivers
+    nx_min = Int(round(min_x/model.d[1])) + 1
+    nx_max = Int(round(max_x/model.d[1])) + 1
+    if ndim == 2
+        ox = (nx_min - 1)*model.d[1]
+        oz = model.o[2]
+    else
+        ny_min = Int(round(min_y/model.d[2])) + 1
+        ny_max = Int(round(max_y/model.d[2])) + 1
+        ox = (nx_min - 1)*model.d[1]
+        oy = (ny_min - 1)*model.d[2]
+        oz = model.o[3]
+    end
+
+    # Extract relevant model part from full domain
+    n_orig = model.n
+    if ndim == 2
+        model.m = model.m[nx_min: nx_max, :]
+        model.epsilon = model.epsilon[nx_min: nx_max, :]
+        model.delta = model.delta[nx_min: nx_max, :]
+        if length(model.theta) > 1
+            model.theta = model.theta[nx_min: nx_max, :]
+        end
+        model.o = (ox, oz)
+    else
+        model.m = model.m[nx_min:nx_max,ny_min:ny_max,:]
+        model.epsilon = model.epsilon[nx_min:nx_max,ny_min:ny_max,:]
+        model.delta = model.delta[nx_min:nx_max,ny_min:ny_max,:]
+        model.theta = model.theta[nx_min:nx_max,ny_min:ny_max,:]
+        model.phi = model.phi[nx_min:nx_max,ny_min:ny_max,:]
+        model.o = (ox,oy,oz)
+    end
+    model.n = size(model.m)
+    println("N new: ", model.n)
+    if isempty(pert)
+        return model
+    else
+        if ndim==2
+            pert = reshape(pert,n_orig)[nx_min: nx_max, :]
+        else
+            pert = reshape(pert,n_orig)[nx_min: nx_max,ny_min: ny_max, :]
+        end
+        return model,vec(pert)
+    end
+end
+
+function extend_gradient(model_full::Modelall,model::Modelall,gradient::Array)
     # Extend gradient back to full model size
     ndim = length(model.n)
     full_gradient = zeros(Float32,model_full.n)
@@ -78,7 +145,7 @@ function extend_gradient(model_full::Model,model::Model,gradient::Array)
         full_gradient[nx_start:nx_end,:] = gradient
     else
         ny_start = Int((model.o[2] - model_full.o[2])/model.d[2] + 1)
-        ny_end = ny_start + model.n[2] - 1 
+        ny_end = ny_start + model.n[2] - 1
         full_gradient[nx_start:nx_end,ny_start:ny_end,:] = gradient
     end
     return full_gradient
@@ -118,10 +185,23 @@ function ricker_wavelet(tmax, dt, f0)
     return q
 end
 
-function calculate_dt(n,d,o,v,rho; epsilon=0)
-    length(n) == 2 ? pyDim = (n[2], n[1]) : pyDim = (n[3],n[2],n[1])
-    modelPy = pm.Model(o, d, pyDim, PyReverseDims(v), PyReverseDims(rho))
-    dtComp = modelPy[:critical_dt]
+function calculate_dt(model::Model)
+    if length(model.n) == 3
+        coeff = 0.38
+    else
+        coeff = 0.42
+    end
+    return coeff * minimum(model.d) / (sqrt(1/minimum(model.m)))
+end
+
+function calculate_dt(model::Model_TTI)
+    if length(model.n) == 3
+        coeff = 0.38
+    else
+        coeff = 0.42
+    end
+    scale = sqrt(maximum(model.epsilon))
+    return coeff * minimum(model.d) / (scale*sqrt(1/minimum(model.m)))
 end
 
 """
@@ -133,7 +213,7 @@ and receiver geometries of type `Geometry` and `model` is the model structure of
 `Model`.
 
 """
-function get_computational_nt(srcGeometry, recGeometry, model::Model)
+function get_computational_nt(srcGeometry, recGeometry, model::Modelall)
     # Determine number of computational time steps
     if typeof(srcGeometry) == GeometryOOC
         nsrc = length(srcGeometry.container)
@@ -141,7 +221,7 @@ function get_computational_nt(srcGeometry, recGeometry, model::Model)
         nsrc = length(srcGeometry.xloc)
     end
     nt = Array{Any}(nsrc)
-    dtComp = calculate_dt(model.n,model.d,model.o,sqrt.(1./model.m),model.rho)
+    dtComp = calculate_dt(model)
     for j=1:nsrc
         ntRec = Int(trunc(recGeometry.dt[j]*(recGeometry.nt[j]-1))) / dtComp
         ntSrc = Int(trunc(srcGeometry.dt[j]*(srcGeometry.nt[j]-1))) / dtComp
@@ -151,7 +231,7 @@ function get_computational_nt(srcGeometry, recGeometry, model::Model)
 end
 
 function setup_grid(geometry,n, origin)
-    # 3D grid 
+    # 3D grid
     if length(n)==3
         if length(geometry.xloc[1]) > 1
             source_coords = Array{Float32,2}([vec(geometry.xloc[1]) vec(geometry.yloc[1]) vec(geometry.zloc[1])])
@@ -180,11 +260,11 @@ function setup_3D_grid(xrec::Array{Any,1},yrec::Array{Any,1},zrec::Array{Any,1})
     for i=1:nsrc
         nxrec = length(xrec[i])
         nyrec = length(yrec[i])
-    
+
         xloc[i] = zeros(nxrec*nyrec)
         yloc[i] = zeros(nxrec*nyrec)
         zloc[i] = zeros(nxrec*nyrec)
-    
+
         idx = 1
 
         for k=1:nyrec
@@ -342,6 +422,3 @@ function select_frequencies(L;fmin=0.,fmax=Inf,nf=1)
 	end
 	return freq
 end
-
-
-

@@ -50,7 +50,8 @@ class Model(object):
     :param m: The square slowness of the wave
     :param damp: The damping field for absorbing boundarycondition
     """
-    def __init__(self, origin, spacing, shape, vp, rho, nbpml=20, dtype=np.float32, dm=None):
+    def __init__(self, origin, spacing, shape, vp, rho=1, nbpml=20, dtype=np.float32, dm=None,
+                 epsilon=None, delta=None, theta=None, phi=None):
         self.shape = shape
         self.nbpml = int(nbpml)
 
@@ -64,13 +65,13 @@ class Model(object):
         if isinstance(vp, np.ndarray):
             self.m = Function(name="m", grid=self.grid)
         else:
-            self.m = Constant(name="m", value=1/vp**2)
+            self.m = 1/vp**2
 
         if isinstance(rho, np.ndarray):
             self.rho = Function(name="rho", grid=self.grid)
             self.rho.data[:] = self.pad(rho)
         else:
-            self.rho = Constant(name="rho", value=rho)
+            self.rho = rho
 
         # Set model velocity, which will also set `m`
         self.vp = vp
@@ -87,6 +88,46 @@ class Model(object):
             self.dm.data[:] = self.pad(dm)
         else:
             self.dm = 1
+
+        if epsilon is not None:
+            if isinstance(epsilon, np.ndarray):
+                self.epsilon = Function(name="epsilon", grid=self.grid)
+                self.epsilon.data[:] = self.pad(1 + 2 * epsilon)
+                # Maximum velocity is scale*max(vp) if epsilon > 0
+                if np.max(self.epsilon.data) > 0:
+                    self.scale = np.sqrt(np.max(self.epsilon.data))
+            else:
+                self.epsilon = 1 + 2 * epsilon
+                self.scale = epsilon
+        else:
+            self.epsilon = 1
+
+        if delta is not None:
+            if isinstance(delta, np.ndarray):
+                self.delta = Function(name="delta", grid=self.grid)
+                self.delta.data[:] = self.pad(np.sqrt(1 + 2 * delta))
+            else:
+                self.delta = delta
+        else:
+            self.delta = 1
+
+        if theta is not None:
+            if isinstance(theta, np.ndarray):
+                self.theta = Function(name="theta", grid=self.grid)
+                self.theta.data[:] = self.pad(theta)
+            else:
+                self.theta = theta
+        else:
+            self.theta = 0
+
+        if phi is not None:
+            if isinstance(phi, np.ndarray):
+                self.phi = Function(name="phi", grid=self.grid)
+                self.phi.data[:] = self.pad(phi)
+            else:
+                self.phi = phi
+        else:
+            self.phi = 0
 
     @property
     def dim(self):

@@ -6,7 +6,7 @@
 using PyCall, PyPlot, JUDI.TimeModeling
 
 ## Set up model structure
-n = (160, 170)	# (x,y,z) or (x,z)
+n = (161, 171)	# (x,y,z) or (x,z)
 d = (10.,10.)
 o = (0.,0.)
 
@@ -14,9 +14,9 @@ o = (0.,0.)
 v = ones(Float32,n) * 2.0f0
 v[:,Int(round(end/3)):end] = 4f0
 v0 = smooth10(v,n)
-rho = ones(Float32, n)
-rho[:, Int(round(end/2)):end] = 1.5f0
-
+epsilon = (v[:, :] - 2.0f0)/10.0f0
+delta = (v[:, :] - 2.0f0)/20.0f0
+theta = (v[:, :] - 2.0f0)/5.0f0
 # Slowness squared [s^2/km^2]
 m = (1f0./v).^2
 m0 = (1f0./v0).^2
@@ -24,30 +24,30 @@ dm = vec(m - m0)
 
 # Setup info and model structure
 nsrc = 1
-model = Model(n,d,o,m,rho=rho)
-model0 = Model(n,d,o,m0,rho=rho)
+model = Model_TTI(n,d,o,m; epsilon=epsilon, delta=delta, theta=theta)
+model0 = Model_TTI(n,d,o,m0; epsilon=epsilon, delta=delta, theta=theta)
 
 ## Set up receiver geometry
-nxrec = 141
+nxrec = 161
 xrec = linspace(600f0,1000f0,nxrec)
 yrec = 0f0
 zrec = linspace(100f0,100f0,nxrec)
 
 # receiver sampling and recording time
-timeR = 800f0	# receiver recording time [ms]
-dtR = calculate_dt(n,d,o,v,rho)    # receiver sampling interval
+timeR = 1200f0	# receiver recording time [ms]
+dtR = calculate_dt(model)    # receiver sampling interval
 
 # Set up receiver structure
 recGeometry = Geometry(xrec,yrec,zrec;dt=dtR,t=timeR,nsrc=nsrc)
 
 ## Set up source geometry (cell array with source locations for each shot)
-xsrc = 800f0 
-ysrc = 0f0 
+xsrc = 800f0
+ysrc = 0f0
 zsrc = 50f0
 
 # source sampling and number of time steps
-timeS = 800f0
-dtS = calculate_dt(n,d,o,v,rho) # receiver sampling interval
+timeS = 1200f0
+dtS = calculate_dt(model) # receiver sampling interval
 
 # Set up source structure
 srcGeometry = Geometry(xsrc,ysrc,zsrc;dt=dtS,t=timeS)
@@ -65,8 +65,8 @@ wave_rand = wavelet.*rand(Float32,size(wavelet))
 
 # Modeling operators
 opt = Options(sum_padding=true)
-F = judiModeling(info,model0,srcGeometry,recGeometry; options=opt)
-q = judiVector(srcGeometry,wavelet)
+F = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
+q = judiVector(srcGeometry, wavelet)
 
 # Nonlinear modeling
 d_hat = F*q
@@ -82,7 +82,7 @@ q_hat = F'*d1
 println(abs(dot(d1,d_hat)))
 println(abs(dot(q,q_hat)))
 println("Residual: ", abs(dot(d1,d_hat) - dot(q,q_hat)))
-println("Ratio: ", abs(dot(d1,d_hat)/dot(q,q_hat)))
+println("Ratio: ", abs(dot(d1,d_hat)/dot(q,q_hat)) - 1.0)
 
 # Linearized modeling
 J = judiJacobian(F,q)
@@ -95,8 +95,3 @@ println(dot(dD_hat,dD_hat))
 println(dot(dm,dm_hat))
 println("Residual: ", abs(dot(dD_hat,dD_hat) - dot(dm,dm_hat)))
 println("Ratio: ", abs(dot(dD_hat,dD_hat)/dot(dm,dm_hat)))
-
-
-
-
-

@@ -9,6 +9,7 @@ using PyCall, JOLI, SeisIO, Dierckx, ApproXD
 
 @pyimport PyModel as pm
 @pyimport JAcoustic_codegen as ac
+@pyimport TTI_operators as tti
 import Base.*, Base./, Base.+, Base.-, Base.ctranspose, Base.conj, Base.vcat, Base.vec, Base.dot, Base.norm, Base.abs, Base.getindex, Base.similar, Base.copy!
 import Base.LinAlg.scale!, Base.LinAlg.A_mul_B!, Base.LinAlg.Ac_mul_B!, Base.BLAS.axpy!, Base.broadcast!
 
@@ -46,6 +47,3 @@ include("judiJacobian.jl")  # linearized modeling operator J
 include("seismic_preconditioners.jl")
 
 end
-
-
-

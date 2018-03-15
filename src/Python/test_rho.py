@@ -34,7 +34,7 @@ rho0[:, :] = 1.0
 
 # Set up model structures
 model = Model(shape=shape, origin=origin, spacing=spacing, vp=v, rho=rho)
-model0 = Model(shape=shape, origin=origin, spacing=spacing, vp=v0, rho=rho0)
+model0 = Model(shape=shape, origin=origin, spacing=spacing, vp=v0)
 
 # Time axis
 t0 = 0.
@@ -65,11 +65,10 @@ rec.coordinates.data[:, 0] = np.linspace(0, model0.domain_size[0], num=101)
 rec.coordinates.data[:, 1] = 20.
 
 # Save wavefields
-d0, u0 = forward_modeling(model, src.coordinates.data, src.data, rec.coordinates.data, save=True, dt=dt)
+d0, u0 = forward_modeling(model0, src.coordinates.data, src.data, rec.coordinates.data, save=True, dt=dt)
 #g = adjoint_born(model0, rec.coordinates.data, dpred_data[:] - dobs.data[:], u=u0, dt=dt)
 
 plt.figure(); plt.imshow(d0, vmin=-1, vmax=1)
 plt.figure(); plt.imshow(np.transpose(model.rho.data))
 plt.figure(); plt.imshow(np.transpose(model.m.data))
 plt.show()
-

@@ -136,6 +136,8 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, nb=40, i
     H = symbols('H')
     eqn = m / rho * u.dt2 - H + damp * u.dt
     stencil1 = solve(eqn, u.forward, simplify=False, rational=False)[0]
+    eqn_lin = m / rho * du.dt2 - H + damp * du.dt + dm / rho * u.dt2
+    du2 = 0
     if isic is not True:
         eqn_lin = m / rho * du.dt2 - H + damp * du.dt + dm / rho * u.dt2
     else:
@@ -143,14 +145,17 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, nb=40, i
         du_aux_y = first_derivative(u.dy * dm / rho, order=space_order, dim=y)
 
         if len(model.shape) == 2:
-            eqn_lin = m / rho * du.dt2 - H + damp * du.dt + (dm * u.dt2 * m / rho - du_aux_x - du_aux_y)
+            du2 =  (dm * u.dt2 * m / rho - du_aux_x - du_aux_y)
+            # eqn_lin = m / rho * du.dt2 - H + damp * du.dt + (dm * u.dt2 * m / rho - du_aux_x - du_aux_y)
         else:
             du_aux_z = first_derivative(u.dz * dm, order=space_order, dim=z)
-            eqn_lin = m / rho * du.dt2 - H + damp * du.dt + (dm * u.dt2 * m / rho - du_aux_x - du_aux_y - du_aux_z)
+            du2 =  (dm * u.dt2 * m / rho - du_aux_x - du_aux_y - du_aux_z)
+            # eqn_lin = m / rho * du.dt2 - H + damp * du.dt + (dm * u.dt2 * m / rho - du_aux_x - du_aux_y - du_aux_z)
 
     stencil2 = solve(eqn_lin, du.forward, simplify=False, rational=False)[0]
+    print(stencil2)
     expression_u = [Eq(u.forward, stencil1.subs({H: ulaplace}))]
-    expression_du = [Eq(du.forward, stencil2.subs({H: dulaplace}))]
+    expression_du = [Eq(du.forward, stencil2.subs({H: dulaplace - du2}))]
 
     # Define source symbol with wavelet
     src = PointSource(name='src', grid=model.grid, ntime=nt, coordinates=src_coords)
@@ -330,4 +335,3 @@ def adjoint_freq_born(model, rec_coords, rec_data, freq, ufr, ufi, space_order=8
     clear_cache()
 
     return gradient.data
-		

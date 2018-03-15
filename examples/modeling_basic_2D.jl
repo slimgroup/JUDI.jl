@@ -22,43 +22,43 @@ m0 = (1./v0).^2
 dm = vec(m - m0)
 
 # Setup info and model structure
-nsrc = 2	# number of sources
-model = Model(n,d,o,m)	
+nsrc = 1	# number of sources
+model = Model(n,d,o,m)
 model0 = Model(n,d,o,m0)
 
 ## Set up receiver geometry
-nxrec = 120
-xrec = linspace(50.,1150.,nxrec)
-yrec = 0.
-zrec = linspace(50.,50.,nxrec)
+nxrec = 5
+xrec = linspace(312.5,312.5,5)
+yrec = 312.5 # 0.
+zrec = linspace(312.5,312.5,5)
 
 # receiver sampling and recording time
-timeR = 1000.   # receiver recording time [ms]
-dtR = 4.    # receiver sampling interval
+timeR = 400.   # receiver recording time [ms]
+dtR = 8.    # receiver sampling interval
 
 # Set up receiver structure
-recGeometry = Geometry(xrec,yrec,zrec;dt=dtR,t=timeR,nsrc=nsrc)
+recGeometry = Geometry(xrec,yrec,zrec;dt=dtR,t=timeR,nsrc=1)
 
 ## Set up source geometry (cell array with source locations for each shot)
-xsrc = convertToCell(linspace(400.,800.,nsrc))
-ysrc = convertToCell(linspace(0.,0.,nsrc))
-zsrc = convertToCell(linspace(20.,20.,nsrc))
+xsrc = 312.5 # convertToCell(linspace(400.,800.,nsrc))
+ysrc = 312.5 # convertToCell(linspace(0.,0.,nsrc))
+zsrc = 312.5 # convertToCell(linspace(20.,20.,nsrc))
 
 # source sampling and number of time steps
-timeS = 1000.
-dtS = 4
+timeS = 400.
+dtS = 8.
 
 # Set up source structure
 srcGeometry = Geometry(xsrc,ysrc,zsrc;dt=dtS,t=timeS)
 
 # setup wavelet
-f0 = 0.01
+f0 = 0.015
 wavelet = ricker_wavelet(timeS,dtS,f0)
-q = judiVector(srcGeometry,wavelet)
+q = judiVector(srcGeometry,[diff(wavelet);0])
 
 # Set up info structure for linear operators
-ntComp = get_computational_nt(srcGeometry,recGeometry,model)
-info = Info(prod(n),nsrc,ntComp)
+ntComp = get_computational_nt(srcGeometry,recGeometry,model00)
+info = Info(prod(n),1,ntComp)
 
 ######################## WITH DENSITY ############################################
 
@@ -81,7 +81,5 @@ J.options.file_name="linearized_shot"
 dD = J*dm
 rtm1 = J'*dD
 
-# evaluate FWI objective function 
+# evaluate FWI objective function
 f,g = fwi_objective(model0, q, dobs; options=opt)
-
-

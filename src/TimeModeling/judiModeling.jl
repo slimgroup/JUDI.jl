@@ -9,14 +9,14 @@ export judiModeling, judiModelingException, judiSetupModeling, judiModelingAdjoi
 
 ############################################################
 
-# Type for linear operator representing  Pr*A(m)^-1*Ps, 
+# Type for linear operator representing  Pr*A(m)^-1*Ps,
 # i.e. it includes source and receiver projections
 struct judiModeling{DDT<:Number,RDT<:Number} <: joAbstractLinearOperator{DDT,RDT}
     name::String
     m::Integer
     n::Integer
     info::Info
-    model::Model
+    model::Modelall
     options::Options
 end
 
@@ -30,7 +30,7 @@ struct judiModelingAdjoint{DDT,RDT} <: joAbstractLinearOperator{DDT,RDT}
     m::Integer
     n::Integer
     info::Info
-    model::Model
+    model::Modelall
     options::Options
 end
 
@@ -62,7 +62,7 @@ Example
     dobs = F*q
 
 """
-function judiModeling(info::Info, model::Model; options=Options(), DDT::DataType=Float32, RDT::DataType=DDT)
+function judiModeling(info::Info, model::Modelall; options=Options(), DDT::DataType=Float32, RDT::DataType=DDT)
 # JOLI wrapper for nonlinear forward modeling
     (DDT == Float32 && RDT == Float32) || throw(judiModelingException("Domain and range types not supported"))
     m = info.n * sum(info.nt)
@@ -75,7 +75,7 @@ function judiModeling(info::Info, model::Model; options=Options(), DDT::DataType
     return F = judiModeling{Float32,Float32}("forward wave equation", m, n, info, model, options)
 end
 
-function judiModelingAdjoint(info::Info, model::Model; options=Options(), DDT::DataType=Float32, RDT::DataType=DDT)
+function judiModelingAdjoint(info::Info, model::Modelall; options=Options(), DDT::DataType=Float32, RDT::DataType=DDT)
 # JOLI wrapper for nonlinear forward modeling
     (DDT == Float32 && RDT == Float32) || throw(judiModelingAdjointException("Domain and range types not supported"))
     m = info.n * sum(info.nt)
@@ -133,10 +133,3 @@ end
 
 getindex(F::judiModeling,a) = subsample(F,a)
 getindex(F::judiModelingAdjoint,a) = subsample(F,a)
-
-
-
-
-
-
-

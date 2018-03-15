@@ -9,7 +9,7 @@ export judiPDEfull, judiPDEfullException, subsample
 
 ############################################################
 
-# Type for linear operator representing  Pr*A(m)^-1*Ps, 
+# Type for linear operator representing  Pr*A(m)^-1*Ps,
 # i.e. it includes source and receiver projections
 
 struct judiPDEfull{DDT<:Number,RDT<:Number} <: joAbstractLinearOperator{DDT,RDT}
@@ -17,7 +17,7 @@ struct judiPDEfull{DDT<:Number,RDT<:Number} <: joAbstractLinearOperator{DDT,RDT}
     m::Integer
     n::Integer
     info::Info
-    model::Model
+    model::Modelall
     srcGeometry::Geometry
     recGeometry::Geometry
     options::Options
@@ -33,7 +33,7 @@ end
 ############################################################
 ## Constructor
 
-function judiModeling(info::Info,model::Model, srcGeometry::Geometry, recGeometry::Geometry; options=Options(), DDT::DataType=Float32, RDT::DataType=DDT)
+function judiModeling(info::Info,model::Modelall, srcGeometry::Geometry, recGeometry::Geometry; options=Options(), DDT::DataType=Float32, RDT::DataType=DDT)
 # JOLI wrapper for nonlinear forward modeling
     (DDT == Float32 && RDT == Float32) || throw(judiPDEfullException("Domain and range types not supported"))
 
@@ -163,7 +163,3 @@ function subsample{ADDT,ARDT}(F::judiPDEfull{ADDT,ARDT}, srcnum)
 end
 
 getindex(F::judiPDEfull,a) = subsample(F,a)
-
-
-
-
