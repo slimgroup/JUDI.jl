@@ -143,6 +143,8 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, nb=40, i
     stencil1 = solve(eqn, u.forward, simplify=False, rational=False)[0]
     eqn_lin = m / rho * du.dt2 - H + damp * du.dt + S
     if isic:
+        # Sum ((u.dx * d, / rho).dx for x in dimensions)
+        # space_order//2  so that u.dx.dx has the same radius as u.laplace
         du_aux = sum([first_derivative(first_derivative(u, dim=d, order=space_order//2) * dm / rho,
                                        order=space_order//2, dim=d)
                       for d in u.space_dimensions])
@@ -207,6 +209,8 @@ def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residu
     if isic is not True:
         gradient_update = [Eq(gradient, gradient - u.dt2 / rho * v)]
     else:
+        # sum u.dx * v.dx fo x in dimensions.
+        # space_order//2
         diff_u_v = sum([first_derivative(u, dim=d, order=space_order//2)*
                         first_derivative(v, dim=d, order=space_order//2)
                         for d in u.space_dimensions])
