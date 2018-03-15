@@ -143,7 +143,7 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, nb=40, i
         du_aux_y = first_derivative(u.dy * dm / rho, order=space_order, dim=y)
 
         if len(model.shape) == 2:
-            lin_source = (dm /rho u.dt2 * m - du_aux_x - du_aux_y)
+            lin_source = (dm /rho * u.dt2 * m - du_aux_x - du_aux_y)
         else:
             du_aux_z = first_derivative(u.dz * dm, order=space_order, dim=z)
             lin_source = (dm /rho * u.dt2 * m - du_aux_x - du_aux_y - du_aux_z)
