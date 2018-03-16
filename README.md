@@ -30,6 +30,7 @@ For reading and writing seismic SEG-Y data, Julia Devito uses the [SeisIO](https
 ```julia
 Pkg.clone("https://github.com/slimgroup/SeisIO.jl.git")
 Pkg.clone("https://github.com/slimgroup/JOLI.jl.git")
+Pkg.clone("https://github.com/floswald/ApproXD.jl")
 ```
 
 ## Full-waveform inversion
