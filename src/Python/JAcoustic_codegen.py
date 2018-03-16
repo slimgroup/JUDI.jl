@@ -118,15 +118,8 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, nb=40, i
     if isic is not True:
         eqn_lin = m * du.dt2 - du.laplace + damp * du.dt + dm * u.dt2   # born modeling
     else:
-        du_aux_x = first_derivative(u.dx * dm, order=space_order, dim=x)
-        du_aux_y = first_derivative(u.dy * dm, order=space_order, dim=y)
-        
-        # adjoint of the linearized inverse scattering imaging operator (Op't Root et al., 2010; Witte et al., 2017)
-        if len(model.shape) == 2:
-            eqn_lin = m * du.dt2 - du.laplace + damp * du.dt + (dm * u.dt2 * m - du_aux_x - du_aux_y)
-        else:
-            du_aux_z = first_derivative(u.dz * dm, order=space_order, dim=z)
-            eqn_lin = m * du.dt2 - du.laplace + damp * du.dt + (dm * u.dt2 * m - du_aux_x - du_aux_y - du_aux_z)
+        du_aux = sum([first_derivative(first_derivative(u, dim=d, order=space_order//2) * dm, order=space_order//2, dim=d) for d in u.space_dimensions])
+        eqn_lin = m * du.dt2 - du.laplace + damp * du.dt + (dm * u.dt2 * m - du_aux)
 
     if isic is not True:
         stencil2 = solve(eqn_lin, du.forward)[0]
