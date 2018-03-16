@@ -39,7 +39,7 @@ JUDI is designed to let you set up objective functions that can be passed to sta
 
 ```julia
 run(`wget ftp://slim.eos.ubc.ca/data/SoftwareRelease/WaveformInversion.jl/2DFWI/overthrust_2D.segy`)
-run(`wget ftp://slim.eos.ubc.ca/data/SoftwareRelease/WaveformInversion.jl/2DFWI/overthrust_2D_initial_model.h5`)
+run(`wget ftp://slim.eos.ubc.ca/data/SoftwareRelease/WaveformInversion.jl/2DFWI/overthrust_model_2D.h5`)
 ```
 
 The first step is to load the velocity model and the observed data into Julia, as well as setting up bound constraints for the inversion, which prevent too high or low velocities in the final result. Furthermore, we define an 8 Hertz Ricker wavelet as the source function:
@@ -48,7 +48,7 @@ The first step is to load the velocity model and the observed data into Julia, a
 using PyPlot, HDF5, SeisIO, JUDI.TimeModeling, JUDI.SLIM_optim
 
 # Load starting model
-n, d, o, m0 = read(h5open("overthrust_2D_initial_model.h5", "r"), "n", "d", "o", "m0")
+n, d, o, m0, m = read(h5open("overthrust_model_2D.h5", "r"), "n", "d", "o", "m0", "m")
 model0 = Model((n[1], n[2]), (d[1], d[2]), (o[1], o[2]), m0)	# need n, d, o as tuples and m0 as array
 
 # Bound constraints
