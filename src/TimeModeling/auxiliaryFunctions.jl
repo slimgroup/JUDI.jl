@@ -6,7 +6,7 @@
 export ricker_wavelet, get_computational_nt, smooth10, damp_boundary, calculate_dt, setup_grid, setup_3D_grid
 export convertToCell, limit_model_to_receiver_area, extend_gradient
 export time_resample, remove_padding, backtracking_linesearch
-export generate_distribution, select_frequencies
+export generate_distribution, select_frequencies, process_physical_parameter
 
 function limit_model_to_receiver_area(srcGeometry::Geometry,recGeometry::Geometry,model::Model,buffer;pert=[])
     # Restrict full velocity model to area that contains either sources and receivers
@@ -78,7 +78,7 @@ function extend_gradient(model_full::Model,model::Model,gradient::Array)
         full_gradient[nx_start:nx_end,:] = gradient
     else
         ny_start = Int((model.o[2] - model_full.o[2])/model.d[2] + 1)
-        ny_end = ny_start + model.n[2] - 1 
+        ny_end = ny_start + model.n[2] - 1
         full_gradient[nx_start:nx_end,ny_start:ny_end,:] = gradient
     end
     return full_gradient
@@ -151,7 +151,7 @@ function get_computational_nt(srcGeometry, recGeometry, model::Model)
 end
 
 function setup_grid(geometry,n, origin)
-    # 3D grid 
+    # 3D grid
     if length(n)==3
         if length(geometry.xloc[1]) > 1
             source_coords = Array{Float32,2}([vec(geometry.xloc[1]) vec(geometry.yloc[1]) vec(geometry.zloc[1])])
@@ -180,11 +180,11 @@ function setup_3D_grid(xrec::Array{Any,1},yrec::Array{Any,1},zrec::Array{Any,1})
     for i=1:nsrc
         nxrec = length(xrec[i])
         nyrec = length(yrec[i])
-    
+
         xloc[i] = zeros(nxrec*nyrec)
         yloc[i] = zeros(nxrec*nyrec)
         zloc[i] = zeros(nxrec*nyrec)
-    
+
         idx = 1
 
         for k=1:nyrec
@@ -343,5 +343,10 @@ function select_frequencies(L;fmin=0.,fmax=Inf,nf=1)
 	return freq
 end
 
-
-
+function process_physical_parameter(param, dims)
+    if length(param) ==1
+        return param
+    else
+        return PyReverseDims(permutedims(param, dims))
+    end
+end

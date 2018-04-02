@@ -112,7 +112,7 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=8, nb=
     subs[v.grid.time_dim.spacing] = dt
     op = Operator(expression, subs=subs, dse='advanced', dle='advanced',
                   name="Backward%s" % randint(1e5))
-    op(dt=dt)
+    op()
 
     return src.data
 
@@ -172,7 +172,7 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, nb=40, i
     subs[u.grid.time_dim.spacing] = dt
     op = Operator(expression, subs=subs, dse='advanced', dle='advanced',
                   name="Born%s" % randint(1e5))
-    op(dt=dt)
+    op()
 
     return rec.data
 
@@ -207,14 +207,14 @@ def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residu
     if u is None:
         u = TimeFunction(name='u', grid=model.grid, time_order=2, space_order=space_order)
     if isic is not True:
-        gradient_update = [Eq(gradient, gradient - u.dt2 / rho * v)]
+        gradient_update = [Eq(gradient, gradient - dt * u.dt2 / rho * v)]
     else:
         # sum u.dx * v.dx fo x in dimensions.
         # space_order//2
         diff_u_v = sum([first_derivative(u, dim=d, order=space_order//2)*
                         first_derivative(v, dim=d, order=space_order//2)
                         for d in u.space_dimensions])
-        gradient_update = [Eq(gradient, gradient - (u * v.dt2 * m + diff_u_v) / rho)]
+        gradient_update = [Eq(gradient, gradient - dt * (u * v.dt2 * m + diff_u_v) / rho)]
 
     # Create operator and run
     set_log_level('ERROR')
@@ -229,8 +229,8 @@ def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residu
         rec = Receiver(name='rec', grid=model.grid, ntime=nt, coordinates=rec_coords)
         cp = DevitoCheckpoint([u])
         n_checkpoints = None
-        wrap_fw = CheckpointOperator(op_forward, u=u, m=model.m.data, rec=rec, dt=dt)
-        wrap_rev = CheckpointOperator(op, u=u, v=v, m=model.m.data, rec_g=rec_g, dt=dt)
+        wrap_fw = CheckpointOperator(op_forward, u=u, m=model.m, rec=rec)
+        wrap_rev = CheckpointOperator(op, u=u, v=v, m=model.m, rec_g=rec_g)
 
         # Run forward
         wrp = Revolver(cp, wrap_fw, wrap_rev, n_checkpoints, nt-2)
@@ -296,7 +296,7 @@ def forward_freq_modeling(model, src_coords, wavelet, rec_coords, freq, space_or
     expression += src_term + rec_term
     op = Operator(expression, subs=model.spacing_map, dse='advanced', dle='advanced',
                   name="Forward%s" % randint(1e5))
-    op(dt=dt)
+    op()
 
     return rec.data, ufr, ufi
 
@@ -336,7 +336,7 @@ def adjoint_freq_born(model, rec_coords, rec_data, freq, ufr, ufi, space_order=8
     expression += adj_src + gradient_update
     op = Operator(expression, subs=model.spacing_map, dse='advanced', dle='advanced',
                   name="Gradient%s" % randint(1e5))
-    op(dt=dt)
+    op()
     clear_cache()
 
     return gradient.data

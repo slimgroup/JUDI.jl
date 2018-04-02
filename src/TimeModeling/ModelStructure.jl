@@ -1,4 +1,4 @@
-# Model structure 
+# Model structure
 # Author: Philipp Witte, pwitte@eos.ubc.ca
 # Date: January 2017
 #
@@ -27,8 +27,8 @@ end
         nb::Integer
         m::Array
         rho::Array
-      
-Model structure for seismic velocity models. 
+
+Model structure for seismic velocity models.
 
 `n`: number of gridpoints in (x,y,z) for 3D or (x,z) for 2D
 
@@ -53,13 +53,11 @@ The parameters `n`, `d`, `o` and `m` are mandatory, whith `nb` and `rho` being o
 
 """
 function Model(n::IntTuple, d::RealTuple, o::RealTuple, m; rho=[], nb=40)
-    isempty(rho) && (rho = ones(Float32, n))
+    isempty(rho) && (rho = 1)
     return Model(n,d,o,nb,m,rho)
 end
 
 function Model(n::IntTuple, d::RealTuple, o::RealTuple, m, rho; nb=40)
-    isempty(rho) && (rho = ones(Float32, n))
+    isempty(rho) && (rho = 1)
     return Model(n,d,o,nb,m,rho)
 end
-
-
