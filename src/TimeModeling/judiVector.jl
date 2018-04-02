@@ -5,7 +5,7 @@
 # Authors: Philipp Witte (pwitte@eos.ubc.ca), Henryk Modzelewski (hmodzelewski@eos.ubc.ca)
 # Date: January 2017
 
-export judiVector, judiVectorException, subsample, judiVector_to_SeisBlock, time_resample, time_resample!, judiTimeInterpolation, write_shot_record
+export judiVector, judiVectorException, subsample, judiVector_to_SeisBlock, time_resample, time_resample!, judiTimeInterpolation, write_shot_record, get_data
 
 ############################################################
 
@@ -60,7 +60,7 @@ Examples
 ========
 
 (1) Construct data vector from `Geometry` structure and a cell array of shot records:
-  
+
     dobs = judiVector(rec_geometry, shot_records)
 
 (2) Construct data vector for a seismic wavelet (can be either cell arrays of individual\\
@@ -133,7 +133,7 @@ function judiVector(data::SeisIO.SeisBlock; segy_depth_key="RecGroupElevation", 
     # length of data vector
     src = get_header(data,"FieldRecord")
     nsrc = length(unique(src))
-    
+
     numTraces = get_header(data,"TraceNumber")[end] - get_header(data,"TraceNumber")[1] + 1
     numSamples = get_header(data,"ns")[end]
     m = numTraces*numSamples
@@ -160,7 +160,7 @@ function judiVector(geometry::Geometry, data::SeisIO.SeisBlock; vDT::DataType=Fl
     # length of data vector
     src = get_header(data,"FieldRecord")
     nsrc = length(unique(src))
-    
+
     numTraces = get_header(data,"TraceNumber")[end] - get_header(data,"TraceNumber")[1] + 1
     numSamples = get_header(data,"ns")[end]
     m = numTraces*numSamples
@@ -282,7 +282,7 @@ conj{vDT}(a::judiVector{vDT}) =
 # transpose(jo)
 transpose{vDT}(a::judiVector{vDT}) =
     judiVector{vDT}(""*a.name*".'",a.n,a.m,a.nsrc,a.geometry,a.data)
-   
+
 # ctranspose(jo)
 ctranspose{vDT}(a::judiVector{vDT}) =
     judiVector{vDT}(""*a.name*"'",a.n,a.m,a.nsrc,a.geometry,a.data)
@@ -396,7 +396,7 @@ function vcat{avDT,bvDT}(a::judiVector{avDT},b::judiVector{bvDT})
             nsamples[j] = a.geometry.nsamples[j]
         else
             xloc[j] = a.geometry.xloc[j]
-            yloc[j] = a.geometry.yloc[j]        
+            yloc[j] = a.geometry.yloc[j]
             zloc[j] = a.geometry.zloc[j]
         end
         dt[j] = a.geometry.dt[j]
@@ -433,7 +433,7 @@ function dot{avDT,bvDT}(a::judiVector{avDT}, b::judiVector{bvDT})
     compareGeometry(a.geometry, b.geometry) == 1 || throw(judiVectorException("geometry mismatch"))
     dotprod = 0f0
     for j=1:a.nsrc
-        dotprod += dot(vec(a.data[j]),vec(b.data[j]))
+        dotprod += a.geometry.dt[j] * dot(vec(a.data[j]),vec(b.data[j]))
     end
     return dotprod
 end
@@ -442,7 +442,7 @@ end
 function norm{avDT}(a::judiVector{avDT}; p=2)
     x = 0.f0
     for j=1:a.nsrc
-        x += norm(vec(a.data[j]),p)^p
+        x += a.geometry.dt[j] * norm(vec(a.data[j]),p)^p
     end
     return x^(1.f0/p)
 end
@@ -455,6 +455,19 @@ function abs{avDT}(a::judiVector{avDT})
     end
     return b
 end
+
+
+function get_data(x::judiVector)
+
+    shots = Array{Any}(x.nsrc)
+    rec_geometry = Geometry(x.geometry)
+
+    for j=1:x.nsrc
+        shots[j] = convert(Array{Float32, 2}, x.data[j][1].data)
+    end
+    return judiVector(rec_geometry, shots)
+end
+
 
 # Subsample data container
 """
@@ -640,7 +653,6 @@ end
 
 similar(x::judiVector, kwargs...) = judiVector(x.geometry, x.data)*0f0
 
-
 ###########################################################################################################
 
 # Overload base function for SeisIO objects
@@ -673,5 +685,3 @@ dot(x::Float32, y::SeisIO.IBMFloat32) = dot(x, convert(Float32,y))
 
 /(a::Number, x::SeisIO.SeisCon) = /(a,x[1].data)
 /(x::SeisIO.SeisCon, a::Number) = /(x[1].data,a)
-
-

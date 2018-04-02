@@ -12,11 +12,12 @@ o = (0.,0.)
 
 # Velocity [km/s]
 v = ones(Float32,n) * 2.0f0
-v[:,Int(round(end/3)):end] = 4f0
-v0 = smooth10(v,n)
-epsilon = (v[:, :] - 2.0f0)/10.0f0
-delta = (v[:, :] - 2.0f0)/20.0f0
-theta = (v[:, :] - 2.0f0)/5.0f0
+v[:,Int(round(end/3)):end] = 3f0
+v[:,Int(2*round(end/3)):end] = 4f0
+v0 = ones(Float32,n) * 2.0f0
+epsilon = (v[:, :] - 2.0f0)/5.0f0
+delta = (v[:, :] - 2.0f0)/10.0f0
+theta = (v[:, :] - 2.0f0)/2.0
 # Slowness squared [s^2/km^2]
 m = (1f0./v).^2
 m0 = (1f0./v0).^2
@@ -26,28 +27,30 @@ dm = vec(m - m0)
 nsrc = 1
 model = Model_TTI(n,d,o,m; epsilon=epsilon, delta=delta, theta=theta)
 model0 = Model_TTI(n,d,o,m0; epsilon=epsilon, delta=delta, theta=theta)
+# model = Model(n,d,o,m)
+# model0 = Model(n,d,o,m0)
 
 ## Set up receiver geometry
 nxrec = 161
-xrec = linspace(600f0,1000f0,nxrec)
+xrec = linspace(0f0,1600f0,nxrec)
 yrec = 0f0
-zrec = linspace(100f0,100f0,nxrec)
+zrec = linspace(50f0, 50f0,nxrec)
 
 # receiver sampling and recording time
-timeR = 1200f0	# receiver recording time [ms]
-dtR = calculate_dt(model)    # receiver sampling interval
+timeR = 2000f0	# receiver recording time [ms]
+dtR = 2.0f0    # receiver sampling interval
 
 # Set up receiver structure
 recGeometry = Geometry(xrec,yrec,zrec;dt=dtR,t=timeR,nsrc=nsrc)
 
 ## Set up source geometry (cell array with source locations for each shot)
-xsrc = 800f0
+xsrc = 50f0
 ysrc = 0f0
 zsrc = 50f0
 
 # source sampling and number of time steps
-timeS = 1200f0
-dtS = calculate_dt(model) # receiver sampling interval
+timeS = 2000f0
+dtS = 2.0f0 # receiver sampling interval
 
 # Set up source structure
 srcGeometry = Geometry(xsrc,ysrc,zsrc;dt=dtS,t=timeS)

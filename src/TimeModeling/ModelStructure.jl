@@ -110,7 +110,7 @@ The parameters `n`, `d`, `o` and `m` are mandatory, whith `nb` and `rho` being o
 
 
 """
-function Model_TTI(n::IntTuple, d::RealTuple, o::RealTuple, m; epsilon=[], delta=[], theta=[], phi=[], nb=40)
+function Model_TTI(n::IntTuple, d::RealTuple, o::RealTuple, m; epsilon=0, delta=[], theta=[], phi=[], nb=40)
     isempty(epsilon) && (epsilon = 0)
     isempty(delta) && (delta = 0)
     isempty(theta) && (theta = 0)

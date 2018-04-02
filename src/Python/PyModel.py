@@ -33,6 +33,18 @@ def damp_boundary(damp, nbpml, spacing):
             damp[:, :, -(i + 1)] += val/spacing[2]
 
 
+def initialize_function(function, data, nbpml):
+    """Initialize a :class:`Function` with the given ``data``. ``data``
+    does *not* include the PML layers for the absorbing boundary conditions;
+    these are added via padding by this method.
+    :param function: The :class:`Function` to be initialised with some data.
+    :param data: The data array used for initialisation.
+    :param nbpml: Number of PML layers for boundary damping.
+    """
+    pad_list = [(nbpml + i.left, nbpml + i.right) for i in function._offset_domain]
+    function.data_with_halo[:] = np.pad(data, pad_list, 'edge')
+
+
 class Model(object):
     """The physical model used in seismic inversion processes.
 
@@ -51,7 +63,7 @@ class Model(object):
     :param damp: The damping field for absorbing boundarycondition
     """
     def __init__(self, origin, spacing, shape, vp, rho=1, nbpml=20, dtype=np.float32, dm=None,
-                 epsilon=None, delta=None, theta=None, phi=None):
+                 epsilon=None, delta=None, theta=None, phi=None, space_order=8):
         self.shape = shape
         self.nbpml = int(nbpml)
 
@@ -63,13 +75,13 @@ class Model(object):
 
         # Create square slowness of the wave as symbol `m`
         if isinstance(vp, np.ndarray):
-            self.m = Function(name="m", grid=self.grid)
+            self.m = Function(name="m", grid=self.grid, space_order=space_order)
         else:
             self.m = 1/vp**2
 
         if isinstance(rho, np.ndarray):
-            self.rho = Function(name="rho", grid=self.grid)
-            self.rho.data[:] = self.pad(rho)
+            self.rho = Function(name="rho", grid=self.grid, space_order=space_order)
+            initialize_function(self.rho, rho, self.nbpml)
         else:
             self.rho = rho
 
@@ -85,14 +97,14 @@ class Model(object):
 
         if dm is not None:
             self.dm = Function(name="dm", grid=self.grid)
-            self.dm.data[:] = self.pad(dm)
+            initialize_function(self.dm, dm, self.nbpml)
         else:
             self.dm = 1
 
         if epsilon is not None:
             if isinstance(epsilon, np.ndarray):
-                self.epsilon = Function(name="epsilon", grid=self.grid)
-                self.epsilon.data[:] = self.pad(1 + 2 * epsilon)
+                self.epsilon = Function(name="epsilon", grid=self.grid, space_order=space_order)
+                initialize_function(self.epsilon, 1 + 2 * epsilon, self.nbpml)
                 # Maximum velocity is scale*max(vp) if epsilon > 0
                 if np.max(self.epsilon.data) > 0:
                     self.scale = np.sqrt(np.max(self.epsilon.data))
@@ -104,8 +116,8 @@ class Model(object):
 
         if delta is not None:
             if isinstance(delta, np.ndarray):
-                self.delta = Function(name="delta", grid=self.grid)
-                self.delta.data[:] = self.pad(np.sqrt(1 + 2 * delta))
+                self.delta = Function(name="delta", grid=self.grid, space_order=space_order)
+                initialize_function(self.delta, np.sqrt(1 + 2 * delta), self.nbpml)
             else:
                 self.delta = delta
         else:
@@ -113,8 +125,8 @@ class Model(object):
 
         if theta is not None:
             if isinstance(theta, np.ndarray):
-                self.theta = Function(name="theta", grid=self.grid)
-                self.theta.data[:] = self.pad(theta)
+                self.theta = Function(name="theta", grid=self.grid, space_order=space_order)
+                initialize_function(self.theta, theta, self.nbpml)
             else:
                 self.theta = theta
         else:
@@ -122,8 +134,8 @@ class Model(object):
 
         if phi is not None:
             if isinstance(phi, np.ndarray):
-                self.phi = Function(name="phi", grid=self.grid)
-                self.phi.data[:] = self.pad(phi)
+                self.phi = Function(name="phi", grid=self.grid, space_order=space_order)
+                initialize_function(self.phi, phi, self.nbpml)
             else:
                 self.phi = phi
         else:
@@ -184,14 +196,12 @@ class Model(object):
         # The CFL condtion is then given by
         # dt <= coeff * h / (max(velocity))
         coeff = 0.38 if len(self.shape) == 3 else 0.42
-        return coeff * np.min(self.spacing) / (self.scale*np.max(self.vp))
+        return self.dtype(coeff * np.min(self.spacing) / (self.scale*np.max(self.vp)))
 
     @property
     def vp(self):
         """:class:`numpy.ndarray` holding the model velocity in km/s.
-
         .. note::
-
         Updating the velocity field also updates the square slowness
         ``self.m``. However, only ``self.m`` should be used in seismic
         operators, since it is of type :class:`Function`.
@@ -201,14 +211,13 @@ class Model(object):
     @vp.setter
     def vp(self, vp):
         """Set a new velocity model and update square slowness
-
         :param vp : new velocity in km/s
         """
         self._vp = vp
 
         # Update the square slowness according to new value
         if isinstance(vp, np.ndarray):
-            self.m.data[:] = self.pad(1 / (self.vp * self.vp))
+            initialize_function(self.m, 1 / (self.vp * self.vp), self.nbpml)
         else:
             self.m.data = 1 / vp**2
 

@@ -7,7 +7,7 @@ function time_modeling(model_full::Model, srcGeometry::Geometry, srcData, recGeo
     # Load full geometry for out-of-core geometry containers
     typeof(recGeometry) == GeometryOOC && (recGeometry = Geometry(recGeometry))
     typeof(srcGeometry) == GeometryOOC && (srcGeometry = Geometry(srcGeometry))
-    length(model_full.n) == 3 ? dims = (3,2,1) : dims = (2,1)   # model dimensions for Python are (z,y,x) and (z,x)
+    length(model_full.n) == 3 ? dims = [3,2,1] : dims = [2,1]   # model dimensions for Python are (z,y,x) and (z,x)
 
     # for 3D modeling, limit model to area with sources/receivers
     if options.limit_m == true
@@ -23,11 +23,11 @@ function time_modeling(model_full::Model, srcGeometry::Geometry, srcData, recGeo
 
     # Set up Python model structure
     if op=='J' && mode == 1
-        modelPy = pm.Model(origin=(0.,0.,0.), spacing=model.d, shape=model.n, vp=PyReverseDims(permutedims(sqrt.(1f0./model.m), dims)), nbpml=model.nb,
-                           rho=PyReverseDims(permutedims(model.rho, dims)), dm=PyReverseDims(permutedims(reshape(dm,model.n), dims)))
+        modelPy = pm.Model(origin=(0.,0.,0.), spacing=model.d, shape=model.n, vp=process_physical_parameter(sqrt.(1f0./model.m), dims), nbpml=model.nb,
+                           rho=process_physical_parameter(model.rho, dims), dm=process_physical_parameter(reshape(dm,model.n), dims))
     else
-        modelPy = pm.Model(origin=(0.,0.,0.), spacing=model.d, shape=model.n, vp=PyReverseDims(permutedims(sqrt.(1f0./model.m), dims)), nbpml=model.nb,
-                           rho=PyReverseDims(permutedims(model.rho, dims)))
+        modelPy = pm.Model(origin=(0.,0.,0.), spacing=model.d, shape=model.n, vp=process_physical_parameter(sqrt.(1f0./model.m), dims), nbpml=model.nb,
+                           rho=process_physical_parameter(model.rho, dims))
     end
     dtComp = modelPy[:critical_dt]
 
@@ -154,19 +154,21 @@ function time_modeling(model_full::Model_TTI, srcGeometry::Geometry, srcData, re
     # Set up Python model structure
     if op=='J' && mode == 1
         # Set up Python model structure (force origin to be zero due to current devito bug)
-        modelPy = pm.Model(origin=(0.,0.,0.), spacing=model.d, shape=model.n, vp=PyReverseDims(permutedims(sqrt.(1f0./model.m), dims)),
+        modelPy = pm.Model(origin=(0.,0.,0.), spacing=model.d, shape=model.n, vp=process_physical_parameter(sqrt.(1f0./model.m), dims),
                            epsilon=process_physical_parameter(model.epsilon, dims),
                            delta=process_physical_parameter(model.delta, dims),
                            theta=process_physical_parameter(model.theta, dims),
                            phi=process_physical_parameter(model.phi, dims), nbpml=model.nb,
-                           dm=PyReverseDims(permutedims(reshape(dm,model.n), dims)))
+                           dm=process_physical_parameter(reshape(dm,model.n), dims),
+                           space_order=12)
     else
         # Set up Python model structure (force origin to be zero due to current devito bug)
-        modelPy = pm.Model(origin=(0., 0., 0.), spacing=model.d, shape=model.n, vp=PyReverseDims(permutedims(sqrt.(1f0./model.m), dims)),
+        modelPy = pm.Model(origin=(0., 0., 0.), spacing=model.d, shape=model.n, vp=process_physical_parameter(sqrt.(1f0./model.m), dims),
                            epsilon=process_physical_parameter(model.epsilon, dims),
                            delta=process_physical_parameter(model.delta, dims),
                            theta=process_physical_parameter(model.theta, dims),
-                           phi=process_physical_parameter(model.phi, dims), nbpml=model.nb)
+                           phi=process_physical_parameter(model.phi, dims), nbpml=model.nb,
+                           space_order=12)
     end
     dtComp = modelPy[:critical_dt]
 
@@ -192,7 +194,7 @@ function time_modeling(model_full::Model_TTI, srcGeometry::Geometry, srcData, re
         elseif typeof(recData[1]) == String
             recData = load(recData[1])["d"].data
         end
-        recData[1] = marineTopmute2D(judiVector(recGeometry, recData[1][:, end:-1:1]), 30).data[1][:, end:-1:1]
+        # recData[1] = marineTopmute2D(judiVector(recGeometry, recData[1][:, end:-1:1]), 30).data[1][:, end:-1:1]
         qIn = time_resample(srcData[1],srcGeometry,dtComp)[1]
 
         dIn = time_resample(recData[1],recGeometry,dtComp)[1]
@@ -222,8 +224,8 @@ function time_modeling(model_full::Model_TTI, srcGeometry::Geometry, srcData, re
         else
             # adjoint modeling
             #println("Nonlinear adjoint modeling (source no. ",srcnum,")")
-            qOut = pycall(tti.adjoint_modeling, Array{Float32,2}, modelPy, PyReverseDims(src_coords'), PyReverseDims(rec_coords'), PyReverseDims(dIn'),
-                          space_order=options.space_order, nb=model.nb)
+            qOut = pycall(tti.adjoint_modeling, PyObject, modelPy, PyReverseDims(src_coords'), PyReverseDims(rec_coords'), PyReverseDims(dIn'),
+                                space_order=options.space_order, nb=model.nb)[1]
             ntSrc > ntComp && (qOut = [qOut zeros(size(qOut), ntSrc - ntComp)])
             qOut = time_resample(qOut,dtComp,srcGeometry)
             return judiVector(srcGeometry,qOut)
@@ -232,8 +234,8 @@ function time_modeling(model_full::Model_TTI, srcGeometry::Geometry, srcData, re
         if mode==1
             # forward linearized modeling
             #println("Linearized forward modeling (source no. ",srcnum,")")
-            dOut = pycall(tti.forward_born, Array{Float32,2}, modelPy, PyReverseDims(src_coords'), PyReverseDims(qIn'), PyReverseDims(rec_coords'),
-                          space_order=options.space_order, nb=model.nb, isic=options.isic)
+            dOut = pycall(tti.forward_born, PyObject, modelPy, PyReverseDims(src_coords'), PyReverseDims(qIn'), PyReverseDims(rec_coords'),
+                          space_order=options.space_order, nb=model.nb, isic=options.isic)[1]
             ntRec > ntComp && (dOut = [dOut zeros(size(dOut,1), ntRec - ntComp)])
             dOut = time_resample(dOut,dtComp,recGeometry)
             if options.save_data_to_disk

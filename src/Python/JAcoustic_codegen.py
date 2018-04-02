@@ -153,7 +153,6 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, nb=40, i
             # eqn_lin = m / rho * du.dt2 - H + damp * du.dt + (dm * u.dt2 * m / rho - du_aux_x - du_aux_y - du_aux_z)
 
     stencil2 = solve(eqn_lin, du.forward, simplify=False, rational=False)[0]
-    print(stencil2)
     expression_u = [Eq(u.forward, stencil1.subs({H: ulaplace}))]
     expression_du = [Eq(du.forward, stencil2.subs({H: dulaplace - du2}))]
 
@@ -224,8 +223,8 @@ def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residu
         rec = Receiver(name='rec', grid=model.grid, ntime=nt, coordinates=rec_coords)
         cp = DevitoCheckpoint([u])
         n_checkpoints = None
-        wrap_fw = CheckpointOperator(op_forward, u=u, m=model.m.data, rec=rec, dt=dt)
-        wrap_rev = CheckpointOperator(op, u=u, v=v, m=model.m.data, rec_g=rec_g, dt=dt)
+        wrap_fw = CheckpointOperator(op_forward, u=u, m=model.m, rec=rec, dt=dt)
+        wrap_rev = CheckpointOperator(op, u=u, v=v, m=model.m, rec_g=rec_g, dt=dt)
 
         # Run forward
         wrp = Revolver(cp, wrap_fw, wrap_rev, n_checkpoints, nt-2)
@@ -324,7 +323,7 @@ def adjoint_freq_born(model, rec_coords, rec_data, freq, ufr, ufi, space_order=8
     adj_src = rec.inject(field=v.backward, offset=model.nbpml, expr=rec * dt**2 / m)
 
     # Gradient update
-    gradient_update = [Eq(gradient, gradient + (2*np.pi*f)**2/nt*(ufr*cos(2*np.pi*f*time*dt) + ufi*sin(2*np.pi*f*time*dt))*v)]
+    gradient_update = [Eq(gradient, gradient - (2*np.pi*f)**2/nt*(ufr*cos(2*np.pi*f*time*dt) - ufi*sin(2*np.pi*f*time*dt))*v)]
 
     # Create operator and run
     set_log_level('ERROR')

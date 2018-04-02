@@ -4,9 +4,18 @@
 #
 
 export ricker_wavelet, get_computational_nt, smooth10, damp_boundary, calculate_dt, setup_grid, setup_3D_grid
-export convertToCell, limit_model_to_receiver_area, extend_gradient
+export convertToCell, limit_model_to_receiver_area, extend_gradient, process_physical_parameter
 export time_resample, remove_padding, backtracking_linesearch
 export generate_distribution, select_frequencies
+
+
+function process_physical_parameter(param, dims)
+    if length(param) ==1
+        return param
+    else
+        return PyReverseDims(permutedims(param, dims))
+    end
+end
 
 function limit_model_to_receiver_area(srcGeometry::Geometry,recGeometry::Geometry,model::Model,buffer;pert=[])
     # Restrict full velocity model to area that contains either sources and receivers
@@ -47,11 +56,15 @@ function limit_model_to_receiver_area(srcGeometry::Geometry,recGeometry::Geometr
     n_orig = model.n
     if ndim == 2
         model.m = model.m[nx_min: nx_max, :]
-        model.rho = model.rho[nx_min: nx_max, :]
+        if length(model.rho) > 1
+            model.rho = model.rho[nx_min: nx_max, :]
+        end
         model.o = (ox, oz)
     else
         model.m = model.m[nx_min:nx_max,ny_min:ny_max,:]
-        model.rho = model.rho[nx_min:nx_max,ny_min:ny_max,:]
+        if length(model.rho) > 1
+            model.rho = model.rho[nx_min:nx_max,ny_min:ny_max,:]
+        end
         model.o = (ox,oy,oz)
     end
     model.n = size(model.m)
@@ -200,7 +213,7 @@ function calculate_dt(model::Model_TTI)
     else
         coeff = 0.42
     end
-    scale = sqrt(maximum(model.epsilon))
+    scale = sqrt(maximum(1 + 2 *model.epsilon))
     return coeff * minimum(model.d) / (scale*sqrt(1/minimum(model.m)))
 end
 

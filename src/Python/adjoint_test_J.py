@@ -11,7 +11,7 @@ from PyModel import Model
 from checkpoint import DevitoCheckpoint, CheckpointOperator
 from pyrevolve import Revolver
 import matplotlib.pyplot as plt
-from JAcoustic_codegen import forward_modeling, forward_born, adjoint_born, forward_freq_modeling, adjoint_freq_born
+from TTI_operators import forward_modeling, forward_born, adjoint_born
 import time
 
 # Model
@@ -19,42 +19,27 @@ shape = (101, 101)
 spacing = (10., 10.)
 origin = (0., 0.)
 v = np.empty(shape, dtype=np.float32)
-v[:, :51] = 1.5
+v[:, :51] = 2.0
 v[:, 51:] = 4.5
 
 # Density
-rho = np.empty(shape, dtype=np.float32)
-rho[:, :51] = 1.0
-rho[:, 51:] = 1.5
-
-
-def smooth10(vel, shape):
-    if np.isscalar(vel):
-        return .9 * vel * np.ones(shape, dtype=np.float32)
-    out = np.copy(vel)
-    nz = shape[-1]
-
-    for a in range(5, nz-6):
-        if len(shape) == 2:
-            out[:, a] = np.sum(vel[:, a - 5:a + 5], axis=1) / 10
-        else:
-            out[:, :, a] = np.sum(vel[:, :, a - 5:a + 5], axis=2) / 10
-    return out
+# Velocity [km/s]
+epsilon = (v[:, :] - 2.0)/10.0
+delta = (v[:, :] - 2.0)/20.0
+theta = (v[:, :] - 2.0)/5.0
 
 # Set up model structures
-rho0 = smooth10(rho, shape)
-model = Model(shape=shape, origin=origin, spacing=spacing, vp=v, rho=rho0)
+model = Model(shape=shape, origin=origin, spacing=spacing, vp=v, epsilon=epsilon, delta=delta, theta=theta)
 
 # Smooth background model
-v0 = smooth10(v, shape)
-dm = (1/v)**2 - (1/v0)**2
-model0 = Model(shape=shape, origin=origin, spacing=spacing, vp=v0, dm=dm, rho=rho0)
+dm1 = .1 * np.ones(shape)
+model0 = Model(shape=shape, origin=origin, spacing=spacing, vp=v - .1, dm=dm1, epsilon=epsilon, delta=delta, theta=theta)
 
 # Constant background model
 v_const = np.empty(shape, dtype=np.float32)
 v_const[:,:] = 1.5
 dm_const =  (1/v)**2 - (1/v_const)**2
-model_const = Model(shape=shape, origin=origin, spacing=spacing, vp=v_const, rho=rho0, dm=dm_const)
+model_const = Model(shape=shape, origin=origin, spacing=spacing, vp=v_const, dm=dm_const, epsilon=epsilon, delta=delta, theta=theta)
 
 # Time axis
 t0 = 0.
@@ -74,7 +59,7 @@ rec_t = Receiver(name='rec_t', grid=model.grid, npoint=401, ntime=nt)
 rec_t.coordinates.data[:, 0] = np.linspace(100, 900, num=401)
 rec_t.coordinates.data[:, 1] = 20.
 
-# Linearized data
+# Linearized data J * dm_const
 print("Forward J")
 t1 = time.time()
 dD_hat = forward_born(model_const, src.coordinates.data, src.data, rec_t.coordinates.data, isic=False, dt=dt)
@@ -82,16 +67,16 @@ dm_hat = model0.dm.data
 t2 = time.time()
 print(t2 - t1)
 
-# Forward
+# Forward J * dm
 print("Forward J")
 t1 = time.time()
 dD = forward_born(model0, src.coordinates.data, src.data, rec_t.coordinates.data, isic=True, dt=dt)
 t2 = time.time()
 print(t2 - t1)
 
-# Adjoint
+# Adjoint J' * dD_hat
 print("Adjoint J")
-d0, u0 = forward_modeling(model0, src.coordinates.data, src.data, rec_t.coordinates.data, dt=dt, save=True)
+d0, u0, v0 = forward_modeling(model0, src.coordinates.data, src.data, rec_t.coordinates.data, dt=dt, save=True)
 t1 = time.time()
 dm = adjoint_born(model0, rec_t.coordinates.data, dD_hat.data, u0, isic=True, dt=dt)
 t2 = time.time()
@@ -103,4 +88,3 @@ b = np.dot(dm_hat.flatten(), dm.flatten())
 print("Adjoint test J")
 print("Difference: ", a - b)
 print("Relative error: ", a/b - 1)
-

@@ -7,7 +7,7 @@ function fwi_objective(model_full::Model, source::judiVector, dObs::judiVector, 
     # Load full geometry for out-of-core geometry containers
     typeof(dObs.geometry) == GeometryOOC && (dObs.geometry = Geometry(dObs.geometry))
     typeof(source.geometry) == GeometryOOC && (source.geometry = Geometry(source.geometry))
-    length(model_full.n) == 3 ? dims = (3,2,1) : dims = (2,1)   # model dimensions for Python are (z,y,x) and (z,x)
+    length(model_full.n) == 3 ? dims = [3,2,1] : dims = [2,1]   # model dimensions for Python are (z,y,x) and (z,x)
 
     # for 3D modeling, limit model to area with sources/receivers
     if options.limit_m == true && length(model_full.n) == 3 # only supported for 3D
@@ -22,8 +22,8 @@ function fwi_objective(model_full::Model, source::judiVector, dObs::judiVector, 
     tmaxRec = dObs.geometry.t[1]
 
     # Set up Python model structure (force origin to be zero due to current devito bug)
-    modelPy = pm.Model(origin=(0.,0.,0.), spacing=model.d, shape=model.n, vp=PyReverseDims(permutedims(sqrt.(1f0./model.m), dims)),
-                       rho=PyReverseDims(permutedims(model.rho, dims)), nbpml=model.nb)
+    modelPy = pm.Model(origin=(0.,0.,0.), spacing=model.d, shape=model.n, vp=process_physical_parameter(sqrt.(1f0./model.m), dims),
+                       rho=process_physical_parameter(model.rho, dims), nbpml=model.nb)
     dtComp = modelPy[:critical_dt]
 
     # Extrapolate input data to computational grid
@@ -87,7 +87,7 @@ function fwi_objective(model_full::Model_TTI, source::judiVector, dObs::judiVect
     tmaxRec = dObs.geometry.t[1]
 
     # Set up Python model structure (force origin to be zero due to current devito bug)
-    modelPy = pm.Model(origin=(0.,0.,0.), spacing=model.d, shape=model.n, vp=PyReverseDims(permutedims(sqrt.(1f0./model.m), dims)),
+    modelPy = pm.Model(origin=(0.,0.,0.), spacing=model.d, shape=model.n, vp=process_physical_parameter(sqrt.(1f0./model.m), dims),
                        epsilon=process_physical_parameter(model.epsilon, dims),
                        delta=process_physical_parameter(model.delta, dims),
                        theta=process_physical_parameter(model.theta, dims),
@@ -125,13 +125,4 @@ function fwi_objective(model_full::Model_TTI, source::judiVector, dObs::judiVect
         argout2 = extend_gradient(model_full,model,argout2)
     end
     return [argout1; vec(argout2)]
-end
-
-
-function process_physical_parameter(param, dims)
-    if length(param) ==1
-        return param
-    else
-        return PyReverseDims(permutedims(param, dims))
-    end
 end
