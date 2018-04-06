@@ -194,7 +194,6 @@ function time_modeling(model_full::Model_TTI, srcGeometry::Geometry, srcData, re
         elseif typeof(recData[1]) == String
             recData = load(recData[1])["d"].data
         end
-        # recData[1] = marineTopmute2D(judiVector(recGeometry, recData[1][:, end:-1:1]), 30).data[1][:, end:-1:1]
         qIn = time_resample(srcData[1],srcGeometry,dtComp)[1]
 
         dIn = time_resample(recData[1],recGeometry,dtComp)[1]
