@@ -14,7 +14,7 @@ def damp_boundary(damp, nbpml, spacing):
     :param nbpml: Number of points in the damping layer
     :param spacing: Grid spacing coefficent
     """
-    dampcoeff = 1.5 * np.log(1.0 / 0.001) / (40.)
+    dampcoeff = 2.5 * np.log(1.0 / 0.001) / (40.)
     ndim = len(damp.shape)
     for i in range(nbpml):
         pos = np.abs((nbpml - i + 1) / float(nbpml))
@@ -119,7 +119,7 @@ class Model(object):
                 self.delta = Function(name="delta", grid=self.grid, space_order=space_order)
                 initialize_function(self.delta, np.sqrt(1 + 2 * delta), self.nbpml)
             else:
-                self.delta = delta
+                self.delta = sqrt(1 + 2 * delta)
         else:
             self.delta = 1
 
@@ -220,11 +220,3 @@ class Model(object):
             initialize_function(self.m, 1 / (self.vp * self.vp), self.nbpml)
         else:
             self.m.data = 1 / vp**2
-
-    def pad(self, data):
-        """Padding function PNL layers in every direction for for the
-        absorbing boundary conditions.
-
-        :param data : Data array to be padded"""
-        pad_list = [(self.nbpml, self.nbpml) for _ in self.shape]
-        return np.pad(data, pad_list, 'edge')
