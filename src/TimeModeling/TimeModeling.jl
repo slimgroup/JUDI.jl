@@ -33,8 +33,6 @@ include("time_modeling_serial.jl")  # forward/adjoint linear/nonlinear modeling
 include("time_modeling_parallel.jl")    # parallelization for modeling
 include("fwi_objective_serial.jl")  # FWI objective function value and gradient
 include("fwi_objective_parallel.jl")    # parallelization for FWI gradient
-include("fwi_objective_serial_gs.jl")  # FWI objective function value and gradient
-include("fwi_objective_parallel_gs.jl")    # parallelization for FWI gradient
 
 #############################################################################
 # Linear operators
