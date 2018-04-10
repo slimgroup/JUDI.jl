@@ -8,14 +8,17 @@ export Options
 # Object for velocity/slowness models
 type Options
     space_order::Integer
-	retry_n::Integer
-	limit_m::Bool
-	buffer_size::Real
-	save_data_to_disk::Bool
-	file_path::String
-	file_name::String
-	sum_padding::Bool
+    retry_n::Integer
+    limit_m::Bool
+    buffer_size::Real
+    save_data_to_disk::Bool
+    file_path::String
+    file_name::String
+    sum_padding::Bool
     save_wavefield::Bool
+    optimal_checkpointing::Bool
+    frequencies::Array
+    isic::Bool
     gs::Dict
     normalize::Bool
 end
@@ -31,6 +34,9 @@ end
         file_path::String
         file_name::String
         sum_padding::Bool
+        optimal_checkpointing::Bool
+        frequencies::Array
+        isic::Bool
 
 
 Options structure for seismic modeling.
@@ -53,14 +59,24 @@ Options structure for seismic modeling.
 
 `save_wavefield`: save forward wavefields and return as a second argument: (data, wavefield) = Pr*F*Ps'*q
 
+`optimal_checkpointing`: instead of saving the forward wavefield, recompute it using optimal checkpointing
+
+`frequencies`: calculate the FWI/LS-RTM gradient in the frequency domain for a given set of frequencies
+
+isic`: use linearized inverse scattering imaging condition
+
+
 Constructor
 ==========
 
 All arguments are optional keyword arguments with the following default values:
 
     Options(;retry_n=0, limit_m=false, buffer_size=1e3, save_data_to_disk=false, file_path=pwd(),
-            file_name="shot", sum_padding=false, save_wavefield=false)
+            file_name="shot", sum_padding=false, save_wavefield=false, optimal_checkpointing=false, frequencies=[], isic=false)
 
 """
-Options(;space_order=8,retry_n=0,limit_m=false,buffer_size=1e3, save_data_to_disk=false, file_path="", file_name="shot", sum_padding=false, save_wavefield=false, gs=Dict(), normalize=false) =
-    Options(space_order,retry_n,limit_m,buffer_size,save_data_to_disk,file_path,file_name, sum_padding, save_wavefield, gs, normalize)
+Options(;space_order=8,retry_n=0,limit_m=false,buffer_size=1e3, save_data_to_disk=false, file_path="", file_name="shot",
+         sum_padding=false, save_wavefield=false, optimal_checkpointing=false, frequencies=[], isic=false,
+         gs=Dict(), normalize=false) =
+    Options(space_order,retry_n,limit_m,buffer_size,save_data_to_disk,file_path,file_name, sum_padding,
+            save_wavefield, optimal_checkpointing, frequencies, isic, gs, normalize)
