@@ -67,7 +67,7 @@ wave_rand = wavelet.*rand(Float32,size(wavelet))
 ###################################################################################################
 
 # Modeling operators
-opt = Options(sum_padding=true)
+opt = Options(sum_padding=true, isic=true)
 F = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
 q = judiVector(srcGeometry, wavelet)
 
@@ -97,4 +97,4 @@ dm_hat = J'*dD_hat
 println(dot(dD_hat,dD_hat))
 println(dot(dm,dm_hat))
 println("Residual: ", abs(dot(dD_hat,dD_hat) - dot(dm,dm_hat)))
-println("Ratio: ", abs(dot(dD_hat,dD_hat)/dot(dm,dm_hat)))
+println("Ratio: ", abs(dot(dD_hat,dD_hat)/dot(dm,dm_hat)) - 1.0)

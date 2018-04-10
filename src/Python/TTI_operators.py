@@ -23,7 +23,7 @@ from PyModel import Model
 from checkpoint import DevitoCheckpoint, CheckpointOperator
 from pyrevolve import Revolver
 
-def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_order=4, nb=40, op_return=False, dt=None):
+def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_order=12, nb=40, op_return=False, dt=None):
     clear_cache()
 
     # Parameters
@@ -86,7 +86,7 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
         return op
 
 
-def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=4, nb=40, dt=None):
+def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=12, nb=40, dt=None):
     clear_cache()
 
     # Parameters
@@ -142,7 +142,7 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=4, nb=
     return src.data, p, q
 
 
-def forward_born(model, src_coords, wavelet, rec_coords, space_order=4, nb=40, isic=False, dt=None, save=False):
+def forward_born(model, src_coords, wavelet, rec_coords, space_order=12, nb=40, isic=False, dt=None, save=False):
     clear_cache()
 
     # Parameters
@@ -172,11 +172,6 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=4, nb=40, i
     vl = TimeFunction(name='vl', grid=model.grid,
                      time_order=2, space_order=space_order)
 
-    if len(model.shape) == 2:
-        x, y = u.space_dimensions
-    else:
-        x, y, z = u.space_dimensions
-
     FD_kernel = kernels[len(model.shape)]
     H0, Hz = FD_kernel(u, v, ang0, ang1, ang2, ang3, space_order)
     H0l, Hzl = FD_kernel(ul, vl, ang0, ang1, ang2, ang3, space_order)
@@ -198,15 +193,19 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=4, nb=40, i
             (4.0 * m * vl+ (s * damp - 2.0 * m) *
              vl.backward + 2.0 * s ** 2 * (delta * H0l + Hzl - dm * v.dt2))
     else:
-        lin_expru = dm * u.dt2 * m - first_derivative(u.dx * dm, order=space_order, dim=x)
-        lin_expru -= first_derivative(u.dy * dm, order=space_order, dim=y)
-        lin_exprv = dm * v.dt2 * m - first_derivative(v.dx * dm, order=space_order, dim=x)
-        lin_exprv -= first_derivative(v.dy * dm, order=space_order, dim=y)
-
+        lin_expru = dm * u.dt2 * m - epsilon * Dx(Dx(u, ang0, ang1, ang2, ang3, space_order) * dm,
+                                                  ang0, ang1, ang2, ang3, space_order)
+        lin_expru -= delta * Dz(Dz(u, ang0, ang1, ang2, ang3, space_order) * dm,
+                                   ang0, ang1, ang2, ang3, space_order)
+        lin_exprv = dm * v.dt2 * m - delta * Dx(Dx(v, ang0, ang1, ang2, ang3, space_order) * dm,
+                                                ang0, ang1, ang2, ang3, space_order)
+        lin_exprv -= Dz(Dz(v, ang0, ang1, ang2, ang3, space_order) * dm,
+                        ang0, ang1, ang2, ang3, space_order)
         if len(model.shape) == 3:
-            lin_expru -= first_derivative(u.dz * dm, order=space_order, dim=z)
-            lin_exprv -= first_derivative(v.dz * dm, order=space_order, dim=z)
-
+            lin_expru -= esilon * Dy(Dy(u, ang0, ang1, ang2, ang3, space_order) * dm,
+                                        ang0, ang1, ang2, ang3, space_order)
+            lin_exprv -= delta * Dy(Dy(v, ang0, ang1, ang2, ang3, space_order) * dm,
+                                    ang0, ang1, ang2, ang3, space_order)
         stencilpl = 1.0 / (2.0 * m + s * damp) * \
             (4.0 * m * ul + (s * damp - 2.0 * m) *
              ul.backward + 2.0 * s ** 2 * (epsilon * H0l + delta * Hzl - lin_expru))
@@ -236,12 +235,11 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=4, nb=40, i
                   name="Born%s" % randint(1e5))
     op(dt=dt)
 
-    return rec.data, u, v
+    return rec.data, u, ul
 
 
-def adjoint_born(model, rec_coords, rec_data, u=None, v=None, op_forward=None, is_residual=False, space_order=4, nb=40, isic=False, isictti=False, dt=None):
+def adjoint_born(model, rec_coords, rec_data, u=None, v=None, op_forward=None, is_residual=False, space_order=12, nb=40, isic=False, dt=None):
     clear_cache()
-
     # Parameters
     nt = rec_data.shape[0]
     if dt is None:
@@ -293,30 +291,21 @@ def adjoint_born(model, rec_coords, rec_data, u=None, v=None, op_forward=None, i
         v = TimeFunction(name='v', grid=model.grid, time_order=2, space_order=space_order)
 
     if isic is True:
-        if len(model.shape) == 2:
-            gradient_update = [Eq(gradient, gradient - dt * ((u.dt2 * p + v.dt2 * q) * m +
-                                                              u.dx * p.dx + u.dy * p.dy +
-                                                              v.dx * q.dx + v.dy * q.dy))]
-        else:
-            gradient_update = [Eq(gradient, gradient - dt * ((u.dt2 * p + v.dt2 * q) * m +
-                                                              u.dx * p.dx + u.dy * p.dy + u.dz * p.dz +
-                                                              v.dx * q.dx + v.dy * q.dy + v.dz * q.dz))]
-    elif isictti is True:
-        udx = Dx(u, ang0, ang1, ang2, ang3, space_order)
+        udx = epsilon * Dx(u, ang0, ang1, ang2, ang3, space_order)
         pdx = Dx(p, ang0, ang1, ang2, ang3, space_order)
-        udz = Dz(u, ang0, ang1, ang2, ang3, space_order)
+        udz = delta * Dz(u, ang0, ang1, ang2, ang3, space_order)
         pdz = Dz(p, ang0, ang1, ang2, ang3, space_order)
-        vdx = Dx(v, ang0, ang1, ang2, ang3, space_order)
+        vdx = delta * Dx(v, ang0, ang1, ang2, ang3, space_order)
         qdx = Dx(q, ang0, ang1, ang2, ang3, space_order)
         vdz = Dz(v, ang0, ang1, ang2, ang3, space_order)
         qdz = Dz(q, ang0, ang1, ang2, ang3, space_order)
-        grads = vdz * qdz + delta * udz * pdz + epsilon * udx * pdx + delta * vdx * qdx
-        if len(model.shape) == 2:
-            udy = Dy(u, ang0, ang1, ang2, ang3, space_order)
+        grads = vdz * qdz + udz * pdz + udx * pdx + vdx * qdx
+        if len(model.shape) == 3:
+            udy = epsilon * Dy(u, ang0, ang1, ang2, ang3, space_order)
             pdy = Dy(p, ang0, ang1, ang2, ang3, space_order)
-            vdy = Dy(v, ang0, ang1, ang2, ang3, space_order)
+            vdy = delta * Dy(v, ang0, ang1, ang2, ang3, space_order)
             qdy = Dy(q, ang0, ang1, ang2, ang3, space_order)
-            grads += (epsilon * udy * pdy + delta * vdy * qdy)
+            grads += udy * pdy + vdy * qdy
         gradient_update = [Eq(gradient, gradient - dt * ((u.dt2 * p + v.dt2 * q) * m + grads))]
     else:
         gradient_update = [Eq(gradient, gradient - dt * u.dt2 * p - dt * v.dt2 * q)]
@@ -355,7 +344,7 @@ def adjoint_born(model, rec_coords, rec_data, u=None, v=None, op_forward=None, i
     else:
         return gradient.data
 
-def adjoint_born_fake(model, rec_coords, rec_data, u=None, v=None, op_forward=None, is_residual=False, space_order=4, nb=40, isic=False, dt=None):
+def adjoint_born_fake(model, rec_coords, rec_data, u=None, v=None, op_forward=None, is_residual=False, space_order=12, nb=40, isic=False, dt=None):
     clear_cache()
 
     # Parameters
@@ -631,8 +620,11 @@ def Dx(field, costheta, sintheta, cosphi, sinphi, space_order):
     :return: du/dx in rotated coordinates
     """
     order1 = space_order
-    func = list(retrieve_functions(field))[0]
-    dims = func.space_dimensions
+    func = list(retrieve_functions(field))
+    for i in func:
+        if isinstance(i, TimeFunction):
+            dims = i.space_dimensions
+            break
     Dx = (costheta * cosphi * first_derivative(field, dim=dims[0], side=centered, order=order1) -
           sintheta * first_derivative(field, dim=dims[-1], side=centered, order=order1))
 
@@ -653,8 +645,11 @@ def Dy(field, costheta, sintheta, cosphi, sinphi, space_order):
     :return: du/dy in rotated coordinates
     """
     order1 = space_order
-    func = list(retrieve_functions(field))[0]
-    dims = func.space_dimensions
+    func = list(retrieve_functions(field))
+    for i in func:
+        if isinstance(i, TimeFunction):
+            dims = i.space_dimensions
+            break
     Dy = (-sinphi * first_derivative(field, dim=dims[0], side=centered, order=order1) +
           cosphi * first_derivative(field, dim=dims[1],side=centered, order=order1))
 
@@ -673,8 +668,11 @@ def Dz(field, costheta, sintheta, cosphi, sinphi, space_order):
     :return: du/dz in rotated coordinates
     """
     order1 = space_order
-    func = list(retrieve_functions(field))[0]
-    dims = func.space_dimensions
+    func = list(retrieve_functions(field))
+    for i in func:
+        if isinstance(i, TimeFunction):
+            dims = i.space_dimensions
+            break
     Dz = (sintheta * cosphi * first_derivative(field, dim=dims[0], side=centered, order=order1) +
           costheta * first_derivative(field, dim=dims[-1], side=centered, order=order1))
 
