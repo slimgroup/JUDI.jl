@@ -63,7 +63,7 @@ function fwi_objective(model_full::Model, source::judiVector, dObs::judiVector, 
             argout1 = misfit(dPredicted, dObserved, options.normalize)
             residual = gs_residual(options.gs, dtComp, dPredicted, dObserved, options.normalize)
         end
-        argout2 = pycall(ac.adjoint_born, Array{Float32}, modelPy, PyReverseDims(rec_coords'), PyReverseDims((dPredicted  - dObserved)'),
+        argout2 = pycall(ac.adjoint_born, Array{Float32}, modelPy, PyReverseDims(rec_coords'), PyReverseDims(residual'),
                          u=u0, is_residual=true)
     end
     argout2 = remove_padding(argout2, model.nb, true_adjoint=options.sum_padding)

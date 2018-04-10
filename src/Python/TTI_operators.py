@@ -194,18 +194,18 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=12, nb=40, 
              vl.backward + 2.0 * s ** 2 * (delta * H0l + Hzl - dm * v.dt2))
     else:
         order_loc = int(space_order/2)
-        lin_expru = dm * u.dt2 * m - epsilon * Dx(Dx(u, ang0, ang1, ang2, ang3, order_loc) * dm,
+        lin_expru = dm * u.dt2 * m - Dx(Dx(u, ang0, ang1, ang2, ang3, order_loc) * dm,
                                                   ang0, ang1, ang2, ang3, order_loc)
-        lin_expru -= delta * Dz(Dz(u, ang0, ang1, ang2, ang3, order_loc) * dm,
+        lin_expru -= Dz(Dz(u, ang0, ang1, ang2, ang3, order_loc) * dm,
                                    ang0, ang1, ang2, ang3, order_loc)
-        lin_exprv = dm * v.dt2 * m - delta * Dx(Dx(v, ang0, ang1, ang2, ang3, order_loc) * dm,
+        lin_exprv = dm * v.dt2 * m - Dx(Dx(v, ang0, ang1, ang2, ang3, order_loc) * dm,
                                                 ang0, ang1, ang2, ang3, order_loc)
         lin_exprv -= Dz(Dz(v, ang0, ang1, ang2, ang3, order_loc) * dm,
                         ang0, ang1, ang2, ang3, order_loc)
         if len(model.shape) == 3:
-            lin_expru -= esilon * Dy(Dy(u, ang0, ang1, ang2, ang3, order_loc) * dm,
+            lin_expru -= Dy(Dy(u, ang0, ang1, ang2, ang3, order_loc) * dm,
                                         ang0, ang1, ang2, ang3, order_loc)
-            lin_exprv -= delta * Dy(Dy(v, ang0, ang1, ang2, ang3, order_loc) * dm,
+            lin_exprv -= Dy(Dy(v, ang0, ang1, ang2, ang3, order_loc) * dm,
                                     ang0, ang1, ang2, ang3, order_loc)
         stencilpl = 1.0 / (2.0 * m + s * damp) * \
             (4.0 * m * ul + (s * damp - 2.0 * m) *
@@ -293,11 +293,11 @@ def adjoint_born(model, rec_coords, rec_data, u=None, v=None, op_forward=None, i
 
     if isic is True:
         order_loc = int(space_order/2)
-        udx = epsilon * Dx(u, ang0, ang1, ang2, ang3, order_loc)
+        udx = Dx(u, ang0, ang1, ang2, ang3, order_loc)
         pdx = Dx(p, ang0, ang1, ang2, ang3, order_loc)
-        udz = delta * Dz(u, ang0, ang1, ang2, ang3, order_loc)
+        udz = Dz(u, ang0, ang1, ang2, ang3, order_loc)
         pdz = Dz(p, ang0, ang1, ang2, ang3, order_loc)
-        vdx = delta * Dx(v, ang0, ang1, ang2, ang3, order_loc)
+        vdx = Dx(v, ang0, ang1, ang2, ang3, order_loc)
         qdx = Dx(q, ang0, ang1, ang2, ang3, order_loc)
         vdz = Dz(v, ang0, ang1, ang2, ang3, order_loc)
         qdz = Dz(q, ang0, ang1, ang2, ang3, order_loc)

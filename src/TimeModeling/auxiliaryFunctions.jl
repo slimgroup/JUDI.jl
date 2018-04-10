@@ -320,7 +320,7 @@ function generate_distribution(x; src_no=1)
 	ns = convert(Integer,ceil(nt/2))
 	amp = abs.(fft(x.data[src_no]))[1:ns]	# get first half of spectrum
 
-	# convert to cumulative probability distribution (integrate)
+	# convert to cumulative probability distribution (integrate)1
 	pd = zeros(ns)
 	pd[1] = dt*amp[1]
 	for j=2:ns
@@ -364,21 +364,20 @@ function gs_residual_trace(maxshift, dtComp, dPredicted, dObserved, normalize)
 
 	data_size = size(dPredicted)
 	residual = zeros(Float32, data_size)
-	dPredicted = [zeros(Float32, size(dPredicted,1), nshift) dPredicted zeros(Float32, size(dPredicted,1), nshift)]
-	dObserved = [zeros(Float32, size(dObserved,1), nshift) dObserved zeros(Float32, size(dObserved,1), nshift)]
-	residual_plot = zeros(Float32, size(dObserved))
-	syn_plot = zeros(Float32, size(dObserved))
+	dPredicted = [zeros(Float32, nshift, size(dPredicted,2)); dPredicted; zeros(Float32, nshift, size(dPredicted,2))]
+	dObserved = [zeros(Float32, nshift, size(dPredicted,2)); dObserved; zeros(Float32, nshift, size(dPredicted,2))]
+	# residual_plot = zeros(Float32, size(dObserved))
+	# syn_plot = zeros(Float32, size(dObserved))
 
-	for rr=1:size(dPredicted,1)
-		aux = zeros(Float32, size(dPredicted, 2))
+	for rr=1:size(dPredicted,2)
+		aux = zeros(Float32, size(dPredicted, 1))
 
-		syn = dPredicted[rr,:]
-		obs = dObserved[rr,:]
+		syn = dPredicted[:, rr]
+		obs = dObserved[:, rr]
 		if normalize
 			syn /= norm(syn)
 			obs /= norm(obs)
 		end
-
 		H =zeros(Float32, length(1:5:nSamples),  length(1:5:nSamples));
 
 		iloc=0
@@ -409,16 +408,15 @@ function gs_residual_trace(maxshift, dtComp, dPredicted, dObserved, normalize)
 
 		H = Array{Float64}(H)
 		H = .5*(H'+H)
-		figure();imshow(H)
 		A = ones(Float32, 1, nSamples)
 		sol = quadprog(0, H, A, '=', 1., 0., 1., IpoptSolver(print_level=1))
 		alphas = Array{Float32}(sol.sol)
 		# Data misfit
 		for i = 1:2*nshift+1
 			shift = i - nshift - 1
-			residual[rr, :] += alphas[i] * circshift(circshift(syn, shift) - obs, -2*shift)[nshift+1:(end-nshift)]
-			residual_plot[rr, :] +=  alphas[i] * (circshift(syn, shift) - obs)
-			syn_plot[rr, :] +=  alphas[i] * circshift(syn, shift)
+			residual[:, rr] += alphas[i] * circshift(circshift(syn, shift) - obs, -2*shift)[nshift+1:(end-nshift)]
+			# residual_plot[:, rr] +=  alphas[i] * (circshift(syn, shift) - obs)
+			# syn_plot[:, rr] +=  alphas[i] * circshift(syn, shift)
 			#residual += alphas[i] * circshift(circshift(dPredicted, (0,shift)) - dObserved, (0, -2*shift))[:, nshift+1:(end-nshift)]
 		end
 		# if rr%50==0
@@ -442,8 +440,8 @@ function gs_residual_shot(maxshift, dtComp, dPredicted, dObserved, normalize)
 
 	data_size = size(dPredicted)
 	residual = zeros(Float32, data_size)
-	dPredicted = [zeros(Float32, size(dPredicted,1), nshift) dPredicted zeros(Float32, size(dPredicted,1), nshift)]
-	dObserved = [zeros(Float32, size(dObserved,1), nshift) dObserved zeros(Float32, size(dObserved,1), nshift)]
+	dPredicted = [zeros(Float32, nshift, size(dPredicted,2)); dPredicted; zeros(Float32, nshift, size(dPredicted,2))]
+	dObserved = [zeros(Float32, nshift, size(dPredicted,2)); dObserved; zeros(Float32, nshift, size(dPredicted,2))]
 	if normalize
 		dPredicted /= norm(vec(dPredicted))
 		dObserved /= norm(vec(dObserved))
@@ -457,12 +455,12 @@ function gs_residual_shot(maxshift, dtComp, dPredicted, dObserved, normalize)
 		shift = i - nshift - 1
 		iloc +=1
 		jloc=iloc
-		dshift = vec(circshift(dPredicted, (0,shift)) - dObserved)
+		dshift = vec(circshift(dPredicted, (shift, 0)) - dObserved)
 		H[iloc, iloc] = dot(dshift, dshift)
 		for j = (i+5):5:nSamples
 			jloc+=1
 			shift2 = j - nshift - 1
-			circshift!(aux, dPredicted, (0,shift2))
+			circshift!(aux, dPredicted, (shift2, 0))
 			broadcast!(-, aux, aux, dObserved)
 			H[iloc, jloc] = dot(dshift, vec(aux))
 			H[jloc, iloc] = H[iloc, jloc]
@@ -476,7 +474,7 @@ function gs_residual_shot(maxshift, dtComp, dPredicted, dObserved, normalize)
 	y0 = 1:nSamples
 	H = evalgrid(spl, x0, y0)
 
-	# get coefficients
+	# get coefficientsn
 
 	H = Array{Float64}(H)
 	H = .5*(H'+H)
@@ -486,7 +484,7 @@ function gs_residual_shot(maxshift, dtComp, dPredicted, dObserved, normalize)
 	# Data misfit
 	for i = 1:2*nshift+1
 		shift = i - nshift - 1
-		residual += alphas[i] * circshift(abs.(circshift(dPredicted, (0,shift))).*(circshift(dPredicted, (0,shift)) - dObserved), (0, -2*shift))[:, nshift+1:(end-nshift)]
+		residual += alphas[i] * circshift(abs.(circshift(dPredicted, (shift, 0))).*(circshift(dPredicted, (shift, 0)) - dObserved), (-2*shift, 0))[nshift+1:(end-nshift), :]
 	end
 
 	return residual
