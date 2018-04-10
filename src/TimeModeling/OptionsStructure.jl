@@ -1,4 +1,4 @@
-# Options structure 
+# Options structure
 # Author: Philipp Witte, pwitte@eos.ubc.ca
 # Date: May 2017
 #
@@ -16,6 +16,8 @@ type Options
 	file_name::String
 	sum_padding::Bool
     save_wavefield::Bool
+    gs::Dict
+    normalize::Bool
 end
 
 """
@@ -29,7 +31,7 @@ end
         file_path::String
         file_name::String
         sum_padding::Bool
-		
+
 
 Options structure for seismic modeling.
 
@@ -56,11 +58,9 @@ Constructor
 
 All arguments are optional keyword arguments with the following default values:
 
-    Options(;retry_n=0, limit_m=false, buffer_size=1e3, save_data_to_disk=false, file_path=pwd(), 
+    Options(;retry_n=0, limit_m=false, buffer_size=1e3, save_data_to_disk=false, file_path=pwd(),
             file_name="shot", sum_padding=false, save_wavefield=false)
 
 """
-Options(;space_order=8,retry_n=0,limit_m=false,buffer_size=1e3, save_data_to_disk=false, file_path="", file_name="shot", sum_padding=false, save_wavefield=false) = 
-    Options(space_order,retry_n,limit_m,buffer_size,save_data_to_disk,file_path,file_name, sum_padding, save_wavefield)
-
-
+Options(;space_order=8,retry_n=0,limit_m=false,buffer_size=1e3, save_data_to_disk=false, file_path="", file_name="shot", sum_padding=false, save_wavefield=false, gs=Dict(), normalize=false) =
+    Options(space_order,retry_n,limit_m,buffer_size,save_data_to_disk,file_path,file_name, sum_padding, save_wavefield, gs, normalize)

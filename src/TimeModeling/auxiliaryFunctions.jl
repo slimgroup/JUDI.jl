@@ -6,6 +6,7 @@
 export ricker_wavelet, get_computational_nt, smooth10, damp_boundary, calculate_dt, setup_grid, setup_3D_grid
 export convertToCell, limit_model_to_receiver_area, extend_gradient, plot_geometry_map
 export time_resample, write_shot_record, remove_padding, backtracking_linesearch
+export gs_residual
 
 function limit_model_to_receiver_area(srcGeometry::Geometry,recGeometry::Geometry,model::Model,buffer;pert=[])
 	# Restrict full velocity model to area that contains either sources and receivers
@@ -50,7 +51,7 @@ function extend_gradient(model_full::Model,model::Model,gradient::Array)
 	nx_start = Int((model.o[1] - model_full.o[1])/model.d[1] + 1)
 	nx_end = nx_start + model.n[1] - 1
 	ny_start = Int((model.o[2] - model_full.o[2])/model.d[2] + 1)
-	ny_end = ny_start + model.n[2] - 1 
+	ny_end = ny_start + model.n[2] - 1
 	full_gradient[nx_start:nx_end,ny_start:ny_end,:] = gradient
 	return full_gradient
 end
@@ -122,7 +123,7 @@ function get_computational_nt(srcGeometry, recGeometry, model::Model)
 end
 
 function setup_grid(geometry,n, origin)
-	# 3D grid 
+	# 3D grid
 	if length(n)==3
 		if length(geometry.xloc[1]) > 1
 			source_coords = Array{Float32,2}([vec(geometry.xloc[1]) vec(geometry.yloc[1]) vec(geometry.zloc[1])])
@@ -151,11 +152,11 @@ function setup_3D_grid(xrec::Array{Any,1},yrec::Array{Any,1},zrec::Array{Any,1})
 	for i=1:nsrc
 		nxrec = length(xrec[i])
 		nyrec = length(yrec[i])
-	
+
 		xloc[i] = zeros(nxrec*nyrec)
 		yloc[i] = zeros(nxrec*nyrec)
 		zloc[i] = zeros(nxrec*nyrec)
-	
+
 		idx = 1
 
 		for k=1:nyrec
@@ -305,3 +306,142 @@ end
 wrap_retry(f,n) = retry(f;n=n)
 
 
+
+function gs_residual_trace(maxshift, dtComp, dPredicted, dObserved)
+	#shifts
+	nshift = round(Int64, maxshift/dtComp)
+	nSamples = 2*nshift + 1
+
+	data_size = size(dPredicted)
+	residual = zeros(Float32, data_size)
+	dPredicted = [zeros(Float32, size(dPredicted,1), nshift) dPredicted zeros(Float32, size(dPredicted,1), nshift)]
+	dObserved = [zeros(Float32, size(dObserved,1), nshift) dObserved zeros(Float32, size(dObserved,1), nshift)]
+	residual_plot = zeros(Float32, size(dObserved))
+	syn_plot = zeros(Float32, size(dObserved))
+
+	for rr=1:size(dPredicted,1)
+		aux = zeros(Float32, size(dPredicted, 2))
+
+		syn = dPredicted[rr,:]
+		syn /= norm(syn)
+		obs = dObserved[rr,:]
+		obs /= norm(obs)
+
+		H =zeros(Float32, length(1:5:nSamples),  length(1:5:nSamples));
+
+		iloc=0
+		for i = 1:5:nSamples
+			shift = i - nshift - 1
+			iloc +=1
+			jloc=iloc
+			dshift = circshift(syn, shift) - obs
+			H[iloc, iloc] = dot(dshift, dshift)
+			for j = (i+5):5:nSamples
+				jloc+=1
+				shift2 = j - nshift - 1
+				circshift!(aux, syn, shift2)
+				broadcast!(-, aux, aux, obs)
+				H[iloc, jloc] = dot(dshift, vec(aux))
+				H[jloc, iloc] = H[iloc, jloc]
+			end
+		end
+
+		x = 1:5:nSamples
+		y = 1:5:nSamples
+		spl = Spline2D(x, y, H)
+		x0 = 1:nSamples
+		y0 = 1:nSamples
+		H = evalgrid(spl, x0, y0)
+
+		# get coefficients
+
+		H = Array{Float64}(H)
+		H = .5*(H'+H)
+		A = ones(Float32, 1, nSamples)
+		sol = quadprog(0, H, A, '=', 1., 0., 1., IpoptSolver(print_level=1))
+		alphas = Array{Float32}(sol.sol)
+		# Data misfit
+		for i = 1:2*nshift+1
+			shift = i - nshift - 1
+			residual[rr, :] += alphas[i] * circshift(circshift(syn, shift) - obs, -2*shift)[nshift+1:(end-nshift)]
+			residual_plot[rr, :] +=  alphas[i] * (circshift(syn, shift) - obs)
+			syn_plot[rr, :] +=  alphas[i] * circshift(syn, shift)
+			#residual += alphas[i] * circshift(circshift(dPredicted, (0,shift)) - dObserved, (0, -2*shift))[:, nshift+1:(end-nshift)]
+		end
+		# if rr%50==0
+		# 	figure();plot(syn_plot[rr,:], "-b");plot(syn, "-r");plot(obs, "-g")
+		# end
+	end
+	# figure();imshow(syn_plot', vmin=-1e1, vmax=1e1, cmap="seismic", aspect=.2)
+	# figure();imshow(dPredicted', vmin=-1e1, vmax=1e1, cmap="seismic", aspect=.2)
+	# figure();imshow(dObserved', vmin=-1e1, vmax=1e1, cmap="seismic", aspect=.2)
+	# figure();imshow(residual_plot', vmin=-1e1, vmax=1e1, cmap="seismic", aspect=.2)
+	# figure();imshow(dPredicted' - dObserved', vmin=-1e1, vmax=1e1, cmap="seismic", aspect=.2)
+	#
+	return residual
+end
+
+function gs_residual_shot(maxshift, dtComp, dPredicted, dObserved, normalize)
+	#shifts
+	nshift = round(Int64, maxshift/dtComp)
+	# println(nshift, " ", dtComp)
+	nSamples = 2*nshift + 1
+
+	data_size = size(dPredicted)
+	residual = zeros(Float32, data_size)
+	dPredicted = [zeros(Float32, size(dPredicted,1), nshift) dPredicted zeros(Float32, size(dPredicted,1), nshift)]
+	dPredicted /= norm(vec(dPredicted))
+	dObserved = [zeros(Float32, size(dObserved,1), nshift) dObserved zeros(Float32, size(dObserved,1), nshift)]
+	dObserved /= norm(vec(dObserved))
+	aux = zeros(Float32, size(dPredicted))
+
+	H =zeros(Float32, length(1:5:nSamples),  length(1:5:nSamples));
+
+	iloc=0
+	for i = 1:5:nSamples
+		shift = i - nshift - 1
+		iloc +=1
+		jloc=iloc
+		dshift = vec(circshift(dPredicted, (0,shift)) - dObserved)
+		H[iloc, iloc] = dot(dshift, dshift)
+		for j = (i+5):5:nSamples
+			jloc+=1
+			shift2 = j - nshift - 1
+			circshift!(aux, dPredicted, (0,shift2))
+			broadcast!(-, aux, aux, dObserved)
+			H[iloc, jloc] = dot(dshift, vec(aux))
+			H[jloc, iloc] = H[iloc, jloc]
+		end
+	end
+
+	x = 1:5:nSamples
+	y = 1:5:nSamples
+	spl = Spline2D(x, y, H)
+	x0 = 1:nSamples
+	y0 = 1:nSamples
+	H = evalgrid(spl, x0, y0)
+
+	# get coefficients
+
+	H = Array{Float64}(H)
+	H = .5*(H'+H)
+	A = ones(Float32, 1, nSamples)
+	sol = quadprog(0, H, A, '=', 1., 0., 1., IpoptSolver(print_level=1))
+	alphas = Array{Float32}(sol.sol)
+	# Data misfit
+	for i = 1:2*nshift+1
+		shift = i - nshift - 1
+		residual += alphas[i] * circshift(abs.(circshift(dPredicted, (0,shift))).*(circshift(dPredicted, (0,shift)) - dObserved), (0, -2*shift))[:, nshift+1:(end-nshift)]
+	end
+
+	return residual
+end
+
+function gs_residual(gs, dtComp, dPredicted, dObserved, normalize)
+	if gs["strategy"] == "shot"
+		residual = gs_residual_shot(gs["maxshift"], dtComp, dPredicted, dObserved, normalize)
+	else
+		residual = gs_residual_shot(gs["maxshift"], dtComp, dPredicted, dObserved, normalize)
+	end
+	return residual
+end

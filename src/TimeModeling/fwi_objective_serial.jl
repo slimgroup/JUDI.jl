@@ -48,21 +48,42 @@ function fwi_objective(model_full::Model, source::judiVector, dObs::judiVector, 
 
 
 	# Data misfit
-	argout1 = .5f0*norm(vec(dPredicted) - vec(dObserved),2)^2.f0
-
-    figure();imshow(dPredicted' - dObserved', vmin=-1. vmax=1)
+    if isempty(options.gs)
+        argout1 = misfit(dPredicted, dObserved, options.normalize)
+        residual = adjoint_src(dPredicted, dObserved, options.normalize)
+    elseif
+        argout1 = misfit(dPredicted, dObserved, options.normalize)
+        residual = gs_residual(gs, dtComp, dPreicted, dObserved, options.normalize)
+    end
 
 	# Backpropagation of data residual
     if isempty(frequencies)
     	argout2 = pycall(ac.adjoint_born, Array{Float32,length(model.n)}, model.n, model.d, model.o, PyReverseDims(permutedims(model.m,dims)),
-                         PyReverseDims(src_coords'), PyReverseDims(rec_coords'), PyReverseDims((dPredicted  - dObserved)'), u0)
+                         PyReverseDims(src_coords'), PyReverseDims(rec_coords'), PyReverseDims(residual'), u0)
     else
 	    argout2 = pycall(ac.adjoint_freq_born, Array{Float32,length(model.n)}, model.n, model.d, model.o, PyReverseDims(permutedims(model.m,dims)),
-                         PyReverseDims(src_coords'), PyReverseDims(rec_coords'), PyReverseDims((dPredicted  - dObserved)'), frequencies, ufr, ufi)
+                         PyReverseDims(src_coords'), PyReverseDims(rec_coords'), PyReverseDims(residual'), frequencies, ufr, ufi)
     end
     argout2 = remove_padding(argout2,model.nb,true_adjoint=options.sum_padding)
 	if options.limit_m==true && length(model_full.n) == 3
 		argout2 = extend_gradient(model_full,model,argout2)
 	end
 	return [argout1; vec(argout2)]
+end
+
+function misfit(dPredicted, dObserved, normalize)
+    if normalize
+        obj = norm(vec(dPredicted)) - dot(vec(dPredicted),vec(dObserved))/norm(vec(dObserved))
+    else
+        obj = .5f0*norm(vec(dPredicted) - vec(dObserved),2)^2.f0
+    end
+end
+
+
+function adjoitn_src(dPredicted, dObserved, normalize)
+    if normalize
+        adj_src = dPredicted/norm(vec(dPredicted)) - dObserved/norm(vec(dObserved))
+    else
+        adj_src = dPredicted - dObserved
+    end
 end
