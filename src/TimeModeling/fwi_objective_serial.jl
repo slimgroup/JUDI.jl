@@ -7,7 +7,7 @@ function fwi_objective(model_full::Model, source::judiVector, dObs::judiVector, 
     # Load full geometry for out-of-core geometry containers
     typeof(dObs.geometry) == GeometryOOC && (dObs.geometry = Geometry(dObs.geometry))
     typeof(source.geometry) == GeometryOOC && (source.geometry = Geometry(source.geometry))
-    length(model_full.n) == 3 ? dims = (3,2,1) : dims = (2,1)   # model dimensions for Python are (z,y,x) and (z,x)
+    length(model_full.n) == 3 ? dims = [3,2,1] : dims = [2,1]   # model dimensions for Python are (z,y,x) and (z,x)
 
     # for 3D modeling, limit model to area with sources/receivers
     if options.limit_m == true && length(model_full.n) == 3 # only supported for 3D
