@@ -12,7 +12,8 @@ from numpy.random import randint
 from sympy import solve, cos, sin, expand, symbols
 from sympy import Function as fint
 from devito.logger import set_log_level
-from devito import Eq, Function, TimeFunction, Dimension, Operator, clear_cache
+from devito import Eq, Function, TimeFunction, Dimension, Operator, clear_cache, ConditionalDimension, Constant
+from devito import first_derivative, second_derivative
 from devito import first_derivative, left, right
 from PySource import PointSource, Receiver
 from PyModel import Model
@@ -31,7 +32,7 @@ def acoustic_laplacian(v, rho):
             Lap = 1 / rho * v.laplace
     return Lap, rho
 
-def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_order=8, nb=40, op_return=False, dt=None):
+def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_order=8, op_return=False, dt=None):
     clear_cache()
 
     # Parameters
@@ -75,7 +76,7 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
         return op
 
 
-def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=8, nb=40, dt=None):
+def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=8, dt=None):
     clear_cache()
 
     # Parameters
@@ -113,7 +114,7 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=8, nb=
     return src.data
 
 
-def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, nb=40, isic=False, dt=None):
+def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, isic=False, dt=None):
     clear_cache()
 
     # Parameters
@@ -175,7 +176,7 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, nb=40, i
     return rec.data
 
 
-def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residual=False, space_order=8, nb=40, isic=False, dt=None):
+def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residual=False, space_order=8, isic=False, dt=None):
     clear_cache()
 
     # Parameters
@@ -249,7 +250,7 @@ def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residu
 
 ########################################################################################################################
 
-def forward_freq_modeling(model, src_coords, wavelet, rec_coords, freq, space_order=8, nb=40, dt=None):
+def forward_freq_modeling(model, src_coords, wavelet, rec_coords, freq, space_order=8, dt=None):
     # Forward modeling with on-the-fly DFT of forward wavefields
     clear_cache()
 
@@ -260,21 +261,27 @@ def forward_freq_modeling(model, src_coords, wavelet, rec_coords, freq, space_or
     m, damp = model.m, model.damp
     freq_dim = Dimension(name='freq_dim')
     time = model.grid.time_dim
+    rate = int(dt/(2*np.max(freq)))
+    t_sub = ConditionalDimension('t_sub', parent=time, factor=rate)
 
     # Create wavefields
     nfreq = freq.shape[0]
     u = TimeFunction(name='u', grid=model.grid, time_order=2, space_order=space_order)
-    f = Function(name='f', dimensions=(freq_dim,), shape=(nfreq,))
+    f = Function(name='f', dimensions=(freq_dim,), shape=(nfreq,), space_order=0, dtype=u.dtype)
     f.data[:] = freq[:]
-    ufr = Function(name='ufr', dimensions=(freq_dim,) + u.indices[1:], shape=(nfreq,) + model.shape_domain)
-    ufi = Function(name='ufi', dimensions=(freq_dim,) + u.indices[1:], shape=(nfreq,) + model.shape_domain)
+    ufr = Function(name='ufr', dimensions=(freq_dim,) + u.indices[1:], shape=(nfreq,) + model.shape_domain,
+                   dtype=u.dtype)
+    ufi = Function(name='ufi', dimensions=(freq_dim,) + u.indices[1:], shape=(nfreq,) + model.shape_domain,
+                   dtype=u.dtype)
 
     # Set up PDE and rearrange
     eqn = m * u.dt2 - u.laplace + damp * u.dt
-    stencil = solve(eqn, u.forward, simplify=False, rational=False)[0]
+    stencil = solve(eqn, u.forward)[0]
     expression = [Eq(u.forward, stencil)]
-    expression += [Eq(ufr, ufr + u*cos(2*np.pi*f*time*dt))]
-    expression += [Eq(ufi, ufi + u*sin(2*np.pi*f*time*dt))]
+
+    # Trigger subsamplng with auxiliary variable for cos/sin
+    expression += [Eq(ufr, ufr + u * cos(2.0*np.pi*f*t_sub*rate*dt))]
+    expression += [Eq(ufi, ufi + u * sin(2.0*np.pi*f*t_sub*rate*dt))]
 
     # Source symbol with input wavelet
     src = PointSource(name='src', grid=model.grid, ntime=nt, coordinates=src_coords)
@@ -286,16 +293,55 @@ def forward_freq_modeling(model, src_coords, wavelet, rec_coords, freq, space_or
     rec_term = rec.interpolate(expr=u, offset=model.nbpml)
 
     # Create operator and run
-    set_log_level('ERROR')
+    set_log_level('INFO')
     expression += src_term + rec_term
     op = Operator(expression, subs=model.spacing_map, dse='advanced', dle='advanced',
                   name="Forward%s" % randint(1e5))
     op(dt=dt)
 
-    return rec.data, ufr, ufi
+    return rec.data, ufr, ufi, u
 
+def forward_freq_modeling_mono(model, src, rec_coords, freq, space_order=8, dt=None):
+    # Forward modeling with on-the-fly DFT of forward wavefields
+    clear_cache()
 
-def adjoint_freq_born(model, rec_coords, rec_data, freq, ufr, ufi, space_order=8, nb=40, dt=None):
+    # Parameters
+    nt = src.data.shape[0]
+    if dt is None:
+        dt = model.critical_dt
+    m, damp = model.m, model.damp
+    freq_dim = src.indices[1]
+    time = model.grid.time_dim
+
+    # Create wavefields
+    expression = []
+    src_term = []
+    out = []
+    nfreq = freq.shape[0]
+    for i in range(nfreq):
+        u  = TimeFunction(name='u%s' % i, grid=model.grid, space_order=space_order, time_order=2)
+        out += [u]
+        # Set up PDE and rearrange
+        eqn = m * u.dt2 - u.laplace + damp * u.dt
+        stencil = solve(eqn, u.forward)[0]
+        expression += [Eq(u.forward, stencil)]
+
+        src_term += src.inject(field=u.forward, offset=model.nbpml, expr=src * dt**2 / m, subs={src.indices[1] : i})
+
+    # Data is sampled at receiver locations
+    rec = Receiver(name='rec', grid=model.grid, ntime=nt, coordinates=rec_coords)
+    rec_term = rec.interpolate(expr=u, offset=model.nbpml)
+
+    # Create operator and run
+    set_log_level('INFO')
+    expression += src_term + rec_term
+    op = Operator(expression, subs=model.spacing_map, dse='advanced', dle='advanced',
+                  name="Forward%s" % randint(1e5))
+    op(dt=dt)
+
+    return rec.data, tuple(out)
+
+def adjoint_freq_born(model, rec_coords, rec_data, freq, ufr, ufi, space_order=8, dt=None):
     clear_cache()
 
     # Parameters

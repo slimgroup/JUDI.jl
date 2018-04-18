@@ -135,7 +135,7 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=12, nb
     # Create operator and run
     set_log_level('INFO')
     expression += adj_src + adj_rec
-    op = Operator(expression, subs=model.spacing_map, dse='advanced', dle='advanced',
+    op = Operator(expression, subs=model.spacing_map, dse='aggressive', dle='advanced',
                   name="Backward%s" % randint(1e5))
     op(dt=dt)
 
@@ -163,9 +163,9 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=12, nb=40, 
         ang3 = sin(phi)
 
     # Create the forward and linearized wavefield
-    u = TimeFunction(name='u', grid=model.grid, save=nt,
+    u = TimeFunction(name='u', grid=model.grid,
                      time_order=2, space_order=space_order)
-    v = TimeFunction(name='v', grid=model.grid, save=nt,
+    v = TimeFunction(name='v', grid=model.grid,
                      time_order=2, space_order=space_order)
     ul = TimeFunction(name='ul', grid=model.grid,
                      time_order=2, space_order=space_order)
@@ -193,19 +193,20 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=12, nb=40, 
             (4.0 * m * vl+ (s * damp - 2.0 * m) *
              vl.backward + 2.0 * s ** 2 * (delta * H0l + Hzl - dm * v.dt2))
     else:
-        lin_expru = dm * u.dt2 * m - epsilon * Dx(Dx(u, ang0, ang1, ang2, ang3, space_order) * dm,
-                                                  ang0, ang1, ang2, ang3, space_order)
-        lin_expru -= delta * Dz(Dz(u, ang0, ang1, ang2, ang3, space_order) * dm,
-                                   ang0, ang1, ang2, ang3, space_order)
-        lin_exprv = dm * v.dt2 * m - delta * Dx(Dx(v, ang0, ang1, ang2, ang3, space_order) * dm,
-                                                ang0, ang1, ang2, ang3, space_order)
-        lin_exprv -= Dz(Dz(v, ang0, ang1, ang2, ang3, space_order) * dm,
-                        ang0, ang1, ang2, ang3, space_order)
+        order_loc = int(space_order/2)
+        lin_expru = dm * u.dt2 * m - Dx(Dx(u, ang0, ang1, ang2, ang3, order_loc) * dm,
+                                                  ang0, ang1, ang2, ang3, order_loc)
+        lin_expru -= Dz(Dz(u, ang0, ang1, ang2, ang3, order_loc) * dm,
+                                   ang0, ang1, ang2, ang3, order_loc)
+        lin_exprv = dm * v.dt2 * m - Dx(Dx(v, ang0, ang1, ang2, ang3, order_loc) * dm,
+                                                ang0, ang1, ang2, ang3, order_loc)
+        lin_exprv -= Dz(Dz(v, ang0, ang1, ang2, ang3, order_loc) * dm,
+                        ang0, ang1, ang2, ang3, order_loc)
         if len(model.shape) == 3:
-            lin_expru -= esilon * Dy(Dy(u, ang0, ang1, ang2, ang3, space_order) * dm,
-                                        ang0, ang1, ang2, ang3, space_order)
-            lin_exprv -= delta * Dy(Dy(v, ang0, ang1, ang2, ang3, space_order) * dm,
-                                    ang0, ang1, ang2, ang3, space_order)
+            lin_expru -= Dy(Dy(u, ang0, ang1, ang2, ang3, order_loc) * dm,
+                                        ang0, ang1, ang2, ang3, order_loc)
+            lin_exprv -= Dy(Dy(v, ang0, ang1, ang2, ang3, order_loc) * dm,
+                                    ang0, ang1, ang2, ang3, order_loc)
         stencilpl = 1.0 / (2.0 * m + s * damp) * \
             (4.0 * m * ul + (s * damp - 2.0 * m) *
              ul.backward + 2.0 * s ** 2 * (epsilon * H0l + delta * Hzl - lin_expru))
@@ -238,7 +239,8 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=12, nb=40, 
     return rec.data, u, ul
 
 
-def adjoint_born(model, rec_coords, rec_data, u=None, v=None, op_forward=None, is_residual=False, space_order=12, nb=40, isic=False, dt=None):
+def adjoint_born(model, rec_coords, rec_data, u=None, v=None, op_forward=None, is_residual=False,
+                 space_order=12, nb=40, isic=False, isiciso=False, isicnothom=False, dt=None):
     clear_cache()
     # Parameters
     nt = rec_data.shape[0]
@@ -291,22 +293,46 @@ def adjoint_born(model, rec_coords, rec_data, u=None, v=None, op_forward=None, i
         v = TimeFunction(name='v', grid=model.grid, time_order=2, space_order=space_order)
 
     if isic is True:
-        udx = epsilon * Dx(u, ang0, ang1, ang2, ang3, space_order)
-        pdx = Dx(p, ang0, ang1, ang2, ang3, space_order)
-        udz = delta * Dz(u, ang0, ang1, ang2, ang3, space_order)
-        pdz = Dz(p, ang0, ang1, ang2, ang3, space_order)
-        vdx = delta * Dx(v, ang0, ang1, ang2, ang3, space_order)
-        qdx = Dx(q, ang0, ang1, ang2, ang3, space_order)
-        vdz = Dz(v, ang0, ang1, ang2, ang3, space_order)
-        qdz = Dz(q, ang0, ang1, ang2, ang3, space_order)
+        order_loc = int(space_order/2)
+        udx = epsilon * Dx(u, ang0, ang1, ang2, ang3, order_loc)
+        pdx = Dx(p, ang0, ang1, ang2, ang3, order_loc)
+        udz = delta * Dz(u, ang0, ang1, ang2, ang3, order_loc)
+        pdz = Dz(p, ang0, ang1, ang2, ang3, order_loc)
+        vdx = delta * Dx(v, ang0, ang1, ang2, ang3, order_loc)
+        qdx = Dx(q, ang0, ang1, ang2, ang3, order_loc)
+        vdz = Dz(v, ang0, ang1, ang2, ang3, order_loc)
+        qdz = Dz(q, ang0, ang1, ang2, ang3, order_loc)
         grads = vdz * qdz + udz * pdz + udx * pdx + vdx * qdx
         if len(model.shape) == 3:
-            udy = epsilon * Dy(u, ang0, ang1, ang2, ang3, space_order)
-            pdy = Dy(p, ang0, ang1, ang2, ang3, space_order)
-            vdy = delta * Dy(v, ang0, ang1, ang2, ang3, space_order)
-            qdy = Dy(q, ang0, ang1, ang2, ang3, space_order)
+            udy = epsilon * Dy(u, ang0, ang1, ang2, ang3, order_loc)
+            pdy = Dy(p, ang0, ang1, ang2, ang3, order_loc)
+            vdy = delta * Dy(v, ang0, ang1, ang2, ang3, order_loc)
+            qdy = Dy(q, ang0, ang1, ang2, ang3, order_loc)
             grads += udy * pdy + vdy * qdy
         gradient_update = [Eq(gradient, gradient - dt * ((u.dt2 * p + v.dt2 * q) * m + grads))]
+    elif isiciso is True:
+        grads = u.dx * p.dx + u.dy * p.dy + v.dx * q.dx + v.dy * q.dy
+        if len(model.shape) == 3:
+            grads += u.dz * p.dz + v.dz * q.dz
+        gradient_update = [Eq(gradient, gradient - dt * ((u.dt2 * p + v.dt2 * q) * m + grads))]
+    elif isicnothom is True:
+                order_loc = int(space_order/2)
+                udx = Dx(u, ang0, ang1, ang2, ang3, order_loc)
+                pdx = Dx(p, ang0, ang1, ang2, ang3, order_loc)
+                udz = Dz(u, ang0, ang1, ang2, ang3, order_loc)
+                pdz = Dz(p, ang0, ang1, ang2, ang3, order_loc)
+                vdx = Dx(v, ang0, ang1, ang2, ang3, order_loc)
+                qdx = Dx(q, ang0, ang1, ang2, ang3, order_loc)
+                vdz = Dz(v, ang0, ang1, ang2, ang3, order_loc)
+                qdz = Dz(q, ang0, ang1, ang2, ang3, order_loc)
+                grads = vdz * qdz + udz * pdz + udx * pdx + vdx * qdx
+                if len(model.shape) == 3:
+                    udy = epsilon * Dy(u, ang0, ang1, ang2, ang3, order_loc)
+                    pdy = Dy(p, ang0, ang1, ang2, ang3, order_loc)
+                    vdy = delta * Dy(v, ang0, ang1, ang2, ang3, order_loc)
+                    qdy = Dy(q, ang0, ang1, ang2, ang3, order_loc)
+                    grads += udy * pdy + vdy * qdy
+                gradient_update = [Eq(gradient, gradient - dt * ((u.dt2 * p + v.dt2 * q) * m + grads))]
     else:
         gradient_update = [Eq(gradient, gradient - dt * u.dt2 * p - dt * v.dt2 * q)]
 
