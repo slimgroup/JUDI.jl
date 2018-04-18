@@ -250,7 +250,7 @@ def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residu
 
 ########################################################################################################################
 
-def forward_freq_modeling(model, src_coords, wavelet, rec_coords, freq, space_order=8, dt=None):
+def forward_freq_modeling(model, src_coords, wavelet, rec_coords, freq, space_order=8, rate=1, dt=None):
     # Forward modeling with on-the-fly DFT of forward wavefields
     clear_cache()
 
@@ -261,7 +261,8 @@ def forward_freq_modeling(model, src_coords, wavelet, rec_coords, freq, space_or
     m, damp = model.m, model.damp
     freq_dim = Dimension(name='freq_dim')
     time = model.grid.time_dim
-    rate = int(dt/(2*np.max(freq)))
+    if rate is None:
+        rate = int(dt/(2*np.max(freq)))
     t_sub = ConditionalDimension('t_sub', parent=time, factor=rate)
 
     # Create wavefields
