@@ -49,7 +49,7 @@ for j=1:niterations
     fhistory_SGD[j] = fval
 
 	# linesearch
-	step = backtracking_linesearch(model0, q[i], d_obs[i], fval, gradient, proj; alpha=10f0)
+	step = backtracking_linesearch(model0, q[i], d_obs[i], fval, gradient, proj; alpha=1f0)
 	
 	# Update model and bound projection
 	model0.m = proj(model0.m + reshape(step,model0.n))
