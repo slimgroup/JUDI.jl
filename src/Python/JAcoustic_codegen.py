@@ -241,7 +241,7 @@ def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residu
             rec_g.data[:] = rec_data[:]
         else:
             rec_g.data[:] = rec.data[:] - rec_data[:]   # input is observed data
-            fval = .5*np.linalg.norm(rec_g.data[:])**2
+            fval = .5*np.dot(rec_g.data[:].flatten(), rec_g.data[:].flatten()) * dt
         wrp.apply_reverse()
     else:
         op()

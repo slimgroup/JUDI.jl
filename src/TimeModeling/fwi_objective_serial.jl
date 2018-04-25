@@ -50,12 +50,12 @@ function fwi_objective(model_full::Model, source::judiVector, dObs::judiVector, 
                 typeof(options.frequencies) == Array{Any,1} && (options.frequencies = options.frequencies[srcnum])
                 dPredicted, uf_real, uf_imag = pycall(ac.forward_freq_modeling, PyObject, modelPy, PyReverseDims(src_coords'), PyReverseDims(qIn'), PyReverseDims(rec_coords'),
                                                       options.frequencies, space_order=options.space_order, nb=model.nb)
-                argout1 = .5f0*norm(vec(dPredicted) - vec(dObserved),2)^2.f0    # data misfit
+                argout1 = .5f0*dot(vec(dPredicted) - vec(dObserved), vec(dPredicted) - vec(dObserved))*dtComp  # FWI objective function value
                 argout2 = pycall(ac.adjoint_freq_born, Array{Float32, length(model.n)}, modelPy, PyReverseDims(rec_coords'), PyReverseDims((dPredicted - dObserved)'),
                                  options.frequencies, uf_real, uf_imag, space_order=options.space_order, nb=model.nb)
     else
         dPredicted, u0 = pycall(ac.forward_modeling, PyObject, modelPy, PyReverseDims(src_coords'), PyReverseDims(qIn'), PyReverseDims(rec_coords'), save=true)
-        argout1 = .5f0*norm(vec(dPredicted) - vec(dObserved),2)^2.f0    # data misfit
+        argout1 = .5f0*dot(vec(dPredicted) - vec(dObserved), vec(dPredicted) - vec(dObserved))*dtComp # FWI objective function value
         argout2 = pycall(ac.adjoint_born, Array{Float32}, modelPy, PyReverseDims(rec_coords'), PyReverseDims((dPredicted  - dObserved)'),
                          u=u0, is_residual=true)
     end
@@ -65,3 +65,5 @@ function fwi_objective(model_full::Model, source::judiVector, dObs::judiVector, 
     end
     return [argout1; vec(argout2)]
 end
+
+

@@ -439,13 +439,14 @@ function dot{avDT,bvDT}(a::judiVector{avDT}, b::judiVector{bvDT})
 end
 
 # norm
-function norm{avDT}(a::judiVector{avDT}; p=2)
+function norm{avDT}(a::judiVector{avDT}, p::Real=2)
     x = 0.f0
     for j=1:a.nsrc
-        x += (a.geometry.dt[j] * norm(vec(a.data[j]),p))^p
+        x += a.geometry.dt[j] * sum(abs.(vec(a.data[j])).^p)
     end
     return x^(1.f0/p)
 end
+
 
 # abs
 function abs{avDT}(a::judiVector{avDT})
