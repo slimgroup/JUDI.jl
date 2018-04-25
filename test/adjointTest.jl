@@ -4,7 +4,7 @@
 #
 
 using PyCall, PyPlot, JUDI.TimeModeling
-print("adjoint test")
+print("adjoint test for acoustic")
 ## Set up model structure
 n = (160, 170)	# (x,y,z) or (x,z)
 d = (10.,10.)
