@@ -39,8 +39,8 @@ dtR = 1.05f0	# receiver sampling interval
 recGeometry = Geometry(xrec,yrec,zrec;dt=dtR,t=timeR,nsrc=nsrc)
 
 ## Set up source geometry (cell array with source locations for each shot)
-xsrc = 800f0 
-ysrc = 0f0 
+xsrc = 800f0
+ysrc = 0f0
 zsrc = 50f0
 
 # source sampling and number of time steps
@@ -93,8 +93,3 @@ println(dot(dD_hat,dD_hat))
 println(dot(dm,dm_hat))
 println("Residual: ", abs(dot(dD_hat,dD_hat) - dot(dm,dm_hat)))
 println("Ratio: ", abs(dot(dD_hat,dD_hat)/dot(dm,dm_hat)))
-
-
-
-
-
