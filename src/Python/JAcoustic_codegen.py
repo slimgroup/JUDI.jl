@@ -280,7 +280,7 @@ def forward_freq_modeling(model, src_coords, wavelet, rec_coords, freq, space_or
     stencil = solve(eqn, u.forward, simplify=False, rational=False)[0]
     expression = [Eq(u.forward, stencil)]
     expression += [Eq(ufr, ufr + u*cos(2*np.pi*f*time*dt))]
-    expression += [Eq(ufi, ufi + u*sin(2*np.pi*f*time*dt))]
+    expression += [Eq(ufi, ufi - u*sin(2*np.pi*f*time*dt))]
 
     # Source symbol with input wavelet
     src = PointSource(name='src', grid=model.grid, ntime=nt, coordinates=src_coords)
@@ -329,7 +329,7 @@ def adjoint_freq_born(model, rec_coords, rec_data, freq, ufr, ufi, space_order=8
     adj_src = rec.inject(field=v.backward, offset=model.nbpml, expr=rec * dt**2 / m)
 
     # Gradient update
-    gradient_update = [Eq(gradient, gradient + (2*np.pi*f)**2/nt*(ufr*cos(2*np.pi*f*time*dt) + ufi*sin(2*np.pi*f*time*dt))*v)]
+    gradient_update = [Eq(gradient, gradient + (2*np.pi*f)**2/nt*(ufr*cos(2*np.pi*f*time*dt) - ufi*sin(2*np.pi*f*time*dt))*v)]
 
     # Create operator and run
     set_log_level('ERROR')

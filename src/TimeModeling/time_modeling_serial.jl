@@ -60,6 +60,13 @@ function time_modeling(model_full::Model, srcGeometry::Geometry, srcData, recGeo
     ntSrc = Int(trunc(tmaxSrc/dtComp + 1))
     ntRec = Int(trunc(tmaxRec/dtComp + 1))
 
+    # Only accept receivers within model
+    if mode==1
+        recGeometry = remove_out_of_bounds_receivers(recGeometry, model)
+    else
+        recGeometry, dIn = remove_out_of_bounds_receivers(recGeometry, dIn, model)
+    end
+
     # Set up coordinates
     src_coords = setup_grid(srcGeometry, model.n, model.o)
     rec_coords = setup_grid(recGeometry, model.n, model.o)
