@@ -310,32 +310,42 @@ vec(x::Int32) = x;
 
 
 function time_resample(data::Array,geometry_in::Geometry,dt_new;order=2)
-    geometry = deepcopy(geometry_in)
-    numTraces = size(data,2)
-    timeAxis = 0:geometry.dt[1]:geometry.t[1]
-    timeInterp = 0:dt_new:geometry.t[1]
-    dataInterp = zeros(Float32,length(timeInterp),numTraces)
-    for k=1:numTraces
-        spl = Spline1D(timeAxis,data[:,k];k=order)
-        dataInterp[:,k] = spl(timeInterp)
-    end
-    geometry.dt[1] = dt_new
-    geometry.nt[1] = length(timeInterp)
-    geometry.t[1] = (geometry.nt[1] - 1)*geometry.dt[1]
-    return dataInterp, geometry
+
+   if dt_new==geometry_in.dt[1]
+        return data, geometry_in
+   else
+        geometry = deepcopy(geometry_in)
+        numTraces = size(data,2)
+        timeAxis = 0:geometry.dt[1]:geometry.t[1]
+        timeInterp = 0:dt_new:geometry.t[1]
+        dataInterp = zeros(Float32,length(timeInterp),numTraces)
+        for k=1:numTraces
+            spl = Spline1D(timeAxis,data[:,k];k=order)
+            dataInterp[:,k] = spl(timeInterp)
+        end
+        geometry.dt[1] = dt_new
+        geometry.nt[1] = length(timeInterp)
+        geometry.t[1] = (geometry.nt[1] - 1)*geometry.dt[1]
+        return dataInterp, geometry
+  end
 end
 
 function time_resample(data::Array,dt_in, geometry_out::Geometry;order=2)
-    geometry = deepcopy(geometry_out)
-    numTraces = size(data,2)
-    timeAxis = 0:dt_in:geometry_out.t[1]
-    timeInterp = 0:geometry_out.dt[1]:geometry_out.t[1]
-    dataInterp = zeros(Float32,length(timeInterp),numTraces)
-    for k=1:numTraces
-        spl = Spline1D(timeAxis,data[:,k];k=order)
-        dataInterp[:,k] = spl(timeInterp)
+
+    if dt_in==geometry_out.dt[1]
+        return data
+    else
+        geometry = deepcopy(geometry_out)
+        numTraces = size(data,2)
+        timeAxis = 0:dt_in:geometry_out.t[1]
+        timeInterp = 0:geometry_out.dt[1]:geometry_out.t[1]
+        dataInterp = zeros(Float32,length(timeInterp),numTraces)
+        for k=1:numTraces
+            spl = Spline1D(timeAxis,data[:,k];k=order)
+            dataInterp[:,k] = spl(timeInterp)
+        end
+        return dataInterp
     end
-    return dataInterp
 end
 
 
