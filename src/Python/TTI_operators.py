@@ -12,7 +12,7 @@ from numpy.random import randint
 from sympy import solve, cos, sin, expand, symbols
 from sympy import Function as fint
 from devito.logger import set_log_level
-from devito import Eq, Function, TimeFunction, Dimension, Operator, clear_cache
+from devito import Eq, Function, TimeFunction, Dimension, Operator, clear_cache, ConditionalDimension, Grid
 from devito.finite_difference import (centered, first_derivative, right, transpose,
                                       second_derivative, left)
 from devito.symbolics import retrieve_functions
@@ -23,7 +23,19 @@ from PyModel import Model
 from checkpoint import DevitoCheckpoint, CheckpointOperator
 from pyrevolve import Revolver
 
-def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_order=12, nb=40, op_return=False, dt=None):
+
+def sub_ind(model):
+    """
+    Dimensions of the inner part of the domain without ABC layers
+    """
+    sub_dim =[]
+    for dim in model.grid.dimensions:
+        sub_dim += [ConditionalDimension(dim.name + '_in', parent=dim, factor=3)]
+
+    return tuple(sub_dim)
+
+def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_order=12, nb=40,
+                     t_sub_factor=20, op_return=False, dt=None):
     clear_cache()
 
     # Parameters
@@ -43,12 +55,17 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
         ang3 = sin(phi)
 
     # Create the forward wavefield
-    if save is False:
-        u = TimeFunction(name='u', grid=model.grid, time_order=2, space_order=space_order)
-        v = TimeFunction(name='v', grid=model.grid, time_order=2, space_order=space_order)
-    else:
-        u = TimeFunction(name='u', grid=model.grid, time_order=2, space_order=space_order, save=nt)
-        v = TimeFunction(name='v', grid=model.grid, time_order=2, space_order=space_order, save=nt)
+    u = TimeFunction(name='u', grid=model.grid, time_order=2, space_order=space_order)
+    v = TimeFunction(name='v', grid=model.grid, time_order=2, space_order=space_order)
+    if save:
+        time_subsampled = ConditionalDimension('t_sub', parent=u.grid.time_dim, factor=t_sub_factor)
+        grid2 = Grid(shape=tuple([i//3 for i in u.data.shape[1:]]),
+                     extent=u.grid.extent, dimensions=sub_ind(model))
+        usave = TimeFunction(name='us', grid=grid2, time_order=0, space_order=0,
+                             time_dim=time_subsampled, save=(nt-1)//t_sub_factor + 2)
+        vsave = TimeFunction(name='vs', grid=grid2, time_order=0, space_order=0,
+                             time_dim=time_subsampled, save=(nt-1)//t_sub_factor + 2)
+        eqsave = [Eq(usave.forward, u.forward), Eq(vsave.forward, v.forward)]
 
     # TTI stencil
     FD_kernel = kernels[len(model.shape)]
@@ -75,15 +92,17 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
     rec_term = rec.interpolate(expr=u + v, offset=model.nbpml)
 
     # Create operator and run
-    set_log_level('INFO')
+    set_log_level('DEBUG')
     expression += src_term + rec_term
-    op = Operator(expression, subs=model.spacing_map, dse='aggressive', dle='advanced',
+    if save:
+        expression += eqsave
+    op = Operator(expression, subs=model.spacing_map, dse='advanced', dle='advanced',
                   name="Forward%s" % randint(1e5))
     if op_return is False:
-        op(dt=dt)
-        return rec.data[:, :], u, v
+        op(dt=dt, x_in_size=usave.shape[1], y_in_size=usave.shape[2])
+        return rec, usave, vsave
     else:
-        return op
+        return op()
 
 
 def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=12, nb=40, dt=None):
@@ -236,10 +255,10 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=12, nb=40, 
                   name="Born%s" % randint(1e5))
     op(dt=dt)
 
-    return rec.data, u, ul
+    return rec, u, ul
 
 
-def adjoint_born(model, rec_coords, rec_data, u=None, v=None, op_forward=None, is_residual=False,
+def adjoint_born(model, rec, u=None, v=None, op_forward=None, is_residual=False,
                  space_order=12, nb=40, isic=False, isiciso=False, isicnothom=False, dt=None):
     clear_cache()
     # Parameters
@@ -261,7 +280,7 @@ def adjoint_born(model, rec_coords, rec_data, u=None, v=None, op_forward=None, i
     # Create adjoint wavefield and gradient
     p = TimeFunction(name='p', grid=model.grid, time_order=2, space_order=space_order)
     q = TimeFunction(name='q', grid=model.grid, time_order=2, space_order=space_order)
-    gradient = Function(name='gradient', grid=model.grid)
+    gradient = Function(name='gradient', grid=u.grid)
 
     FD_kernel = kernels[len(model.shape)]
     H0, Hz = FD_kernel(epsilon * p + delta * q, delta * p + q,
@@ -279,13 +298,9 @@ def adjoint_born(model, rec_coords, rec_data, u=None, v=None, op_forward=None, i
     second_stencil = Eq(q.backward, stencilr)
     expression = [first_stencil, second_stencil]
 
-
     # Data at receiver locations as adjoint source
-    rec_g = Receiver(name='rec_g', grid=model.grid, ntime=nt, coordinates=rec_coords)
-    if op_forward is None:
-        rec_g.data[:] = rec_data[:]
-    adj_src = rec_g.inject(field=p.backward, offset=model.nbpml, expr=rec_g * dt**2 / m)
-    adj_src += rec_g.inject(field=q.backward, offset=model.nbpml, expr=rec_g * dt**2 / m)
+    adj_src = rec.inject(field=p.backward, offset=model.nbpml, expr=rec * dt**2 / m)
+    adj_src += rec.inject(field=q.backward, offset=model.nbpml, expr=rec * dt**2 / m)
     # Gradient update
     if u is None:
         u = TimeFunction(name='u', grid=model.grid, time_order=2, space_order=space_order)
@@ -334,7 +349,7 @@ def adjoint_born(model, rec_coords, rec_data, u=None, v=None, op_forward=None, i
                     grads += udy * pdy + vdy * qdy
                 gradient_update = [Eq(gradient, gradient - dt * ((u.dt2 * p + v.dt2 * q) * m + grads))]
     else:
-        gradient_update = [Eq(gradient, gradient - dt * u.dt2 * p - dt * v.dt2 * q)]
+        gradient_update = [Eq(gradient, gradient - dt * u * p.dt2 - dt * v * q.dt2)]
 
     # Create operator and run
     set_log_level('INFO')
@@ -362,7 +377,7 @@ def adjoint_born(model, rec_coords, rec_data, u=None, v=None, op_forward=None, i
             fval = .5*np.linalg.norm(rec_g.data[:])**2
         wrp.apply_reverse()
     else:
-        op(dt=dt)
+        op(dt=dt, x_in_size=u.shape[1], y_in_size=u.shape[2])
     clear_cache()
 
     if op_forward is not None and is_residual is not True:
