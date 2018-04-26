@@ -76,18 +76,18 @@ function extend_gradient(model_full::Model,model::Model,gradient::Array)
         full_gradient[nx_start:nx_end,:] = gradient
     else
         ny_start = Int((model.o[2] - model_full.o[2])/model.d[2] + 1)
-        ny_end = ny_start + model.n[2] - 1 
+        ny_end = ny_start + model.n[2] - 1
         full_gradient[nx_start:nx_end,ny_start:ny_end,:] = gradient
     end
     return full_gradient
 end
 
 function remove_out_of_bounds_receivers(recGeometry::Geometry, model::Model)
-    
+
     # Only keep receivers within the model
     xmin = model.o[1]
     if typeof(recGeometry.xloc[1]) <: Array
-        idx_xrec = find(x -> x > xmin, recGeometry.xloc[1])
+        idx_xrec = find(x -> x >= xmin, recGeometry.xloc[1])
         recGeometry.xloc[1] = recGeometry.xloc[1][idx_xrec]
         recGeometry.zloc[1] = recGeometry.zloc[1][idx_xrec]
     end
@@ -95,7 +95,7 @@ function remove_out_of_bounds_receivers(recGeometry::Geometry, model::Model)
     # For 3D shot records, scan also y-receivers
     if length(model.n) == 3 && typeof(recGeometry.yloc[1]) <: Array
         ymin = model.o[2]
-        idx_yrec = find(x -> x > ymin, recGeometry.yloc[1])
+        idx_yrec = find(x -> x >= ymin, recGeometry.yloc[1])
         recGeometry.yloc[1] = recGeometry.yloc[1][idx_yrec]
         recGeometry.zloc[1] = recGeometry.zloc[1][idx_yrec]
     end
@@ -107,7 +107,7 @@ function remove_out_of_bounds_receivers(recGeometry::Geometry, recData::Array, m
     # Only keep receivers within the model
     xmin = model.o[1]
     if typeof(recGeometry.xloc[1]) <: Array
-        idx_xrec = find(x -> x > xmin, recGeometry.xloc[1])
+        idx_xrec = find(x -> x >= xmin, recGeometry.xloc[1])
         recGeometry.xloc[1] = recGeometry.xloc[1][idx_xrec]
         recGeometry.zloc[1] = recGeometry.zloc[1][idx_xrec]
         recData = recData[:, idx_xrec]
@@ -116,7 +116,7 @@ function remove_out_of_bounds_receivers(recGeometry::Geometry, recData::Array, m
     # For 3D shot records, scan also y-receivers
     if length(model.n) == 3 && typeof(recGeometry.yloc[1]) <: Array
         ymin = model.o[2]
-        idx_yrec = find(x -> x > ymin, recGeometry.yloc[1])
+        idx_yrec = find(x -> x >= ymin, recGeometry.yloc[1])
         recGeometry.yloc[1] = recGeometry.yloc[1][idx_yrec]
         recGeometry.zloc[1] = recGeometry.zloc[1][idx_yrec]
         recData = recData[:, idx_yrec]
@@ -192,7 +192,7 @@ function get_computational_nt(srcGeometry, recGeometry, model::Model)
 end
 
 function setup_grid(geometry,n, origin)
-    # 3D grid 
+    # 3D grid
     if length(n)==3
         if length(geometry.xloc[1]) > 1
             source_coords = Array{Float32,2}([vec(geometry.xloc[1]) vec(geometry.yloc[1]) vec(geometry.zloc[1])])
@@ -221,11 +221,11 @@ function setup_3D_grid(xrec::Array{Any,1},yrec::Array{Any,1},zrec::Array{Any,1})
     for i=1:nsrc
         nxrec = length(xrec[i])
         nyrec = length(yrec[i])
-    
+
         xloc[i] = zeros(nxrec*nyrec)
         yloc[i] = zeros(nxrec*nyrec)
         zloc[i] = zeros(nxrec*nyrec)
-    
+
         idx = 1
 
         for k=1:nyrec
@@ -310,32 +310,42 @@ vec(x::Int32) = x;
 
 
 function time_resample(data::Array,geometry_in::Geometry,dt_new;order=2)
-    geometry = deepcopy(geometry_in)
-    numTraces = size(data,2)
-    timeAxis = 0:geometry.dt[1]:geometry.t[1]
-    timeInterp = 0:dt_new:geometry.t[1]
-    dataInterp = zeros(Float32,length(timeInterp),numTraces)
-    for k=1:numTraces
-        spl = Spline1D(timeAxis,data[:,k];k=order)
-        dataInterp[:,k] = spl(timeInterp)
-    end
-    geometry.dt[1] = dt_new
-    geometry.nt[1] = length(timeInterp)
-    geometry.t[1] = (geometry.nt[1] - 1)*geometry.dt[1]
-    return dataInterp, geometry
+
+   if dt_new==geometry_in.dt[1]
+        return data, geometry_in
+   else
+        geometry = deepcopy(geometry_in)
+        numTraces = size(data,2)
+        timeAxis = 0:geometry.dt[1]:geometry.t[1]
+        timeInterp = 0:dt_new:geometry.t[1]
+        dataInterp = zeros(Float32,length(timeInterp),numTraces)
+        for k=1:numTraces
+            spl = Spline1D(timeAxis,data[:,k];k=order)
+            dataInterp[:,k] = spl(timeInterp)
+        end
+        geometry.dt[1] = dt_new
+        geometry.nt[1] = length(timeInterp)
+        geometry.t[1] = (geometry.nt[1] - 1)*geometry.dt[1]
+        return dataInterp, geometry
+  end
 end
 
 function time_resample(data::Array,dt_in, geometry_out::Geometry;order=2)
-    geometry = deepcopy(geometry_out)
-    numTraces = size(data,2)
-    timeAxis = 0:dt_in:geometry_out.t[1]
-    timeInterp = 0:geometry_out.dt[1]:geometry_out.t[1]
-    dataInterp = zeros(Float32,length(timeInterp),numTraces)
-    for k=1:numTraces
-        spl = Spline1D(timeAxis,data[:,k];k=order)
-        dataInterp[:,k] = spl(timeInterp)
+
+    if dt_in==geometry_out.dt[1]
+        return data
+    else
+        geometry = deepcopy(geometry_out)
+        numTraces = size(data,2)
+        timeAxis = 0:dt_in:geometry_out.t[1]
+        timeInterp = 0:geometry_out.dt[1]:geometry_out.t[1]
+        dataInterp = zeros(Float32,length(timeInterp),numTraces)
+        for k=1:numTraces
+            spl = Spline1D(timeAxis,data[:,k];k=order)
+            dataInterp[:,k] = spl(timeInterp)
+        end
+        return dataInterp
     end
-    return dataInterp
 end
 
 
@@ -383,6 +393,3 @@ function select_frequencies(L;fmin=0.,fmax=Inf,nf=1)
 	end
 	return freq
 end
-
-
-

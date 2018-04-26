@@ -33,7 +33,7 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
     else:
         u = TimeFunction(name='u', grid=model.grid, time_order=2, space_order=space_order, save=nt)
 
-    # Set up PDE and rearrange 
+    # Set up PDE and rearrange
     eqn = m * u.dt2 - u.laplace + damp * u.dt
     stencil = solve(eqn, u.forward)[0]
     expression = [Eq(u.forward, stencil)]
@@ -42,7 +42,7 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
     src = PointSource(name='src', grid=model.grid, ntime=nt, coordinates=src_coords)
     src.data[:] = wavelet[:]
     src_term = src.inject(field=u.forward, offset=model.nbpml, expr=src * dt**2 / m)
-    
+
     # Data is sampled at receiver locations
     rec = Receiver(name='rec', grid=model.grid, ntime=nt, coordinates=rec_coords)
     rec_term = rec.interpolate(expr=u, offset=model.nbpml)
@@ -67,15 +67,15 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=8, nb=
     if dt is None:
         dt = model.critical_dt
     m, damp = model.m, model.damp
- 
+
     # Create the adjoint wavefield
     v = TimeFunction(name="v", grid=model.grid, time_order=2, space_order=space_order)
 
-    # Set up PDE and rearrange 
+    # Set up PDE and rearrange
     eqn = m * v.dt2 - v.laplace - damp * v.dt
     stencil = solve(eqn, v.backward)[0]
     expression = [Eq(v.backward, stencil)]
-    
+
     # Adjoint source is injected at receiver locations
     rec = Receiver(name='rec', grid=model.grid, ntime=nt, coordinates=rec_coords)
     rec.data[:] = rec_data[:]
@@ -91,7 +91,7 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=8, nb=
     op = Operator(expression, subs=model.spacing_map, dse='advanced', dle='advanced',
                   name="Backward%s" % randint(1e5))
     op(dt=dt)
-    
+
     return src.data
 
 
@@ -112,7 +112,7 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, nb=40, i
     else:
         x,y,z = u.space_dimensions
 
-    # Set up PDEs and rearrange 
+    # Set up PDEs and rearrange
     eqn = m * u.dt2 - u.laplace + damp * u.dt
     stencil1 = solve(eqn, u.forward)[0]
     if isic is not True:
@@ -133,7 +133,7 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, nb=40, i
     src = PointSource(name='src', grid=model.grid, ntime=nt, coordinates=src_coords)
     src.data[:] = wavelet[:]
     src_term = src.inject(field=u.forward, offset=model.nbpml, expr=src * dt**2 / m)
-    
+
     # Define receiver symbol
     rec = Receiver(name='rec', grid=model.grid, ntime=nt, coordinates=rec_coords)
     rec_term = rec.interpolate(expr=du, offset=model.nbpml)
@@ -160,8 +160,8 @@ def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residu
     # Create adjoint wavefield and gradient
     v = TimeFunction(name='v', grid=model.grid, time_order=2, space_order=space_order)
     gradient = Function(name='gradient', grid=model.grid)
-    
-    # Set up PDE and rearrange 
+
+    # Set up PDE and rearrange
     eqn = m * v.dt2 - v.laplace - damp * v.dt
     stencil = solve(eqn, v.backward)[0]
     expression = [Eq(v.backward, stencil)]
@@ -190,9 +190,9 @@ def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residu
     expression += adj_src + gradient_update
     op = Operator(expression, subs=model.spacing_map, dse='advanced', dle='advanced',
                   name="Gradient%s" % randint(1e5))
-    
+
     # Optimal checkpointing
-    if op_forward is not None:  
+    if op_forward is not None:
         rec = Receiver(name='rec', grid=model.grid, ntime=nt, coordinates=rec_coords)
         cp = DevitoCheckpoint([u])
         n_checkpoints = None
@@ -213,7 +213,7 @@ def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residu
     else:
         op(dt=dt)
     clear_cache()
-    
+
     if op_forward is not None and is_residual is not True:
         return fval, gradient.data
     else:
@@ -242,7 +242,7 @@ def forward_freq_modeling(model, src_coords, wavelet, rec_coords, freq, space_or
     ufr = Function(name='ufr', dimensions=(freq_dim,) + u.indices[1:], shape=(nfreq,) + model.shape_domain)
     ufi = Function(name='ufi', dimensions=(freq_dim,) + u.indices[1:], shape=(nfreq,) + model.shape_domain)
 
-    # Set up PDE and rearrange 
+    # Set up PDE and rearrange
     eqn = m * u.dt2 - u.laplace + damp * u.dt
     stencil = solve(eqn, u.forward)[0]
     expression = [Eq(u.forward, stencil)]
@@ -253,7 +253,7 @@ def forward_freq_modeling(model, src_coords, wavelet, rec_coords, freq, space_or
     src = PointSource(name='src', grid=model.grid, ntime=nt, coordinates=src_coords)
     src.data[:] = wavelet[:]
     src_term = src.inject(field=u.forward, offset=model.nbpml, expr=src * dt**2 / m)
-    
+
     # Data is sampled at receiver locations
     rec = Receiver(name='rec', grid=model.grid, ntime=nt, coordinates=rec_coords)
     rec_term = rec.interpolate(expr=u, offset=model.nbpml)
@@ -266,7 +266,7 @@ def forward_freq_modeling(model, src_coords, wavelet, rec_coords, freq, space_or
     op(dt=dt)
 
     return rec.data, ufr, ufi
-    
+
 
 def adjoint_freq_born(model, rec_coords, rec_data, freq, ufr, ufi, space_order=8, nb=40, dt=None):
     clear_cache()
@@ -285,7 +285,7 @@ def adjoint_freq_born(model, rec_coords, rec_data, freq, ufr, ufi, space_order=8
     f.data[:] = freq[:]
     gradient = Function(name="gradient", grid=model.grid)
 
-    # Set up PDE and rearrange 
+    # Set up PDE and rearrange
     eqn = m * v.dt2 - v.laplace - damp * v.dt
     stencil = solve(eqn, v.backward)[0]
     expression = [Eq(v.backward, stencil)]
@@ -297,7 +297,7 @@ def adjoint_freq_born(model, rec_coords, rec_data, freq, ufr, ufi, space_order=8
 
     # Gradient update
     gradient_update = [Eq(gradient, gradient + (2*np.pi*f)**2/nt*(ufr*cos(2*np.pi*f*time*dt) - ufi*sin(2*np.pi*f*time*dt))*v)]
-    
+
     # Create operator and run
     set_log_level('ERROR')
     expression += adj_src + gradient_update
@@ -307,5 +307,3 @@ def adjoint_freq_born(model, rec_coords, rec_data, freq, ufr, ufi, space_order=8
     clear_cache()
 
     return gradient.data
-
-
