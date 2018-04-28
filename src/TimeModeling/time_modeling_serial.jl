@@ -36,11 +36,7 @@ function time_modeling(model_full::Model, srcGeometry::Geometry, srcData, recGeo
 
     # Extrapolate input data to computational grid
     if mode==1  # F and J
-        if dtComp==srcGeometry.dt[1]
-        qIn = srcData[1];
-        else
         qIn = time_resample(srcData[1],srcGeometry,dtComp)[1]
-        end
         ntComp = size(qIn,1)
     elseif op=='F' &&  mode==-1
         if typeof(recData[1]) == SeisIO.SeisCon
@@ -48,11 +44,7 @@ function time_modeling(model_full::Model, srcGeometry::Geometry, srcData, recGeo
         elseif typeof(recData[1]) == String
             recData = load(recData[1])["d"].data
         end
-        if dtComp==recGeometry.dt[1]
-        dIn = recData[1];
-        else
         dIn = time_resample(recData[1],recGeometry,dtComp)[1]
-        end
         ntComp = size(dIn,1)
     elseif op=='J' && mode==-1
         if typeof(recData[1]) == SeisIO.SeisCon
@@ -60,18 +52,8 @@ function time_modeling(model_full::Model, srcGeometry::Geometry, srcData, recGeo
         elseif typeof(recData[1]) == String
             recData = load(recData[1])["d"].data
         end
-
-        if dtComp==srcGeometry.dt[1]
-        qIn = srcdata[1];
-        else
         qIn = time_resample(srcData[1],srcGeometry,dtComp)[1]
-        end
-
-        if dtComp==recGeometry.dt[1]
-        dIn = recData[1];
-        else
         dIn = time_resample(recData[1],recGeometry,dtComp)[1]
-        end
         ntComp = size(dIn,1)
     end
     ntSrc = Int(trunc(tmaxSrc/dtComp + 1))
@@ -96,9 +78,7 @@ function time_modeling(model_full::Model, srcGeometry::Geometry, srcData, recGeo
                           space_order=options.space_order, nb=model.nb)[1]
             ntRec > ntComp && (dOut = [dOut zeros(size(dOut,1), ntRec - ntComp)])
 
-            if dtComp!=recGeometry.dt[1]
             dOut = time_resample(dOut,dtComp,recGeometry)
-            end
             if options.save_data_to_disk
                 container = write_shot_record(srcGeometry,srcData,recGeometry,dOut,options)
                 return judiVector(container)
@@ -112,9 +92,7 @@ function time_modeling(model_full::Model, srcGeometry::Geometry, srcData, recGeo
                           space_order=options.space_order, nb=model.nb)
             ntSrc > ntComp && (qOut = [qOut zeros(size(qOut), ntSrc - ntComp)])
 
-            if dtComp!=srcGeometry.dt[1]
             qOut = time_resample(qOut,dtComp,srcGeometry)
-            end
             return judiVector(srcGeometry,qOut)
         end
     elseif op=='J'
@@ -125,10 +103,7 @@ function time_modeling(model_full::Model, srcGeometry::Geometry, srcData, recGeo
                           space_order=options.space_order, nb=model.nb, isic=options.isic)
             ntRec > ntComp && (dOut = [dOut zeros(size(dOut,1), ntRec - ntComp)])
 
-            if dtComp==recGeometry.dt[1]
             dOut = time_resample(dOut,dtComp,recGeometry)
-            end
-
             if options.save_data_to_disk
                 container = write_shot_record(srcGeometry,srcData,recGeometry,dOut,options)
                 return judiVector(container)
@@ -155,7 +130,6 @@ function time_modeling(model_full::Model, srcGeometry::Geometry, srcData, recGeo
                 grad = pycall(ac.adjoint_born, Array{Float32, length(model.n)}, modelPy, PyReverseDims(rec_coords'), PyReverseDims(dIn'), u=u0,
                               space_order=options.space_order, nb=model.nb, isic=options.isic)
             end
-
             grad = remove_padding(grad,model.nb,true_adjoint=options.sum_padding)
             if options.limit_m == true
                 grad = extend_gradient(model_full,model,grad)
