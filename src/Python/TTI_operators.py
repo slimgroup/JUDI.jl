@@ -30,7 +30,7 @@ def sub_ind(model):
     """
     sub_dim =[]
     for dim in model.grid.dimensions:
-        sub_dim += [ConditionalDimension(dim.name + '_in', parent=dim, factor=3)]
+        sub_dim += [ConditionalDimension(dim.name + '_in', parent=dim, factor=2)]
 
     return tuple(sub_dim)
 
@@ -59,11 +59,11 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
     v = TimeFunction(name='v', grid=model.grid, time_order=2, space_order=space_order)
     if save:
         time_subsampled = ConditionalDimension('t_sub', parent=u.grid.time_dim, factor=t_sub_factor)
-        grid2 = Grid(shape=tuple([i//3 for i in u.data.shape[1:]]),
+        grid2 = Grid(shape=tuple([i//2 for i in u.data.shape[1:]]),
                      extent=u.grid.extent, dimensions=sub_ind(model))
-        usave = TimeFunction(name='us', grid=grid2, time_order=0, space_order=0,
+        usave = TimeFunction(name='us', grid=grid2, time_order=2, space_order=space_order,
                              time_dim=time_subsampled, save=(nt-1)//t_sub_factor + 2)
-        vsave = TimeFunction(name='vs', grid=grid2, time_order=0, space_order=0,
+        vsave = TimeFunction(name='vs', grid=grid2, time_order=2, space_order=space_order,
                              time_dim=time_subsampled, save=(nt-1)//t_sub_factor + 2)
         eqsave = [Eq(usave.forward, u.forward), Eq(vsave.forward, v.forward)]
 
@@ -96,11 +96,16 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
     expression += src_term + rec_term
     if save:
         expression += eqsave
-    op = Operator(expression, subs=model.spacing_map, dse='advanced', dle='advanced',
-                  name="Forward%s" % randint(1e5))
+
+    op = Operator(expression, subs=model.spacing_map, dse='aggressive', dle='advanced',
+                  name="Forward%s" % randint(1e5), autotune=False)
     if op_return is False:
-        op(dt=dt, x_in_size=usave.shape[1], y_in_size=usave.shape[2])
-        return rec, usave, vsave
+        if save:
+            op(dt=dt, x_in_size=usave.shape[1], y_in_size=usave.shape[2])
+            return rec, usave, vsave
+        else:
+            op(dt=dt)
+            return rec, u, v
     else:
         return op()
 
@@ -162,6 +167,7 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=12, nb
 
 
 def forward_born(model, src_coords, wavelet, rec_coords, space_order=12, nb=40, isic=False, dt=None, save=False):
+    print("hello")
     clear_cache()
 
     # Parameters
@@ -250,9 +256,9 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=12, nb=40, 
 
     # Create operator and run
     set_log_level('INFO')
-    expression = expression_u + src_term + expression_du + rec_term
-    op = Operator(expression, subs=model.spacing_map, dse='advanced', dle='advanced',
-                  name="Born%s" % randint(1e5))
+    expression = expression_u + expression_du + src_term + rec_term
+    op = Operator(expression, subs=model.spacing_map, dse='aggressive', dle='advanced',
+                  name="Born%s" % randint(1e5), autotune=False)
     op(dt=dt)
 
     return rec, u, ul
@@ -262,7 +268,7 @@ def adjoint_born(model, rec, u=None, v=None, op_forward=None, is_residual=False,
                  space_order=12, nb=40, isic=False, isiciso=False, isicnothom=False, dt=None):
     clear_cache()
     # Parameters
-    nt = rec_data.shape[0]
+    nt = rec.data.shape[0]
     if dt is None:
         dt = model.critical_dt
     m, damp, epsilon, delta, theta, phi = (model.m, model.damp, model.epsilon,
@@ -324,12 +330,12 @@ def adjoint_born(model, rec, u=None, v=None, op_forward=None, is_residual=False,
             vdy = delta * Dy(v, ang0, ang1, ang2, ang3, order_loc)
             qdy = Dy(q, ang0, ang1, ang2, ang3, order_loc)
             grads += udy * pdy + vdy * qdy
-        gradient_update = [Eq(gradient, gradient - dt * ((u.dt2 * p + v.dt2 * q) * m + grads))]
+        gradient_update = [Eq(gradient, gradient - dt * ((u * p.dt2 + v * q.dt2) * m + grads))]
     elif isiciso is True:
         grads = u.dx * p.dx + u.dy * p.dy + v.dx * q.dx + v.dy * q.dy
         if len(model.shape) == 3:
             grads += u.dz * p.dz + v.dz * q.dz
-        gradient_update = [Eq(gradient, gradient - dt * ((u.dt2 * p + v.dt2 * q) * m + grads))]
+        gradient_update = [Eq(gradient, gradient - dt * ((u * p.dt2 + v * q.dt2) * m + grads))]
     elif isicnothom is True:
                 order_loc = int(space_order/2)
                 udx = Dx(u, ang0, ang1, ang2, ang3, order_loc)
@@ -347,7 +353,7 @@ def adjoint_born(model, rec, u=None, v=None, op_forward=None, is_residual=False,
                     vdy = delta * Dy(v, ang0, ang1, ang2, ang3, order_loc)
                     qdy = Dy(q, ang0, ang1, ang2, ang3, order_loc)
                     grads += udy * pdy + vdy * qdy
-                gradient_update = [Eq(gradient, gradient - dt * ((u.dt2 * p + v.dt2 * q) * m + grads))]
+                gradient_update = [Eq(gradient, gradient - dt * ((u * p.dt2 + v * q.dt2) * m + grads))]
     else:
         gradient_update = [Eq(gradient, gradient - dt * u * p.dt2 - dt * v * q.dt2)]
 
@@ -355,7 +361,7 @@ def adjoint_born(model, rec, u=None, v=None, op_forward=None, is_residual=False,
     set_log_level('INFO')
     expression += adj_src + gradient_update
     op = Operator(expression, subs=model.spacing_map, dse='advanced', dle='advanced',
-                  name="Gradient%s" % randint(1e5))
+                  name="Gradient%s" % randint(1e5), autotune=False)
 
     # Optimal checkpointing
     if op_forward is not None:
