@@ -16,8 +16,6 @@ include("PQNSlim.jl")	# minConf_PQN
 include("OptimizationFunctions.jl") # common functions
 include("Constraints.jl") # Constriaints projection
 include("fwi_linesearch.jl")
+include("preconditioners.jl")
 
 end
-
-
-

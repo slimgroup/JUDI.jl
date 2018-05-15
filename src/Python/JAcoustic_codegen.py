@@ -70,15 +70,14 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False,
     subs = model.spacing_map
     subs[u.grid.time_dim.spacing] = dt
     if freesurface:
-        fs = DefaultDimension(name="fs", default_value=model.nbpml)
+        fs = DefaultDimension(name="fs", default_value=int(space_order/2))
         expression += [Eq(u.forward.subs({u.indices[-1]: model.nbpml - fs - 1}),
-                          -u.forward.subs({u.indices[-1]: model.nbpml + fs - 1}))]
+                          -u.forward.subs({u.indices[-1]: model.nbpml + fs + 1}))]
     op = Operator(expression, subs=subs, dse='advanced', dle='advanced',
                   name="Forward%s" % randint(1e5))
 
     if op_return is False:
         op()
-        from IPython import embed; embed()
         return rec.data, u
     else:
         return op
