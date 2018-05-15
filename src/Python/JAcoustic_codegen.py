@@ -117,9 +117,9 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=8, nb=
     subs = model.spacing_map
     subs[v.grid.time_dim.spacing] = dt
     if freesurface:
-        fs = DefaultDimension(name="fs", default_value=model.nbpml)
+        fs = DefaultDimension(name="fs", default_value=int(space_order/2))
         expression += [Eq(v.backward.subs({u.indices[-1]: model.nbpml - fs - 1}),
-                          -v.backward.subs({u.indices[-1]: model.nbpml + fs - 1}))]
+                          -v.backward.subs({u.indices[-1]: model.nbpml + fs + 1}))]
     op = Operator(expression, subs=subs, dse='advanced', dle='advanced',
                   name="Backward%s" % randint(1e5))
     op()
@@ -181,11 +181,11 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, nb=40, i
     subs = model.spacing_map
     subs[u.grid.time_dim.spacing] = dt
     if freesurface:
-        fs = DefaultDimension(name="fs", default_value=model.nbpml)
+        fs = DefaultDimension(name="fs", default_value=int(space_order/2))
         expression += [Eq(du.forward.subs({u.indices[-1]: model.nbpml - fs - 1}),
-                          -du.forward.subs({u.indices[-1]: model.nbpml + fs - 1}))]
+                          -du.forward.subs({u.indices[-1]: model.nbpml + fs + 1}))]
         expression += [Eq(u.forward.subs({u.indices[-1]: model.nbpml - fs - 1}),
-                          -u.forward.subs({u.indices[-1]: model.nbpml + fs - 1}))]
+                          -u.forward.subs({u.indices[-1]: model.nbpml + fs + 1}))]
     op = Operator(expression, subs=subs, dse='advanced', dle='advanced',
                   name="Born%s" % randint(1e5))
     op()
@@ -238,9 +238,9 @@ def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residu
     subs = model.spacing_map
     subs[u.grid.time_dim.spacing] = dt
     if freesurface:
-        fs = DefaultDimension(name="fs", default_value=model.nbpml)
+        fs = DefaultDimension(name="fs", default_value=int(space_order/2))
         expression += [Eq(v.backward.subs({u.indices[-1]: model.nbpml - fs - 1}),
-                         -v.backward.subs({u.indices[-1]: model.nbpml + fs - 1}))]
+                         -v.backward.subs({u.indices[-1]: model.nbpml + fs + 1}))]
     op = Operator(expression, subs=subs, dse='advanced', dle='advanced',
                   name="Gradient%s" % randint(1e5))
 
@@ -275,7 +275,7 @@ def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residu
 
 ########################################################################################################################
 
-def forward_freq_modeling(model, src_coords, wavelet, rec_coords, freq, space_order=8, nb=40, dt=None):
+def forward_freq_modeling(model, src_coords, wavelet, rec_coords, freq, space_order=8, nb=40, dt=None, freesurface=False):
     # Forward modeling with on-the-fly DFT of forward wavefields
     clear_cache()
 
@@ -315,9 +315,9 @@ def forward_freq_modeling(model, src_coords, wavelet, rec_coords, freq, space_or
     set_log_level('ERROR')
     expression += src_term + rec_term
     if freesurface:
-        fs = DefaultDimension(name="fs", default_value=model.nbpml)
+        fs = DefaultDimension(name="fs", default_value=int(space_order/2))
         expression += [Eq(u.forward.subs({u.indices[-1]: model.nbpml - fs - 1}),
-                          -u.forward.subs({u.indices[-1]: model.nbpml + fs - 1}))]
+                          -u.forward.subs({u.indices[-1]: model.nbpml + fs + 1}))]
     op = Operator(expression, subs=model.spacing_map, dse='advanced', dle='advanced',
                   name="Forward%s" % randint(1e5))
     op()
@@ -325,7 +325,7 @@ def forward_freq_modeling(model, src_coords, wavelet, rec_coords, freq, space_or
     return rec.data, ufr, ufi
 
 
-def adjoint_freq_born(model, rec_coords, rec_data, freq, ufr, ufi, space_order=8, nb=40, dt=None):
+def adjoint_freq_born(model, rec_coords, rec_data, freq, ufr, ufi, space_order=8, nb=40, dt=None, freesurface=False):
     clear_cache()
 
     # Parameters
@@ -359,9 +359,9 @@ def adjoint_freq_born(model, rec_coords, rec_data, freq, ufr, ufi, space_order=8
     set_log_level('ERROR')
     expression += adj_src + gradient_update
     if freesurface:
-        fs = DefaultDimension(name="fs", default_value=model.nbpml)
+        fs = DefaultDimension(name="fs", default_value=int(space_order/2))
         expression += [Eq(v.backward.subs({u.indices[-1]: model.nbpml - fs - 1}),
-                         -v.backward.subs({u.indices[-1]: model.nbpml + fs - 1}))]
+                         -v.backward.subs({u.indices[-1]: model.nbpml + fs + 1}))]
     op = Operator(expression, subs=model.spacing_map, dse='advanced', dle='advanced',
                   name="Gradient%s" % randint(1e5))
     op()
