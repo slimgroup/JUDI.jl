@@ -1,4 +1,4 @@
-# 2D FWI on Overthrust model using minConf library 
+# 2D FWI on Overthrust model using minConf library
 # Author: Philipp Witte, pwitte@eoas.ubc.ca
 # Date: December 2017
 #
@@ -6,24 +6,21 @@
 using JUDI.TimeModeling, JUDI.SLIM_optim, HDF5, SeisIO, PyPlot, Images
 
 # Load starting model
-n,d,o,m0 = read(h5open("../data/overthrust_model.h5","r"), "n", "d", "o", "m0")
+n,d,o,m00 = read(h5open("../data/overthrust_model.h5","r"), "n", "d", "o", "m0")
 
-water = m0.>.43
 
-m0 = imfilter(m0, Kernel.gaussian(10));
-m0[water] = 1/(1.5f0^2)
+m0 = imfilter(m00, Kernel.gaussian(10));
+m0[:, 1:21] = m00[:, 1:21]
 model0 = Model((n[1],n[2]), (d[1],d[2]), (o[1],o[2]), m0)
 
 # Bound constraints
 v0 = sqrt.(1./model0.m)
-vmin = ones(Float32,model0.n) * 1.3f0
-vmax = ones(Float32,model0.n) * 6.5f0
-vmin[:,1:21] = v0[:,1:21]	# keep water column fixed
-vmax[:,1:21] = v0[:,1:21]
+vmin = 1.3f0
+vmax = 6.5f0
 
 # Slowness squared [s^2/km^2]
-mmin = vec((1f0./vmax).^2)
-mmax = vec((1f0./vmin).^2)
+mmin = (1f0./vmax).^2
+mmax = (1f0./vmin).^2
 
 # Load data
 block = segy_read("../data/overthrust_shot_records.segy")
@@ -35,98 +32,93 @@ wavelet = ricker_wavelet(src_geometry.t[1],src_geometry.dt[1],0.008f0)	# 8 Hz wa
 q = judiVector(src_geometry,wavelet)
 
 ############################### FWI ###########################################
+opt = Options(normalize=true)
 
 # Optimization parameters
-niterations = 10
-batchsize = 8
-fhistory_SGD = zeros(Float32,niterations)
+srand(1)	# set seed of random number generator
+fevals = 25
+batchsize = 15
 
-# Projection operator for bound constraints
-proj(x) = reshape(median([vec(mmin) vec(x) vec(mmax)],2),model0.n)
+# Objective function for minConf library
+count = 0
+function objective_function(x)
+	model0.m = reshape(x,model0.n);
 
-
-# Main loop
-for j=1:niterations
-
-	# get fwi objective function value and gradient
+	# fwi function value and gradient
 	i = randperm(d_obs.nsrc)[1:batchsize]
-	fval, gradient = fwi_objective(model0,q[i],d_obs[i])
-	println("FWI iteration no: ",j,"; function value: ",fval)
-    fhistory_SGD[j] = fval
+	fval, grad = fwi_objective(model0, q[i], d_obs[i]; options=opt)
+	grad = reshape(grad, model0.n)
+	grad[:, 1:21] = 0
+	grad = .125f0*grad/maximum(abs.(grad))  # scale for line search
 
-	# linesearch
-	step = backtracking_linesearch(model0,q[i],d_obs[i],fval,gradient,proj;alpha=1f0)
-	
-	# Update model and bound projection
-	model0.m = proj(model0.m + reshape(step,model0.n))
-    # figure(); imshow(sqrt.(1f0./model0.m)'); title(string(j))
+	global count; count+= 1
+    return fval, vec(grad)
 end
 
-figure(); imshow(sqrt.(1f0./model0.m)'); title("FWI with SGD")
-figure(); imshow(sqrt.(1f0./model0.m)' - sqrt(1f0./m0)'); title("Diff")
+# Bound projection
+ProjBound(x) = boundproject(x,mmax,mmin)
+
+# FWI with SPG
+options = spg_options(verbose=3, maxIter=fevals, memory=3)
+x, fsave, funEvals= minConf_SPG(objective_function, vec(model0.m), ProjBound, options)
+x = reshape(x, model0.n)
+
+figure(); imshow(sqrt.(1f0./x)'); title("FWI with SGD")
+figure(); imshow(sqrt.(1f0./x)' - sqrt.(1f0./m0)'); title("Diff")
 
 
 #########################  GS Trace ####################################################
 
-options= Options(gs=Dict("maxshift" => 200.0f0, "strategy" => "traces"))
+opt = Options(normalize=true, gs=Dict("maxshift" => 400.0f0, "strategy" => "traces"))
 model0 = Model((n[1],n[2]), (d[1],d[2]), (o[1],o[2]), m0)
 # Optimization parameters
-niterations = 10
-batchsize = 8
-fhistory_SGD = zeros(Float32,niterations)
+srand(1)	# set seed of random number generator
+# Objective function for minConf library
+count = 0
+function objective_function(x)
+	model0.m = reshape(x,model0.n);
 
-# Projection operator for bound constraints
-proj(x) = reshape(median([vec(mmin) vec(x) vec(mmax)],2),model0.n)
-
-
-# Main loop
-for j=1:niterations
-
-	# get fwi objective function value and gradient
+	# fwi function value and gradient
 	i = randperm(d_obs.nsrc)[1:batchsize]
-	fval, gradient = fwi_objective(model0,q[i],d_obs[i], options)
-	println("FWI iteration no: ",j,"; function value: ",fval)
-    fhistory_SGD[j] = fval
+	fval, grad = fwi_objective(model0, q[i], d_obs[i]; options=opt)
+	grad = reshape(grad, model0.n)
+	grad[:, 1:21] = 0
+	grad = .125f0*grad/maximum(abs.(grad))  # scale for line search
 
-	# linesearch
-	step = backtracking_linesearch(model0,q[i],d_obs[i],fval,gradient,proj;alpha=1f0)
-	
-	# Update model and bound projection
-	model0.m = proj(model0.m + reshape(step,model0.n))
-    # figure(); imshow(sqrt.(1f0./model0.m)'); title(string(j))
+	global count; count+= 1
+    return fval, vec(grad)
 end
 
-figure(); imshow(sqrt.(1f0./model0.m)'); title("GSFWI-t with SGD")
-figure(); imshow(sqrt.(1f0./model0.m)' - sqrt(1f0./m0)'); title("Diff")
+x2, fsave2, funEvals2= minConf_SPG(objective_function, vec(model0.m), ProjBound, options)
+x2 = reshape(x2, model0.n)
+
+figure(); imshow(sqrt.(1f0./x2)'); title("FWI with SGD")
+figure(); imshow(sqrt.(1f0./x2)' - sqrt.(1f0./m0)'); title("Diff")
+
 
 #########################  GS Shots ####################################################
-options= Options(gs=Dict("maxshift" => 200.0f0, "strategy" => "shot"))
+opt = Options(normalize=true, gs=Dict("maxshift" => 400.0f0, "strategy" => "shot"))
 model0 = Model((n[1],n[2]), (d[1],d[2]), (o[1],o[2]), m0)
 # Optimization parameters
-niterations = 10
-batchsize = 8
-fhistory_SGD = zeros(Float32,niterations)
+srand(1)	# set seed of random number generator
 
-# Projection operator for bound constraints
-proj(x) = reshape(median([vec(mmin) vec(x) vec(mmax)],2),model0.n)
+# Objective function for minConf library
+count = 0
+function objective_function(x)
+	model0.m = reshape(x,model0.n);
 
-
-# Main loop
-for j=1:niterations
-
-	# get fwi objective function value and gradient
+	# fwi function value and gradient
 	i = randperm(d_obs.nsrc)[1:batchsize]
-	fval, gradient = fwi_objective(model0,q[i],d_obs[i], options)
-	println("FWI iteration no: ",j,"; function value: ",fval)
-    fhistory_SGD[j] = fval
-
-	# linesearch
-	step = backtracking_linesearch(model0,q[i],d_obs[i],fval,gradient,proj;alpha=1f0)
-	
-	# Update model and bound projection
-	model0.m = proj(model0.m + reshape(step,model0.n))
-    # figure(); imshow(sqrt.(1f0./model0.m)'); title(string(j))
+	fval, grad = fwi_objective(model0, q[i], d_obs[i]; options=opt)
+	grad = .125f0*grad/maximum(abs.(grad))  # scale for line search
+	grad = reshape(grad, model0.n)
+	grad[:, 1:21] = 0
+	global count; count+= 1
+    return fval, vec(grad)
 end
 
-figure(); imshow(sqrt.(1f0./model0.m)'); title("GSFWI-s with SGD")
-figure(); imshow(sqrt.(1f0./model0.m)' - sqrt(1f0./m0)'); title("Diff")
+x3, fsave3, funEvals3= minConf_SPG(objective_function, vec(model0.m), ProjBound, options)
+x3 = reshape(x3, model0.n)
+
+figure(); imshow(sqrt.(1f0./x3)'); title("FWI with SGD")
+figure(); imshow(sqrt.(1f0./x3)' - sqrt.(1f0./m0)'); title("Diff")

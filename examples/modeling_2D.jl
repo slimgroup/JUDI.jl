@@ -23,7 +23,7 @@ dm = vec(m - m0)
 
 # Setup info and model structure
 nsrc = 1	# number of sources
-model = Model(n,d,o,m)	
+model = Model(n,d,o,m)
 model0 = Model(n,d,o,m0)
 
 ## Set up receiver geometry
@@ -46,7 +46,7 @@ zsrc = convertToCell(linspace(20.,20.,nsrc))
 
 # source sampling and number of time steps
 timeS = 1000.
-dtS = 2	
+dtS = 2
 
 # Set up source structure
 srcGeometry = Geometry(xsrc,ysrc,zsrc;dt=dtS,t=timeS)
@@ -62,7 +62,7 @@ info = Info(prod(n),nsrc,ntComp)
 
 ######################## WITHOUT DENSITY ############################################
 
-opt = Options()
+opt = Options(freesurface=true)
 
 # Setup operators
 Pr = judiProjection(info,recGeometry)
@@ -73,10 +73,10 @@ J = judiJacobian(Pr*F0*Ps',q)
 
 # Nonlinear modeling
 d = Pr*F*Ps'*q
-qad = Ps*F'*Pr'*d
-
-# Linearized modeling 
-dD = J*dm
-rtm = J'*dD
-
-
+F.options.freesurface=false
+d1 = Pr*F*Ps'*q
+# qad = Ps*F'*Pr'*d
+#
+# # Linearized modeling
+# dD = J*dm
+# rtm = J'*dD

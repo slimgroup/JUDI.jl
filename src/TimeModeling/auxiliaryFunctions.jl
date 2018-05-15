@@ -368,12 +368,13 @@ function gs_residual_trace(maxshift, dtComp, dPredicted, dObserved, normalize)
 	dObserved = [zeros(Float32, nshift, size(dPredicted,2)); dObserved; zeros(Float32, nshift, size(dPredicted,2))]
 	# residual_plot = zeros(Float32, size(dObserved))
 	# syn_plot = zeros(Float32, size(dObserved))
-
-	for rr=1:size(dPredicted,2)
+    indnz = [i for i in 1:size(dPredicted,2) if (norm(dObserved[:,i])>0 && norm(dPredicted[:,i])>0)]
+	for rr in indnz
 		aux = zeros(Float32, size(dPredicted, 1))
 
 		syn = dPredicted[:, rr]
 		obs = dObserved[:, rr]
+
 		if normalize
 			syn /= norm(syn)
 			obs /= norm(obs)
@@ -407,7 +408,7 @@ function gs_residual_trace(maxshift, dtComp, dPredicted, dObserved, normalize)
 		# get coefficients
 
 		H = Array{Float64}(H)
-		H = .5*(H'+H)
+		H = .5*(H'+ H)
 		A = ones(Float32, 1, nSamples)
 		sol = quadprog(0, H, A, '=', 1., 0., 1., IpoptSolver(print_level=1))
 		alphas = Array{Float32}(sol.sol)
