@@ -10,7 +10,7 @@ function fwi_objective(model_full::Model, source::judiVector, dObs::judiVector, 
     length(model_full.n) == 3 ? dims = [3,2,1] : dims = [2,1]   # model dimensions for Python are (z,y,x) and (z,x)
 
     # for 3D modeling, limit model to area with sources/receivers
-    if options.limit_m == true && length(model_full.n) == 3 # only supported for 3D
+    if options.limit_m == true
         model = deepcopy(model_full)
         model = limit_model_to_receiver_area(source.geometry,dObs.geometry,model,options.buffer_size)
     else
@@ -25,7 +25,6 @@ function fwi_objective(model_full::Model, source::judiVector, dObs::judiVector, 
     modelPy = pm.Model(origin=(0.,0.,0.), spacing=model.d, shape=model.n, vp=process_physical_parameter(sqrt.(1f0./model.m), dims), nbpml=model.nb,
                        rho=process_physical_parameter(model.rho, dims), space_order=options.space_order)
     dtComp = modelPy[:critical_dt]
-
     # Extrapolate input data to computational grid
     qIn = time_resample(source.data[1],source.geometry,dtComp)[1]
     if typeof(dObs.data[1]) == SeisIO.SeisCon

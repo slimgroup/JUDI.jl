@@ -3,8 +3,8 @@
 # Date: December 2017
 #
 
-export marineTopmute2D, judiMarineTopmute2D
-export model_topmute, judiTopmute, find_water_bottom, depth_scaling, judiDepthScaling, laplace
+export marineTopmute2D, judiMarineTopmute2D, low_filter
+export model_topmute, judiTopmute, find_water_bottom, depth_scaling, judiDepthScaling, laplace, judiFilter
 
 
 ############################################ Data space preconditioners ################################################

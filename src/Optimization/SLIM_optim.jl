@@ -5,9 +5,9 @@
 
 module SLIM_optim
 
-using PolynomialRoots
+using PolynomialRoots, DSP, JOLI
 
-import JUDI
+using JUDI.TimeModeling
 
 #############################################################################
 # Optimization algorithms

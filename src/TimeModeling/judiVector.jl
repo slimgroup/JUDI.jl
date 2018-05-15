@@ -5,7 +5,7 @@
 # Authors: Philipp Witte (pwitte@eos.ubc.ca), Henryk Modzelewski (hmodzelewski@eos.ubc.ca)
 # Date: January 2017
 
-export judiVector, judiVectorException, subsample, judiVector_to_SeisBlock, time_resample, time_resample!, judiTimeInterpolation, write_shot_record
+export judiVector, judiVectorException, subsample, judiVector_to_SeisBlock, time_resample, time_resample!, judiTimeInterpolation, write_shot_record, get_data
 
 ############################################################
 
@@ -270,6 +270,15 @@ function judiVector(geometry::Geometry, data::Array{SeisIO.SeisCon}; vDT::DataTy
     return judiVector{Float32}("Julia seismic data container",m,n,nsrc,geometry,dataCell)
 end
 
+function get_data(x::judiVector)
+    shots = Array{Any}(x.nsrc)
+    rec_geometry = Geometry(x.geometry)
+
+    for j=1:x.nsrc
+        shots[j] = convert(Array{Float32, 2}, x.data[j][1].data)
+    end
+    return judiVector(rec_geometry, shots)
+end
 
 
 ############################################################
