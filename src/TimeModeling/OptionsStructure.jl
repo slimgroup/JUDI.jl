@@ -19,6 +19,8 @@ type Options
     optimal_checkpointing::Bool
     frequencies::Array
     isic::Bool
+    t_sub::Integer
+    h_sub::Integer
 end
 
 """
@@ -73,5 +75,5 @@ All arguments are optional keyword arguments with the following default values:
             file_name="shot", sum_padding=false, save_wavefield=false, optimal_checkpointing=false, frequencies=[], isic=false)
 
 """
-Options(;space_order=8,retry_n=0,limit_m=false,buffer_size=1e3, save_data_to_disk=false, file_path="", file_name="shot", sum_padding=false, save_wavefield=false, optimal_checkpointing=false, frequencies=[], isic=false) =
-    Options(space_order,retry_n,limit_m,buffer_size,save_data_to_disk,file_path,file_name, sum_padding, save_wavefield, optimal_checkpointing, frequencies, isic)
+Options(;space_order=8,retry_n=0,limit_m=false,buffer_size=1e3, save_data_to_disk=false, file_path="", file_name="shot", sum_padding=false, save_wavefield=false, optimal_checkpointing=false, frequencies=[], isic=false, t_sub=1, h_sub=1) =
+    Options(space_order,retry_n,limit_m,buffer_size,save_data_to_disk,file_path,file_name, sum_padding, save_wavefield, optimal_checkpointing, frequencies, isic, t_sub, h_sub)

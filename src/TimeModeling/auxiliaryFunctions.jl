@@ -2,11 +2,12 @@
 # Author: Philipp Witte, pwitte@eos.ubc.ca
 # Date: September 2016
 #
+@pyimport scipy.interpolate as interp
 
 export ricker_wavelet, get_computational_nt, smooth10, damp_boundary, calculate_dt, setup_grid, setup_3D_grid
 export convertToCell, limit_model_to_receiver_area, extend_gradient, process_physical_parameter
 export time_resample, remove_padding, backtracking_linesearch
-export generate_distribution, select_frequencies
+export generate_distribution, select_frequencies, resample_model
 
 
 function process_physical_parameter(param, dims)
@@ -434,4 +435,31 @@ function select_frequencies(L;fmin=0.,fmax=Inf,nf=1)
 		end
 	end
 	return freq
+end
+
+function resample_model(array, inh, modelfull)
+    # size in
+    shape = size(array)
+    ndim = length(shape)
+    if ndim > 2
+        # Axes
+        x1 = inh[1] * linspace(0, shape[1] - 1)
+        xnew = modelfull.d[1] * linspace(0, modelfull.n[1] - 1)
+        y1 = inh[2] * linspace(0, shape[2] - 1)
+        ynew = modelfull.d[2] * linspace(0, modelfull.n[2] - 1)
+        z1 = inh[3] * linspace(0, shape[3]-1)
+        znew = modelfull.d[3] * linspace(0, modelfull.n[3] - 1)
+        interpolator = interp.RegularGridInterpolator((x1, y1, z1), array)
+        gridnew = np.ix_(xnew, ynew, znew)
+    else
+        # Axes
+        x1 = inh[1] * linspace(0, shape[1] - 1)
+        xnew = modelfull.d[1] * linspace(0, modelfull.n[1] - 1)
+        z1 = inh[2] * linspace(0, shape[2]-1)
+        znew = modelfull.d[2] * linspace(0, modelfull.n[2] - 1)
+        interpolator = interp.RegularGridInterpolator((x1, z1), array)
+        gridnew = np.ix_(xnew, znew)
+    end
+    resampled = pycall(interpolator,  Array{Float32, ndim}, gridnew)
+    return resampled
 end

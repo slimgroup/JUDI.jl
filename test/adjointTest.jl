@@ -67,25 +67,25 @@ wave_rand = wavelet.*rand(Float32,size(wavelet))
 ###################################################################################################
 
 # Modeling operators
-opt = Options(sum_padding=true, isic=true)
+opt = Options(sum_padding=true, isic=true, t_sub=2, h_sub=2)
 F = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
 q = judiVector(srcGeometry, wavelet)
-
-# Nonlinear modeling
-d_hat = F*q
-
-# Generate random noise data vector with size of d_hat in the range of F
-qr = judiVector(srcGeometry,wave_rand)
-d1 = F*qr
-
-# Adjoint computation
-q_hat = F'*d1
-
-# Result F
-println(abs(dot(d1,d_hat)))
-println(abs(dot(q,q_hat)))
-println("Residual: ", abs(dot(d1,d_hat) - dot(q,q_hat)))
-println("Ratio: ", abs(dot(d1,d_hat)/dot(q,q_hat)) - 1.0)
+#
+# # Nonlinear modeling
+# d_hat = F*q
+#
+# # Generate random noise data vector with size of d_hat in the range of F
+# qr = judiVector(srcGeometry,wave_rand)
+# d1 = F*qr
+#
+# # Adjoint computation
+# q_hat = F'*d1
+#
+# # Result F
+# println(abs(dot(d1,d_hat)))
+# println(abs(dot(q,q_hat)))
+# println("Residual: ", abs(dot(d1,d_hat) - dot(q,q_hat)))
+# println("Ratio: ", abs(dot(d1,d_hat)/dot(q,q_hat)) - 1.0)
 
 # Linearized modeling
 J = judiJacobian(F,q)

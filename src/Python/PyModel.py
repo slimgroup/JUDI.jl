@@ -7,30 +7,27 @@ from devito.logger import error
 
 __all__ = ['Model']
 
+
 def damp_boundary(damp, nbpml, spacing):
     """Initialise damping field with an absorbing PML layer.
-
-    :param damp: Array data defining the damping field
-    :param nbpml: Number of points in the damping layer
-    :param spacing: Grid spacing coefficent
+    :param damp: The :class:`Function` for the damping field.
+    :param nbpml: Number of points in the damping layer.
+    :param spacing: Grid spacing coefficent.
     """
-    dampcoeff = 2.5 * np.log(1.0 / 0.001) / (40.)
-    ndim = len(damp.shape)
-    for i in range(nbpml):
-        pos = np.abs((nbpml - i + 1) / float(nbpml))
-        val = dampcoeff * (pos - np.sin(2*np.pi*pos)/(2*np.pi))
-        if ndim == 2:
-            damp[i, :] += val/spacing[0]
-            damp[-(i + 1), :] += val/spacing[0]
-            damp[:, i] += val/spacing[1]
-            damp[:, -(i + 1)] += val/spacing[1]
-        else:
-            damp[i, :, :] += val/spacing[0]
-            damp[-(i + 1), :, :] += val/spacing[0]
-            damp[:, i, :] += val/spacing[1]
-            damp[:, -(i + 1), :] += val/spacing[1]
-            damp[:, :, i] += val/spacing[2]
-            damp[:, :, -(i + 1)] += val/spacing[2]
+    dampcoeff = 1.5 * np.log(1.0 / 0.001) / (40.)
+    for i in range(damp.ndim):
+        for j in range(nbpml):
+            # Dampening coefficient
+            pos = np.abs((nbpml - j + 1) / float(nbpml))
+            val = dampcoeff * (pos - np.sin(2*np.pi*pos)/(2*np.pi))
+            # : slices
+            all_ind = [slice(0, d) for d in damp.data.shape]
+            # Left slice for dampening for dimension i
+            all_ind[i] = slice(j, j+1)
+            damp[all_ind] += val/spacing[i]
+            # right slice for dampening for dimension i
+            all_ind[i] = slice(damp.data.shape[i]-j, damp.data.shape[i]-j+1)
+            damp[all_ind] += val/spacing[i]
 
 
 def initialize_function(function, data, nbpml):
@@ -68,6 +65,7 @@ class Model(object):
         self.nbpml = int(nbpml)
 
         shape_pml = np.array(shape) + 2 * self.nbpml
+        self.shape_pml = shape_pml
         # Physical extent is calculated per cell, so shape - 1
         extent = tuple(np.array(spacing) * (shape_pml - 1))
         self.grid = Grid(extent=extent, shape=shape_pml,

@@ -35,7 +35,7 @@ def sub_ind(model):
     return tuple(sub_dim)
 
 def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_order=12, nb=40,
-                     t_sub_factor=20, op_return=False, dt=None):
+                     t_sub_factor=20, h_sub_factor=2, op_return=False, dt=None):
     clear_cache()
 
     # Parameters
@@ -55,18 +55,37 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
         ang3 = sin(phi)
 
     # Create the forward wavefield
-    u = TimeFunction(name='u', grid=model.grid, time_order=2, space_order=space_order)
-    v = TimeFunction(name='v', grid=model.grid, time_order=2, space_order=space_order)
-    if save:
-        time_subsampled = ConditionalDimension('t_sub', parent=u.grid.time_dim, factor=t_sub_factor)
-        grid2 = Grid(shape=tuple([i//2 for i in u.data.shape[1:]]),
-                     extent=u.grid.extent, dimensions=sub_ind(model))
-        usave = TimeFunction(name='us', grid=grid2, time_order=2, space_order=space_order,
-                             time_dim=time_subsampled, save=(nt-1)//t_sub_factor + 2)
-        vsave = TimeFunction(name='vs', grid=grid2, time_order=2, space_order=space_order,
-                             time_dim=time_subsampled, save=(nt-1)//t_sub_factor + 2)
-        eqsave = [Eq(usave.forward, u.forward), Eq(vsave.forward, v.forward)]
+    if save and (t_sub_factor>1 or h_sub_factor>1):
+        u = TimeFunction(name='u', grid=model.grid, time_order=2, space_order=space_order)
+        v = TimeFunction(name='v', grid=model.grid, time_order=2, space_order=space_order)
+        if t_sub_factor > 1:
+            time_subsampled = ConditionalDimension('t_sub', parent=u.grid.time_dim, factor=t_sub_factor)
+            nsave = (nt-1)//t_sub_factor + 2
+        else:
+            time_subsampled = grid.time_dim
+            nsave = nt
 
+        if h_sub_factor > 1:
+            grid2 = Grid(shape=tuple([i//2 for i in u.data.shape[1:]]),
+                         extent=u.grid.extent, dimensions=sub_ind(model))
+        else:
+            grid2 = model.grid
+
+        usave = TimeFunction(name='us', grid=grid2, time_order=2, space_order=space_order,
+                             time_dim=time_subsampled, save=nsave)
+        vsave = TimeFunction(name='vs', grid=grid2, time_order=2, space_order=space_order,
+                             time_dim=time_subsampled, save=nsave)
+        eqsave = [Eq(usave.forward, u.forward), Eq(vsave.forward, v.forward)]
+    elif save and t_sub_factor==1 and h_sub_factor==1:
+        u = TimeFunction(name='u', grid=model.grid, time_order=2, space_order=space_order,
+                         save=nt)
+        v = TimeFunction(name='v', grid=model.grid, time_order=2, space_order=space_order,
+                         save=nt)
+        eqsave = []
+    else:
+        u = TimeFunction(name='u', grid=model.grid, time_order=2, space_order=space_order)
+        v = TimeFunction(name='v', grid=model.grid, time_order=2, space_order=space_order)
+        eqsave = []
     # TTI stencil
     FD_kernel = kernels[len(model.shape)]
     H0, Hz = FD_kernel(u, v, ang0, ang1, ang2, ang3, space_order)
@@ -100,12 +119,12 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
     op = Operator(expression, subs=model.spacing_map, dse='aggressive', dle='advanced',
                   name="Forward%s" % randint(1e5), autotune=False)
     if op_return is False:
-        if save:
-            op(dt=dt, x_in_size=usave.shape[1], y_in_size=usave.shape[2])
-            return rec, usave, vsave
+        if save and (t_sub_factor>1 or h_sub_factor>1):
+            op(dt=dt)
+            return rec.data, usave, vsave
         else:
             op(dt=dt)
-            return rec, u, v
+            return rec.data, u, v
     else:
         return op()
 
@@ -166,8 +185,8 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=12, nb
     return src.data, p, q
 
 
-def forward_born(model, src_coords, wavelet, rec_coords, space_order=12, nb=40, isic=False, dt=None, save=False):
-    print("hello")
+def forward_born(model, src_coords, wavelet, rec_coords, space_order=12, nb=40, isic=False, dt=None, save=False, isiciso=False,
+                 h_sub_factor=1):
     clear_cache()
 
     # Parameters
@@ -210,14 +229,26 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=12, nb=40, 
         (4.0 * m * v + (s * damp - 2.0 * m) *
          v.backward + 2.0 * s ** 2 * (delta * H0 + Hz))
 
-    if isic is not True:
+    if isiciso:
+        du_aux_x = first_derivative(u.dx * dm, order=space_order, dim=u.indices[1], diff=h_sub_factor*u.indices[1].spacing)
+        du_aux_y = first_derivative(u.dy * dm, order=space_order, dim=u.indices[2], diff=h_sub_factor*u.indices[2].spacing)
+        du2 =  (dm * u.dt2 * m - du_aux_x - du_aux_y)
+        if len(model.shape) == 3:
+            du2 -= first_derivative(u.dz * dm, order=space_order, dim=u.indices[3], diff=h_sub_factor*u.indices[3].spacing)
+
+        dv_aux_x = first_derivative(v.dx * dm, order=space_order, dim=u.indices[1], diff=h_sub_factor*u.indices[1].spacing)
+        dv_aux_y = first_derivative(v.dy * dm, order=space_order, dim=u.indices[2], diff=h_sub_factor*u.indices[2].spacing)
+        dv2 =  (dm * v.dt2 * m - dv_aux_x - dv_aux_y)
+        if len(model.shape) == 3:
+            dv2 -= first_derivative(v.dz * dm, order=space_order, dim=u.indices[3], diff=h_sub_factor*u.indices[3].spacing)
+
         stencilpl = 1.0 / (2.0 * m + s * damp) * \
             (4.0 * m * ul + (s * damp - 2.0 * m) *
-             ul.backward + 2.0 * s ** 2 * (epsilon * H0l + delta * Hzl - dm * u.dt2))
+             ul.backward + 2.0 * s ** 2 * (epsilon * H0l + delta * Hzl - du2))
         stencilrl = 1.0 / (2.0 * m + s * damp) * \
             (4.0 * m * vl+ (s * damp - 2.0 * m) *
-             vl.backward + 2.0 * s ** 2 * (delta * H0l + Hzl - dm * v.dt2))
-    else:
+             vl.backward + 2.0 * s ** 2 * (delta * H0l + Hzl - dv2))
+    elif isic:
         order_loc = int(space_order/2)
         lin_expru = dm * u.dt2 * m - Dx(Dx(u, ang0, ang1, ang2, ang3, order_loc) * dm,
                                                   ang0, ang1, ang2, ang3, order_loc)
@@ -238,6 +269,13 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=12, nb=40, 
         stencilrl = 1.0 / (2.0 * m + s * damp) * \
             (4.0 * m * vl+ (s * damp - 2.0 * m) *
              vl.backward + 2.0 * s ** 2 * (delta * H0l + Hzl - lin_exprv))
+    else:
+        stencilpl = 1.0 / (2.0 * m + s * damp) * \
+            (4.0 * m * ul + (s * damp - 2.0 * m) *
+             ul.backward + 2.0 * s ** 2 * (epsilon * H0l + delta * Hzl - dm * u.dt2))
+        stencilrl = 1.0 / (2.0 * m + s * damp) * \
+            (4.0 * m * vl+ (s * damp - 2.0 * m) *
+             vl.backward + 2.0 * s ** 2 * (delta * H0l + Hzl - dm * v.dt2))
 
     first_stencil = Eq(u.forward, stencilp)
     second_stencil = Eq(v.forward, stencilr)
@@ -261,14 +299,15 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=12, nb=40, 
                   name="Born%s" % randint(1e5), autotune=False)
     op(dt=dt)
 
-    return rec, u, ul
+    return rec.data, u, ul
 
 
-def adjoint_born(model, rec, u=None, v=None, op_forward=None, is_residual=False,
+def adjoint_born(model, rec_coords, rec_data, u=None, v=None, op_forward=None, is_residual=False,
                  space_order=12, nb=40, isic=False, isiciso=False, isicnothom=False, dt=None):
     clear_cache()
+    factor_t = u.indices[0].factor if u.indices[0].is_Conditional else 1
     # Parameters
-    nt = rec.data.shape[0]
+    nt = rec_data.shape[0]
     if dt is None:
         dt = model.critical_dt
     m, damp, epsilon, delta, theta, phi = (model.m, model.damp, model.epsilon,
@@ -305,8 +344,11 @@ def adjoint_born(model, rec, u=None, v=None, op_forward=None, is_residual=False,
     expression = [first_stencil, second_stencil]
 
     # Data at receiver locations as adjoint source
-    adj_src = rec.inject(field=p.backward, offset=model.nbpml, expr=rec * dt**2 / m)
-    adj_src += rec.inject(field=q.backward, offset=model.nbpml, expr=rec * dt**2 / m)
+    rec_g = Receiver(name='rec_g', grid=model.grid, ntime=nt, coordinates=rec_coords)
+    if op_forward is None:
+        rec_g.data[:] = rec_data[:]
+    adj_src = rec_g.inject(field=p.backward, offset=model.nbpml, expr=rec_g * dt**2 / m)
+    adj_src += rec_g.inject(field=q.backward, offset=model.nbpml, expr=rec_g * dt**2 / m)
     # Gradient update
     if u is None:
         u = TimeFunction(name='u', grid=model.grid, time_order=2, space_order=space_order)
@@ -330,12 +372,12 @@ def adjoint_born(model, rec, u=None, v=None, op_forward=None, is_residual=False,
             vdy = delta * Dy(v, ang0, ang1, ang2, ang3, order_loc)
             qdy = Dy(q, ang0, ang1, ang2, ang3, order_loc)
             grads += udy * pdy + vdy * qdy
-        gradient_update = [Eq(gradient, gradient - dt * ((u * p.dt2 + v * q.dt2) * m + grads))]
+        gradient_update = [Eq(gradient, gradient - factor_t * dt * ((u * p.dt2 + v * q.dt2) * m + grads))]
     elif isiciso is True:
         grads = u.dx * p.dx + u.dy * p.dy + v.dx * q.dx + v.dy * q.dy
         if len(model.shape) == 3:
             grads += u.dz * p.dz + v.dz * q.dz
-        gradient_update = [Eq(gradient, gradient - dt * ((u * p.dt2 + v * q.dt2) * m + grads))]
+        gradient_update = [Eq(gradient, gradient - dt * factor_t * ((u * p.dt2 + v * q.dt2) * m + grads))]
     elif isicnothom is True:
                 order_loc = int(space_order/2)
                 udx = Dx(u, ang0, ang1, ang2, ang3, order_loc)
@@ -353,9 +395,9 @@ def adjoint_born(model, rec, u=None, v=None, op_forward=None, is_residual=False,
                     vdy = delta * Dy(v, ang0, ang1, ang2, ang3, order_loc)
                     qdy = Dy(q, ang0, ang1, ang2, ang3, order_loc)
                     grads += udy * pdy + vdy * qdy
-                gradient_update = [Eq(gradient, gradient - dt * ((u * p.dt2 + v * q.dt2) * m + grads))]
+                gradient_update = [Eq(gradient, gradient - factor_t * dt * ((u * p.dt2 + v * q.dt2) * m + grads))]
     else:
-        gradient_update = [Eq(gradient, gradient - dt * u * p.dt2 - dt * v * q.dt2)]
+        gradient_update = [Eq(gradient, gradient - factor_t * dt * (u * p.dt2 + v * q.dt2))]
 
     # Create operator and run
     set_log_level('INFO')
@@ -383,13 +425,17 @@ def adjoint_born(model, rec, u=None, v=None, op_forward=None, is_residual=False,
             fval = .5*np.linalg.norm(rec_g.data[:])**2
         wrp.apply_reverse()
     else:
-        op(dt=dt, x_in_size=u.shape[1], y_in_size=u.shape[2])
+        op(dt=dt)
     clear_cache()
 
-    if op_forward is not None and is_residual is not True:
-        return fval, gradient.data
+    if u.indices[1].is_Conditional:
+        grad = resample_grad(gradient, model, u.indices[1].factor)
     else:
-        return gradient.data
+        grad = gradient.data
+    if op_forward is not None and is_residual is not True:
+        return fval, grad
+    else:
+        return grad
 
 def adjoint_born_fake(model, rec_coords, rec_data, u=None, v=None, op_forward=None, is_residual=False, space_order=12, nb=40, isic=False, dt=None):
     clear_cache()
@@ -729,3 +775,20 @@ def Dz(field, costheta, sintheta, cosphi, sinphi, space_order):
 
 
 kernels = {3: kernel_centered_3d, 2: kernel_centered_2d}
+
+
+def resample_grad(grad, model, factor):
+    from scipy import interpolate
+    x = [i*factor for i in range(grad.data.shape[0])]
+    xnew = [i for i in range(model.shape_pml[0])]
+    y = [i*factor for i in range(grad.data.shape[1])]
+    ynew = [i for i in range(model.shape_pml[1])]
+    if model.grid.dim > 2:
+        z = [i*factor for i in range(grad.data.shape[2])]
+        znew = [i for i in range(model.shape_pml[2])]
+        interpolator = interpolate.RegularGridInterpolator((x, y, z), grad.data, bounds_error=False,fill_value=0.)
+        gridnew = np.ix_(xnew, ynew, znew)
+    else:
+        interpolator = interpolate.RegularGridInterpolator((x, y), grad.data, bounds_error=False, fill_value=0.)
+        gridnew = np.ix_(xnew, ynew)
+    return interpolator(gridnew)
