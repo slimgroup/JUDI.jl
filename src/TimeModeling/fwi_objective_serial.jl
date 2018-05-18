@@ -67,7 +67,7 @@ function fwi_objective(model_full::Model, source::judiVector, dObs::judiVector, 
                          u=u0, is_residual=true, freesurface=options.freesurface)
     end
     argout2 = remove_padding(argout2, model.nb, true_adjoint=options.sum_padding)
-    if options.limit_m==true && length(model_full.n) == 3
+    if options.limit_m==true
         argout2 = extend_gradient(model_full,model,argout2)
     end
     return [argout1; vec(argout2)]

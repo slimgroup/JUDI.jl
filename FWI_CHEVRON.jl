@@ -69,7 +69,7 @@ srand(1)    # set seed of random number generator
 # Objective function for minConf library
 count = 0
 function objective_function(x)
-    model0.m = reshape(x,model0.n);
+    model0.m = reshape(x, model0.n);
     model0.rho = Float32.(0.31 * (1f3*sqrt.(1./model0.m)).^0.25)
     # fwi function value and gradient
     i = randperm(d_obs.nsrc)[1:batchsize]
@@ -86,7 +86,7 @@ end
 
 # FWI with SPG
 x, fsave, funEvals= minConf_SPG(objective_function, vec(m0), ProjBound, options)
-save("FWI.jl", "m0", m0, "x", reshape(x, model0.n), "fval", fsave, "funEvals", funEvals)
+save("FWI.jld", "m0", m0, "x", reshape(x, model0.n), "fval", fsave, "funEvals", funEvals)
 
 ############################### GS-FWI-shot ###########################################
 opt = Options(limit_m=true, buffer_size=1000f0, freesurface=true, normalize=true, gs=Dict("maxshift" => 200.0f0, "strategy" => "shot")
@@ -111,7 +111,7 @@ end
 
 # FWI with SPG
 xgss, fsavegss, funEvalsgss= minConf_SPG(objective_function, vec(m0), ProjBound, options)
-save("FWIGS-shot.jl", "m0", m0, "x", reshape(xgss, model0.n), "fval", fsavegss, "funEvals", funEvalsgss)
+save("FWIGS-shot.jld", "m0", m0, "x", reshape(xgss, model0.n), "fval", fsavegss, "funEvals", funEvalsgss)
 
 ############################### GS-FWI-trace ###########################################
 opt = Options(limit_m=true, buffer_size=1000f0, freesurface=true, normalize=true, gs=Dict("maxshift" => 200.0f0, "strategy" => "trace")
@@ -138,4 +138,4 @@ end
 
 # FWI with SPG
 xgst, fsavegst, funEvalsgst= minConf_SPG(objective_function, vec(m0), ProjBound, options)
-save("FWIGS-trace.jl", "m0", m0, "x", reshape(xgst, model0.n), "fval", fsavegst, "funEvals", funEvalsgst)
+save("FWIGS-trace.jld", "m0", m0, "x", reshape(xgst, model0.n), "fval", fsavegst, "funEvals", funEvalsgst)
