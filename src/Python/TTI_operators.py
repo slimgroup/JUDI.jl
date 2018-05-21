@@ -23,6 +23,12 @@ from PyModel import Model
 from checkpoint import DevitoCheckpoint, CheckpointOperator
 from pyrevolve import Revolver
 
+def J_transpose(model, src_coords, wavelet, rec_coords, recin, space_order=12, nb=40,
+                t_sub_factor=20, h_sub_factor=2, op_return=False, dt=None, isic=False):
+    rec, u0, v0 = forward_modeling(model, src_coords, wavelet, rec_coords, save=True, space_order=space_order, nb=nb,
+                                   t_sub_factor=t_sub_factor, h_sub_factor=h_sub_factor, dt=dt)
+    grad = adjoint_born(model, rec_coords, recin, u=u0, v=v0, space_order=space_order, nb=nb, isiciso=isic, dt=dt)
+    return grad
 
 def sub_ind(model):
     """
@@ -111,7 +117,7 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
     rec_term = rec.interpolate(expr=u + v, offset=model.nbpml)
 
     # Create operator and run
-    set_log_level('DEBUG')
+    set_log_level('ERROR')
     expression += src_term + rec_term
     if save:
         expression += eqsave
@@ -176,7 +182,7 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=12, nb
     adj_rec = src.interpolate(expr=p+q, offset=model.nbpml)
 
     # Create operator and run
-    set_log_level('INFO')
+    set_log_level('ERROR')
     expression += adj_src + adj_rec
     op = Operator(expression, subs=model.spacing_map, dse='aggressive', dle='advanced',
                   name="Backward%s" % randint(1e5))
@@ -293,7 +299,7 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=12, nb=40, 
     rec_term = rec.interpolate(expr=ul + vl, offset=model.nbpml)
 
     # Create operator and run
-    set_log_level('INFO')
+    set_log_level('ERROR')
     expression = expression_u + expression_du + src_term + rec_term
     op = Operator(expression, subs=model.spacing_map, dse='aggressive', dle='advanced',
                   name="Born%s" % randint(1e5), autotune=False)
@@ -400,11 +406,10 @@ def adjoint_born(model, rec_coords, rec_data, u=None, v=None, op_forward=None, i
         gradient_update = [Eq(gradient, gradient - factor_t * dt * (u * p.dt2 + v * q.dt2))]
 
     # Create operator and run
-    set_log_level('INFO')
+    set_log_level('ERROR')
     expression += adj_src + gradient_update
     op = Operator(expression, subs=model.spacing_map, dse='advanced', dle='advanced',
                   name="Gradient%s" % randint(1e5), autotune=False)
-
     # Optimal checkpointing
     if op_forward is not None:
         rec = Receiver(name='rec', grid=model.grid, ntime=nt, coordinates=rec_coords)
@@ -501,7 +506,7 @@ def adjoint_born_fake(model, rec_coords, rec_data, u=None, v=None, op_forward=No
     else:
         gradient_update = [Eq(gradient, gradient - dt * u.dt2 * p - dt * v.dt2 * q)]
     # Create operator and run
-    set_log_level('INFO')
+    set_log_level('ERROR')
     expression += adj_src + gradient_update
     op = Operator(expression, subs=model.spacing_map, dse='advanced', dle='advanced',
                   name="Gradient%s" % randint(1e5))

@@ -137,7 +137,7 @@ function time_modeling(model_full::Model_TTI, srcGeometry::Geometry, srcData, re
     # Load full geometry for out-of-core geometry containers
     typeof(recGeometry) == GeometryOOC && (recGeometry = Geometry(recGeometry))
     typeof(srcGeometry) == GeometryOOC && (srcGeometry = Geometry(srcGeometry))
-    length(model_full.n) == 3 ? dims = (3,2,1) : dims = (2,1)   # model dimensions for Python are (z,y,x) and (z,x)
+    length(model_full.n) == 3 ? dims = [3,2,1] : dims = [2,1]   # model dimensions for Python are (z,y,x) and (z,x)
 
     # for 3D modeling, limit model to area with sources/receivers
     if options.limit_m == true
@@ -252,10 +252,8 @@ function time_modeling(model_full::Model_TTI, srcGeometry::Geometry, srcData, re
                 grad = pycall(tti.adjoint_born, Array{Float32, length(model.n)}, modelPy, PyReverseDims(rec_coords'), PyReverseDims(dIn'), op_forward=op_F,
                               space_order=options.space_order, nb=model.nb, is_residual=true, isiciso=options.isic)
             else
-                d, u0, v0 = pycall(tti.forward_modeling, PyObject, modelPy, PyReverseDims(src_coords'), PyReverseDims(qIn'), PyReverseDims(rec_coords'),
-                                   space_order=options.space_order, nb=model.nb, save=true, t_sub_factor=options.t_sub, h_sub_factor=options.h_sub)
-                grad = pycall(tti.adjoint_born, Array{Float32, length(model.n)}, modelPy, PyReverseDims(rec_coords'), PyReverseDims(dIn'), u=u0, v=v0,
-                              space_order=options.space_order, nb=model.nb, isiciso=options.isic)
+                grad = pycall(tti.J_transpose, Array{Float32, length(model.n)}, modelPy, PyReverseDims(src_coords'), PyReverseDims(qIn'), PyReverseDims(rec_coords'), PyReverseDims(dIn'),
+                              t_sub_factor=options.t_sub, h_sub_factor=options.h_sub, space_order=options.space_order, nb=model.nb, isic=options.isic)
             end
             grad = remove_padding(grad,model.nb,true_adjoint=options.sum_padding)
             if options.limit_m == true
