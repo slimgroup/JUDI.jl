@@ -79,7 +79,7 @@ function misfit(dPredicted, dObserved, normalize; trace="shot")
         if trace=="shot"
             obj = norm(vec(dPredicted)) - dot(vec(dPredicted),vec(dObserved))/norm(vec(dObserved))
         else
-            indnz = [i for i in 1:size(dObserved, 2) if norm(dObserved[:,i])>0]
+            indnz = [i for i in 1:size(dObserved, 2) if norm(dObserved[:, i])>0]
             obj = sum(norm(vec(dPredicted[:, i])) - dot(vec(dPredicted[:, i]),vec(dObserved[:, i]))/norm(vec(dObserved[:, i])) for i in indnz)
         end
     else

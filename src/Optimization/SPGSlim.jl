@@ -56,13 +56,13 @@ function minConf_SPG(funObj, x, funProj, options)
 	#       condition
 	#       useSpectral: use spectral scaling of gradient direction (default:
 	#       1)
-	#       curvilinear: backtrack along projection Arc (default: 0)	
+	#       curvilinear: backtrack along projection Arc (default: 0)
 	#       testOpt: test optimality condition (default: 1)
 	#       feasibleInit: if 1, then the initial point is assumed to be
 	#       feasible
 	#       bbType: type of Barzilai Borwein step (default: 1)
 	#
-	#   Notes: 
+	#   Notes:
 	#       - if the projection is expensive to compute, you can reduce the
 	#           number of projections by setting testOpt to 0
 
@@ -74,8 +74,8 @@ function minConf_SPG(funObj, x, funProj, options)
 	   @printf("SPG optimality tolerance: %.2e\n",options.optTol);
 	   @printf("SPG progress tolerance: %.2e\n",options.progTol);
 	end
-	
-	
+
+
 	nVars = length(x)
 
 	# Output Log
@@ -135,7 +135,7 @@ function minConf_SPG(funObj, x, funProj, options)
 	    f_old = f
 	    x_old = x
 	    g_old = g
-    
+
 	    # Compute Projected Step
 	    if ~options.curvilinear
 			if i==1
@@ -188,7 +188,7 @@ function minConf_SPG(funObj, x, funProj, options)
 			temp = t
 			if lineSearchIters == 1
 				@printf("Unit step length not feasible, starting line search\n")
-			end 
+			end
 			# @printf("%10d %15.5e %15.5e %15.5e %15.5e\n",lineSearchIters,t, f_new,funRef,funRef + options.suffDec*dot(g,(x_new-x)))
 	        if options.interp == 0 || ~isLegal(f_new)
 	            if options.verbose == 3
@@ -235,7 +235,7 @@ function minConf_SPG(funObj, x, funProj, options)
 	        f_new, g_new = funObj(x_new)
 	        funEvals = funEvals+1
 	        lineSearchIters = lineSearchIters+1
-		    if funEvals*funEvalMultiplier > options.maxIter
+		    if funEvals*funEvalMultiplier >= options.maxIter
 		        if options.verbose >= 1
 		            @printf("Function Evaluations exceeds maxIter\n")
 		        end
@@ -244,7 +244,7 @@ function minConf_SPG(funObj, x, funProj, options)
 				x_new = x
 		        break
 		    end
-			
+
 		    if lineSearchIters > 20
 		        if options.verbose >= 1
 		            @printf("Linesearch Iterations exceeds maxLinesearchIter\n")
@@ -304,7 +304,7 @@ function minConf_SPG(funObj, x, funProj, options)
 	        break
 	    end
 
-	    if funEvals*funEvalMultiplier > options.maxIter
+	    if funEvals*funEvalMultiplier >= options.maxIter
 	        if options.verbose >= 1
 	            @printf("Function Evaluations exceeds maxIter\n")
 	        end

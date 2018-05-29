@@ -68,24 +68,25 @@ end
 
 
 function low_filter(Din::Array{Float32, 2}, dt_in; fmin=0.0, fmax=25.0)
+    Dout = deepcopy(Din)
     responsetype = Bandpass(fmin, fmax; fs=1e3/dt_in)
     designmethod = Butterworth(5)
-    for i=1:size(Din,2)
-        Din[:, i] = filt(digitalfilter(responsetype, designmethod), Float32.(Din[:, i]))
+    for i=1:size(Dout,2)
+        Dout[:, i] = filt(digitalfilter(responsetype, designmethod), Float32.(Dout[:, i]))
     end
-    return Din
+    return Dout
 end
 
 function low_filter(Din::judiVector, dt_in; fmin=0.0, fmax=25.0)
     responsetype = Bandpass(fmin, fmax; fs=1e3/dt_in)
     designmethod = Butterworth(5)
-    Din = deepcopy(Din)
-    for j=1:Din.nsrc
+    Dout = deepcopy(Din)
+    for j=1:Dout.nsrc
         for i=1:size(Din.data[j],2)
-            Din.data[j][:, i] = filt(digitalfilter(responsetype, designmethod), Float32.(Din.data[j][:, i]))
+            Dout.data[j][:, i] = filt(digitalfilter(responsetype, designmethod), Float32.(Dout.data[j][:, i]))
         end
     end
-    return Din
+    return Dout
 end
 
 
