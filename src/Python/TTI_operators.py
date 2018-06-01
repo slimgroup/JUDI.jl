@@ -98,12 +98,8 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
 
     # Stencils
     s = model.grid.stepping_dim.spacing
-    stencilp = 1.0 / (2.0 * m + s * damp) * \
-        (4.0 * m * u + (s * damp - 2.0 * m) *
-         u.backward + 2.0 * s ** 2 * (epsilon * H0 + delta * Hz))
-    stencilr = 1.0 / (2.0 * m + s * damp) * \
-        (4.0 * m * v + (s * damp - 2.0 * m) *
-         v.backward + 2.0 * s ** 2 * (delta * H0 + Hz))
+    stencilp = damp * 2 * u - damp **2 * u.backward + s**2 / m * (epsilon * H0 + delta * Hz)
+    stencilr = damp * 2 * v - damp **2 * v.backward + s**2 / m * (delta * H0 + Hz)
     first_stencil = Eq(u.forward, stencilp)
     second_stencil = Eq(v.forward, stencilr)
     expression = [first_stencil, second_stencil]
@@ -162,12 +158,8 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=12, nb
 
     # Stencils
     s = model.grid.stepping_dim.spacing
-    stencilp = 1.0 / (2.0 * m + s * damp) * \
-        (4.0 * m * p +(s * damp - 2.0 * m ) * p.forward +
-         2.0 * s**2 * H0)
-    stencilr = 1.0 / (2.0 * m + s * damp) *\
-        (4.0 * m * q + (s * damp - 2.0 * m ) * q.forward +
-         2.0 * s**2 * Hz)
+    stencilp = damp * 2 * p - damp **2 * p.forward + s**2 / m * H0
+    stencilr = damp * 2 * q - damp **2 * q.forward + s**2 / m * Hz
     first_stencil = Eq(p.backward, stencilp)
     second_stencil = Eq(q.backward, stencilr)
     expression = [first_stencil, second_stencil]
@@ -228,12 +220,8 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=12, nb=40, 
 
     # Stencils
     s = model.grid.stepping_dim.spacing
-    stencilp = 1.0 / (2.0 * m + s * damp) * \
-        (4.0 * m * u + (s * damp - 2.0 * m) *
-         u.backward + 2.0 * s ** 2 * (epsilon * H0 + delta * Hz))
-    stencilr = 1.0 / (2.0 * m + s * damp) * \
-        (4.0 * m * v + (s * damp - 2.0 * m) *
-         v.backward + 2.0 * s ** 2 * (delta * H0 + Hz))
+    stencilp = damp * 2 * u - damp **2 * u.backward + s**2 / m * (epsilon * H0 + delta * Hz)
+    stencilr = damp * 2 * v - damp **2 * v.backward + s**2 / m * (delta * H0 + Hz)
 
     if isiciso:
         du_aux_x = first_derivative(u.dx * dm, order=space_order, dim=u.indices[1], diff=h_sub_factor*u.indices[1].spacing)
@@ -248,12 +236,8 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=12, nb=40, 
         if len(model.shape) == 3:
             dv2 -= first_derivative(v.dz * dm, order=space_order, dim=u.indices[3], diff=h_sub_factor*u.indices[3].spacing)
 
-        stencilpl = 1.0 / (2.0 * m + s * damp) * \
-            (4.0 * m * ul + (s * damp - 2.0 * m) *
-             ul.backward + 2.0 * s ** 2 * (epsilon * H0l + delta * Hzl - du2))
-        stencilrl = 1.0 / (2.0 * m + s * damp) * \
-            (4.0 * m * vl+ (s * damp - 2.0 * m) *
-             vl.backward + 2.0 * s ** 2 * (delta * H0l + Hzl - dv2))
+        stencilpl = damp * 2 * ul - damp **2 * ul.backward + s**2 / m * (epsilon * H0l + delta * Hzl - du2)
+        stencilrl = damp * 2 * vl - damp **2 * vl.backward + s**2 / m * (delta * H0l + Hzl - dv2)
     elif isic:
         order_loc = int(space_order/2)
         lin_expru = dm * u.dt2 * m - Dx(Dx(u, ang0, ang1, ang2, ang3, order_loc) * dm,
@@ -269,19 +253,11 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=12, nb=40, 
                                         ang0, ang1, ang2, ang3, order_loc)
             lin_exprv -= Dy(Dy(v, ang0, ang1, ang2, ang3, order_loc) * dm,
                                     ang0, ang1, ang2, ang3, order_loc)
-        stencilpl = 1.0 / (2.0 * m + s * damp) * \
-            (4.0 * m * ul + (s * damp - 2.0 * m) *
-             ul.backward + 2.0 * s ** 2 * (epsilon * H0l + delta * Hzl - lin_expru))
-        stencilrl = 1.0 / (2.0 * m + s * damp) * \
-            (4.0 * m * vl+ (s * damp - 2.0 * m) *
-             vl.backward + 2.0 * s ** 2 * (delta * H0l + Hzl - lin_exprv))
+        stencilpl = damp * 2 * ul - damp **2 * ul.backward + s**2 / m * (epsilon * H0l + delta * Hzl - lin_expru)
+        stencilrl = damp * 2 * vl - damp **2 * vl.backward + s**2 / m * (delta * H0l + Hzl - lin_exprv)
     else:
-        stencilpl = 1.0 / (2.0 * m + s * damp) * \
-            (4.0 * m * ul + (s * damp - 2.0 * m) *
-             ul.backward + 2.0 * s ** 2 * (epsilon * H0l + delta * Hzl - dm * u.dt2))
-        stencilrl = 1.0 / (2.0 * m + s * damp) * \
-            (4.0 * m * vl+ (s * damp - 2.0 * m) *
-             vl.backward + 2.0 * s ** 2 * (delta * H0l + Hzl - dm * v.dt2))
+        stencilpl = damp * 2 * ul - damp **2 * ul.backward + s**2 / m * (epsilon * H0l + delta * Hzl - dm * u.dt2)
+        stencilrl = damp * 2 * vl - damp **2 * vl.backward + s**2 / m * (delta * H0l + Hzl - dm * v.dt2)
 
     first_stencil = Eq(u.forward, stencilp)
     second_stencil = Eq(v.forward, stencilr)
@@ -312,6 +288,7 @@ def adjoint_born(model, rec_coords, rec_data, u=None, v=None, op_forward=None, i
                  space_order=12, nb=40, isic=False, isiciso=False, isicnothom=False, dt=None):
     clear_cache()
     factor_t = u.indices[0].factor if u.indices[0].is_Conditional else 1
+    factor_h = u.indices[1].factor if u.indices[1].is_Conditional else 1
     # Parameters
     nt = rec_data.shape[0]
     if dt is None:
@@ -339,12 +316,8 @@ def adjoint_born(model, rec_coords, rec_data, u=None, v=None, op_forward=None, i
 
     # Stencils
     s = model.grid.stepping_dim.spacing
-    stencilp = 1.0 / (2.0 * m + s * damp) * \
-        (4.0 * m * p +(s * damp - 2.0 * m ) * p.forward +
-         2.0 * s**2 * H0)
-    stencilr = 1.0 / (2.0 * m + s * damp) *\
-        (4.0 * m * q + (s * damp - 2.0 * m ) * q.forward +
-         2.0 * s**2 * Hz)
+    stencilp = damp * 2 * p - damp **2 * p.forward + s**2 / m * H0
+    stencilr = damp * 2 * q - damp **2 * q.forward + s**2 / m * Hz
     first_stencil = Eq(p.backward, stencilp)
     second_stencil = Eq(q.backward, stencilr)
     expression = [first_stencil, second_stencil]
@@ -378,12 +351,12 @@ def adjoint_born(model, rec_coords, rec_data, u=None, v=None, op_forward=None, i
             vdy = delta * Dy(v, ang0, ang1, ang2, ang3, order_loc)
             qdy = Dy(q, ang0, ang1, ang2, ang3, order_loc)
             grads += udy * pdy + vdy * qdy
-        gradient_update = [Eq(gradient, gradient - factor_t * dt * ((u * p.dt2 + v * q.dt2) * m + grads))]
+        gradient_update = [Eq(gradient, gradient - factor_h * factor_t * dt * ((u * p.dt2 + v * q.dt2) * m + grads))]
     elif isiciso is True:
         grads = u.dx * p.dx + u.dy * p.dy + v.dx * q.dx + v.dy * q.dy
         if len(model.shape) == 3:
             grads += u.dz * p.dz + v.dz * q.dz
-        gradient_update = [Eq(gradient, gradient - dt * factor_t * ((u * p.dt2 + v * q.dt2) * m + grads))]
+        gradient_update = [Eq(gradient, gradient - factor_h * dt * factor_t * ((u * p.dt2 + v * q.dt2) * m + grads))]
     elif isicnothom is True:
                 order_loc = int(space_order/2)
                 udx = Dx(u, ang0, ang1, ang2, ang3, order_loc)
@@ -401,9 +374,9 @@ def adjoint_born(model, rec_coords, rec_data, u=None, v=None, op_forward=None, i
                     vdy = delta * Dy(v, ang0, ang1, ang2, ang3, order_loc)
                     qdy = Dy(q, ang0, ang1, ang2, ang3, order_loc)
                     grads += udy * pdy + vdy * qdy
-                gradient_update = [Eq(gradient, gradient - factor_t * dt * ((u * p.dt2 + v * q.dt2) * m + grads))]
+                gradient_update = [Eq(gradient, gradient - factor_h * factor_t * dt * ((u * p.dt2 + v * q.dt2) * m + grads))]
     else:
-        gradient_update = [Eq(gradient, gradient - factor_t * dt * (u * p.dt2 + v * q.dt2))]
+        gradient_update = [Eq(gradient, gradient - factor_h * factor_t * dt * (u * p.dt2 + v * q.dt2))]
 
     # Create operator and run
     set_log_level('ERROR')
@@ -442,7 +415,7 @@ def adjoint_born(model, rec_coords, rec_data, u=None, v=None, op_forward=None, i
     else:
         return grad
 
-def adjoint_born_fake(model, rec_coords, rec_data, u=None, v=None, op_forward=None, is_residual=False, space_order=12, nb=40, isic=False, dt=None):
+def adjoint_born_fake(model, rec_coords, rec_data, u=None, v=None, op_forward=None, is_residual=False, space_order=12, nb=40, isic=False, dt=None, isiciso=False):
     clear_cache()
 
     # Parameters
@@ -471,12 +444,8 @@ def adjoint_born_fake(model, rec_coords, rec_data, u=None, v=None, op_forward=No
 
     # Stencils
     s = model.grid.stepping_dim.spacing
-    stencilp = 1.0 / (2.0 * m + s * damp) * \
-        (4.0 * m * p +(s * damp - 2.0 * m ) * p.forward +
-         2.0 * s**2 * (epsilon * H0 + delta * Hz))
-    stencilr = 1.0 / (2.0 * m + s * damp) *\
-        (4.0 * m * q + (s * damp - 2.0 * m ) * q.forward +
-         2.0 * s**2 * (epsilon * H0 + delta * Hz))
+    stencilp = damp * 2 * p - damp **2 * p.forward + s**2 / m * (epsilon * H0 + delta * Hz)
+    stencilr = damp * 2 * q - damp **2 * q.forward + s**2 / m * (delta * H0 +  Hz)
     first_stencil = Eq(p.backward, stencilp)
     second_stencil = Eq(q.backward, stencilr)
     expression = [first_stencil, second_stencil]
@@ -494,7 +463,7 @@ def adjoint_born_fake(model, rec_coords, rec_data, u=None, v=None, op_forward=No
     if v is None:
         v = TimeFunction(name='v', grid=model.grid, time_order=2, space_order=space_order)
 
-    if isic is true:
+    if isiciso is True:
         if len(model.shape) == 2:
             gradient_update = [Eq(gradient, gradient - dt * ((u.dt2 * p + v.dt2 * q) * m +
                                                               u.dx * p.dx + u.dy * p.dy +
