@@ -1,6 +1,6 @@
 using JUDI.TimeModeling, JUDI.SLIM_optim, SeisIO, JLD, PyPlot
 
-vp = segy_read("/data/slim/data/ChevronTexaco/ChevronSEG2014/SEG14.Vpsmoothstarting.segy")  # IBM Float32 format [m/s]
+vp = segy_read("/data/mlouboutin3/Chevron2014/SEG14.Vpsmoothstarting.segy")  # IBM Float32 format [m/s]
 
 vp = Float32.(vp.data)' / 1f3
 rho = Float32.(0.31 * (1f3*vp).^0.25)
@@ -11,15 +11,15 @@ n = size(vp)
 o = (0., 0.)
 m0 = 1./vp.^2
 
-model0 = Model(n,d,o,1./vp.^2, rho; nb=80)
+model0 = Model(n,d,o,1./vp.^2, rho; nb=40)
 
 # Read datasets
-container = segy_scan("/data/slim/data/ChevronTexaco/ChevronSEG2014/", "Piso", ["GroupX", "GroupY", "RecGroupElevation", "dt"])
+container = segy_scan("/data/mlouboutin3/Chevron2014/", "Piso", ["GroupX", "GroupY", "RecGroupElevation", "dt"])
 d_obs = judiVector(container; segy_depth_key="RecGroupElevation")
 
 # read source and resample
 
-wavelet = readdlm("/data/slim/data/ChevronTexaco/ChevronSEG2014/Wavelet.txt", ',')[2:end]
+wavelet = readdlm("/data/mlouboutin3/Chevron2014/Wavelet.txt", ',')[2:end]
 dtwavelet = 2.0/3.0
 wavelet = [wavelet; zeros(length(0:dtwavelet:8000) - length(wavelet), 1)]
 wavelet = time_resample(wavelet, dtwavelet, Geometry(d_obs[1].geometry))
@@ -36,23 +36,22 @@ shot1_filtered = low_filter(Float32.(shot1.data), 4.0; fmin=1.0, fmax=5.0)
 
 ############################### Linear operators for testing ############
 
-# ntComp = get_computational_nt(src_geometry, d_obs.geometry, model0)    # no. of computational time steps
-# info = Info(prod(model0.n), d_obs.nsrc, ntComp)
-# # Enable optimal checkpointing
-# opt = Options(optimal_checkpointing = false,
-#               limit_m = true,
-#               buffer_size = 1500f0,
-#               isic = false,
-#               freesurface=true)
-#
-# # Setup operators
-# Pr = judiProjection(info, d_obs.geometry)
-# F = judiModeling(info, model0; options=opt)
-# Ps = judiProjection(info, src_geometry)
+ntComp = get_computational_nt(src_geometry, d_obs.geometry, model0)    # no. of computational time steps
+info = Info(prod(model0.n), d_obs.nsrc, ntComp)
+# Enable optimal checkpointing
+opt = Options(optimal_checkpointing = false,
+              limit_m = true,
+              buffer_size = 1500f0,
+              freesurface=true)
+
+# Setup operators
+Pr = judiProjection(info, d_obs.geometry)
+F = judiModeling(info, model0; options=opt)
+Ps = judiProjection(info, src_geometry)
 # q = judiVector(src_geometry, wavelet)
-# J = judiJacobian(Pr*F*Ps', q)
-#
-# D0 = Pr[1]*F[1]*Ps[1]'*q[1]
+J = judiJacobian(Pr*F*Ps', q)
+
+D0 = Pr[1]*F[1]*Ps[1]'*q[1]
 
 ############################### FWI ###########################################
 opt = Options(limit_m=true, buffer_size=1000f0, normalize=true, freesurface=true)

@@ -49,11 +49,9 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False,
 
     # Set up PDE and rearrange
     ulaplace, rho = acoustic_laplacian(u, rho)
-    H = symbols('H')
-    eqn = m / rho * u.dt2 - H + damp * u.dt
-    #eqn = m * u.dt2 - u.laplace + damp * u.dt
-    stencil = solve(eqn, u.forward, simplify=False, rational=False)[0]
-    expression = [Eq(u.forward, stencil.subs({H : ulaplace}))]
+    s = model.grid.time_dim.spacing
+    stencil = damp * 2.0 * u - damp**2 * u.backward + damp * s**2 / m * ulaplace
+    expression = [Eq(u.forward, stencil)]
 
     # Source symbol with input wavelet
     src = PointSource(name='src', grid=model.grid, ntime=nt, coordinates=src_coords)
@@ -70,7 +68,7 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False,
     subs = model.spacing_map
     subs[u.grid.time_dim.spacing] = dt
     if freesurface:
-        fs = DefaultDimension(name="fs", default_value=int(space_order/2))
+        fs = DefaultDimension(name="fs", default_value=model.nbpml)
         expression += [Eq(u.forward.subs({u.indices[-1]: model.nbpml - fs - 1}),
                           -u.forward.subs({u.indices[-1]: model.nbpml + fs + 1}))]
     op = Operator(expression, subs=subs, dse='advanced', dle='advanced',
@@ -97,11 +95,9 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=8, nb=
 
     # Set up PDE and rearrange
     vlaplace, rho = acoustic_laplacian(v, rho)
-    H = symbols('H')
-    eqn = m / rho * v.dt2 - H - damp * v.dt
-    stencil = solve(eqn, v.backward, simplify=False, rational=False)[0]
-    expression = [Eq(v.backward, stencil.subs({H: vlaplace}))]
-
+    s = model.grid.time_dim.spacing
+    stencil = damp * 2.0 * v - damp**2 * v.forward + damp * s**2 / m * vlaplace
+    expression = [Eq(v.backward, stencil)]
     # Adjoint source is injected at receiver locations
     rec = Receiver(name='rec', grid=model.grid, ntime=nt, coordinates=rec_coords)
     rec.data[:] = rec_data[:]
@@ -149,9 +145,8 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, nb=40, i
     dulaplace, _ = acoustic_laplacian(du, rho)
     H = symbols('H')
     S = symbols('S')
-    eqn = m / rho * u.dt2 - H + damp * u.dt
-    stencil1 = solve(eqn, u.forward, simplify=False, rational=False)[0]
-    eqn_lin = m / rho * du.dt2 - H + damp * du.dt + S
+    stencil_u = damp * 2.0 * u - damp**2 * u.backward + damp * s**2 / m * ulaplace
+    stencil_du = damp * 2.0 * du - damp**2 * du.backward + damp * s**2 / m * (dulaplace - S)
     if isic:
         # Sum ((u.dx * d, / rho).dx for x in dimensions)
         # space_order//2  so that u.dx.dx has the same radius as u.laplace
@@ -162,9 +157,8 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, nb=40, i
     else:
         lin_source = dm / rho * u.dt2
 
-    stencil2 = solve(eqn_lin, du.forward, simplify=False, rational=False)[0]
-    expression_u = [Eq(u.forward, stencil1.subs({H: ulaplace}))]
-    expression_du = [Eq(du.forward, stencil2.subs({H: dulaplace, S: lin_source}))]
+    expression_u = [Eq(u.forward, stencil_u)]
+    expression_du = [Eq(du.forward, stencil_du.subs({S: lin_source}))]
 
     # Define source symbol with wavelet
     src = PointSource(name='src', grid=model.grid, ntime=nt, coordinates=src_coords)
@@ -208,10 +202,9 @@ def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residu
 
     # Set up PDE and rearrange
     vlaplace, rho = acoustic_laplacian(v, rho)
-    H = symbols('H')
-    eqn = m / rho * v.dt2 - H - damp * v.dt
-    stencil = solve(eqn, v.backward, simplify=False, rational=False)[0]
-    expression = [Eq(v.backward, stencil.subs({H: vlaplace}))]
+    s = model.grid.time_dim.spacing
+    stencil = damp * 2.0 * v - damp**2 * v.forward + damp * s**2 / m * vlaplace
+    expression = [Eq(v.backward, stencil)]
 
     # Data at receiver locations as adjoint source
     rec_g = Receiver(name='rec_g', grid=model.grid, ntime=nt, coordinates=rec_coords)

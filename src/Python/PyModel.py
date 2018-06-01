@@ -28,6 +28,7 @@ def damp_boundary(damp, nbpml, spacing):
             # right slice for dampening for dimension i
             all_ind[i] = slice(damp.data.shape[i]-j, damp.data.shape[i]-j+1)
             damp.data[all_ind] += val/spacing[i]
+    damp.data[:] = 1 - damp.data[:]
 
 
 def initialize_function(function, data, nbpml):
