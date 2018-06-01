@@ -5,7 +5,7 @@
 
 module TimeModeling
 
-using PyCall, JOLI, SeisIO, Dierckx, ApproXD
+using PyCall, JOLI, SeisIO, Dierckx, MathProgBase, Ipopt, Images
 
 @pyimport PyModel as pm
 @pyimport JAcoustic_codegen as ac

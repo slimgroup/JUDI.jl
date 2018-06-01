@@ -2,7 +2,6 @@
 # Author: Philipp Witte, pwitte@eos.ubc.ca
 # Date: September 2016
 #
-@pyimport scipy.interpolate as interp
 
 export ricker_wavelet, get_computational_nt, smooth10, damp_boundary, calculate_dt, setup_grid, setup_3D_grid
 export convertToCell, limit_model_to_receiver_area, extend_gradient, process_physical_parameter
@@ -21,8 +20,6 @@ end
 function limit_model_to_receiver_area(srcGeometry::Geometry,recGeometry::Geometry,model::Model,buffer;pert=[])
     # Restrict full velocity model to area that contains either sources and receivers
     ndim = length(model.n)
-    println("N orig: ", model.n)
-
     # scan for minimum and maximum x and y source/receiver coordinates
     min_x = minimum([vec(recGeometry.xloc[1]); vec(srcGeometry.xloc[1])])
     max_x = maximum([vec(recGeometry.xloc[1]); vec(srcGeometry.xloc[1])])
@@ -137,6 +134,7 @@ function limit_model_to_receiver_area(srcGeometry::Geometry,recGeometry::Geometr
     end
     model.n = size(model.m)
     println("N new: ", model.n)
+    # println("N new: ", model.n)
     if isempty(pert)
         return model
     else
@@ -217,7 +215,6 @@ function calculate_dt(model::Model_TTI)
     scale = sqrt(maximum(1 + 2 *model.epsilon))
     return coeff * minimum(model.d) / (scale*sqrt(1/minimum(model.m)))
 end
-
 """
     get_computational_nt(srcGeometry, recGeoemtry, model)
 
@@ -400,7 +397,6 @@ function generate_distribution(x; src_no=1)
 	nt = x.geometry.nt[src_no]
 	dt = x.geometry.dt[src_no]
 	t = x.geometry.t[src_no]
-
 	# frequencies
 	fs = 1/dt	# sampling rate
 	fnyq = fs/2	# nyquist frequency
@@ -462,4 +458,147 @@ function resample_model(array, inh, modelfull)
     end
     resampled = pycall(interpolator,  Array{Float32, ndim}, gridnew)
     return resampled
+end
+
+function gs_residual_trace(maxshift, dtComp, dPredicted, dObserved, normalize)
+	#shifts
+	nshift = round(Int64, maxshift/dtComp)
+	nSamples = 2*nshift + 1
+
+	data_size = size(dPredicted)
+	residual = zeros(Float32, data_size)
+	dPredicted = [zeros(Float32, nshift, size(dPredicted,2)); dPredicted; zeros(Float32, nshift, size(dPredicted,2))]
+	dObserved = [zeros(Float32, nshift, size(dPredicted,2)); dObserved; zeros(Float32, nshift, size(dPredicted,2))]
+	# residual_plot = zeros(Float32, size(dObserved))
+	# syn_plot = zeros(Float32, size(dObserved))
+    indnz = [i for i in 1:size(dPredicted,2) if (norm(dObserved[:,i])>0 && norm(dPredicted[:,i])>0)]
+	for rr in indnz
+		aux = zeros(Float32, size(dPredicted, 1))
+
+		syn = dPredicted[:, rr]
+		obs = dObserved[:, rr]
+
+		if normalize
+			syn /= norm(syn)
+			obs /= norm(obs)
+		end
+		H =zeros(Float32, length(1:5:nSamples),  length(1:5:nSamples));
+
+		iloc=0
+		for i = 1:5:nSamples
+			shift = i - nshift - 1
+			iloc +=1
+			jloc=iloc
+			dshift = circshift(syn, shift) - obs
+			H[iloc, iloc] = dot(dshift, dshift)
+			for j = (i+5):5:nSamples
+				jloc+=1
+				shift2 = j - nshift - 1
+				circshift!(aux, syn, shift2)
+				broadcast!(-, aux, aux, obs)
+				H[iloc, jloc] = dot(dshift, vec(aux))
+				H[jloc, iloc] = H[iloc, jloc]
+			end
+		end
+
+		x = 1:5:nSamples
+		y = 1:5:nSamples
+		spl = Spline2D(x, y, H)
+		x0 = 1:nSamples
+		y0 = 1:nSamples
+		H = evalgrid(spl, x0, y0)
+
+		# get coefficients
+
+		H = Array{Float64}(H)
+		H = .5*(H'+ H)
+		A = ones(Float32, 1, nSamples)
+		sol = quadprog(0, H, A, '=', 1., 0., 1., IpoptSolver(print_level=1))
+		alphas = Array{Float32}(sol.sol)
+		# Data misfit
+		for i = 1:2*nshift+1
+			shift = i - nshift - 1
+			residual[:, rr] += alphas[i] * circshift(circshift(syn, shift) - obs, -2*shift)[nshift+1:(end-nshift)]
+			# residual_plot[:, rr] +=  alphas[i] * (circshift(syn, shift) - obs)
+			# syn_plot[:, rr] +=  alphas[i] * circshift(syn, shift)
+			#residual += alphas[i] * circshift(circshift(dPredicted, (0,shift)) - dObserved, (0, -2*shift))[:, nshift+1:(end-nshift)]
+		end
+		# if rr%50==0
+		# 	figure();plot(syn_plot[rr,:], "-b");plot(syn, "-r");plot(obs, "-g")
+		# end
+	end
+	# figure();imshow(syn_plot', vmin=-1e1, vmax=1e1, cmap="seismic", aspect=.2)
+	# figure();imshow(dPredicted', vmin=-1e1, vmax=1e1, cmap="seismic", aspect=.2)
+	# figure();imshow(dObserved', vmin=-1e1, vmax=1e1, cmap="seismic", aspect=.2)
+	# figure();imshow(residual_plot', vmin=-1e1, vmax=1e1, cmap="seismic", aspect=.2)
+	# figure();imshow(dPredicted' - dObserved', vmin=-1e1, vmax=1e1, cmap="seismic", aspect=.2)
+	#
+	return residual
+end
+
+function gs_residual_shot(maxshift, dtComp, dPredicted, dObserved, normalize)
+	#shifts
+	nshift = round(Int64, maxshift/dtComp)
+	# println(nshift, " ", dtComp)
+	nSamples = 2*nshift + 1
+
+	data_size = size(dPredicted)
+	residual = zeros(Float32, data_size)
+	dPredicted = [zeros(Float32, nshift, size(dPredicted,2)); dPredicted; zeros(Float32, nshift, size(dPredicted,2))]
+	dObserved = [zeros(Float32, nshift, size(dPredicted,2)); dObserved; zeros(Float32, nshift, size(dPredicted,2))]
+	if normalize
+		dPredicted /= norm(vec(dPredicted))
+		dObserved /= norm(vec(dObserved))
+	end
+	aux = zeros(Float32, size(dPredicted))
+
+	H =zeros(Float32, length(1:5:nSamples),  length(1:5:nSamples));
+
+	iloc=0
+	for i = 1:5:nSamples
+		shift = i - nshift - 1
+		iloc +=1
+		jloc=iloc
+		dshift = vec(circshift(dPredicted, (shift, 0)) - dObserved)
+		H[iloc, iloc] = dot(dshift, dshift)
+		for j = (i+5):5:nSamples
+			jloc+=1
+			shift2 = j - nshift - 1
+			circshift!(aux, dPredicted, (shift2, 0))
+			broadcast!(-, aux, aux, dObserved)
+			H[iloc, jloc] = dot(dshift, vec(aux))
+			H[jloc, iloc] = H[iloc, jloc]
+		end
+	end
+
+	x = 1:5:nSamples
+	y = 1:5:nSamples
+	spl = Spline2D(x, y, H)
+	x0 = 1:nSamples
+	y0 = 1:nSamples
+	H = evalgrid(spl, x0, y0)
+
+	# get coefficientsn
+
+	H = Array{Float64}(H)
+	H = .5*(H'+H)
+	A = ones(Float32, 1, nSamples)
+	sol = quadprog(0, H, A, '=', 1., 0., 1., IpoptSolver(print_level=1))
+	alphas = Array{Float32}(sol.sol)
+	# Data misfit
+	for i = 1:2*nshift+1
+		shift = i - nshift - 1
+		residual += alphas[i] * circshift(abs.(circshift(dPredicted, (shift, 0))).*(circshift(dPredicted, (shift, 0)) - dObserved), (-2*shift, 0))[nshift+1:(end-nshift), :]
+	end
+
+	return residual
+end
+
+function gs_residual(gs, dtComp, dPredicted, dObserved, normalize)
+	if gs["strategy"] == "shot"
+		residual = gs_residual_shot(gs["maxshift"], dtComp, dPredicted, dObserved, normalize)
+	else
+		residual = gs_residual_trace(gs["maxshift"], dtComp, dPredicted, dObserved, normalize)
+	end
+	return residual
 end

@@ -36,6 +36,7 @@ class CheckpointOperator(Operator):
         args = self._prepare_args(t_start, t_end)
         self.op.apply(**args)
 
+
 class DevitoCheckpoint(Checkpoint):
     """Devito's concrete implementation of the Checkpoint abstract base class provided by
        pyRevolve. Holds a list of symbol objects that hold data.

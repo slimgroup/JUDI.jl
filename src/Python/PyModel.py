@@ -10,6 +10,7 @@ __all__ = ['Model']
 
 def damp_boundary(damp, nbpml, spacing):
     """Initialise damping field with an absorbing PML layer.
+
     :param damp: The :class:`Function` for the damping field.
     :param nbpml: Number of points in the damping layer.
     :param spacing: Grid spacing coefficent.
@@ -24,10 +25,11 @@ def damp_boundary(damp, nbpml, spacing):
             all_ind = [slice(0, d) for d in damp.data.shape]
             # Left slice for dampening for dimension i
             all_ind[i] = slice(j, j+1)
-            damp[all_ind] += val/spacing[i]
+            damp.data[all_ind] += val/spacing[i]
             # right slice for dampening for dimension i
             all_ind[i] = slice(damp.data.shape[i]-j, damp.data.shape[i]-j+1)
-            damp[all_ind] += val/spacing[i]
+            damp.data[all_ind] += val/spacing[i]
+    damp.data[:] = 1 - damp.data[:]
 
 
 def initialize_function(function, data, nbpml):
@@ -88,7 +90,7 @@ class Model(object):
 
         # Create dampening field as symbol `damp`
         self.damp = Function(name="damp", grid=self.grid)
-        damp_boundary(self.damp.data, self.nbpml, spacing=self.spacing)
+        damp_boundary(self.damp, self.nbpml, spacing=self.spacing)
 
         # Additional parameter fields for TTI operators
         self.scale = 1.
@@ -108,16 +110,17 @@ class Model(object):
                     self.scale = np.sqrt(np.max(self.epsilon.data))
             else:
                 self.epsilon = 1 + 2 * epsilon
-                self.scale = epsilon
+                self.scale = np.sqrt(self.epsilon)
         else:
-            self.epsilon = 1
+            self.epsilon = 1.0
+            self.scale = 1.0
 
         if delta is not None:
             if isinstance(delta, np.ndarray):
                 self.delta = Function(name="delta", grid=self.grid, space_order=space_order)
                 initialize_function(self.delta, np.sqrt(1 + 2 * delta), self.nbpml)
             else:
-                self.delta = sqrt(1 + 2 * delta)
+                self.delta = np.sqrt(1 + 2 * delta)
         else:
             self.delta = 1
 
@@ -194,7 +197,8 @@ class Model(object):
         # The CFL condtion is then given by
         # dt <= coeff * h / (max(velocity))
         coeff = 0.38 if len(self.shape) == 3 else 0.42
-        return self.dtype(coeff * np.min(self.spacing) / (self.scale*np.max(self.vp)))
+        dt = coeff * np.min(self.spacing) / (self.scale*np.max(self.vp))
+        return self.dtype(.001 * int(1000 * dt))
 
     @property
     def vp(self):

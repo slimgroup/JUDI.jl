@@ -781,7 +781,6 @@ def Dz(field, costheta, sintheta, cosphi, sinphi, space_order):
 
 kernels = {3: kernel_centered_3d, 2: kernel_centered_2d}
 
-
 def resample_grad(grad, model, factor):
     from scipy import interpolate
     x = [i*factor for i in range(grad.data.shape[0])]

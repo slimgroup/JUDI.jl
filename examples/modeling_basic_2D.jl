@@ -57,7 +57,7 @@ wavelet = ricker_wavelet(timeS,dtS,f0)
 q = judiVector(srcGeometry,[diff(wavelet);0])
 
 # Set up info structure for linear operators
-ntComp = get_computational_nt(srcGeometry,recGeometry,model00)
+ntComp = get_computational_nt(srcGeometry,recGeometry,model0)
 info = Info(prod(n),1,ntComp)
 
 ######################## WITH DENSITY ############################################
