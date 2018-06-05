@@ -59,82 +59,157 @@ opt = Options(limit_m=true, buffer_size=1000f0, normalize=true, freesurface=true
 # Bound projection
 ProjBound(x) = boundproject(x, maximum(m0), .9*minimum(m0))
 
-fevals = 15
+fevals = 30
 batchsize = 160
 options = spg_options(verbose=3, maxIter=fevals, memory=5)
 # Optimization parameters
 srand(1)    # set seed of random number generator
 
+
 # Objective function for minConf library
 count = 0
 function objective_function(x)
-    model0.m = reshape(x, model0.n);
-    model0.rho = Float32.(0.31 * (1f3*sqrt.(1./model0.m)).^0.25)
-    # fwi function value and gradient
-    i = randperm(d_obs.nsrc)[1:batchsize]
-    d_sub = get_data(d_obs[i])
-    MF = judiFilter(d_sub.geometry, 1.0, 5.0)
-    fval, grad = fwi_objective(model0, q[i], MF*d_sub, options=opt)
-    grad = reshape(grad, model0.n)
-    grad[vp.<1.52] = 0.
-    grad = .125f0*grad/maximum(abs.(grad))  # scale for line search
+	model0.m = reshape(x,model0.n);
 
-    global count; count+= 1
+	# fwi function value and gradient
+	i = randperm(d_obs.nsrc)[1:batchsize]
+	d_sub = get_data(d_obs[i])
+	if count < 10
+		println("low")
+    	MF = judiFilter(d_sub.geometry, 3.0, 5.0)
+		wave_low = low_filter(wavelet, 4.0; fmin=3.0, fmax=5.0)
+		q = judiVector(src_geometry, wave_low)
+	elseif 9 < count < 20
+		println("medium")
+	    MF = judiFilter(d_sub.geometry, 3.0, 8.0)
+		wave_low = low_filter(wavelet, 4.0; fmin=3.0, fmax=8.0)
+		q = judiVector(src_geometry, wave_low)
+	else
+		println("high")
+		MF = judiFilter(d_sub.geometry, 3.0, 10.0)
+		wave_low = low_filter(wavelet, 4.0; fmin=3.0, fmax=10.0)
+		q = judiVector(src_geometry, wave_low)
+	end
+	fval, grad = fwi_objective(model0, q[i], MF*d_sub; options=opt)
+	grad = reshape(grad, model0.n)
+	grad[vp .< 1.55] = 0
+	grad = .5f0*grad/maximum(abs.(grad))  # scale for line search
+
+	global count; count+= 1
     return fval, vec(grad)
 end
 
+# Bound projection
+ProjBound(x) = boundproject(x,mmax,mmin)
+
 # FWI with SPG
-x, fsave, funEvals= minConf_SPG(objective_function, vec(m0), ProjBound, options)
-save("FWI.jld", "m0", m0, "x", reshape(x, model0.n), "fval", fsave, "funEvals", funEvals)
+options = spg_options(verbose=3, maxIter=fevals, memory=3)
+x = vec(model0.m)
+x, fsave, funEvals= minConf_SPG(objective_function, vec(model0.m), ProjBound, options)
+save("FWI-5.jld", "m0", m0, "x", reshape(x, model0.n), "fval", fsave, "funEvals", funEvals)
+x, fsave, funEvals= minConf_SPG(objective_function, x, ProjBound, options)
+save("FWI-8.jld", "m0", m0, "x", reshape(x, model0.n), "fval", fsave, "funEvals", funEvals)
+x, fsave, funEvals= minConf_SPG(objective_function, x, ProjBound, options)
+save("FWI-10.jld", "m0", m0, "x", reshape(x, model0.n), "fval", fsave, "funEvals", funEvals)
+# x = reshape(x, model0.n)
+# figure(); imshow(sqrt.(1f0./x)', vmin=1.5, vmax=4.5, cmap="jet"); title("FWI")
+# figure(); imshow(sqrt.(1f0./x)' - sqrt.(1f0./m0)'); title("Diff")
+# save("FWI.jld", "m0", m0, "x", reshape(x, model0.n), "fval", fsave, "funEvals", funEvals)
 
 ############################### GS-FWI-shot ###########################################
-opt = Options(limit_m=true, buffer_size=1000f0, freesurface=true, normalize=true, gs=Dict("maxshift" => 200.0f0, "strategy" => "shot")
+opt = Options(limit_m=true, buffer_size=1000f0, freesurface=true, normalize=true, gs=Dict("maxshift" => 400.0f0, "strategy" => "shot")
+model0 = Model(n,d,o,1./vp.^2, rho; nb=40)
 srand(1)    # set seed of random number generator
 # Objective function for minConf library
 count = 0
 function objective_function(x)
-    model0.m = reshape(x,model0.n);
-    model0.rho = Float32.(0.31 * (1f3*sqrt.(1./model0.m)).^0.25)
-    # fwi function value and gradient
-    i = randperm(d_obs.nsrc)[1:batchsize]
-    d_sub = get_data(d_obs[i])
-    MF = judiFilter(d_sub.geometry, 1.0, 5.0)
-    fval, grad = fwi_objective(model0, q[i], MF*d_sub, options=opt)
-    grad = reshape(grad, model0.n)
-    grad[vp.<1.52] = 0.
-    grad = .125f0*grad/maximum(abs.(grad))  # scale for line search
+	model0.m = reshape(x,model0.n);
 
-    global count; count+= 1
+	# fwi function value and gradient
+	i = randperm(d_obs.nsrc)[1:batchsize]
+	d_sub = get_data(d_obs[i])
+	if count < 15
+		println("low")
+    	MF = judiFilter(d_sub.geometry, 3.0, 5.0)
+		wave_low = low_filter(wavelet, 4.0; fmin=3.0, fmax=5.0)
+		q = judiVector(src_geometry, wave_low)
+	elseif 14 < count < 30
+		println("medium")
+		opt.gs["maxshift"] = Float32(2000./8.0)
+	    MF = judiFilter(d_sub.geometry, 3.0, 8.0)
+		wave_low = low_filter(wavelet, 4.0; fmin=3.0, fmax=8.0)
+		q = judiVector(src_geometry, wave_low)
+	else
+		println("high")
+		opt.gs["maxshift"] = Float32(2000./10.0)
+		MF = judiFilter(d_sub.geometry, 3.0, 10.0)
+		wave_low = low_filter(wavelet, 4.0; fmin=3.0, fmax=10.0)
+		q = judiVector(src_geometry, wave_low)
+	end
+	fval, grad = fwi_objective(model0, q[i], MF*d_sub; options=opt)
+	grad = reshape(grad, model0.n)
+	grad[vp .< 1.55] = 0
+	grad = .5f0*grad/maximum(abs.(grad))  # scale for line search
+
+	global count; count+= 1
     return fval, vec(grad)
 end
 
+
 # FWI with SPG
-xgss, fsavegss, funEvalsgss= minConf_SPG(objective_function, vec(m0), ProjBound, options)
-save("FWIGS-shot.jld", "m0", m0, "x", reshape(xgss, model0.n), "fval", fsavegss, "funEvals", funEvalsgss)
+x = vec(model0.m)
+x, fsave, funEvals= minConf_SPG(objective_function, vec(model0.m), ProjBound, options)
+save("FWIgss-5.jld", "m0", m0, "x", reshape(x, model0.n), "fval", fsave, "funEvals", funEvals)
+x, fsave, funEvals= minConf_SPG(objective_function, x, ProjBound, options)
+save("FWIgss-8.jld", "m0", m0, "x", reshape(x, model0.n), "fval", fsave, "funEvals", funEvals)
+x, fsave, funEvals= minConf_SPG(objective_function, x, ProjBound, options)
+save("FWIgss-10.jld", "m0", m0, "x", reshape(x, model0.n), "fval", fsave, "funEvals", funEvals)
 
 ############################### GS-FWI-trace ###########################################
-opt = Options(limit_m=true, buffer_size=1000f0, freesurface=true, normalize=true, gs=Dict("maxshift" => 200.0f0, "strategy" => "trace")
-
+opt = Options(limit_m=true, buffer_size=1000f0, freesurface=true, normalize=true, gs=Dict("maxshift" => 400.0f0, "strategy" => "trace")
+model0 = Model(n,d,o,1./vp.^2, rho; nb=40)
 srand(1)    # set seed of random number generator
 
 # Objective function for minConf library
 count = 0
 function objective_function(x)
-    model0.m = reshape(x,model0.n);
-    model0.rho = Float32.(0.31 * (1f3*sqrt.(1./model0.m)).^0.25)
-    # fwi function value and gradient
-    i = randperm(d_obs.nsrc)[1:batchsize]
-    d_sub = get_data(d_obs[i])
-    MF = judiFilter(d_sub.geometry, 1.0, 5.0)
-    fval, grad = fwi_objective(model0, q[i], MF*d_sub, options=opt)
-    grad = reshape(grad, model0.n)
-    grad[vp.<1.52] = 0.
-    grad = .125f0*grad/maximum(abs.(grad))  # scale for line search
+	model0.m = reshape(x,model0.n);
 
-    global count; count+= 1
+	# fwi function value and gradient
+	i = randperm(d_obs.nsrc)[1:batchsize]
+	d_sub = get_data(d_obs[i])
+	if count < 15
+		println("low")
+    	MF = judiFilter(d_sub.geometry, 3.0, 5.0)
+		wave_low = low_filter(wavelet, 4.0; fmin=3.0, fmax=5.0)
+		q = judiVector(src_geometry, wave_low)
+	elseif 14 < count < 30
+		println("medium")
+		opt.gs["maxshift"] = Float32(2000./8.0)
+	    MF = judiFilter(d_sub.geometry, 3.0, 8.0)
+		wave_low = low_filter(wavelet, 4.0; fmin=3.0, fmax=8.0)
+		q = judiVector(src_geometry, wave_low)
+	else
+		println("high")
+		opt.gs["maxshift"] = Float32(2000./10.0)
+		MF = judiFilter(d_sub.geometry, 3.0, 10.0)
+		wave_low = low_filter(wavelet, 4.0; fmin=3.0, fmax=10.0)
+		q = judiVector(src_geometry, wave_low)
+	end
+	fval, grad = fwi_objective(model0, q[i], MF*d_sub; options=opt)
+	grad = reshape(grad, model0.n)
+	grad[vp .< 1.55] = 0
+	grad = .5f0*grad/maximum(abs.(grad))  # scale for line search
+
+	global count; count+= 1
     return fval, vec(grad)
 end
 
 # FWI with SPG
-xgst, fsavegst, funEvalsgst= minConf_SPG(objective_function, vec(m0), ProjBound, options)
-save("FWIGS-trace.jld", "m0", m0, "x", reshape(xgst, model0.n), "fval", fsavegst, "funEvals", funEvalsgst)
+x = vec(model0.m)
+x, fsave, funEvals= minConf_SPG(objective_function, vec(model0.m), ProjBound, options)
+save("FWIgst-5.jld", "m0", m0, "x", reshape(x, model0.n), "fval", fsave, "funEvals", funEvals)
+x, fsave, funEvals= minConf_SPG(objective_function, x, ProjBound, options)
+save("FWIgst-8.jld", "m0", m0, "x", reshape(x, model0.n), "fval", fsave, "funEvals", funEvals)
+x, fsave, funEvals= minConf_SPG(objective_function, x, ProjBound, options)
+save("FWIgst-10.jld", "m0", m0, "x", reshape(x, model0.n), "fval", fsave, "funEvals", funEvals)
