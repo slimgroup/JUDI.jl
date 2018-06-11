@@ -12,7 +12,7 @@ from numpy.random import randint
 from sympy import solve, cos, sin, expand, symbols
 from sympy import Function as fint
 from devito.logger import set_log_level
-from devito import Eq, Function, TimeFunction, Dimension, Operator, clear_cache, ConditionalDimension, Constant
+from devito import Eq, Function, TimeFunction, Dimension, Operator, clear_cache, ConditionalDimension, Constant, DefaultDimension
 from devito import first_derivative, second_derivative
 from devito import first_derivative, left, right
 from PySource import PointSource, Receiver
@@ -74,7 +74,6 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False,
                           -u.forward.subs({u.indices[-1]: model.nbpml + fs + 1}))]
     op = Operator(expression, subs=subs, dse='advanced', dle='advanced',
                   name="Forward%s" % randint(1e5))
-
     if op_return is False:
         op()
         return rec.data, u

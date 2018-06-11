@@ -66,7 +66,7 @@ function limit_model_to_receiver_area(srcGeometry::Geometry,recGeometry::Geometr
         model.o = (ox,oy,oz)
     end
     model.n = size(model.m)
-    println("N new: ", model.n)
+    # println("N new: ", model.n)
     if isempty(pert)
         return model
     else
@@ -82,7 +82,7 @@ end
 function limit_model_to_receiver_area(srcGeometry::Geometry,recGeometry::Geometry,model::Model_TTI,buffer;pert=[])
     # Restrict full velocity model to area that contains either sources and receivers
     ndim = length(model.n)
-    println("N orig: ", model.n)
+    # println("N orig: ", model.n)
 
     # scan for minimum and maximum x and y source/receiver coordinates
     min_x = minimum([vec(recGeometry.xloc[1]); vec(srcGeometry.xloc[1])])
@@ -133,7 +133,6 @@ function limit_model_to_receiver_area(srcGeometry::Geometry,recGeometry::Geometr
         model.o = (ox,oy,oz)
     end
     model.n = size(model.m)
-    println("N new: ", model.n)
     # println("N new: ", model.n)
     if isempty(pert)
         return model
