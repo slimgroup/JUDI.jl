@@ -12,7 +12,7 @@ from numpy.random import randint
 from sympy import solve, cos, sin, expand, symbols
 from sympy import Function as fint
 from devito.logger import set_log_level
-from devito import Eq, Function, TimeFunction, Dimension, Operator, clear_cache, ConditionalDimension, Constant, DefaultDimension
+from devito import Eq, Function, TimeFunction, Dimension, Operator, clear_cache, ConditionalDimension, Constant, DefaultDimension, Inc
 from devito import first_derivative, second_derivative
 from devito import first_derivative, left, right
 from PySource import PointSource, Receiver
@@ -216,14 +216,14 @@ def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residu
     if u is None:
         u = TimeFunction(name='u', grid=model.grid, time_order=2, space_order=space_order)
     if isic is not True:
-        gradient_update = [Eq(gradient, gradient - dt * u.dt2 / rho * v)]
+        gradient_update = [Inc(gradient, gradient - dt * u.dt2 / rho * v)]
     else:
         # sum u.dx * v.dx fo x in dimensions.
         # space_order//2
         diff_u_v = sum([first_derivative(u, dim=d, order=space_order//2)*
                         first_derivative(v, dim=d, order=space_order//2)
                         for d in u.space_dimensions])
-        gradient_update = [Eq(gradient, gradient - dt * (u * v.dt2 * m + diff_u_v) / rho)]
+        gradient_update = [Inc(gradient, gradient - dt * (u * v.dt2 * m + diff_u_v) / rho)]
 
     # Create operator and run
     set_log_level('ERROR')
@@ -346,7 +346,7 @@ def adjoint_freq_born(model, rec_coords, rec_data, freq, ufr, ufi, space_order=8
     adj_src = rec.inject(field=v.backward, offset=model.nbpml, expr=rec * dt**2 / m)
 
     # Gradient update
-    gradient_update = [Eq(gradient, gradient + (2*np.pi*f)**2/nt*(ufr*cos(2*np.pi*f*time*dt) + ufi*sin(2*np.pi*f*time*dt))*v)]
+    gradient_update = [Inc(gradient, gradient + (2*np.pi*f)**2/nt*(ufr*cos(2*np.pi*f*time*dt) + ufi*sin(2*np.pi*f*time*dt))*v)]
 
     # Create operator and run
     set_log_level('ERROR')
