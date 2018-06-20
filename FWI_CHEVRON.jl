@@ -15,7 +15,7 @@ n = size(vp)
 o = (0., 0.)
 m0 = 1./vp.^2
 
-model0 = Model(n, d, o, m0, rho; nb=40)
+model0 = Model(n, d, o, m0; nb=40)
 
 # Read datasets
 container = segy_scan("/data/slim/data/ChevronTexaco/ChevronSEG2014/", "Piso", ["GroupX", "GroupY", "RecGroupElevation", "dt"])
@@ -66,7 +66,7 @@ ProjBound(x) = boundproject(x, maximum(m0), .9*minimum(m0))
 fevals = 10
 batchsize = 160
 fmin = 1.0
-options = spg_options(verbose=3, maxIter=fevals, memory=5)
+options = spg_options(verbose=3, maxIter=fevals, memory=1)
 # Optimization parameters
 srand(1)    # set seed of random number generator
 
@@ -95,22 +95,23 @@ end
 # FWI with SPG
 options = spg_options(verbose=3, maxIter=fevals, memory=1)
 x = vec(m0)
+fmin=0.1
 fmax=5.0
 fwi_obj(x) = objective_function(x, fmin, fmax, opt)
-f, g = fwi_obj(x)
-save("first_grad.jld", "m0", m0, "g", reshape(g, model0.n))
-# x, fsave, funEvals= minConf_SPG(fwi_obj, x, ProjBound, options)
-# save("FWI-5.jld", "m0", m0, "x", reshape(x, model0.n), "fval", fsave, "funEvals", funEvals)
-#
-# fmax = 8.0
-# fwi_obj(x) = objective_function(x, fmin, fmax, opt)
-# x, fsave, funEvals= minConf_SPG(fwi_obj, x, ProjBound, options)
-# save("FWI-8.jld", "m0", m0, "x", reshape(x, model0.n), "fval", fsave, "funEvals", funEvals)
-#
-# fmax = 12.0
-# fwi_obj(x) = objective_function(x, fmin, fmax, opt)
-# x, fsave, funEvals= minConf_SPG(fwi_obj, x, ProjBound, options)
-# save("FWI-10.jld", "m0", m0, "x", reshape(x, model0.n), "fval", fsave, "funEvals", funEvals)
+# f, g = fwi_obj(x)
+# save("first_grad.jld", "m0", m0, "g", reshape(g, model0.n))
+x, fsave, funEvals= minConf_SPG(fwi_obj, x, ProjBound, options)
+save("FWI-5.jld", "m0", m0, "x", reshape(x, model0.n), "fval", fsave, "funEvals", funEvals)
+
+fmax = 8.0
+fwi_obj(x) = objective_function(x, fmin, fmax, opt)
+x, fsave, funEvals= minConf_SPG(fwi_obj, x, ProjBound, options)
+save("FWI-8.jld", "m0", m0, "x", reshape(x, model0.n), "fval", fsave, "funEvals", funEvals)
+
+fmax = 12.0
+fwi_obj(x) = objective_function(x, fmin, fmax, opt)
+x, fsave, funEvals= minConf_SPG(fwi_obj, x, ProjBound, options)
+save("FWI-10.jld", "m0", m0, "x", reshape(x, model0.n), "fval", fsave, "funEvals", funEvals)
 
 ############################### GS-FWI-shot ###########################################
 opt = Options(limit_m=true, buffer_size=1000f0, freesurface=true, normalize=true, gs=Dict("maxshift" => 400.0f0, "strategy" => "shot"))
@@ -120,24 +121,25 @@ srand(1)    # set seed of random number generator
 
 # FWI with SPG
 x = vec(m0)
-fmax = 5.0
+fmin=0.1
+fmax=5.0
 fwi_obj(x) = objective_function(x, fmin, fmax, opt)
-f, g = fwi_obj(x)
-save("first_gradgss.jld", "m0", m0, "g", reshape(g, model0.n))
-# x, fsave, funEvals= minConf_SPG(fwi_obj, vec(x), ProjBound, options)
-# save("FWIgss-5.jld", "m0", m0, "x", reshape(x, model0.n), "fval", fsave, "funEvals", funEvals)
-#
-# fmax = 8.0
-# opt.gs["maxshift"] = Float32(2000./fmax)
-# fwi_obj(x) = objective_function(x, fmin, fmax, opt)
-# x, fsave, funEvals= minConf_SPG(fwi_obj, x, ProjBound, options)
-# save("FWIgss-8.jld", "m0", m0, "x", reshape(x, model0.n), "fval", fsave, "funEvals", funEvals)
-#
-# fmax = 12.0
-# opt.gs["maxshift"] = Float32(2000./fmax)
-# fwi_obj(x) = objective_function(x, fmin, fmax, opt)
-# x, fsave, funEvals= minConf_SPG(fwi_obj, x, ProjBound, options)
-# save("FWIgss-10.jld", "m0", m0, "x", reshape(x, model0.n), "fval", fsave, "funEvals", funEvals)
+# f, g = fwi_obj(x)
+# save("first_gradgss.jld", "m0", m0, "g", reshape(g, model0.n))
+x, fsave, funEvals= minConf_SPG(fwi_obj, vec(x), ProjBound, options)
+save("FWIgss-5.jld", "m0", m0, "x", reshape(x, model0.n), "fval", fsave, "funEvals", funEvals)
+
+fmax = 8.0
+opt.gs["maxshift"] = Float32(2000./fmax)
+fwi_obj(x) = objective_function(x, fmin, fmax, opt)
+x, fsave, funEvals= minConf_SPG(fwi_obj, x, ProjBound, options)
+save("FWIgss-8.jld", "m0", m0, "x", reshape(x, model0.n), "fval", fsave, "funEvals", funEvals)
+
+fmax = 12.0
+opt.gs["maxshift"] = Float32(2000./fmax)
+fwi_obj(x) = objective_function(x, fmin, fmax, opt)
+x, fsave, funEvals= minConf_SPG(fwi_obj, x, ProjBound, options)
+save("FWIgss-10.jld", "m0", m0, "x", reshape(x, model0.n), "fval", fsave, "funEvals", funEvals)
 
 ############################### GS-FWI-trace ###########################################
 opt = Options(limit_m=true, buffer_size=1000f0, freesurface=true, normalize=true, gs=Dict("maxshift" => 400.0f0, "strategy" => "trace"))
@@ -146,21 +148,22 @@ srand(1)    # set seed of random number generator
 
 # FWI with SPG
 x = vec(m0)
+fmin=0.1
 fmax=5.0
 fwi_obj(x) = objective_function(x, fmin, fmax, opt)
-f, g = fwi_obj(x)
-save("first_gradgst.jld", "m0", m0, "g", reshape(g, model0.n))
-# x, fsave, funEvals= minConf_SPG(fwi_obj, x, ProjBound, options)
-# save("FWIgst-5.jld", "m0", m0, "x", reshape(x, model0.n), "fval", fsave, "funEvals", funEvals)
-#
-# fmax = 8.0
-# opt.gs["maxshift"] = Float32(2000./fmax)
-# fwi_obj(x) = objective_function(x, fmin, fmax, opt)
-# x, fsave, funEvals= minConf_SPG(fwi_obj, x, ProjBound, options)
-# save("FWIgst-8.jld", "m0", m0, "x", reshape(x, model0.n), "fval", fsave, "funEvals", funEvals)
-#
-# fmax = 12.0
-# opt.gs["maxshift"] = Float32(2000./fmax)
-# fwi_obj(x) = objective_function(x, fmin, fmax, opt)
-# x, fsave, funEvals= minConf_SPG(fwi_obj, x, ProjBound, options)
-# save("FWIgst-10.jld", "m0", m0, "x", reshape(x, model0.n), "fval", fsave, "funEvals", funEvals)
+# f, g = fwi_obj(x)
+# save("first_gradgst.jld", "m0", m0, "g", reshape(g, model0.n))
+x, fsave, funEvals= minConf_SPG(fwi_obj, x, ProjBound, options)
+save("FWIgst-5.jld", "m0", m0, "x", reshape(x, model0.n), "fval", fsave, "funEvals", funEvals)
+
+fmax = 8.0
+opt.gs["maxshift"] = Float32(2000./fmax)
+fwi_obj(x) = objective_function(x, fmin, fmax, opt)
+x, fsave, funEvals= minConf_SPG(fwi_obj, x, ProjBound, options)
+save("FWIgst-8.jld", "m0", m0, "x", reshape(x, model0.n), "fval", fsave, "funEvals", funEvals)
+
+fmax = 12.0
+opt.gs["maxshift"] = Float32(2000./fmax)
+fwi_obj(x) = objective_function(x, fmin, fmax, opt)
+x, fsave, funEvals= minConf_SPG(fwi_obj, x, ProjBound, options)
+save("FWIgst-10.jld", "m0", m0, "x", reshape(x, model0.n), "fval", fsave, "funEvals", funEvals)

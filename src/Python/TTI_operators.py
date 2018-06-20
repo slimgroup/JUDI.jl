@@ -41,7 +41,7 @@ def sub_ind(model):
     return tuple(sub_dim)
 
 def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_order=12, nb=40,
-                     t_sub_factor=20, h_sub_factor=2, op_return=False, dt=None):
+                     t_sub_factor=1, h_sub_factor=1, op_return=False, dt=None):
     clear_cache()
 
     # Parameters
@@ -113,13 +113,13 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
     rec_term = rec.interpolate(expr=u + v, offset=model.nbpml)
 
     # Create operator and run
-    set_log_level('ERROR')
+    set_log_level('INFO')
     expression += src_term + rec_term
     if save:
         expression += eqsave
 
-    op = Operator(expression, subs=model.spacing_map, dse='aggressive', dle='advanced',
-                  name="Forward%s" % randint(1e5), autotune=False)
+    op = Operator(expression, subs=model.spacing_map, dse='aggressive', dle='advanced')
+
     if op_return is False:
         if save and (t_sub_factor>1 or h_sub_factor>1):
             op(dt=dt)
@@ -153,9 +153,10 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=12, nb
     # Create the adjoint wavefield
     p = TimeFunction(name="p", grid=model.grid, time_order=2, space_order=space_order)
     q = TimeFunction(name="q", grid=model.grid, time_order=2, space_order=space_order)
-    FD_kernel = kernels[len(model.shape)]
-    H0, Hz = FD_kernel(epsilon * p + delta * q, delta * p + q, ang0, ang1, ang2, ang3, space_order)
+    temp_p = Function(name="temp_p", grid=model.grid, space_order=p.space_order)
+    temp_r = Function(name="temp_r", grid=model.grid, space_order=q.space_order)
 
+    H0, Hz = FD_kernel(temp_p, temp_r, ang0, ang1, ang2, ang3, space_order)
     # Stencils
     s = model.grid.stepping_dim.spacing
     stencilp = damp * 2 * p - damp **2 * p.forward + s**2 / m * H0
@@ -163,6 +164,7 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=12, nb
     first_stencil = Eq(p.backward, stencilp)
     second_stencil = Eq(q.backward, stencilr)
     expression = [first_stencil, second_stencil]
+    expression += [Eq(temp_p, epsilon * p.backward + delta * q.backward), Eq(temp_r, delta * p.backward + q.backward)]
 
     # Adjoint source is injected at receiver locations
     rec = Receiver(name='rec', grid=model.grid, ntime=nt, coordinates=rec_coords)
@@ -174,10 +176,9 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=12, nb
     adj_rec = src.interpolate(expr=p+q, offset=model.nbpml)
 
     # Create operator and run
-    set_log_level('ERROR')
+    set_log_level('INFO')
     expression += adj_src + adj_rec
-    op = Operator(expression, subs=model.spacing_map, dse='aggressive', dle='advanced',
-                  name="Backward%s" % randint(1e5))
+    op = Operator(expression, subs=model.spacing_map, dse='advanced', dle='advanced')
     op(dt=dt)
 
     return src.data, p, q
@@ -275,10 +276,9 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=12, nb=40, 
     rec_term = rec.interpolate(expr=ul + vl, offset=model.nbpml)
 
     # Create operator and run
-    set_log_level('ERROR')
+    set_log_level('INFO')
     expression = expression_u + expression_du + src_term + rec_term
-    op = Operator(expression, subs=model.spacing_map, dse='aggressive', dle='advanced',
-                  name="Born%s" % randint(1e5), autotune=False)
+    op = Operator(expression, subs=model.spacing_map, dse='advanced', dle='advanced')
     op(dt=dt)
 
     return rec.data, u, ul
@@ -311,9 +311,13 @@ def adjoint_born(model, rec_coords, rec_data, u=None, v=None, op_forward=None, i
     gradient = Function(name='gradient', grid=u.grid)
 
     FD_kernel = kernels[len(model.shape)]
-    H0, Hz = FD_kernel(epsilon * p + delta * q, delta * p + q,
-                                ang0, ang1, ang2, ang3, space_order)
+    # Create temps adjoint
+    temp_p = Function(name="temp_p", grid=model.grid, space_order=p.space_order)
+    temp_r = Function(name="temp_r", grid=model.grid, space_order=q.space_order)
+    # H0, Hz = FD_kernel(epsilon * p + delta * q, delta * p + q,
+    #                             ang0, ang1, ang2, ang3, space_order)
 
+    H0, Hz = FD_kernel(temp_p, temp_r, ang0, ang1, ang2, ang3, space_order)
     # Stencils
     s = model.grid.stepping_dim.spacing
     stencilp = damp * 2 * p - damp **2 * p.forward + s**2 / m * H0
@@ -321,11 +325,14 @@ def adjoint_born(model, rec_coords, rec_data, u=None, v=None, op_forward=None, i
     first_stencil = Eq(p.backward, stencilp)
     second_stencil = Eq(q.backward, stencilr)
     expression = [first_stencil, second_stencil]
-
+    expression += [Eq(temp_p, epsilon * p.backward + delta * q.backward), Eq(temp_r, delta * p.backward + q.backward)]
     # Data at receiver locations as adjoint source
     rec_g = Receiver(name='rec_g', grid=model.grid, ntime=nt, coordinates=rec_coords)
     if op_forward is None:
-        rec_g.data[:] = rec_data[:]
+        max_in = np.max(rec_data[:])
+        rec_data = np.gradient(rec_data)[0]
+        rec_g.data[:] = max_in * rec_data[:] / np.max(rec_data[:])
+
     adj_src = rec_g.inject(field=p.backward, offset=model.nbpml, expr=rec_g * dt**2 / m)
     adj_src += rec_g.inject(field=q.backward, offset=model.nbpml, expr=rec_g * dt**2 / m)
     # Gradient update
@@ -379,10 +386,9 @@ def adjoint_born(model, rec_coords, rec_data, u=None, v=None, op_forward=None, i
         gradient_update = [Inc(gradient, gradient - factor_h * factor_t * dt * (u * p.dt2 + v * q.dt2))]
 
     # Create operator and run
-    set_log_level('ERROR')
+    set_log_level('INFO')
     expression += adj_src + gradient_update
-    op = Operator(expression, subs=model.spacing_map, dse='advanced', dle='advanced',
-                  name="Gradient%s" % randint(1e5), autotune=False)
+    op = Operator(expression, subs=model.spacing_map, dse='advanced', dle='speculative')
     # Optimal checkpointing
     if op_forward is not None:
         rec = Receiver(name='rec', grid=model.grid, ntime=nt, coordinates=rec_coords)
@@ -403,7 +409,7 @@ def adjoint_born(model, rec_coords, rec_data, u=None, v=None, op_forward=None, i
             fval = .5*np.linalg.norm(rec_g.data[:])**2
         wrp.apply_reverse()
     else:
-        op(dt=dt)
+        op(dt=dt, autotune=True)
     clear_cache()
 
     if u.indices[1].is_Conditional:
@@ -475,7 +481,7 @@ def adjoint_born_fake(model, rec_coords, rec_data, u=None, v=None, op_forward=No
     else:
         gradient_update = [Inc(gradient, gradient - dt * u.dt2 * p - dt * v.dt2 * q)]
     # Create operator and run
-    set_log_level('ERROR')
+    set_log_level('INFO')
     expression += adj_src + gradient_update
     op = Operator(expression, subs=model.spacing_map, dse='advanced', dle='advanced',
                   name="Gradient%s" % randint(1e5))
@@ -759,9 +765,9 @@ def resample_grad(grad, model, factor):
     if model.grid.dim > 2:
         z = [i*factor for i in range(grad.data.shape[2])]
         znew = [i for i in range(model.shape_pml[2])]
-        interpolator = interpolate.RegularGridInterpolator((x, y, z), grad.data, bounds_error=False,fill_value=0.)
+        interpolator = interpolate.RegularGridInterpolator((x, y, z), grad.data, bounds_INFO=False,fill_value=0.)
         gridnew = np.ix_(xnew, ynew, znew)
     else:
-        interpolator = interpolate.RegularGridInterpolator((x, y), grad.data, bounds_error=False, fill_value=0.)
+        interpolator = interpolate.RegularGridInterpolator((x, y), grad.data, bounds_INFO=False, fill_value=0.)
         gridnew = np.ix_(xnew, ynew)
     return interpolator(gridnew)

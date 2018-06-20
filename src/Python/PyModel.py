@@ -122,7 +122,7 @@ class Model(object):
             else:
                 self.delta = np.sqrt(1 + 2 * delta)
         else:
-            self.delta = 1
+            self.delta = 1.0
 
         if theta is not None:
             if isinstance(theta, np.ndarray):
@@ -131,7 +131,7 @@ class Model(object):
             else:
                 self.theta = theta
         else:
-            self.theta = 0
+            self.theta = 0.0
 
         if phi is not None:
             if isinstance(phi, np.ndarray):
@@ -140,7 +140,7 @@ class Model(object):
             else:
                 self.phi = phi
         else:
-            self.phi = 0
+            self.phi = 0.0
 
     @property
     def dim(self):

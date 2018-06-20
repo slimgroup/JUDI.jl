@@ -41,7 +41,6 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False,
     if dt is None:
         dt = model.critical_dt
     m, rho, damp = model.m, model.rho, model.damp
-
     # Create the forward wavefield
     if save is False:
         u = TimeFunction(name='u', grid=model.grid, time_order=2, space_order=space_order)
@@ -74,6 +73,7 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False,
                           -u.forward.subs({u.indices[-1]: model.nbpml + fs + 1}))]
     op = Operator(expression, subs=subs, dse='advanced', dle='advanced',
                   name="Forward%s" % randint(1e5))
+
     if op_return is False:
         op()
         return rec.data, u
@@ -236,7 +236,6 @@ def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residu
                          -v.backward.subs({u.indices[-1]: model.nbpml + fs + 1}))]
     op = Operator(expression, subs=subs, dse='advanced', dle='advanced',
                   name="Gradient%s" % randint(1e5))
-
     # Optimal checkpointing
     if op_forward is not None:
         rec = Receiver(name='rec', grid=model.grid, ntime=nt, coordinates=rec_coords)
