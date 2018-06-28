@@ -123,6 +123,9 @@ function limit_model_to_receiver_area(srcGeometry::Geometry,recGeometry::Geometr
         if length(model.theta) > 1
             model.theta = model.theta[nx_min: nx_max, :]
         end
+        if length(model.rho) > 1
+            model.rho = model.rho[nx_min: nx_max, :]
+        end
         model.o = (ox, oz)
     else
         model.m = model.m[nx_min:nx_max,ny_min:ny_max,:]
@@ -131,6 +134,9 @@ function limit_model_to_receiver_area(srcGeometry::Geometry,recGeometry::Geometr
         model.theta = model.theta[nx_min:nx_max,ny_min:ny_max,:]
         model.phi = model.phi[nx_min:nx_max,ny_min:ny_max,:]
         model.o = (ox,oy,oz)
+        if length(model.rho) > 1
+            model.rho = model.rho[nx_min:nx_max,ny_min:ny_max,:]
+        end
     end
     model.n = size(model.m)
     # println("N new: ", model.n)
@@ -471,6 +477,9 @@ function gs_residual_trace(maxshift, dtComp, dPredicted, dObserved, normalize)
 	# residual_plot = zeros(Float32, size(dObserved))
 	# syn_plot = zeros(Float32, size(dObserved))
     indnz = [i for i in 1:size(dPredicted,2) if (norm(dObserved[:,i])>0 && norm(dPredicted[:,i])>0)]
+
+    weights = [norm(dObserved[:,i]) for i in 1:size(dPredicted,2)]
+
 	for rr in indnz
 		aux = zeros(Float32, size(dPredicted, 1))
 
@@ -525,6 +534,7 @@ function gs_residual_trace(maxshift, dtComp, dPredicted, dObserved, normalize)
 		# if rr%50==0
 		# 	figure();plot(syn_plot[rr,:], "-b");plot(syn, "-r");plot(obs, "-g")
 		# end
+        residual[:, rr] = weights[rr] * residual[:, rr]
 	end
 	# figure();imshow(syn_plot', vmin=-1e1, vmax=1e1, cmap="seismic", aspect=.2)
 	# figure();imshow(dPredicted', vmin=-1e1, vmax=1e1, cmap="seismic", aspect=.2)

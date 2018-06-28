@@ -12,7 +12,7 @@ from numpy.random import randint
 from sympy import solve, cos, sin, expand, symbols
 from sympy import Function as fint
 from devito.logger import set_log_level
-from devito import Eq, Function, TimeFunction, Dimension, Operator, clear_cache, ConditionalDimension, Grid, Inc
+from devito import Eq, Function, TimeFunction, Dimension, Operator, clear_cache, ConditionalDimension, Grid, Inc, DefaultDimension
 from devito.finite_difference import (centered, first_derivative, right, transpose,
                                       second_derivative, left)
 from devito.symbolics import retrieve_functions
@@ -40,8 +40,136 @@ def sub_ind(model):
 
     return tuple(sub_dim)
 
-def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_order=12, nb=40,
-                     t_sub_factor=1, h_sub_factor=1, op_return=False, dt=None):
+def staggered_diff(f, dim, order, stagger=centered, theta=0, phi=0):
+    """
+    Utility function to generate staggered derivatives
+    """
+    ndim = f.grid.dim
+    off = dict([(d, 0) for d, s in zip(f.grid.dimensions, f.staggered)])
+    if stagger == left:
+        off[dim] = -.5
+    elif stagger == right:
+        off[dim] = .5
+    else:
+        off[dim] = 0
+
+    if theta == 0 and phi == 0:
+        diff = dim.spacing
+        idx = [(dim + int(i+.5+off[dim])*diff) for i in range(-int(order / 2), int(order / 2))]
+        return f.diff(dim).as_finite_difference(idx, x0=dim + off[dim]*dim.spacing)
+    else:
+        ndim = f.grid.dim
+        x = f.grid.dimensions[0]
+        z = f.grid.dimensions[-1]
+        idxx = list(set([(x + int(i+.5+off[x])*x.spacing) for i in range(-int(order / 2), int(order / 2))]))
+        dx = f.diff(x).as_finite_difference(idxx, x0=x + off[x]*x.spacing)
+
+        idxz = list(set([(z + int(i+.5+off[z])*z.spacing) for i in range(-int(order / 2), int(order / 2))]))
+        dz = f.diff(z).as_finite_difference(idxz, x0=z + off[z]*z.spacing)
+
+        dy = 0
+        is_y = False
+
+        if ndim == 3:
+            y = f.grid.dimensions[1]
+            idxy = list(set([(y + int(i+.5+off[y])*y.spacing) for i in range(-int(order / 2), int(order / 2))]))
+            dy = f.diff(y).as_finite_difference(idxy, x0=y + off[y]*y.spacing)
+            is_y = (dim == y)
+
+        if dim == x:
+            return cos(theta) * cos(phi) * dx + sin(phi) * cos(theta) * dy - sin(theta) * dz
+        elif dim == z:
+            return sin(theta) * cos(phi) * dx + sin(phi) * sin(theta) * dy + cos(theta) * dz
+        elif is_y:
+            return -sin(phi) * dx + cos(phi) *  dy
+        else:
+            return 0
+
+def Staggered_forward(model, src_coords, wavelet, rec_coords, save=False, space_order=16, nb=40,
+                      t_sub_factor=1, h_sub_factor=1, op_return=False, dt=None, freesurface=False):
+    """
+    Constructor method for the forward modelling operator in an acoustic media
+    :param model: :class:`Model` object containing the physical parameters
+    :param source: :class:`PointData` object containing the source geometry
+    :param receiver: :class:`PointData` object containing the acquisition geometry
+    :param space_order: Space discretization order
+    :param save: Saving flag, True saves all time steps, False only the three
+    """
+    # Parameters
+    nt = wavelet.shape[0]
+    if dt is None:
+        dt = model.critical_dt
+    m, epsilon, delta, theta, phi, rho = model.m, model.epsilon, model.delta, model.theta, model.phi, model.rho
+    damp = model.damp
+    s = model.grid.stepping_dim.spacing
+
+    ndim = model.grid.dim
+
+    if ndim == 3:
+        stagg_x = (0, 1, 0, 0)
+        stagg_z = (0, 0, 0, 1)
+        stagg_y = (0, 0, 1, 0)
+        x, y, z = model.grid.dimensions
+    else:
+        stagg_x = (0, 1, 0)
+        stagg_z = (0, 0, 1)
+        x, z = model.grid.dimensions
+    # Create symbols for forward wavefield, source and receivers
+    vx = TimeFunction(name='vx', grid=model.grid, staggered=stagg_x,
+                      save=None,
+                      time_order=1, space_order=space_order)
+    vz = TimeFunction(name='vz', grid=model.grid, staggered=stagg_z,
+                      save=None,
+                      time_order=1, space_order=space_order)
+
+    if model.grid.dim == 3:
+        vy = TimeFunction(name='vy', grid=model.grid, staggered=stagg_y,
+                          save=None,
+                          time_order=1, space_order=space_order)
+
+    pv = TimeFunction(name='pv', grid=model.grid,
+                      save=source.nt if save else None,
+                      time_order=1, space_order=space_order)
+    ph = TimeFunction(name='ph', grid=model.grid,
+                      save=source.nt if save else None,
+                      time_order=1, space_order=space_order)
+    # Stencils
+    u_vx = Eq(vx.forward, damp * vx - damp *s/rho*staggered_diff(ph, dim=x, order=space_order, stagger=left, theta=theta, phi=phi))
+    u_vz = Eq(vz.forward, damp * vz - damp *s/rho*staggered_diff(pv, dim=z, order=space_order, stagger=left, theta=theta, phi=phi))
+
+    dvx = staggered_diff(vx.forward, dim=x, order=space_order, stagger=right, theta=theta, phi=phi)
+    dvz = staggered_diff(vz.forward, dim=z, order=space_order, stagger=right, theta=theta, phi=phi)
+
+    u_vy = []
+    dvy = 0
+    if ndim == 3:
+        u_vy = [Eq(vy.forward, damp * vy - damp *s/rho*staggered_diff(ph, dim=y, order=space_order, stagger=left, theta=theta, phi=phi))]
+        dvy = staggered_diff(vy.forward, dim=y, order=space_order, stagger=right, theta=theta, phi=phi)
+
+
+    pv_eq = Eq(pv.forward, damp * pv - damp *s * rho / m * (delta*(dvx + dvy) + dvz))
+
+    ph_eq = Eq(ph.forward, damp * ph - damp *s * rho / m * (epsilon*(dvx + dvy) + delta * dvz))
+
+    # Source symbol with input wavelet
+    src = PointSource(name='src', grid=model.grid, ntime=nt, coordinates=src_coords)
+    src.data[:] = wavelet[:]
+    src_term = src.inject(field=pv.forward, offset=model.nbpml, expr=src * rho * dt / m)
+    src_term += src.inject(field=ph.forward, offset=model.nbpml, expr=src * rho * dt / m)
+    # Data is sampled at receiver locations
+    rec = Receiver(name='rec', grid=model.grid, ntime=nt, coordinates=rec_coords)
+    rec_term = rec.interpolate(expr=pv + ph, offset=model.nbpml)
+
+    # Substitute spacing terms to reduce flops
+    op = Operator([u_vx, u_vz] + u_vy + rec_term + [pv_eq, ph_eq] + src_term, subs=model.spacing_map,
+                  dse='advanced', dle='advanced')
+
+    op(dt=dt)
+    return rec.data, ph, pv
+
+
+def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_order=16, nb=40,
+                     t_sub_factor=1, h_sub_factor=1, op_return=False, dt=None, freesurface=False):
     clear_cache()
 
     # Parameters
@@ -93,8 +221,15 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
         v = TimeFunction(name='v', grid=model.grid, time_order=2, space_order=space_order)
         eqsave = []
     # TTI stencil
-    FD_kernel = kernels[len(model.shape)]
-    H0, Hz = FD_kernel(u, v, ang0, ang1, ang2, ang3, space_order)
+    rho = model.rho
+    if isinstance(rho, Function):
+        FD_kernel = kernels['rho']
+        H0, Hz = FD_kernel(u, v, rho, ang0, ang1, ang2, ang3, space_order)
+    else:
+        FD_kernel = kernels[len(model.shape)]
+        H0, Hz = FD_kernel(u, v, ang0, ang1, ang2, ang3, space_order)
+        H0 = H0
+        Hz = Hz
 
     # Stencils
     s = model.grid.stepping_dim.spacing
@@ -106,8 +241,8 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
     # Source symbol with input wavelet
     src = PointSource(name='src', grid=model.grid, ntime=nt, coordinates=src_coords)
     src.data[:] = wavelet[:]
-    src_term = src.inject(field=u.forward, offset=model.nbpml, expr=src * dt**2 / m)
-    src_term += src.inject(field=v.forward, offset=model.nbpml, expr=src * dt**2 / m)
+    src_term = src.inject(field=u.forward, offset=model.nbpml, expr=src * rho * dt**2 / m)
+    src_term += src.inject(field=v.forward, offset=model.nbpml, expr=src * rho * dt**2 / m)
     # Data is sampled at receiver locations
     rec = Receiver(name='rec', grid=model.grid, ntime=nt, coordinates=rec_coords)
     rec_term = rec.interpolate(expr=u + v, offset=model.nbpml)
@@ -118,8 +253,14 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
     if save:
         expression += eqsave
 
+    if freesurface:
+        fs = DefaultDimension(name="fs", default_value=model.nbpml)
+        expression += [Eq(u.forward.subs({u.indices[-1]: model.nbpml - fs - 1}),
+                          -u.forward.subs({u.indices[-1]: model.nbpml + fs + 1}))]
+        expression += [Eq(v.forward.subs({v.indices[-1]: model.nbpml - fs - 1}),
+                          -v.forward.subs({v.indices[-1]: model.nbpml + fs + 1}))]
     op = Operator(expression, subs=model.spacing_map, dse='aggressive', dle='advanced')
-
+    # from IPython import embed; embed()
     if op_return is False:
         if save and (t_sub_factor>1 or h_sub_factor>1):
             op(dt=dt)
@@ -156,7 +297,16 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=12, nb
     temp_p = Function(name="temp_p", grid=model.grid, space_order=p.space_order)
     temp_r = Function(name="temp_r", grid=model.grid, space_order=q.space_order)
 
-    H0, Hz = FD_kernel(temp_p, temp_r, ang0, ang1, ang2, ang3, space_order)
+    rho = model.rho
+    if isinstance(rho, Function):
+        FD_kernel = kernels['rho']
+        H0, Hz = FD_kernel(temp_p, temp_r, rho, ang0, ang1, ang2, ang3, space_order)
+    else:
+        FD_kernel = kernels[len(model.shape)]
+        H0, Hz = FD_kernel(temp_p, temp_r, ang0, ang1, ang2, ang3, space_order)
+        H0 = H0 / rho
+        Hz = Hz / rho
+
     # Stencils
     s = model.grid.stepping_dim.spacing
     stencilp = damp * 2 * p - damp **2 * p.forward + s**2 / m * H0
@@ -312,12 +462,12 @@ def adjoint_born(model, rec_coords, rec_data, u=None, v=None, op_forward=None, i
 
     FD_kernel = kernels[len(model.shape)]
     # Create temps adjoint
-    temp_p = Function(name="temp_p", grid=model.grid, space_order=p.space_order)
-    temp_r = Function(name="temp_r", grid=model.grid, space_order=q.space_order)
-    # H0, Hz = FD_kernel(epsilon * p + delta * q, delta * p + q,
-    #                             ang0, ang1, ang2, ang3, space_order)
+    # temp_p = Function(name="temp_p", grid=model.grid, space_order=p.space_order)
+    # temp_r = Function(name="temp_r", grid=model.grid, space_order=q.space_order)
+    H0, Hz = FD_kernel(epsilon * p + delta * q, delta * p + q,
+                                ang0, ang1, ang2, ang3, space_order)
 
-    H0, Hz = FD_kernel(temp_p, temp_r, ang0, ang1, ang2, ang3, space_order)
+    # H0, Hz = FD_kernel(temp_p, temp_r, ang0, ang1, ang2, ang3, space_order)
     # Stencils
     s = model.grid.stepping_dim.spacing
     stencilp = damp * 2 * p - damp **2 * p.forward + s**2 / m * H0
@@ -325,7 +475,7 @@ def adjoint_born(model, rec_coords, rec_data, u=None, v=None, op_forward=None, i
     first_stencil = Eq(p.backward, stencilp)
     second_stencil = Eq(q.backward, stencilr)
     expression = [first_stencil, second_stencil]
-    expression += [Eq(temp_p, epsilon * p.backward + delta * q.backward), Eq(temp_r, delta * p.backward + q.backward)]
+    # expression += [Eq(temp_p, epsilon * p.backward + delta * q.backward), Eq(temp_r, delta * p.backward + q.backward)]
     # Data at receiver locations as adjoint source
     rec_g = Receiver(name='rec_g', grid=model.grid, ntime=nt, coordinates=rec_coords)
     if op_forward is None:
@@ -388,7 +538,7 @@ def adjoint_born(model, rec_coords, rec_data, u=None, v=None, op_forward=None, i
     # Create operator and run
     set_log_level('INFO')
     expression += adj_src + gradient_update
-    op = Operator(expression, subs=model.spacing_map, dse='advanced', dle='speculative')
+    op = Operator(expression, subs=model.spacing_map, dse='aggressive', dle='speculative')
     # Optimal checkpointing
     if op_forward is not None:
         rec = Receiver(name='rec', grid=model.grid, ntime=nt, coordinates=rec_coords)
@@ -611,28 +761,6 @@ def Gxx_centered_2d(field, costheta, sintheta, space_order):
     lap = sum([second_derivative(field, dim=d, order=space_order) for d in func.space_dimensions])
     return lap - Gzz_centered_2d(field, costheta, sintheta, space_order)
 
-
-# Centered case produces directly Gxx + Gyy
-def Gxxyy_centered(field, costheta, sintheta, cosphi, sinphi, space_order):
-    """
-    Sum of the 3D rotated second order derivative in the direction x and y.
-    As the Laplacian is rotation invariant, it is computed as the conventional
-    Laplacian minus the second order rotated second order derivative in the direction z
-    Gxx + Gyy = field.laplace - Gzz
-    :param field: symbolic data whose derivative we are computing
-    :param costheta: cosine of the tilt angle
-    :param sintheta:  sine of the tilt angle
-    :param cosphi: cosine of the azymuth angle
-    :param sinphi: sine of the azymuth angle
-    :param space_order: discretization order
-    :return: Sum of the 3D rotated second order derivative in the direction x and y
-    """
-    func = list(retrieve_functions(field))[0]
-
-    lap = sum([second_derivative(field, dim=d, order=space_order) for d in func.space_dimensions])
-    Gzz = Gzz_centered(field, costheta, sintheta, cosphi, sinphi, space_order)
-    return lap - Gzz
-
 def kernel_centered_2d(u, v, costheta, sintheta, cosphi, sinphi, space_order):
     """
     TTI finite difference kernel. The equation we solve is:
@@ -695,7 +823,7 @@ def Dx(field, costheta, sintheta, cosphi, sinphi, space_order):
     order1 = space_order
     func = list(retrieve_functions(field))
     for i in func:
-        if isinstance(i, TimeFunction):
+        if isinstance(i, Function):
             dims = i.space_dimensions
             break
     Dx = (costheta * cosphi * first_derivative(field, dim=dims[0], side=centered, order=order1) -
@@ -720,7 +848,7 @@ def Dy(field, costheta, sintheta, cosphi, sinphi, space_order):
     order1 = space_order
     func = list(retrieve_functions(field))
     for i in func:
-        if isinstance(i, TimeFunction):
+        if isinstance(i, Function):
             dims = i.space_dimensions
             break
     Dy = (-sinphi * first_derivative(field, dim=dims[0], side=centered, order=order1) +
@@ -743,7 +871,7 @@ def Dz(field, costheta, sintheta, cosphi, sinphi, space_order):
     order1 = space_order
     func = list(retrieve_functions(field))
     for i in func:
-        if isinstance(i, TimeFunction):
+        if isinstance(i, Function):
             dims = i.space_dimensions
             break
     Dz = (sintheta * cosphi * first_derivative(field, dim=dims[0], side=centered, order=order1) +
@@ -754,7 +882,67 @@ def Dz(field, costheta, sintheta, cosphi, sinphi, space_order):
     return Dz
 
 
-kernels = {3: kernel_centered_3d, 2: kernel_centered_2d}
+def kernel_rho_2d(u, v, rho, costheta, sintheta, cosphi, sinphi, space_order):
+    """
+    TTI finite difference kernel. The equation we solve is:
+
+    u.dt2 = (1+2 *epsilon) (Gxx(u)) + sqrt(1+ 2*delta) Gzz(v)
+    v.dt2 = sqrt(1+ 2*delta) (Gxx(u)) +  Gzz(v)
+
+    where epsilon and delta are the thomsen parameters. This function computes
+    H0 = Gxx(u) + Gyy(u)
+    Hz = Gzz(v)
+
+    :param u: first TTI field
+    :param v: second TTI field
+    :param costheta: cosine of the tilt angle
+    :param sintheta:  sine of the tilt angle
+    :param cosphi: cosine of the azymuth angle, has to be 0 in 2D
+    :param sinphi: sine of the azymuth angle, has to be 0 in 2D
+    :param space_order: discretization order
+    :return: u and v component of the rotated Laplacian in 2D
+    """
+    Gxx = Gxx_rho_2d(u, rho, costheta, sintheta, space_order//2)
+    Gzz = Gzz_rho_2d(v, rho, costheta, sintheta, space_order//2)
+    return Gxx, Gzz
+
+def Gzz_rho_2d(field, rho, costheta, sintheta, space_order):
+    """
+    2D rotated second order derivative in the direction z as an average of
+    two non-centered rotated second order derivative in the direction z
+    :param field: symbolic data whose derivative we are computing
+    :param costheta: cosine of the tilt
+    :param sintheta:  sine of the tilt
+    :param space_order: discretization order
+    :return: rotated second order derivative wrt z
+    """
+    # Dx(1/rho Dx u) = 1/rho DxDx - Dx(1/rho) . Dx(u)
+    dzu = Dz(field, costheta, sintheta, 1, 0, space_order)
+    dzrho = -1/rho*Dz(rho, costheta, sintheta, 1, 0, space_order)
+    dzz = Gzz_centered_2d(field, costheta, sintheta, 2*space_order)
+
+    return dzz - dzu * dzrho
+
+
+def Gxx_rho_2d(field, rho, costheta, sintheta, space_order):
+    """
+    2D rotated second order derivative in the direction x as an average of
+    two non-centered rotated second order derivative in the direction x
+    :param field: symbolic data whose derivative we are computing
+    :param costheta: cosine of the tilt angle
+    :param sintheta:  sine of the tilt angle
+    :param space_order: discretization order
+    :return: rotated second order derivative wrt x
+    """
+    # Dx(1/rho Dx u) = 1/rho DxDx - Dx(1/rho) . Dx(u)
+    dxu = Dx(field, costheta, sintheta, 1, 0, space_order)
+    dxrho = -1/rho*Dx(rho, costheta, sintheta, 1, 0, space_order)
+    dxx = Gxx_centered_2d(field, costheta, sintheta, 2*space_order)
+
+    return dxx - dxu * dxrho
+
+kernels = {3: kernel_centered_3d, 2: kernel_centered_2d,
+           'rho': kernel_rho_2d}
 
 def resample_grad(grad, model, factor):
     from scipy import interpolate

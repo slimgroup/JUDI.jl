@@ -184,7 +184,9 @@ function minConf_SPG(funObj, x, funProj, options)
 	    funEvals = funEvals+1
 	    # Backtracking Line Search
 	    lineSearchIters = 1
+		@printf("%10s %4.2e %4.2e\n", "LineSearch", f, f_new)
 	    while f_new > funRef + options.suffDec*dot(g,(x_new-x)) || ~isLegal(f_new) || ~isLegal(g_new)
+			@printf("%10s %4.2e %4.2e\n", "LineSearch", f, f_new)
 			temp = t
 			if lineSearchIters == 1
 				@printf("Unit step length not feasible, starting line search\n")

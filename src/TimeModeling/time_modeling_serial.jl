@@ -155,20 +155,22 @@ function time_modeling(model_full::Model_TTI, srcGeometry::Geometry, srcData, re
     if op=='J' && mode == 1
         # Set up Python model structure (force origin to be zero due to current devito bug)
         modelPy = pm.Model(origin=(0.,0.,0.), spacing=model.d, shape=model.n, vp=process_physical_parameter(sqrt.(1f0./model.m), dims),
+                           rho=process_physical_parameter(model.rho, dims),
                            epsilon=process_physical_parameter(model.epsilon, dims),
                            delta=process_physical_parameter(model.delta, dims),
                            theta=process_physical_parameter(model.theta, dims),
                            phi=process_physical_parameter(model.phi, dims), nbpml=model.nb,
                            dm=process_physical_parameter(reshape(dm,model.n), dims),
-                           space_order=12)
+                           space_order=options.space_order)
     else
         # Set up Python model structure (force origin to be zero due to current devito bug)
         modelPy = pm.Model(origin=(0., 0., 0.), spacing=model.d, shape=model.n, vp=process_physical_parameter(sqrt.(1f0./model.m), dims),
+                           rho=process_physical_parameter(model.rho, dims),
                            epsilon=process_physical_parameter(model.epsilon, dims),
                            delta=process_physical_parameter(model.delta, dims),
                            theta=process_physical_parameter(model.theta, dims),
                            phi=process_physical_parameter(model.phi, dims), nbpml=model.nb,
-                           space_order=12)
+                           space_order=options.space_order)
     end
     dtComp = modelPy[:critical_dt]
 
@@ -211,7 +213,7 @@ function time_modeling(model_full::Model_TTI, srcGeometry::Geometry, srcData, re
             # forward modeling
             #println("Nonlinear forward modeling (source no. ",srcnum,")")
             dOut = pycall(tti.forward_modeling, PyObject, modelPy, PyReverseDims(src_coords'), PyReverseDims(qIn'), PyReverseDims(rec_coords'),
-                          space_order=options.space_order, nb=model.nb)[1]
+                          space_order=options.space_order, nb=model.nb, freesurface=options.freesurface)[1]
             ntRec > ntComp && (dOut = [dOut zeros(size(dOut,1), ntRec - ntComp)])
             dOut = time_resample(dOut,dtComp,recGeometry)
             if options.save_data_to_disk
