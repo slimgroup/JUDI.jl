@@ -204,7 +204,7 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
     :param save: Saving flag, True saves all time steps, False only the three
     """
     clear_cache()
-    save_p = source.nt if save else None
+    save_p = wavelet.shape[0] if save else None
 
     vel_expr, p_expr, fields = forward_stencil(model, space_order, save=save_p)
     # Source and receivers
@@ -236,7 +236,7 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=12, nb
     op = Operator(vel_expr + rec_term + p_expr + src_term, subs=model.spacing_map,
                   dse='aggressive', dle='advanced')
     op()
-    return rec.data
+    return rec.data, fields[0], fields[1]
 
 def forward_born(model, src_coords, wavelet, rec_coords, space_order=12, nb=40, isic=False, dt=None, save=False, isiciso=False,
                  h_sub_factor=1):
@@ -253,16 +253,18 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=12, nb=40, 
 
     vel_expr, p_expr, fields = forward_stencil(model, space_order, save=save_p)
     _, _, src_term = src_rec(model, fields, src_coords, rec_coords, src_data=wavelet)
-    vel_exprl, p_exprl, fieldsl = forward_stencil(model, space_order, save=save_p, q=(fields[0].dt / rho, fields[1].dt / rho), name='lin')
+
+    lin_src = (model.dm * fields[0].dt / model.rho, model.dm * fields[1].dt / model.rho)
+    vel_exprl, p_exprl, fieldsl = forward_stencil(model, space_order, save=save_p, q=lin_src, name='lin')
     # Source and receivers
     rec, rec_term, _ = src_rec(model, fieldsl, src_coords, rec_coords, src_data=wavelet)
 
     # Substitute spacing terms to reduce flops
-    op = Operator(vel_expr + src_term + p_expr + rec_term, subs=model.spacing_map,
+    op = Operator(vel_expr + rec_term + p_expr + vel_exprl + src_term + p_exprl, subs=model.spacing_map,
                   dse='advanced', dle='advanced')
 
     op()
-    return rec.data, vields[0], fields[1]
+    return rec.data, fields[0], fields[1]
 
 
 def adjoint_born(model, rec_coords, rec_data, u=None, v=None, op_forward=None, is_residual=False,
@@ -281,10 +283,10 @@ def adjoint_born(model, rec_coords, rec_data, u=None, v=None, op_forward=None, i
     grad = Function(name="grad", grid=model.grid)
     gradient = [Inc(grad, grad - model.grid.time_dim.spacing *(u.dt * fields[0] - v.dt * fields[1]))]
     # Adjoint source is injected at receiver locations
-    rec, _, src_term = src_rec(model, fields, rec_coords, src_coords, rec_data, backward=True)
+    rec, _, src_term = src_rec(model, fields, rec_coords, np.zeros((1,1)), rec_data, backward=True)
 
     # Substitute spacing terms to reduce flops
-    op = Operator(vel_expr + src_term + p_expr + gradient , subs=model.spacing_map,
+    op = Operator(vel_expr  + p_expr + src_term + gradient , subs=model.spacing_map,
                   dse='aggressive', dle='advanced')
     op()
     return grad.data
