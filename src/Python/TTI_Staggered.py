@@ -53,14 +53,16 @@ def custom_FD(args, dim, indx, x0):
         deriv += coeffs[i] * reduce(mul, var, 1)
     return deriv
 
-def src_rec(model, fields, src_coords, rec_coords, src_data):
+def src_rec(model, fields, src_coords, rec_coords, src_data, backward=False):
     nt = src_data.shape[0]
     s = model.grid.time_dim.spacing
     # Source symbol with input wavelet
     src = PointSource(name='src', grid=model.grid, ntime=nt, coordinates=src_coords)
     src.data[:] = src_data[:]
-    src_term = src.inject(field=fields[0].forward, offset=model.nbpml, expr=src * model.rho * s / model.m)
-    src_term += src.inject(field=fields[1].forward, offset=model.nbpml, expr=src * model.rho * s / model.m)
+    inv = fields[0].backward if backward else fields[0].forward
+    inh = fields[1].backward if backward else fields[1].forward
+    src_term = src.inject(field=inv, offset=model.nbpml, expr=src * model.rho * s / model.m)
+    src_term += src.inject(field=inh, offset=model.nbpml, expr=src * model.rho * s / model.m)
 
     # Data is sampled at receiver locations
     rec = Receiver(name='rec', grid=model.grid, ntime=nt, coordinates=rec_coords)
@@ -228,10 +230,10 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=12, nb
     clear_cache()
     vel_expr, p_expr, fields = adjoint_stencil(model, space_order)
     # Adjoint source is injected at receiver locations
-    rec, rec_term, src_term = src_rec(model, fields, rec_coords, src_coords, rec_data)
+    rec, rec_term, src_term = src_rec(model, fields, rec_coords, src_coords, rec_data, backward=True)
 
     # Substitute spacing terms to reduce flops
-    op = Operator(vel_expr + src_term + p_expr + rec_term, subs=model.spacing_map,
+    op = Operator(vel_expr + rec_term + p_expr + src_term, subs=model.spacing_map,
                   dse='aggressive', dle='advanced')
     op()
     return rec.data
@@ -279,7 +281,7 @@ def adjoint_born(model, rec_coords, rec_data, u=None, v=None, op_forward=None, i
     grad = Function(name="grad", grid=model.grid)
     gradient = [Inc(grad, grad - model.grid.time_dim.spacing *(u.dt * fields[0] - v.dt * fields[1]))]
     # Adjoint source is injected at receiver locations
-    rec, _, src_term = src_rec(model, fields, rec_coords, src_coords, rec_data)
+    rec, _, src_term = src_rec(model, fields, rec_coords, src_coords, rec_data, backward=True)
 
     # Substitute spacing terms to reduce flops
     op = Operator(vel_expr + src_term + p_expr + gradient , subs=model.spacing_map,
