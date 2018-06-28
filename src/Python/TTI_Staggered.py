@@ -53,20 +53,20 @@ def custom_FD(args, dim, indx, x0):
         deriv += coeffs[i] * reduce(mul, var, 1)
     return deriv
 
-def src_rec(model, src_coords, rec_coords, src_data):
+def src_rec(model, fields, src_coords, rec_coords, src_data):
     nt = src_data.shape[0]
-
+    s = model.grid.time_dim.spacing
     # Source symbol with input wavelet
     src = PointSource(name='src', grid=model.grid, ntime=nt, coordinates=src_coords)
     src.data[:] = src_data[:]
-    src_term = src.inject(field=pv.forward, offset=model.nbpml, expr=src * model.rho * s / model.m)
-    src_term += src.inject(field=ph.forward, offset=model.nbpml, expr=src * model.rho * s / model.m)
+    src_term = src.inject(field=fields[0].forward, offset=model.nbpml, expr=src * model.rho * s / model.m)
+    src_term += src.inject(field=fields[1].forward, offset=model.nbpml, expr=src * model.rho * s / model.m)
 
     # Data is sampled at receiver locations
     rec = Receiver(name='rec', grid=model.grid, ntime=nt, coordinates=rec_coords)
-    rec_term = rec.interpolate(expr=pv + ph, offset=model.nbpml)
+    rec_term = rec.interpolate(expr=fields[0] + fields[1], offset=model.nbpml)
 
-    return rec, rect_term, src_term
+    return rec, rec_term, src_term
 
 def forward_stencil(model, space_order, save=None, q=(0, 0), name=''):
     """
@@ -109,8 +109,8 @@ def forward_stencil(model, space_order, save=None, q=(0, 0), name=''):
     ph = TimeFunction(name='ph'+name, grid=model.grid, save=save,
                       time_order=1, space_order=space_order)
     # Stencils
-    u_vx = Eq(vx.forward, damp * vx - damp *s/rho*staggered_diff(ph, dim=x, order=space_order, stagger=left, theta=theta, phi=phi))
-    u_vz = Eq(vz.forward, damp * vz - damp *s/rho*staggered_diff(pv, dim=z, order=space_order, stagger=left, theta=theta, phi=phi))
+    u_vx = [Eq(vx.forward, damp * vx - damp *s/rho*staggered_diff(ph, dim=x, order=space_order, stagger=left, theta=theta, phi=phi))]
+    u_vz = [Eq(vz.forward, damp * vz - damp *s/rho*staggered_diff(pv, dim=z, order=space_order, stagger=left, theta=theta, phi=phi))]
 
     dvx = staggered_diff(vx.forward, dim=x, order=space_order, stagger=right, theta=theta, phi=phi)
     dvz = staggered_diff(vz.forward, dim=z, order=space_order, stagger=right, theta=theta, phi=phi)
@@ -126,8 +126,8 @@ def forward_stencil(model, space_order, save=None, q=(0, 0), name=''):
 
     ph_eq = Eq(ph.forward, damp * ph - damp *s * rho / m * (epsilon*(dvx + dvy) + delta * dvz + q[1]))
 
-    vel_expr = [u_vx, u_vy, u_vz]
-    pressure_expr = [ph, pv]
+    vel_expr = u_vx + u_vy + u_vz
+    pressure_expr = [ph_eq, pv_eq]
     return vel_expr, pressure_expr, (ph, pv)
 
 
@@ -170,8 +170,8 @@ def adjoint_stencil(model, space_order):
     ph = TimeFunction(name='pha', grid=model.grid,
                       time_order=1, space_order=space_order)
     # Stencils
-    u_vx = Eq(vx.backward, damp * vx - damp * s / rho * staggered_diff(delta*pv + epsilon*ph, dim=x, order=space_order, stagger=left, theta=theta, phi=phi))
-    u_vz = Eq(vz.backward, damp * vz - damp * s / rho * staggered_diff(pv + delta*ph, dim=z, order=space_order, stagger=left, theta=theta, phi=phi))
+    u_vx = [Eq(vx.backward, damp * vx - damp * s / rho * staggered_diff(delta*pv + epsilon*ph, dim=x, order=space_order, stagger=left, theta=theta, phi=phi))]
+    u_vz = [Eq(vz.backward, damp * vz - damp * s / rho * staggered_diff(pv + delta*ph, dim=z, order=space_order, stagger=left, theta=theta, phi=phi))]
 
     dvx = staggered_diff(vx.backward, dim=x, order=space_order, stagger=right, theta=theta, phi=phi)
     dvz = staggered_diff(vz.backward, dim=z, order=space_order, stagger=right, theta=theta, phi=phi)
@@ -187,9 +187,122 @@ def adjoint_stencil(model, space_order):
 
     ph_eq = Eq(ph.backward, damp * ph - damp * s * rho / m * (dvx + dvy))
 
-    vel_expr = [u_vx, u_vy, u_vz]
-    pressure_expr = [ph, pv]
+    vel_expr = u_vx + u_vy + u_vz
+    pressure_expr = [ph_eq, pv_eq]
     return vel_expr, pressure_expr, (ph, pv)
+
+def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_order=16, nb=40,
+                      t_sub_factor=1, h_sub_factor=1, op_return=False, dt=None, freesurface=False):
+    """
+    Constructor method for the forward modelling operator in an acoustic media
+    :param model: :class:`Model` object containing the physical parameters
+    :param source: :class:`PointData` object containing the source geometry
+    :param receiver: :class:`PointData` object containing the acquisition geometry
+    :param space_order: Space discretization order
+    :param save: Saving flag, True saves all time steps, False only the three
+    """
+    clear_cache()
+    save_p = source.nt if save else None
+
+    vel_expr, p_expr, fields = forward_stencil(model, space_order, save=save_p)
+    # Source and receivers
+    rec, rec_term, src_term = src_rec(model, fields, src_coords, rec_coords, wavelet)
+
+    # Substitute spacing terms to reduce flops
+    op = Operator(vel_expr + rec_term + p_expr + src_term, subs=model.spacing_map,
+                  dse='advanced', dle='advanced')
+
+    op()
+    return rec.data, fields[0], fields[1]
+
+
+def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=12, nb=40, dt=None):
+    """
+    Constructor method for the adjoint modelling operator in an acoustic media
+    :param model: :class:`Model` object containing the physical parameters
+    :param source: :class:`PointData` object containing the source geometry
+    :param receiver: :class:`PointData` object containing the acquisition geometry
+    :param space_order: Space discretization order
+    :param save: Saving flag, True saves all time steps, False only the three
+    """
+    clear_cache()
+    vel_expr, p_expr, fields = adjoint_stencil(model, space_order)
+    # Adjoint source is injected at receiver locations
+    rec, rec_term, src_term = src_rec(model, fields, rec_coords, src_coords, rec_data)
+
+    # Substitute spacing terms to reduce flops
+    op = Operator(vel_expr + src_term + p_expr + rec_term, subs=model.spacing_map,
+                  dse='aggressive', dle='advanced')
+    op()
+    return rec.data
+
+def forward_born(model, src_coords, wavelet, rec_coords, space_order=12, nb=40, isic=False, dt=None, save=False, isiciso=False,
+                 h_sub_factor=1):
+    """
+    Constructor method for the born modelling operator in an acoustic media
+    :param model: :class:`Model` object containing the physical parameters
+    :param source: :class:`PointData` object containing the source geometry
+    :param receiver: :class:`PointData` object containing the acquisition geometry
+    :param space_order: Space discretization order
+    :param save: Saving flag, True saves all time steps, False only the three
+    """
+    clear_cache()
+    save_p = source.nt if save else None
+
+    vel_expr, p_expr, fields = forward_stencil(model, space_order, save=save_p)
+    _, _, src_term = src_rec(model, fields, src_coords, rec_coords, src_data=wavelet)
+    vel_exprl, p_exprl, fieldsl = forward_stencil(model, space_order, save=save_p, q=(fields[0].dt / rho, fields[1].dt / rho), name='lin')
+    # Source and receivers
+    rec, rec_term, _ = src_rec(model, fieldsl, src_coords, rec_coords, src_data=wavelet)
+
+    # Substitute spacing terms to reduce flops
+    op = Operator(vel_expr + src_term + p_expr + rec_term, subs=model.spacing_map,
+                  dse='advanced', dle='advanced')
+
+    op()
+    return rec.data, vields[0], fields[1]
+
+
+def adjoint_born(model, rec_coords, rec_data, u=None, v=None, op_forward=None, is_residual=False,
+                 space_order=12, nb=40, isic=False, isiciso=False, isicnothom=False, dt=None):
+    """
+    Constructor method for the adjoint born modelling operator in an acoustic media
+    :param model: :class:`Model` object containing the physical parameters
+    :param source: :class:`PointData` object containing the source geometry
+    :param receiver: :class:`PointData` object containing the acquisition geometry
+    :param space_order: Space discretization order
+    :param save: Saving flag, True saves all time steps, False only the three
+    """
+    clear_cache()
+    vel_expr, p_expr, fields = adjoint_stencil(model, space_order)
+
+    grad = Function(name="grad", grid=model.grid)
+    gradient = [Inc(grad, grad - model.grid.time_dim.spacing *(u.dt * fields[0] - v.dt * fields[1]))]
+    # Adjoint source is injected at receiver locations
+    rec, _, src_term = src_rec(model, fields, rec_coords, src_coords, rec_data)
+
+    # Substitute spacing terms to reduce flops
+    op = Operator(vel_expr + src_term + p_expr + gradient , subs=model.spacing_map,
+                  dse='aggressive', dle='advanced')
+    op()
+    return grad.data
+
+
+def resample_grad(grad, model, factor):
+    from scipy import interpolate
+    x = [i*factor for i in range(grad.data.shape[0])]
+    xnew = [i for i in range(model.shape_pml[0])]
+    y = [i*factor for i in range(grad.data.shape[1])]
+    ynew = [i for i in range(model.shape_pml[1])]
+    if model.grid.dim > 2:
+        z = [i*factor for i in range(grad.data.shape[2])]
+        znew = [i for i in range(model.shape_pml[2])]
+        interpolator = interpolate.RegularGridInterpolator((x, y, z), grad.data, bounds_INFO=False,fill_value=0.)
+        gridnew = np.ix_(xnew, ynew, znew)
+    else:
+        interpolator = interpolate.RegularGridInterpolator((x, y), grad.data, bounds_INFO=False, fill_value=0.)
+        gridnew = np.ix_(xnew, ynew)
+    return interpolator(gridnew)
 
 
 def staggered_diff(*args, dim, order, stagger=centered, theta=0, phi=0):
@@ -236,99 +349,3 @@ def staggered_diff(*args, dim, order, stagger=centered, theta=0, phi=0):
             return -sin(phi) * dx + cos(phi) *  dy
         else:
             return 0
-
-def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_order=16, nb=40,
-                      t_sub_factor=1, h_sub_factor=1, op_return=False, dt=None, freesurface=False):
-    """
-    Constructor method for the forward modelling operator in an acoustic media
-    :param model: :class:`Model` object containing the physical parameters
-    :param source: :class:`PointData` object containing the source geometry
-    :param receiver: :class:`PointData` object containing the acquisition geometry
-    :param space_order: Space discretization order
-    :param save: Saving flag, True saves all time steps, False only the three
-    """
-    clear_cache()
-    save_p = source.nt if save else None
-
-    vel_expr, p_expr, fields = forward_stencil(model, space_order, save=save_p)
-    # Source and receivers
-    rec, rec_term, src_term = src_rec(model, src_coords, rec_coords, wavelet)
-
-    # Substitute spacing terms to reduce flops
-    op = Operator(vel_expr + rec_term + p_expr + src_term, subs=model.spacing_map,
-                  dse='advanced', dle='advanced')
-
-    op(dt=dt)
-    return rec.data, ph, pv
-
-
-def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=12, nb=40, dt=None):
-    """
-    Constructor method for the forward modelling operator in an acoustic media
-    :param model: :class:`Model` object containing the physical parameters
-    :param source: :class:`PointData` object containing the source geometry
-    :param receiver: :class:`PointData` object containing the acquisition geometry
-    :param space_order: Space discretization order
-    :param save: Saving flag, True saves all time steps, False only the three
-    """
-    clear_cache()
-    vel_expr, p_expr, fields = adjoint_stencil(model, space_order)
-    # Adjoint source is injected at receiver locations
-    rec, rec_term, src_term = src_rec(model, rec_coords, src_coords, rec_data)
-
-    # Substitute spacing terms to reduce flops
-    op = Operator(vel_expr + src_term + p_expr + rec_term, subs=model.spacing_map,
-                  dse='aggressive', dle='advanced')
-    op(dt=dt)
-    return rec.data, fields
-
-def forward_born(model, src_coords, wavelet, rec_coords, space_order=12, nb=40, isic=False, dt=None, save=False, isiciso=False,
-                 h_sub_factor=1):
-    clear_cache()
-    save_p = source.nt if save else None
-
-    vel_expr, p_expr, fields = forward_stencil(model, space_order, save=save_p)
-    vel_exprl, p_exprl, fieldsl = forward_stencil(model, space_order, save=save_p, q=(fields[0].dt / rho, fields[1].dt / rho), name='lin')
-    # Source and receivers
-    rec, rec_term, src_term = src_rec(model, src_coords, rec_coords, src_data=wavelet)
-
-    # Substitute spacing terms to reduce flops
-    op = Operator([u_vx, u_vz] + u_vy + rec_term + [pv_eq, ph_eq] + src_term, subs=model.spacing_map,
-                  dse='advanced', dle='advanced')
-
-    op(dt=dt)
-    return rec.data, fields
-
-
-def adjoint_born(model, rec_coords, rec_data, u=None, v=None, op_forward=None, is_residual=False,
-                 space_order=12, nb=40, isic=False, isiciso=False, isicnothom=False, dt=None):
-    clear_cache()
-    vel_expr, p_expr, fields = adjoint_stencil(model, space_order)
-
-    grad = Function(name="grad", grid=model.grid)
-    gradient = [Inc(grad, grad - model.grid.time_dim.spacing *(u.dt * fields[0] - v.dt * fields[1]))]
-    # Adjoint source is injected at receiver locations
-    rec, _, src_term = src_rec(model, rec_coords, src_coords, rec_data)
-
-    # Substitute spacing terms to reduce flops
-    op = Operator(vel_expr + src_term + p_expr + gradient , subs=model.spacing_map,
-                  dse='aggressive', dle='advanced')
-    op(dt=dt)
-    return rec.data, fields
-
-
-def resample_grad(grad, model, factor):
-    from scipy import interpolate
-    x = [i*factor for i in range(grad.data.shape[0])]
-    xnew = [i for i in range(model.shape_pml[0])]
-    y = [i*factor for i in range(grad.data.shape[1])]
-    ynew = [i for i in range(model.shape_pml[1])]
-    if model.grid.dim > 2:
-        z = [i*factor for i in range(grad.data.shape[2])]
-        znew = [i for i in range(model.shape_pml[2])]
-        interpolator = interpolate.RegularGridInterpolator((x, y, z), grad.data, bounds_INFO=False,fill_value=0.)
-        gridnew = np.ix_(xnew, ynew, znew)
-    else:
-        interpolator = interpolate.RegularGridInterpolator((x, y), grad.data, bounds_INFO=False, fill_value=0.)
-        gridnew = np.ix_(xnew, ynew)
-    return interpolator(gridnew)

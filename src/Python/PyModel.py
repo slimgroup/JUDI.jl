@@ -161,7 +161,9 @@ class Model(object):
         """
         Map between spacing symbols and their values for each :class:`SpaceDimension`
         """
-        return self.grid.spacing_map
+        subs = self.grid.spacing_map
+        subs[self.grid.time_dim.spacing] = self.critical_dt
+        return subs
 
     @property
     def origin(self):
