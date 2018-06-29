@@ -261,11 +261,11 @@ def linearized_source(model, fields, part_vel, isic='noop'):
             theta, phi = model.theta, model.phi
         else:
             error('Unrecognized imaging condition %s' % isic)
-        dvx = staggered_diff(part_vel[0], dim=inds[0], order=space_order, stagger=right, theta=theta, phi=phi)
+        dvx = staggered_diff(fields[0], dim=inds[0], order=space_order, stagger=right, theta=theta, phi=phi)
         dvy = 0
         if model.grid.dim == 3:
-            dvy = staggered_diff(part_vel[1], dim=inds[1], order=space_order, stagger=right, theta=theta, phi=phi)
-        dvz = staggered_diff(part_vel[-1], dim=inds[-1], order=space_order, stagger=right, theta=theta, phi=phi)
+            dvy = staggered_diff(fields[1], dim=inds[1], order=space_order, stagger=right, theta=theta, phi=phi)
+        dvz = staggered_diff(fields[-1], dim=inds[-1], order=space_order, stagger=right, theta=theta, phi=phi)
         dph = m * fields[0].dt
         dpv = m * fields[1].dt
         lin_src_ph = dvx + dvy + dph
