@@ -250,7 +250,7 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=12, nb=40, 
     """
     clear_cache()
     save_p = source.nt if save else None
-
+    print(space_order)
     vel_expr, p_expr, fields = forward_stencil(model, space_order, save=save_p)
     _, _, src_term = src_rec(model, fields, src_coords, rec_coords, src_data=wavelet)
 

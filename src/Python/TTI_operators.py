@@ -136,13 +136,13 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
     # from IPython import embed; embed()
     if op_return is False:
         if save and (t_sub_factor>1 or h_sub_factor>1):
-            op(dt=dt)
+            op()
             return rec.data, usave, vsave
         else:
-            op(dt=dt)
+            op()
             return rec.data, u, v
     else:
-        return op()
+        return op
 
 
 def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=12, nb=40, dt=None):
@@ -202,7 +202,7 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=12, nb
     set_log_level('INFO')
     expression += adj_src + adj_rec
     op = Operator(expression, subs=model.spacing_map, dse='advanced', dle='advanced')
-    op(dt=dt)
+    op()
 
     return src.data, p, q
 
@@ -302,7 +302,7 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=12, nb=40, 
     set_log_level('INFO')
     expression = expression_u + expression_du + src_term + rec_term
     op = Operator(expression, subs=model.spacing_map, dse='advanced', dle='advanced')
-    op(dt=dt)
+    op()
 
     return rec.data, u, ul
 
@@ -417,8 +417,8 @@ def adjoint_born(model, rec_coords, rec_data, u=None, v=None, op_forward=None, i
         rec = Receiver(name='rec', grid=model.grid, ntime=nt, coordinates=rec_coords)
         cp = DevitoCheckpoint([u, v])
         n_checkpoints = None
-        wrap_fw = CheckpointOperator(op_forward, u=u, v=v, m=model.m, epsilon=model.epsilon, rec=rec, dt=dt)
-        wrap_rev = CheckpointOperator(op, u=u, v=v, p=p, q=q, m=model.m, epsilon=model.epsilon, rec_g=rec_g, dt=dt)
+        wrap_fw = CheckpointOperator(op_forward, u=u, v=v, m=model.m, epsilon=model.epsilon, rec=rec)
+        wrap_rev = CheckpointOperator(op, u=u, v=v, p=p, q=q, m=model.m, epsilon=model.epsilon, rec_g=rec_g)
 
         # Run forward
         wrp = Revolver(cp, wrap_fw, wrap_rev, n_checkpoints, nt-2)
@@ -432,7 +432,7 @@ def adjoint_born(model, rec_coords, rec_data, u=None, v=None, op_forward=None, i
             fval = .5*np.linalg.norm(rec_g.data[:])**2
         wrp.apply_reverse()
     else:
-        op(dt=dt, autotune=True)
+        op()
     clear_cache()
 
     if u.indices[1].is_Conditional:
