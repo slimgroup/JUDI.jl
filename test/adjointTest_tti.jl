@@ -66,7 +66,7 @@ wavelet = 1e1*ricker_wavelet(timeS,dtS,f0)
 ###################################################################################################
 
 # Modeling operators
-opt = Options(sum_padding=true, isic=false, t_sub=1, h_sub=1, space_order=16)
+opt = Options(sum_padding=true,  isic="isotropic", t_sub=1, h_sub=1, space_order=16)
 F = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
 q = judiVector(srcGeometry, wavelet)
 
@@ -89,7 +89,7 @@ dD_hat = J*dm
 dm_hat = J'*dD_hat
 
 # Result J
-println(dot(dD_hat,dD_hat))
-println(dot(dm,dm_hat))
+println(dot(dD_hat, dD_hat))
+println(dot(dm, dm_hat))
 println("Residual: ", abs(dot(dD_hat,dD_hat) - dot(dm,dm_hat)))
 println("Ratio: ", abs(dot(dD_hat,dD_hat)/dot(dm,dm_hat)) - 1.0)

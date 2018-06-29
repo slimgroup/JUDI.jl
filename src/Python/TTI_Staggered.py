@@ -12,25 +12,22 @@ from functools import reduce
 from operator import mul
 
 from sympy import cos, sin, finite_diff_weights
-from devito.logger import set_log_level, error
+from devito.logger import error
 
-from devito import Eq, Function, TimeFunction, Operator, clear_cache, Grid, Inc, ConditionalDimension
+from devito import Eq, Function, TimeFunction, Operator, clear_cache, Inc
 from devito.finite_difference import (centered, right, left)
 from devito.symbolics import retrieve_functions
 
 from PySource import PointSource, Receiver
-from PyModel import Model
 
-# And gradient
-# grad = sum_t ph.dt2 * ph_a + pv.dt2 * pv_a
-
-
-def J_transpose(model, src_coords, wavelet, rec_coords, recin, space_order=12, nb=40,
-                t_sub_factor=20, h_sub_factor=2, op_return=False, dt=None, isic=False):
-    rec, u0, v0 = forward_modeling(model, src_coords, wavelet, rec_coords, save=True, space_order=space_order, nb=nb,
-                                   t_sub_factor=t_sub_factor, h_sub_factor=h_sub_factor, dt=dt)
-    grad = adjoint_born(model, rec_coords, recin, u=u0, v=v0, space_order=space_order, nb=nb, isiciso=isic, dt=dt)
+def J_transpose(model, src_coords, wavelet, rec_coords, recin, space_order=12,
+                t_sub_factor=20, h_sub_factor=2, isic='noop'):
+    rec, ph, pv = forward_modeling(model, src_coords, wavelet, rec_coords, save=True,
+                                   space_order=space_order)
+    grad = adjoint_born(model, rec_coords, recin, ph=ph, pv=pv,
+                        space_order=space_order, isic=isic)
     return grad
+
 
 def sub_ind(model):
     """
@@ -42,8 +39,13 @@ def sub_ind(model):
 
     return tuple(sub_dim)
 
+
 def custom_FD(args, dim, indx, x0):
-    # f.diff(dim).as_finite_difference(indx, x0=x0)
+    """
+    Generalized staggered finite  difference for expression instead of Functions
+    f.diff(dim).as_finite_difference(indx, x0=x0)
+    where f is an expression
+    """
     deriv = 0
     coeffs = finite_diff_weights(1, indx, x0)
     coeffs = coeffs[-1][-1]
@@ -53,7 +55,11 @@ def custom_FD(args, dim, indx, x0):
         deriv += coeffs[i] * reduce(mul, var, 1)
     return deriv
 
+
 def src_rec(model, fields, src_coords, rec_coords, src_data, backward=False):
+    """
+    Source and receiver setup
+    """
     nt = src_data.shape[0]
     s = model.grid.time_dim.spacing
     # Source symbol with input wavelet
@@ -61,14 +67,17 @@ def src_rec(model, fields, src_coords, rec_coords, src_data, backward=False):
     src.data[:] = src_data[:]
     inv = fields[0].backward if backward else fields[0].forward
     inh = fields[1].backward if backward else fields[1].forward
-    src_term = src.inject(field=inv, offset=model.nbpml, expr=src * model.rho * s / model.m)
-    src_term += src.inject(field=inh, offset=model.nbpml, expr=src * model.rho * s / model.m)
+    src_term = src.inject(field=inv, offset=model.nbpml,
+                          expr=src * model.rho * s / model.m)
+    src_term += src.inject(field=inh, offset=model.nbpml,
+                           expr=src * model.rho * s / model.m)
 
     # Data is sampled at receiver locations
     rec = Receiver(name='rec', grid=model.grid, ntime=nt, coordinates=rec_coords)
     rec_term = rec.interpolate(expr=fields[0] + fields[1], offset=model.nbpml)
 
     return rec, rec_term, src_term
+
 
 def forward_stencil(model, space_order, save=None, q=(0, 0), name=''):
     """
@@ -81,7 +90,8 @@ def forward_stencil(model, space_order, save=None, q=(0, 0), name=''):
     m / rho * phv.dt = - sqrt(1 + 2 epsilon) (vx.dx + vy.dy) - sqrt(1 + 2 delta) vz.dz + Fv
 
     """
-    m, epsilon, delta, theta, phi, rho = model.m, model.epsilon, model.delta, model.theta, model.phi, model.rho
+    m, epsilon, delta, theta, phi, rho = (model.m, model.epsilon, model.delta,
+                                          model.theta, model.phi, model.rho)
     damp = model.damp
     s = model.grid.stepping_dim.spacing
 
@@ -102,6 +112,7 @@ def forward_stencil(model, space_order, save=None, q=(0, 0), name=''):
     vz = TimeFunction(name='vz'+name, grid=model.grid, staggered=stagg_z,
                       time_order=1, space_order=space_order)
 
+    vy = 0
     if model.grid.dim == 3:
         vy = TimeFunction(name='vy'+name, grid=model.grid, staggered=stagg_y,
                           time_order=1, space_order=space_order)
@@ -130,7 +141,7 @@ def forward_stencil(model, space_order, save=None, q=(0, 0), name=''):
 
     vel_expr = u_vx + u_vy + u_vz
     pressure_expr = [ph_eq, pv_eq]
-    return vel_expr, pressure_expr, (ph, pv)
+    return vel_expr, pressure_expr, (ph, pv),  (vx, vy, vz)
 
 
 def adjoint_stencil(model, space_order):
@@ -193,8 +204,78 @@ def adjoint_stencil(model, space_order):
     pressure_expr = [ph_eq, pv_eq]
     return vel_expr, pressure_expr, (ph, pv)
 
-def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_order=16, nb=40,
-                      t_sub_factor=1, h_sub_factor=1, op_return=False, dt=None, freesurface=False):
+
+def imaging_condition(model, ph, pv, fields, isic='noop'):
+    """
+    FWI or RTM imaging conditiongradient
+    # grad = .5 * sum_t ph.dt * ph_a + pv.dt * pv_a
+    with the .5 gradient to guaranty we have the same as acoustic when ph=pv
+    :param ph: forward ph
+    :param pv: forward pv
+    :param fields: adjoint wavefields
+    :param isic: typy of isic imaging condition to choose from
+    `None(defauly, FWI)``, `isotrpopic`, `rotated`
+    """
+    space_order = ph.space_order
+    m, rho = model.m, model.rho
+    grad = Function(name="grad", grid=model.grid, space_order=0)
+    inds = model.grid.dimensions
+    phadt = -fields[0].dt.subs({model.grid.stepping_dim: model.grid.stepping_dim - model.grid.stepping_dim.spacing})
+    pvadt = -fields[1].dt.subs({model.grid.stepping_dim: model.grid.stepping_dim - model.grid.stepping_dim.spacing})
+    if isic == 'noop':
+        grad_expr = [Inc(grad, grad - .5 * model.grid.time_dim.spacing * (ph * phadt + pv * pvadt) / rho)]
+    else:
+        if isic == 'isotropic':
+            theta, phi = 0, 0
+        elif isic == 'rotated':
+            theta, phi = model.theta, model.phi
+        else:
+            error('Unrecognized imaging condition %s' % isic)
+        divs = staggered_diff(ph, dim=inds[0], order=space_order, stagger=left, theta=theta, phi=phi) * fields[0]
+        if model.grid.dim == 3:
+            divs += staggered_diff(ph, dim=inds[1], order=space_order, stagger=left, theta=theta, phi=phi) * fields[0]
+        divs += staggered_diff(pv, dim=inds[-1], order=space_order, stagger=left, theta=theta, phi=phi) * fields[1]
+        grad_expr = [Inc(grad, grad - .5 * model.grid.time_dim.spacing * (m * ph * phadt + m * pv * pvadt - divs) / rho)]
+
+    return grad, grad_expr
+
+
+def linearized_source(model, fields, part_vel, isic='noop'):
+    """
+    FWI or RTM imaging condition
+    :param ph: forward ph
+    :param pv: forward pv
+    :param isic: typy of isic imaging condition to choose from
+    `None(defauly, FWI)``, `isotrpopic`, `rotated`
+    """
+    space_order = fields[0].space_order
+    m, dm, rho = model.m, model.dm, model.rho
+    gradient = Function(name="grad", grid=model.grid)
+    inds = model.grid.dimensions
+    if isic == 'noop':
+        lin_src = (dm * fields[0].dt / rho, dm * fields[1].dt / rho)
+    else:
+        if isic == 'isotropic':
+            theta, phi = 0, 0
+        elif isic == 'rotated':
+            theta, phi = model.theta, model.phi
+        else:
+            error('Unrecognized imaging condition %s' % isic)
+        dvx = staggered_diff(part_vel[0], dim=inds[0], order=space_order, stagger=right, theta=theta, phi=phi)
+        dvy = 0
+        if model.grid.dim == 3:
+            dvy = staggered_diff(part_vel[1], dim=inds[1], order=space_order, stagger=right, theta=theta, phi=phi)
+        dvz = staggered_diff(part_vel[-1], dim=inds[-1], order=space_order, stagger=right, theta=theta, phi=phi)
+        dph = m * fields[0].dt
+        dpv = m * fields[1].dt
+        lin_src_ph = dvx + dvy + dph
+        lin_src_pv = dvz + dpv
+        lin_src = (dm * lin_src_ph / rho, dm * lin_src_pv / rho)
+
+    return lin_src
+
+
+def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_order=16):
     """
     Constructor method for the forward modelling operator in an acoustic media
     :param model: :class:`Model` object containing the physical parameters
@@ -206,7 +287,7 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
     clear_cache()
     save_p = wavelet.shape[0] if save else None
 
-    vel_expr, p_expr, fields = forward_stencil(model, space_order, save=save_p)
+    vel_expr, p_expr, fields, _ = forward_stencil(model, space_order, save=save_p)
     # Source and receivers
     rec, rec_term, src_term = src_rec(model, fields, src_coords, rec_coords, wavelet)
 
@@ -218,7 +299,7 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
     return rec.data, fields[0], fields[1]
 
 
-def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=12, nb=40, dt=None):
+def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=12):
     """
     Constructor method for the adjoint modelling operator in an acoustic media
     :param model: :class:`Model` object containing the physical parameters
@@ -230,16 +311,17 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=12, nb
     clear_cache()
     vel_expr, p_expr, fields = adjoint_stencil(model, space_order)
     # Adjoint source is injected at receiver locations
-    rec, rec_term, src_term = src_rec(model, fields, rec_coords, src_coords, rec_data, backward=True)
+    rec, rec_term, src_term = src_rec(model, fields, rec_coords, src_coords, rec_data,
+                                      backward=True)
 
     # Substitute spacing terms to reduce flops
     op = Operator(vel_expr + rec_term + p_expr + src_term, subs=model.spacing_map,
-                  dse='aggressive', dle='advanced')
+                  dse='advanced', dle='advanced')
     op()
     return rec.data, fields[0], fields[1]
 
-def forward_born(model, src_coords, wavelet, rec_coords, space_order=12, nb=40, isic=False, dt=None, save=False, isiciso=False,
-                 h_sub_factor=1):
+
+def forward_born(model, src_coords, wavelet, rec_coords, space_order=12, isic='noop', save=False):
     """
     Constructor method for the born modelling operator in an acoustic media
     :param model: :class:`Model` object containing the physical parameters
@@ -250,12 +332,11 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=12, nb=40, 
     """
     clear_cache()
     save_p = source.nt if save else None
-    print(space_order)
-    vel_expr, p_expr, fields = forward_stencil(model, space_order, save=save_p)
+    vel_expr, p_expr, fields, part_vel = forward_stencil(model, space_order, save=save_p)
     _, _, src_term = src_rec(model, fields, src_coords, rec_coords, src_data=wavelet)
 
-    lin_src = (model.dm * fields[0].dt / model.rho, model.dm * fields[1].dt / model.rho)
-    vel_exprl, p_exprl, fieldsl = forward_stencil(model, space_order, save=save_p, q=lin_src, name='lin')
+    lin_src =  linearized_source(model, fields, part_vel, isic=isic)
+    vel_exprl, p_exprl, fieldsl, _ = forward_stencil(model, space_order, save=save_p, q=lin_src, name='lin')
     # Source and receivers
     rec, rec_term, _ = src_rec(model, fieldsl, src_coords, rec_coords, src_data=wavelet)
 
@@ -267,8 +348,7 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=12, nb=40, 
     return rec.data, fields[0], fields[1]
 
 
-def adjoint_born(model, rec_coords, rec_data, u=None, v=None, op_forward=None, is_residual=False,
-                 space_order=12, nb=40, isic=False, isiciso=False, isicnothom=False, dt=None):
+def adjoint_born(model, rec_coords, rec_data, ph=None, pv=None, space_order=12, isic='noop'):
     """
     Constructor method for the adjoint born modelling operator in an acoustic media
     :param model: :class:`Model` object containing the physical parameters
@@ -280,14 +360,16 @@ def adjoint_born(model, rec_coords, rec_data, u=None, v=None, op_forward=None, i
     clear_cache()
     vel_expr, p_expr, fields = adjoint_stencil(model, space_order)
 
-    grad = Function(name="grad", grid=model.grid)
-    gradient = [Inc(grad, grad - model.grid.time_dim.spacing *(u.dt * fields[0] - v.dt * fields[1]))]
+    grad, grad_expr = imaging_condition(model, ph, pv, fields, isic=isic)
+
     # Adjoint source is injected at receiver locations
-    rec, _, src_term = src_rec(model, fields, rec_coords, np.zeros((1,1)), rec_data, backward=True)
+    _, _, src_term = src_rec(model, fields, rec_coords, np.zeros((1, 1)),
+                               rec_data, backward=True)
 
     # Substitute spacing terms to reduce flops
-    op = Operator(vel_expr  + p_expr + src_term + gradient , subs=model.spacing_map,
-                  dse='aggressive', dle='advanced')
+    op = Operator(vel_expr + p_expr + src_term + grad_expr, subs=model.spacing_map,
+                  dse='advanced', dle='advanced')
+
     op()
     return grad.data
 
@@ -301,10 +383,14 @@ def resample_grad(grad, model, factor):
     if model.grid.dim > 2:
         z = [i*factor for i in range(grad.data.shape[2])]
         znew = [i for i in range(model.shape_pml[2])]
-        interpolator = interpolate.RegularGridInterpolator((x, y, z), grad.data, bounds_INFO=False,fill_value=0.)
+        interpolator = interpolate.RegularGridInterpolator((x, y, z), grad.data,
+                                                           bounds_INFO=False,
+                                                           fill_value=0.)
         gridnew = np.ix_(xnew, ynew, znew)
     else:
-        interpolator = interpolate.RegularGridInterpolator((x, y), grad.data, bounds_INFO=False, fill_value=0.)
+        interpolator = interpolate.RegularGridInterpolator((x, y), grad.data,
+                                                           bounds_INFO=False,
+                                                           fill_value=0.)
         gridnew = np.ix_(xnew, ynew)
     return interpolator(gridnew)
 
@@ -325,15 +411,18 @@ def staggered_diff(*args, dim, order, stagger=centered, theta=0, phi=0):
 
     if theta == 0 and phi == 0:
         diff = dim.spacing
-        idx = [(dim + int(i+.5+off[dim])*diff) for i in range(-int(order / 2), int(order / 2))]
+        idx = [(dim + int(i+.5+off[dim])*diff)
+               for i in range(-int(order / 2), int(order / 2))]
         return custom_FD(args, dim, idx, dim + off[dim]*dim.spacing)
     else:
         x = func.grid.dimensions[0]
         z = func.grid.dimensions[-1]
-        idxx = list(set([(x + int(i+.5+off[x])*x.spacing) for i in range(-int(order / 2), int(order / 2))]))
+        idxx = list(set([(x + int(i+.5+off[x])*x.spacing)
+                         for i in range(-int(order / 2), int(order / 2))]))
         dx = custom_FD(args, x, idxx, x + off[x]*x.spacing)
 
-        idxz = list(set([(z + int(i+.5+off[z])*z.spacing) for i in range(-int(order / 2), int(order / 2))]))
+        idxz = list(set([(z + int(i+.5+off[z])*z.spacing)
+                         for i in range(-int(order / 2), int(order / 2))]))
         dz = custom_FD(args, z, idxz, z + off[z]*z.spacing)
 
         dy = 0
@@ -341,7 +430,8 @@ def staggered_diff(*args, dim, order, stagger=centered, theta=0, phi=0):
 
         if ndim == 3:
             y = func.grid.dimensions[1]
-            idxy = list(set([(y + int(i+.5+off[y])*y.spacing) for i in range(-int(order / 2), int(order / 2))]))
+            idxy = list(set([(y + int(i+.5+off[y])*y.spacing)
+                             for i in range(-int(order / 2), int(order / 2))]))
             dy = custom_FD(args, y, idxy, y + off[y]*y.spacing)
             is_y = (dim == y)
 
@@ -350,6 +440,6 @@ def staggered_diff(*args, dim, order, stagger=centered, theta=0, phi=0):
         elif dim == z:
             return sin(theta) * cos(phi) * dx + sin(phi) * sin(theta) * dy + cos(theta) * dz
         elif is_y:
-            return -sin(phi) * dx + cos(phi) *  dy
+            return -sin(phi) * dx + cos(phi) * dy
         else:
             return 0
