@@ -31,13 +31,13 @@ model = Model_TTI(n,d,o,m; epsilon=epsilon, delta=delta, theta=theta, rho=rho)
 # model0 = Model(n,d,o,m0)
 
 ## Set up receiver geometry
-nxrec = 101
-xrec =linspace(0f0,1500f0,nxrec)
+nxrec = 151
+xrec = linspace(0f0,1500f0,nxrec)
 yrec = linspace(0f0, 0f0,nxrec)
 zrec = linspace(50f0, 50f0,nxrec)
 
 # receiver sampling and recording time
-timeR = 2000f0	# receiver recording time [ms]
+timeR = 2500f0	# receiver recording time [ms]
 dtR = 2.0f0    # receiver sampling interval
 
 # Set up receiver structure
@@ -49,7 +49,7 @@ ysrc = 0f0
 zsrc = 50f0
 
 # source sampling and number of time steps
-timeS = 2000f0
+timeS = 2500f0
 dtS = 2.0f0 # receiver sampling interval
 
 # Set up source structure
@@ -66,7 +66,7 @@ wavelet = 1e1*ricker_wavelet(timeS,dtS,f0)
 ###################################################################################################
 
 # Modeling operators
-opt = Options(sum_padding=true,  isic="isotropic", t_sub=1, h_sub=1, space_order=16)
+opt = Options(sum_padding=true,  isic="rotated", t_sub=1, h_sub=1, space_order=16)
 F = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
 q = judiVector(srcGeometry, wavelet)
 

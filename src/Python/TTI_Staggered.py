@@ -79,7 +79,7 @@ def src_rec(model, fields, src_coords, rec_coords, src_data, backward=False):
     return rec, rec_term, src_term
 
 
-def forward_stencil(model, space_order, save=None, q=(0, 0), name=''):
+def forward_stencil(model, space_order, save=None, q=(0, 0, 0, 0, 0), name=''):
     """
     Forward wave equation
     # Solves the TTI elastic system:
@@ -122,8 +122,8 @@ def forward_stencil(model, space_order, save=None, q=(0, 0), name=''):
     ph = TimeFunction(name='ph'+name, grid=model.grid, save=save,
                       time_order=1, space_order=space_order)
     # Stencils
-    u_vx = [Eq(vx.forward, damp * vx - damp *s/rho*staggered_diff(ph, dim=x, order=space_order, stagger=left, theta=theta, phi=phi))]
-    u_vz = [Eq(vz.forward, damp * vz - damp *s/rho*staggered_diff(pv, dim=z, order=space_order, stagger=left, theta=theta, phi=phi))]
+    u_vx = [Eq(vx.forward, damp * vx - damp *s/rho*(staggered_diff(ph, dim=x, order=space_order, stagger=left, theta=theta, phi=phi) + q[0]))]
+    u_vz = [Eq(vz.forward, damp * vz - damp *s/rho*(staggered_diff(pv, dim=z, order=space_order, stagger=left, theta=theta, phi=phi) + q[2]))]
 
     dvx = staggered_diff(vx.forward, dim=x, order=space_order, stagger=right, theta=theta, phi=phi)
     dvz = staggered_diff(vz.forward, dim=z, order=space_order, stagger=right, theta=theta, phi=phi)
@@ -131,13 +131,13 @@ def forward_stencil(model, space_order, save=None, q=(0, 0), name=''):
     u_vy = []
     dvy = 0
     if ndim == 3:
-        u_vy = [Eq(vy.forward, damp * vy - damp *s/rho*staggered_diff(ph, dim=y, order=space_order, stagger=left, theta=theta, phi=phi))]
+        u_vy = [Eq(vy.forward, damp * vy - damp *s/rho*(staggered_diff(ph, dim=y, order=space_order, stagger=left, theta=theta, phi=phi) + q[1]))]
         dvy = staggered_diff(vy.forward, dim=y, order=space_order, stagger=right, theta=theta, phi=phi)
 
 
-    pv_eq = Eq(pv.forward, damp * pv - damp *s * rho / m * (delta*(dvx + dvy) + dvz + q[0]))
+    pv_eq = Eq(pv.forward, damp * pv - damp *s * rho / m * (delta*(dvx + dvy) + dvz + q[3]))
 
-    ph_eq = Eq(ph.forward, damp * ph - damp *s * rho / m * (epsilon*(dvx + dvy) + delta * dvz + q[1]))
+    ph_eq = Eq(ph.forward, damp * ph - damp *s * rho / m * (epsilon*(dvx + dvy) + delta * dvz + q[4]))
 
     vel_expr = u_vx + u_vy + u_vz
     pressure_expr = [ph_eq, pv_eq]
@@ -174,6 +174,7 @@ def adjoint_stencil(model, space_order):
     vz = TimeFunction(name='vza', grid=model.grid, staggered=stagg_z,
                       time_order=1, space_order=space_order)
 
+    vy = 0
     if model.grid.dim == 3:
         vy = TimeFunction(name='vya', grid=model.grid, staggered=stagg_y,
                           time_order=1, space_order=space_order)
@@ -202,10 +203,10 @@ def adjoint_stencil(model, space_order):
 
     vel_expr = u_vx + u_vy + u_vz
     pressure_expr = [ph_eq, pv_eq]
-    return vel_expr, pressure_expr, (ph, pv)
+    return vel_expr, pressure_expr, (ph, pv), (vx, vy, vz)
 
 
-def imaging_condition(model, ph, pv, fields, isic='noop'):
+def imaging_condition(model, ph, pv, fields, vel_fields, isic='noop'):
     """
     FWI or RTM imaging conditiongradient
     # grad = .5 * sum_t ph.dt * ph_a + pv.dt * pv_a
@@ -231,10 +232,10 @@ def imaging_condition(model, ph, pv, fields, isic='noop'):
             theta, phi = model.theta, model.phi
         else:
             error('Unrecognized imaging condition %s' % isic)
-        divs = staggered_diff(ph, dim=inds[0], order=space_order, stagger=left, theta=theta, phi=phi) * fields[0]
+        divs = staggered_diff(ph, dim=inds[0], order=space_order, stagger=left, theta=theta, phi=phi) * vel_fields[0]
         if model.grid.dim == 3:
-            divs += staggered_diff(ph, dim=inds[1], order=space_order, stagger=left, theta=theta, phi=phi) * fields[0]
-        divs += staggered_diff(pv, dim=inds[-1], order=space_order, stagger=left, theta=theta, phi=phi) * fields[1]
+            divs += staggered_diff(ph, dim=inds[1], order=space_order, stagger=left, theta=theta, phi=phi) * vel_fields[1]
+        divs += staggered_diff(ph, dim=inds[-1], order=space_order, stagger=left, theta=theta, phi=phi) * vel_fields[-1]
         grad_expr = [Inc(grad, grad - .5 * model.grid.time_dim.spacing * (m * ph * phadt + m * pv * pvadt - divs) / rho)]
 
     return grad, grad_expr
@@ -253,7 +254,7 @@ def linearized_source(model, fields, part_vel, isic='noop'):
     gradient = Function(name="grad", grid=model.grid)
     inds = model.grid.dimensions
     if isic == 'noop':
-        lin_src = (dm * fields[0].dt / rho, dm * fields[1].dt / rho)
+        lin_src = (0, 0, 0, dm * fields[0].dt / rho, dm * fields[1].dt / rho)
     else:
         if isic == 'isotropic':
             theta, phi = 0, 0
@@ -261,16 +262,16 @@ def linearized_source(model, fields, part_vel, isic='noop'):
             theta, phi = model.theta, model.phi
         else:
             error('Unrecognized imaging condition %s' % isic)
-        dvx = staggered_diff(fields[0], dim=inds[0], order=space_order, stagger=right, theta=theta, phi=phi)
+        dvx = .5 * staggered_diff(fields[0], dim=inds[0], order=space_order, stagger=right, theta=theta, phi=phi)
         dvy = 0
         if model.grid.dim == 3:
-            dvy = staggered_diff(fields[1], dim=inds[1], order=space_order, stagger=right, theta=theta, phi=phi)
-        dvz = staggered_diff(fields[-1], dim=inds[-1], order=space_order, stagger=right, theta=theta, phi=phi)
-        dph = m * fields[0].dt
-        dpv = m * fields[1].dt
-        lin_src_ph = dvx + dvy + dph
-        lin_src_pv = dvz + dpv
-        lin_src = (dm * lin_src_ph / rho, dm * lin_src_pv / rho)
+            dvy = .5 * staggered_diff(fields[0], dim=inds[1], order=space_order, stagger=right, theta=theta, phi=phi)
+        dvz = .5 *  staggered_diff(fields[-1], dim=inds[-1], order=space_order, stagger=right, theta=theta, phi=phi)
+        dph = .5 * m * fields[0].dt
+        dpv = .5 * m * fields[1].dt
+        # lin_src_ph = dvx + dvy + dph
+        # lin_src_pv = dvz + dpv
+        lin_src = (dm * dvx / rho, dm * dvy / rho, dm * dvz / rho, dm * dph / rho, dm * dpv / rho)
 
     return lin_src
 
@@ -309,7 +310,7 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=12):
     :param save: Saving flag, True saves all time steps, False only the three
     """
     clear_cache()
-    vel_expr, p_expr, fields = adjoint_stencil(model, space_order)
+    vel_expr, p_expr, fields, _ = adjoint_stencil(model, space_order)
     # Adjoint source is injected at receiver locations
     rec, rec_term, src_term = src_rec(model, fields, rec_coords, src_coords, rec_data,
                                       backward=True)
@@ -358,9 +359,9 @@ def adjoint_born(model, rec_coords, rec_data, ph=None, pv=None, space_order=12, 
     :param save: Saving flag, True saves all time steps, False only the three
     """
     clear_cache()
-    vel_expr, p_expr, fields = adjoint_stencil(model, space_order)
+    vel_expr, p_expr, fields, vel_fields = adjoint_stencil(model, space_order)
 
-    grad, grad_expr = imaging_condition(model, ph, pv, fields, isic=isic)
+    grad, grad_expr = imaging_condition(model, ph, pv, fields, vel_fields, isic=isic)
 
     # Adjoint source is injected at receiver locations
     _, _, src_term = src_rec(model, fields, rec_coords, np.zeros((1, 1)),
