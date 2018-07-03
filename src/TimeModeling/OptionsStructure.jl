@@ -82,4 +82,4 @@ Options(;space_order=8,retry_n=0,limit_m=false,buffer_size=1e3, save_data_to_dis
          sum_padding=false, save_wavefield=false, optimal_checkpointing=false, frequencies=[], isic="noop",
          gs=Dict(), normalize=false, freesurface=false, t_sub=1, h_sub=1) =
     Options(space_order,retry_n,limit_m,buffer_size,save_data_to_disk,file_path,file_name, sum_padding,
-            save_wavefield, optimal_checkpointing, frequencies, isic, h_sub, t_sub, gs, normalize, freesurface)
+            save_wavefield, optimal_checkpointing, frequencies, isic, t_sub, h_sub, gs, normalize, freesurface)
