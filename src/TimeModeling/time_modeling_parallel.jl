@@ -8,7 +8,7 @@ function time_modeling(model::Modelall, srcGeometry::Geometry, srcData, recGeome
 
     p = default_worker_pool()
     time_modeling_par = remote(TimeModeling.time_modeling)
-    time_modeling = retry(time_modeling_par)
+    # time_modeling = retry(time_modeling_par)
 
     numSources = length(srcnum)
     results = Array{Any}(numSources)

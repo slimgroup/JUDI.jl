@@ -66,7 +66,7 @@ wavelet = 1e1*ricker_wavelet(timeS,dtS,f0)
 ###################################################################################################
 
 # Modeling operators
-opt = Options(sum_padding=true,  isic="noop", t_sub=1, h_sub=2, space_order=16)
+opt = Options(sum_padding=true,  isic="rotated", t_sub=1, h_sub=2, space_order=16)
 F = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
 q = judiVector(srcGeometry, wavelet)
 

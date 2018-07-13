@@ -40,13 +40,13 @@ function limit_model_to_receiver_area(srcGeometry::Geometry,recGeometry::Geometr
     nx_min = Int(round(min_x/model.d[1])) + 1
     nx_max = Int(round(max_x/model.d[1])) + 1
     if ndim == 2
-        ox = (nx_min - 1)*model.d[1]
+        ox = Float32((nx_min - 1)*model.d[1])
         oz = model.o[2]
     else
         ny_min = Int(round(min_y/model.d[2])) + 1
         ny_max = Int(round(max_y/model.d[2])) + 1
-        ox = (nx_min - 1)*model.d[1]
-        oy = (ny_min - 1)*model.d[2]
+        ox = Float32((nx_min - 1)*model.d[1])
+        ox = Float32((ny_min - 1)*model.d[2])
         oz = model.o[3]
     end
 
@@ -104,13 +104,13 @@ function limit_model_to_receiver_area(srcGeometry::Geometry,recGeometry::Geometr
     nx_min = Int(round(min_x/model.d[1])) + 1
     nx_max = Int(round(max_x/model.d[1])) + 1
     if ndim == 2
-        ox = (nx_min - 1)*model.d[1]
+        ox = Float32((nx_min - 1)*model.d[1])
         oz = model.o[2]
     else
         ny_min = Int(round(min_y/model.d[2])) + 1
         ny_max = Int(round(max_y/model.d[2])) + 1
-        ox = (nx_min - 1)*model.d[1]
-        oy = (ny_min - 1)*model.d[2]
+        ox = Float32((nx_min - 1)*model.d[1])
+        ox = Float32((ny_min - 1)*model.d[2])
         oz = model.o[3]
     end
 
@@ -156,12 +156,12 @@ function extend_gradient(model_full::Modelall,model::Modelall,gradient::Array)
     # Extend gradient back to full model size
     ndim = length(model.n)
     full_gradient = zeros(Float32,model_full.n)
-    nx_start = Int((model.o[1] - model_full.o[1])/model.d[1] + 1)
+    nx_start = trunc(Int, Float32(Float32(model.o[1] - model_full.o[1])/model.d[1]) + 1)
     nx_end = nx_start + model.n[1] - 1
     if ndim == 2
         full_gradient[nx_start:nx_end,:] = gradient
     else
-        ny_start = Int((model.o[2] - model_full.o[2])/model.d[2] + 1)
+        ny_start = Int(Float32(Float32(model.o[2] - model_full.o[2])/model.d[2]) + 1)
         ny_end = ny_start + model.n[2] - 1
         full_gradient[nx_start:nx_end,ny_start:ny_end,:] = gradient
     end
@@ -204,11 +204,11 @@ end
 
 function calculate_dt(model::Model)
     if length(model.n) == 3
-        coeff = 0.38
+        coeff = 0.38f0
     else
-        coeff = 0.42
+        coeff = 0.42f0
     end
-    return coeff * minimum(model.d) / (sqrt(1/minimum(model.m)))
+    return coeff * Float32(minimum(model.d) / (sqrt(1/minimum(model.m))))
 end
 
 function calculate_dt(model::Model_TTI)
@@ -364,7 +364,7 @@ vec(x::Int64) = x;
 vec(x::Int32) = x;
 
 
-function time_resample(data::Array,geometry_in::Geometry,dt_new;order=2)
+function time_resample(data::Array,geometry_in::Geometry,dt_new;order=3)
     geometry = deepcopy(geometry_in)
     numTraces = size(data,2)
     timeAxis = 0:geometry.dt[1]:geometry.t[1]
@@ -380,7 +380,7 @@ function time_resample(data::Array,geometry_in::Geometry,dt_new;order=2)
     return dataInterp, geometry
 end
 
-function time_resample(data::Array,dt_in, geometry_out::Geometry;order=2)
+function time_resample(data::Array,dt_in, geometry_out::Geometry;order=3)
     geometry = deepcopy(geometry_out)
     numTraces = size(data,2)
     timeAxis = 0:dt_in:geometry_out.t[1]

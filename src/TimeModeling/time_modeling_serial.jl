@@ -133,7 +133,6 @@ end
 
 # Setup time-domain linear or nonlinear foward and adjoint modeling and interface to OPESCI/devito
 function time_modeling(model_full::Model_TTI, srcGeometry::Geometry, srcData, recGeometry::Geometry, recData, dm, srcnum::Int64, op::Char, mode::Int64, options)
-
     # Load full geometry for out-of-core geometry containers
     typeof(recGeometry) == GeometryOOC && (recGeometry = Geometry(recGeometry))
     typeof(srcGeometry) == GeometryOOC && (srcGeometry = Geometry(srcGeometry))
@@ -172,7 +171,7 @@ function time_modeling(model_full::Model_TTI, srcGeometry::Geometry, srcData, re
                            phi=process_physical_parameter(model.phi, dims), nbpml=model.nb,
                            space_order=options.space_order)
     end
-    dtComp = modelPy[:critical_dt]
+    dtComp = Float32(modelPy[:critical_dt])
 
     # Source/receiver parameters
     tmaxSrc = srcGeometry.t[1]

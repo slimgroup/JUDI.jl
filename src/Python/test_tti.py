@@ -86,8 +86,8 @@ dpred_data, u03 = fwd(model0, src.coordinates.data, src.data, rec.coordinates.da
 g42 = grad(model0, rec.coordinates.data, dpred_data[:] - dobs.data[:], u=u03, isic=True)
 g52 = grad(model0, rec.coordinates.data, dpred_data[:] - dobs.data[:], u=u03)
 #
-scacle1= .1*1e-1
-scacle2= .1*1e-1
+scacle1= .1*1e-2
+scacle2= .1*1e-2
 scale = .5*1e-1
 plt.figure()
 plt.subplot(351)

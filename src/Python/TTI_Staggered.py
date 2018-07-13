@@ -294,10 +294,12 @@ def imaging_condition(model, ph, pv, fields, vel_fields, isic='noop'):
             theta, phi = model.theta, model.phi
         else:
             error('Unrecognized imaging condition %s' % isic)
-        divs = staggered_diff(ph, dim=inds[0], order=space_order, stagger=left, theta=theta, phi=phi) * vel_fields[0]
+        divs = (staggered_diff(ph, dim=inds[0], order=space_order, stagger=left, theta=theta, phi=phi) * vel_fields[0])
+                # staggered_diff(vel_fields[0], dim=inds[0], order=space_order, stagger=left, theta=theta, phi=phi))
         if model.grid.dim == 3:
             divs += staggered_diff(ph, dim=inds[1], order=space_order, stagger=left, theta=theta, phi=phi) * vel_fields[1]
-        divs += staggered_diff(pv, dim=inds[-1], order=space_order, stagger=left, theta=theta, phi=phi) * vel_fields[-1]
+        divs += (staggered_diff(pv, dim=inds[-1], order=space_order, stagger=left, theta=theta, phi=phi) * vel_fields[-1])
+                 # staggered_diff(vel_fields[-1], dim=inds[-1], order=space_order, stagger=left, theta=theta, phi=phi))
         grad_expr = [Inc(grad, grad - .5 * factor * (m * ph * phadt + m * pv * pvadt - divs) / rho)]
 
     return grad, grad_expr
@@ -359,7 +361,7 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
     # Substitute spacing terms to reduce flops
     op = Operator(vel_expr + rec_term + p_expr + src_term, subs=model.spacing_map,
                   dse='advanced', dle='advanced')
-    print(op.arguments()["x_M"], op.arguments()["y_M"])
+
     op()
     return rec.data, saved_fields[0], saved_fields[1]
 
@@ -437,7 +439,6 @@ def adjoint_born(model, rec_coords, rec_data, ph=None, pv=None, space_order=12, 
     # Substitute spacing terms to reduce flops
     op = Operator(vel_expr + p_expr + src_term + grad_expr, subs=model.spacing_map,
                   dse='aggressive', dle='advanced')
-
     op()
     if resample:
         grad = resample_grad(grad, model, ph.indices[1].factor)
