@@ -112,7 +112,7 @@ def pressure_fields(model, space_order, save=0, t_sub_factor=1, h_sub_factor=1, 
                               time_dim=time_subsampled, save=nsave)
         pvsave = TimeFunction(name='pvs'+name, grid=grid2, time_order=1, space_order=space_order,
                               time_dim=time_subsampled, save=nsave)
-        eqsave = [Eq(phsave.forward, ph.forward), Eq(pvsave.forward, pv.forward)]
+        eqsave = [Eq(phsave, ph), Eq(pvsave, pv)]
     elif save>1 and t_sub_factor==1 and h_sub_factor==1:
         pv = TimeFunction(name='pv'+name, grid=model.grid, time_order=1, space_order=space_order,
                           save=save)
@@ -398,7 +398,7 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=16, isic='n
     :param save: Saving flag, True saves all time steps, False only the three
     """
     clear_cache()
-    save_p = source.nt if save else 0
+    save_p = wavelet.shape[0] if save else 0
     vel_expr, p_expr, fields, part_vel, saved_fields = forward_stencil(model, space_order, save=save_p,
                                                                        h_sub_factor=h_sub_factor,
                                                                        t_sub_factor=t_sub_factor)
