@@ -4,6 +4,36 @@ from PySource import RickerSource, PointSource, Receiver
 from PyModel import Model
 import matplotlib.pyplot as plt
 from TTI_operators import forward_modeling, adjoint_born
+import boto3
+import botocore
+
+
+def get_from_s3(filename):
+    BUCKET_NAME = 'slim-bucket-common' # replace with your bucket name
+    KEY = filename # replace with your object key
+
+    s3 = boto3.resource('s3')
+
+    try:
+        s3.Bucket(BUCKET_NAME).download_file(KEY, 'my_local_image.jpg')
+    except botocore.exceptions.ClientError as e:
+        if e.response['Error']['Code'] == "404":
+            print("The object does not exist.")
+        else:
+            raise
+
+
+def send_to_s3(array, filename):
+    # Create an S3 client
+    s3 = boto3.client('s3')
+
+    filename = filename
+    bucket_name = 'slim-bucket-common'
+
+    # Uploads the given file using a managed uploader, which will split up large
+    # files automatically and upload parts in parallel.
+    s3.upload_file(filename, bucket_name, filename)
+
 
 if __name__ == "__main__":
     description = ("Overthrust RTM")
