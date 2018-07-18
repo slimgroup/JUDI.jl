@@ -133,10 +133,10 @@ def forward_stencil(model, space_order, save=0, q=(0, 0, 0, 0, 0), name='', h_su
     Forward wave equation
     # Solves the TTI elastic system:
     rho * vx.dt = - ph.dx
-    rho * vy.dt = - ph.dx
-    rho * vz.dt = - pv.dx
+    rho * vy.dt = - ph.dy
+    rho * vz.dt = - pv.dz
     m / rho * ph.dt = - sqrt(1 + 2 delta) (vx.dx + vy.dy) - vz.dz + Fh
-    m / rho * phv.dt = - sqrt(1 + 2 epsilon) (vx.dx + vy.dy) - sqrt(1 + 2 delta) vz.dz + Fv
+    m / rho * phv.dt = - (1 + 2 epsilon) (vx.dx + vy.dy) - sqrt(1 + 2 delta) vz.dz + Fv
 
     """
     m, epsilon, delta, theta, phi, rho = (model.m, model.epsilon, model.delta,
@@ -300,7 +300,7 @@ def imaging_condition(model, ph, pv, fields, vel_fields, isic='noop'):
             divs += staggered_diff(ph, dim=inds[1], order=space_order, stagger=left, theta=theta, phi=phi) * vel_fields[1]
         divs += (staggered_diff(pv, dim=inds[-1], order=space_order, stagger=left, theta=theta, phi=phi) * vel_fields[-1])
                  # staggered_diff(vel_fields[-1], dim=inds[-1], order=space_order, stagger=left, theta=theta, phi=phi))
-        grad_expr = [Inc(grad, grad - .5 * factor * (m * ph * phadt + m * pv * pvadt - divs) / rho)]
+        grad_expr = [Inc(grad, grad + .5 * factor * (m * ph * phadt /rho + m * pv * pvadt / rho - divs) / rho)]
 
     return grad, grad_expr
 
@@ -333,8 +333,7 @@ def linearized_source(model, fields, part_vel, isic='noop'):
         dvz = .5 *  staggered_diff(fields[-1], dim=inds[-1], order=space_order, stagger=right, theta=theta, phi=phi)
         dph = .5 * m * fields[0].dt
         dpv = .5 * m * fields[1].dt
-        # lin_src_ph = dvx + dvy + dph
-        # lin_src_pv = dvz + dpv
+
         lin_src = (dm * dvx / rho, dm * dvy / rho, dm * dvz / rho, dm * dph / rho, dm * dpv / rho)
 
     return lin_src
@@ -366,7 +365,7 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
     return rec.data, saved_fields[0], saved_fields[1]
 
 
-def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=12):
+def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=16):
     """
     Constructor method for the adjoint modelling operator in an acoustic media
     :param model: :class:`Model` object containing the physical parameters
@@ -388,7 +387,8 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=12):
     return rec.data, fields[0], fields[1]
 
 
-def forward_born(model, src_coords, wavelet, rec_coords, space_order=12, isic='noop', save=False):
+def forward_born(model, src_coords, wavelet, rec_coords, space_order=16, isic='noop', save=False,
+                 h_sub_factor=1, t_sub_factor=1):
     """
     Constructor method for the born modelling operator in an acoustic media
     :param model: :class:`Model` object containing the physical parameters
@@ -399,7 +399,9 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=12, isic='n
     """
     clear_cache()
     save_p = source.nt if save else 0
-    vel_expr, p_expr, fields, part_vel, saved_fields = forward_stencil(model, space_order, save=save_p)
+    vel_expr, p_expr, fields, part_vel, saved_fields = forward_stencil(model, space_order, save=save_p,
+                                                                       h_sub_factor=h_sub_factor,
+                                                                       t_sub_factor=t_sub_factor)
     _, _, src_term = src_rec(model, fields, src_coords, rec_coords, src_data=wavelet)
 
     lin_src =  linearized_source(model, fields, part_vel, isic=isic)

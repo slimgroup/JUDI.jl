@@ -12,33 +12,35 @@ from checkpoint import DevitoCheckpoint, CheckpointOperator
 from pyrevolve import Revolver
 import matplotlib.pyplot as plt
 from JAcoustic_codegen import forward_modeling, adjoint_born
+from scipy import ndimage
 
 # Model
-shape = (101, 101)
-spacing = (10., 10.)
+shape = (301, 301)
+spacing = (12.5, 12.5)
 origin = (0., 0.)
-
-# Velocity
+nrec = 301
 v = np.empty(shape, dtype=np.float32)
-v[:, :51] = 1.5
-v[:, 51:] = 1.5
-v0 = np.empty(shape, dtype=np.float32)
-v0[:, :] = 1.5
+v[:, :150] = 1.5
+v[:, 150:] = 2.5
+v[:, 230:] = 3.5
+v[105:195, 2*95:] = 6.5
+
+v0 = ndimage.gaussian_filter(v, sigma=5)
 
 # Density
-rho = np.empty(shape, dtype=np.float32)
-rho[:, :51] = 1.0
-rho[:, 51:] = 2.0
-rho0 = np.empty(shape, dtype=np.float32)
-rho0[:, :] = 1.0
+# rho = np.empty(shape, dtype=np.float32)
+# rho[:, :51] = 1.0
+# rho[:, 51:] = 2.0
+# rho0 = np.empty(shape, dtype=np.float32)
+# rho0[:, :] = 1.0
 
 # Set up model structures
-model = Model(shape=shape, origin=origin, spacing=spacing, vp=v, rho=rho)
+model = Model(shape=shape, origin=origin, spacing=spacing, vp=v)
 model0 = Model(shape=shape, origin=origin, spacing=spacing, vp=v0)
 
 # Time axis
 t0 = 0.
-tn = 1000.
+tn = 3500.
 dt = model.critical_dt
 nt = int(1 + (tn-t0) / dt)
 time = np.linspace(t0,tn,nt)
@@ -66,9 +68,12 @@ rec.coordinates.data[:, 1] = 20.
 
 # Save wavefields
 d0, u0 = forward_modeling(model0, src.coordinates.data, src.data, rec.coordinates.data, save=True, dt=dt)
-#g = adjoint_born(model0, rec.coordinates.data, dpred_data[:] - dobs.data[:], u=u0, dt=dt)
-
-plt.figure(); plt.imshow(d0, vmin=-1, vmax=1)
-plt.figure(); plt.imshow(np.transpose(model.rho.data))
-plt.figure(); plt.imshow(np.transpose(model.m.data))
+g = adjoint_born(model0, rec.coordinates.data, d0[:] - dobs[:], u=u0, dt=dt)
+g1 = adjoint_born(model0, rec.coordinates.data, d0[:] - dobs[:], u=u0, dt=dt, isic=True)
+g2 = adjoint_born(model0, rec.coordinates.data, d0[:] - dobs[:], u=u0, dt=dt, isic2=True)
+# plt.figure(); plt.imshow(d0, vmin=-1, vmax=1)
+plt.figure(); plt.imshow(np.transpose(g.data), vmin=-10, vmax=10, cmap="seismic")
+plt.figure(); plt.imshow(np.transpose(g1.data), vmin=-.1, vmax=.1, cmap="seismic")
+plt.figure(); plt.imshow(np.transpose(g2.data), vmin=-.1, vmax=.1, cmap="seismic")
 plt.show()
+from IPython import embed; embed()

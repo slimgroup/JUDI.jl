@@ -187,7 +187,7 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, nb=40, i
     return rec.data
 
 
-def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residual=False, space_order=8, nb=40, isic=False, dt=None, freesurface=False):
+def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residual=False, space_order=8, nb=40, isic=False, dt=None, freesurface=False, isic2=False):
     clear_cache()
 
     # Parameters
@@ -198,8 +198,7 @@ def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residu
 
     # Create adjoint wavefield and gradient
     v = TimeFunction(name='v', grid=model.grid, time_order=2, space_order=space_order)
-    gradient = Function(name='gradient', grid=model.grid)
-
+    gradient = Function(name='gradient', grid=model.grid, space_order=space_order)
     # Set up PDE and rearrange
     vlaplace, rho = acoustic_laplacian(v, rho)
     s = model.grid.time_dim.spacing
@@ -215,9 +214,8 @@ def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residu
     # Gradient update
     if u is None:
         u = TimeFunction(name='u', grid=model.grid, time_order=2, space_order=space_order)
-    if isic is not True:
-        gradient_update = [Inc(gradient, gradient - dt * u.dt2 / rho * v)]
-    else:
+
+    if isic:
         # sum u.dx * v.dx fo x in dimensions.
         # space_order//2
         diff_u_v = sum([first_derivative(u, dim=d, order=space_order//2)*
@@ -225,8 +223,15 @@ def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residu
                         for d in u.space_dimensions])
         gradient_update = [Inc(gradient, gradient - dt * (u * v.dt2 * m + diff_u_v) / rho)]
 
+    elif isic2:
+        gradient_update = [Inc(gradient, gradient - dt * u * v )]
+        grad2 = Function(name='grad2', grid=model.grid)
+        isic_update = [Eq(grad2, gradient.laplace)]
+    else:
+        gradient_update = [Inc(gradient, gradient - dt * u.dt2 / rho * v)]
+
     # Create operator and run
-    set_log_level('ERROR')
+    set_log_level('INFO')
     expression += adj_src + gradient_update
     subs = model.spacing_map
     subs[u.grid.time_dim.spacing] = dt
@@ -234,6 +239,9 @@ def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residu
         fs = DefaultDimension(name="fs", default_value=int(space_order/2))
         expression += [Eq(v.backward.subs({u.indices[-1]: model.nbpml - fs - 1}),
                          -v.backward.subs({u.indices[-1]: model.nbpml + fs + 1}))]
+
+    if isic2:
+        expression += [Eq(grad2, gradient.laplace)]
     op = Operator(expression, subs=subs, dse='advanced', dle='advanced',
                   name="Gradient%s" % randint(1e5))
     # Optimal checkpointing
@@ -262,7 +270,7 @@ def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residu
     if op_forward is not None and is_residual is not True:
         return fval, gradient.data
     else:
-        return gradient.data
+        return grad2.data if isic2 else gradient.data
 
 
 ########################################################################################################################
