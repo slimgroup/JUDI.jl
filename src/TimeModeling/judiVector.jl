@@ -60,7 +60,7 @@ Examples
 ========
 
 (1) Construct data vector from `Geometry` structure and a cell array of shot records:
-  
+
     dobs = judiVector(rec_geometry, shot_records)
 
 (2) Construct data vector for a seismic wavelet (can be either cell arrays of individual\\
@@ -133,7 +133,7 @@ function judiVector(data::SeisIO.SeisBlock; segy_depth_key="RecGroupElevation", 
     # length of data vector
     src = get_header(data,"FieldRecord")
     nsrc = length(unique(src))
-    
+
     numTraces = get_header(data,"TraceNumber")[end] - get_header(data,"TraceNumber")[1] + 1
     numSamples = get_header(data,"ns")[end]
     m = numTraces*numSamples
@@ -160,7 +160,7 @@ function judiVector(geometry::Geometry, data::SeisIO.SeisBlock; vDT::DataType=Fl
     # length of data vector
     src = get_header(data,"FieldRecord")
     nsrc = length(unique(src))
-    
+
     numTraces = get_header(data,"TraceNumber")[end] - get_header(data,"TraceNumber")[1] + 1
     numSamples = get_header(data,"ns")[end]
     m = numTraces*numSamples
@@ -231,9 +231,9 @@ function judiVector(data::Array{SeisIO.SeisCon,1}; segy_depth_key="RecGroupEleva
     nsrc = length(data)
     numTraces = 0
     for j=1:nsrc
-        numTraces += Int((data[j].blocks[1].endbyte - data[j].blocks[1].startbyte)/(240 + data.ns*4))
+        numTraces += Int((data[j].blocks[1].endbyte - data[j].blocks[1].startbyte)/(240 + data[j].ns*4))
     end
-    m = numTraces*data.ns
+    m = numTraces*data[1].ns    # SEGY requires same number of samples for every trace
     n = 1
 
     # extract geometry from data container
@@ -282,7 +282,7 @@ conj{vDT}(a::judiVector{vDT}) =
 # transpose(jo)
 transpose{vDT}(a::judiVector{vDT}) =
     judiVector{vDT}(""*a.name*".'",a.n,a.m,a.nsrc,a.geometry,a.data)
-   
+
 # ctranspose(jo)
 ctranspose{vDT}(a::judiVector{vDT}) =
     judiVector{vDT}(""*a.name*"'",a.n,a.m,a.nsrc,a.geometry,a.data)
@@ -396,7 +396,7 @@ function vcat{avDT,bvDT}(a::judiVector{avDT},b::judiVector{bvDT})
             nsamples[j] = a.geometry.nsamples[j]
         else
             xloc[j] = a.geometry.xloc[j]
-            yloc[j] = a.geometry.yloc[j]        
+            yloc[j] = a.geometry.yloc[j]
             zloc[j] = a.geometry.zloc[j]
         end
         dt[j] = a.geometry.dt[j]
@@ -433,25 +433,26 @@ function dot{avDT,bvDT}(a::judiVector{avDT}, b::judiVector{bvDT})
     compareGeometry(a.geometry, b.geometry) == 1 || throw(judiVectorException("geometry mismatch"))
     dotprod = 0f0
     for j=1:a.nsrc
-        dotprod += dot(vec(a.data[j]),vec(b.data[j]))
+        dotprod += a.geometry.dt[j] * dot(vec(a.data[j]),vec(b.data[j]))
     end
     return dotprod
 end
 
 # norm
-function norm{avDT}(a::judiVector{avDT}; p=2)
+function norm{avDT}(a::judiVector{avDT}, p::Real=2)
     x = 0.f0
     for j=1:a.nsrc
-        x += norm(vec(a.data[j]),p)^p
+        x += a.geometry.dt[j] * sum(abs.(vec(a.data[j])).^p)
     end
     return x^(1.f0/p)
 end
+
 
 # abs
 function abs{avDT}(a::judiVector{avDT})
     b = deepcopy(a)
     for j=1:a.nsrc
-        b.data[j] = abs(a.data[j])
+        b.data[j] = abs.(a.data[j])
     end
     return b
 end
@@ -630,18 +631,15 @@ function copy!(x::judiVector,y::judiVector)
     x.geometry = deepcopy(y.geometry)
 end
 
-#broadcast!(identity, x::judiVector, y::judiVector) = copy!(x,y)
-
 function axpy!(a::Number,X::judiVector,Y::judiVector)
     for j=1:Y.nsrc
         Y.data[j] = a*X.data[j] + Y.data[j]
     end
 end
 
-similar(x::judiVector, kwargs...) = judiVector(x.geometry, x.data)*0f0
+similar(x::judiVector, element_type::DataType, dims::Union{AbstractUnitRange, Integer}...) = judiVector(x.geometry, x.data)*0f0
 
 function get_data(x::judiVector)
-
     shots = Array{Any}(x.nsrc)
     rec_geometry = Geometry(x.geometry)
 
@@ -650,6 +648,12 @@ function get_data(x::judiVector)
     end
     return judiVector(rec_geometry, shots)
 end
+
+function isapprox(x::judiVector, y::judiVector; rtol::Real=sqrt(eps()), atol::Real=0)
+    compareGeometry(x.geometry, y.geometry) == 1 || throw(judiVectorException("geometry mismatch"))
+    isapprox(x.data, y.data; rtol=rtol, atol=atol)
+end
+
 
 ###########################################################################################################
 
@@ -683,5 +687,3 @@ dot(x::Float32, y::SeisIO.IBMFloat32) = dot(x, convert(Float32,y))
 
 /(a::Number, x::SeisIO.SeisCon) = /(a,x[1].data)
 /(x::SeisIO.SeisCon, a::Number) = /(x[1].data,a)
-
-

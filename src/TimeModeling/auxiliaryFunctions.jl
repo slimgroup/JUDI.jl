@@ -5,8 +5,8 @@
 
 export ricker_wavelet, get_computational_nt, smooth10, damp_boundary, calculate_dt, setup_grid, setup_3D_grid
 export convertToCell, limit_model_to_receiver_area, extend_gradient, remove_out_of_bounds_receivers
-export time_resample, remove_padding, backtracking_linesearch
-export generate_distribution, select_frequencies
+export time_resample, remove_padding, backtracking_linesearch, subsample
+export generate_distribution, select_frequencies, process_physical_parameter
 
 function limit_model_to_receiver_area(srcGeometry::Geometry,recGeometry::Geometry,model::Model,buffer;pert=[])
     # Restrict full velocity model to area that contains either sources and receivers
@@ -47,9 +47,11 @@ function limit_model_to_receiver_area(srcGeometry::Geometry,recGeometry::Geometr
     n_orig = model.n
     if ndim == 2
         model.m = model.m[nx_min: nx_max, :]
+        typeof(model.rho) <: Array && (model.rho = model.rho[nx_min: nx_max, :])
         model.o = (ox, oz)
     else
         model.m = model.m[nx_min:nx_max,ny_min:ny_max,:]
+        typeof(model.rho) <: Array && (model.rho = model.rho[nx_min:nx_max,ny_min:ny_max,:])
         model.o = (ox,oy,oz)
     end
     model.n = size(model.m)
@@ -83,7 +85,7 @@ function extend_gradient(model_full::Model,model::Model,gradient::Array)
 end
 
 function remove_out_of_bounds_receivers(recGeometry::Geometry, model::Model)
-
+    
     # Only keep receivers within the model
     xmin = model.o[1]
     if typeof(recGeometry.xloc[1]) <: Array
@@ -107,23 +109,22 @@ function remove_out_of_bounds_receivers(recGeometry::Geometry, recData::Array, m
     # Only keep receivers within the model
     xmin = model.o[1]
     if typeof(recGeometry.xloc[1]) <: Array
-        idx_xrec = find(x -> x >= xmin, recGeometry.xloc[1])
+        idx_xrec = find(x -> x > xmin, recGeometry.xloc[1])
         recGeometry.xloc[1] = recGeometry.xloc[1][idx_xrec]
         recGeometry.zloc[1] = recGeometry.zloc[1][idx_xrec]
-        recData = recData[:, idx_xrec]
+        recData[1] = recData[1][:, idx_xrec]
     end
 
     # For 3D shot records, scan also y-receivers
     if length(model.n) == 3 && typeof(recGeometry.yloc[1]) <: Array
         ymin = model.o[2]
-        idx_yrec = find(x -> x >= ymin, recGeometry.yloc[1])
+        idx_yrec = find(x -> x > ymin, recGeometry.yloc[1])
         recGeometry.yloc[1] = recGeometry.yloc[1][idx_yrec]
         recGeometry.zloc[1] = recGeometry.zloc[1][idx_yrec]
-        recData = recData[:, idx_yrec]
+        recData[1] = recData[1][:, idx_yrec]
     end
     return recGeometry, recData
 end
-
 
 """
     convertToCell(x)
@@ -159,8 +160,8 @@ function ricker_wavelet(tmax, dt, f0)
     return q
 end
 
-function calculate_dt(n,d,o,v; epsilon=0)
-    length(n) == 2 ? pyDim = (n[2], n[1]) : pyDim = (n[3],n[2],n[1])
+function calculate_dt(n,d,o,v,rho; epsilon=0)
+    length(n) == 2 ? pyDim = [n[2], n[1]] : pyDim = [n[3],n[2],n[1]]
     modelPy = pm.Model(o, d, pyDim, PyReverseDims(v))
     dtComp = modelPy[:critical_dt]
 end
@@ -182,11 +183,11 @@ function get_computational_nt(srcGeometry, recGeometry, model::Model)
         nsrc = length(srcGeometry.xloc)
     end
     nt = Array{Any}(nsrc)
-    dtComp = calculate_dt(model.n,model.d,model.o,sqrt.(1./model.m))
+    dtComp = calculate_dt(model.n,model.d,model.o,sqrt.(1./model.m),model.rho)
     for j=1:nsrc
-        ntRec = Int(trunc(recGeometry.dt[j]*(recGeometry.nt[j]-1))) / dtComp
-        ntSrc = Int(trunc(srcGeometry.dt[j]*(srcGeometry.nt[j]-1))) / dtComp
-        nt[j] = max(Int(trunc(ntRec)), Int(trunc(ntSrc)))
+        ntRec = recGeometry.dt[j]*(recGeometry.nt[j]-1) / dtComp
+        ntSrc = srcGeometry.dt[j]*(srcGeometry.nt[j]-1) / dtComp
+        nt[j] = max(Int(ceil(ntRec)), Int(ceil(ntSrc)))
     end
     return nt
 end
@@ -311,9 +312,9 @@ vec(x::Int32) = x;
 
 function time_resample(data::Array,geometry_in::Geometry,dt_new;order=2)
 
-   if dt_new==geometry_in.dt[1]
+    if dt_new==geometry_in.dt[1]
         return data, geometry_in
-   else
+    else
         geometry = deepcopy(geometry_in)
         numTraces = size(data,2)
         timeAxis = 0:geometry.dt[1]:geometry.t[1]
@@ -327,7 +328,7 @@ function time_resample(data::Array,geometry_in::Geometry,dt_new;order=2)
         geometry.nt[1] = length(timeInterp)
         geometry.t[1] = (geometry.nt[1] - 1)*geometry.dt[1]
         return dataInterp, geometry
-  end
+    end
 end
 
 function time_resample(data::Array,dt_in, geometry_out::Geometry;order=2)
@@ -348,6 +349,7 @@ function time_resample(data::Array,dt_in, geometry_out::Geometry;order=2)
     end
 end
 
+subsample(x::Void) = x
 
 function generate_distribution(x; src_no=1)
 	# Generate interpolator to sample from probability distribution given
@@ -392,4 +394,12 @@ function select_frequencies(L;fmin=0.,fmax=Inf,nf=1)
 		end
 	end
 	return freq
+end
+
+function process_physical_parameter(param, dims)
+    if length(param) ==1
+        return param
+    else
+        return PyReverseDims(permutedims(param, dims))
+    end
 end

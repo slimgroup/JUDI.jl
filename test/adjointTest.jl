@@ -3,7 +3,7 @@
 # Date: January 2017
 #
 
-using PyCall, PyPlot, JUDI.TimeModeling
+using PyCall, PyPlot, JUDI.TimeModeling, Base.Test
 
 ## Set up model structure
 n = (160, 170)	# (x,y,z) or (x,z)
@@ -14,6 +14,8 @@ o = (0.,0.)
 v = ones(Float32,n) * 2.0f0
 v[:,Int(round(end/3)):end] = 4f0
 v0 = smooth10(v,n)
+rho = ones(Float32, n)
+rho[:, Int(round(end/2)):end] = 1.5f0
 
 # Slowness squared [s^2/km^2]
 m = (1f0./v).^2
@@ -22,8 +24,8 @@ dm = vec(m - m0)
 
 # Setup info and model structure
 nsrc = 1
-model = Model(n,d,o,m)
-model0 = Model(n,d,o,m0)
+model = Model(n,d,o,m,rho=rho)
+model0 = Model(n,d,o,m0,rho=rho)
 
 ## Set up receiver geometry
 nxrec = 141
@@ -33,19 +35,19 @@ zrec = linspace(100f0,100f0,nxrec)
 
 # receiver sampling and recording time
 timeR = 800f0	# receiver recording time [ms]
-dtR = 1.05f0	# receiver sampling interval
+dtR = calculate_dt(n,d,o,v,rho)    # receiver sampling interval
 
 # Set up receiver structure
 recGeometry = Geometry(xrec,yrec,zrec;dt=dtR,t=timeR,nsrc=nsrc)
 
 ## Set up source geometry (cell array with source locations for each shot)
-xsrc = 800f0
-ysrc = 0f0
+xsrc = 800f0 
+ysrc = 0f0 
 zsrc = 50f0
 
 # source sampling and number of time steps
 timeS = 800f0
-dtS = 1.05f0	# receiver sampling interval
+dtS = calculate_dt(n,d,o,v,rho) # receiver sampling interval
 
 # Set up source structure
 srcGeometry = Geometry(xsrc,ysrc,zsrc;dt=dtS,t=timeS)
@@ -77,19 +79,22 @@ d1 = F*qr
 q_hat = F'*d1
 
 # Result F
-println(abs(dot(d1,d_hat)))
-println(abs(dot(q,q_hat)))
-println("Residual: ", abs(dot(d1,d_hat) - dot(q,q_hat)))
-println("Ratio: ", abs(dot(d1,d_hat)/dot(q,q_hat)))
+a = dot(d1, d_hat)
+b = dot(q, q_hat)
+@test isapprox(a/b - 1, 0, atol=1f-5)
 
 # Linearized modeling
 J = judiJacobian(F,q)
 
 dD_hat = J*dm
-dm_hat = J'*dD_hat
+dm_hat = J'*d_hat
 
-# Result J
-println(dot(dD_hat,dD_hat))
-println(dot(dm,dm_hat))
-println("Residual: ", abs(dot(dD_hat,dD_hat) - dot(dm,dm_hat)))
-println("Ratio: ", abs(dot(dD_hat,dD_hat)/dot(dm,dm_hat)))
+c = dot(dD_hat, d_hat)
+d = dot(dm, dm_hat)
+@test isapprox(c/d - 1, 0, atol=1f-5)
+
+
+
+
+
+

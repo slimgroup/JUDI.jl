@@ -1,5 +1,6 @@
-
 # The Julia Devito Inversion framework (JUDI)
+
+[![Build Status](https://travis-ci.org/slimgroup/JUDI.jl.svg?branch=wavefield_support)](https://travis-ci.org/slimgroup/JUDI.jl)
 
 ## Overview
 
@@ -7,10 +8,10 @@ JUDI is a framework for large-scale seismic modeling and inversion and designed 
 
 ## Installation and prerequisites
 
-First, install Devito using `pip`, or see the [Devito homepage](https://github.com/opesci/devito) for installation with Conda and further information. The current release of JUDI requires Python 3 and Devito v.3.2-beta:
+First, install Devito using `pip`, or see the [Devito homepage](https://github.com/opesci/devito) for installation with Conda and further information. The current release of JUDI requires Python 3 and Devito v.3.2.0:
 
 ```julia
-pip install --user git+https://github.com/opesci/devito.git@v3.2-beta
+pip install --user git+https://github.com/opesci/devito.git@v3.2.0
 ```
 
 Once Devito is installed, you can install JUDI with Julia's `Pkg.clone`:
@@ -30,7 +31,6 @@ For reading and writing seismic SEG-Y data, Julia Devito uses the [SeisIO](https
 ```julia
 Pkg.clone("https://github.com/slimgroup/SeisIO.jl.git")
 Pkg.clone("https://github.com/slimgroup/JOLI.jl.git")
-Pkg.clone("https://github.com/floswald/ApproXD.jl")
 ```
 
 ## Full-waveform inversion
@@ -39,7 +39,7 @@ JUDI is designed to let you set up objective functions that can be passed to sta
 
 ```julia
 run(`wget ftp://slim.eos.ubc.ca/data/SoftwareRelease/WaveformInversion.jl/2DFWI/overthrust_2D.segy`)
-run(`wget ftp://slim.eos.ubc.ca/data/SoftwareRelease/WaveformInversion.jl/2DFWI/overthrust_model_2D.h5`)
+run(`wget ftp://slim.eos.ubc.ca/data/SoftwareRelease/WaveformInversion.jl/2DFWI/overthrust_2D_initial_model.h5`)
 ```
 
 The first step is to load the velocity model and the observed data into Julia, as well as setting up bound constraints for the inversion, which prevent too high or low velocities in the final result. Furthermore, we define an 8 Hertz Ricker wavelet as the source function:
@@ -48,7 +48,7 @@ The first step is to load the velocity model and the observed data into Julia, a
 using PyPlot, HDF5, SeisIO, JUDI.TimeModeling, JUDI.SLIM_optim
 
 # Load starting model
-n, d, o, m0, m = read(h5open("overthrust_model_2D.h5", "r"), "n", "d", "o", "m0", "m")
+n, d, o, m0 = read(h5open("overthrust_2D_initial_model.h5", "r"), "n", "d", "o", "m0")
 model0 = Model((n[1], n[2]), (d[1], d[2]), (o[1], o[2]), m0)	# need n, d, o as tuples and m0 as array
 
 # Bound constraints

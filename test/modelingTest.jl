@@ -16,6 +16,9 @@ v = ones(Float32,n) + 0.4f0
 v0 = ones(Float32,n) + 0.4f0
 v[:,Int(round(end/2)):end] = 4.f0
 
+rho = ones(Float32,n)
+rho[:,Int(round(end/2)):end] = 1.2f0
+
 # Slowness squared [s^2/km^2]
 m = (1./v).^2
 m0 = (1./v0).^2
@@ -23,8 +26,8 @@ dm = vec(m - m0)
 
 # Setup info and model structure
 nsrc = 2	# number of sources
-model = Model(n,d,o,m)	# to include density call Model(n,d,o,m,rho)
-model0 = Model(n,d,o,m0)
+model = Model(n,d,o,m; rho=rho)	# to include density call Model(n,d,o,m,rho)
+model0 = Model(n,d,o,m0; rho=rho)
 
 ## Set up receiver geometry
 nxrec = 120
@@ -59,10 +62,10 @@ wavelet = ricker_wavelet(timeS,dtS,f0)
 ntComp = get_computational_nt(srcGeometry,recGeometry,model)
 info = Info(prod(n),nsrc,ntComp)
 
-######################## WITHOUT DENSITY ############################################
+######################## WITH DENSITY ############################################
 
 # Keep data in memory
-println("Test modeling without density, data in RAM")
+println("Test modeling with density, data in RAM")
 
 # Setup operators
 Pr = judiProjection(info,recGeometry)

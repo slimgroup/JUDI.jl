@@ -67,8 +67,8 @@ function judiPDE(name::String,info::Info,model::Model, geometry::Geometry; optio
         srcnum = 1
     end
     return F = judiPDE{Float32,Float32}(name, m, n, info, model, geometry, options,
-                              src -> time_modeling(model, src.geometry, src.data, geometry, [], [], srcnum, 'F', 1, options),
-                              rec -> time_modeling(model, geometry, [], rec.geometry, rec.data, [], srcnum, 'F', -1, options)
+                              args -> time_modeling(model, args[1], args[2], args[3], args[4], args[5], srcnum, 'F', 1, options),
+                              args_T -> time_modeling(model, args_T[1], args_T[2], args_T[3], args_T[4], args_T[5], srcnum, 'F', -1, options)
                               )
 end
 
@@ -88,9 +88,9 @@ function judiPDEadjoint(name::String,info::Info,model::Model, geometry::Geometry
         srcnum = 1
     end
     return F = judiPDEadjoint{Float32,Float32}(name, m, n, info, model, geometry, options,
-                                     rec -> time_modeling(model, geometry, [], rec.geometry, rec.data, [], srcnum, 'F', -1, options),
-                                     src -> time_modeling(model, src.geometry, src.data, geometry, [], [], srcnum, 'F', 1, options),
-                                     )
+                                args_T -> time_modeling(model, args_T[1], args_T[2], args_T[3], args_T[4], args_T[5], srcnum, 'F', -1, options),
+                                args -> time_modeling(model, args[1], args[2], args[3], args[4], args[5], srcnum, 'F', 1, options),
+                                )
 end
 
 
@@ -100,7 +100,7 @@ end
 # conj(judiPDE)
 conj{DDT,RDT}(A::judiPDE{DDT,RDT}) =
     judiPDE{DDT,RDT}("conj("*A.name*")",A.m,A.n,A.info,A.model,A.geometry,A.options,
-    get(A.fop),
+        A.fop,
         A.fop_T
         )
 
@@ -121,7 +121,7 @@ ctranspose{DDT,RDT}(A::judiPDE{DDT,RDT}) =
 # conj(jo)
 conj{DDT,RDT}(A::judiPDEadjoint{DDT,RDT}) =
     judiPDEadjoint{DDT,RDT}("conj("*A.name*")",A.m,A.n,A.info,A.model,A.geometry,A.options,
-        get(A.fop),
+        A.fop,
         A.fop_T
         )
 
@@ -146,7 +146,8 @@ ctranspose{DDT,RDT}(A::judiPDEadjoint{DDT,RDT}) =
 function *{ADDT,ARDT,vDT}(A::judiPDE{ADDT,ARDT},v::judiRHS{vDT})
     A.n == size(v,1) || throw(judiPDEexception("shape mismatch"))
     jo_check_type_match(ADDT,vDT,join(["DDT for *(judiPDE,judiRHS):",A.name,typeof(A),vDT]," / "))
-    V = A.fop(v)
+	args = (v.geometry,v.data,A.geometry,nothing,nothing)
+    V = A.fop(args)
     jo_check_type_match(ARDT,eltype(V),join(["RDT from *(judiPDE,judiVector):",A.name,typeof(A),eltype(V)]," / "))
     return V
 end
@@ -154,9 +155,29 @@ end
 function *{ADDT,ARDT,vDT}(A::judiPDEadjoint{ADDT,ARDT},v::judiRHS{vDT})
     A.n == size(v,1) || throw(judiPDEadjointException("shape mismatch"))
     jo_check_type_match(ADDT,vDT,join(["DDT for *(judiPDE,judiRHS):",A.name,typeof(A),vDT]," / "))
-    V = A.fop(v)
+	args = (A.geometry,nothing,v.geometry,v.data,nothing)
+    V = A.fop(args)
     jo_check_type_match(ARDT,eltype(V),join(["RDT from *(judiPDE,judiVector):",A.name,typeof(A),eltype(V)]," / "))
     return V
+end
+
+# *(judiPDE,judiWavefield)
+function *{ADDT,ARDT,vDT}(A::judiPDE{ADDT,ARDT},v::judiWavefield{vDT})
+	A.n == size(v,1) || throw(judiPDEexception("shape mismatch"))
+	jo_check_type_match(ADDT,vDT,join(["DDT for *(judiPDE,judiWavefield):",A.name,typeof(A),vDT]," / "))
+	args = (nothing,v.data,A.geometry,nothing,nothing)
+	V = A.fop(args)
+	jo_check_type_match(ARDT,eltype(V),join(["RDT from *(judiPDE,judiVector):",A.name,typeof(A),eltype(V)]," / "))
+	return V
+end
+
+function *{ADDT,ARDT,vDT}(A::judiPDEadjoint{ADDT,ARDT},v::judiWavefield{vDT})
+	A.n == size(v,1) || throw(judiPDEadjointException("shape mismatch"))
+	jo_check_type_match(ADDT,vDT,join(["DDT for *(judiPDE,judiWavefield):",A.name,typeof(A),vDT]," / "))
+	args = (A.geometry,nothing,nothing,v.data,nothing)
+	V = A.fop(args)
+	jo_check_type_match(ARDT,eltype(V),join(["RDT from *(judiPDE,judiVector):",A.name,typeof(A),eltype(V)]," / "))
+	return V
 end
 
 # *(judiPDE,judiProjection)

@@ -156,6 +156,11 @@ function -{avDT,bvDT}(A::judiRHS{avDT}, B::judiRHS{bvDT})
     return judiRHS{nvDT}("judiRHS",m,n,A.info,geometry,data)
 end
 
+function subsample{avDT}(a::judiRHS{avDT},srcnum)
+    info = Info(a.info.n, length(srcnum), a.info.nt[srcnum])
+    geometry = subsample(a.geometry,srcnum)     # Geometry of subsampled data container
+    return judiRHS(info,geometry,a.data[srcnum];vDT=avDT)
+end
 
-
+getindex(x::judiRHS,a) = subsample(x,a)
 

@@ -67,8 +67,8 @@ function judiJacobian(F::judiPDEfull, source::judiVector; DDT::DataType=Float32,
         srcnum = 1
     end
     return J = judiJacobian{Float32,Float32}("linearized wave equation", m, n, F.info, F.model, F.srcGeometry, F.recGeometry, source.data, F.options,
-                                           v -> time_modeling(F.model, F.srcGeometry, source.data, F.recGeometry, [], v, srcnum, 'J', 1, F.options),
-                                           w -> time_modeling(F.model, F.srcGeometry, source.data, F.recGeometry, w.data, [], srcnum, 'J', -1, F.options)
+                                           v -> time_modeling(F.model, F.srcGeometry, source.data, F.recGeometry, nothing, v, srcnum, 'J', 1, F.options),
+                                           w -> time_modeling(F.model, F.srcGeometry, source.data, F.recGeometry, w.data, nothing, srcnum, 'J', -1, F.options)
                                            )
 end
 
@@ -79,7 +79,7 @@ end
 # conj(judiJacobian)
 conj{DDT,RDT}(A::judiJacobian{DDT,RDT}) =
     judiJacobian{DDT,RDT}("conj("*A.name*")",A.m,A.n,A.info,A.model,A.srcGeometry,A.recGeometry,A.source,A.options,
-        get(A.fop),
+        A.fop,
         A.fop_T
         )
 

@@ -193,7 +193,7 @@ function Geometry(data::SeisIO.SeisBlock; key="source", segy_depth_key="")
             zloc[j] = abs.(convert(Array{Float32,1}, zloc_full[traces]))
         end
         dt[j] = dt_full/1f3
-        nt[j] = convert(Int64,nt_full)
+        nt[j] = convert(Integer,nt_full)
         t[j] =  (nt[j]-1)*dt[j]
     end
     return  GeometryIC(xloc,yloc,zloc,dt,nt,t)
@@ -278,7 +278,7 @@ function Geometry(geometry::GeometryOOC)
             zloc[j] = abs.(convert(Array{Float32,1}, get_header(header, params[3])))
         end
         dt[j] = get_header(header, params[4])[1]/1f3
-        nt[j] = convert(Int64, get_header(header, params[5])[1])
+        nt[j] = convert(Integer, get_header(header, params[5])[1])
         t[j] =  (nt[j]-1)*dt[j]
     end
     return  GeometryIC(xloc,yloc,zloc,dt,nt,t)
@@ -312,6 +312,8 @@ function compareGeometry(geometry_A::Geometry, geometry_B::Geometry)
     end
 end
 
+isequal(geometry_A::Geometry, geometry_B::Geometry) = compareGeometry(geometry_A, geometry_B)
+
 function compareGeometry(geometry_A::GeometryOOC, geometry_B::GeometryOOC)
     check = true
     for j=1:length(geometry_A.container)
@@ -325,6 +327,8 @@ function compareGeometry(geometry_A::GeometryOOC, geometry_B::GeometryOOC)
     end
     return check
 end
+
+isequal(geometry_A::GeometryOOC, geometry_B::GeometryOOC) = compareGeometry(geometry_A, geometry_B)
 
 compareGeometry(geometry_A::GeometryOOC, geometry_B::Geometry) = true
 compareGeometry(geometry_A::Geometry, geometry_B::GeometryOOC) = true

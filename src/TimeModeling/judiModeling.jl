@@ -18,6 +18,8 @@ struct judiModeling{DDT<:Number,RDT<:Number} <: joAbstractLinearOperator{DDT,RDT
     info::Info
     model::Model
     options::Options
+	fop::Function              # forward
+	fop_T::Function  # transpose
 end
 
 mutable struct judiModelingException <: Exception
@@ -32,6 +34,8 @@ struct judiModelingAdjoint{DDT,RDT} <: joAbstractLinearOperator{DDT,RDT}
     info::Info
     model::Model
     options::Options
+	fop::Function              # forward
+	fop_T::Function  # transpose
 end
 
 mutable struct judiModelingAdjointException <: Exception
@@ -64,29 +68,37 @@ Example
 """
 function judiModeling(info::Info, model::Model; options=Options(), DDT::DataType=Float32, RDT::DataType=DDT)
 # JOLI wrapper for nonlinear forward modeling
-    (DDT == Float32 && RDT == Float32) || throw(judiModelingException("Domain and range types not supported"))
-    m = info.n * sum(info.nt)
-    n = m
-    if info.nsrc > 1
-        srcnum = 1:info.nsrc
-    else
-        srcnum = 1
-    end
-    return F = judiModeling{Float32,Float32}("forward wave equation", m, n, info, model, options)
+	(DDT == Float32 && RDT == Float32) || throw(judiModelingException("Domain and range types not supported"))
+	m = info.n * sum(info.nt)
+	n = m
+	if info.nsrc > 1
+		srcnum = 1:info.nsrc
+	else
+		srcnum = 1
+	end
+	return F = judiModeling{Float32,Float32}("forward wave equation", m, n, info, model, options,
+							  args -> time_modeling(model, args[1], args[2], args[3], args[4], args[5], srcnum, 'F', 1, options),
+							  args_T -> time_modeling(model, args_T[1], args_T[2], args_T[3], args_T[4], args_T[5], srcnum, 'F', -1, options)
+							  )
 end
 
 function judiModelingAdjoint(info::Info, model::Model; options=Options(), DDT::DataType=Float32, RDT::DataType=DDT)
 # JOLI wrapper for nonlinear forward modeling
-    (DDT == Float32 && RDT == Float32) || throw(judiModelingAdjointException("Domain and range types not supported"))
-    m = info.n * sum(info.nt)
-    n = m
-    if info.nsrc > 1
-        srcnum = 1:info.nsrc
-    else
-        srcnum = 1
-    end
-    return F = judiModelingAdjoint{Float32,Float32}("adjoint wave equation", m, n, info, model, options)
+	(DDT == Float32 && RDT == Float32) || throw(judiModelingAdjointException("Domain and range types not supported"))
+	m = info.n * sum(info.nt)
+	n = m
+	if info.nsrc > 1
+		srcnum = 1:info.nsrc
+	else
+		srcnum = 1
+	end
+	return F = judiModelingAdjoint{Float32,Float32}("adjoint wave equation", m, n, info, model, options,
+							  args_T -> time_modeling(model, args_T[1], args_T[2], args_T[3], args_T[4], args_T[5], srcnum, 'F', -1, options),
+							  args -> time_modeling(model, args[1], args[2], args[3], args[4], args[5], srcnum, 'F', 1, options)
+							  )
 end
+
+
 
 
 ############################################################
@@ -94,33 +106,77 @@ end
 
 # conj(jo)
 conj{DDT,RDT}(A::judiModeling{DDT,RDT}) =
-    judiModeling{DDT,RDT}("conj("*A.name*")",A.m,A.n,A.info,A.model,A.options)
+    judiModeling{DDT,RDT}("conj("*A.name*")",A.m,A.n,A.info,A.model,A.options,A.fop, A.fop_T)
 
 # transpose(jo)
 transpose{DDT,RDT}(A::judiModeling{DDT,RDT}) =
-    judiModelingAdjoint{DDT,RDT}("adjoint wave equation",A.n,A.m,A.info,A.model,A.options)
+    judiModelingAdjoint{DDT,RDT}("adjoint wave equation",A.n,A.m,A.info,A.model,A.options,A.fop_T, A.fop)
 
 # ctranspose(jo)
 ctranspose{DDT,RDT}(A::judiModeling{DDT,RDT}) =
-    judiModelingAdjoint{DDT,RDT}("adjoint wave equation",A.n,A.m,A.info,A.model,A.options)
+    judiModelingAdjoint{DDT,RDT}("adjoint wave equation",A.n,A.m,A.info,A.model,A.options,A.fop_T, A.fop)
 
 # conj(jo)
 conj{DDT,RDT}(A::judiModelingAdjoint{DDT,RDT}) =
-    judiModelingAdjoint{DDT,RDT}("conj("*A.name*")",A.m,A.n,A.info,A.model,A.options)
+    judiModelingAdjoint{DDT,RDT}("conj("*A.name*")",A.m,A.n,A.info,A.model,A.options,A.fop, A.fop_T)
 
 # transpose(jo)
 transpose{DDT,RDT}(A::judiModelingAdjoint{DDT,RDT}) =
-    judiModeling{DDT,RDT}("forward wave equation",A.n,A.m,A.info,A.model,A.options)
+    judiModeling{DDT,RDT}("forward wave equation",A.n,A.m,A.info,A.model,A.options,A.fop_T, A.fop)
 
 # ctranspose(jo)
 ctranspose{DDT,RDT}(A::judiModelingAdjoint{DDT,RDT}) =
-    judiModeling{DDT,RDT}("forward wave equation",A.n,A.m,A.info,A.model,A.options)
+    judiModeling{DDT,RDT}("forward wave equation",A.n,A.m,A.info,A.model,A.options,A.fop_T, A.fop)
 
 
 ############################################################
 ## Additional overloaded functions
 
-# Subsample Modeling functino
+# *(judiModelig,judiWavefield)
+function *{ADDT,ARDT,vDT}(A::judiModeling{ADDT,ARDT},v::judiWavefield{vDT})
+	A.n == size(v,1) || throw(judiModelingException("shape mismatch"))
+	jo_check_type_match(ADDT,vDT,join(["DDT for *(judiModeling,judiWavefield):",A.name,typeof(A),vDT]," / "))
+	args = (nothing,v.data,nothing,nothing,nothing)
+	V = A.fop(args)
+	jo_check_type_match(ARDT,eltype(V),join(["RDT from *(judiModeling,judiWavefield):",A.name,typeof(A),eltype(V)]," / "))
+	return V
+end
+
+# *(judiModeligAdjoint,judiWavefield)
+function *{ADDT,ARDT,vDT}(A::judiModelingAdjoint{ADDT,ARDT},v::judiWavefield{vDT})
+	A.n == size(v,1) || throw(judiModelingAdjointException("shape mismatch"))
+	jo_check_type_match(ADDT,vDT,join(["DDT for *(judiModeling,judiWavefield):",A.name,typeof(A),vDT]," / "))
+	args = (nothing,nothing,nothing,v.data,nothing)
+	V = A.fop(args)
+	jo_check_type_match(ARDT,eltype(V),join(["RDT from *(judiModeling,judiWavefield):",A.name,typeof(A),eltype(V)]," / "))
+	return V
+end
+
+# *(judiModelig,judiRHS)
+function *{ADDT,ARDT,vDT}(A::judiModeling{ADDT,ARDT},v::judiRHS{vDT})
+	A.n == size(v,1) || throw(judiModelingException("shape mismatch"))
+	jo_check_type_match(ADDT,vDT,join(["DDT for *(judiModeling,judiRHS):",A.name,typeof(A),vDT]," / "))
+	args = (v.geometry,v.data,nothing,nothing,nothing)
+	V = A.fop(args)
+	jo_check_type_match(ARDT,eltype(V),join(["RDT from *(judiModeling,judiRHS):",A.name,typeof(A),eltype(V)]," / "))
+	return V
+end
+
+# *(judiModeligAdjoint,judiRHS)
+function *{ADDT,ARDT,vDT}(A::judiModelingAdjoint{ADDT,ARDT},v::judiRHS{vDT})
+	A.n == size(v,1) || throw(judiModelingAdjointException("shape mismatch"))
+	jo_check_type_match(ADDT,vDT,join(["DDT for *(judiModeling,judiRHS):",A.name,typeof(A),vDT]," / "))
+	args = (nothing,nothing,v.geometry,v.data,nothing)
+	V = A.fop(args)
+	jo_check_type_match(ARDT,eltype(V),join(["RDT from *(judiModeling,judiRHS):",A.name,typeof(A),eltype(V)]," / "))
+	return V
+end
+
+
+############################################################
+## Additional overloaded functions
+
+# Subsample Modeling function
 function subsample(F::judiModeling, srcnum)
     info = Info(F.info.n, length(srcnum), F.info.nt[srcnum])
     return judiModeling(info, F.model, options=F.options)

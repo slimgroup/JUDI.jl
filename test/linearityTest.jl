@@ -3,7 +3,7 @@
 # Date: January 2017
 #
 
-using PyCall, PyPlot, JUDI.TimeModeling
+using PyCall, PyPlot, JUDI.TimeModeling, Base.Test
 
 ## Set up model structure
 n = (120,100)	# (x,y,z) or (x,z)
@@ -72,10 +72,8 @@ d2 = Pr*F*Ps2'*q2
 d3 = Pr*F*(Ps1'*q1 + Ps2'*q2)
 d4 = Pr*F*(Ps1'*q1 - Ps2'*q2)
 
-println("addition: ", norm(d3 - (d1 + d2)))
-println("subtraction: ", norm(d4 - (d1 - d2)))
-
-
+@test isapprox(norm(d3), norm(d1 + d2))
+@test isapprox(norm(d4), norm(d1 - d2))
 
 
 
