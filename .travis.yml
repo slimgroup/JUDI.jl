@@ -34,7 +34,6 @@ before_install:
 install:
   - export PYTHON=$(which python)
   - julia -e 'Pkg.clone("https://github.com/slimgroup/JUDI.jl.git")'
-  - julia -e 'Pkg.checkout("JUDI", "wavefield_support")'
 script:
   - julia --check-bounds=yes --color=yes -e 'Pkg.test("JUDI", coverage=true)'
 after_success:
