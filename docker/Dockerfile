@@ -34,15 +34,17 @@ RUN julia -e "Pkg.resolve()"
 RUN julia -e 'Pkg.clone("https://github.com/slimgroup/SeisIO.jl")' && \
 	julia -e 'Pkg.clone("https://github.com/slimgroup/JOLI.jl.git")' && \
 	julia -e 'Pkg.clone("https://github.com/floswald/ApproXD.jl.git")' && \
-	julia -e 'Pkg.clone("https://github.com/slimgroup/JUDI.jl.git")' && \
-	julia -e 'Pkg.checkout("JUDI", "wavefield_support")'
+	julia -e 'Pkg.clone("https://github.com/slimgroup/JUDI.jl.git")'
 
 # Additional packages, which are not in requirements but used in notebooks
 RUN julia -e 'Pkg.add("PyPlot")' && \
 	julia -e 'Pkg.add("NLopt")' && \
 	julia -e 'Pkg.add("HDF5")' && \
-	julia -e 'Pkg.add("JLD")' && \
-	julia -e 'Pkg.add("IJulia")'
+	julia -e 'Pkg.add("JLD")'
+
+# Install and build IJulia
+ENV JUPYTER="/root/.local/bin/jupyter"
+RUN julia -e 'Pkg.add("IJulia")'
 
 # Add JUDI examples
 ADD ./data /app/judi/data
