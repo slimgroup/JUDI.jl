@@ -51,7 +51,7 @@ ADD ./data /app/judi/data
 ADD ./examples /app/judi/examples
 ADD ./test /app/judi/test
 
-WORKDIR /app/judi/examples/notebook
+WORKDIR /app/judi/examples/notebooks
 
 EXPOSE 8888
 
