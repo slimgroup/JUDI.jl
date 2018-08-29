@@ -36,6 +36,22 @@ julia -e 'Pkg.clone("https://github.com/slimgroup/JOLI.jl.git")'
 julia -e 'Pkg.clone("https://github.com/floswald/ApproXD.jl.git")'
 ```
 
+## Running with Docker
+
+If you do not want to install JUDI, you can run JUDI as a docker image. The first possibility is to run the docker container as a Jupyter notebook:
+
+```
+docker run -p 8888:8888 philippwitte/judi:master
+```
+
+This command downloads the image and launches a container. You will see a link that you can copy-past to your browser to access the notebooks. Alternatively, you can run a bash session, in which you can start a regular interactive Julia session and run the example scripts. Download/start the container as a bash session with:
+
+```
+docker run -it philippwitte/judi:master /bin/bash
+```
+
+Inside the container, all examples are located in the directory `/app/judi/examples/scripts`.
+
 ## Configure compiler and OpenMP
 
 Devito uses just-in-time compilation for the underlying wave equation solves. The default compiler is intel, but can be changed to any other specified compiler such as `gnu`. Either run the following command from the command line or add it to your ~/.bashrc file:
@@ -44,11 +60,11 @@ Devito uses just-in-time compilation for the underlying wave equation solves. Th
 export DEVITO_ARCH=gnu
 ```
 
-Devito uses shared memory OpenMP parallelism for solving PDEs. OpenMP is disabled by default, but you can enable OpenMP and define the number of cores (per PDE solve) as follows: 
+Devito uses shared memory OpenMP parallelism for solving PDEs. OpenMP is disabled by default, but you can enable OpenMP and define the number of threads (per PDE solve) as follows: 
 
 ```
-export DEVITO_OPENMP=1
-export OMP_NUM_THREADS=4
+export DEVITO_OPENMP=1  # Enable OpenMP. Set to 0 to disable again.
+export OMP_NUM_THREADS=4    # Number of OpenMP threads
 ```
 
 ## Full-waveform inversion
