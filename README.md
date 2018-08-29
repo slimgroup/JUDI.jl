@@ -8,17 +8,35 @@ JUDI is a framework for large-scale seismic modeling and inversion and designed 
 
 ## Installation and prerequisites
 
-First, install Devito using `pip`, or see the [Devito homepage](https://github.com/opesci/devito) for installation with Conda and further information. The current release of JUDI requires Python 3 and Devito v.3.2.0:
+First, install Devito using `pip`, or see the [Devito homepage](https://github.com/opesci/devito) for installation with Conda and further information. The current release of JUDI requires Python 3 and Devito v.3.2.0. Run all of the following commands from the (bash) terminal command line (not in the Julia REPL):
 
 ```julia
 pip install --user git+https://github.com/opesci/devito.git@v3.2.0
 ```
 
-Once Devito is installed, you can install JUDI with Julia's `Pkg.clone`:
+Once Devito is installed, you can install JUDI with Julia's `Pkg.clone`. For Devito 3.2.0, it is also necessary to install some Devito dependencies by hand:
 
 ```julia
-Pkg.clone("https://github.com/slimgroup/JUDI.jl")
+julia -e 'Pkg.clone("https://github.com/slimgroup/JUDI.jl")'
+pip install --user -r ~/.julia/v0.6/JUDI/docker/devito_requirements.txt
 ```
+
+Once you have JUDI installed, you need to point Julia's PyCall package to the Python version for which we previsouly installed Devito. To do this, copy-paste the following commands into the (bash) terminal:
+
+```julia
+export PYTHON=$(which python)
+julia -e 'Pkg.build("PyCall")'
+```
+
+For reading and writing seismic SEG-Y data, Julia Devito uses the [SeisIO](https://github.com/slimgroup/SeisIO.jl) package and matrix-free linear operators are based the [Julia Operator LIbrary](https://github.com/slimgroup/JOLI.jl/tree/master/src) (JOLI). Furthermore, we need the interpolation package ApproXD:
+
+```julia
+julia -e 'Pkg.clone("https://github.com/slimgroup/SeisIO.jl.git")'
+julia -e 'Pkg.clone("https://github.com/slimgroup/JOLI.jl.git")'
+julia -e 'Pkg.clone("https://github.com/floswald/ApproXD.jl.git")'
+```
+
+## Configure compiler and OpenMP
 
 Devito uses just-in-time compilation for the underlying wave equation solves. The default compiler is intel, but can be changed to any other specified compiler such as `gnu`. Either run the following command from the command line or add it to your ~/.bashrc file:
 
@@ -26,11 +44,11 @@ Devito uses just-in-time compilation for the underlying wave equation solves. Th
 export DEVITO_ARCH=gnu
 ```
 
-For reading and writing seismic SEG-Y data, Julia Devito uses the [SeisIO](https://github.com/slimgroup/SeisIO.jl) package and matrix-free linear operators are based the [Julia Operator LIbrary](https://github.com/slimgroup/JOLI.jl/tree/master/src) (JOLI):
+Devito uses shared memory OpenMP parallelism for solving PDEs. OpenMP is disabled by default, but you can enable OpenMP and define the number of cores (per PDE solve) as follows: 
 
-```julia
-Pkg.clone("https://github.com/slimgroup/SeisIO.jl.git")
-Pkg.clone("https://github.com/slimgroup/JOLI.jl.git")
+```
+export DEVITO_OPENMP=1
+export OMP_NUM_THREADS=4
 ```
 
 ## Full-waveform inversion
