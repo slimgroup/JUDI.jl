@@ -285,6 +285,8 @@ def imaging_condition(model, ph, pv, fields, vel_fields, isic='noop'):
         factor *= ph.indices[0].factor
 
     if isic == 'noop':
+        grad_expr = [Inc(grad, .5 * factor * (ph * phadt /rho + pv * pvadt / rho))]
+    elif isic == 'lap':
         gradh = Function(name="gradh", grid=ph.grid, space_order=ph.space_order)
         gradv = Function(name="gradv", grid=ph.grid, space_order=ph.space_order)
         grad_expr = [Eq(gradh, gradh - .5 * factor * ph * fields[0] / rho)]
@@ -312,7 +314,7 @@ def imaging_condition(model, ph, pv, fields, vel_fields, isic='noop'):
             divs += staggered_diff(ph, dim=inds[1], order=space_order, stagger=left, theta=theta, phi=phi) * vel_fields[1]
         divs += (staggered_diff(pv, dim=inds[-1], order=space_order, stagger=left, theta=theta, phi=phi) * vel_fields[-1])
                  # staggered_diff(vel_fields[-1], dim=inds[-1], order=space_order, stagger=left, theta=theta, phi=phi))
-        grad_expr = [Inc(grad, grad + .5 * factor * (m * ph * phadt /rho + m * pv * pvadt / rho - divs) / rho)]
+        grad_expr = [Inc(grad, .5 * factor * (m * ph * phadt /rho + m * pv * pvadt / rho - divs) / rho)]
 
     return grad, grad_expr
 
