@@ -106,8 +106,8 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
 
     # Stencils
     s = model.grid.stepping_dim.spacing
-    stencilp = damp * 2 * u - damp **2 * u.backward + s**2 / m * (epsilon * H0 + delta * Hz)
-    stencilr = damp * 2 * v - damp **2 * v.backward + s**2 / m * (delta * H0 + Hz)
+    stencilp = damp * 2 * u - damp **2 * u.backward + damp * s**2 / m * (epsilon * H0 + delta * Hz)
+    stencilr = damp * 2 * v - damp **2 * v.backward + damp * s**2 / m * (delta * H0 + Hz)
     first_stencil = Eq(u.forward, stencilp)
     second_stencil = Eq(v.forward, stencilr)
     expression = [first_stencil, second_stencil]
@@ -182,8 +182,8 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=12, nb
 
     # Stencils
     s = model.grid.stepping_dim.spacing
-    stencilp = damp * 2 * p - damp **2 * p.forward + s**2 / m * H0
-    stencilr = damp * 2 * q - damp **2 * q.forward + s**2 / m * Hz
+    stencilp = damp * 2 * p - damp **2 * p.forward + damp * s**2 / m * H0
+    stencilr = damp * 2 * q - damp **2 * q.forward + damp * s**2 / m * Hz
     first_stencil = Eq(p.backward, stencilp)
     second_stencil = Eq(q.backward, stencilr)
     expression = [first_stencil, second_stencil]
@@ -277,11 +277,11 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=12, nb=40, 
                                         ang0, ang1, ang2, ang3, order_loc)
             lin_exprv -= Dy(Dy(v, ang0, ang1, ang2, ang3, order_loc) * dm,
                                     ang0, ang1, ang2, ang3, order_loc)
-        stencilpl = damp * 2 * ul - damp **2 * ul.backward + s**2 / m * (epsilon * H0l + delta * Hzl - lin_expru)
-        stencilrl = damp * 2 * vl - damp **2 * vl.backward + s**2 / m * (delta * H0l + Hzl - lin_exprv)
+        stencilpl = damp * 2 * ul - damp **2 * ul.backward + damp * s**2 / m * (epsilon * H0l + delta * Hzl - lin_expru)
+        stencilrl = damp * 2 * vl - damp **2 * vl.backward + damp * s**2 / m * (delta * H0l + Hzl - lin_exprv)
     else:
-        stencilpl = damp * 2 * ul - damp **2 * ul.backward + s**2 / m * (epsilon * H0l + delta * Hzl - dm * u.dt2)
-        stencilrl = damp * 2 * vl - damp **2 * vl.backward + s**2 / m * (delta * H0l + Hzl - dm * v.dt2)
+        stencilpl = damp * 2 * ul - damp **2 * ul.backward + damp * s**2 / m * (epsilon * H0l + delta * Hzl - dm * u.dt2)
+        stencilrl = damp * 2 * vl - damp **2 * vl.backward + damp * s**2 / m * (delta * H0l + Hzl - dm * v.dt2)
 
     first_stencil = Eq(u.forward, stencilp)
     second_stencil = Eq(v.forward, stencilr)
@@ -343,8 +343,8 @@ def adjoint_born(model, rec_coords, rec_data, u=None, v=None, op_forward=None, i
     # H0, Hz = FD_kernel(temp_p, temp_r, ang0, ang1, ang2, ang3, space_order)
     # Stencils
     s = model.grid.stepping_dim.spacing
-    stencilp = damp * 2 * p - damp **2 * p.forward + s**2 / m * H0
-    stencilr = damp * 2 * q - damp **2 * q.forward + s**2 / m * Hz
+    stencilp = damp * 2 * p - damp **2 * p.forward + damp * s**2 / m * H0
+    stencilr = damp * 2 * q - damp **2 * q.forward + damp * s**2 / m * Hz
     first_stencil = Eq(p.backward, stencilp)
     second_stencil = Eq(q.backward, stencilr)
     expression = [first_stencil, second_stencil]

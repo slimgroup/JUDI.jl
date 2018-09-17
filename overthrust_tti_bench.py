@@ -52,7 +52,8 @@ if __name__ == "__main__":
     print("running with setup \n isic: %s \n asimuth: %s \n Born: %s \n time subsampling rate: %s" % (args.isic, args.is_phi, args.born,args.t_sub))
     # Load original v and tti params
     # Replace by s3 load
-    v = get_from_s3('Overthrust_tti/over_3d_vp.npy')
+    # v = get_from_s3('Overthrust_tti/over_3d_vp.npy')
+    v = np.load('/data/mlouboutin3/overthrust/over_3d_vp.npy')
 
     # Cut wanted part and interpolate
     buffer_cut_x = 1000. # (in m)
@@ -89,6 +90,23 @@ if __name__ == "__main__":
     ny = len(ynew)
     nz = len(znew)
 
+
+    # Estimate memory usage
+    nrec = 321
+    nline = 10
+    numel = np.prod([d+80 for d in (nx, ny, nz)])
+    numel_sub = np.prod([d+80 for d in (nx, ny, nz)])/8
+    t_sub_factor = args.t_sub
+    n_save = int(12355 / t_sub_factor) + 2
+
+    n_full_fields = 18 if args.is_phi else 17
+    n_sub_fields = n_save * 2 + 1
+
+    size_shot_rec = (3+12355)*(nrec*nline)
+
+    print("estimated memory usage is %s Gb" % (4*(numel * n_full_fields + numel_sub * n_sub_fields + size_shot_rec)/(1024**3)))
+
+    # Interpolate onto new grid
     interpolator = interpolate.RegularGridInterpolator((x, y, z), v_cut)
     gridnew = np.ix_(xnew, ynew, znew)
     v_cut_fine = interpolator(gridnew)
@@ -97,8 +115,8 @@ if __name__ == "__main__":
     v_cut_fine = np.concatenate((1.5*np.ones((v_cut_fine.shape[0], v_cut_fine.shape[1], 100)), v_cut_fine), axis=2)
     v_cut_fine0 = ndimage.gaussian_filter(v_cut_fine, sigma=5)
     dm = 1/v_cut_fine0**2 - 1/v_cut_fine**2
-    # Setup model
 
+    # Setup model
     spacing = (7.5, 7.5, 7.5)
     shape = v_cut_fine.shape
     origin = (xsrc - buffer_cut_x, yrecmin - buffer_cut_y, 0.)
@@ -120,50 +138,36 @@ if __name__ == "__main__":
     # ################### Source and rec ################### 
     # # Source
     t0 = 0.
-    tn = 4500.
+    tn = 6000.
     dt = model.critical_dt
-    print(dt)
     nt = int(1 + (tn-t0) / dt)
     time = np.linspace(t0,tn,nt)
     f0 = 0.040
     src = RickerSource(name='src', grid=model.grid, f0=f0, time=time)
     src.coordinates.data[0, 0] = xsrc
     src.coordinates.data[0, -1] = 20.
-    
+
     wavelet = get_from_s3('Overthrust_tti/wavelet.npy')
     nn = wavelet.shape[0]
     timestep = .002
     filtered = highpass(wavelet, 10, 1/timestep, corners=1, zerophase=True)
 
-    twave = [i*2for i in range(nn)]
+    twave = [i*2 for i in range(nn)]
     tnew = [i*dt for i in range(int(1 + (twave[-1]-t0) / dt))]
     f = interpolate.interp1d(twave, filtered, kind='linear')
     src.data[:len(tnew), 0] = f(tnew)
     # Receiver for observed data
-    nrec = 321
-    nline = 10
     rec_t = Receiver(name='rec_t', grid=model.grid, npoint=nrec*nline, ntime=nt)
     for i in range(nline):
         rec_t.coordinates.data[i*321:(i+1)*321:, 0] = np.linspace(xsrc, xrecmax, nrec)
         rec_t.coordinates.data[i*321:(i+1)*321, 1] = yrecmax - i*100.
         rec_t.coordinates.data[i*321:(i+1)*321, 2] = 50.
 
-    numel = np.prod([d+80 for d in shape])
-    numel_sub = np.prod([d+80 for d in shape])/8
-    t_sub_factor = args.t_sub
-    n_save = int(nt / t_sub_factor) + 2
-
-    n_full_fields = 18 if args.is_phi else 17
-    n_sub_fields = n_save * 2 + 1
-
-    size_shot_rec = (3+nt)*(nrec*nline)
-
-    print("estimated memory usage is %s Gb" % (4*(numel * n_full_fields + numel_sub * n_sub_fields + size_shot_rec)/(1024**3)))
     # Observed data
-    if args.born:
-        dD, utrue, v1 = forward_born(model, src.coordinates.data, src.data, rec_t.coordinates.data, save=True, t_sub_factor=t_sub_factor, h_sub_factor=2, space_order=16)
-    else:
-        dD, utrue, v1 = forward_modeling(model, src.coordinates.data, src.data, rec_t.coordinates.data, save=True, t_sub_factor=t_sub_factor, h_sub_factor=2, space_order=16)
-    g1 = adjoint_born(model, rec_t.coordinates.data, dD.data[:], ph=utrue, pv=v1, isic=args.isic, space_order=16)
-    # Save to S3 bucket.
-    write_to_s3(g1, name='3d-grad.npy', ext='Overthrust_tti.npy')
+    # if args.born:
+    #     dD, utrue, v1 = forward_born(model, src.coordinates.data, src.data, rec_t.coordinates.data, save=True, t_sub_factor=t_sub_factor, h_sub_factor=2, space_order=20)
+    # else:
+    #     dD, utrue, v1 = forward_modeling(model, src.coordinates.data, src.data, rec_t.coordinates.data, save=True, t_sub_factor=t_sub_factor, h_sub_factor=2, space_order=20)
+    # g1 = adjoint_born(model, rec_t.coordinates.data, dD.data[:], ph=utrue, pv=v1, isic=args.isic, space_order=20)
+    # # Save to S3 bucket.
+    # write_to_s3(g1, name='3d-grad.npy', ext='Overthrust_tti.npy')

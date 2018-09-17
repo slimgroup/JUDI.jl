@@ -231,7 +231,7 @@ def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residu
         gradient_update = [Inc(gradient, gradient - dt * u.dt2 / rho * v)]
 
     # Create operator and run
-    set_log_level('INFO')
+    set_log_level('ERROR')
     expression += adj_src + gradient_update
     subs = model.spacing_map
     subs[u.grid.time_dim.spacing] = dt

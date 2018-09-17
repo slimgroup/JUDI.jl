@@ -46,7 +46,7 @@ function limit_model_to_receiver_area(srcGeometry::Geometry,recGeometry::Geometr
         ny_min = Int(round(min_y/model.d[2])) + 1
         ny_max = Int(round(max_y/model.d[2])) + 1
         ox = Float32((nx_min - 1)*model.d[1])
-        ox = Float32((ny_min - 1)*model.d[2])
+        oy = Float32((ny_min - 1)*model.d[2])
         oz = model.o[3]
     end
 
@@ -110,7 +110,7 @@ function limit_model_to_receiver_area(srcGeometry::Geometry,recGeometry::Geometr
         ny_min = Int(round(min_y/model.d[2])) + 1
         ny_max = Int(round(max_y/model.d[2])) + 1
         ox = Float32((nx_min - 1)*model.d[1])
-        ox = Float32((ny_min - 1)*model.d[2])
+        oy = Float32((ny_min - 1)*model.d[2])
         oz = model.o[3]
     end
 

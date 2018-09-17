@@ -78,7 +78,7 @@ All arguments are optional keyword arguments with the following default values:
             file_name="shot", sum_padding=false, save_wavefield=false, optimal_checkpointing=false, frequencies=[], isic=false)
 
 """
-Options(;space_order=8,retry_n=0,limit_m=false,buffer_size=1e3, save_data_to_disk=false, file_path="", file_name="shot",
+Options(;space_order=16,retry_n=0,limit_m=false,buffer_size=1e3, save_data_to_disk=false, file_path="", file_name="shot",
          sum_padding=false, save_wavefield=false, optimal_checkpointing=false, frequencies=[], isic="noop",
          gs=Dict(), normalize=false, freesurface=false, t_sub=1, h_sub=1) =
     Options(space_order,retry_n,limit_m,buffer_size,save_data_to_disk,file_path,file_name, sum_padding,

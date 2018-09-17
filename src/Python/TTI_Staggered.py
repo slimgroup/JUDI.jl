@@ -274,8 +274,7 @@ def imaging_condition(model, ph, pv, fields, vel_fields, isic='noop'):
 
     m, rho = model.m, model.rho
 
-    grad = Function(name="grad", grid=ph.grid)
-
+    grad = Function(name="grad", grid=ph.grid, space_order=ph.space_order)
     inds = model.grid.dimensions
 
     phadt = -fields[0].dt.subs({model.grid.stepping_dim: model.grid.stepping_dim - model.grid.stepping_dim.spacing})
@@ -286,7 +285,20 @@ def imaging_condition(model, ph, pv, fields, vel_fields, isic='noop'):
         factor *= ph.indices[0].factor
 
     if isic == 'noop':
-        grad_expr = [Inc(grad, grad - .5 * factor * (ph * phadt + pv * pvadt) / rho)]
+        gradh = Function(name="gradh", grid=ph.grid, space_order=ph.space_order)
+        gradv = Function(name="gradv", grid=ph.grid, space_order=ph.space_order)
+        grad_expr = [Inc(gradh, gradh - .5 * factor * ph * fields[0] / rho)]
+        grad_expr += [Inc(gradv, gradv - .5 * factor * pv * fields[1] / rho)]
+        if model.grid.dim == 2:
+            theta, phi = model.theta, model.phi
+            dgx = staggered_diff(gradh, dim=inds[0], order=space_order, stagger=left, theta=theta, phi=phi)
+            dgx2 = staggered_diff(dgx, dim=inds[0], order=space_order, stagger=left, theta=theta, phi=phi)
+
+            dgz = staggered_diff(gradv, dim=inds[-1], order=space_order, stagger=left, theta=theta, phi=phi)
+            dgz2 = staggered_diff(dgz, dim=inds[-1], order=space_order, stagger=left, theta=theta, phi=phi)
+            grad_expr += [Eq(grad, model.epsilon*dgx2 + model.delta*dgz2)]
+        else:
+            grad_expr += [Eq(grad, model.epsilon*(gradh.dx2 + gradh.dy2) + model.delta*gradv.dz2)]
     else:
         if isic == 'isotropic':
             theta, phi = 0, 0
@@ -318,7 +330,7 @@ def linearized_source(model, fields, part_vel, isic='noop'):
     gradient = Function(name="grad", grid=model.grid)
     inds = model.grid.dimensions
     if isic == 'noop':
-        lin_src = (0, 0, 0, dm * fields[0].dt / rho, dm * fields[1].dt / rho)
+        lin_src = (0, 0, 0, dm * fields[0] / rho, dm * fields[1] / rho)
     else:
         if isic == 'isotropic':
             theta, phi = 0, 0
@@ -417,7 +429,7 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=16, isic='n
     return rec.data, saved_fields[0], saved_fields[1]
 
 
-def adjoint_born(model, rec_coords, rec_data, ph=None, pv=None, space_order=12, isic='noop'):
+def adjoint_born(model, rec_coords, rec_data, ph=None, pv=None, space_order=16, isic='noop'):
     """
     Constructor method for the adjoint born modelling operator in an acoustic media
     :param model: :class:`Model` object containing the physical parameters
@@ -440,7 +452,7 @@ def adjoint_born(model, rec_coords, rec_data, ph=None, pv=None, space_order=12, 
 
     # Substitute spacing terms to reduce flops
     op = Operator(vel_expr + p_expr + src_term + grad_expr, subs=model.spacing_map,
-                  dse='aggressive', dle='advanced')
+                  dse='advanced', dle='advanced')
     op()
     if resample:
         grad = resample_grad(grad, model, ph.indices[1].factor)
@@ -473,9 +485,13 @@ def staggered_diff(*args, dim, order, stagger=centered, theta=0, phi=0):
     """
     Utility function to generate staggered derivatives
     """
-    func = list(retrieve_functions(*args))[0]
-    ndim = func.grid.dim
-    off = dict([(d, 0) for d in func.grid.dimensions])
+    func = list(retrieve_functions(*args))
+    for i in func:
+        if isinstance(i, Function):
+            dims = i.space_dimensions
+            ndim = i.grid.dim
+            break
+    off = dict([(d, 0) for d in dims])
     if stagger == left:
         off[dim] = -.5
     elif stagger == right:
@@ -489,8 +505,8 @@ def staggered_diff(*args, dim, order, stagger=centered, theta=0, phi=0):
                for i in range(-int(order / 2), int(order / 2))]
         return custom_FD(args, dim, idx, dim + off[dim]*dim.spacing)
     else:
-        x = func.grid.dimensions[0]
-        z = func.grid.dimensions[-1]
+        x = dims[0]
+        z = dims[-1]
         idxx = list(set([(x + int(i+.5+off[x])*x.spacing)
                          for i in range(-int(order / 2), int(order / 2))]))
         dx = custom_FD(args, x, idxx, x + off[x]*x.spacing)
@@ -503,7 +519,7 @@ def staggered_diff(*args, dim, order, stagger=centered, theta=0, phi=0):
         is_y = False
 
         if ndim == 3:
-            y = func.grid.dimensions[1]
+            y = dims[1]
             idxy = list(set([(y + int(i+.5+off[y])*y.spacing)
                              for i in range(-int(order / 2), int(order / 2))]))
             dy = custom_FD(args, y, idxy, y + off[y]*y.spacing)

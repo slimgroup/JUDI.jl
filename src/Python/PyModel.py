@@ -61,7 +61,7 @@ class Model(object):
     :param m: The square slowness of the wave
     :param damp: The damping field for absorbing boundarycondition
     """
-    def __init__(self, origin, spacing, shape, vp, rho=1, nbpml=20, dtype=np.float32, dm=None,
+    def __init__(self, origin, spacing, shape, vp, rho=1, nbpml=40, dtype=np.float32, dm=None,
                  epsilon=None, delta=None, theta=None, phi=None, space_order=8):
         self.shape = shape
         self.nbpml = int(nbpml)
@@ -198,7 +198,7 @@ class Model(object):
         #
         # The CFL condtion is then given by
         # dt <= coeff * h / (max(velocity))
-        coeff = 0.38 if len(self.shape) == 3 else 0.42
+        coeff = 0.38
         dt = coeff * np.min(self.spacing) / (self.scale*np.max(self.vp))
         return self.dtype(.001 * int(1000 * dt))
 

@@ -1,6 +1,7 @@
 import numpy as np
 from argparse import ArgumentParser
 from scipy import ndimage, interpolate
+from obspy.signal.filter import highpass
 from PySource import RickerSource, PointSource, Receiver
 from PyModel import Model
 from TTI_Staggered import forward_modeling, adjoint_born, forward_born
@@ -66,20 +67,22 @@ if __name__ == "__main__":
 
     # Setup interpolation
     x = [i*25 for i in range(shape_orig[0])]
-    xnew = [i*5 for i in range(5*(shape_orig[0]-1) + 1)]
+    xnew = [i*7.5 for i in range(int(25/7.5*(shape_orig[0]-1) + 1))]
     z = [i*25 for i in range(shape_orig[1])]
-    znew = [i*5 for i in range(5*(shape_orig[1]-1) + 1)]
+    znew = [i*7.5 for i in range(int(25/7.5*(shape_orig[1]-1) + 1))]
     nx = len(xnew)
     nz = len(znew)
 
     f = interpolate.interp2d(z, x, v_cut, kind='linear')
     v_cut_fine = f(znew, xnew)
 
-    v_cut_fine = np.concatenate((1.5*np.ones((v_cut_fine.shape[0], 200)), v_cut_fine), axis=1)
+    v_cut_fine = np.concatenate((1.5*np.ones((v_cut_fine.shape[0], 100)), v_cut_fine), axis=1)
 
+    v_cut_fine0 = ndimage.gaussian_filter(v_cut_fine, sigma=5)
+    dm = 1/v_cut_fine0**2 - 1/v_cut_fine**2
     # Setup model
 
-    spacing = (5.0, 5.0)
+    spacing = (7.5, 7.5)
     shape = v_cut_fine.shape
     origin = (xsrc - buffer_cut_x, 0.)
 
@@ -89,15 +92,14 @@ if __name__ == "__main__":
     theta = (v_cut_fine - 1.5) / 10
 
     print("original size was %s, resampled size after cut is %s" % (shape_orig, shape))
-    model = Model(origin, spacing, shape, v_cut_fine, nbpml=40,
+    model = Model(origin, spacing, shape, v_cut_fine0, nbpml=40, dm=dm,
                   epsilon=epsilon, delta=delta, theta=theta, space_order=12)
 
     # ################### Source and rec ################### 
     # # Source
     t0 = 0.
-    tn = 500.
+    tn = 4500.
     dt = model.critical_dt
-    print(dt)
     nt = int(1 + (tn-t0) / dt)
     time = np.linspace(t0,tn,nt)
     f0 = 0.040
@@ -106,7 +108,11 @@ if __name__ == "__main__":
     src.coordinates.data[0, -1] = 20.
 
     wavelet = get_from_s3('Overthrust_tti/wavelet.npy')
-    twave = [i*1.2 for i in range(wavelet.shape[0])]
+    nn = wavelet.shape[0]
+    timestep = .002
+    filtered = highpass(wavelet, 10, 1/timestep, corners=1, zerophase=True)
+
+    twave = [i*2 for i in range(nn)]
     tnew = [i*dt for i in range(int(1 + (twave[-1]-t0) / dt))]
     f = interpolate.interp1d(twave, wavelet, kind='linear')
     src.data[:len(tnew), 0] = f(tnew)
@@ -117,7 +123,7 @@ if __name__ == "__main__":
     rec_t.coordinates.data[:, 1] = 1000.
 
     numel = np.prod([d+80 for d in shape])
-    numel_sub = np.prod([d+80 for d in shape])
+    numel_sub = np.prod([d+80 for d in shape])/4
     t_sub_factor = args.t_sub
     n_save = int(nt / t_sub_factor) + 2
 
@@ -129,10 +135,12 @@ if __name__ == "__main__":
     print("estimated memory usage is %s Gb" % (4*(numel * n_full_fields + numel_sub * n_sub_fields + size_shot_rec)/(1024**3)))
 
     # Observed data
+    space_order = 20
     if args.born:
-        dD, utrue, v1 = forward_born(model, src.coordinates.data, src.data, rec_t.coordinates.data, save=True, t_sub_factor=t_sub_factor)
+        dD, utrue, v1 = forward_born(model, src.coordinates.data, src.data, rec_t.coordinates.data, save=True, t_sub_factor=t_sub_factor, h_sub_factor=2, space_order=space_order)
     else:
-        dD, utrue, v1 = forward_modeling(model, src.coordinates.data, src.data, rec_t.coordinates.data, save=True, t_sub_factor=t_sub_factor)
-    g1 = adjoint_born(model, rec_t.coordinates.data, dD, ph=utrue, pv=v1, isic=args.isic)
+        dD, utrue, v1 = forward_modeling(model, src.coordinates.data, src.data, rec_t.coordinates.data, save=True, t_sub_factor=t_sub_factor, h_sub_factor=2, space_order=space_order)
+    g1 = adjoint_born(model, rec_t.coordinates.data, dD.data[:], ph=utrue, pv=v1, isic=args.isic, space_order=space_order)
     # Save to S3 bucket.
+    from IPython import embed; embed()
     write_to_s3(g1, name='2d-grad.npy', ext='Overthrust_tti/')
