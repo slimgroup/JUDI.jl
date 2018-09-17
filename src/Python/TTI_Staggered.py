@@ -287,8 +287,8 @@ def imaging_condition(model, ph, pv, fields, vel_fields, isic='noop'):
     if isic == 'noop':
         gradh = Function(name="gradh", grid=ph.grid, space_order=ph.space_order)
         gradv = Function(name="gradv", grid=ph.grid, space_order=ph.space_order)
-        grad_expr = [Inc(gradh, gradh - .5 * factor * ph * fields[0] / rho)]
-        grad_expr += [Inc(gradv, gradv - .5 * factor * pv * fields[1] / rho)]
+        grad_expr = [Eq(gradh, gradh - .5 * factor * ph * fields[0] / rho)]
+        grad_expr += [Eq(gradv, gradv - .5 * factor * pv * fields[1] / rho)]
         if model.grid.dim == 2:
             theta, phi = model.theta, model.phi
             dgx = staggered_diff(gradh, dim=inds[0], order=space_order, stagger=left, theta=theta, phi=phi)
