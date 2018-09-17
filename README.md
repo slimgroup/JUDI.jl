@@ -217,8 +217,18 @@ end
 
 ## Authors
 
-This package was written by [Philipp Witte](https://www.slim.eos.ubc.ca/philip) and [Mathias Louboutin](https://www.slim.eos.ubc.ca/content/mathias-louboutin) from the Seismic Laboratory for Imaging and Modeling (SLIM) at the University of British Columbia (UBC).
+This package was written by [Philipp Witte](https://www.slim.eos.ubc.ca/philip) and [Mathias Louboutin](https://www.slim.eos.ubc.ca/content/mathias-louboutin) from the Seismic Laboratory for Imaging and Modeling (SLIM) at the Georgia Institute of Technology.
 
-Contact authors via: pwitte@eoas.ubc.ca, mloubout@eoas.ubc.ca
+If you use our software for your research, please cite us using the following references:
+
+ * Philipp A. Witte, Mathias Louboutin, Navjot Kukreja, Fabio Luporini, Michael Lange, Gerard J. Gorman and Felix J. Herrmann. A large-scale framework for symbolic implementations of seismic inversion algorithms in Julia. Submitted to GEOPHYSICS. 2018. <https://www.slim.eos.ubc.ca/content/large-scale-framework-symbolic-implementations-seismic-inversion-algorithms-julia>
+
+ * Mathias Louboutin, Michael Lange, Fabio Luporini, Navjot Kukreja, Philipp A. Witte, Felix J. Herrmann, Paulius Velesko and Gerard J. Gorman. Devito: An embedded domain-specific language for finite differences and geophysical exploration. Submitted to Geoscientific Model Development. 2018. <https://arxiv.org/abs/1808.01995>.
+ 
+ * Fabio Luporini, Miachael Lange, Mathias Louboutin, Najvot Kukreja, Jan H\"uckelheim, Charles Yount, Philipp A. Witte, Paul H. J. Kelly, Gerard J. Gorman and Felix J. Herrmann. Architecture and performance of Devito, a system for automated stencil computation. Submitted to SIAM Journal on Scientific Computing. 2018. <https://arxiv.org/abs/1807.03032>.
+
+Also visit the Devito homepage at <https://www.devitoproject.org/publications> for more information and references.
+
+Contact authors via: pwitte3@gatech.edu and mlouboutin3@gatech.edu.
 
 
