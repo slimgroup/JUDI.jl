@@ -1,4 +1,4 @@
-# Options structure 
+# Options structure
 # Author: Philipp Witte, pwitte@eos.ubc.ca
 # Date: May 2017
 #
@@ -17,8 +17,8 @@ type Options
     file_name::String
     sum_padding::Bool
     optimal_checkpointing::Bool
-    num_checkpoints::Union{Integer, Void}
-    checkpoints_maxmem::Union{Real, Void}
+    num_checkpoints::Union{Integer, Nothing}
+    checkpoints_maxmem::Union{Real, Nothing}
     frequencies::Array
     dft_subsampling_factor::Integer
     isic::Bool
@@ -82,13 +82,13 @@ Constructor
 
 All arguments are optional keyword arguments with the following default values:
 
-    Options(; space_order, free_surface, limit_m=false, buffer_size=1e3, save_data_to_disk=false, save_wavefield_to_disk=false, file_path=pwd(), file_name="shot", 
+    Options(; space_order, free_surface, limit_m=false, buffer_size=1e3, save_data_to_disk=false, save_wavefield_to_disk=false, file_path=pwd(), file_name="shot",
         sum_padding=false, optimal_checkpointing=false, num_checkpoints=log(nt), checkpoints_maxmem=[], frequencies=[], dft_subsampling_factor=[], isic=false)
 
 """
-Options(; space_order=8, free_surface=false, limit_m=false, buffer_size=1e3, save_data_to_disk=false, save_wavefield_to_disk=false, file_path="", file_name="shot", sum_padding=false, 
-    optimal_checkpointing=false, num_checkpoints=nothing, checkpoints_maxmem=nothing, frequencies=[], dft_subsampling_factor=1, isic=false) = 
-    Options(space_order, free_surface, limit_m, buffer_size, save_data_to_disk, save_wavefield_to_disk, file_path, file_name, 
+Options(; space_order=8, free_surface=false, limit_m=false, buffer_size=1e3, save_data_to_disk=false, save_wavefield_to_disk=false, file_path="", file_name="shot", sum_padding=false,
+    optimal_checkpointing=false, num_checkpoints=nothing, checkpoints_maxmem=nothing, frequencies=[], dft_subsampling_factor=1, isic=false) =
+    Options(space_order, free_surface, limit_m, buffer_size, save_data_to_disk, save_wavefield_to_disk, file_path, file_name,
     sum_padding, optimal_checkpointing, num_checkpoints, checkpoints_maxmem, frequencies, dft_subsampling_factor, isic)
 
 
@@ -102,5 +102,3 @@ function subsample(options::Options, srcnum)
         return opt_out
     end
 end
-
-

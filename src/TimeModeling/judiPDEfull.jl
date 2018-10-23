@@ -9,7 +9,7 @@ export judiPDEfull, judiPDEfullException, subsample
 
 ############################################################
 
-# Type for linear operator representing  Pr*A(m)^-1*Ps, 
+# Type for linear operator representing  Pr*A(m)^-1*Ps,
 # i.e. it includes source and receiver projections
 
 struct judiPDEfull{DDT<:Number,RDT<:Number} <: joAbstractLinearOperator{DDT,RDT}
@@ -22,7 +22,7 @@ struct judiPDEfull{DDT<:Number,RDT<:Number} <: joAbstractLinearOperator{DDT,RDT}
     recGeometry::Geometry
     options::Options
     fop::Function              # forward
-    fop_T::Nullable{Function}  # transpose
+    fop_T::Union{Function, Nothing}  # transpose
 end
 
 mutable struct judiPDEfullException <: Exception
@@ -163,7 +163,3 @@ function subsample{ADDT,ARDT}(F::judiPDEfull{ADDT,ARDT}, srcnum)
 end
 
 getindex(F::judiPDEfull,a) = subsample(F,a)
-
-
-
-

@@ -62,7 +62,7 @@ Example
     F = judiModeling(info, model)
     dobs = Pr*F*Ps'*q
 
-    F = judiModeling(info, model, q.geometry, rec\_geometry)
+    F = judiModeling(info, model, q.geometry, rec_geometry)
     dobs = F*q
 
 """

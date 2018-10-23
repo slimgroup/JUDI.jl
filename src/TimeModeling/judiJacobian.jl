@@ -9,7 +9,7 @@ export judiJacobian, judiJacobianException, subsample
 
 ############################################################
 
-# Type for linear operator representing  Pr*A(m)^-1*Ps, 
+# Type for linear operator representing  Pr*A(m)^-1*Ps,
 # i.e. it includes source and receiver projections
 struct judiJacobian{DDT<:Number,RDT<:Number} <: joAbstractLinearOperator{DDT,RDT}
     name::String
@@ -22,7 +22,7 @@ struct judiJacobian{DDT<:Number,RDT<:Number} <: joAbstractLinearOperator{DDT,RDT
     source
     options::Options
     fop::Function              # forward
-    fop_T::Nullable{Function}  # transpose
+    fop_T::Union{Function, Nothing}  # transpose
 end
 
 
@@ -167,7 +167,7 @@ end
 
 # Subsample Jacobian
 function subsample{ADDT,ARDT}(J::judiJacobian{ADDT,ARDT}, srcnum)
-    
+
     srcGeometry = subsample(J.srcGeometry,srcnum)       # Geometry of subsampled data container
     recGeometry = subsample(J.recGeometry,srcnum)
 
@@ -178,5 +178,3 @@ function subsample{ADDT,ARDT}(J::judiJacobian{ADDT,ARDT}, srcnum)
 end
 
 getindex(J::judiJacobian,a) = subsample(J,a)
-
-

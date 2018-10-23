@@ -5,7 +5,7 @@
 
 module SLIM_optim
 
-using PolynomialRoots
+using PolynomialRoots, Printf
 
 import JUDI
 
@@ -18,6 +18,3 @@ include("Constraints.jl") # Constriaints projection
 include("fwi_linesearch.jl")
 
 end
-
-
-

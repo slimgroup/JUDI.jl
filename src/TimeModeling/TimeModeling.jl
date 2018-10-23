@@ -5,7 +5,7 @@
 
 module TimeModeling
 
-using PyCall, JOLI, SeisIO, Dierckx, ApproXD
+using PyCall, JOLI, SeisIO, Dierckx, Distributed, Pkg
 
 @pyimport PyModel as pm
 @pyimport JAcoustic_codegen as ac
@@ -48,6 +48,3 @@ include("judiJacobian.jl")  # linearized modeling operator J
 include("seismic_preconditioners.jl")
 
 end
-
-
-

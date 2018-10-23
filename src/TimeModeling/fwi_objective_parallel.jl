@@ -1,5 +1,4 @@
-# Parallel instance of fwi_objective function
-# Author: Philipp Witte, pwitte@eos.ubc.ca
+# Parallel instance of fwi_objective function # Author: Philipp Witte, pwitte@eos.ubc.ca
 # Date: January 2017
 #
 
