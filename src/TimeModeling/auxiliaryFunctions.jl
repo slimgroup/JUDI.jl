@@ -8,7 +8,7 @@ export convertToCell, limit_model_to_receiver_area, extend_gradient, remove_out_
 export time_resample, remove_padding, backtracking_linesearch, subsample
 export generate_distribution, select_frequencies, process_physical_parameter
 
-function limit_model_to_receiver_area(srcGeometry::Geometry,recGeometry::Geometry,model::Model,buffer;pert=[])
+function limit_model_to_receiver_area(srcGeometry::Geometry, recGeometry::Geometry, model::Model, buffer; pert=[])
     # Restrict full velocity model to area that contains either sources and receivers
     ndim = length(model.n)
     println("N orig: ", model.n)
@@ -22,11 +22,11 @@ function limit_model_to_receiver_area(srcGeometry::Geometry,recGeometry::Geometr
     end
 
     # add buffer zone if possible
-    min_x = max(model.o[1],min_x-buffer)
-    max_x = min(model.o[1] + model.d[1]*(model.n[1]-1),max_x+buffer)
+    min_x = max(model.o[1], min_x-buffer)
+    max_x = min(model.o[1] + model.d[1]*(model.n[1]-1), max_x+buffer)
     if ndim == 3
-        min_y = max(model.o[2],min_y-buffer)
-        max_y = min(model.o[2] + model.d[2]*(model.n[2]-1),max_y+buffer)
+        min_y = max(model.o[2], min_y-buffer)
+        max_y = min(model.o[2] + model.d[2]*(model.n[2]-1), max_y+buffer)
     end
 
     # extract part of the model that contains sources/receivers
@@ -135,7 +135,7 @@ where the i-th cell contains the i-th entry of `x`.
 """
 function convertToCell(x)
     n = length(x)
-    y = Array{Any}(n)
+    y = Array{Any}(undef, n)
     for j=1:n
         y[j] = x[j]
     end
@@ -153,10 +153,10 @@ and central frequency `f0` (in kHz).
 function ricker_wavelet(tmax, dt, f0)
     t0 = 0.
     nt = Int(trunc((tmax - t0)/dt + 1))
-    t = linspace(t0,tmax,nt)
-    r = (pi * f0 * (t - 1 / f0))
+    t = range(t0,stop=tmax,length=nt)
+    r = (pi * f0 * (t .- 1 / f0))
     q = zeros(Float32,nt,1)
-    q[:,1] = (1. - 2.*r.^2.).*exp.(-r.^2.)
+    q[:,1] = (1f0 .- 2f0 .* r.^2f0) .* exp.(-r.^2f0)
     return q
 end
 
@@ -182,8 +182,8 @@ function get_computational_nt(srcGeometry, recGeometry, model::Model)
     else
         nsrc = length(srcGeometry.xloc)
     end
-    nt = Array{Any}(nsrc)
-    dtComp = calculate_dt(model.n,model.d,model.o,sqrt.(1./model.m),model.rho)
+    nt = Array{Any}(undef, nsrc)
+    dtComp = calculate_dt(model.n, model.d, model.o, sqrt.(1f0 ./ model.m), model.rho)
     for j=1:nsrc
         ntRec = recGeometry.dt[j]*(recGeometry.nt[j]-1) / dtComp
         ntSrc = srcGeometry.dt[j]*(srcGeometry.nt[j]-1) / dtComp
@@ -216,9 +216,9 @@ end
 function setup_3D_grid(xrec::Array{Any,1},yrec::Array{Any,1},zrec::Array{Any,1})
     # Take input 1d x and y coordinate vectors and generate 3d grid. Input are cell arrays
     nsrc = length(xrec)
-    xloc = Array{Any}(nsrc)
-    yloc = Array{Any}(nsrc)
-    zloc = Array{Any}(nsrc)
+    xloc = Array{Any}(undef, nsrc)
+    yloc = Array{Any}(unfef, nsrc)
+    zloc = Array{Any}(undef, nsrc)
     for i=1:nsrc
         nxrec = length(xrec[i])
         nyrec = length(yrec[i])
@@ -242,7 +242,7 @@ function setup_3D_grid(xrec::Array{Any,1},yrec::Array{Any,1},zrec::Array{Any,1})
 end
 
 function setup_3D_grid(xrec,yrec,zrec)
-# Take input 1d x and y coordinate vectors and generate 3d grid. Input are arrays/linspace
+# Take input 1d x and y coordinate vectors and generate 3d grid. Input are arrays/ranges
     nxrec = length(xrec)
     nyrec = length(yrec)
 

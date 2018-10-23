@@ -96,7 +96,7 @@ function judiVector(geometry::Geometry,data::Array; vDT::DataType=Float32)
             m += length(geometry.xloc[j])*geometry.nt[j]
         end
     end
-    dataCell = Array{Array}(nsrc)
+    dataCell = Array{Array}(undef, nsrc)
     for j=1:nsrc
         dataCell[j] = data
     end
@@ -143,7 +143,7 @@ function judiVector(data::SeisIO.SeisBlock; segy_depth_key="RecGroupElevation", 
     geometry = Geometry(data; key="receiver", segy_depth_key=segy_depth_key)
 
     # fill data vector with pointers to data location
-    dataCell = Array{Array}(nsrc)
+    dataCell = Array{Array}(undef, nsrc)
     full_data = convert(Array{Float32,2},data.data)
     for j=1:nsrc
         traces = find(src .== unique(src)[j])
@@ -167,7 +167,7 @@ function judiVector(geometry::Geometry, data::SeisIO.SeisBlock; vDT::DataType=Fl
     n = 1
 
     # fill data vector with pointers to data location
-    dataCell = Array{Array}(nsrc)
+    dataCell = Array{Array}(undef, nsrc)
     for j=1:nsrc
         traces = find(src .== unique(src)[j])
         dataCell[j] = convert(Array{Float32,2},data.data[:,traces])
@@ -276,22 +276,25 @@ end
 ## overloaded Base functions
 
 # conj(jo)
-conj{vDT}(a::judiVector{vDT}) =
+conj(a::judiVector{vDT}) where vDT =
     judiVector{vDT}("conj("*a.name*")",a.m,a.n,a.nsrc,a.geometry,a.data)
 
 # transpose(jo)
-transpose{vDT}(a::judiVector{vDT}) =
+transpose(a::judiVector{vDT}) where vDT =
     judiVector{vDT}(""*a.name*".'",a.n,a.m,a.nsrc,a.geometry,a.data)
 
+adjoint(a::judiVector{vDT}) where vDT =
+        judiVector{vDT}(""*a.name*".'",a.n,a.m,a.nsrc,a.geometry,a.data)
+
 # ctranspose(jo)
-ctranspose{vDT}(a::judiVector{vDT}) =
+ctranspose(a::judiVector{vDT}) where vDT =
     judiVector{vDT}(""*a.name*"'",a.n,a.m,a.nsrc,a.geometry,a.data)
 
 ##########################################################
 
 
 # +(judiVector, judiVector)
-function +{avDT,bvDT}(a::judiVector{avDT}, b::judiVector{bvDT})
+function +(a::judiVector{avDT}, b::judiVector{bvDT}) where {avDT, bvDT}
     size(a) == size(b) || throw(judiVectorException("dimension mismatch"))
     compareGeometry(a.geometry, b.geometry) == 1 || throw(judiVectorException("geometry mismatch"))
     c = deepcopy(a)
@@ -300,7 +303,7 @@ function +{avDT,bvDT}(a::judiVector{avDT}, b::judiVector{bvDT})
 end
 
 # -(judiVector, judiVector)
-function -{avDT,bvDT}(a::judiVector{avDT}, b::judiVector{bvDT})
+function -(a::judiVector{avDT}, b::judiVector{bvDT}) where {avDT, bvDT}
     size(a) == size(b) || throw(judiVectorException("dimension mismatch"))
     compareGeometry(a.geometry, b.geometry) == 1 || throw(judiVectorException("geometry mismatch"))
     c = deepcopy(a)
@@ -309,35 +312,35 @@ function -{avDT,bvDT}(a::judiVector{avDT}, b::judiVector{bvDT})
 end
 
 # +(judiVector, number)
-function +{avDT}(a::judiVector{avDT},b::Number)
+function +(a::judiVector{avDT},b::Number) where avDT
     c = deepcopy(a)
     c.data = c.data+b
     return c
 end
 
 # -(judiVector, number)
-function -{avDT}(a::judiVector{avDT},b::Number)
+function -(a::judiVector{avDT},b::Number) where avDT
     c = deepcopy(a)
     c.data = c.data-b
     return c
 end
 
 # *(judiVector, number)
-function *{avDT}(a::judiVector{avDT},b::Number)
+function *(a::judiVector{avDT},b::Number) where avDT
     c = deepcopy(a)
     c.data = c.data*b
     return c
 end
 
 # *(number, judiVector)
-function *{bvDT}(a::Number,b::judiVector{bvDT})
+function *(a::Number,b::judiVector{bvDT}) where bvDT
     c = deepcopy(b)
     c.data = a*c.data
     return c
 end
 
 # /(judiVector, number)
-function /{avDT}(a::judiVector{avDT},b::Number)
+function /(a::judiVector{avDT},b::Number) where avDT
     c = deepcopy(a)
     if iszero(b)
         error("Division by zero")
@@ -348,7 +351,7 @@ function /{avDT}(a::judiVector{avDT},b::Number)
 end
 
 # *(joLinearFunction, judiVector)
-function *{ADDT,ARDT,avDT}(A::joLinearFunction{ADDT,ARDT},v::judiVector{avDT})
+function *(A::joLinearFunction{ADDT,ARDT},v::judiVector{avDT}) where {ADDT, ARDT, avDT}
     A.n == size(v,1) || throw(judiVectorException("shape mismatch"))
     jo_check_type_match(ADDT,avDT,join(["DDT for *(joLinearFunction,judiVector):",A.name,typeof(A),avDT]," / "))
     V = A.fop(v)
@@ -357,7 +360,7 @@ function *{ADDT,ARDT,avDT}(A::joLinearFunction{ADDT,ARDT},v::judiVector{avDT})
 end
 
 # *(joLinearOperator, judiVector)
-function *{ADDT,ARDT,avDT}(A::joLinearOperator{ADDT,ARDT},v::judiVector{avDT})
+function *(A::joLinearOperator{ADDT,ARDT},v::judiVector{avDT}) where {ADDT, ARDT, avDT}
     A.n == size(v,1) || throw(judiVectorException("shape mismatch"))
     jo_check_type_match(ADDT,avDT,join(["DDT for *(joLinearFunction,judiVector):",A.name,typeof(A),avDT]," / "))
     V = A.fop(v)
@@ -366,7 +369,7 @@ function *{ADDT,ARDT,avDT}(A::joLinearOperator{ADDT,ARDT},v::judiVector{avDT})
 end
 
 # vcat
-function vcat{avDT,bvDT}(a::judiVector{avDT},b::judiVector{bvDT})
+function vcat(a::judiVector{avDT},b::judiVector{bvDT}) where {avDT, bvDT}
     typeof(a.geometry) == typeof(b.geometry) || throw(judiVectorException("Geometry type mismatch"))
     m = a.m + b.m
     n = 1
@@ -375,18 +378,18 @@ function vcat{avDT,bvDT}(a::judiVector{avDT},b::judiVector{bvDT})
     if typeof(a.data) == Array{SeisIO.SeisCon,1} && typeof(b.data) == Array{SeisIO.SeisCon,1}
         data = Array{SeisIO.SeisCon}(nsrc)
     else
-        data = Array{Array}(nsrc)
+        data = Array{Array}(undef, nsrc)
     end
 
-    dt = Array{Any}(nsrc)
-    nt = Array{Any}(nsrc)
-    t = Array{Any}(nsrc)
+    dt = Array{Any}(undef, nsrc)
+    nt = Array{Any}(undef, nsrc)
+    t = Array{Any}(undef, nsrc)
     if typeof(data) == Array{SeisIO.SeisCon,1}
-        nsamples = Array{Any}(nsrc)
+        nsamples = Array{Any}(undef, nsrc)
     else
-        xloc = Array{Any}(nsrc)
-        yloc = Array{Any}(nsrc)
-        zloc = Array{Any}(nsrc)
+        xloc = Array{Any}(undef, nsrc)
+        yloc = Array{Any}(undef, nsrc)
+        zloc = Array{Any}(undef, nsrc)
     end
 
     # Merge data sets and geometries
@@ -427,7 +430,7 @@ function vcat{avDT,bvDT}(a::judiVector{avDT},b::judiVector{bvDT})
 end
 
 # dot product
-function dot{avDT,bvDT}(a::judiVector{avDT}, b::judiVector{bvDT})
+function dot(a::judiVector{avDT}, b::judiVector{bvDT}) where {avDT, bvDT}
 # Dot product for data containers
     size(a) == size(b) || throw(judiVectorException("dimension mismatch"))
     compareGeometry(a.geometry, b.geometry) == 1 || throw(judiVectorException("geometry mismatch"))
@@ -439,7 +442,7 @@ function dot{avDT,bvDT}(a::judiVector{avDT}, b::judiVector{bvDT})
 end
 
 # norm
-function norm{avDT}(a::judiVector{avDT}, p::Real=2)
+function norm(a::judiVector{avDT}, p::Real=2) where avDT
     x = 0.f0
     for j=1:a.nsrc
         x += a.geometry.dt[j] * sum(abs.(vec(a.data[j])).^p)
@@ -449,7 +452,7 @@ end
 
 
 # abs
-function abs{avDT}(a::judiVector{avDT})
+function abs(a::judiVector{avDT}) where avDT
     b = deepcopy(a)
     for j=1:a.nsrc
         b.data[j] = abs.(a.data[j])
@@ -481,7 +484,7 @@ Examples
     Jsub = subsample(J,[10,20])
 
 """
-function subsample{avDT}(a::judiVector{avDT},srcnum)
+function subsample(a::judiVector{avDT},srcnum) where avDT
     geometry = subsample(a.geometry,srcnum)     # Geometry of subsampled data container
     return judiVector(geometry,a.data[srcnum];vDT=avDT)
 end
@@ -489,12 +492,12 @@ end
 getindex(x::judiVector,a) = subsample(x,a)
 
 # Create SeisBlock from judiVector container to write to file
-function judiVector_to_SeisBlock{avDT}(d::judiVector{avDT},q::judiVector{avDT}; source_depth_key="SourceSurfaceElevation", receiver_depth_key="RecGroupElevation")
+function judiVector_to_SeisBlock(d::judiVector{avDT}, q::judiVector{avDT}; source_depth_key="SourceSurfaceElevation", receiver_depth_key="RecGroupElevation") where avDT
 
     typeof(d.geometry) == GeometryOOC && (d.geometry = Geometry(d.geometry))
     typeof(q.geometry) == GeometryOOC && (q.geometry = Geometry(q.geometry))
 
-    blocks = Array{Any}(d.nsrc)
+    blocks = Array{Any}(undef, d.nsrc)
     count = 0
     for j=1:d.nsrc
 
@@ -640,7 +643,7 @@ end
 similar(x::judiVector, element_type::DataType, dims::Union{AbstractUnitRange, Integer}...) = judiVector(x.geometry, x.data)*0f0
 
 function get_data(x::judiVector)
-    shots = Array{Any}(x.nsrc)
+    shots = Array{Any}(undef, x.nsrc)
     rec_geometry = Geometry(x.geometry)
 
     for j=1:x.nsrc

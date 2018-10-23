@@ -6,7 +6,7 @@
 export Options, subsample
 
 # Object for velocity/slowness models
-type Options
+mutable struct Options
     space_order::Integer
     free_surface::Bool
     limit_m::Bool

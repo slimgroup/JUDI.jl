@@ -3,4 +3,5 @@ PyCall
 Dierckx
 IterativeSolvers
 PolynomialRoots
-PyPlot
+JOLI
+SeisIO
