@@ -5,16 +5,14 @@
 
 module TimeModeling
 
-using PyCall, JOLI, SeisIO, Dierckx, Distributed, Pkg, LinearAlgebra
+using JUDI, PyCall, JOLI, SeisIO, Dierckx, Distributed, LinearAlgebra
 
-#@pyimport PyModel as pm
-#@pyimport JAcoustic_codegen as ac
-#@pyimport numpy as np
-import Base.*, Base./, Base.+, Base.-, Base.isequal
+import Base.*, Base./, Base.+, Base.-, Base.isequal, Base.copy!, Base.getindex
 import LinearAlgebra.ctranspose, LinearAlgebra.transpose, LinearAlgebra.conj, LinearAlgebra.vcat, LinearAlgebra.adjoint
 import LinearAlgebra.vec, LinearAlgebra.dot, LinearAlgebra.norm, LinearAlgebra.abs
-# LinearAlgebra.getindex, LinearAlgebra.similar, LinearAlgebra.copy!
-#import Base.LinAlg.scale!, Base.LinAlg.A_mul_B!, Base.LinAlg.Ac_mul_B!, Base.BLAS.axpy!, Base.broadcast!, Base.isapprox, Base.isequal
+import Base.similar, Base.copy!
+import LinearAlgebra.scale!, LinearAlgebra.A_mul_B!, LinearAlgebra.Ac_mul_B!
+import LinearAlgebra.BLAS.axpy!, Base.broadcast!, Base.isapprox, Base.isequal
 
 
 #############################################################################
@@ -33,21 +31,21 @@ include("judiVector.jl")    # Julia data container
 
 #############################################################################
 # PDE solvers
-#include("time_modeling_serial.jl")  # forward/adjoint linear/nonlinear modeling
-#include("time_modeling_parallel.jl")    # parallelization for modeling
-#include("fwi_objective_serial.jl")  # FWI objective function value and gradient
-#include("fwi_objective_parallel.jl")    # parallelization for FWI gradient
+include("time_modeling_serial.jl")  # forward/adjoint linear/nonlinear modeling
+include("time_modeling_parallel.jl")    # parallelization for modeling
+include("fwi_objective_serial.jl")  # FWI objective function value and gradient
+include("fwi_objective_parallel.jl")    # parallelization for FWI gradient
 
 #############################################################################
 # Linear operators
-#include("judiModeling.jl")  # nonlinear modeling operator F (no projection operators)
-#include("judiProjection.jl")    # source/receiver projection operator
-#include("judiPDEfull.jl")   # modeling operator with source and receiver projection: P*F*P'
-#include("judiPDE.jl")   # modeling operator with lhs projection only: P*F
-#include("judiJacobian.jl")  # linearized modeling operator J
+include("judiModeling.jl")  # nonlinear modeling operator F (no projection operators)
+include("judiProjection.jl")    # source/receiver projection operator
+include("judiPDEfull.jl")   # modeling operator with source and receiver projection: P*F*P'
+include("judiPDE.jl")   # modeling operator with lhs projection only: P*F
+include("judiJacobian.jl")  # linearized modeling operator J
 
 #############################################################################
 # Preconditioners and optimization
-#include("seismic_preconditioners.jl")
+include("seismic_preconditioners.jl")
 
 end

@@ -20,10 +20,10 @@ function fwi_objective(model::Model, source::judiVector, dObs::judiVector; optio
 
     # Process shots from source channel asynchronously
     fwi_objective = retry(TimeModeling.fwi_objective)
-    results = Array{Any}(dObs.nsrc)
+    results = Array{Any}(undef, dObs.nsrc)
     @sync begin
         for j=1:dObs.nsrc
-            results[j] = @spawn fwi_objective(model, source[j], dObs[j], j; options=options, frequencies=frequencies)   
+            results[j] = @spawn fwi_objective(model, source[j], dObs[j], j; options=options, frequencies=frequencies)
         end
     end
 
@@ -36,5 +36,3 @@ function fwi_objective(model::Model, source::judiVector, dObs::judiVector; optio
     # first value corresponds to function value, the rest to the gradient
     return gradient[1], gradient[2:end]
 end
-
-

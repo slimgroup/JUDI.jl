@@ -3,7 +3,7 @@
 # May 2018
 #
 
-using JUDI.TimeModeling, SeisIO, Base.Test
+using JUDI.TimeModeling, SeisIO, Test, LinearAlgebra
 
 @testset "Geometry Unit Test" begin
 
@@ -11,9 +11,9 @@ using JUDI.TimeModeling, SeisIO, Base.Test
     nsrc = 2
 
     # Constructor if nt is not passed
-    xsrc = convertToCell(linspace(100f0, 1100f0, nsrc))
-    ysrc = convertToCell(linspace(0f0, 0f0, nsrc))
-    zsrc = convertToCell(linspace(20f0,20f0, nsrc))
+    xsrc = convertToCell(range(100f0, stop=1100f0, length=nsrc))
+    ysrc = convertToCell(range(0f0, stop=0f0, length=nsrc))
+    zsrc = convertToCell(range(20f0, stop=20f0, length=nsrc))
 
     geometry =  Geometry(xsrc, ysrc, zsrc; dt=2f0, t=1000f0)
 
@@ -25,9 +25,9 @@ using JUDI.TimeModeling, SeisIO, Base.Test
     @test isequal(typeof(geometry.t), Array{Any, 1})
 
     # Constructor if coordinates are not passed as a cell arrays
-    xsrc = linspace(100f0, 1100f0, nsrc)
-    ysrc = linspace(0f0, 0f0, nsrc)
-    zsrc = linspace(20f0,20f0, nsrc)
+    xsrc = range(100f0, stop=1100f0, length=nsrc)
+    ysrc = range(0f0, stop=0f0, length=nsrc)
+    zsrc = range(20f0, stop=20f0, length=nsrc)
 
     geometry = Geometry(xsrc, ysrc, zsrc; dt=4f0, t=1000f0, nsrc=nsrc)
 
@@ -64,7 +64,7 @@ using JUDI.TimeModeling, SeisIO, Base.Test
     @test isequal(prod(size(block.data)), sum(rec_geometry.nsamples))
 
     # Set up geometry summary from out-of-core data container passed as cell array
-    container_cell = Array{SeisIO.SeisCon}(nsrc)
+    container_cell = Array{SeisIO.SeisCon}(undef, nsrc)
     for j=1:nsrc
         container_cell[j] = split(container, j)
     end
@@ -80,7 +80,7 @@ using JUDI.TimeModeling, SeisIO, Base.Test
     @test isequal(rec_geometry.segy_depth_key, "RecGroupElevation")
     @test isequal(prod(size(block.data)), sum(rec_geometry.nsamples))
 
-    # Load geometry from out-of-core Geometry container 
+    # Load geometry from out-of-core Geometry container
     src_geometry_ic = Geometry(src_geometry)
     rec_geometry_ic = Geometry(rec_geometry)
 
@@ -119,4 +119,3 @@ using JUDI.TimeModeling, SeisIO, Base.Test
     @test compareGeometry(rec_geometry, rec_geometry)
 
 end
-

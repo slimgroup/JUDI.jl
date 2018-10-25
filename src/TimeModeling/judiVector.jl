@@ -146,7 +146,7 @@ function judiVector(data::SeisIO.SeisBlock; segy_depth_key="RecGroupElevation", 
     dataCell = Array{Array}(undef, nsrc)
     full_data = convert(Array{Float32,2},data.data)
     for j=1:nsrc
-        traces = find(src .== unique(src)[j])
+        traces = findall(src .== unique(src)[j])
         dataCell[j] = full_data[:,traces]
     end
 
@@ -169,7 +169,7 @@ function judiVector(geometry::Geometry, data::SeisIO.SeisBlock; vDT::DataType=Fl
     # fill data vector with pointers to data location
     dataCell = Array{Array}(undef, nsrc)
     for j=1:nsrc
-        traces = find(src .== unique(src)[j])
+        traces = findall(src .== unique(src)[j])
         dataCell[j] = convert(Array{Float32,2},data.data[:,traces])
     end
 
@@ -193,7 +193,7 @@ function judiVector(data::SeisIO.SeisCon; segy_depth_key="RecGroupElevation", vD
     geometry = Geometry(data; key="receiver", segy_depth_key=segy_depth_key)
 
     # fill data vector with pointers to data location
-    dataCell = Array{SeisIO.SeisCon}(nsrc)
+    dataCell = Array{SeisIO.SeisCon}(undef, nsrc)
     for j=1:nsrc
         dataCell[j] = split(data,j)
     end
@@ -215,7 +215,7 @@ function judiVector(geometry::Geometry, data::SeisIO.SeisCon; vDT::DataType=Floa
     n = 1
 
     # fill data vector with pointers to data location
-    dataCell = Array{SeisIO.SeisCon}(nsrc)
+    dataCell = Array{SeisIO.SeisCon}(undef, nsrc)
     for j=1:nsrc
         dataCell[j] = split(data,j)
     end
@@ -240,7 +240,7 @@ function judiVector(data::Array{SeisIO.SeisCon,1}; segy_depth_key="RecGroupEleva
     geometry = Geometry(data; key="receiver", segy_depth_key=segy_depth_key)
 
     # fill data vector with pointers to data location
-    dataCell = Array{SeisIO.SeisCon}(nsrc)
+    dataCell = Array{SeisIO.SeisCon}(undef, nsrc)
     for j=1:nsrc
         dataCell[j] = data[j]
     end
@@ -262,7 +262,7 @@ function judiVector(geometry::Geometry, data::Array{SeisIO.SeisCon}; vDT::DataTy
     n = 1
 
     # fill data vector with pointers to data location
-    dataCell = Array{SeisIO.SeisCon}(nsrc)
+    dataCell = Array{SeisIO.SeisCon}(undef, nsrc)
     for j=1:nsrc
         dataCell[j] = data[j]
     end
@@ -314,28 +314,28 @@ end
 # +(judiVector, number)
 function +(a::judiVector{avDT},b::Number) where avDT
     c = deepcopy(a)
-    c.data = c.data+b
+    c.data = c.data .+ b
     return c
 end
 
 # -(judiVector, number)
 function -(a::judiVector{avDT},b::Number) where avDT
     c = deepcopy(a)
-    c.data = c.data-b
+    c.data = c.data .- b
     return c
 end
 
 # *(judiVector, number)
 function *(a::judiVector{avDT},b::Number) where avDT
     c = deepcopy(a)
-    c.data = c.data*b
+    c.data = c.data .* b
     return c
 end
 
 # *(number, judiVector)
 function *(a::Number,b::judiVector{bvDT}) where bvDT
     c = deepcopy(b)
-    c.data = a*c.data
+    c.data = a .* c.data
     return c
 end
 
@@ -597,7 +597,7 @@ function judiTimeInterpolation(geometry::Geometry,dt_coarse,dt_fine)
         n += length(geometry.xloc[j])*nt_coarse
         m += length(geometry.xloc[j])*nt_fine
     end
-    I = joLinearFunctionFwdT(m,n,
+    I = joLinearFunctionFwd_T(m,n,
                              v -> time_resample(v,dt_fine),
                              w -> time_resample(w,dt_coarse),
                              Float32,Float32,name="Time resampling")

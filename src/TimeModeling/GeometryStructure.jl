@@ -93,7 +93,7 @@ Examples
     rec_geometry = Geometry(seis_block; key="receiver", segy_depth_key="RecGroupElevation")
     src_geometry = Geometry(seis_block; key="source", segy_depth_key="SourceDepth")
 
-Check the seis_block's header entries to find out which keywords contain the depth coordinates.\\
+Check the seis_block's header entries to findall out which keywords contain the depth coordinates.\\
 The source depth keyword is either `SourceDepth` or `SourceSurfaceElevation`. The receiver depth \\
 keyword is typically `RecGroupElevation`.
 
@@ -182,7 +182,7 @@ function Geometry(data::SeisIO.SeisBlock; key="source", segy_depth_key="")
     nt_full = get_header(data, "ns")[1]
 
     for j=1:nsrc
-        traces = find(src .== unique(src)[j])
+        traces = findall(src .== unique(src)[j])
         if key=="source"    # assume same source location for all traces within one shot record
             xloc[j] = convert(Float32,xloc_full[traces][1])
             yloc[j] = convert(Float32,yloc_full[traces][1])
@@ -212,7 +212,7 @@ function Geometry(data::SeisIO.SeisCon; key="source", segy_depth_key="")
 
     # read either source or receiver geometry
     nsrc = length(data)
-    container = Array{SeisIO.SeisCon}(nsrc)
+    container = Array{SeisIO.SeisCon}(undef, nsrc)
     dt = Array{Any}(undef, nsrc); nt = Array{Any}(undef, nsrc); t = Array{Any}(undef, nsrc)
     nsamples = Array{Any}(undef, nsrc)
     for j=1:nsrc
@@ -237,7 +237,7 @@ function Geometry(data::Array{SeisIO.SeisCon,1}; key="source", segy_depth_key=""
     end
 
     nsrc = length(data)
-    container = Array{SeisIO.SeisCon}(nsrc)
+    container = Array{SeisIO.SeisCon}(undef, nsrc)
     dt = Array{Any}(undef, nsrc); nt = Array{Any}(undef, nsrc); t = Array{Any}(undef, nsrc)
     nsamples = Array{Any}(undef, nsrc)
     for j=1:nsrc

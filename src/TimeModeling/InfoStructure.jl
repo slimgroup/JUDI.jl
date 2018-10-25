@@ -22,7 +22,7 @@ end
         nt::Array{Any,1}
 
 Info structure that contains information from which the dimensions of Modeling\\
-and Projection operators can be inferred. 
+and Projection operators can be inferred.
 
 Constructor
 ===========
@@ -34,9 +34,9 @@ number of computational time steps `nt` (either as single integer or cell array)
 
 """
 function Info(n::IntNum, nsrc::Integer, nt::Integer)
-    ntCell = Array{Any}(nsrc)
-    for j=1:nsrc 
-        ntCell[j] = nt 
+    ntCell = Array{Any}(undef, nsrc)
+    for j=1:nsrc
+        ntCell[j] = nt
     end
     return Info(n,nsrc,ntCell)
 end
@@ -51,5 +51,3 @@ function compareInfo(info_A, info_B)
         return false
     end
 end
-
-

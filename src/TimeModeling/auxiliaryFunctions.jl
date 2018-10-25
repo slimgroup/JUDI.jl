@@ -7,6 +7,7 @@ export ricker_wavelet, get_computational_nt, smooth10, damp_boundary, calculate_
 export convertToCell, limit_model_to_receiver_area, extend_gradient, remove_out_of_bounds_receivers
 export time_resample, remove_padding, backtracking_linesearch, subsample
 export generate_distribution, select_frequencies, process_physical_parameter
+export load_pymodel, load_acoustic_codegen, load_numpy
 
 function limit_model_to_receiver_area(srcGeometry::Geometry, recGeometry::Geometry, model::Model, buffer; pert=[])
     # Restrict full velocity model to area that contains either sources and receivers
@@ -89,7 +90,7 @@ function remove_out_of_bounds_receivers(recGeometry::Geometry, model::Model)
     # Only keep receivers within the model
     xmin = model.o[1]
     if typeof(recGeometry.xloc[1]) <: Array
-        idx_xrec = find(x -> x >= xmin, recGeometry.xloc[1])
+        idx_xrec = findall(x -> x >= xmin, recGeometry.xloc[1])
         recGeometry.xloc[1] = recGeometry.xloc[1][idx_xrec]
         recGeometry.zloc[1] = recGeometry.zloc[1][idx_xrec]
     end
@@ -97,7 +98,7 @@ function remove_out_of_bounds_receivers(recGeometry::Geometry, model::Model)
     # For 3D shot records, scan also y-receivers
     if length(model.n) == 3 && typeof(recGeometry.yloc[1]) <: Array
         ymin = model.o[2]
-        idx_yrec = find(x -> x >= ymin, recGeometry.yloc[1])
+        idx_yrec = findall(x -> x >= ymin, recGeometry.yloc[1])
         recGeometry.yloc[1] = recGeometry.yloc[1][idx_yrec]
         recGeometry.zloc[1] = recGeometry.zloc[1][idx_yrec]
     end
@@ -109,7 +110,7 @@ function remove_out_of_bounds_receivers(recGeometry::Geometry, recData::Array, m
     # Only keep receivers within the model
     xmin = model.o[1]
     if typeof(recGeometry.xloc[1]) <: Array
-        idx_xrec = find(x -> x > xmin, recGeometry.xloc[1])
+        idx_xrec = findall(x -> x > xmin, recGeometry.xloc[1])
         recGeometry.xloc[1] = recGeometry.xloc[1][idx_xrec]
         recGeometry.zloc[1] = recGeometry.zloc[1][idx_xrec]
         recData[1] = recData[1][:, idx_xrec]
@@ -118,7 +119,7 @@ function remove_out_of_bounds_receivers(recGeometry::Geometry, recData::Array, m
     # For 3D shot records, scan also y-receivers
     if length(model.n) == 3 && typeof(recGeometry.yloc[1]) <: Array
         ymin = model.o[2]
-        idx_yrec = find(x -> x > ymin, recGeometry.yloc[1])
+        idx_yrec = findall(x -> x > ymin, recGeometry.yloc[1])
         recGeometry.yloc[1] = recGeometry.yloc[1][idx_yrec]
         recGeometry.zloc[1] = recGeometry.zloc[1][idx_yrec]
         recData[1] = recData[1][:, idx_yrec]
@@ -160,7 +161,26 @@ function ricker_wavelet(tmax, dt, f0)
     return q
 end
 
+function load_pymodel()
+    pushfirst!(PyVector(pyimport("sys")["path"]), joinpath(JUDIPATH, "Python"))
+    @pyimport PyModel as pm
+    return pm
+end
+
+function load_numpy()
+    pushfirst!(PyVector(pyimport("sys")["path"]), joinpath(JUDIPATH, "Python"))
+    @pyimport numpy as np
+    return np
+end
+
+function load_acoustic_codegen()
+    pushfirst!(PyVector(pyimport("sys")["path"]), joinpath(JUDIPATH, "Python"))
+    @pyimport JAcoustic_codegen as ac
+    return ac
+end
+
 function calculate_dt(n,d,o,v,rho; epsilon=0)
+    pm = load_pymodel()
     length(n) == 2 ? pyDim = [n[2], n[1]] : pyDim = [n[3],n[2],n[1]]
     modelPy = pm.Model(o, d, pyDim, PyReverseDims(v))
     dtComp = modelPy[:critical_dt]
@@ -268,12 +288,12 @@ function smooth10(velocity,shape)
     if length(shape)==3
         out[:,:,:] = velocity[:,:,:]
         for a=5:nz-6
-            out[:,:,a] = sum(velocity[:,:,a-4:a+5],3) / 10
+            out[:,:,a] = sum(velocity[:,:,a-4:a+5], dims=3) / 10
         end
     else
         out[:,:] = velocity[:,:]
         for a=5:nz-6
-            out[:,a] = sum(velocity[:,a-4:a+5],2) / 10
+            out[:,a] = sum(velocity[:,a-4:a+5], dims=2) / 10
         end
     end
     return out
@@ -282,20 +302,20 @@ end
 function remove_padding(gradient::Array, nb::Integer; true_adjoint::Bool=false)
     if ndims(gradient) == 2
         if true_adjoint
-            gradient[nb+1,:] = sum(gradient[1:nb,:],1)
-            gradient[end-nb,:] = sum(gradient[end-nb+1:end,:],1)
-            gradient[:,nb+1] = sum(gradient[:,1:nb],2)
-            gradient[:,end-nb] = sum(gradient[:,end-nb+1:end],2)
+            gradient[nb+1,:] = sum(gradient[1:nb,:], dims=1)
+            gradient[end-nb,:] = sum(gradient[end-nb+1:end,:], dims=1)
+            gradient[:,nb+1] = sum(gradient[:,1:nb], dims=2)
+            gradient[:,end-nb] = sum(gradient[:,end-nb+1:end], dims=2)
         end
         return gradient[nb+1:end-nb,nb+1:end-nb]
     elseif ndims(gradient)==3
         if true_adjoint
-            gradient[nb+1,:,:] = sum(gradient[1:nb,:,:],1)
-            gradient[end-nb,:,:] = sum(gradient[end-nb+1:end,:,:],1)
-            gradient[:,nb+1,:] = sum(gradient[:,1:nb,:],2)
-            gradient[:,end-nb,:] = sum(gradient[:,end-nb+1:end,:],2)
-            gradient[:,:,nb+1] = sum(gradient[:,:,1:nb],3)
-            gradient[:,:,end-nb] = sum(gradient[:,:,end-nb+1:end],3)
+            gradient[nb+1,:,:] = sum(gradient[1:nb,:,:], dims=1)
+            gradient[end-nb,:,:] = sum(gradient[end-nb+1:end,:,:], dims=1)
+            gradient[:,nb+1,:] = sum(gradient[:,1:nb,:], dims=2)
+            gradient[:,end-nb,:] = sum(gradient[:,end-nb+1:end,:], dims=2)
+            gradient[:,:,nb+1] = sum(gradient[:,:,1:nb], dims=3)
+            gradient[:,:,end-nb] = sum(gradient[:,:,end-nb+1:end], dims=3)
         end
         return gradient[nb+1:end-nb,nb+1:end-nb,nb+1:end-nb]
     else

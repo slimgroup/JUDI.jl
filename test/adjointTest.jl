@@ -3,7 +3,7 @@
 # Date: January 2017
 #
 
-using PyCall, PyPlot, JUDI.TimeModeling, Base.Test
+using PyCall, PyPlot, JUDI.TimeModeling, Test, LinearAlgebra
 
 ## Set up model structure
 n = (160, 170)	# (x,y,z) or (x,z)
@@ -11,15 +11,15 @@ d = (10.,10.)
 o = (0.,0.)
 
 # Velocity [km/s]
-v = ones(Float32,n) * 2.0f0
-v[:,Int(round(end/3)):end] = 4f0
+v = ones(Float32,n) .* 2.0f0
+v[:,Int(round(end/3)):end] .= 4f0
 v0 = smooth10(v,n)
 rho = ones(Float32, n)
-rho[:, Int(round(end/2)):end] = 1.5f0
+rho[:, Int(round(end/2)):end] .= 1.5f0
 
 # Slowness squared [s^2/km^2]
-m = (1f0./v).^2
-m0 = (1f0./v0).^2
+m = (1f0 ./ v).^2
+m0 = (1f0 ./ v0).^2
 dm = vec(m - m0)
 
 # Setup info and model structure
@@ -29,9 +29,9 @@ model0 = Model(n,d,o,m0,rho=rho)
 
 ## Set up receiver geometry
 nxrec = 141
-xrec = linspace(600f0,1000f0,nxrec)
+xrec = range(600f0,stop=1000f0,length=nxrec)
 yrec = 0f0
-zrec = linspace(100f0,100f0,nxrec)
+zrec = range(100f0,stop=100f0,length=nxrec)
 
 # receiver sampling and recording time
 timeR = 800f0	# receiver recording time [ms]
@@ -41,8 +41,8 @@ dtR = calculate_dt(n,d,o,v,rho)    # receiver sampling interval
 recGeometry = Geometry(xrec,yrec,zrec;dt=dtR,t=timeR,nsrc=nsrc)
 
 ## Set up source geometry (cell array with source locations for each shot)
-xsrc = 800f0 
-ysrc = 0f0 
+xsrc = 800f0
+ysrc = 0f0
 zsrc = 50f0
 
 # source sampling and number of time steps
@@ -81,7 +81,7 @@ q_hat = F'*d1
 # Result F
 a = dot(d1, d_hat)
 b = dot(q, q_hat)
-@test isapprox(a/b - 1, 0, atol=1f-5)
+@test isapprox(a/b - 1, 0, atol=1f-4)
 
 # Linearized modeling
 J = judiJacobian(F,q)
@@ -91,10 +91,4 @@ dm_hat = J'*d_hat
 
 c = dot(dD_hat, d_hat)
 d = dot(dm, dm_hat)
-@test isapprox(c/d - 1, 0, atol=1f-5)
-
-
-
-
-
-
+@test isapprox(c/d - 1, 0, atol=1f-4)

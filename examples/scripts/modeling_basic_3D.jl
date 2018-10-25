@@ -12,9 +12,9 @@ d = (10., 10., 10.)
 o = (0., 0., 0.)
 
 # Velocity [km/s]
-v = ones(Float32,n) * 1.4f0
-v0 = ones(Float32,n) * 1.4f0
-v[:, :, Int(round(end/2)):end] = 4.0f0
+v = ones(Float32,n) .* 1.4f0
+v0 = ones(Float32,n) .* 1.4f0
+v[:, :, Int(round(end/2)):end] .= 4.0f0
 rho = ones(Float32, n)
 
 # Slowness squared [s^2/km^2]
@@ -30,15 +30,15 @@ model0 = Model(n, d, o, m0)
 ## Set up 3D receiver geometry by defining one receiver vector in each x and y direction
 nxrec = 120
 nyrec = 100
-xrec = linspace(50f0, 1150f0, nxrec)
-yrec = linspace(100f0, 900f0, nyrec)
+xrec = range(50f0, stop=1150f0, length=nxrec)
+yrec = range(100f0, stop=900f0, length=nyrec)
 zrec = 50f0
 
 # Construct 3D grid from basis vectors
 (xrec, yrec, zrec) = setup_3D_grid(xrec, yrec, zrec)
 
 # receiver sampling and recording time
-timeR = 1000f0   # receiver recording time [ms]
+timeR = 100f0   # receiver recording time [ms]
 dtR = 4f0    # receiver sampling interval
 
 # Set up receiver structure
@@ -50,7 +50,7 @@ ysrc = convertToCell([200f0, 400f0, 600f0, 800f0])
 zsrc = convertToCell([50f0, 60f0, 70f0, 80f0])
 
 # source sampling and number of time steps
-timeS = 1000f0   # source length in [ms]
+timeS = 100f0   # source length in [ms]
 dtS = 2f0    # source sampling interval
 
 # Set up source structure
@@ -76,7 +76,7 @@ Ps = judiProjection(info, srcGeometry)
 q = judiVector(srcGeometry, wavelet)
 
 # Nonlinear modeling
-dobs = Pr*F*Ps'*q  
+dobs = Pr*F*Ps'*q
 qad = Ps*F*Pr'*dobs
 
 # Linearied modeling
@@ -85,9 +85,5 @@ J = judiJacobian(Pr*F0*Ps', q)
 dD = J*dm
 rtm = J'*dD
 
-# evaluate FWI objective function 
+# evaluate FWI objective function
 f, g = fwi_objective(model0, q, dobs; options=opt)
-
-
-
-

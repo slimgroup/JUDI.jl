@@ -124,7 +124,7 @@ function muteWavefield(u_in::judiWavefield,ts_keep)
 	for j=1:u.info.nsrc
 		idx = ones(size(u.data[j],1));
 		idx[ts_keep] = 0
-		zero_idx = find(idx)
+		zero_idx = findall(idx)
 		u.data[j][zero_idx,:,:] *= 0.f0
 	end
 	return u
@@ -132,6 +132,7 @@ end
 
 # norm
 function norm(a::judiWavefield{avDT}, p::Real=2) where avDT
+	np = load_numpy()
     x = 0.f0
     for j=1:a.info.nsrc
         if typeof(a.data[j]) == String

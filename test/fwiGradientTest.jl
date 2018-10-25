@@ -4,7 +4,7 @@
 # Date: January 2017
 #
 
-using PyCall, PyPlot, JUDI.TimeModeling, Base.Test
+using PyCall, PyPlot, JUDI.TimeModeling, Test, LinearAlgebra
 
 ## Set up model structure
 n = (120,100)	# (x,y,z) or (x,z)
@@ -12,15 +12,15 @@ d = (10.,10.)
 o = (0.,0.)
 
 # Velocity [km/s]
-v = ones(Float32,n) * 2.0f0
-v[:,Int(round(end/2)):end] = 3.0f0
+v = ones(Float32,n) .* 2.0f0
+v[:,Int(round(end/2)):end] .= 3.0f0
 v0 = smooth10(v,n)
 rho = ones(Float32, n)
-rho[:, Int(round(end/2)):end] = 1.5f0
+rho[:, Int(round(end/2)):end] .= 1.5f0
 
 # Slowness squared [s^2/km^2]
-m = (1f0./v).^2
-m0 = (1f0./v0).^2
+m = (1f0 ./ v).^2
+m0 = (1f0 ./ v0).^2
 dm = m0 - m
 
 # Setup info and model structure
@@ -32,9 +32,9 @@ model0 = Model(n,d,o,m0;rho=rho)
 
 ## Set up receiver geometry
 nxrec = 81
-xrec = linspace(200f0,1000f0,nxrec)
+xrec = range(200f0,stop=1000f0,length=nxrec)
 yrec = 0.
-zrec = linspace(100f0,100f0,nxrec)
+zrec = range(100f0,stop=100f0,length=nxrec)
 
 # receiver sampling and recording time
 timeR = 1000f0	# receiver recording time [ms]
@@ -92,14 +92,14 @@ for j=1:iter
 
 	println(h, " ", error1[j], " ", error2[j])
 	h_all[j] = h
-	h = h/2f0
+	global h = h/2f0
 end
 
 # Check error decay
 rate_0th_order = 2^(iter - 1)   # error decays w/ factor 2
 rate_1st_order = 4^(iter - 1)   # error decays w/ factor 4
 
-@test error1[end] <= error1[1] / rate_0th_order 
+@test error1[end] <= error1[1] / rate_0th_order
 @test error2[end] <= error2[1] / rate_1st_order
 
 # Plot errors
@@ -111,4 +111,3 @@ if isinteractive()
     ylabel(L"Error $||\cdot||^\infty$")
     title("FWI gradient test")
 end
-

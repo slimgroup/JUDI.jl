@@ -5,7 +5,7 @@
 
 module SLIM_optim
 
-using PolynomialRoots, Printf
+using PolynomialRoots, Printf, Statistics, LinearAlgebra, Random
 
 import JUDI
 

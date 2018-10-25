@@ -10,7 +10,7 @@ export model_topmute, judiTopmute, find_water_bottom, depth_scaling, judiDepthSc
 ############################################ Data space preconditioners ################################################
 
 
-function marineTopmute2D(Dobs::judiVector, muteStart::Integer; mute=Array{Any}(3), flipmask=false)
+function marineTopmute2D(Dobs::judiVector, muteStart::Integer; mute=Array{Any}(undef, 3), flipmask=false)
     # Data topmute for end-on spread marine streamer data
     Din = deepcopy(Dobs)
 
@@ -37,7 +37,7 @@ function marineTopmute2D(Dobs::judiVector, muteStart::Integer; mute=Array{Any}(3
             z0 = mute[2]
             slope = mute[3]
         end
-    
+
         mask = ones(Float32,nt,nrec)
         mask[1:z0,:]=0f0
 
@@ -51,10 +51,10 @@ function marineTopmute2D(Dobs::judiVector, muteStart::Integer; mute=Array{Any}(3
             zax = z0+1:1:nt
         end
         if length(zax) > 1
-            xax = Array{Int}(round.(linspace(x0,x,length(zax))))
-        else 
+            xax = Array{Int}(round.(range(x0,stop=x,length=length(zax))))
+        else
             xax = Int(round(x0))
-        end                         
+        end
         for k=1:length(zax)
             mask[zax[k],xax[k]:end] = 0f0
         end
@@ -64,7 +64,7 @@ function marineTopmute2D(Dobs::judiVector, muteStart::Integer; mute=Array{Any}(3
     return Din
 end
 
-function judiMarineTopmute2D(muteStart,geometry;params=Array{Any}(3))
+function judiMarineTopmute2D(muteStart,geometry;params=Array{Any}(undef, 3))
 # JOLI wrapper for the linear depth scaling function
     nsrc = length(geometry.xloc)
     N = 0
@@ -192,8 +192,3 @@ function laplace(model::TimeModeling.Model)
     # 2D Laplace operator
     D = kron(Dz,Ix) + kron(Iz,Dx)
 end
-
-
-
-
-

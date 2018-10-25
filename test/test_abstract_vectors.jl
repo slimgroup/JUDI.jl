@@ -3,7 +3,7 @@
 # May 2018
 #
 
-using JUDI.TimeModeling, SeisIO, Base.Test
+using JUDI.TimeModeling, SeisIO, Test, LinearAlgebra
 
 # Example structures
 
@@ -11,16 +11,16 @@ example_info(; n=(120,100), nsrc=2, ntComp=1000) = Info(prod(n), nsrc, ntComp)
 example_model(; n=(120,100), d=(10f0, 10f0), o=(0f0, 0f0), m=randn(Float32, n)) = Model(n, d, o, m)
 
 function example_rec_geometry(; nsrc=2, nrec=120)
-    xrec = linspace(50f0, 1150f0, nrec)
+    xrec = range(50f0, stop=1150f0, length=nrec)
     yrec = 0f0
-    zrec = linspace(50f0, 50f0, nrec)
+    zrec = range(50f0, stop=50f0, length=nrec)
     return Geometry(xrec, yrec, zrec; dt=4f0, t=1000f0, nsrc=nsrc)
 end
 
 function example_src_geometry(; nsrc=2)
-    xrec = linspace(100f0, 1000f0, nsrc)
+    xrec = range(100f0, stop=1000f0, length=nsrc)
     yrec = 0f0
-    zrec = linspace(50f0, 50f0, nsrc)
+    zrec = range(50f0, stop=50f0, length=nsrc)
     return Geometry(xrec, yrec, zrec; dt=4f0, t=1000f0, nsrc=nsrc)
 end
 
@@ -33,7 +33,7 @@ end
     nsrc = 2
     info = example_info(nsrc=nsrc)
     rec_geometry = example_rec_geometry(nsrc=nsrc)
-    data = Array{Array}(nsrc)
+    data = Array{Array}(undef, nsrc)
     for j=1:nsrc
         data[j] = randn(Float32, rec_geometry.nt[j], length(rec_geometry.xloc[j]))
     end
@@ -51,8 +51,8 @@ end
     info = example_info(nsrc=nsrc)
     rec_geometry = example_rec_geometry(nsrc=nsrc)
     src_geometry = example_src_geometry(nsrc=nsrc)
-    data1 = Array{Array}(nsrc)
-    data2 = Array{Array}(nsrc)
+    data1 = Array{Array}(undef, nsrc)
+    data2 = Array{Array}(undef, nsrc)
     for j=1:nsrc
         data1[j] = randn(Float32, rec_geometry.nt[j], length(rec_geometry.xloc[j]))
         data2[j] = randn(Float32, src_geometry.nt[j], length(src_geometry.xloc[j]))
@@ -88,6 +88,3 @@ end
 end
 
 ######################################################### judiWavefield ################################################
-
-
-

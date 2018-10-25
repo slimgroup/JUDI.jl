@@ -4,7 +4,10 @@
 # Date: January 2017
 #
 
-using JUDI.TimeModeling, SeisIO, PyCall
+using LinearAlgebra, Random
+using JUDI, JUDI.TimeModeling, SeisIO, PyCall
+
+pushfirst!(PyVector(pyimport("sys")["path"]), joinpath(dirname(pathof(JUDI)), "Python"))
 @pyimport devito as dv
 @pyimport numpy as np
 @pyimport PyModel as pm
@@ -16,9 +19,9 @@ d = (10., 10.)
 o = (0., 0.)
 
 # Velocity [km/s]
-v = ones(Float32,n) + 0.4f0
-v0 = ones(Float32,n) + 0.4f0
-v[:,Int(round(end/2)):end] = 3f0
+v = ones(Float32,n) .+ 0.4f0
+v0 = ones(Float32,n) .+ 0.4f0
+v[:,Int(round(end/2)):end] .= 3f0
 
 # Slowness squared [s^2/km^2]
 m = (1f0 ./ v).^2
@@ -27,14 +30,14 @@ dm = vec(m - m0)
 
 # Setup info and model structure
 nsrc = 1	# number of sources
-model = Model(n, d, o, m)	
+model = Model(n, d, o, m)
 model0 = Model(n, d, o, m0)
 
 ## Set up receiver geometry
 nxrec = 120
-xrec = linspace(50f0, 1150f0, nxrec)
+xrec = range(50f0, stop=1150f0, length=nxrec)
 yrec = 0f0
-zrec = linspace(50f0, 50f0, nxrec)
+zrec = range(50f0, stop=50f0, length=nxrec)
 
 # receiver sampling and recording time
 timeR = 1000f0   # receiver recording time [ms]
@@ -99,5 +102,3 @@ v2 = F*v
 # Linearized modeling
 dD = J*dm
 rtm1 = J'*dD
-
-

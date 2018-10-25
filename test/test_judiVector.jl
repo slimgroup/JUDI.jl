@@ -3,12 +3,12 @@
 # May 2018
 #
 
-using JUDI.TimeModeling, SeisIO, Base.Test, Base.BLAS.axpy!
+using JUDI.TimeModeling, SeisIO, Test, LinearAlgebra, LinearAlgebra.BLAS.axpy!
 
 function example_rec_geometry(; nsrc=2, nrec=120)
-    xrec = linspace(50f0, 1150f0, nrec)
+    xrec = range(50f0, stop=1150f0, length=nrec)
     yrec = 0f0
-    zrec = linspace(50f0, 50f0, nrec)
+    zrec = range(50f0, stop=50f0, length=nrec)
     return Geometry(xrec, yrec, zrec; dt=4f0, t=1000f0, nsrc=nsrc)
 end
 
@@ -34,7 +34,7 @@ ns = 251
     @test isequal(size(d_obs), dsize)
 
     # set up judiVector from cell array
-    data = Array{Array}(nsrc)
+    data = Array{Array}(undef, nsrc)
     for j=1:nsrc
         data[j] = randn(Float32, 251, nrec)
     end
@@ -85,7 +85,7 @@ ns = 251
     @test isequal(size(d_cont), dsize)
 
     # contructor for out-of-core data container from cell array of containers
-    container_cell = Array{SeisIO.SeisCon}(nsrc)
+    container_cell = Array{SeisIO.SeisCon}(undef, nsrc)
     for j=1:nsrc
         container_cell[j] = split(container, j)
     end
@@ -153,10 +153,10 @@ ns = 251
     @test isapprox(u + v, v + u; rtol=eps(1f0))
     @test isapprox(u, u + 0; rtol=eps(1f0))
     @test iszero(norm(u + u*(-1)))
-    @test isapprox(a*(b*u), (a*b)*u; rtol=eps(1f0))
-    @test isapprox(u, u*1; rtol=eps(1f0))
-    @test isapprox(a*(u + v), a*u + a*v; rtol=eps(1f0))
-    @test isapprox((a + b)*v, a*v + b*v; rtol=eps(1f0))
+    @test isapprox(a .* (b .* u), (a * b) .* u; rtol=eps(1f0))
+    @test isapprox(u, u .* 1; rtol=eps(1f0))
+    @test isapprox(a .* (u + v), a .* u + a .* v; rtol=eps(1f0))
+    @test isapprox((a + b) .* v, a .* v + b.* v; rtol=eps(1f0))
 
     # subsamling
     d_block_sub = d_block[1]
@@ -241,7 +241,7 @@ ns = 251
     @test isequal(d_resample.geometry.nt[1], nt_new)
     @test isequal(size(d_resample.data[1])[1], nt_new)
 
-    d_recover = I'*d_resample
+    d_recover = transpose(I)*d_resample
     @test isapprox(d_recover, d_block)
 
     # scale
@@ -287,7 +287,7 @@ ns = 251
 
     @test isapprox(w, w_add)
     @test isapprox(a*v, v_add)
-    @test isapprox(a*v + w, u_add)
+    @test isapprox(a .* v + w, u_add)
 
     # in-place overwrite
     u = judiVector(rec_geometry, randn(Float32, ns, nrec))
@@ -307,7 +307,7 @@ ns = 251
     a = randn(1)[1]
     axpy!(a, u_blas, v_blas)
     @test isapprox(u_blas, u)
-    @test isapprox(v_blas, a*u + v)
+    @test isapprox(v_blas, a .* u + v)
 
     # similar
     d_zero = similar(d_block, Float32)
@@ -321,4 +321,3 @@ ns = 251
     @test isapprox(d_block, d_get)
 
 end
-

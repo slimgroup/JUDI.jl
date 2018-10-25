@@ -3,7 +3,7 @@
 # May 2018
 #
 
-using JUDI.TimeModeling, SeisIO, Base.Test
+using JUDI.TimeModeling, SeisIO, Test, LinearAlgebra
 
 # Example structures
 
@@ -11,16 +11,16 @@ example_info(; n=(120,100), nsrc=2, ntComp=1000) = Info(prod(n), nsrc, ntComp)
 example_model(; n=(120,100), d=(10f0, 10f0), o=(0f0, 0f0), m=randn(Float32, n)) = Model(n, d, o, m)
 
 function example_rec_geometry(; nsrc=2, nrec=120)
-    xrec = linspace(50f0, 1150f0, nrec)
+    xrec = range(50f0, stop=1150f0, length=nrec)
     yrec = 0f0
-    zrec = linspace(50f0, 50f0, nrec)
+    zrec = range(50f0, stop=50f0, length=nrec)
     return Geometry(xrec, yrec, zrec; dt=4f0, t=1000f0, nsrc=nsrc)
 end
 
 function example_src_geometry(; nsrc=2)
-    xrec = linspace(100f0, 1000f0, nsrc)
+    xrec = range(100f0, stop=1000f0, length=nsrc)
     yrec = 0f0
-    zrec = linspace(50f0, 50f0, nsrc)
+    zrec = range(50f0, stop=50f0, length=nsrc)
     return Geometry(xrec, yrec, zrec; dt=4f0, t=1000f0, nsrc=nsrc)
 end
 
@@ -97,12 +97,12 @@ end
     src_geometry = example_src_geometry()
     Ps = judiProjection(info, src_geometry)
 
-    PDE = PDE_forward*Ps'
+    PDE = PDE_forward*transpose(Ps)
     @test isequal(typeof(PDE), judiPDEfull{Float32, Float32})
     @test isequal(PDE.recGeometry, rec_geometry)
     @test isequal(PDE.srcGeometry, src_geometry)
 
-    PDEad = PDE_adjoint*Ps'
+    PDEad = PDE_adjoint*transpose(Ps)
     @test isequal(typeof(PDEad), judiPDEfull{Float32, Float32})
     @test isequal(PDEad.srcGeometry, rec_geometry)
     @test isequal(PDEad.recGeometry, src_geometry)
@@ -191,9 +191,8 @@ end
     @test isequal(Pr_sub.info.nsrc, 2)
     @test isequal(size(Pr_sub), size(Pr))
 
-    RHS = Ps'*q
+    RHS = transpose(Ps)*q
     @test isequal(typeof(RHS), judiRHS{Float32})
     @test isequal(RHS.geometry, q.geometry)
 
 end
-

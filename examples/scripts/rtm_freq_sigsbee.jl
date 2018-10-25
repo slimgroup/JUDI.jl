@@ -21,9 +21,9 @@ dm = vec(dm)
 ## Set up receiver geometry
 nsrc = 1    # number of sources
 nxrec = 1200
-xrec = linspace(700f0, 6700f0, nxrec)
+xrec = range(700f0, stop=6700f0, length=nxrec)
 yrec = 0f0
-zrec = linspace(50f0, 50f0, nxrec)
+zrec = range(50f0, stop=50f0, length=nxrec)
 
 # receiver sampling and recording time
 timeR = 8000f0   # receiver recording time [ms]
@@ -90,4 +90,3 @@ tic()
 rtm2 = J'*d_lin2
 toc()
 figure(); imshow(reshape(rtm2, model0.n)')
-

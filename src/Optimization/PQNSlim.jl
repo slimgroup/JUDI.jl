@@ -108,9 +108,9 @@ function  minConf_PQN(funObj,x,funProj,options)
 
         # Compute Step Direction
         if i == 1
-       
+
             p = funProj(x-g);
-        
+
             projects = projects+1;
             S = zeros(Float32, nVars,0);
             Y = zeros(Float32, nVars,0);
@@ -148,9 +148,9 @@ function  minConf_PQN(funObj,x,funProj,options)
             p, subProjects = solveSubProblem(x,g,HvFunc,funProj,options.SPGoptTol,options.SPGprogTol,options.SPGiters,options.SPGtestOpt,feasibleInit,xSubInit);
             projects = projects+subProjects;
         end
-        d = p-x;
-        g_old = g;
-        x_old = x;
+        global d = p-x;
+        global g_old = g;
+        global x_old = x;
 
         # Check that Progress can be made along the direction
         gtd = dot(g,d);
@@ -163,11 +163,11 @@ function  minConf_PQN(funObj,x,funProj,options)
 
         # Select Initial Guess to step length
         if i == 1 || options.adjustStep == 0
-           t = 1; 
+           t = 1;
         else
             t = min(1,2*(f-f_old)/gtd);
         end
-    
+
         # Bound Step length on first iteration
         if i == 1
             t = min(1,1/sum(abs.(d)));
@@ -186,7 +186,7 @@ function  minConf_PQN(funObj,x,funProj,options)
         f_old = f;
         while f_new > f + options.suffDec*dot(g,(x_new-x)) || ~isLegal(f_new) || ~isLegal(g_new)
             temp = t;
-        
+
             # Backtrack to next trial value
             if ~isLegal(f_new) || ~isLegal(g_new)
                 if options.verbose == 3
@@ -230,7 +230,7 @@ function  minConf_PQN(funObj,x,funProj,options)
             x_new = x + Float32(t)*d;
             f_new, g_new = funObj(x_new);
             funEvals = funEvals+1;
-        
+
             if funEvals > options.maxIter
                 break
             end
@@ -243,7 +243,7 @@ function  minConf_PQN(funObj,x,funProj,options)
         fsave = [fsave ; f];
         # iter_save = [iter_save x];
         g = g_new;
-    
+
         optCond = maximum(abs.(funProj(x-g)-x));
         projects = projects+1;
 
@@ -278,17 +278,17 @@ function  minConf_PQN(funObj,x,funProj,options)
             end
             break;
         end
-    
+
         if projects > options.maxProject
             if options.verbose >= 1
                 @printf("Number of projections exceeds maxProject\n");
             end
             break;
         end
-    
+
         i = i + 1;
     #    pause
     end
-    
+
     return x, fsave, funEvals
 end
