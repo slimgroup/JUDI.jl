@@ -20,12 +20,11 @@ mutable struct Options
     num_checkpoints::Union{Integer, Nothing}
     checkpoints_maxmem::Union{Real, Nothing}
     frequencies::Array
-    isic::String
+    isic::Bool
     t_sub::Integer
     h_sub::Integer
     gs::Dict
     normalize::Bool
-    freesurface::Bool
     dft_subsampling_factor::Integer
 end
 
@@ -45,7 +44,7 @@ end
         num_checkpoints::Integer
         checkpoints_maxmem::Real
 	    frequencies::Array
-	    isic::String
+	    isic::Bool
 	    t_sub::Integer
 	    h_sub::Integer
 	    gs::Dict
@@ -96,10 +95,45 @@ All arguments are optional keyword arguments with the following default values:
             file_name="shot", sum_padding=false, save_wavefield=false, optimal_checkpointing=false, frequencies=[], isic=false)
 
 """
-Options(;space_order=8,retry_n=0,limit_m=false,buffer_size=1e3, save_data_to_disk=false, file_path="", file_name="shot",
-         sum_padding=false, save_wavefield=false, optimal_checkpointing=false, frequencies=[], isic="noop",
-         gs=Dict(), normalize=false, freesurface=false, t_sub=1, h_sub=1, dft_subsampling_factor=1) = Options(space_order,retry_n,limit_m,buffer_size,save_data_to_disk,file_path,file_name, sum_padding,
-            save_wavefield, optimal_checkpointing, frequencies, isic, t_sub, h_sub, gs, normalize, freesurface,dft_subsampling_factor)
+Options(;space_order=8,
+		 free_surface=false,
+         limit_m=false,
+		 buffer_size=1e3,
+		 save_data_to_disk=false,
+		 file_path="",
+		 file_name="shot",
+         sum_padding=false,
+		 save_wavefield=false,
+		 optimal_checkpointing=false,
+		 num_checkpoints=nothing,
+		 checkpoints_maxmem=nothing,
+		 frequencies=[],
+		 isic=false,
+         gs=Dict(),
+		 normalize=false,
+		 freesurface=false,
+		 t_sub=1,
+		 h_sub=1,
+		 dft_subsampling_factor=1) = 
+		 Options(space_order,
+		 		 free_surface,
+		         limit_m,
+				 buffer_size,
+				 save_data_to_disk,
+				 save_wavefield,
+				 file_path,
+				 file_name,
+				 sum_padding,
+				 optimal_checkpointing,
+				 num_checkpoints,
+				 checkpoints_maxmem,
+				 frequencies,
+				 isic,
+				 t_sub,
+				 h_sub,
+				 gs,
+				 normalize,
+				 dft_subsampling_factor)
 
 function subsample(options::Options, srcnum)
     if isempty(options.frequencies)

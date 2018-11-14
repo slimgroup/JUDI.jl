@@ -251,7 +251,7 @@ end
 function calculate_dt(n,d,o,v,rho; epsilon=0)
     pm = load_pymodel()
     length(n) == 2 ? pyDim = [n[2], n[1]] : pyDim = [n[3],n[2],n[1]]
-    modelPy = pm.Model(o, d, pyDim, PyReverseDims(v))
+    modelPy = pm[:Model](o, d, pyDim, PyReverseDims(v))
     dtComp = modelPy[:critical_dt]
 end
 

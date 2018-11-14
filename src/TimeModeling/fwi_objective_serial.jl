@@ -24,7 +24,7 @@ function fwi_objective(model_full::Model, source::judiVector, dObs::judiVector, 
     tmaxRec = dObs.geometry.t[1]
 
     # Set up Python model structure (force origin to be zero due to current devito bug)
-    modelPy = pm.Model(origin=(0.,0.,0.), spacing=model.d, shape=model.n, vp=process_physical_parameter(sqrt.(1f0./model.m), dims), nbpml=model.nb,
+    modelPy = pm[:Model](origin=(0.,0.,0.), spacing=model.d, shape=model.n, vp=process_physical_parameter(sqrt.(1f0./model.m), dims), nbpml=model.nb,
                        rho=process_physical_parameter(model.rho, dims), space_order=options.space_order)
     dtComp = modelPy[:critical_dt]
 
@@ -45,18 +45,18 @@ function fwi_objective(model_full::Model, source::judiVector, dObs::judiVector, 
 
     # Forward modeling to generate synthetic data and background wavefields
     if options.optimal_checkpointing == true
-        op_F = pycall(ac.forward_modeling, PyObject, modelPy, PyReverseDims(src_coords'), PyReverseDims(qIn'), PyReverseDims(rec_coords'), op_return=true)
-        argout1, argout2 = pycall(ac.adjoint_born, PyObject, modelPy, PyReverseDims(rec_coords'), PyReverseDims(dObserved'),
+        op_F = pycall(ac[:forward_modeling], PyObject, modelPy, PyReverseDims(copy(transpose(src_coords))), PyReverseDims(qIn'), PyReverseDims(copy(transpose(rec_coords))), op_return=true)
+        argout1, argout2 = pycall(ac[:adjoint_born], PyObject, modelPy, PyReverseDims(copy(transpose(rec_coords))), PyReverseDims(dObserved'),
                                   op_forward=op_F, is_residual=false, freesurface=options.freesurface)
     elseif ~isempty(options.frequencies)
         typeof(options.frequencies) == Array{Any,1} && (options.frequencies = options.frequencies[srcnum])
-        dPredicted, uf_real, uf_imag = pycall(ac.forward_freq_modeling, PyObject, modelPy, PyReverseDims(src_coords'), PyReverseDims(qIn'), PyReverseDims(rec_coords'),
+        dPredicted, uf_real, uf_imag = pycall(ac[:forward_freq_modeling], PyObject, modelPy, PyReverseDims(copy(transpose(src_coords))), PyReverseDims(qIn'), PyReverseDims(copy(transpose(rec_coords))),
                                               options.frequencies, space_order=options.space_order, nb=model.nb, freesurface=options.freesurface)
         argout1 = .5f0*norm(vec(dPredicted) - vec(dObserved),2)^2.f0    # data misfit
-        argout2 = pycall(ac.adjoint_freq_born, Array{Float32, length(model.n)}, modelPy, PyReverseDims(rec_coords'), PyReverseDims((dPredicted - dObserved)'),
+        argout2 = pycall(ac[:adjoint_freq_born], Array{Float32, length(model.n)}, modelPy, PyReverseDims(copy(transpose(src_coords))), PyReverseDims((dPredicted - dObserved)'),
                          options.frequencies, uf_real, uf_imag, space_order=options.space_order, nb=model.nb, freesurface=options.freesurface)
     else
-        dPredicted, u0 = pycall(ac.forward_modeling, PyObject, modelPy, PyReverseDims(src_coords'), PyReverseDims(qIn'), PyReverseDims(rec_coords'), save=true, freesurface=options.freesurface)
+        dPredicted, u0 = pycall(ac[:forward_modeling], PyObject, modelPy, PyReverseDims(transpose(src_coords)), PyReverseDims(qIn'), PyReverseDims(copy(transpose(rec_coords))), save=true, freesurface=options.freesurface)
     	# Data misfit
         if isempty(options.gs)
             # wrong misfit for trace based
@@ -66,7 +66,7 @@ function fwi_objective(model_full::Model, source::judiVector, dObs::judiVector, 
             argout1 = misfit(dPredicted, dObserved, options.normalize; trace=options.gs["strategy"])
             residual = gs_residual(options.gs, dtComp, dPredicted, dObserved, options.normalize)
         end
-        argout2 = pycall(ac.adjoint_born, Array{Float32}, modelPy, PyReverseDims(rec_coords'), PyReverseDims(residual'),
+        argout2 = pycall(ac[:adjoint_born], Array{Float32}, modelPy, PyReverseDims(copy(transpose(rec_coords))), PyReverseDims(residual'),
                          u=u0, is_residual=true, freesurface=options.freesurface)
     end
     argout2 = remove_padding(argout2, model.nb, true_adjoint=options.sum_padding)
@@ -100,7 +100,7 @@ function fwi_objective(model_full::Model_TTI, source::judiVector, dObs::judiVect
     tmaxRec = dObs.geometry.t[1]
 
     # Set up Python model structure (force origin to be zero due to current devito bug)
-    modelPy = pm.Model(origin=(0.,0.,0.), spacing=model.d, shape=model.n, vp=process_physical_parameter(sqrt.(1f0./model.m), dims),
+    modelPy = pm[:Model](origin=(0.,0.,0.), spacing=model.d, shape=model.n, vp=process_physical_parameter(sqrt.(1f0./model.m), dims),
                        epsilon=process_physical_parameter(model.epsilon, dims),
                        delta=process_physical_parameter(model.delta, dims),
                        theta=process_physical_parameter(model.theta, dims),
@@ -124,13 +124,13 @@ function fwi_objective(model_full::Model_TTI, source::judiVector, dObs::judiVect
 
     # Forward modeling to generate synthetic data and background wavefields
     if options.optimal_checkpointing == true
-        op_F = pycall(tti.forward_modeling, PyObject, modelPy, PyReverseDims(src_coords'), PyReverseDims(qIn'), PyReverseDims(rec_coords'), op_return=true)
-        argout1, argout2 = pycall(tti.adjoint_born, PyObject, modelPy, PyReverseDims(rec_coords'), PyReverseDims(dObserved'),
+        op_F = pycall(tti[:forward_modeling], PyObject, modelPy, PyReverseDims(copy(transpose(src_coords))), PyReverseDims(qIn'), PyReverseDims(copy(transpose(rec_coords))), op_return=true)
+        argout1, argout2 = pycall(tti[:adjoint_born], PyObject, modelPy, PyReverseDims(copy(transpose(rec_coords))), PyReverseDims(dObserved'),
                                   op_forward=op_F, is_residual=false)
     else
-        dPredicted, u0, v0 = pycall(tti.forward_modeling, PyObject, modelPy, PyReverseDims(src_coords'), PyReverseDims(qIn'), PyReverseDims(rec_coords'), save=true)
+        dPredicted, u0, v0 = pycall(tti[:forward_modeling], PyObject, modelPy, PyReverseDims(copy(transpose(src_coords))), PyReverseDims(qIn'), PyReverseDims(copy(transpose(rec_coords))), save=true)
         argout1 = .5f0*norm(vec(dPredicted) - vec(dObserved),2)^2.f0    # data misfit
-        argout2 = pycall(tti.adjoint_born, Array{Float32}, modelPy, PyReverseDims(rec_coords'), PyReverseDims((dPredicted  - dObserved)'),
+        argout2 = pycall(tti[:adjoint_born], Array{Float32}, modelPy, PyReverseDims(copy(transpose(rec_coords))), PyReverseDims((dPredicted  - dObserved)'),
                          u=u0,  is_residual=true)
     end
     argout2 = remove_padding(argout2, model.nb, true_adjoint=options.sum_padding)
