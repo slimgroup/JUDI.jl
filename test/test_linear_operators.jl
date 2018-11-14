@@ -29,7 +29,7 @@ end
 function test_transpose(Op)
     @test isequal(size(Op), size(conj(Op)))
     @test isequal(reverse(size(Op)), size(transpose(Op)))
-    @test isequal(reverse(size(Op)), size(ctranspose(Op)))
+    @test isequal(reverse(size(Op)), size(adjoint(Op)))
     @test isequal(reverse(size(Op)), size(transpose(Op)))
     return true
 end
@@ -61,7 +61,7 @@ end
     @test isequal(typeof(F_forward), judiModeling{Float32, Float32})
     @test isequal(typeof(F_adjoint), judiModelingAdjoint{Float32, Float32})
 
-    # conj, transpose, ctranspose
+    # conj, transpose, adjoint
     @test test_transpose(F_forward)
     @test test_transpose(F_adjoint)
 
@@ -85,7 +85,7 @@ end
     @test isequal(typeof(PDE_forward), judiPDE{Float32, Float32})
     @test isequal(typeof(PDE_adjoint), judiPDEadjoint{Float32, Float32})
 
-    # conj, transpose, ctranspose
+    # conj, transpose, adjoint
     @test test_transpose(PDE_forward)
     @test test_transpose(PDE_adjoint)
 

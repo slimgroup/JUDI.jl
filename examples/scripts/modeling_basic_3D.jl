@@ -76,14 +76,14 @@ Ps = judiProjection(info, srcGeometry)
 q = judiVector(srcGeometry, wavelet)
 
 # Nonlinear modeling
-dobs = Pr*F*Ps'*q
-qad = Ps*F*Pr'*dobs
+dobs = Pr*F*adjoint(Ps)*q
+qad = Ps*F*adjoint(Pr)*dobs
 
 # Linearied modeling
 F0 = judiModeling(info, model0) # modeling operator for background model
-J = judiJacobian(Pr*F0*Ps', q)
+J = judiJacobian(Pr*F0*adjoint(Ps), q)
 dD = J*dm
-rtm = J'*dD
+rtm = adjoint(J)*dD
 
 # evaluate FWI objective function
 f, g = fwi_objective(model0, q, dobs; options=opt)

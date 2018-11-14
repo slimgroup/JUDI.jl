@@ -74,8 +74,8 @@ conj(A::judiRHS{vDT}) where vDT =
 transpose(A::judiRHS{vDT}) where vDT =
     judiRHS{vDT}(""*A.name*".'",A.n,A.m,A.info,A.geometry,A.data)
 
-# ctranspose(jo)
-ctranspose(A::judiRHS{vDT}) where vDT =
+# adjoint(jo)
+adjoint(A::judiRHS{vDT}) where vDT =
     judiRHS{vDT}(""*A.name*"'",A.n,A.m,A.info,A.geometry,A.data)
 
 ####################################################################

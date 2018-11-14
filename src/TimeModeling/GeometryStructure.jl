@@ -70,9 +70,9 @@ Examples
 
 (1) Set up receiver geometry for 2D experiment with 4 source locations and 80 fixed receivers:
 
-    xrec = linspace(100,900,80)
-    yrec = linspace(0,0,80)
-    zrec = linspace(50,50,80)
+    xrec = range(100,stop=900,length=80)
+    yrec = range(0,stop=0,length=80)
+    zrec = range(50,stop=50,length=80)
     dt = 4f0
     t = 1000f0
 

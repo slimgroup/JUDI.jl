@@ -124,10 +124,10 @@ function  minConf_PQN(funObj,x,funProj,options)
             k = size(Y,2);
             L = zeros(Float32, k, k);
             for j = 1:k
-                L[j+1:k,j] = S[:,j+1:k]'*Y[:,j];
+                L[j+1:k,j] = transpose(S[:,j+1:k])*Y[:,j];
             end
             N = [S/Hdiag Y];
-            M = [S'*S/Hdiag L;L' -diagm(diag(S'*Y))];
+            M = [transpose(S)*S/Hdiag L;transpose(L) -diagm(diag(transpose(S)*Y))];
             HvFunc(v) = lbfgsHvFunc2(v,Hdiag,N,M);
 
             if options.bbInit
@@ -197,7 +197,7 @@ function  minConf_PQN(funObj,x,funProj,options)
                 if options.verbose == 3
                     @printf("Cubic Backtracking\n");
                 end
-                t = polyinterp([0 f gtd; t f_new g_new'*d]);
+                t = polyinterp([0 f gtd; t f_new transpose(g_new)*d]);
             end
 
             # Adjust if change is too small/large

@@ -38,7 +38,7 @@ info = Info(prod(model0.n),d_obs.nsrc,ntComp)
 Pr = judiProjection(info,d_obs.geometry)
 Ps = judiProjection(info,q.geometry)
 F = judiModeling(info,model0)
-J = judiJacobian(Pr*F*Ps',q)
+J = judiJacobian(Pr*F*adjoint(Ps),q)
 
 # Optimization parameters
 maxiter = 10
@@ -51,7 +51,7 @@ for j=1:maxiter
     println("Iteration: ",j)
 
     # Model predicted data for subset of sources
-    d_pred = Pr*F*Ps'*q
+    d_pred = Pr*F*adjoint(Ps)*q
     fhistory_GN[j] = .5f0*norm(d_pred - d_obs)^2
 
     # GN update direction
@@ -61,4 +61,4 @@ for j=1:maxiter
     model0.m = model0.m - reshape(p, model0.n)    # alpha=1
 end
 
-figure(); imshow(sqrt.(1f0./model0.m)'); title("FWI with Gauss-Newton")
+figure(); imshow(adjoint(sqrt.(1f0./model0.m))); title("FWI with Gauss-Newton")

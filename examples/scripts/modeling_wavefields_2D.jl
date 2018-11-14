@@ -77,15 +77,15 @@ Pr = judiProjection(info, recGeometry)
 F = judiModeling(info, model; options=opt)
 F0 = judiModeling(info, model0; options=opt)
 Ps = judiProjection(info, srcGeometry)
-J = judiJacobian(Pr*F0*Ps', q)
+J = judiJacobian(Pr*F0*adjoint(Ps), q)
 
 # Nonlinear modeling
-dobs = Pr*F*Ps'*q
-qad = Ps*F'*Pr'*dobs
+dobs = Pr*F*adjoint(Ps)*q
+qad = Ps*adjoint(F)*adjoint(Pr)*dobs
 
 # Return wavefields
-u = F*Ps'*q
-v = F'*Pr'*dobs
+u = F*adjoint(Ps)*q
+v = adjoint(F)*adjoint(Pr)*dobs
 
 # Compute norm
 println("forward wavefield 2-norm: ", norm(u))
@@ -93,7 +93,7 @@ println("adjoint wavefield 1-norm: ", norm(v, 1))
 
 # Wavefields as source
 dnew = Pr*F*v
-qnew = Ps*F'*u
+qnew = Ps*adjoint(F)*u
 
 # Wavefields as source + return wavefields
 u2 = F*u
@@ -101,4 +101,4 @@ v2 = F*v
 
 # Linearized modeling
 dD = J*dm
-rtm1 = J'*dD
+rtm1 = adjoint(J)*dD

@@ -283,12 +283,9 @@ conj(a::judiVector{vDT}) where vDT =
 transpose(a::judiVector{vDT}) where vDT =
     judiVector{vDT}(""*a.name*".'",a.n,a.m,a.nsrc,a.geometry,a.data)
 
+# adjoint(jo)
 adjoint(a::judiVector{vDT}) where vDT =
         judiVector{vDT}(""*a.name*".'",a.n,a.m,a.nsrc,a.geometry,a.data)
-
-# ctranspose(jo)
-ctranspose(a::judiVector{vDT}) where vDT =
-    judiVector{vDT}(""*a.name*"'",a.n,a.m,a.nsrc,a.geometry,a.data)
 
 ##########################################################
 
@@ -315,6 +312,13 @@ end
 function +(a::judiVector{avDT},b::Number) where avDT
     c = deepcopy(a)
     c.data = c.data .+ b
+    return c
+end
+
+# +(number, judiVector)
+function +(a::Number,b::judiVector{avDT}) where avDT
+    c = deepcopy(b)
+    c.data = b.data .+ a
     return c
 end
 
@@ -376,7 +380,7 @@ function vcat(a::judiVector{avDT},b::judiVector{bvDT}) where {avDT, bvDT}
     nsrc = a.nsrc + b.nsrc
 
     if typeof(a.data) == Array{SeisIO.SeisCon,1} && typeof(b.data) == Array{SeisIO.SeisCon,1}
-        data = Array{SeisIO.SeisCon}(nsrc)
+        data = Array{SeisIO.SeisCon}(undef, nsrc)
     else
         data = Array{Array}(undef, nsrc)
     end
@@ -449,7 +453,6 @@ function norm(a::judiVector{avDT}, p::Real=2) where avDT
     end
     return x^(1.f0/p)
 end
-
 
 # abs
 function abs(a::judiVector{avDT}) where avDT
@@ -604,17 +607,17 @@ function judiTimeInterpolation(geometry::Geometry,dt_coarse,dt_fine)
     return I
 end
 
-function scale!(a::Number,x::judiVector)
-    for j=1:x.nsrc
-        x.data[j] *= a
-    end
-end
+#function scale!(a::Number,x::judiVector)
+#    for j=1:x.nsrc
+#        x.data[j] *= a
+#    end
+#end
 
-function scale!(x::judiVector,a::Number)
-    for j=1:x.nsrc
-        x.data[j] *= a
-    end
-end
+#function scale!(x::judiVector,a::Number)
+#    for j=1:x.nsrc
+#        x.data[j] *= a
+#    end
+#end
 
 broadcast!(.*, x::judiVector, y::judiVector, a::Number) = scale!(y, a)
 
@@ -634,11 +637,11 @@ function copy!(x::judiVector,y::judiVector)
     x.geometry = deepcopy(y.geometry)
 end
 
-function axpy!(a::Number,X::judiVector,Y::judiVector)
-    for j=1:Y.nsrc
-        Y.data[j] = a*X.data[j] + Y.data[j]
-    end
-end
+#function axpy!(a::Number,X::judiVector,Y::judiVector)
+#    for j=1:Y.nsrc
+#        Y.data[j] = a*X.data[j] + Y.data[j]
+#    end
+#end
 
 similar(x::judiVector, element_type::DataType, dims::Union{AbstractUnitRange, Integer}...) = judiVector(x.geometry, x.data)*0f0
 
@@ -679,8 +682,8 @@ dot(x::Float32, y::SeisIO.IBMFloat32) = dot(x, convert(Float32,y))
 -(x::SeisIO.IBMFloat32, y::Float32) = -(convert(Float32,x),y)
 -(x::Float32, y::SeisIO.IBMFloat32) = -(x,convert(Float32,y))
 
-+(a::Number, x::SeisIO.SeisCon) = +(a,x[1].data)
-+(x::SeisIO.SeisCon, a::Number) = +(x[1].data,a)
++(a::Number, x::SeisIO.SeisCon) = .+(a,x[1].data)
++(x::SeisIO.SeisCon, a::Number) = .+(x[1].data,a)
 
 -(a::Number, x::SeisIO.SeisCon) = -(a,x[1].data)
 -(x::SeisIO.SeisCon, a::Number) = -(x[1].data,a)

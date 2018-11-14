@@ -76,7 +76,7 @@ qr = judiVector(srcGeometry,wave_rand)
 d1 = F*qr
 
 # Adjoint computation
-q_hat = F'*d1
+q_hat = adjoint(F)*d1
 
 # Result F
 a = dot(d1, d_hat)
@@ -87,7 +87,7 @@ b = dot(q, q_hat)
 J = judiJacobian(F,q)
 
 dD_hat = J*dm
-dm_hat = J'*d_hat
+dm_hat = adjoint(J)*d_hat
 
 c = dot(dD_hat, d_hat)
 d = dot(dm, dm_hat)

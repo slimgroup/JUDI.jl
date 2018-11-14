@@ -8,11 +8,11 @@ module TimeModeling
 using JUDI, PyCall, JOLI, SeisIO, Dierckx, Distributed, LinearAlgebra
 
 import Base.*, Base./, Base.+, Base.-, Base.isequal, Base.copy!, Base.getindex
-import LinearAlgebra.ctranspose, LinearAlgebra.transpose, LinearAlgebra.conj, LinearAlgebra.vcat, LinearAlgebra.adjoint
+import LinearAlgebra.transpose, LinearAlgebra.conj, LinearAlgebra.vcat, LinearAlgebra.adjoint
 import LinearAlgebra.vec, LinearAlgebra.dot, LinearAlgebra.norm, LinearAlgebra.abs
-import Base.similar, Base.copy!
-import LinearAlgebra.scale!, LinearAlgebra.A_mul_B!, LinearAlgebra.Ac_mul_B!
-import LinearAlgebra.BLAS.axpy!, Base.broadcast!, Base.isapprox, Base.isequal
+import Base.similar, Base.isapprox, Base.isequal, Base.broadcast!
+import LinearAlgebra.rmul!
+#import LinearAlgebra.A_mul_B!, LinearAlgebra.Ac_mul_B!, LinearAlgebra.BLAS.axpy!
 
 
 #############################################################################

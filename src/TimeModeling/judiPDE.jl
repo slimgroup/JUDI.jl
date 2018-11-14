@@ -118,13 +118,6 @@ adjoint(A::judiPDE{DDT,RDT}) where {DDT,RDT} =
 		A.fop
 		)
 
-# ctranspose(jo)
-ctranspose(A::judiPDE{DDT,RDT}) where {DDT,RDT} =
-    judiPDEadjoint{DDT,RDT}(A.name,A.n,A.m,A.info,A.model,A.geometry,A.options,
-        A.fop_T,
-        A.fop
-        )
-
 # conj(jo)
 conj(A::judiPDEadjoint{DDT,RDT}) where {DDT,RDT}=
     judiPDEadjoint{DDT,RDT}("conj("*A.name*")",A.m,A.n,A.info,A.model,A.geometry,A.options,
@@ -145,12 +138,6 @@ adjoint(A::judiPDEadjoint{DDT,RDT}) where {DDT,RDT} =
         A.fop
         )
 
-# ctranspose(jo)
-ctranspose(A::judiPDEadjoint{DDT,RDT}) where {DDT,RDT} =
-    judiPDE{DDT,RDT}(A.name,A.n,A.m,A.info,A.model,A.geometry,A.options,
-        A.fop_T,
-        A.fop
-        )
 
 ############################################################
 ## overloaded Base *(...judi...)
@@ -201,7 +188,7 @@ end
 
 function *(A::judiPDEadjoint{CDT,ARDT},B::judiProjection{BDDT,CDT}) where {ARDT,BDDT,CDT}
     A.n == size(B,1) || throw(judiPDEadjointException("shape mismatch"))
-    return judiModeling(A.info,A.model,A.geometry,B.geometry,options=A.options,DDT=CDT,RDT=ARDT)'
+    return adjoint(judiModeling(A.info,A.model,A.geometry,B.geometry,options=A.options,DDT=CDT,RDT=ARDT))
 end
 
 # *(num,judiPDE)

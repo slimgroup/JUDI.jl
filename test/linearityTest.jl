@@ -67,10 +67,10 @@ F = judiModeling(info,model)
 q1 = judiVector(srcGeometry1,wavelet)
 q2 = judiVector(srcGeometry2,wavelet)
 
-d1 = Pr*F*Ps1'*q1
-d2 = Pr*F*Ps2'*q2
-d3 = Pr*F*(Ps1'*q1 + Ps2'*q2)
-d4 = Pr*F*(Ps1'*q1 - Ps2'*q2)
+d1 = Pr*F*adjoint(Ps1)*q1
+d2 = Pr*F*adjoint(Ps2)*q2
+d3 = Pr*F*(adjoint(Ps1)*q1 + adjoint(Ps2)*q2)
+d4 = Pr*F*(adjoint(Ps1)*q1 - adjoint(Ps2)*q2)
 
 @test isapprox(norm(d3), norm(d1 + d2))
 @test isapprox(norm(d4), norm(d1 - d2))

@@ -66,7 +66,7 @@ Pr = judiProjection(info, recGeometry)
 F = judiModeling(info, model; options=opt)
 F0 = judiModeling(info, model0; options=opt)
 Ps = judiProjection(info, srcGeometry)
-J = judiJacobian(Pr*F0*Ps', q)
+J = judiJacobian(Pr*F0*adjoint(Ps), q)
 
 # Set frequencies
 q_dist = generate_distribution(q)
@@ -78,15 +78,15 @@ tic()
 d_lin1 = J*dm
 toc()
 tic()
-rtm1 = J'*d_lin1
+rtm1 = adjoint(J)*d_lin1
 toc()
-figure(); imshow(reshape(rtm1, model0.n)')
+figure(); imshow(adjoint(reshape(rtm1, model0.n)))
 
 J.options.dft_subsampling_factor = 8
 tic()
 d_lin2 = J*dm
 toc()
 tic()
-rtm2 = J'*d_lin2
+rtm2 = adjoint(J)*d_lin2
 toc()
-figure(); imshow(reshape(rtm2, model0.n)')
+figure(); imshow(adjoint(reshape(rtm2, model0.n)))
