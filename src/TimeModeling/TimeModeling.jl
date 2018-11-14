@@ -5,14 +5,14 @@
 
 module TimeModeling
 
-using PyCall, JOLI, SeisIO, Dierckx, MathProgBase, Ipopt, Images
+using JUDI, PyCall, JOLI, SeisIO, Dierckx, Distributed, LinearAlgebra
 
-@pyimport PyModel as pm
-@pyimport JAcoustic_codegen as ac
-@pyimport TTI_Staggered as tti
-# @pyimport TTI_operators as tti
-import Base.*, Base./, Base.+, Base.-, Base.ctranspose, Base.conj, Base.vcat, Base.vec, Base.dot, Base.norm, Base.abs, Base.getindex, Base.similar, Base.copy!
-import Base.LinAlg.scale!, Base.LinAlg.A_mul_B!, Base.LinAlg.Ac_mul_B!, Base.BLAS.axpy!, Base.broadcast!
+import Base.*, Base./, Base.+, Base.-, Base.isequal, Base.copy!, Base.getindex
+import LinearAlgebra.ctranspose, LinearAlgebra.transpose, LinearAlgebra.conj, LinearAlgebra.vcat, LinearAlgebra.adjoint
+import LinearAlgebra.vec, LinearAlgebra.dot, LinearAlgebra.norm, LinearAlgebra.abs
+import Base.similar, Base.copy!
+import LinearAlgebra.scale!, LinearAlgebra.A_mul_B!, LinearAlgebra.Ac_mul_B!
+import LinearAlgebra.BLAS.axpy!, Base.broadcast!, Base.isapprox, Base.isequal
 
 
 #############################################################################
@@ -25,7 +25,8 @@ include("auxiliaryFunctions.jl")
 
 #############################################################################
 # Abstract vectors
-include("judiRHS.jl")   # RHS to be multiplied with linear operator
+include("judiWavefield.jl") # dense RHS (wavefield)
+include("judiRHS.jl")   # sparse RHS (point source(s))
 include("judiVector.jl")    # Julia data container
 
 #############################################################################

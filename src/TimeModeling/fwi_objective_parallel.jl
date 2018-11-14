@@ -1,5 +1,4 @@
-# Parallel instance of fwi_objective function
-# Author: Philipp Witte, pwitte@eos.ubc.ca
+# Parallel instance of fwi_objective function # Author: Philipp Witte, pwitte@eos.ubc.ca
 # Date: January 2017
 #
 
@@ -21,7 +20,7 @@ function fwi_objective(model::Modelall, source::judiVector, dObs::judiVector; op
 
     # Process shots from source channel asynchronously
     fwi_objective = retry(TimeModeling.fwi_objective)
-    results = Array{Any}(dObs.nsrc)
+    results = Array{Any}(undef, dObs.nsrc)
     @sync begin
         for j=1:dObs.nsrc
             results[j] = @spawn fwi_objective(model, source[j], dObs[j], j; options=options, frequencies=frequencies)

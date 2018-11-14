@@ -5,7 +5,8 @@
 
 module SLIM_optim
 
-using PolynomialRoots, DSP, JOLI
+using PolynomialRoots, Printf, Statistics, LinearAlgebra, Random, DSP
+
 
 using JUDI.TimeModeling
 

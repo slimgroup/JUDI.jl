@@ -1,16 +1,11 @@
+#__precompile__()
+
 module JUDI
 
-using PyCall, JOLI, SeisIO, Dierckx, ApproXD, Interpolations
+using PyCall, JOLI, SeisIO, Dierckx, Distributed, Pkg, Printf
 
-# function to prepend Python paths
-function prependMyPyPath(d::String)
-    mypath=Pkg.dir("JUDI")
-    myd=joinpath(mypath,d)
-    unshift!(PyVector(pyimport("sys")["path"]), myd)
-end
-
-# prepend Python paths
-prependMyPyPath("src/Python")
+export JUDIPATH
+JUDIPATH = dirname(pathof(JUDI))
 
 # submodule TimeModeling
 include("TimeModeling/TimeModeling.jl")

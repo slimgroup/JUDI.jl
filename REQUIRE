@@ -1,8 +1,8 @@
-julia 0.6
+julia 0.7
 PyCall
 Dierckx
 IterativeSolvers
 PolynomialRoots
-PyPlot
-
-
+JOLI
+SeisIO
+DSP

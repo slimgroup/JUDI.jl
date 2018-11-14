@@ -22,7 +22,7 @@ struct judiJacobian{DDT<:Number,RDT<:Number} <: joAbstractLinearOperator{DDT,RDT
     source
     options::Options
     fop::Function              # forward
-    fop_T::Nullable{Function}  # transpose
+    fop_T::Union{Function, Nothing}  # transpose
 end
 
 
@@ -67,8 +67,8 @@ function judiJacobian(F::judiPDEfull, source::judiVector; DDT::DataType=Float32,
         srcnum = 1
     end
     return J = judiJacobian{Float32,Float32}("linearized wave equation", m, n, F.info, F.model, F.srcGeometry, F.recGeometry, source.data, F.options,
-                                           v -> time_modeling(F.model, F.srcGeometry, source.data, F.recGeometry, [], v, srcnum, 'J', 1, F.options),
-                                           w -> time_modeling(F.model, F.srcGeometry, source.data, F.recGeometry, w.data, [], srcnum, 'J', -1, F.options)
+                                           v -> time_modeling(F.model, F.srcGeometry, source.data, F.recGeometry, nothing, v, srcnum, 'J', 1, F.options),
+                                           w -> time_modeling(F.model, F.srcGeometry, source.data, F.recGeometry, w.data, nothing, srcnum, 'J', -1, F.options)
                                            )
 end
 
@@ -77,23 +77,30 @@ end
 ## overloaded Base functions
 
 # conj(judiJacobian)
-conj{DDT,RDT}(A::judiJacobian{DDT,RDT}) =
+conj(A::judiJacobian{DDT,RDT}) where {DDT,RDT} =
     judiJacobian{DDT,RDT}("conj("*A.name*")",A.m,A.n,A.info,A.model,A.srcGeometry,A.recGeometry,A.source,A.options,
-        get(A.fop),
+        A.fop,
         A.fop_T
         )
 
 # transpose(judiJacobian)
-transpose{DDT,RDT}(A::judiJacobian{DDT,RDT}) =
+transpose(A::judiJacobian{DDT,RDT}) where {DDT,RDT} =
     judiJacobian{DDT,RDT}("adjoint linearized wave equation",A.n,A.m,A.info,A.model,A.srcGeometry,A.recGeometry,A.source,A.options,
-        get(A.fop_T),
+        A.fop_T,
+        A.fop
+        )
+
+# adjoint(judiJacobian)
+adjoint(A::judiJacobian{DDT,RDT}) where {DDT,RDT} =
+    judiJacobian{DDT,RDT}("adjoint linearized wave equation",A.n,A.m,A.info,A.model,A.srcGeometry,A.recGeometry,A.source,A.options,
+        A.fop_T,
         A.fop
         )
 
 # ctranspose(judiJacobian)
-ctranspose{DDT,RDT}(A::judiJacobian{DDT,RDT}) =
+ctranspose(A::judiJacobian{DDT,RDT}) where {DDT,RDT} =
     judiJacobian{DDT,RDT}("adjoint linearized wave equation",A.n,A.m,A.info,A.model,A.srcGeometry,A.recGeometry,A.source,A.options,
-        get(A.fop_T),
+        A.fop_T,
         A.fop
         )
 
@@ -101,7 +108,7 @@ ctranspose{DDT,RDT}(A::judiJacobian{DDT,RDT}) =
 ## overloaded Base *(...judiJacobian...)
 
 # *(judiJacobian,vec)
-function *{ADDT,ARDT,vDT}(A::judiJacobian{ADDT,ARDT},v::AbstractVector{vDT})
+function *(A::judiJacobian{ADDT,ARDT},v::AbstractVector{vDT}) where {ADDT,ARDT,vDT}
     A.n == size(v,1) || throw(judiJacobianException("shape mismatch"))
     jo_check_type_match(ADDT,vDT,join(["DDT for *(judiJacobian,vec):",A.name,typeof(A),vDT]," / "))
     V = A.fop(v)
@@ -110,7 +117,7 @@ function *{ADDT,ARDT,vDT}(A::judiJacobian{ADDT,ARDT},v::AbstractVector{vDT})
 end
 
 # *(judiJacobian,judiVector)
-function *{ADDT,ARDT,vDT}(A::judiJacobian{ADDT,ARDT},v::judiVector{vDT})
+function *(A::judiJacobian{ADDT,ARDT},v::judiVector{vDT}) where {ADDT,ARDT,vDT}
     A.n == size(v,1) || throw(judiJacobianException("shape mismatch"))
     jo_check_type_match(ADDT,vDT,join(["DDT for *(judiJacobian,judiVector):",A.name,typeof(A),vDT]," / "))
     compareGeometry(A.recGeometry,v.geometry) == true || throw(judiJacobianException("Geometry mismatch"))
@@ -120,7 +127,7 @@ function *{ADDT,ARDT,vDT}(A::judiJacobian{ADDT,ARDT},v::judiVector{vDT})
 end
 
 # *(num,judiJacobian)
-function *{ADDT,ARDT}(a::Number,A::judiJacobian{ADDT,ARDT})
+function *(a::Number,A::judiJacobian{ADDT,ARDT}) where {ADDT,ARDT}
     return judiJacobian{ADDT,ARDT}("(N*"*A.name*")",A.m,A.n,A.info,A.model,A.srcGeometry,A.recGeometry,A.source,A.options,
                                 v1 -> jo_convert(ARDT,a*A.fop(v1),false),
                                 v2 -> jo_convert(ADDT,a*A.fop_T(v2),false)
@@ -140,33 +147,33 @@ end
 ## overloaded Bases +(...judiJacobian...), -(...judiJacobian...)
 
 # +(judiJacobian,num)
-function +{ADDT,ARDT}(A::judiJacobian{ADDT,ARDT},b::Number)
+function +(A::judiJacobian{ADDT,ARDT},b::Number) where {ADDT,ARDT}
     return judiJacobian{ADDT,ARDT}("("*A.name*"+N)",A.m,A.n,A.info,A.model,A.srcGeometry,A.recGeometry,A.source,A.options,
                             v1 -> A.fop(v1)+joConstants(A.m,A.n,b;DDT=ADDT,RDT=ARDT)*v1,
-                            v2 -> get(A.fop_T)(v2)+joConstants(A.n,A.m,b;DDT=ADDT,RDT=ARDT)*v2
+                            v2 -> A.fop_T(v2)+joConstants(A.n,A.m,b;DDT=ADDT,RDT=ARDT)*v2
                             )
 end
 
 # -(judiJacobian,num)
-function -{ADDT,ARDT}(A::judiJacobian{ADDT,ARDT},b::Number)
+function -(A::judiJacobian{ADDT,ARDT},b::Number) where {ADDT,ARDT}
     return judiJacobian{ADDT,ARDT}("("*A.name*"-N)",A.m,A.n,A.info,A.model,A.srcGeometry,A.recGeometry,A.source,A.options,
                             v1 -> A.fop(v1)-joConstants(A.m,A.n,b;DDT=ADDT,RDT=ARDT)*v1,
-                            v2 -> get(A.fop_T)(v2)-joConstants(A.n,A.m,b;DDT=ADDT,RDT=ARDT)*v2
+                            v2 -> A.fop_T(v2)-joConstants(A.n,A.m,b;DDT=ADDT,RDT=ARDT)*v2
                             )
 end
 
 # -(judiJacobian)
--{DDT,RDT}(A::judiJacobian{DDT,RDT}) =
+-(A::judiJacobian{DDT,RDT}) where {DDT,RDT} =
     judiJacobian{DDT,RDT}("(-"*A.name*")",A.m,A.n,A.info,A.model,A.srcGeometry,A.recGeometry,A.source,A.options,
                     v1 -> -A.fop(v1),
-                    v2 -> -get(A.fop_T)(v2)
+                    v2 -> -A.fop_T(v2)
                     )
 
 ############################################################
 ## Additional overloaded functions
 
 # Subsample Jacobian
-function subsample{ADDT,ARDT}(J::judiJacobian{ADDT,ARDT}, srcnum)
+function subsample(J::judiJacobian{ADDT,ARDT}, srcnum) where {ADDT,ARDT}
 
     srcGeometry = subsample(J.srcGeometry,srcnum)       # Geometry of subsampled data container
     recGeometry = subsample(J.recGeometry,srcnum)

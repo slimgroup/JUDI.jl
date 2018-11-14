@@ -1,8 +1,10 @@
 
 export fwi_objective
 
-function fwi_objective(model_full::Model, source::judiVector, dObs::judiVector, srcnum::Int64; options=Options(), frequencies=[])
+function fwi_objective(model_full::Model, source::judiVector, dObs::judiVector, srcnum::Integer; options=Options(), frequencies=[])
 # Setup time-domain linear or nonlinear foward and adjoint modeling and interface to OPESCI/devito
+    pm = load_pymodel()
+    ac = load_acoustic_codegen()
 
     # Load full geometry for out-of-core geometry containers
     typeof(dObs.geometry) == GeometryOOC && (dObs.geometry = Geometry(dObs.geometry))
@@ -22,8 +24,8 @@ function fwi_objective(model_full::Model, source::judiVector, dObs::judiVector, 
     tmaxRec = dObs.geometry.t[1]
 
     # Set up Python model structure (force origin to be zero due to current devito bug)
-    modelPy = pm.Model(origin=(0.,0.,0.), spacing=model.d, shape=model.n, vp=process_physical_parameter(sqrt.(1f0./model.m), dims),
-                       rho=process_physical_parameter(model.rho, dims), nbpml=model.nb)
+    modelPy = pm.Model(origin=(0.,0.,0.), spacing=model.d, shape=model.n, vp=process_physical_parameter(sqrt.(1f0./model.m), dims), nbpml=model.nb,
+                       rho=process_physical_parameter(model.rho, dims), space_order=options.space_order)
     dtComp = modelPy[:critical_dt]
 
     # Extrapolate input data to computational grid

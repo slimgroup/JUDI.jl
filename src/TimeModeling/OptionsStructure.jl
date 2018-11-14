@@ -3,20 +3,22 @@
 # Date: May 2017
 #
 
-export Options
+export Options, subsample
 
 # Object for velocity/slowness models
-type Options
+mutable struct Options
     space_order::Integer
-    retry_n::Integer
+    free_surface::Bool
     limit_m::Bool
     buffer_size::Real
     save_data_to_disk::Bool
+    save_wavefield_to_disk::Bool
     file_path::String
     file_name::String
     sum_padding::Bool
-    save_wavefield::Bool
     optimal_checkpointing::Bool
+    num_checkpoints::Union{Integer, Nothing}
+    checkpoints_maxmem::Union{Real, Nothing}
     frequencies::Array
     isic::String
     t_sub::Integer
@@ -24,29 +26,39 @@ type Options
     gs::Dict
     normalize::Bool
     freesurface::Bool
+    dft_subsampling_factor::Integer
 end
 
 """
     Options
         space_order::Integer
-        retry_n::Integer
+        free_surface::Bool
         limit_m::Bool
         buffer_size::Real
         save_rate::Real
         save_data_to_disk::Bool
+        save_wavefield_to_disk::Bool
         file_path::String
         file_name::String
         sum_padding::Bool
         optimal_checkpointing::Bool
-        frequencies::Array
-        isic::Bool
+        num_checkpoints::Integer
+        checkpoints_maxmem::Real
+	    frequencies::Array
+	    isic::String
+	    t_sub::Integer
+	    h_sub::Integer
+	    gs::Dict
+	    normalize::Bool
+	    freesurface::Bool
+	    dft_subsampling_factor::Integer
 
 
 Options structure for seismic modeling.
 
 `space_order`: finite difference space order for wave equation (default is 8, needs to be multiple of 4)
 
-`retry_n`: retry modeling operations in case of worker failure up to `retry_n` times
+`free_surface`: set to `true` to enable a free surface boundary condition.
 
 `limit_m`: for 3D modeling, limit modeling domain to area with receivers (saves memory)
 
@@ -54,19 +66,25 @@ Options structure for seismic modeling.
 
 `save_data_to_disk`: if `true`, saves shot records as separate SEG-Y files
 
+`save_wavefield_to_disk`: If wavefield is return value, save wavefield to disk as pickle file
+
 `file_path`: path to directory where data is saved
 
 `file_name`: shot records will be saved as specified file name plus its source coordinates
 
 `sum_padding`: when removing the padding area of the gradient, sum into boundary rows/columns for true adjoints
 
-`save_wavefield`: save forward wavefields and return as a second argument: (data, wavefield) = Pr*F*Ps'*q
-
 `optimal_checkpointing`: instead of saving the forward wavefield, recompute it using optimal checkpointing
+
+`num_checkpoints`: number of checkpoints. If not supplied, is set to log(num_timesteps).
+
+`checkpoints_maxmem`: maximum amount of memory that can be allocated for checkpoints (MB)
 
 `frequencies`: calculate the FWI/LS-RTM gradient in the frequency domain for a given set of frequencies
 
-isic`: use linearized inverse scattering imaging condition
+`dft_subsampling_factor`: compute on-the-fly DFTs on a time axis that is reduced by a given factor (default is 1)
+
+`isic`: use linearized inverse scattering imaging condition
 
 
 Constructor
@@ -78,8 +96,18 @@ All arguments are optional keyword arguments with the following default values:
             file_name="shot", sum_padding=false, save_wavefield=false, optimal_checkpointing=false, frequencies=[], isic=false)
 
 """
-Options(;space_order=16,retry_n=0,limit_m=false,buffer_size=1e3, save_data_to_disk=false, file_path="", file_name="shot",
+Options(;space_order=8,retry_n=0,limit_m=false,buffer_size=1e3, save_data_to_disk=false, file_path="", file_name="shot",
          sum_padding=false, save_wavefield=false, optimal_checkpointing=false, frequencies=[], isic="noop",
-         gs=Dict(), normalize=false, freesurface=false, t_sub=1, h_sub=1) =
-    Options(space_order,retry_n,limit_m,buffer_size,save_data_to_disk,file_path,file_name, sum_padding,
-            save_wavefield, optimal_checkpointing, frequencies, isic, t_sub, h_sub, gs, normalize, freesurface)
+         gs=Dict(), normalize=false, freesurface=false, t_sub=1, h_sub=1, dft_subsampling_factor=1) = Options(space_order,retry_n,limit_m,buffer_size,save_data_to_disk,file_path,file_name, sum_padding,
+            save_wavefield, optimal_checkpointing, frequencies, isic, t_sub, h_sub, gs, normalize, freesurface,dft_subsampling_factor)
+
+function subsample(options::Options, srcnum)
+    if isempty(options.frequencies)
+        return options
+    else
+        opt_out = deepcopy(options)
+        opt_out.frequencies = Array{Any}(1)
+        opt_out.frequencies[1] = options.frequencies[srcnum]
+        return opt_out
+    end
+end

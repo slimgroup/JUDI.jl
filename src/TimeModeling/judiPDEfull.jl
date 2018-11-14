@@ -22,7 +22,7 @@ struct judiPDEfull{DDT<:Number,RDT<:Number} <: joAbstractLinearOperator{DDT,RDT}
     recGeometry::Geometry
     options::Options
     fop::Function              # forward
-    fop_T::Nullable{Function}  # transpose
+    fop_T::Union{Function, Nothing}  # transpose
 end
 
 mutable struct judiPDEfullException <: Exception
@@ -59,8 +59,8 @@ function judiModeling(info::Info,model::Modelall, srcGeometry::Geometry, recGeom
     end
 
     return F = judiPDEfull{Float32,Float32}("Proj*F*Proj'", m, n, info, model, srcGeometry, recGeometry, options,
-                              src -> time_modeling(model, srcGeometry, src.data, recGeometry, [], [], srcnum, 'F', 1, options),
-                              rec -> time_modeling(model, srcGeometry, [], recGeometry, rec.data, [], srcnum, 'F', -1, options),
+                              src -> time_modeling(model, srcGeometry, src.data, recGeometry, nothing, nothing, srcnum, 'F', 1, options),
+                              rec -> time_modeling(model, srcGeometry, nothing, recGeometry, rec.data, nothing, srcnum, 'F', -1, options),
                               )
 end
 
@@ -69,23 +69,30 @@ end
 ## overloaded Base functions
 
 # conj(judiPDEfull)
-conj{DDT,RDT}(A::judiPDEfull{DDT,RDT}) =
+conj(A::judiPDEfull{DDT,RDT}) where {DDT,RDT} =
     judiPDEfull{DDT,RDT}("conj("*A.name*")",A.m,A.n,A.info,A.model,A.srcGeometry,A.recGeometry,A.options,
-        get(A.fop),
+        A.fop,
         A.fop_T
         )
 
 # transpose(judiPDEfull)
-transpose{DDT,RDT}(A::judiPDEfull{DDT,RDT}) =
+transpose(A::judiPDEfull{DDT,RDT}) where {DDT,RDT} =
     judiPDEfull{DDT,RDT}("Proj*F'*Proj'",A.n,A.m,A.info,A.model,A.srcGeometry,A.recGeometry,A.options,
-        get(A.fop_T),
+        A.fop_T,
+        A.fop
+        )
+
+# adjoint(judiPDEfull)
+adjoint(A::judiPDEfull{DDT,RDT}) where {DDT,RDT} =
+    judiPDEfull{DDT,RDT}("Proj*F'*Proj'",A.n,A.m,A.info,A.model,A.srcGeometry,A.recGeometry,A.options,
+        A.fop_T,
         A.fop
         )
 
 # ctranspose(judiPDEfull)
-ctranspose{DDT,RDT}(A::judiPDEfull{DDT,RDT}) =
+ctranspose(A::judiPDEfull{DDT,RDT}) where {DDT,RDT} =
     judiPDEfull{DDT,RDT}("Proj*F'*Proj'",A.n,A.m,A.info,A.model,A.srcGeometry,A.recGeometry,A.options,
-        get(A.fop_T),
+        A.fop_T,
         A.fop
         )
 
@@ -93,7 +100,7 @@ ctranspose{DDT,RDT}(A::judiPDEfull{DDT,RDT}) =
 ## overloaded Base *(...judiPDEfull...)
 
 # *(judiPDEfull,judiVector)
-function *{ADDT,ARDT,vDT}(A::judiPDEfull{ADDT,ARDT},v::judiVector{vDT})
+function *(A::judiPDEfull{ADDT,ARDT},v::judiVector{vDT}) where {ADDT,ARDT,vDT}
     A.n == size(v,1) || throw(judiPDEfullException("shape mismatch"))
     if compareGeometry(A.srcGeometry,v.geometry) == false && compareGeometry(A.recGeometry,v.geometry) == false
         throw(judiPDEfullException("geometry mismatch"))
@@ -105,7 +112,7 @@ function *{ADDT,ARDT,vDT}(A::judiPDEfull{ADDT,ARDT},v::judiVector{vDT})
 end
 
 # *(num,judiPDEfull)
-function *{ADDT,ARDT}(a::Number,A::judiPDEfull{ADDT,ARDT})
+function *(a::Number,A::judiPDEfull{ADDT,ARDT}) where {ADDT,ARDT}
     return judiPDEfull{ADDT,ARDT}("(N*"*A.name*")",A.m,A.n,A.info,A.model,A.srcGeometry,A.recGeometry,A.options,
         v1 -> jo_convert(ARDT,a*A.fop(v1),false),
         v2 -> jo_convert(ADDT,a*A.fop_T(v2),false)
@@ -126,26 +133,26 @@ end
 ## overloaded Bases +(...judiPDEfull...), -(...judiPDEfull...)
 
 # +(judiPDEfull,num)
-function +{ADDT,ARDT}(A::judiPDEfull{ADDT,ARDT},b::Number)
+function +(A::judiPDEfull{ADDT,ARDT},b::Number) where {ADDT,ARDT}
     return judiPDE{ADDT,ARDT}("("*A.name*"+N)",A.m,A.n,A.info,A.model,A.srcGeometry,A.recGeometry,A.options,
         v1 -> A.fop(v1)+joConstants(A.m,A.n,b;DDT=ADDT,RDT=ARDT)*v1,
-        v2 -> get(A.fop_T)(v2)+joConstants(A.m,A.n,b;DDT=ADDT,RDT=ARDT)*v2
+        v2 -> A.fop_T(v2)+joConstants(A.m,A.n,b;DDT=ADDT,RDT=ARDT)*v2
         )
 end
 
 # -(judiPDEfull,num)
-function -{ADDT,ARDT}(A::judiPDEfull{ADDT,ARDT},b::Number)
+function -(A::judiPDEfull{ADDT,ARDT},b::Number) where {ADDT,ARDT}
     return judiPDE{ADDT,ARDT}("("*A.name*"-N)",A.m,A.n,A.info,A.model,A.srcGeometry,A.recGeometry,A.options,
         v1 -> A.fop(v1)-joConstants(A.m,A.n,b;DDT=ADDT,RDT=ARDT)*v1,
-        v2 -> get(A.fop_T)(v2)-joConstants(A.m,A.n,b;DDT=ADDT,RDT=ARDT)*v2
+        v2 -> A.fop_T(v2)-joConstants(A.m,A.n,b;DDT=ADDT,RDT=ARDT)*v2
         )
 end
 
 # -(judiPDEfull)
--{DDT,RDT}(A::judiPDEfull{DDT,RDT}) =
+-(A::judiPDEfull{DDT,RDT}) where {DDT,RDT} =
     judiPDEfull{DDT,RDT}("(-"*A.name*")",A.m,A.n,A.info,A.model,A.srcGeometry,A.recGeometry,A.options,
         v1 -> -A.fop(v1),
-        v2 -> -get(A.fop_T)(v2)
+        v2 -> -A.fop_T(v2)
         )
 
 
@@ -153,7 +160,7 @@ end
 ## Additional overloaded functions
 
 # Subsample Modeling operator
-function subsample{ADDT,ARDT}(F::judiPDEfull{ADDT,ARDT}, srcnum)
+function subsample(F::judiPDEfull{ADDT,ARDT}, srcnum) where {ADDT,ARDT}
 
     srcGeometry = subsample(F.srcGeometry,srcnum)       # Geometry of subsampled data container
     recGeometry = subsample(F.recGeometry,srcnum)

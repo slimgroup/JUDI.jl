@@ -67,21 +67,21 @@ end
 ## overloaded Base functions
 
 # conj(jo)
-conj{vDT}(A::judiRHS{vDT}) =
+conj(A::judiRHS{vDT}) where vDT =
     judiRHS{vDT}("conj("*A.name*")",A.m,A.n,A.info,A.geometry,A.data)
 
 # transpose(jo)
-transpose{vDT}(A::judiRHS{vDT}) =
+transpose(A::judiRHS{vDT}) where vDT =
     judiRHS{vDT}(""*A.name*".'",A.n,A.m,A.info,A.geometry,A.data)
-   
+
 # ctranspose(jo)
-ctranspose{vDT}(A::judiRHS{vDT}) =
+ctranspose(A::judiRHS{vDT}) where vDT =
     judiRHS{vDT}(""*A.name*"'",A.n,A.m,A.info,A.geometry,A.data)
 
 ####################################################################
 
 # +(judiRHS,judiRHS)
-function +{avDT,bvDT}(A::judiRHS{avDT}, B::judiRHS{bvDT})
+function +(A::judiRHS{avDT}, B::judiRHS{bvDT}) where {avDT, bvDT}
 
     # Error checking
     size(A) == size(B) || throw(judiRHSexception("shape mismatch"))
@@ -95,13 +95,13 @@ function +{avDT,bvDT}(A::judiRHS{avDT}, B::judiRHS{bvDT})
     n = 1
 
     # merge geometries and data
-    xloc = Array{Any}(A.info.nsrc)
-    yloc = Array{Any}(A.info.nsrc)
-    zloc = Array{Any}(A.info.nsrc)
-    dt = Array{Any}(A.info.nsrc)
-    nt = Array{Any}(A.info.nsrc)
-    t = Array{Any}(A.info.nsrc)
-    data = Array{Any}(A.info.nsrc)
+    xloc = Array{Any}(undef, A.info.nsrc)
+    yloc = Array{Any}(undef, A.info.nsrc)
+    zloc = Array{Any}(undef, A.info.nsrc)
+    dt = Array{Any}(undef, A.info.nsrc)
+    nt = Array{Any}(undef, A.info.nsrc)
+    t = Array{Any}(undef, A.info.nsrc)
+    data = Array{Any}(undef, A.info.nsrc)
 
     for j=1:A.info.nsrc
         xloc[j] = [vec(A.geometry.xloc[j])' vec(B.geometry.xloc[j])']
@@ -119,7 +119,7 @@ function +{avDT,bvDT}(A::judiRHS{avDT}, B::judiRHS{bvDT})
 end
 
 # -(judiRHS,judiRHS)
-function -{avDT,bvDT}(A::judiRHS{avDT}, B::judiRHS{bvDT})
+function -(A::judiRHS{avDT}, B::judiRHS{bvDT}) where {avDT, bvDT}
 
     # Error checking
     size(A) == size(B) || throw(judiRHSexception("shape mismatch"))
@@ -133,13 +133,13 @@ function -{avDT,bvDT}(A::judiRHS{avDT}, B::judiRHS{bvDT})
     n = 1
 
     # merge geometries and data
-    xloc = Array{Any}(A.info.nsrc)
-    yloc = Array{Any}(A.info.nsrc)
-    zloc = Array{Any}(A.info.nsrc)
-    dt = Array{Any}(A.info.nsrc)
-    nt = Array{Any}(A.info.nsrc)
-    t = Array{Any}(A.info.nsrc)
-    data = Array{Any}(A.info.nsrc)
+    xloc = Array{Any}(undef, A.info.nsrc)
+    yloc = Array{Any}(undef, A.info.nsrc)
+    zloc = Array{Any}(undef, A.info.nsrc)
+    dt = Array{Any}(undef, A.info.nsrc)
+    nt = Array{Any}(undef, A.info.nsrc)
+    t = Array{Any}(undef, A.info.nsrc)
+    data = Array{Any}(undef, A.info.nsrc)
 
     for j=1:A.info.nsrc
         xloc[j] = [vec(A.geometry.xloc[j])' vec(B.geometry.xloc[j])']
@@ -156,6 +156,10 @@ function -{avDT,bvDT}(A::judiRHS{avDT}, B::judiRHS{bvDT})
     return judiRHS{nvDT}("judiRHS",m,n,A.info,geometry,data)
 end
 
+function subsample(a::judiRHS{avDT},srcnum) where avDT
+    info = Info(a.info.n, length(srcnum), a.info.nt[srcnum])
+    geometry = subsample(a.geometry,srcnum)     # Geometry of subsampled data container
+    return judiRHS(info,geometry,a.data[srcnum];vDT=avDT)
+end
 
-
-
+getindex(x::judiRHS,a) = subsample(x,a)

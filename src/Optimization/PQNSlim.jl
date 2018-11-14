@@ -148,9 +148,9 @@ function  minConf_PQN(funObj,x,funProj,options)
             p, subProjects = solveSubProblem(x,g,HvFunc,funProj,options.SPGoptTol,options.SPGprogTol,options.SPGiters,options.SPGtestOpt,feasibleInit,xSubInit);
             projects = projects+subProjects;
         end
-        d = p-x;
-        g_old = g;
-        x_old = x;
+        global d = p-x;
+        global g_old = g;
+        global x_old = x;
 
         # Check that Progress can be made along the direction
         gtd = dot(g,d);

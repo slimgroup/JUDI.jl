@@ -15,7 +15,7 @@ from JAcoustic_codegen import forward_modeling, adjoint_modeling
 import time
 
 # Model
-shape = (101, 101)
+shape = (301, 301)
 spacing = (10., 10.)
 origin = (0., 0.)
 v1 = np.empty(shape, dtype=np.float32)
@@ -89,4 +89,3 @@ b = np.dot(q_hat.flatten(), q0.flatten())
 print("Adjoint test F")
 print("Difference: ", a - b)
 print("Relative error: ", a/b - 1)
-

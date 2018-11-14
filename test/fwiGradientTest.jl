@@ -4,7 +4,7 @@
 # Date: January 2017
 #
 
-using PyCall, PyPlot, JUDI.TimeModeling
+using PyCall, PyPlot, JUDI.TimeModeling, Test, LinearAlgebra
 
 ## Set up model structure
 n = (120,100)	# (x,y,z) or (x,z)
@@ -48,15 +48,16 @@ nsrc = 1
 model = Model_TTI(n,d,o,m; epsilon=epsilon, delta=delta, theta=theta)
 model0 = Model_TTI(n,d,o,m0; epsilon=epsilon, delta=delta, theta=theta)
 
+
 ## Set up receiver geometry
 nxrec = 81
-xrec = linspace(200f0,1000f0,nxrec)
+xrec = range(200f0,stop=1000f0,length=nxrec)
 yrec = 0.
-zrec = linspace(100f0,100f0,nxrec)
+zrec = range(100f0,stop=100f0,length=nxrec)
 
 # receiver sampling and recording time
 timeR = 1000f0	# receiver recording time [ms]
-dtR = calculate_dt(model)	# receiver sampling interval
+dtR = 4f0	# receiver sampling interval
 
 # Set up receiver structure
 recGeometry = Geometry(xrec,yrec,zrec;dt=dtR,t=timeR,nsrc=nsrc)
@@ -68,7 +69,7 @@ zsrc = convertToCell([50f0])
 
 # source sampling and number of time steps
 timeS = 1000f0
-dtS = calculate_dt(model)	# receiver sampling interval
+dtS = 4f0	# receiver sampling interval
 
 # Set up source structure
 srcGeometry = Geometry(xsrc,ysrc,zsrc;dt=dtS,t=timeS)
@@ -143,14 +144,22 @@ for j=1:iter
 
 	println(h, " ", error1[j], " ", error2[j])
 	h_all[j] = h
-	h = h/2f0
+	global h = h/2f0
 end
 
+# Check error decay
+rate_0th_order = 2^(iter - 1)   # error decays w/ factor 2
+rate_1st_order = 4^(iter - 1)   # error decays w/ factor 4
+
+@test error1[end] <= error1[1] / rate_0th_order
+@test error2[end] <= error2[1] / rate_1st_order
+
 # Plot errors
-loglog(h_all, error1); loglog(h_all, 1e2*h_all)
-loglog(h_all, error2); loglog(h_all, 1e2*h_all.^2)
-legend([L"$\Phi(m) - \Phi(m0)$", "1st order", L"$\Phi(m) - \Phi(m0) - \nabla \Phi \delta m$", "2nd order"], loc="lower right")
-xlabel("h")
-ylabel(L"Error $||\cdot||^\infty$")
-title("FWI gradient test")
-#axis((h_all[end], h_all[1], 1.0e-8,500))
+if isinteractive()
+    loglog(h_all, error1); loglog(h_all, 1e2*h_all)
+    loglog(h_all, error2); loglog(h_all, 1e2*h_all.^2)
+    legend([L"$\Phi(m) - \Phi(m0)$", "1st order", L"$\Phi(m) - \Phi(m0) - \nabla \Phi \delta m$", "2nd order"], loc="lower right")
+    xlabel("h")
+    ylabel(L"Error $||\cdot||^\infty$")
+    title("FWI gradient test")
+end

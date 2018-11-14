@@ -207,9 +207,9 @@ function polyinterp(points;xminBound=-Inf,xmaxBound=Inf)
     end
 
     if sum(isinf.(dParams)) >0
-        cp = [xminBound;xmaxBound;points[:,1]].';
+        cp = transpose([xminBound;xmaxBound;points[:,1]]);
     else
-        cp = [xminBound;xmaxBound;points[:,1];-roots(dParams)].';
+        cp = transpose([xminBound;xmaxBound;points[:,1];-roots(dParams)]);
     end
 
     # Test Critical Points

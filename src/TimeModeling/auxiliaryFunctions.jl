@@ -4,20 +4,12 @@
 #
 
 export ricker_wavelet, get_computational_nt, smooth10, damp_boundary, calculate_dt, setup_grid, setup_3D_grid
-export convertToCell, limit_model_to_receiver_area, extend_gradient, process_physical_parameter
-export time_resample, remove_padding, backtracking_linesearch
-export generate_distribution, select_frequencies, resample_model
+export convertToCell, limit_model_to_receiver_area, extend_gradient, remove_out_of_bounds_receivers
+export time_resample, remove_padding, backtracking_linesearch, subsample
+export generate_distribution, select_frequencies, process_physical_parameter
+export load_pymodel, load_acoustic_codegen, load_numpy
 
-
-function process_physical_parameter(param, dims)
-    if length(param) ==1
-        return param
-    else
-        return PyReverseDims(permutedims(param, dims))
-    end
-end
-
-function limit_model_to_receiver_area(srcGeometry::Geometry,recGeometry::Geometry,model::Model,buffer;pert=[])
+function limit_model_to_receiver_area(srcGeometry::Geometry, recGeometry::Geometry, model::Model, buffer; pert=[])
     # Restrict full velocity model to area that contains either sources and receivers
     ndim = length(model.n)
     # scan for minimum and maximum x and y source/receiver coordinates
@@ -93,11 +85,11 @@ function limit_model_to_receiver_area(srcGeometry::Geometry,recGeometry::Geometr
     end
 
     # add buffer zone if possible
-    min_x = max(model.o[1],min_x-buffer)
-    max_x = min(model.o[1] + model.d[1]*(model.n[1]-1),max_x+buffer)
+    min_x = max(model.o[1], min_x-buffer)
+    max_x = min(model.o[1] + model.d[1]*(model.n[1]-1), max_x+buffer)
     if ndim == 3
-        min_y = max(model.o[2],min_y-buffer)
-        max_y = min(model.o[2] + model.d[2]*(model.n[2]-1),max_y+buffer)
+        min_y = max(model.o[2], min_y-buffer)
+        max_y = min(model.o[2] + model.d[2]*(model.n[2]-1), max_y+buffer)
     end
 
     # extract part of the model that contains sources/receivers
@@ -118,25 +110,19 @@ function limit_model_to_receiver_area(srcGeometry::Geometry,recGeometry::Geometr
     n_orig = model.n
     if ndim == 2
         model.m = model.m[nx_min: nx_max, :]
-        model.epsilon = model.epsilon[nx_min: nx_max, :]
-        model.delta = model.delta[nx_min: nx_max, :]
-        if length(model.theta) > 1
-            model.theta = model.theta[nx_min: nx_max, :]
-        end
-        if length(model.rho) > 1
-            model.rho = model.rho[nx_min: nx_max, :]
-        end
+        typeof(model.epsilon) <: Array && (model.epsilon = model.epsilon[nx_min: nx_max, :])
+        typeof(model.delta) <: Array && (model.delta = model.delta[nx_min: nx_max, :])
+        typeof(model.theta) <: Array && (model.theta = model.theta[nx_min: nx_max, :])
+        typeof(model.rho) <: Array && (model.rho = model.rho[nx_min: nx_max, :])
         model.o = (ox, oz)
     else
         model.m = model.m[nx_min:nx_max,ny_min:ny_max,:]
-        model.epsilon = model.epsilon[nx_min:nx_max,ny_min:ny_max,:]
-        model.delta = model.delta[nx_min:nx_max,ny_min:ny_max,:]
-        model.theta = model.theta[nx_min:nx_max,ny_min:ny_max,:]
-        model.phi = model.phi[nx_min:nx_max,ny_min:ny_max,:]
-        model.o = (ox,oy,oz)
-        if length(model.rho) > 1
-            model.rho = model.rho[nx_min:nx_max,ny_min:ny_max,:]
-        end
+        typeof(model.epsilon) <: Array && (model.epsilon = model.epsilon[nx_min:nx_max,ny_min:ny_max,:])
+        typeof(model.delta) <: Array && (model.delta = model.delta[nx_min:nx_max,ny_min:ny_max,:])
+        typeof(model.theta) <: Array && (model.theta = model.theta[nx_min:nx_max,ny_min:ny_max,:])
+        typeof(model.phi) <: Array && (model.phi = model.phi[nx_min:nx_max,ny_min:ny_max,:])
+        typeof(model.rho) <: Array && (model.rho = model.rho[nx_min: nx_max, :])
+        model.o = (ox, oy, oz)
     end
     model.n = size(model.m)
     # println("N new: ", model.n)
@@ -168,6 +154,48 @@ function extend_gradient(model_full::Modelall,model::Modelall,gradient::Array)
     return full_gradient
 end
 
+function remove_out_of_bounds_receivers(recGeometry::Geometry, model::Model)
+
+    # Only keep receivers within the model
+    xmin = model.o[1]
+    if typeof(recGeometry.xloc[1]) <: Array
+        idx_xrec = findall(x -> x >= xmin, recGeometry.xloc[1])
+        recGeometry.xloc[1] = recGeometry.xloc[1][idx_xrec]
+        recGeometry.zloc[1] = recGeometry.zloc[1][idx_xrec]
+    end
+
+    # For 3D shot records, scan also y-receivers
+    if length(model.n) == 3 && typeof(recGeometry.yloc[1]) <: Array
+        ymin = model.o[2]
+        idx_yrec = findall(x -> x >= ymin, recGeometry.yloc[1])
+        recGeometry.yloc[1] = recGeometry.yloc[1][idx_yrec]
+        recGeometry.zloc[1] = recGeometry.zloc[1][idx_yrec]
+    end
+    return recGeometry
+end
+
+function remove_out_of_bounds_receivers(recGeometry::Geometry, recData::Array, model::Model)
+
+    # Only keep receivers within the model
+    xmin = model.o[1]
+    if typeof(recGeometry.xloc[1]) <: Array
+        idx_xrec = findall(x -> x > xmin, recGeometry.xloc[1])
+        recGeometry.xloc[1] = recGeometry.xloc[1][idx_xrec]
+        recGeometry.zloc[1] = recGeometry.zloc[1][idx_xrec]
+        recData[1] = recData[1][:, idx_xrec]
+    end
+
+    # For 3D shot records, scan also y-receivers
+    if length(model.n) == 3 && typeof(recGeometry.yloc[1]) <: Array
+        ymin = model.o[2]
+        idx_yrec = findall(x -> x > ymin, recGeometry.yloc[1])
+        recGeometry.yloc[1] = recGeometry.yloc[1][idx_yrec]
+        recGeometry.zloc[1] = recGeometry.zloc[1][idx_yrec]
+        recData[1] = recData[1][:, idx_yrec]
+    end
+    return recGeometry, recData
+end
+
 """
     convertToCell(x)
 
@@ -177,7 +205,7 @@ where the i-th cell contains the i-th entry of `x`.
 """
 function convertToCell(x)
     n = length(x)
-    y = Array{Any}(n)
+    y = Array{Any}(undef, n)
     for j=1:n
         y[j] = x[j]
     end
@@ -195,20 +223,36 @@ and central frequency `f0` (in kHz).
 function ricker_wavelet(tmax, dt, f0)
     t0 = 0.
     nt = Int(trunc((tmax - t0)/dt + 1))
-    t = linspace(t0,tmax,nt)
-    r = (pi * f0 * (t - 1 / f0))
+    t = range(t0,stop=tmax,length=nt)
+    r = (pi * f0 * (t .- 1 / f0))
     q = zeros(Float32,nt,1)
-    q[:,1] = (1. - 2.*r.^2.).*exp.(-r.^2.)
+    q[:,1] = (1f0 .- 2f0 .* r.^2f0) .* exp.(-r.^2f0)
     return q
 end
 
-function calculate_dt(model::Model)
-    if length(model.n) == 3
-        coeff = 0.38f0
-    else
-        coeff = 0.42f0
-    end
-    return coeff * Float32(minimum(model.d) / (sqrt(1/minimum(model.m))))
+function load_pymodel()
+    pushfirst!(PyVector(pyimport("sys")["path"]), joinpath(JUDIPATH, "Python"))
+    pm = pyimport("PyModel")
+    return pm
+end
+
+function load_numpy()
+    pushfirst!(PyVector(pyimport("sys")["path"]), joinpath(JUDIPATH, "Python"))
+    np = pyimport("numpy")
+    return np
+end
+
+function load_acoustic_codegen()
+    pushfirst!(PyVector(pyimport("sys")["path"]), joinpath(JUDIPATH, "Python"))
+    ac = pyimport("JAcoustic_codegen")
+    return ac
+end
+
+function calculate_dt(n,d,o,v,rho; epsilon=0)
+    pm = load_pymodel()
+    length(n) == 2 ? pyDim = [n[2], n[1]] : pyDim = [n[3],n[2],n[1]]
+    modelPy = pm.Model(o, d, pyDim, PyReverseDims(v))
+    dtComp = modelPy[:critical_dt]
 end
 
 function calculate_dt(model::Model_TTI)
@@ -236,12 +280,12 @@ function get_computational_nt(srcGeometry, recGeometry, model::Modelall)
     else
         nsrc = length(srcGeometry.xloc)
     end
-    nt = Array{Any}(nsrc)
-    dtComp = calculate_dt(model)
+    nt = Array{Any}(undef, nsrc)
+    dtComp = calculate_dt(model.n, model.d, model.o, sqrt.(1f0 ./ model.m), model.rho)
     for j=1:nsrc
-        ntRec = Int(trunc(recGeometry.dt[j]*(recGeometry.nt[j]-1))) / dtComp
-        ntSrc = Int(trunc(srcGeometry.dt[j]*(srcGeometry.nt[j]-1))) / dtComp
-        nt[j] = max(Int(trunc(ntRec)), Int(trunc(ntSrc)))
+        ntRec = recGeometry.dt[j]*(recGeometry.nt[j]-1) / dtComp
+        ntSrc = srcGeometry.dt[j]*(srcGeometry.nt[j]-1) / dtComp
+        nt[j] = max(Int(ceil(ntRec)), Int(ceil(ntSrc)))
     end
     return nt
 end
@@ -270,9 +314,9 @@ end
 function setup_3D_grid(xrec::Array{Any,1},yrec::Array{Any,1},zrec::Array{Any,1})
     # Take input 1d x and y coordinate vectors and generate 3d grid. Input are cell arrays
     nsrc = length(xrec)
-    xloc = Array{Any}(nsrc)
-    yloc = Array{Any}(nsrc)
-    zloc = Array{Any}(nsrc)
+    xloc = Array{Any}(undef, nsrc)
+    yloc = Array{Any}(unfef, nsrc)
+    zloc = Array{Any}(undef, nsrc)
     for i=1:nsrc
         nxrec = length(xrec[i])
         nyrec = length(yrec[i])
@@ -296,7 +340,7 @@ function setup_3D_grid(xrec::Array{Any,1},yrec::Array{Any,1},zrec::Array{Any,1})
 end
 
 function setup_3D_grid(xrec,yrec,zrec)
-# Take input 1d x and y coordinate vectors and generate 3d grid. Input are arrays/linspace
+# Take input 1d x and y coordinate vectors and generate 3d grid. Input are arrays/ranges
     nxrec = length(xrec)
     nyrec = length(yrec)
 
@@ -322,12 +366,12 @@ function smooth10(velocity,shape)
     if length(shape)==3
         out[:,:,:] = velocity[:,:,:]
         for a=5:nz-6
-            out[:,:,a] = sum(velocity[:,:,a-4:a+5],3) / 10
+            out[:,:,a] = sum(velocity[:,:,a-4:a+5], dims=3) / 10
         end
     else
         out[:,:] = velocity[:,:]
         for a=5:nz-6
-            out[:,a] = sum(velocity[:,a-4:a+5],2) / 10
+            out[:,a] = sum(velocity[:,a-4:a+5], dims=2) / 10
         end
     end
     return out
@@ -336,20 +380,20 @@ end
 function remove_padding(gradient::Array, nb::Integer; true_adjoint::Bool=false)
     if ndims(gradient) == 2
         if true_adjoint
-            gradient[nb+1,:] = sum(gradient[1:nb,:],1)
-            gradient[end-nb,:] = sum(gradient[end-nb+1:end,:],1)
-            gradient[:,nb+1] = sum(gradient[:,1:nb],2)
-            gradient[:,end-nb] = sum(gradient[:,end-nb+1:end],2)
+            gradient[nb+1,:] = sum(gradient[1:nb,:], dims=1)
+            gradient[end-nb,:] = sum(gradient[end-nb+1:end,:], dims=1)
+            gradient[:,nb+1] = sum(gradient[:,1:nb], dims=2)
+            gradient[:,end-nb] = sum(gradient[:,end-nb+1:end], dims=2)
         end
         return gradient[nb+1:end-nb,nb+1:end-nb]
     elseif ndims(gradient)==3
         if true_adjoint
-            gradient[nb+1,:,:] = sum(gradient[1:nb,:,:],1)
-            gradient[end-nb,:,:] = sum(gradient[end-nb+1:end,:,:],1)
-            gradient[:,nb+1,:] = sum(gradient[:,1:nb,:],2)
-            gradient[:,end-nb,:] = sum(gradient[:,end-nb+1:end,:],2)
-            gradient[:,:,nb+1] = sum(gradient[:,:,1:nb],3)
-            gradient[:,:,end-nb] = sum(gradient[:,:,end-nb+1:end],3)
+            gradient[nb+1,:,:] = sum(gradient[1:nb,:,:], dims=1)
+            gradient[end-nb,:,:] = sum(gradient[end-nb+1:end,:,:], dims=1)
+            gradient[:,nb+1,:] = sum(gradient[:,1:nb,:], dims=2)
+            gradient[:,end-nb,:] = sum(gradient[:,end-nb+1:end,:], dims=2)
+            gradient[:,:,nb+1] = sum(gradient[:,:,1:nb], dims=3)
+            gradient[:,:,end-nb] = sum(gradient[:,:,end-nb+1:end], dims=3)
         end
         return gradient[nb+1:end-nb,nb+1:end-nb,nb+1:end-nb]
     else
@@ -364,35 +408,46 @@ vec(x::Int64) = x;
 vec(x::Int32) = x;
 
 
-function time_resample(data::Array,geometry_in::Geometry,dt_new;order=3)
-    geometry = deepcopy(geometry_in)
-    numTraces = size(data,2)
-    timeAxis = 0:geometry.dt[1]:geometry.t[1]
-    timeInterp = 0:dt_new:geometry.t[1]
-    dataInterp = zeros(Float32,length(timeInterp),numTraces)
-    for k=1:numTraces
-        spl = Spline1D(timeAxis,data[:,k];k=order)
-        dataInterp[:,k] = spl(timeInterp)
+function time_resample(data::Array,geometry_in::Geometry,dt_new;order=2)
+
+    if dt_new==geometry_in.dt[1]
+        return data, geometry_in
+    else
+        geometry = deepcopy(geometry_in)
+        numTraces = size(data,2)
+        timeAxis = 0:geometry.dt[1]:geometry.t[1]
+        timeInterp = 0:dt_new:geometry.t[1]
+        dataInterp = zeros(Float32,length(timeInterp),numTraces)
+        for k=1:numTraces
+            spl = Spline1D(timeAxis,data[:,k];k=order)
+            dataInterp[:,k] = spl(timeInterp)
+        end
+        geometry.dt[1] = dt_new
+        geometry.nt[1] = length(timeInterp)
+        geometry.t[1] = (geometry.nt[1] - 1)*geometry.dt[1]
+        return dataInterp, geometry
     end
-    geometry.dt[1] = dt_new
-    geometry.nt[1] = length(timeInterp)
-    geometry.t[1] = (geometry.nt[1] - 1)*geometry.dt[1]
-    return dataInterp, geometry
 end
 
-function time_resample(data::Array,dt_in, geometry_out::Geometry;order=3)
-    geometry = deepcopy(geometry_out)
-    numTraces = size(data,2)
-    timeAxis = 0:dt_in:geometry_out.t[1]
-    timeInterp = 0:geometry_out.dt[1]:geometry_out.t[1]
-    dataInterp = zeros(Float32,length(timeInterp),numTraces)
-    for k=1:numTraces
-        spl = Spline1D(timeAxis,data[:,k];k=order)
-        dataInterp[:,k] = spl(timeInterp)
+function time_resample(data::Array,dt_in, geometry_out::Geometry;order=2)
+
+    if dt_in==geometry_out.dt[1]
+        return data
+    else
+        geometry = deepcopy(geometry_out)
+        numTraces = size(data,2)
+        timeAxis = 0:dt_in:geometry_out.t[1]
+        timeInterp = 0:geometry_out.dt[1]:geometry_out.t[1]
+        dataInterp = zeros(Float32,length(timeInterp),numTraces)
+        for k=1:numTraces
+            spl = Spline1D(timeAxis,data[:,k];k=order)
+            dataInterp[:,k] = spl(timeInterp)
+        end
+        return dataInterp
     end
-    return dataInterp
 end
 
+subsample(x::Nothing) = x
 
 function generate_distribution(x; src_no=1)
 	# Generate interpolator to sample from probability distribution given
@@ -402,6 +457,7 @@ function generate_distribution(x; src_no=1)
 	nt = x.geometry.nt[src_no]
 	dt = x.geometry.dt[src_no]
 	t = x.geometry.t[src_no]
+
 	# frequencies
 	fs = 1/dt	# sampling rate
 	fnyq = fs/2	# nyquist frequency
@@ -436,6 +492,15 @@ function select_frequencies(L;fmin=0.,fmax=Inf,nf=1)
 		end
 	end
 	return freq
+end
+
+
+function process_physical_parameter(param, dims)
+    if length(param) ==1
+        return param
+    else
+        return PyReverseDims(permutedims(param, dims))
+    end
 end
 
 function resample_model(array, inh, modelfull)

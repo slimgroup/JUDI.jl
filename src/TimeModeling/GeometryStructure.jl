@@ -1,4 +1,4 @@
-# Source/receiver geometry structure 
+# Source/receiver geometry structure
 # Author: Philipp Witte, pwitte@eos.ubc.ca
 # Date: January 2017
 #
@@ -7,7 +7,7 @@ export Geometry, compareGeometry, GeometryIC, GeometryOOC
 
 abstract type Geometry end
 
-# In-core geometry structure for seismic header information 
+# In-core geometry structure for seismic header information
 mutable struct GeometryIC <: Geometry
     xloc::Array{Any,1}  # Array of receiver positions (fixed for all experiments)
     yloc::Array{Any,1}
@@ -17,7 +17,7 @@ mutable struct GeometryIC <: Geometry
     t::Array{Any,1}
 end
 
-# Out-of-core geometry structure, contains look-up table instead of coordinates  
+# Out-of-core geometry structure, contains look-up table instead of coordinates
 mutable struct GeometryOOC <: Geometry
     container::Array{SeisIO.SeisCon,1}
     dt::Array{Any,1}
@@ -93,7 +93,7 @@ Examples
     rec_geometry = Geometry(seis_block; key="receiver", segy_depth_key="RecGroupElevation")
     src_geometry = Geometry(seis_block; key="source", segy_depth_key="SourceDepth")
 
-Check the seis_block's header entries to find out which keywords contain the depth coordinates.\\
+Check the seis_block's header entries to findall out which keywords contain the depth coordinates.\\
 The source depth keyword is either `SourceDepth` or `SourceSurfaceElevation`. The receiver depth \\
 keyword is typically `RecGroupElevation`.
 
@@ -104,7 +104,7 @@ geometry object `GeometryOOC` without the source/receiver coordinates, but a loo
     seis_container = segy_scan("/path/to/data/directory","filenames",["GroupX","GroupY","RecGroupElevation","SourceDepth","dt"])
     rec_geometry = Geometry(seis_container; key="receiver", segy_depth_key="RecGroupElevation")
     src_geometry = Geometry(seis_container; key="source", segy_depth_key="SourceDepth")
-    
+
 """
 Geometry(xloc::Array{Any,1},yloc::Array{Any,1},zloc::Array{Any,1},dt::Array{Any,1},nt::Array{Any,1},t::Array{Any,1}) = GeometryIC(xloc,yloc,zloc,dt,nt,t)
 
@@ -113,7 +113,7 @@ function Geometry(xloc::Array{Any,1},yloc::Array{Any,1},zloc::Array{Any,1};dt=[]
     nsrc = length(xloc)
     # Check if single dt was passed
     if typeof(dt) <: Real
-        dtCell = Array{Any}(nsrc)
+        dtCell = Array{Any}(undef, nsrc)
         for j=1:nsrc
             dtCell[j] = dt
         end
@@ -122,7 +122,7 @@ function Geometry(xloc::Array{Any,1},yloc::Array{Any,1},zloc::Array{Any,1};dt=[]
     end
     # Check if single t was passed
     if typeof(t) <: Real
-        tCell = Array{Any}(nsrc)
+        tCell = Array{Any}(undef, nsrc)
         for j=1:nsrc
             tCell[j] = t
         end
@@ -130,7 +130,7 @@ function Geometry(xloc::Array{Any,1},yloc::Array{Any,1},zloc::Array{Any,1};dt=[]
         tCell = t
     end
     # Calculate number of time steps
-    ntCell = Array{Any}(nsrc)
+    ntCell = Array{Any}(undef, nsrc)
     for j=1:nsrc
         ntCell[j] = Int(trunc(tCell[j]/dtCell[j] + 1))
     end
@@ -139,12 +139,12 @@ end
 
 # Constructor if coordinates are not passed as a cell arrays
 function Geometry(xloc,yloc,zloc;dt=[],t=[],nsrc::Integer=1)
-    xlocCell = Array{Any}(nsrc)
-    ylocCell = Array{Any}(nsrc)
-    zlocCell = Array{Any}(nsrc)
-    dtCell = Array{Any}(nsrc)
-    ntCell = Array{Any}(nsrc)
-    tCell = Array{Any}(nsrc)
+    xlocCell = Array{Any}(undef, nsrc)
+    ylocCell = Array{Any}(undef, nsrc)
+    zlocCell = Array{Any}(undef, nsrc)
+    dtCell = Array{Any}(undef, nsrc)
+    ntCell = Array{Any}(undef, nsrc)
+    tCell = Array{Any}(undef, nsrc)
     for j=1:nsrc
         xlocCell[j] = xloc
         ylocCell[j] = yloc
@@ -154,7 +154,7 @@ function Geometry(xloc,yloc,zloc;dt=[],t=[],nsrc::Integer=1)
         tCell[j] = t
     end
     return GeometryIC(xlocCell,ylocCell,zlocCell,dtCell,ntCell,tCell)
-end 
+end
 
 
 ################################################ Constructors from SEGY data  ####################################################
@@ -172,17 +172,17 @@ function Geometry(data::SeisIO.SeisBlock; key="source", segy_depth_key="")
     else
         throw("Specified keyword not supported")
     end
-    xloc = Array{Any}(nsrc); yloc = Array{Any}(nsrc); zloc = Array{Any}(nsrc)
-    dt = Array{Any}(nsrc); nt = Array{Any}(nsrc); t = Array{Any}(nsrc)
+    xloc = Array{Any}(undef, nsrc); yloc = Array{Any}(undef, nsrc); zloc = Array{Any}(undef, nsrc)
+    dt = Array{Any}(undef, nsrc); nt = Array{Any}(undef, nsrc); t = Array{Any}(undef, nsrc)
 
     xloc_full = get_header(data, params[1])
     yloc_full = get_header(data, params[2])
     zloc_full = get_header(data, params[3])
     dt_full = get_header(data, "dt")[1]
     nt_full = get_header(data, "ns")[1]
-    
+
     for j=1:nsrc
-        traces = find(src .== unique(src)[j])
+        traces = findall(src .== unique(src)[j])
         if key=="source"    # assume same source location for all traces within one shot record
             xloc[j] = convert(Float32,xloc_full[traces][1])
             yloc[j] = convert(Float32,yloc_full[traces][1])
@@ -193,7 +193,7 @@ function Geometry(data::SeisIO.SeisBlock; key="source", segy_depth_key="")
             zloc[j] = abs.(convert(Array{Float32,1}, zloc_full[traces]))
         end
         dt[j] = dt_full/1f3
-        nt[j] = convert(Int64,nt_full)
+        nt[j] = convert(Integer,nt_full)
         t[j] =  (nt[j]-1)*dt[j]
     end
     return  GeometryIC(xloc,yloc,zloc,dt,nt,t)
@@ -201,7 +201,7 @@ end
 
 # Set up geometry summary from out-of-core data container
 function Geometry(data::SeisIO.SeisCon; key="source", segy_depth_key="")
-    
+
     if key=="source"
         isempty(segy_depth_key) && (segy_depth_key="SourceSurfaceElevation")
     elseif key=="receiver"
@@ -212,9 +212,9 @@ function Geometry(data::SeisIO.SeisCon; key="source", segy_depth_key="")
 
     # read either source or receiver geometry
     nsrc = length(data)
-    container = Array{SeisIO.SeisCon}(nsrc)
-    dt = Array{Any}(nsrc); nt = Array{Any}(nsrc); t = Array{Any}(nsrc)
-    nsamples = Array{Any}(nsrc)
+    container = Array{SeisIO.SeisCon}(undef, nsrc)
+    dt = Array{Any}(undef, nsrc); nt = Array{Any}(undef, nsrc); t = Array{Any}(undef, nsrc)
+    nsamples = Array{Any}(undef, nsrc)
     for j=1:nsrc
         container[j] = split(data,j)
         dt[j] = data.blocks[j].summary["dt"][1]/1f3
@@ -237,9 +237,9 @@ function Geometry(data::Array{SeisIO.SeisCon,1}; key="source", segy_depth_key=""
     end
 
     nsrc = length(data)
-    container = Array{SeisIO.SeisCon}(nsrc) 
-    dt = Array{Any}(nsrc); nt = Array{Any}(nsrc); t = Array{Any}(nsrc)
-    nsamples = Array{Any}(nsrc)
+    container = Array{SeisIO.SeisCon}(undef, nsrc)
+    dt = Array{Any}(undef, nsrc); nt = Array{Any}(undef, nsrc); t = Array{Any}(undef, nsrc)
+    nsamples = Array{Any}(undef, nsrc)
     for j=1:nsrc
         container[j] = data[j]
         dt[j] = data[j].blocks[1].summary["dt"][1]/1f3
@@ -250,7 +250,7 @@ function Geometry(data::Array{SeisIO.SeisCon,1}; key="source", segy_depth_key=""
     return  GeometryOOC(container,dt,nt,t,nsamples,key,segy_depth_key)
 end
 
-# Load geometry from out-of-core Geometry container 
+# Load geometry from out-of-core Geometry container
 function Geometry(geometry::GeometryOOC)
     nsrc = length(geometry.container)
 
@@ -262,11 +262,11 @@ function Geometry(geometry::GeometryOOC)
     else
         throw("Specified keyword not supported")
     end
-    xloc = Array{Any}(nsrc); yloc = Array{Any}(nsrc); zloc = Array{Any}(nsrc)
-    dt = Array{Any}(nsrc); nt = Array{Any}(nsrc); t = Array{Any}(nsrc)
+    xloc = Array{Any}(undef, nsrc); yloc = Array{Any}(undef, nsrc); zloc = Array{Any}(undef, nsrc)
+    dt = Array{Any}(undef, nsrc); nt = Array{Any}(undef, nsrc); t = Array{Any}(undef, nsrc)
 
     for j=1:nsrc
-    
+
         header = read_con_headers(geometry.container[j], params, 1)
         if geometry.key=="source"
             xloc[j] = convert(Float32, get_header(header, params[1])[1])
@@ -278,7 +278,7 @@ function Geometry(geometry::GeometryOOC)
             zloc[j] = abs.(convert(Array{Float32,1}, get_header(header, params[3])))
         end
         dt[j] = get_header(header, params[4])[1]/1f3
-        nt[j] = convert(Int64, get_header(header, params[5])[1])
+        nt[j] = convert(Integer, get_header(header, params[5])[1])
         t[j] =  (nt[j]-1)*dt[j]
     end
     return  GeometryIC(xloc,yloc,zloc,dt,nt,t)
@@ -304,13 +304,15 @@ subsample(geometry::GeometryOOC, srcnum) = Geometry(geometry.container[srcnum]; 
 
 # Compare if geometries match
 function compareGeometry(geometry_A::Geometry, geometry_B::Geometry)
-    if isequal(geometry_A.xloc, geometry_B.xloc) && isequal(geometry_A.yloc, geometry_B.yloc) && isequal(geometry_A.zloc, geometry_B.zloc) && 
+    if isequal(geometry_A.xloc, geometry_B.xloc) && isequal(geometry_A.yloc, geometry_B.yloc) && isequal(geometry_A.zloc, geometry_B.zloc) &&
     isequal(geometry_A.dt, geometry_B.dt) && isequal(geometry_A.nt, geometry_B.nt)
         return true
     else
         return false
     end
 end
+
+isequal(geometry_A::Geometry, geometry_B::Geometry) = compareGeometry(geometry_A, geometry_B)
 
 function compareGeometry(geometry_A::GeometryOOC, geometry_B::GeometryOOC)
     check = true
@@ -326,10 +328,7 @@ function compareGeometry(geometry_A::GeometryOOC, geometry_B::GeometryOOC)
     return check
 end
 
+isequal(geometry_A::GeometryOOC, geometry_B::GeometryOOC) = compareGeometry(geometry_A, geometry_B)
+
 compareGeometry(geometry_A::GeometryOOC, geometry_B::Geometry) = true
 compareGeometry(geometry_A::Geometry, geometry_B::GeometryOOC) = true
-
-
-
-
-

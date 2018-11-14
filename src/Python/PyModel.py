@@ -7,29 +7,30 @@ from devito.logger import error
 
 __all__ = ['Model']
 
-
 def damp_boundary(damp, nbpml, spacing):
     """Initialise damping field with an absorbing PML layer.
 
-    :param damp: The :class:`Function` for the damping field.
-    :param nbpml: Number of points in the damping layer.
-    :param spacing: Grid spacing coefficent.
+    :param damp: Array data defining the damping field
+    :param nbpml: Number of points in the damping layer
+    :param spacing: Grid spacing coefficent
     """
     dampcoeff = 1.5 * np.log(1.0 / 0.001) / (40.)
-    for i in range(damp.ndim):
-        for j in range(nbpml):
-            # Dampening coefficient
-            pos = np.abs((nbpml - j + 1) / float(nbpml))
-            val = dampcoeff * (pos - np.sin(2*np.pi*pos)/(2*np.pi))
-            # : slices
-            all_ind = [slice(0, d) for d in damp.data.shape]
-            # Left slice for dampening for dimension i
-            all_ind[i] = slice(j, j+1)
-            damp.data[all_ind] += val/spacing[i]
-            # right slice for dampening for dimension i
-            all_ind[i] = slice(damp.data.shape[i]-j, damp.data.shape[i]-j+1)
-            damp.data[all_ind] += val/spacing[i]
-    damp.data[:] = 1 - damp.data[:]
+    ndim = len(damp.shape)
+    for i in range(nbpml):
+        pos = np.abs((nbpml - i + 1) / float(nbpml))
+        val = dampcoeff * (pos - np.sin(2*np.pi*pos)/(2*np.pi))
+        if ndim == 2:
+            damp[i, :] += val/spacing[0]
+            damp[-(i + 1), :] += val/spacing[0]
+            damp[:, i] += val/spacing[1]
+            damp[:, -(i + 1)] += val/spacing[1]
+        else:
+            damp[i, :, :] += val/spacing[0]
+            damp[-(i + 1), :, :] += val/spacing[0]
+            damp[:, i, :] += val/spacing[1]
+            damp[:, -(i + 1), :] += val/spacing[1]
+            damp[:, :, i] += val/spacing[2]
+            damp[:, :, -(i + 1)] += val/spacing[2]
 
 
 def initialize_function(function, data, nbpml):
@@ -46,28 +47,23 @@ def initialize_function(function, data, nbpml):
 
 class Model(object):
     """The physical model used in seismic inversion processes.
-
     :param origin: Origin of the model in m as a tuple in (x,y,z) order
     :param spacing: Grid size in m as a Tuple in (x,y,z) order
     :param shape: Number of grid points size in (x,y,z) order
     :param vp: Velocity in km/s
     :param nbpml: The number of PML layers for boundary damping
     :param dm: Model perturbation in s^2/km^2
-
-
     The :class:`Model` provides two symbolic data objects for the
     creation of seismic wave propagation operators:
-
     :param m: The square slowness of the wave
     :param damp: The damping field for absorbing boundarycondition
     """
-    def __init__(self, origin, spacing, shape, vp, rho=1, nbpml=40, dtype=np.float32, dm=None,
-                 epsilon=None, delta=None, theta=None, phi=None, space_order=8):
+    def __init__(self, origin, spacing, shape, vp, rho=1, nbpml=20, dtype=np.float32, dm=None,
+                 space_order=8):
         self.shape = shape
         self.nbpml = int(nbpml)
 
         shape_pml = np.array(shape) + 2 * self.nbpml
-        self.shape_pml = shape_pml
         # Physical extent is calculated per cell, so shape - 1
         extent = tuple(np.array(spacing) * (shape_pml - 1))
         self.grid = Grid(extent=extent, shape=shape_pml,
@@ -90,57 +86,16 @@ class Model(object):
 
         # Create dampening field as symbol `damp`
         self.damp = Function(name="damp", grid=self.grid)
-        damp_boundary(self.damp, self.nbpml, spacing=self.spacing)
+        damp_boundary(self.damp.data, self.nbpml, spacing=self.spacing)
 
         # Additional parameter fields for TTI operators
         self.scale = 1.
 
         if dm is not None:
             self.dm = Function(name="dm", grid=self.grid)
-            initialize_function(self.dm, dm, self.nbpml)
+            self.dm.data[:] = self.pad(dm)
         else:
             self.dm = 1
-
-        if epsilon is not None:
-            if isinstance(epsilon, np.ndarray):
-                self.epsilon = Function(name="epsilon", grid=self.grid, space_order=space_order)
-                initialize_function(self.epsilon, 1 + 2 * epsilon, self.nbpml)
-                # Maximum velocity is scale*max(vp) if epsilon > 0
-                if np.max(self.epsilon.data) > 0:
-                    self.scale = np.sqrt(np.max(self.epsilon.data))
-            else:
-                self.epsilon = 1 + 2 * epsilon
-                self.scale = np.sqrt(self.epsilon)
-        else:
-            self.epsilon = 1.0
-            self.scale = 1.0
-
-        if delta is not None:
-            if isinstance(delta, np.ndarray):
-                self.delta = Function(name="delta", grid=self.grid, space_order=space_order)
-                initialize_function(self.delta, np.sqrt(1 + 2 * delta), self.nbpml)
-            else:
-                self.delta = np.sqrt(1 + 2 * delta)
-        else:
-            self.delta = 1.0
-
-        if theta is not None:
-            if isinstance(theta, np.ndarray):
-                self.theta = Function(name="theta", grid=self.grid, space_order=space_order)
-                initialize_function(self.theta, theta, self.nbpml)
-            else:
-                self.theta = theta
-        else:
-            self.theta = 0.0
-
-        if phi is not None:
-            if isinstance(phi, np.ndarray):
-                self.phi = Function(name="phi", grid=self.grid, space_order=space_order)
-                initialize_function(self.phi, phi, self.nbpml)
-            else:
-                self.phi = phi
-        else:
-            self.phi = 0.0
 
     @property
     def dim(self):
@@ -161,9 +116,7 @@ class Model(object):
         """
         Map between spacing symbols and their values for each :class:`SpaceDimension`
         """
-        subs = self.grid.spacing_map
-        subs[self.grid.time_dim.spacing] = self.critical_dt
-        return subs
+        return self.grid.spacing_map
 
     @property
     def origin(self):
@@ -198,9 +151,9 @@ class Model(object):
         #
         # The CFL condtion is then given by
         # dt <= coeff * h / (max(velocity))
-        coeff = 0.38
-        dt = coeff * np.min(self.spacing) / (self.scale*np.max(self.vp))
-        return self.dtype(.001 * int(1000 * dt))
+        coeff = 0.38 if len(self.shape) == 3 else 0.42
+        dt = self.dtype(coeff * np.min(self.spacing) / (self.scale*np.max(self.vp)))
+        return 0.001 * int(1000.*dt)
 
     @property
     def vp(self):
@@ -224,3 +177,11 @@ class Model(object):
             initialize_function(self.m, 1 / (self.vp * self.vp), self.nbpml)
         else:
             self.m.data = 1 / vp**2
+
+    def pad(self, data):
+        """Padding function PNL layers in every direction for for the
+        absorbing boundary conditions.
+
+        :param data : Data array to be padded"""
+        pad_list = [(self.nbpml, self.nbpml) for _ in self.shape]
+        return np.pad(data, pad_list, 'edge')
