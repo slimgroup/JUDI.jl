@@ -13,7 +13,7 @@ from sympy import solve, cos, sin, expand, symbols
 from sympy import Function as fint
 from devito.logger import set_log_level
 from devito import Eq, Function, TimeFunction, Dimension, Operator, clear_cache, ConditionalDimension, Grid, Inc, DefaultDimension
-from devito.finite_difference import (centered, first_derivative, right, transpose,
+from devito.finite_differences import (centered, first_derivative, right, transpose,
                                       second_derivative, left)
 from devito.symbolics import retrieve_functions
 
@@ -381,12 +381,12 @@ def adjoint_born(model, rec_coords, rec_data, u=None, v=None, op_forward=None, i
             vdy = delta * Dy(v, ang0, ang1, ang2, ang3, order_loc)
             qdy = Dy(q, ang0, ang1, ang2, ang3, order_loc)
             grads += udy * pdy + vdy * qdy
-        gradient_update = [Inc(gradient, gradient - factor_h * factor_t * dt * ((u * p.dt2 + v * q.dt2) * m + grads))]
+        gradient_update = [Inc(gradient, - factor_h * factor_t * dt * ((u * p.dt2 + v * q.dt2) * m + grads))]
     elif isiciso is True:
         grads = u.dx * p.dx + u.dy * p.dy + v.dx * q.dx + v.dy * q.dy
         if len(model.shape) == 3:
             grads += u.dz * p.dz + v.dz * q.dz
-        gradient_update = [Inc(gradient, gradient - factor_h * dt * factor_t * ((u * p.dt2 + v * q.dt2) * m + grads))]
+        gradient_update = [Inc(gradient, - factor_h * dt * factor_t * ((u * p.dt2 + v * q.dt2) * m + grads))]
     elif isicnothom is True:
                 order_loc = int(space_order/2)
                 udx = Dx(u, ang0, ang1, ang2, ang3, order_loc)
@@ -404,9 +404,9 @@ def adjoint_born(model, rec_coords, rec_data, u=None, v=None, op_forward=None, i
                     vdy = delta * Dy(v, ang0, ang1, ang2, ang3, order_loc)
                     qdy = Dy(q, ang0, ang1, ang2, ang3, order_loc)
                     grads += udy * pdy + vdy * qdy
-                gradient_update = [Inc(gradient, gradient - factor_h * factor_t * dt * ((u * p.dt2 + v * q.dt2) * m + grads))]
+                gradient_update = [Inc(gradient, - factor_h * factor_t * dt * ((u * p.dt2 + v * q.dt2) * m + grads))]
     else:
-        gradient_update = [Inc(gradient, gradient - factor_h * factor_t * dt * (u * p.dt2 + v * q.dt2))]
+        gradient_update = [Inc(gradient, - factor_h * factor_t * dt * (u * p.dt2 + v * q.dt2))]
 
     # Create operator and run
     set_log_level('INFO')
@@ -494,15 +494,15 @@ def adjoint_born_fake(model, rec_coords, rec_data, u=None, v=None, op_forward=No
 
     if isiciso is True:
         if len(model.shape) == 2:
-            gradient_update = [Inc(gradient, gradient - dt * ((u.dt2 * p + v.dt2 * q) * m +
+            gradient_update = [Inc(gradient, - dt * ((u.dt2 * p + v.dt2 * q) * m +
                                                               u.dx * p.dx + u.dy * p.dy +
                                                               v.dx * q.dx + v.dy * q.dy))]
         else:
-            gradient_update = [Inc(gradient, gradient - dt * ((u.dt2 * p + v.dt2 * q) * m +
+            gradient_update = [Inc(gradient, - dt * ((u.dt2 * p + v.dt2 * q) * m +
                                                               u.dx * p.dx + u.dy * p.dy + u.dz * p.dz +
                                                               v.dx * q.dx + v.dy * q.dy + v.dz * q.dz))]
     else:
-        gradient_update = [Inc(gradient, gradient - dt * u.dt2 * p - dt * v.dt2 * q)]
+        gradient_update = [Inc(gradient, - dt * u.dt2 * p - dt * v.dt2 * q)]
     # Create operator and run
     set_log_level('INFO')
     expression += adj_src + gradient_update

@@ -8,7 +8,7 @@ export Options, subsample
 # Object for velocity/slowness models
 mutable struct Options
     space_order::Integer
-    free_surface::Bool
+    freesurface::Bool
     limit_m::Bool
     buffer_size::Real
     save_data_to_disk::Bool

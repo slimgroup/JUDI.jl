@@ -16,7 +16,7 @@ from sympy import cos, sin, finite_diff_weights
 from devito.logger import error
 
 from devito import Eq, Function, TimeFunction, Operator, clear_cache, Inc, ConditionalDimension, Grid
-from devito.finite_difference import (centered, right, left)
+from devito.finite_differences import (centered, right, left)
 from devito.symbolics import retrieve_functions
 
 from PySource import PointSource, Receiver

@@ -60,6 +60,8 @@ end
 
 # Setup time-domain linear or nonlinear foward and adjoint modeling and interface to OPESCI/devito
 function time_modeling(model_full::Model_TTI, srcGeometry::Geometry, srcData, recGeometry::Geometry, recData, dm, srcnum::Int64, op::Char, mode::Int64, options)
+	pm = load_pymodel()
+	tti = load_tti_codegen(false)
     # Load full geometry for out-of-core geometry containers
     typeof(recGeometry) == GeometryOOC && (recGeometry = Geometry(recGeometry))
     typeof(srcGeometry) == GeometryOOC && (srcGeometry = Geometry(srcGeometry))
@@ -139,7 +141,7 @@ function time_modeling(model_full::Model_TTI, srcGeometry::Geometry, srcData, re
             # forward modeling
             #println("Nonlinear forward modeling (source no. ",srcnum,")")
             #Staggered_forward
-            dOut = pycall(tti.forward_modeling, PyObject, modelPy, PyReverseDims(src_coords'), PyReverseDims(qIn'), PyReverseDims(rec_coords'),
+            dOut = pycall(tti[:forward_modeling], PyObject, modelPy, PyReverseDims(copy(transpose(src_coords))), PyReverseDims(copy(transpose(qIn))), PyReverseDims(copy(transpose(rec_coords))),
                           space_order=options.space_order)[1]
             ntRec > ntComp && (dOut = [dOut zeros(size(dOut,1), ntRec - ntComp)])
             dOut = time_resample(dOut,dtComp,recGeometry)
@@ -152,7 +154,7 @@ function time_modeling(model_full::Model_TTI, srcGeometry::Geometry, srcData, re
         else
             # adjoint modeling
             #println("Nonlinear adjoint modeling (source no. ",srcnum,")")
-            qOut = pycall(tti.adjoint_modeling, PyObject, modelPy, PyReverseDims(src_coords'), PyReverseDims(rec_coords'), PyReverseDims(dIn'),
+            qOut = pycall(tti[:adjoint_modeling], PyObject, modelPy, PyReverseDims(copy(transpose(src_coords))), PyReverseDims(copy(transpose(rec_coords))), PyReverseDims(copy(transpose(dIn))),
                                 space_order=options.space_order)[1]
             ntSrc > ntComp && (qOut = [qOut zeros(size(qOut), ntSrc - ntComp)])
             qOut = time_resample(qOut,dtComp,srcGeometry)
@@ -162,7 +164,7 @@ function time_modeling(model_full::Model_TTI, srcGeometry::Geometry, srcData, re
         if mode==1
             # forward linearized modeling
             #println("Linearized forward modeling (source no. ",srcnum,")")
-            dOut = pycall(tti.forward_born, PyObject, modelPy, PyReverseDims(src_coords'), PyReverseDims(qIn'), PyReverseDims(rec_coords'),
+            dOut = pycall(tti[:forward_born], PyObject, modelPy, PyReverseDims(copy(transpose(src_coords))), PyReverseDims(copy(transpose(qIn))), PyReverseDims(copy(transpose(rec_coords))),
                           space_order=options.space_order, isic=options.isic)[1]
             ntRec > ntComp && (dOut = [dOut zeros(size(dOut,1), ntRec - ntComp)])
             dOut = time_resample(dOut,dtComp,recGeometry)
@@ -176,12 +178,12 @@ function time_modeling(model_full::Model_TTI, srcGeometry::Geometry, srcData, re
             # adjoint linearized modeling
             #println("Linearized adjoint modeling (source no. ",srcnum,")")
             if options.optimal_checkpointing == true
-                op_F = pycall(tti.forward_modeling, PyObject, modelPy, PyReverseDims(src_coords'), PyReverseDims(qIn'), PyReverseDims(rec_coords'),
+                op_F = pycall(tti[:forward_modeling], PyObject, modelPy, PyReverseDims(copy(transpose(src_coords))), PyReverseDims(copy(transpose(qIn))), PyReverseDims(copy(transpose(rec_coords))),
                               op_return=true, space_order=options.space_order, nb=model.nb)
-                grad = pycall(tti.adjoint_born, Array{Float32, length(model.n)}, modelPy, PyReverseDims(rec_coords'), PyReverseDims(dIn'), op_forward=op_F,
+                grad = pycall(tti[:adjoint_born], Array{Float32, length(model.n)}, modelPy, PyReverseDims(copy(transpose(rec_coords))), PyReverseDims(copy(transpose(dIn))), op_forward=op_F,
                               space_order=options.space_order, nb=model.nb, is_residual=true, isiciso=options.isic)
             else
-                grad = pycall(tti.J_transpose, Array{Float32, length(model.n)}, modelPy, PyReverseDims(src_coords'), PyReverseDims(qIn'), PyReverseDims(rec_coords'), PyReverseDims(dIn'),
+                grad = pycall(tti[:J_transpose], Array{Float32, length(model.n)}, modelPy, PyReverseDims(copy(transpose(src_coords))), PyReverseDims(copy(transpose(qIn))), PyReverseDims(copy(transpose(rec_coords))), PyReverseDims(copy(transpose(dIn))),
                               t_sub_factor=options.t_sub, h_sub_factor=options.h_sub, space_order=options.space_order, isic=options.isic)
             end
             grad = remove_padding(grad,model.nb,true_adjoint=options.sum_padding)
@@ -219,7 +221,7 @@ function devito_interface(modelPy::PyCall.PyObject, origin, srcGeometry::Geometr
 
     # Devito call
     dOut = pycall(ac[:forward_modeling], PyObject, modelPy, PyReverseDims(copy(transpose(src_coords))), PyReverseDims(copy(transpose(qIn))), PyReverseDims(copy(transpose(rec_coords))),
-                  space_order=options.space_order, nb=modelPy[:nbpml], free_surface=options.free_surface)[1]
+                  space_order=options.space_order, nb=modelPy[:nbpml], free_surface=options.freesurface)[1]
     ntRec > ntComp && (dOut = [dOut zeros(size(dOut,1), ntRec - ntComp)])
     dOut = time_resample(dOut,dtComp,recGeometry)
 
@@ -248,7 +250,7 @@ function devito_interface(modelPy::PyCall.PyObject, origin, srcGeometry::Geometr
 
     # Devito call
     qOut = pycall(ac[:adjoint_modeling], Array{Float32,2}, modelPy, PyReverseDims(copy(transpose(src_coords))), PyReverseDims(copy(transpose(rec_coords))), PyReverseDims(copy(transpose(dIn))),
-                  space_order=options.space_order, nb=modelPy[:nbpml], free_surface=options.free_surface)
+                  space_order=options.space_order, nb=modelPy[:nbpml], free_surface=options.freesurface)
     ntSrc > ntComp && (qOut = [qOut zeros(size(qOut), ntSrc - ntComp)])
     qOut = time_resample(qOut,dtComp,srcGeometry)
 
@@ -270,7 +272,7 @@ function devito_interface(modelPy::PyCall.PyObject, origin, srcGeometry::Geometr
 
     # Devito call
     u = pycall(ac[:forward_modeling], PyObject, modelPy, PyReverseDims(copy(transpose(src_coords))), PyReverseDims(copy(transpose(qIn))), nothing,
-               space_order=options.space_order, nb=modelPy[:nbpml], free_surface=options.free_surface)
+               space_order=options.space_order, nb=modelPy[:nbpml], free_surface=options.freesurface)
 
     # Output forward wavefield as judiWavefield
     options.save_wavefield_to_disk && (u = dump_wavefield(u))
@@ -291,7 +293,7 @@ function devito_interface(modelPy::PyCall.PyObject, origin, srcGeometry::Nothing
 
     # Devito call
     v = pycall(ac[:adjoint_modeling], PyObject, modelPy, nothing, PyReverseDims(copy(transpose(rec_coords))), PyReverseDims(copy(transpose(dIn))),
-               space_order=options.space_order, nb=modelPy[:nbpml], free_surface=options.free_surface)
+               space_order=options.space_order, nb=modelPy[:nbpml], free_surface=options.freesurface)
 
     # Output adjoint wavefield as judiWavefield
     options.save_wavefield_to_disk && (v = dump_wavefield(v))
@@ -311,7 +313,7 @@ function devito_interface(modelPy::PyCall.PyObject, origin, srcGeometry::Nothing
 
     # Devito call
     dOut = pycall(ac[:forward_modeling], PyObject, modelPy, nothing, srcData[1], PyReverseDims(copy(transpose(rec_coords))),
-                  space_order=options.space_order, nb=modelPy[:nbpml], free_surface=options.free_surface)[1]
+                  space_order=options.space_order, nb=modelPy[:nbpml], free_surface=options.freesurface)[1]
     #ntRec > ntComp && (dOut = [dOut zeros(size(dOut,1), ntRec - ntComp)])
     dOut = time_resample(dOut,dtComp,recGeometry)
 
@@ -336,7 +338,7 @@ function devito_interface(modelPy::PyCall.PyObject, origin, srcGeometry::Geometr
 
     # Devito call
     qOut = pycall(ac[:adjoint_modeling], Array{Float32,2}, modelPy, PyReverseDims(copy(transpose(src_coords))), nothing, recData[1],
-                  space_order=options.space_order, nb=modelPy[:nbpml], free_surface=options.free_surface)
+                  space_order=options.space_order, nb=modelPy[:nbpml], free_surface=options.freesurface)
     #ntSrc > ntComp && (qOut = [qOut zeros(size(qOut), ntSrc - ntComp)])
     qOut = time_resample(qOut,dtComp,srcGeometry)
 
@@ -354,7 +356,7 @@ function devito_interface(modelPy::PyCall.PyObject, origin, srcGeometry::Nothing
 
     # Devito call
     u = pycall(ac[:forward_modeling], PyObject, modelPy, nothing, srcData[1], nothing,
-                  space_order=options.space_order, nb=modelPy[:nbpml], free_surface=options.free_surface)
+                  space_order=options.space_order, nb=modelPy[:nbpml], free_surface=options.freesurface)
 
     # Output forward wavefield as judiWavefield
     options.save_wavefield_to_disk && (u = dump_wavefield(u))
@@ -371,7 +373,7 @@ function devito_interface(modelPy::PyCall.PyObject, origin, srcGeometry::Nothing
 
     # Devito call
     v = pycall(ac[:adjoint_modeling], PyObject, modelPy, nothing, nothing, recData[1],
-                  space_order=options.space_order, nb=modelPy[:nbpml], free_surface=options.free_surface)
+                  space_order=options.space_order, nb=modelPy[:nbpml], free_surface=options.freesurface)
 
     # Output adjoint wavefield as judiWavefield
     options.save_wavefield_to_disk && (v = dump_wavefield(v))

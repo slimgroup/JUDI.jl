@@ -3,22 +3,25 @@
 # Date: January 2017
 #
 
-using PyCall, PyPlot, JUDI.TimeModeling, Images
-@pyimport scipy.ndimage as ndi
+using PyCall, PyPlot, JUDI.TimeModeling, Images, LinearAlgebra, Test
 ## Set up model structure
 n = (151, 151)	# (x,y,z) or (x,z)
 d = (10.,10.)
 o = (0.,0.)
 
+function smooth(array, sigma)
+	return typeof(array)(imfilter(array, Kernel.gaussian(sigma)))
+end
 # Velocity [km/s]
 v = ones(Float32,n) * 2.0f0
-v[:,Int(round(end/3)):end] = 3f0
-v[:,Int(2*round(end/3)):end] = 4f0
-v0 = ndi.gaussian_filter(v, sigma=10)
+println(trunc(Integer, n[2]/3))
+v[:,trunc(Integer, end/3):end] .= 3f0
+v[:,trunc(Integer, 2*end/3):end] .= 4f0
+v0 = smooth(v, 10)
 rho = v[:, :] / 2.0f0
-epsilon = ndi.gaussian_filter((v[:, :] - 2.0f0)/5.0f0, sigma=3)
-delta =  ndi.gaussian_filter((v[:, :] - 2.0f0)/10.0f0, sigma=3)
-theta =  ndi.gaussian_filter((v[:, :] - 2.0f0)/2.0, sigma=3)
+epsilon = smooth((v[:, :] .- 2.0f0)/5.0f0, 3)
+delta =  smooth((v[:, :] .- 2.0f0)/10.0f0, 3)
+theta =  smooth((v[:, :] .- 2.0f0)/2.0, 3)
 # Slowness squared [s^2/km^2]
 m = (1f0./v).^2
 m0 = (1f0./v0).^2
@@ -32,9 +35,9 @@ model = Model_TTI(n,d,o,m; epsilon=epsilon, delta=delta, theta=theta, rho=rho)
 
 ## Set up receiver geometry
 nxrec = 151
-xrec = linspace(0f0,1500f0,nxrec)
-yrec = linspace(0f0, 0f0,nxrec)
-zrec = linspace(50f0, 50f0,nxrec)
+xrec = range(0f0, 1500f0; length=nxrec)
+yrec = range(0f0, 0f0; length=nxrec)
+zrec = range(50f0, 50f0; length=nxrec)
 
 # receiver sampling and recording time
 timeR = 2500f0	# receiver recording time [ms]
@@ -66,7 +69,7 @@ wavelet = 1e1*ricker_wavelet(timeS,dtS,f0)
 ###################################################################################################
 
 # Modeling operators
-opt = Options(sum_padding=true,  isic="rotated", t_sub=1, h_sub=2, space_order=16)
+opt = Options(sum_padding=true) #,  isic="rotated", t_sub=1, h_sub=2, space_order=16)
 F = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
 q = judiVector(srcGeometry, wavelet)
 
@@ -77,10 +80,10 @@ d_hat = F*q
 q_hat = F'*d_hat
 
 # Result F
-println(dot(d_hat,d_hat))
-println(dot(q,q_hat))
+println(dot(d_hat, d_hat))
+println(dot(q, q_hat))
 println("Residual: ", abs(dot(d_hat,d_hat) - dot(q,q_hat)))
-println("Ratio: ", abs(dot(d_hat,d_hat)/dot(q,q_hat)) - 1.0)
+println("Ratio - 1: ", abs(dot(d_hat,d_hat)/dot(q,q_hat)) - 1.0)
 #
 # Linearized modeling
 J = judiJacobian(F,q)
@@ -92,4 +95,4 @@ dm_hat = J'*dD_hat
 println(dot(dD_hat, dD_hat))
 println(dot(dm, dm_hat))
 println("Residual: ", abs(dot(dD_hat,dD_hat) - dot(dm,dm_hat)))
-println("Ratio: ", abs(dot(dD_hat,dD_hat)/dot(dm,dm_hat)) - 1.0)
+println("Ratio - 1: ", abs(dot(dD_hat,dD_hat)/dot(dm,dm_hat)) - 1.0)

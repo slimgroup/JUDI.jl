@@ -248,6 +248,16 @@ function load_acoustic_codegen()
     return ac
 end
 
+function load_tti_codegen(staggered)
+    pushfirst!(PyVector(pyimport("sys")["path"]), joinpath(JUDIPATH, "Python"))
+	if staggered
+	    tti = pyimport("TTI_Staggered")
+	else
+	    tti = pyimport("TTI_operators")
+	end
+    return tti
+end
+
 function calculate_dt(n,d,o,v,rho; epsilon=0)
     pm = load_pymodel()
     length(n) == 2 ? pyDim = [n[2], n[1]] : pyDim = [n[3],n[2],n[1]]

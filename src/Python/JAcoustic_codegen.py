@@ -18,6 +18,7 @@ from PySource import PointSource, Receiver
 from PyModel import Model
 from checkpoint import DevitoCheckpoint, CheckpointOperator
 from pyrevolve import Revolver
+from .utils import freesurface
 
 def acoustic_laplacian(v, rho):
     if rho is None:
@@ -31,7 +32,7 @@ def acoustic_laplacian(v, rho):
             Lap = 1 / rho * v.laplace
     return Lap, rho
 
-def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_order=8, nb=40, free_surface=False, op_return=False, dt=None):
+def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_order=8, nb=40, free_surface=False, op_return=False, dt=None, freesurface=False):
     clear_cache()
 
     # If wavelet is file, read it
@@ -67,9 +68,7 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
 
     # Free surface
     if free_surface is True:
-        fs = DefaultDimension(name="fs", default_value=int(space_order/2))
-        expression += [Eq(u.forward.subs({u.indices[-1]: model.nbpml - fs - 1}), 
-            -u.forward.subs({u.indices[-1]: model.nbpml + fs + 1}))]
+        expression += freesurface(u, space_order//2, model.nbpml)
 
     # Source symbol with input wavelet
     if src_coords is not None:
@@ -100,7 +99,8 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
         return op
 
 
-def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=8, nb=40, free_surface=False, dt=None):
+def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=8, nb=40, free_surface=False, dt=None,
+                     freesurface=False):
     clear_cache()
 
     # If wavelet is file, read it
@@ -134,10 +134,9 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=8, nb=
     expression = [Eq(v.backward, stencil.subs({H: vlaplace}))]
 
     # Free surface
+    # Free surface
     if free_surface is True:
-        fs = DefaultDimension(name="fs", default_value=int(space_order/2))
-        expression += [Eq(v.forward.subs({v.indices[-1]: model.nbpml - fs - 1}), 
-            -v.forward.subs({v.indices[-1]: model.nbpml + fs + 1}))]
+        expression += freesurface(v, space_order//2, model.nbpml, forward=False)
 
     # Adjoint source is injected at receiver locations
     if rec_coords is not None:
@@ -164,7 +163,7 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=8, nb=
     else:
         return src.data
 
-def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, nb=40, isic=False, dt=None):
+def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, nb=40, isic=False, dt=None, freesurface=False):
     clear_cache()
 
     # Parameters
@@ -215,6 +214,12 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, nb=40, i
     # Create operator and run
     set_log_level('ERROR')
     expression = expression_u + src_term + expression_du + rec_term
+    
+    # Free surface
+    if free_surface is True:
+        expression += freesurface(u, space_order//2, model.nbpml)
+        expression += freesurface(du, space_order//2, model.nbpml)
+
     subs = model.spacing_map
     subs[u.grid.time_dim.spacing] = dt
     op = Operator(expression, subs=subs, dse='advanced', dle='advanced',
@@ -224,7 +229,7 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, nb=40, i
     return rec.data
 
 
-def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residual=False, space_order=8, nb=40, isic=False, dt=None, n_checkpoints=None, maxmem=None):
+def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residual=False, space_order=8, nb=40, isic=False, dt=None, n_checkpoints=None, maxmem=None, freesurface=False):
     clear_cache()
 
     # Parameters
@@ -265,6 +270,10 @@ def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residu
 
     # Create operator and run
     set_log_level('ERROR')
+    # Free surface
+    if free_surface is True:
+        expression += freesurface(v, space_order//2, model.nbpml, forward=False)
+
     expression += adj_src + gradient_update
     subs = model.spacing_map
     subs[u.grid.time_dim.spacing] = dt
