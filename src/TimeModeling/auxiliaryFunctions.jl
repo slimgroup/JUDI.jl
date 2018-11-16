@@ -318,7 +318,7 @@ function setup_grid(geometry,n, origin)
         end
         orig = Array{Float32}([origin[1] origin[2]])
     end
-    return source_coords .- orig
+    return source_coords
 end
 
 function setup_3D_grid(xrec::Array{Any,1},yrec::Array{Any,1},zrec::Array{Any,1})
@@ -390,20 +390,20 @@ end
 function remove_padding(gradient::Array, nb::Integer; true_adjoint::Bool=false)
     if ndims(gradient) == 2
         if true_adjoint
-            gradient[nb+1,:] = sum(gradient[1:nb,:], dims=1)
-            gradient[end-nb,:] = sum(gradient[end-nb+1:end,:], dims=1)
-            gradient[:,nb+1] = sum(gradient[:,1:nb], dims=2)
-            gradient[:,end-nb] = sum(gradient[:,end-nb+1:end], dims=2)
+            gradient[nb+1,:] = sum(gradient[1:nb+1,:], dims=1)
+            gradient[end-nb,:] = sum(gradient[end-nb:end,:], dims=1)
+            gradient[:,nb+1] = sum(gradient[:,1:nb+1], dims=2)
+            gradient[:,end-nb] = sum(gradient[:,end-nb:end], dims=2)
         end
         return gradient[nb+1:end-nb,nb+1:end-nb]
     elseif ndims(gradient)==3
         if true_adjoint
-            gradient[nb+1,:,:] = sum(gradient[1:nb,:,:], dims=1)
-            gradient[end-nb,:,:] = sum(gradient[end-nb+1:end,:,:], dims=1)
-            gradient[:,nb+1,:] = sum(gradient[:,1:nb,:], dims=2)
-            gradient[:,end-nb,:] = sum(gradient[:,end-nb+1:end,:], dims=2)
-            gradient[:,:,nb+1] = sum(gradient[:,:,1:nb], dims=3)
-            gradient[:,:,end-nb] = sum(gradient[:,:,end-nb+1:end], dims=3)
+            gradient[nb+1,:,:] = sum(gradient[1:nb+1,:,:], dims=1)
+            gradient[end-nb,:,:] = sum(gradient[end-nb:end,:,:], dims=1)
+            gradient[:,nb+1,:] = sum(gradient[:,1:nb+1,:], dims=2)
+            gradient[:,end-nb,:] = sum(gradient[:,end-nb:end,:], dims=2)
+            gradient[:,:,nb+1] = sum(gradient[:,:,1:nb+1], dims=3)
+            gradient[:,:,end-nb] = sum(gradient[:,:,end-nb:end], dims=3)
         end
         return gradient[nb+1:end-nb,nb+1:end-nb,nb+1:end-nb]
     else

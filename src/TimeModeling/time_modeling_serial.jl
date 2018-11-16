@@ -398,7 +398,7 @@ function devito_interface(modelPy::PyCall.PyObject, origin, srcGeometry::Geometr
 
     # Devito call
     dOut = pycall(ac[:forward_born], Array{Float32,2}, modelPy, PyReverseDims(copy(transpose(src_coords))), PyReverseDims(copy(transpose(qIn))), PyReverseDims(copy(transpose(rec_coords))),
-                  space_order=options.space_order, nb=modelPy[:nbpml], isic=options.isic)
+                  space_order=options.space_order, nb=modelPy[:nbpml], isic=options.isic, free_surface=options.freesurface)
     ntRec > ntComp && (dOut = [dOut zeros(size(dOut,1), ntRec - ntComp)])
     dOut = time_resample(dOut,dtComp,recGeometry)
 
@@ -426,20 +426,20 @@ function devito_interface(modelPy::PyCall.PyObject, origin, srcGeometry::Geometr
 
     if options.optimal_checkpointing == true
         op_F = pycall(ac[:forward_modeling], PyObject, modelPy, PyReverseDims(copy(transpose(src_coords))), PyReverseDims(copy(transpose(qIn))), PyReverseDims(copy(transpose(rec_coords))),
-                      op_return=true, space_order=options.space_order, nb=modelPy[:nbpml] )
+                      op_return=true, space_order=options.space_order, nb=modelPy[:nbpml], free_surface=options.freesurface)
         grad = pycall(ac[:adjoint_born], Array{Float32, length(modelPy[:shape])}, modelPy, PyReverseDims(copy(transpose(rec_coords))), PyReverseDims(copy(transpose(dIn))), op_forward=op_F, space_order=options.space_order,
-            nb=modelPy[:nbpml], is_residual=true, isic=options.isic, n_checkpoints=options.num_checkpoints, maxmem=options.checkpoints_maxmem)
+            nb=modelPy[:nbpml], is_residual=true, isic=options.isic, n_checkpoints=options.num_checkpoints, maxmem=options.checkpoints_maxmem, free_surface=options.freesurface)
     elseif ~isempty(options.frequencies)    # gradient in frequency domain
         typeof(options.frequencies) == Array{Any,1} && (options.frequencies = options.frequencies[1])
         d_pred, uf_real, uf_imag = pycall(ac[:forward_freq_modeling], PyObject, modelPy, PyReverseDims(copy(transpose(src_coords))), PyReverseDims(copy(transpose(qIn))), PyReverseDims(copy(transpose(rec_coords))),
-                                          options.frequencies, space_order=options.space_order, nb=modelPy[:nbpml], factor=options.dft_subsampling_factor)
+                                          options.frequencies, space_order=options.space_order, nb=modelPy[:nbpml], factor=options.dft_subsampling_factor, free_surface=options.freesurface)
         grad = pycall(ac[:adjoint_freq_born], Array{Float32, length(modelPy[:shape])}, modelPy, PyReverseDims(copy(transpose(rec_coords))), PyReverseDims(copy(transpose(dIn))),
-                      options.frequencies, uf_real, uf_imag, space_order=options.space_order, nb=modelPy[:nbpml], isic=options.isic, factor=options.dft_subsampling_factor)
+                      options.frequencies, uf_real, uf_imag, space_order=options.space_order, nb=modelPy[:nbpml], isic=options.isic, factor=options.dft_subsampling_factor, free_surface=options.freesurface)
     else
         u0 = pycall(ac[:forward_modeling], PyObject, modelPy, PyReverseDims(copy(transpose(src_coords))), PyReverseDims(copy(transpose(qIn))), PyReverseDims(copy(transpose(rec_coords))),
-                    space_order=options.space_order, nb=modelPy[:nbpml], save=true)[2]
+                    space_order=options.space_order, nb=modelPy[:nbpml], save=true, free_surface=options.freesurface)[2]
         grad = pycall(ac[:adjoint_born], Array{Float32, length(modelPy[:shape])}, modelPy, PyReverseDims(copy(transpose(rec_coords))), PyReverseDims(copy(transpose(dIn))), u=u0,
-                      space_order=options.space_order, nb=modelPy[:nbpml], isic=options.isic)
+                      space_order=options.space_order, nb=modelPy[:nbpml], isic=options.isic, free_surface=options.freesurface)
     end
 
     # Remove PML and return gradient as Array
