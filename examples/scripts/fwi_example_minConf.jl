@@ -34,7 +34,7 @@ q = judiVector(src_geometry,wavelet)
 
 
 # Optimization parameters
-srand(1)    # set seed of random number generator
+#srand(1)    # set seed of random number generator
 fevals = 16
 batchsize = 8
 

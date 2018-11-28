@@ -607,6 +607,8 @@ function judiTimeInterpolation(geometry::Geometry,dt_coarse,dt_fine)
     return I
 end
 
+####################################################################################################
+
 #function scale!(a::Number,x::judiVector)
 #    for j=1:x.nsrc
 #        x.data[j] *= a
@@ -618,6 +620,25 @@ end
 #        x.data[j] *= a
 #    end
 #end
+
+####################################################################################################
+# Indexing
+
+#getindex(x::judiVector, i) = x.data[i]
+
+setindex!(x::judiVector, y, i) = x.data[i][:] = y
+
+firstindex(x::judiVector) = 1
+
+lastindex(x::judiVector) = x.nsrc
+
+axes(x::judiVector) = Base.OneTo(x.nsrc)
+
+ndims(x::judiVector) = length(size(x))
+
+similar(x::judiVector, element_type::DataType, dims::Union{AbstractUnitRange, Integer}...) = judiVector(x.geometry, x.data)*0f0
+
+####################################################################################################
 
 broadcast!(.*, x::judiVector, y::judiVector, a::Number) = scale!(y, a)
 
@@ -643,8 +664,6 @@ end
 #    end
 #end
 
-similar(x::judiVector, element_type::DataType, dims::Union{AbstractUnitRange, Integer}...) = judiVector(x.geometry, x.data)*0f0
-
 function get_data(x::judiVector)
     shots = Array{Any}(undef, x.nsrc)
     rec_geometry = Geometry(x.geometry)
@@ -658,6 +677,19 @@ end
 function isapprox(x::judiVector, y::judiVector; rtol::Real=sqrt(eps()), atol::Real=0)
     compareGeometry(x.geometry, y.geometry) == 1 || throw(judiVectorException("geometry mismatch"))
     isapprox(x.data, y.data; rtol=rtol, atol=atol)
+end
+
+####################################################################################################
+# Broadcasting
+
+struct judiVectorStyle <: Base.Broadcast.BroadcastStyle end
+
+function Base.copy(bc:Broadcasted{judiVectorStyle})
+    prinlnt("Pass")
+end
+
+function Base.copyto!(dest, bc:Broadcasted{judiVectorStyle})
+    prinlnt("Pass")
 end
 
 
@@ -693,3 +725,4 @@ dot(x::Float32, y::SeisIO.IBMFloat32) = dot(x, convert(Float32,y))
 
 /(a::Number, x::SeisIO.SeisCon) = /(a,x[1].data)
 /(x::SeisIO.SeisCon, a::Number) = /(x[1].data,a)
+
