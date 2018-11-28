@@ -679,20 +679,6 @@ function isapprox(x::judiVector, y::judiVector; rtol::Real=sqrt(eps()), atol::Re
     isapprox(x.data, y.data; rtol=rtol, atol=atol)
 end
 
-####################################################################################################
-# Broadcasting
-
-struct judiVectorStyle <: Base.Broadcast.BroadcastStyle end
-
-function Base.copy(bc:Broadcasted{judiVectorStyle})
-    prinlnt("Pass")
-end
-
-function Base.copyto!(dest, bc:Broadcasted{judiVectorStyle})
-    prinlnt("Pass")
-end
-
-
 ###########################################################################################################
 
 # Overload base function for SeisIO objects
