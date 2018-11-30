@@ -86,10 +86,10 @@ n, d, o, m0 = read(h5open("overthrust_2D_initial_model.h5", "r"), "n", "d", "o",
 model0 = Model((n[1], n[2]), (d[1], d[2]), (o[1], o[2]), m0)	# need n, d, o as tuples and m0 as array
 
 # Bound constraints
-vmin = ones(Float32, model0.n) + 0.3f0
-vmax = ones(Float32, model0.n) + 5.5f0
-mmin = vec((1f0./vmax).^2)	# convert to slowness squared [s^2/km^2]
-mmax = vec((1f0./vmin).^2)
+vmin = ones(Float32, model0.n) .+ 0.3f0
+vmax = ones(Float32, model0.n) .+ 5.5f0
+mmin = vec((1f0 ./ vmax).^2)	# convert to slowness squared [s^2/km^2]
+mmax = vec((1f0 ./ vmin).^2)
 
 # Load segy data
 block = segy_read("overthrust_2D.segy")
@@ -203,7 +203,7 @@ for j=1:niter
 
 	# Compute residual and gradient
 	r = Ml*J[i]*Mr*x - Ml*dD[i]
-	g = Mr'*J[i]'*Ml'*r
+	g = adjoint(Mr)*adjoint(J[i])*adjoint(Ml)*r
 
 	# Step size and update variable
 	fval[j] = .5*norm(r)^2
