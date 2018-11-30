@@ -194,15 +194,6 @@ ns = 251
     @test isequal(get_header(block, "ns"), get_header(block_out, "ns"))
     @test isequal(get_header(block, "dt"), get_header(block_out, "dt"))
 
-    # Write SEG-Y file
-    #opt = Options(file_path = pwd())
-    #write_shot_record(src_geometry, wavelet, d_block.geometry, d_block.data, opt)
-
-    #block_in = segy_read("shot_100.0_0.0.segy")
-    #d_load = judiVector(block_in; segy_depth_key="RecGroupElevation")
-    #@test isapprox(d_block, d_load)
-    #run(`rm shot_100.0_0.0.segy`)
-
     # Time interpolation (inplace)
     dt_orig = 2f0
     dt_new = 1f0
@@ -249,22 +240,12 @@ ns = 251
     a = randn(Float32, 1)[1]
     d_scale = deepcopy(d_block)
 
-    #scale!(d_scale, a)
-    #@test isapprox(d_scale, a*d_block)
-
-    #scale!(1/a, d_scale)
-    #@test isapprox(d_scale, d_block; rtol=eps(1f0))
-
     # broadcast multiplication
     u = judiVector(rec_geometry, randn(Float32, ns, nrec))
     v = judiVector(rec_geometry, randn(Float32, ns, nrec))
     u_scale = deepcopy(u)
     v_scale = deepcopy(v)
     a = randn(1)[1]
-
-    #broadcast!(.*, u_scale, v_scale, a)
-    #@test isapprox(u, u_scale)
-    #@test isapprox(a*v, v_scale)
 
     # broadcast identity
     u = judiVector(rec_geometry, randn(Float32, ns, nrec))
@@ -284,11 +265,6 @@ ns = 251
     v_add = deepcopy(v)
     w_add = deepcopy(w)
     a = randn(1)[1]
-    #broadcast!(identity, u_add, a, v_add, w_add)
-
-    #@test isapprox(w, w_add)
-    #@test isapprox(a*v, v_add)
-    #@test isapprox(a .* v + w, u_add)
 
     # in-place overwrite
     u = judiVector(rec_geometry, randn(Float32, ns, nrec))
@@ -299,16 +275,6 @@ ns = 251
 
     @test isapprox(u, u_cp)
     @test isapprox(u, v_cp)
-
-    # overwrite blas
-    u = judiVector(rec_geometry, randn(Float32, ns, nrec))
-    v = judiVector(rec_geometry, randn(Float32, ns, nrec))
-    u_blas = deepcopy(u)
-    v_blas = deepcopy(v)
-    a = randn(1)[1]
-    #axpy!(a, u_blas, v_blas)
-    #@test isapprox(u_blas, u)
-    #@test isapprox(v_blas, a .* u + v)
 
     # similar
     d_zero = similar(d_block, Float32)

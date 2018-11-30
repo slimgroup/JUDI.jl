@@ -56,4 +56,4 @@ for j=1:niterations
 	model0.m = proj(model0.m + reshape(step,model0.n))
 end
 
-figure(); imshow(adjoint(sqrt.(1f0./model0.m))); title("FWI with SGD")
+figure(); imshow(sqrt.(1f0./adjoint(model0.m))); title("FWI with SGD")

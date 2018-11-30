@@ -136,9 +136,9 @@ function norm(a::judiWavefield{avDT}, p::Real=2) where avDT
     x = 0.f0
     for j=1:a.info.nsrc
         if typeof(a.data[j]) == String
-            x += a.dt * sum(np.abs(np.load(a.data[j])).^p)
+            x += a.dt * sum(np[:abs](np[:load](a.data[j])).^p)
         else
-            x += a.dt * sum(np.abs(a.data[j]["data"]).^p)
+            x += a.dt * sum(np[:abs](a.data[j]["data"]).^p)
         end
     end
     return x^(1.f0/p)
