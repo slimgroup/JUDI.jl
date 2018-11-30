@@ -79,7 +79,7 @@ run(`wget ftp://slim.eos.ubc.ca/data/SoftwareRelease/WaveformInversion.jl/2DFWI/
 The first step is to load the velocity model and the observed data into Julia, as well as setting up bound constraints for the inversion, which prevent too high or low velocities in the final result. Furthermore, we define an 8 Hertz Ricker wavelet as the source function:
 
 ```julia
-using PyPlot, HDF5, SeisIO, JUDI.TimeModeling, JUDI.SLIM_optim
+using PyPlot, HDF5, SeisIO, JUDI.TimeModeling, JUDI.SLIM_optim, Statistics
 
 # Load starting model
 n, d, o, m0 = read(h5open("overthrust_2D_initial_model.h5", "r"), "n", "d", "o", "m0")
@@ -106,7 +106,6 @@ For this FWI example, we define an objective function that can be passed to the 
 
 ```julia
 # Optimization parameters
-srand(1)	# reset seed of random number generator
 fevals = 20	# number of function evaluations
 batchsize = 20	# number of sources per iteration
 fvals = zeros(21)
@@ -128,7 +127,7 @@ function objective_function(x)
 end
 
 # FWI with SPG
-ProjBound(x) = median([mmin x mmax], 2)	# Bound projection
+ProjBound(x) = median([mmin x mmax], dims=2)	# Bound projection
 options = spg_options(verbose=3, maxIter=fevals, memory=3)
 x, fsave, funEvals= minConf_SPG(objective_function, vec(model0.m), ProjBound, options)
 ```
@@ -136,8 +135,8 @@ x, fsave, funEvals= minConf_SPG(objective_function, vec(model0.m), ProjBound, op
 This example script can be run in parallel and requires roughly 220 MB of memory per source location. Execute the following code to generate figures of the initial model and the result, as well as the function values:
 
 ```julia
-figure(); imshow(sqrt.(1./m0)'); title("Initial model")
-figure(); imshow(sqrt.(1./reshape(x, model0.n))'); title("FWI")
+figure(); imshow(sqrt.(1./adjoint(m0))); title("Initial model")
+figure(); imshow(sqrt.(1./adjoint(reshape(x, model0.n)))); title("FWI")
 figure(); plot(fvals); title("Function value")
 ```
 
