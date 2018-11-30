@@ -72,14 +72,14 @@ export OMP_NUM_THREADS=4    # Number of OpenMP threads
 JUDI is designed to let you set up objective functions that can be passed to standard packages for (gradient-based) optimization. The following example demonstrates how to perform FWI on the 2D Overthrust model using a spectral projected gradient algorithm from the minConf library, which is included in the software. A small test dataset (62 MB) and the model can be downloaded from this FTP server:
 
 ```julia
-run(`wget ftp://slim.eos.ubc.ca/data/SoftwareRelease/WaveformInversion.jl/2DFWI/overthrust_2D.segy`)
-run(`wget ftp://slim.eos.ubc.ca/data/SoftwareRelease/WaveformInversion.jl/2DFWI/overthrust_2D_initial_model.h5`)
+run(`wget ftp://slim.gatech.edu/data/SoftwareRelease/WaveformInversion.jl/2DFWI/overthrust_2D.segy`)
+run(`wget ftp://slim.gatech.edu/data/SoftwareRelease/WaveformInversion.jl/2DFWI/overthrust_2D_initial_model.h5`)
 ```
 
 The first step is to load the velocity model and the observed data into Julia, as well as setting up bound constraints for the inversion, which prevent too high or low velocities in the final result. Furthermore, we define an 8 Hertz Ricker wavelet as the source function:
 
 ```julia
-using PyPlot, HDF5, SeisIO, JUDI.TimeModeling, JUDI.SLIM_optim, Statistics
+using PyPlot, HDF5, SeisIO, JUDI.TimeModeling, JUDI.SLIM_optim, Statistics, Random
 
 # Load starting model
 n, d, o, m0 = read(h5open("overthrust_2D_initial_model.h5", "r"), "n", "d", "o", "m0")
@@ -149,14 +149,14 @@ figure(); plot(fvals); title("Function value")
 JUDI includes matrix-free linear operators for modeling and linearized (Born) modeling, that let you write algorithms for migration that follow the mathematical notation of standard least squares problems. This example demonstrates how to use Julia Devito to perform least-squares reverse-time migration on the 2D Marmousi model. Start by downloading the test data set (1.1 GB) and the model:
 
 ```julia
-run(`wget ftp://slim.eos.ubc.ca/data/SoftwareRelease/Imaging.jl/2DLSRTM/marmousi_2D.segy`)
-run(`wget ftp://slim.eos.ubc.ca/data/SoftwareRelease/Imaging.jl/2DLSRTM/marmousi_migration_velocity.h5`)
+run(`wget ftp://slim.gatech.edu/data/SoftwareRelease/Imaging.jl/2DLSRTM/marmousi_2D.segy`)
+run(`wget ftp://slim.gatech.edu/data/SoftwareRelease/Imaging.jl/2DLSRTM/marmousi_migration_velocity.h5`)
 ```
 
 Once again, load the starting model and the data and set up the source wavelet. For this example, we use a Ricker wavelet with 30 Hertz peak frequency. For setting up matrix-free linear operators, an `info` structure with the dimensions of the problem is required:
 
 ```julia
-using PyPlot, HDF5, JUDI.TimeModeling, SeisIO
+using PyPlot, HDF5, JUDI.TimeModeling, SeisIO, Random
 
 # Load smooth migration velocity model
 n,d,o,m0 = read(h5open("marmousi_migration_velocity.h5","r"), "n", "d", "o", "m0")
