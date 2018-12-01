@@ -5,3 +5,4 @@ IterativeSolvers
 PolynomialRoots
 JOLI
 SeisIO
+FFTW

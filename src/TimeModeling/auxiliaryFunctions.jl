@@ -368,51 +368,45 @@ end
 
 #subsample(x::Nothing) = x
 
-#function generate_distribution(x; src_no=1)
-#	# Generate interpolator to sample from probability distribution given
-#	# from spectrum of the input data
-#
-#	# sampling information
-#	nt = x.geometry.nt[src_no]
-#	dt = x.geometry.dt[src_no]
-#	t = x.geometry.t[src_no]
-#
-#	# frequencies
-#	fs = 1/dt	# sampling rate
-#	fnyq = fs/2	# nyquist frequency
-#	df = fnyq/nt	# frequency interval
-#	f = 0:2*df:fnyq	# frequencies
-#
-#	# amplitude spectrum of data (serves as probability density function)
-#	ns = convert(Integer,ceil(nt/2))
-#	amp = abs.(fft(x.data[src_no]))[1:ns]	# get first half of spectrum
-#
-#	# convert to cumulative probability distribution (integrate)
-#	pd = zeros(ns)
-#	pd[1] = dt*amp[1]
-#	for j=2:ns
-#		pd[j] = pd[j-1] + amp[j]*df
-#	end
-#	pd /= pd[end]	# normalize
-#
-#	# invert probability distribution (interpolate)
-#	axis = Array{Float64,1}[]
-#	push!(axis,pd)
-#	L = Lininterp(convert(Array{Float64,1},f), axis)
-#
-#	return L
-#end
-#
-#function select_frequencies(L;fmin=0.,fmax=Inf,nf=1)
-#	freq = zeros(Float32,nf)
-#	for j=1:nf
-#		while (freq[j] <= fmin) || (freq[j] > fmax)
-#			freq[j] = getValue(L,rand(1)[1])[1]
-#		end
-#	end
-#	return freq
-#end
-#
+function generate_distribution(x; src_no=1)
+	# Generate interpolator to sample from probability distribution given
+	# from spectrum of the input data
+
+	# sampling information
+	nt = x.geometry.nt[src_no]
+	dt = x.geometry.dt[src_no]
+	t = x.geometry.t[src_no]
+
+	# frequencies
+	fs = 1/dt	# sampling rate
+	fnyq = fs/2	# nyquist frequency
+	df = fnyq/nt	# frequency interval
+	f = 0:2*df:fnyq	# frequencies
+
+	# amplitude spectrum of data (serves as probability density function)
+	ns = convert(Integer,ceil(nt/2))
+	amp = abs.(fft(x.data[src_no]))[1:ns]	# get first half of spectrum
+
+	# convert to cumulative probability distribution (integrate)
+	pd = zeros(ns)
+	pd[1] = dt*amp[1]
+	for j=2:ns
+		pd[j] = pd[j-1] + amp[j]*df
+	end
+	pd /= pd[end]	# normalize
+
+	return Spline1D(pd, f)
+end
+
+function select_frequencies(q_dist; fmin=0f0, fmax=Inf, nf=1)
+	freq = zeros(Float32, nf)
+	for j=1:nf
+		while (freq[j] <= fmin) || (freq[j] > fmax)
+			freq[j] = q_dist(rand(1)[1])[1]
+		end
+	end
+	return freq
+end
 
 function process_physical_parameter(param, dims)
     if length(param) ==1

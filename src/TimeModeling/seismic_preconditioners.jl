@@ -39,7 +39,7 @@ function marineTopmute2D(Dobs::judiVector, muteStart::Integer; mute=Array{Any}(u
         end
 
         mask = ones(Float32,nt,nrec)
-        mask[1:z0,:]=0f0
+        mask[1:z0,:] .= 0f0
 
         # Linear mute
         if (nrec-x0 < dx)
@@ -56,7 +56,7 @@ function marineTopmute2D(Dobs::judiVector, muteStart::Integer; mute=Array{Any}(u
             xax = Int(round(x0))
         end
         for k=1:length(zax)
-            mask[zax[k],xax[k]:end] = 0f0
+            mask[zax[k],xax[k]:end] .= 0f0
         end
         flipmask == true && (mask = flipdim(mask, 2))
         Din.data[j] = Din.data[j].*mask
@@ -71,7 +71,7 @@ function judiMarineTopmute2D(muteStart,geometry;params=Array{Any}(undef, 3))
     for j=1:nsrc
         N += geometry.nt[j]*length(geometry.xloc[j])
     end
-    D = joLinearFunctionFwdT(N,N,
+    D = joLinearFunctionFwd_T(N,N,
                              v -> marineTopmute2D(v,muteStart;mute=params),
                              w -> marineTopmute2D(w,muteStart;mute=params),
                              Float32,Float32,name="Data mute")
@@ -82,36 +82,36 @@ end
 ############################################ Model space preconditioners ###############################################
 
 
-function model_topmute(n::Tuple{Int64,Int64},mute_end::Array{Integer,1},length::Int64,x)
+function model_topmute(n::Tuple{Int64,Int64},mute_end::Array{Int64,1},length::Int64,x_orig)
 # Model domain topmute for a velocity model of dimensions n = [nx, nz].
-    x = reshape(x,n)
+    x = copy(reshape(x_orig,n))
     for j=1:n[1]
         mute_start = mute_end[j] - length
-        filter = zeros(Float32,n[2])
-        filter[1:mute_start-1] = 0f0
-        filter[mute_end[j]+1:end] = 1f0
+        filter = zeros(Float32, n[2])
+        filter[1:mute_start-1] .= 0f0
+        filter[mute_end[j]+1:end] .= 1f0
         taper_length = mute_end[j] - mute_start + 1
-        taper = (1f0 + sin.((pi*(0:taper_length-1))/(taper_length - 1)-pi/2f0))/2f0
+        taper = (1f0 .+ sin.((Float32(pi)*(0:taper_length-1))/(taper_length - 1) .- Float32(pi)/2f0))/2f0
         filter[mute_start:mute_end[j]] = taper
-        M = spdiagm(filter)
-        x[j,:] = x[j,:].*filter
+        M = diagm(0=>filter)
+        global x[j,:] = x[j,:].*filter
     end
     return vec(x)
 end
 
-function model_topmute(n::Tuple{Int64,Int64},mute_end::Int64,length::Int64,x)
+function model_topmute(n::Tuple{Int64,Int64},mute_end::Int64,length::Int64,x_orig)
 # Model domain topmute for a velocity model of dimensions n = [nx, nz].
-    x = reshape(x,n)
+    x = copy(reshape(x_orig,n))
     mute_start = mute_end - length
-    filter = zeros(Float32,n[2])
-    filter[1:mute_start-1] = 0f0
-    filter[mute_end+1:end] = 1f0
+    filter = zeros(Float32, n[2])
+    filter[1:mute_start-1] .= 0f0
+    filter[mute_end+1:end] .= 1f0
     taper_length = mute_end - mute_start + 1
-    taper = (1f0 + sin.((pi*(0:taper_length-1))/(taper_length - 1)-pi/2f0))/2f0
+    taper = (1f0 .+ sin.((Float32(pi)*(0:taper_length-1))/(taper_length - 1) .- Float32(pi)/2f0))/2f0
     filter[mute_start:mute_end] = taper
-    M = spdiagm(filter)
+    M = diagm(0=>filter)
     for j=1:n[1]
-        x[j,:] = x[j,:].*filter
+        global x[j,:] = x[j,:].*filter
     end
     return vec(x)
 end
@@ -121,7 +121,7 @@ model_topmute(n::Tuple{Int64,Int64}, mute_end::Array{Float32, 2}, length, x) = v
 function judiTopmute(n,mute_start,length)
     # JOLI wrapper for model domain topmute
     N = prod(n)
-    T = joLinearFunctionFwdT(N,N,
+    T = joLinearFunctionFwd_T(N,N,
                              v -> model_topmute(n,mute_start,length,v),
                              w -> model_topmute(n,mute_start,length,w),
                              Float32,Float32,name="Model topmute")
@@ -150,7 +150,7 @@ function depth_scaling(m,model)
 # Linear depth scaling function for seismic images
     m = reshape(m,model.n)
     filter = sqrt.(0f0:model.d[2]:model.d[2]*(model.n[2]-1))
-    F = spdiagm(filter)
+    F = diagm(0=>filter)
     for j=1:model.n[1]
         m[j,:] = F*m[j,:]
     end
@@ -160,35 +160,35 @@ end
 function judiDepthScaling(model)
 # JOLI wrapper for the linear depth scaling function
     N = prod(model.n)
-    D = joLinearFunctionFwdT(N, N,
+    D = joLinearFunctionFwd_T(N, N,
                              v -> depth_scaling(v,model),
                              w -> depth_scaling(w,model),
                              Float32,Float32,name="Depth scaling")
 end
 
-function laplace(model::TimeModeling.Model)
-# 2D Laplace operator
-
-    # 2nd derivative in x direction
-    d1 = ones(Float32,model.n[1]-1)*1f0/(model.d[1]^2)
-    d2 = ones(Float32,model.n[1])*-2f0/(model.d[1]^2)
-    d3 = d1
-    d = (d1, d2, d3)
-    position = (-1, 0, 1)
-
-    Dx = spdiagm(d,position,model.n[1],model.n[1])
-    Ix = speye(Float32,model.n[1])
-
-    # 2nd derivative in z direction
-    d1 = ones(Float32,model.n[2]-1)*1f0/(model.d[2]^2)
-    d2 = ones(Float32,model.n[2])*-2f0/(model.d[2]^2)
-    d3 = d1
-    d = (d1, d2, d3)
-    position = (-1, 0, 1)
-
-    Dz = spdiagm(d,position,model.n[2],model.n[2])
-    Iz = speye(Float32,model.n[2])
-
-    # 2D Laplace operator
-    D = kron(Dz,Ix) + kron(Iz,Dx)
-end
+# function laplace(model::TimeModeling.Model)
+# # 2D Laplace operator
+#
+#     # 2nd derivative in x direction
+#     d1 = ones(Float32,model.n[1]-1)*1f0/(model.d[1]^2)
+#     d2 = ones(Float32,model.n[1])*-2f0/(model.d[1]^2)
+#     d3 = d1
+#     d = (d1, d2, d3)
+#     position = (-1, 0, 1)
+#
+#     Dx = spdiagm(d,position,model.n[1],model.n[1])
+#     Ix = speye(Float32,model.n[1])
+#
+#     # 2nd derivative in z direction
+#     d1 = ones(Float32,model.n[2]-1)*1f0/(model.d[2]^2)
+#     d2 = ones(Float32,model.n[2])*-2f0/(model.d[2]^2)
+#     d3 = d1
+#     d = (d1, d2, d3)
+#     position = (-1, 0, 1)
+#
+#     Dz = spdiagm(d,position,model.n[2],model.n[2])
+#     Iz = speye(Float32,model.n[2])
+#
+#     # 2D Laplace operator
+#     D = kron(Dz,Ix) + kron(Iz,Dx)
+# end
