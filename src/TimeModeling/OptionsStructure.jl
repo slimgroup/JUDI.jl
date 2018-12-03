@@ -97,7 +97,7 @@ function subsample(options::Options, srcnum)
         return options
     else
         opt_out = deepcopy(options)
-        opt_out.frequencies = Array{Any}(1)
+        opt_out.frequencies = Array{Any}(undef, 1)
         opt_out.frequencies[1] = options.frequencies[srcnum]
         return opt_out
     end
