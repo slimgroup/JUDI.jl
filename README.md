@@ -14,11 +14,18 @@ First, install Devito using `pip`, or see the [Devito homepage](https://github.c
 pip install --user git+https://github.com/opesci/devito.git@v3.2.0
 ```
 
-Once Devito is installed, you can install JUDI with Julia's `Pkg.clone`. For Devito 3.2.0, it is also necessary to install some Devito dependencies by hand:
+For reading and writing seismic SEG-Y data, JUDI uses the [SeisIO](https://github.com/slimgroup/SeisIO.jl) package and matrix-free linear operators are based the [Julia Operator LIbrary](https://github.com/slimgroup/JOLI.jl/tree/master/src) (JOLI):
+
+```julia
+julia -e 'using Pkg; Pkg.clone("https://github.com/slimgroup/SeisIO.jl.git")'
+julia -e 'using Pkg; Pkg.clone("https://github.com/slimgroup/JOLI.jl.git")'
+```
+
+Once Devito, SeisIO and JOLI are installed, you can install JUDI with Julia's `Pkg.clone`. For Devito 3.2.0, it is also necessary to install some Devito dependencies by hand:
 
 ```julia
 julia -e 'using Pkg; Pkg.clone("https://github.com/slimgroup/JUDI.jl")'
-pip install --user -r ~/.julia/v0.6/JUDI/docker/devito_requirements.txt
+pip install --user -r ~/.julia/dev/JUDI/docker/devito_requirements.txt
 ```
 
 Once you have JUDI installed, you need to point Julia's PyCall package to the Python version for which we previsouly installed Devito. To do this, copy-paste the following commands into the (bash) terminal:
@@ -26,14 +33,6 @@ Once you have JUDI installed, you need to point Julia's PyCall package to the Py
 ```julia
 export PYTHON=$(which python)
 julia -e 'using Pkg; Pkg.build("PyCall")'
-```
-
-For reading and writing seismic SEG-Y data, Julia Devito uses the [SeisIO](https://github.com/slimgroup/SeisIO.jl) package and matrix-free linear operators are based the [Julia Operator LIbrary](https://github.com/slimgroup/JOLI.jl/tree/master/src) (JOLI). Furthermore, we need the interpolation package ApproXD:
-
-```julia
-julia -e 'using Pkg; Pkg.clone("https://github.com/slimgroup/SeisIO.jl.git")'
-julia -e 'using Pkg; Pkg.clone("https://github.com/slimgroup/JOLI.jl.git")'
-julia -e 'using Pkg; Pkg.clone("https://github.com/floswald/ApproXD.jl.git")'
 ```
 
 ## Running with Docker

@@ -71,7 +71,7 @@ function judiMarineTopmute2D(muteStart,geometry;params=Array{Any}(undef, 3))
     for j=1:nsrc
         N += geometry.nt[j]*length(geometry.xloc[j])
     end
-    D = joLinearFunctionFwdT(N,N,
+    D = joLinearFunctionFwd_T(N,N,
                              v -> marineTopmute2D(v,muteStart;mute=params),
                              w -> marineTopmute2D(w,muteStart;mute=params),
                              Float32,Float32,name="Data mute")
@@ -121,7 +121,7 @@ model_topmute(n::Tuple{Int64,Int64}, mute_end::Array{Float32, 2}, length, x) = v
 function judiTopmute(n,mute_start,length)
     # JOLI wrapper for model domain topmute
     N = prod(n)
-    T = joLinearFunctionFwdT(N,N,
+    T = joLinearFunctionFwd_T(N,N,
                              v -> model_topmute(n,mute_start,length,v),
                              w -> model_topmute(n,mute_start,length,w),
                              Float32,Float32,name="Model topmute")
@@ -160,7 +160,7 @@ end
 function judiDepthScaling(model)
 # JOLI wrapper for the linear depth scaling function
     N = prod(model.n)
-    D = joLinearFunctionFwdT(N, N,
+    D = joLinearFunctionFwd_T(N, N,
                              v -> depth_scaling(v,model),
                              w -> depth_scaling(w,model),
                              Float32,Float32,name="Depth scaling")
