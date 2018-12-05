@@ -208,7 +208,7 @@ for j=1:niter
 	# Step size and update variable
 	fval[j] = .5*norm(r)^2
 	t = norm(r)^2/norm(g)^2
-	x -= t*g
+	global x -= t*g
 end
 ```
 
