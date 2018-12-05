@@ -186,7 +186,7 @@ F = judiModeling(info, model0, q.geometry, dD.geometry; options=opt)
 J = judiJacobian(F, q)
 
 # Right-hand preconditioners (model topmute)
-Mr = judiTopmute(model0.n, 42, 10)	# mute up to grid point 42, with 10 point taper
+Mr = judiTopmute(model0.n, 52, 10)	# mute up to grid point 42, with 10 point taper
 
 # Stochastic gradient
 x = zeros(Float32, info.n)	# zero initial guess
