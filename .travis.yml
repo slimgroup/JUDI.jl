@@ -28,13 +28,12 @@ before_install:
   - mkdir -p ~/julia
   - curl -A "$CURL_USER_AGENT" -s -L --retry 7 'https://julialang-s3.julialang.org/bin/linux/x64/0.6/julia-0.6-latest-linux-x86_64.tar.gz' | tar -C ~/julia -x -z --strip-components=1 -f -
   - export PATH="${PATH}:${HOME}/julia/bin"
-  - julia -e 'Pkg.clone("https://github.com/slimgroup/SeisIO.jl")'
-  - julia -e 'Pkg.clone("https://github.com/slimgroup/JOLI.jl.git")'
-  - julia -e 'Pkg.clone("https://github.com/floswald/ApproXD.jl.git")'
+  - julia -e 'using Pkg; Pkg.clone("https://github.com/slimgroup/SeisIO.jl")'
+  - julia -e 'using Pkg; Pkg.clone("https://github.com/slimgroup/JOLI.jl.git")'
 install:
   - export PYTHON=$(which python)
-  - julia -e 'Pkg.clone("https://github.com/slimgroup/JUDI.jl.git")'
+  - julia -e 'using Pkg; Pkg.clone("https://github.com/slimgroup/JUDI.jl.git")'
 script:
-  - julia --check-bounds=yes --color=yes -e 'Pkg.test("JUDI", coverage=true)'
+  - julia --check-bounds=yes --color=yes -e 'using Pkg; Pkg.activate("JUDI"); Pkg.test("JUDI", coverage=true)'
 after_success:
-  - julia -e 'cd(Pkg.dir("JUDI")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())' 
+  - julia -e 'using Pkg; cd(Pkg.dir("JUDI")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())' 
