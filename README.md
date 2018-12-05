@@ -119,7 +119,7 @@ function objective_function(x)
 	# fwi function value and gradient
 	i = randperm(dobs.nsrc)[1:batchsize]
 	fval, grad = fwi_objective(model0, q[i], dobs[i]; options=opt)
-	grad = reshape(grad, model0.n); grad[:, 1:21] = 0f0	# reset gradient in water column to 0.
+	grad = reshape(grad, model0.n); grad[:, 1:21] .= 0f0	# reset gradient in water column to 0.
 	grad = .1f0*grad/maximum(abs.(grad))	# scale gradient for line search
 	
 	global count; count += 1; fvals[count] = fval
@@ -206,7 +206,7 @@ for j=1:niter
 	g = adjoint(Mr)*adjoint(J[i])*adjoint(Ml)*r
 
 	# Step size and update variable
-	fval[j] = .5*norm(r)^2
+	fval[j] = .5f0*norm(r)^2
 	t = norm(r)^2/norm(g)^2
 	global x -= t*g
 end
