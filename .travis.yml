@@ -30,10 +30,11 @@ before_install:
   - export PATH="${PATH}:${HOME}/julia/bin"
   - julia -e 'using Pkg; Pkg.clone("https://github.com/slimgroup/SeisIO.jl")'
   - julia -e 'using Pkg; Pkg.clone("https://github.com/slimgroup/JOLI.jl.git")'
+  - julia -e 'using Pkg; Pkg.add("PyCall"); Pkg.add("Dierckx")'
 install:
   - export PYTHON=$(which python)
   - julia -e 'using Pkg; Pkg.clone("https://github.com/slimgroup/JUDI.jl.git")'
 script:
-  - julia --check-bounds=yes --color=yes -e 'using Pkg; using Test; Pkg.activate("JUDI"); Pkg.test("JUDI", coverage=true)'
+  - julia --check-bounds=yes --color=yes -e 'using Pkg; using Test; Pkg.test("JUDI", coverage=true)'
 after_success:
   - julia -e 'using Pkg; cd(Pkg.dir("JUDI")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())' 
