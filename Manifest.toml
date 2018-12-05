@@ -1,0 +1,6 @@
+[[JUDI]]
+deps = ["Dierckx", "Distributed", "FFTW", "HDF5", "IterativeSolvers", "JLD", "JOLI", "LinearAlgebra", "Pkg", "PolynomialRoots", "Printf", "PyCall", "PyPlot", "Random", "SeisIO", "Statistics", "Test"]
+path = "/home/pwitte3/.julia/dev/JUDI"
+uuid = "f3b833dc-6b2e-5b9c-b940-873ed6319979"
+version = "0.1.0+"
+
