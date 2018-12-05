@@ -40,13 +40,13 @@ julia -e 'using Pkg; Pkg.build("PyCall")'
 If you do not want to install JUDI, you can run JUDI as a docker image. The first possibility is to run the docker container as a Jupyter notebook:
 
 ```
-docker run -p 8888:8888 philippwitte/judi:master
+docker run -p 8888:8888 philippwitte/judi:v1.1
 ```
 
 This command downloads the image and launches a container. You will see a link that you can copy-past to your browser to access the notebooks. Alternatively, you can run a bash session, in which you can start a regular interactive Julia session and run the example scripts. Download/start the container as a bash session with:
 
 ```
-docker run -it philippwitte/judi:master /bin/bash
+docker run -it philippwitte/judi:v1.1 /bin/bash
 ```
 
 Inside the container, all examples are located in the directory `/app/judi/examples/scripts`.
@@ -181,12 +181,12 @@ To speed up the convergence of our imaging example, we set up a basic preconditi
 
 ```julia
 # Set up matrix-free linear operators
-opt = Options(optimal_checkpointing = false)    # set to true to enable checkpointing
+opt = Options(optimal_checkpointing = true)    # set to false to disable optimal checkpointing
 F = judiModeling(info, model0, q.geometry, dD.geometry; options=opt)
 J = judiJacobian(F, q)
 
 # Right-hand preconditioners (model topmute)
-Mr = judiTopmute(model0.n, 52, 10)	# mute up to grid point 42, with 10 point taper
+Mr = judiTopmute(model0.n, 52, 10)	# mute up to grid point 52, with 10 point taper
 
 # Stochastic gradient
 x = zeros(Float32, info.n)	# zero initial guess
