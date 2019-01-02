@@ -69,30 +69,31 @@ wavelet = 1e1*ricker_wavelet(timeS,dtS,f0)
 ###################################################################################################
 
 # Modeling operators
-opt = Options(sum_padding=true) #,  isic="rotated", t_sub=1, h_sub=2, space_order=16)
+opt = Options(sum_padding=true) #, isic=false, t_sub=2, h_sub=2)
 F = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
 q = judiVector(srcGeometry, wavelet)
 
 # Nonlinear modeling
 d_hat = F*q
 
+# Generate random noise data vector with size of d_hat in the range of F
+qr = judiVector(srcGeometry, wave_rand)
+d1 = F*qr
+
 # Adjoint computation
-q_hat = F'*d_hat
+q_hat = adjoint(F)*d1
 
 # Result F
-println(dot(d_hat, d_hat))
-println(dot(q, q_hat))
-println("Residual: ", abs(dot(d_hat,d_hat) - dot(q,q_hat)))
-println("Ratio - 1: ", abs(dot(d_hat,d_hat)/dot(q,q_hat)) - 1.0)
-#
+a = dot(d1, d_hat)
+b = dot(q, q_hat)
+@test isapprox(a/b - 1, 0, atol=1f-4)
+
 # Linearized modeling
 J = judiJacobian(F,q)
 
 dD_hat = J*dm
-dm_hat = J'*dD_hat
+dm_hat = adjoint(J)*d_hat
 
-# Result J
-println(dot(dD_hat, dD_hat))
-println(dot(dm, dm_hat))
-println("Residual: ", abs(dot(dD_hat,dD_hat) - dot(dm,dm_hat)))
-println("Ratio - 1: ", abs(dot(dD_hat,dD_hat)/dot(dm,dm_hat)) - 1.0)
+c = dot(dD_hat, d_hat)
+d = dot(dm, dm_hat)
+@test isapprox(c/d - 1, 0, atol=1f-4)

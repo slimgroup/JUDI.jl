@@ -8,7 +8,7 @@ export Options, subsample
 # Object for velocity/slowness models
 mutable struct Options
     space_order::Integer
-    freesurface::Bool
+    free_surface::Bool
     limit_m::Bool
     buffer_size::Real
     save_data_to_disk::Bool
@@ -20,6 +20,7 @@ mutable struct Options
     num_checkpoints::Union{Integer, Nothing}
     checkpoints_maxmem::Union{Real, Nothing}
     frequencies::Array
+    dft_subsampling_factor::Integer
     isic::Bool
     t_sub::Integer
     h_sub::Integer
@@ -49,7 +50,6 @@ end
 	    h_sub::Integer
 	    gs::Dict
 	    normalize::Bool
-	    freesurface::Bool
 	    dft_subsampling_factor::Integer
 
 
@@ -114,7 +114,7 @@ Options(;space_order=8,
 		 freesurface=false,
 		 t_sub=1,
 		 h_sub=1,
-		 dft_subsampling_factor=1) = 
+		 dft_subsampling_factor=1) =
 		 Options(space_order,
 		 		 free_surface,
 		         limit_m,
@@ -140,7 +140,7 @@ function subsample(options::Options, srcnum)
         return options
     else
         opt_out = deepcopy(options)
-        opt_out.frequencies = Array{Any}(1)
+        opt_out.frequencies = Array{Any}(undef, 1)
         opt_out.frequencies[1] = options.frequencies[srcnum]
         return opt_out
     end

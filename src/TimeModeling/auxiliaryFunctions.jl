@@ -7,7 +7,7 @@ export ricker_wavelet, get_computational_nt, smooth10, damp_boundary, calculate_
 export convertToCell, limit_model_to_receiver_area, extend_gradient, remove_out_of_bounds_receivers
 export time_resample, remove_padding, backtracking_linesearch, subsample
 export generate_distribution, select_frequencies, process_physical_parameter
-export load_pymodel, load_acoustic_codegen, load_numpy
+export load_pymodel, load_acoustic_codegen, load_numpy, load_tti_codegen
 
 function limit_model_to_receiver_area(srcGeometry::Geometry, recGeometry::Geometry, model::Model, buffer; pert=[])
     # Restrict full velocity model to area that contains either sources and receivers
@@ -21,11 +21,11 @@ function limit_model_to_receiver_area(srcGeometry::Geometry, recGeometry::Geomet
     end
 
     # add buffer zone if possible
-    min_x = max(model.o[1],min_x-buffer)
-    max_x = min(model.o[1] + model.d[1]*(model.n[1]-1),max_x+buffer)
+    min_x = max(model.o[1], min_x-buffer)
+    max_x = min(model.o[1] + model.d[1]*(model.n[1]-1), max_x+buffer)
     if ndim == 3
-        min_y = max(model.o[2],min_y-buffer)
-        max_y = min(model.o[2] + model.d[2]*(model.n[2]-1),max_y+buffer)
+        min_y = max(model.o[2], min_y-buffer)
+        max_y = min(model.o[2] + model.d[2]*(model.n[2]-1), max_y+buffer)
     end
 
     # extract part of the model that contains sources/receivers
@@ -46,15 +46,11 @@ function limit_model_to_receiver_area(srcGeometry::Geometry, recGeometry::Geomet
     n_orig = model.n
     if ndim == 2
         model.m = model.m[nx_min: nx_max, :]
-        if length(model.rho) > 1
-            model.rho = model.rho[nx_min: nx_max, :]
-        end
+        typeof(model.rho) <: Array && (model.rho = model.rho[nx_min: nx_max, :])
         model.o = (ox, oz)
     else
         model.m = model.m[nx_min:nx_max,ny_min:ny_max,:]
-        if length(model.rho) > 1
-            model.rho = model.rho[nx_min:nx_max,ny_min:ny_max,:]
-        end
+        typeof(model.rho) <: Array && (model.rho = model.rho[nx_min:nx_max,ny_min:ny_max,:])
         model.o = (ox,oy,oz)
     end
     model.n = size(model.m)
@@ -147,7 +143,7 @@ function extend_gradient(model_full::Modelall,model::Modelall,gradient::Array)
     if ndim == 2
         full_gradient[nx_start:nx_end,:] = gradient
     else
-        ny_start = Int(Float32(Float32(model.o[2] - model_full.o[2])/model.d[2]) + 1)
+        ny_start = Int((model.o[2] - model_full.o[2])/model.d[2] + 1)
         ny_end = ny_start + model.n[2] - 1
         full_gradient[nx_start:nx_end,ny_start:ny_end,:] = gradient
     end
@@ -232,36 +228,28 @@ end
 
 function load_pymodel()
     pushfirst!(PyVector(pyimport("sys")["path"]), joinpath(JUDIPATH, "Python"))
-    pm = pyimport("PyModel")
-    return pm
+    return pyimport("PyModel")
 end
 
 function load_numpy()
     pushfirst!(PyVector(pyimport("sys")["path"]), joinpath(JUDIPATH, "Python"))
-    np = pyimport("numpy")
-    return np
+    return pyimport("numpy")
 end
 
 function load_acoustic_codegen()
     pushfirst!(PyVector(pyimport("sys")["path"]), joinpath(JUDIPATH, "Python"))
-    ac = pyimport("JAcoustic_codegen")
-    return ac
+    return pyimport("JAcoustic_codegen")
 end
 
-function load_tti_codegen(staggered)
+function load_tti_codegen()
     pushfirst!(PyVector(pyimport("sys")["path"]), joinpath(JUDIPATH, "Python"))
-	if staggered
-	    tti = pyimport("TTI_Staggered")
-	else
-	    tti = pyimport("TTI_operators")
-	end
-    return tti
+    return pyimport("TTI_Staggered")
 end
 
 function calculate_dt(n,d,o,v,rho; epsilon=0)
     pm = load_pymodel()
     length(n) == 2 ? pyDim = [n[2], n[1]] : pyDim = [n[3],n[2],n[1]]
-    modelPy = pm[:Model](o, d, pyDim, PyReverseDims(v))
+    modelPy = pm["Model"](o, d, pyDim, PyReverseDims(v))
     dtComp = modelPy[:critical_dt]
 end
 
@@ -390,20 +378,20 @@ end
 function remove_padding(gradient::Array, nb::Integer; true_adjoint::Bool=false)
     if ndims(gradient) == 2
         if true_adjoint
-            gradient[nb+1,:] = sum(gradient[1:nb+1,:], dims=1)
-            gradient[end-nb,:] = sum(gradient[end-nb:end,:], dims=1)
-            gradient[:,nb+1] = sum(gradient[:,1:nb+1], dims=2)
-            gradient[:,end-nb] = sum(gradient[:,end-nb:end], dims=2)
+            gradient[nb+1,:] = sum(gradient[1:nb,:], dims=1)
+            gradient[end-nb,:] = sum(gradient[end-nb+1:end,:], dims=1)
+            gradient[:,nb+1] = sum(gradient[:,1:nb], dims=2)
+            gradient[:,end-nb] = sum(gradient[:,end-nb+1:end], dims=2)
         end
         return gradient[nb+1:end-nb,nb+1:end-nb]
     elseif ndims(gradient)==3
         if true_adjoint
-            gradient[nb+1,:,:] = sum(gradient[1:nb+1,:,:], dims=1)
-            gradient[end-nb,:,:] = sum(gradient[end-nb:end,:,:], dims=1)
-            gradient[:,nb+1,:] = sum(gradient[:,1:nb+1,:], dims=2)
-            gradient[:,end-nb,:] = sum(gradient[:,end-nb:end,:], dims=2)
-            gradient[:,:,nb+1] = sum(gradient[:,:,1:nb+1], dims=3)
-            gradient[:,:,end-nb] = sum(gradient[:,:,end-nb:end], dims=3)
+            gradient[nb+1,:,:] = sum(gradient[1:nb,:,:], dims=1)
+            gradient[end-nb,:,:] = sum(gradient[end-nb+1:end,:,:], dims=1)
+            gradient[:,nb+1,:] = sum(gradient[:,1:nb,:], dims=2)
+            gradient[:,end-nb,:] = sum(gradient[:,end-nb+1:end,:], dims=2)
+            gradient[:,:,nb+1] = sum(gradient[:,:,1:nb], dims=3)
+            gradient[:,:,end-nb] = sum(gradient[:,:,end-nb+1:end], dims=3)
         end
         return gradient[nb+1:end-nb,nb+1:end-nb,nb+1:end-nb]
     else
@@ -457,7 +445,7 @@ function time_resample(data::Array,dt_in, geometry_out::Geometry;order=2)
     end
 end
 
-subsample(x::Nothing) = x
+#subsample(x::Nothing) = x
 
 function generate_distribution(x; src_no=1)
 	# Generate interpolator to sample from probability distribution given
@@ -486,24 +474,18 @@ function generate_distribution(x; src_no=1)
 	end
 	pd /= pd[end]	# normalize
 
-	# invert probability distribution (interpolate)
-	axis = Array{Float64,1}[]
-	push!(axis,pd)
-	L = Lininterp(convert(Array{Float64,1},f), axis)
-
-	return L
+	return Spline1D(pd, f)
 end
 
-function select_frequencies(L;fmin=0.,fmax=Inf,nf=1)
-	freq = zeros(Float32,nf)
+function select_frequencies(q_dist; fmin=0f0, fmax=Inf, nf=1)
+	freq = zeros(Float32, nf)
 	for j=1:nf
 		while (freq[j] <= fmin) || (freq[j] > fmax)
-			freq[j] = getValue(L,rand(1)[1])[1]
+			freq[j] = q_dist(rand(1)[1])[1]
 		end
 	end
 	return freq
 end
-
 
 function process_physical_parameter(param, dims)
     if length(param) ==1

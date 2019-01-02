@@ -74,26 +74,34 @@ def initialize_function(function, data, nbpml, pad_mode='edge'):
     function.data_with_halo[:] = data
 
 
+def initialize_function(function, data, nbpml):
+    """Initialize a :class:`Function` with the given ``data``. ``data``
+    does *not* include the PML layers for the absorbing boundary conditions;
+    these are added via padding by this method.
+    :param function: The :class:`Function` to be initialised with some data.
+    :param data: The data array used for initialisation.
+    :param nbpml: Number of PML layers for boundary damping.
+    """
+    pad_list = [(nbpml + i.left, nbpml + i.right) for i in function._offset_domain]
+    function.data_with_halo[:] = np.pad(data, pad_list, 'edge')
+
+
 class Model(object):
     """The physical model used in seismic inversion processes.
-
     :param origin: Origin of the model in m as a tuple in (x,y,z) order
     :param spacing: Grid size in m as a Tuple in (x,y,z) order
     :param shape: Number of grid points size in (x,y,z) order
     :param vp: Velocity in km/s
     :param nbpml: The number of PML layers for boundary damping
     :param dm: Model perturbation in s^2/km^2
-
-
     The :class:`Model` provides two symbolic data objects for the
     creation of seismic wave propagation operators:
-
     :param m: The square slowness of the wave
     :param damp: The damping field for absorbing boundarycondition
     """
     def __init__(self, origin, spacing, shape, vp, rho=1, nbpml=40, dtype=np.float32, dm=None,
                  epsilon=None, delta=None, theta=None, phi=None, space_order=8):
-        
+
         self.shape = shape
         self.nbpml = int(nbpml)
         self.origin = tuple([dtype(o) for o in origin])
@@ -226,8 +234,8 @@ class Model(object):
         #
         # The CFL condtion is then given by
         # dt <= coeff * h / (max(velocity))
-        coeff = 0.38
-        dt = coeff * np.min(self.spacing) / (self.scale*np.max(self.vp))
+        coeff = 0.38 if len(self.shape) == 3 else 0.42
+        dt = self.dtype(coeff * np.min(self.spacing) / (self.scale*np.max(self.vp)))
         return self.dtype(.001 * int(1000 * dt))
 
     @property

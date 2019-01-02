@@ -21,39 +21,29 @@ RUN apt-get update && \
 
 # Install Julia
 WORKDIR /julia
-RUN wget "https://julialang-s3.julialang.org/bin/linux/x64/0.6/julia-0.6.2-linux-x86_64.tar.gz" && \
-	tar -xvzf julia-0.6.2-linux-x86_64.tar.gz && \
-	rm -rf julia-0.6.2-linux-x86_64.tar.gz && \
-	ln -s /julia/julia-d386e40c17/bin/julia /usr/local/bin/julia
-
-# Install JUDI requirements
-ADD ./REQUIRE /app/judi/REQUIRE
-RUN julia -e "Pkg.resolve()"
+RUN wget "https://julialang-s3.julialang.org/bin/linux/x64/1.0/julia-1.0.2-linux-x86_64.tar.gz" && \
+	tar -xvzf julia-1.0.2-linux-x86_64.tar.gz && \
+	rm -rf julia-1.0.2-linux-x86_64.tar.gz && \
+	ln -s /julia/julia-1.0.2/bin/julia /usr/local/bin/julia
 
 # Manually install unregistered packages and JUDI
-RUN julia -e 'Pkg.clone("https://github.com/slimgroup/SeisIO.jl")' && \
-	julia -e 'Pkg.clone("https://github.com/slimgroup/JOLI.jl.git")' && \
-	julia -e 'Pkg.clone("https://github.com/floswald/ApproXD.jl.git")' && \
-	julia -e 'Pkg.clone("https://github.com/slimgroup/JUDI.jl.git")'
+RUN julia -e 'using Pkg; Pkg.clone("https://github.com/slimgroup/SeisIO.jl")' && \
+	julia -e 'using Pkg; Pkg.clone("https://github.com/slimgroup/JOLI.jl.git")' && \
+	julia -e 'using Pkg; Pkg.clone("https://github.com/slimgroup/JUDI.jl.git")'
 
-# Additional packages, which are not in requirements but used in notebooks
-RUN julia -e 'Pkg.add("PyPlot")' && \
-	julia -e 'Pkg.add("NLopt")' && \
-	julia -e 'Pkg.add("HDF5")' && \
-	julia -e 'Pkg.add("JLD")'
+RUN	julia -e 'using Pkg; Pkg.add("NLopt")'
 
 # Install and build IJulia
 ENV JUPYTER="/root/.local/bin/jupyter"
-RUN julia -e 'Pkg.add("IJulia")'
+RUN julia -e 'using Pkg; Pkg.add("IJulia")'
 
 # Add JUDI examples
 ADD ./data /app/judi/data
-ADD ./examples /app/judi/examples
 ADD ./test /app/judi/test
+ADD ./examples /app/judi/examples
 
-WORKDIR /app/judi/examples/notebooks
+WORKDIR /app/judi/notebooks
 
 EXPOSE 8888
 
 CMD /root/.local/bin/jupyter-notebook --ip="*" --no-browser --allow-root
-

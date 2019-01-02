@@ -3,6 +3,7 @@
 # Date: December 2017
 #
 
+using Pkg; Pkg.activate("JUDI")
 using Statistics, Random, LinearAlgebra
 using JUDI.TimeModeling, JUDI.SLIM_optim, HDF5, SeisIO
 
@@ -34,7 +35,7 @@ q = judiVector(src_geometry,wavelet)
 
 
 # Optimization parameters
-srand(1)    # set seed of random number generator
+#srand(1)    # set seed of random number generator
 fevals = 16
 batchsize = 8
 

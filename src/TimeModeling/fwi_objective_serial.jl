@@ -24,7 +24,7 @@ function fwi_objective(model_full::Model, source::judiVector, dObs::judiVector, 
     tmaxRec = dObs.geometry.t[1]
 
     # Set up Python model structure (force origin to be zero due to current devito bug)
-    modelPy = pm[:Model](origin=(0.,0.,0.), spacing=model.d, shape=model.n, vp=process_physical_parameter(sqrt.(1f0./model.m), dims), nbpml=model.nb,
+    modelPy = pm["Model"](origin=(0.,0.,0.), spacing=model.d, shape=model.n, vp=process_physical_parameter(sqrt.(1f0./model.m), dims), nbpml=model.nb,
                        rho=process_physical_parameter(model.rho, dims), space_order=options.space_order)
     dtComp = modelPy[:critical_dt]
 

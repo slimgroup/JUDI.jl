@@ -3,6 +3,7 @@
 # Date: December 2017
 #
 
+using Pkg; Pkg.activate("JUDI")
 using Statistics, Random, LinearAlgebra
 using JUDI.TimeModeling, JUDI.SLIM_optim, HDF5, SeisIO, PyPlot
 
@@ -56,4 +57,4 @@ for j=1:niterations
 	model0.m = proj(model0.m + reshape(step,model0.n))
 end
 
-figure(); imshow(sqrt.(1f0./model0.m)'); title("FWI with SGD")
+figure(); imshow(sqrt.(1f0./adjoint(model0.m))); title("FWI with SGD")

@@ -4,6 +4,7 @@
 # Date: January 2017
 #
 
+using Pkg; Pkg.activate("JUDI")
 using JUDI.TimeModeling, SeisIO, LinearAlgebra
 
 ## Set up model structure
@@ -70,16 +71,16 @@ Pr = judiProjection(info, recGeometry)
 F = judiModeling(info, model; options=opt)
 F0 = judiModeling(info, model0; options=opt)
 Ps = judiProjection(info, srcGeometry)
-J = judiJacobian(Pr*F0*Ps', q)
+J = judiJacobian(Pr*F0*adjoint(Ps), q)
 
 # Nonlinear modeling
-dobs = Pr*F*Ps'*q
-qad = Ps*F'*Pr'*dobs
+dobs = Pr*F*adjoint(Ps)*q
+qad = Ps*adjoint(F)*adjoint(Pr)*dobs
 
 # Linearized modeling
 #J.options.file_name = "linearized_shot"
 dD = J*dm
-rtm = J'*dD
+rtm = adjoint(J)*dD
 
 # evaluate FWI objective function
 f, g = fwi_objective(model0, q, dobs; options=opt)

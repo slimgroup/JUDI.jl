@@ -89,13 +89,6 @@ adjoint(A::judiPDEfull{DDT,RDT}) where {DDT,RDT} =
         A.fop
         )
 
-# ctranspose(judiPDEfull)
-ctranspose(A::judiPDEfull{DDT,RDT}) where {DDT,RDT} =
-    judiPDEfull{DDT,RDT}("Proj*F'*Proj'",A.n,A.m,A.info,A.model,A.srcGeometry,A.recGeometry,A.options,
-        A.fop_T,
-        A.fop
-        )
-
 ############################################################
 ## overloaded Base *(...judiPDEfull...)
 
@@ -125,7 +118,7 @@ function A_mul_B!(x::judiVector,A::judiPDEfull,y::judiVector)
 end
 
 function Ac_mul_B!(x::judiVector,A::judiPDEfull,y::judiVector)
-    z = A'*y
+    z = adjoint(A)*y
     x.data = z.data
 end
 

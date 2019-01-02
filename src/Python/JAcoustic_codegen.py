@@ -8,16 +8,16 @@
 from __future__ import print_function
 import numpy as np
 import gc, os, psutil
-from sympy import cos, sin, expand, symbols
+from numpy.random import randint
+from sympy import solve, cos, sin, expand, symbols
 from sympy import Function as fint
 from devito.logger import set_log_level
-from devito import Inc, Eq, Function, TimeFunction, Dimension, Operator, clear_cache, ConditionalDimension, DefaultDimension, solve
+from devito import Eq, Function, TimeFunction, Dimension, Operator, clear_cache, ConditionalDimension, DefaultDimension
 from devito import first_derivative, left, right
 from PySource import PointSource, Receiver
 from PyModel import Model
 from checkpoint import DevitoCheckpoint, CheckpointOperator
 from pyrevolve import Revolver
-from utils import freesurface
 
 def acoustic_laplacian(v, rho):
     if rho is None:
@@ -55,13 +55,13 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
     # H = symbols('H')
     # eqn = m / rho * u.dt2 - H + damp * u.dt
     stencil = damp * ( 2.0 * u - damp * u.backward + dt**2 * rho / m * ulaplace)
-    
+
     # Input source is wavefield
     if isinstance(wavelet, TimeFunction):
         wf_src = TimeFunction(name='wf_src', grid=model.grid, time_order=2, space_order=space_order, save=nt)
         wf_src._data = wavelet._data
         eqn -= wf_src
-    
+
     # Rearrange expression
     # stencil = solve(eqn, u.forward)
     expression = [Eq(u.forward, stencil)]
@@ -178,7 +178,7 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, nb=40, i
     # Set up PDEs and rearrange
     ulaplace, rho = acoustic_laplacian(u, rho)
     dulaplace, _ = acoustic_laplacian(du, rho)
-    
+
     if isic:
         # Sum ((u.dx * d, / rho).dx for x in dimensions)
         # space_order//2  so that u.dx.dx has the same radius as u.laplace
@@ -207,7 +207,7 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, nb=40, i
     # Create operator and run
     set_log_level('INFO')
     expression = expression_u + src_term + expression_du + rec_term
-    
+
     # Free surface
     if free_surface is True:
         expression += freesurface(u, space_order//2, model.nbpml)
@@ -354,7 +354,7 @@ def forward_freq_modeling(model, src_coords, wavelet, rec_coords, freq, space_or
     subs[u.grid.time_dim.spacing] = dt
     op = Operator(expression, subs=subs, dse='advanced', dle='advanced')
     op()
-    
+
     return rec.data, ufr, ufi
 
 
@@ -404,7 +404,7 @@ def adjoint_freq_born(model, rec_coords, rec_data, freq, ufr, ufi, space_order=8
         else:
             gradient_update = [Eq(gradient, gradient + (2*np.pi*f)**2*ntf*(ufr*cos(2*np.pi*f*tsave*dtf) - ufi*sin(2*np.pi*f*tsave*dtf))*v*model.m -
                                                        (ufr.dx*cos(2*np.pi*f*tsave*dtf) - ufi.dx*sin(2*np.pi*f*tsave*dtf))*v.dx*ntf -
-                                                       (ufr.dy*cos(2*np.pi*f*tsave*dtf) - ufi.dy*sin(2*np.pi*f*tsave*dtf))*v.dy*ntf - 
+                                                       (ufr.dy*cos(2*np.pi*f*tsave*dtf) - ufi.dy*sin(2*np.pi*f*tsave*dtf))*v.dy*ntf -
                                                        (ufr.dz*cos(2*np.pi*f*tsave*dtf) - ufi.dz*sin(2*np.pi*f*tsave*dtf))*v.dz*ntf)]
     else:
         gradient_update = [Eq(gradient, gradient + (2*np.pi*f)**2/nt*(ufr*cos(2*np.pi*f*tsave*dtf) - ufi*sin(2*np.pi*f*tsave*dtf))*v)]
@@ -421,5 +421,3 @@ def adjoint_freq_born(model, rec_coords, rec_data, freq, ufr, ufi, space_order=8
     op()
     clear_cache()
     return gradient.data
-
-

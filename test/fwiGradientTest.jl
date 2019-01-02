@@ -32,22 +32,23 @@ info = Info(prod(n), nsrc, ntComp)	# number of gridpoints, number of experiments
 
 
 # Velocity [km/s]
-v = ones(Float32,n) * 2.0f0
-v[:,Int(round(end/3)):end] = 4f0
+v = ones(Float32,n) .* 2.0f0
+v[:,Int(round(end/2)):end] .= 3.0f0
 v0 = smooth10(v,n)
-epsilon = (v[:, :] - 2.0f0)/10.0f0
-delta = (v[:, :] - 2.0f0)/20.0f0
-theta = (v[:, :] - 2.0f0)/5.0f0
+rho = ones(Float32, n)
+rho[:, Int(round(end/2)):end] .= 1.5f0
+
 # Slowness squared [s^2/km^2]
-m = (1f0./v).^2
-m0 = (1f0./v0).^2
-dm = m - m0
+m = (1f0 ./ v).^2
+m0 = (1f0 ./ v0).^2
+dm = m0 - m
 
 # Setup info and model structure
-nsrc = 1
-model = Model_TTI(n,d,o,m; epsilon=epsilon, delta=delta, theta=theta)
-model0 = Model_TTI(n,d,o,m0; epsilon=epsilon, delta=delta, theta=theta)
-
+nsrc = 1	# number of sources
+ntComp = 250
+info = Info(prod(n), nsrc, ntComp)	# number of gridpoints, number of experiments, number of computational time steps
+model = Model(n,d,o,m;rho=rho)
+model0 = Model(n,d,o,m0;rho=rho)
 
 ## Set up receiver geometry
 nxrec = 81

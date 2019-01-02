@@ -42,10 +42,10 @@ end
     @test isequal(typeof(rhs), judiRHS{Float32})
     @test isequal(rhs.geometry, rec_geometry)
 
-    # conj, transpose, ctranspose
+    # conj, transpose, adjoint
     @test isequal(size(rhs), size(conj(rhs)))
     @test isequal(reverse(size(rhs)), size(transpose(rhs)))
-    @test isequal(reverse(size(rhs)), size(ctranspose(rhs)))
+    @test isequal(reverse(size(rhs)), size(adjoint(rhs)))
 
     # +, -
     info = example_info(nsrc=nsrc)

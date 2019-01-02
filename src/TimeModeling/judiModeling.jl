@@ -115,10 +115,6 @@ transpose(A::judiModeling{DDT,RDT}) where {DDT,RDT} =
 adjoint(A::judiModeling{DDT,RDT}) where {DDT,RDT} =
 	judiModelingAdjoint{DDT,RDT}("adjoint wave equation",A.n,A.m,A.info,A.model,A.options,A.fop_T, A.fop)
 
-# ctranspose(jo)
-ctranspose(A::judiModeling{DDT,RDT}) where {DDT,RDT} =
-    judiModelingAdjoint{DDT,RDT}("adjoint wave equation",A.n,A.m,A.info,A.model,A.options,A.fop_T, A.fop)
-
 # conj(jo)
 conj(A::judiModelingAdjoint{DDT,RDT}) where {DDT,RDT} =
     judiModelingAdjoint{DDT,RDT}("conj("*A.name*")",A.m,A.n,A.info,A.model,A.options,A.fop, A.fop_T)
@@ -129,11 +125,6 @@ transpose(A::judiModelingAdjoint{DDT,RDT}) where {DDT,RDT} =
 
 adjoint(A::judiModelingAdjoint{DDT,RDT}) where {DDT,RDT} =
 	judiModeling{DDT,RDT}("forward wave equation",A.n,A.m,A.info,A.model,A.options,A.fop_T, A.fop)
-
-# ctranspose(jo)
-ctranspose(A::judiModelingAdjoint{DDT,RDT}) where {DDT,RDT}=
-    judiModeling{DDT,RDT}("forward wave equation",A.n,A.m,A.info,A.model,A.options,A.fop_T, A.fop)
-
 
 ############################################################
 ## Additional overloaded functions

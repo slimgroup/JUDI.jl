@@ -97,13 +97,6 @@ adjoint(A::judiJacobian{DDT,RDT}) where {DDT,RDT} =
         A.fop
         )
 
-# ctranspose(judiJacobian)
-ctranspose(A::judiJacobian{DDT,RDT}) where {DDT,RDT} =
-    judiJacobian{DDT,RDT}("adjoint linearized wave equation",A.n,A.m,A.info,A.model,A.srcGeometry,A.recGeometry,A.source,A.options,
-        A.fop_T,
-        A.fop
-        )
-
 ############################################################
 ## overloaded Base *(...judiJacobian...)
 
@@ -140,7 +133,7 @@ function A_mul_B!(x::judiVector,J::judiJacobian,y::Array)
 end
 
 function Ac_mul_B!(x::Array,J::judiJacobian,y::judiVector)
-    x[:] = J'*y
+    x[:] = adjoint(J)*y
 end
 
 ############################################################

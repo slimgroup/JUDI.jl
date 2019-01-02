@@ -80,10 +80,6 @@ transpose(A::judiProjection{DDT,RDT}) where {DDT,RDT} =
 adjoint(A::judiProjection{DDT,RDT}) where {DDT,RDT} =
     judiProjection{DDT,RDT}("injection operator",A.n,A.m,A.info,A.geometry)
 
-# ctranspose(judiProjection)
-ctranspose(A::judiProjection{DDT,RDT}) where {DDT,RDT} =
-    judiProjection{DDT,RDT}("injection operator",A.n,A.m,A.info,A.geometry)
-
 ############################################################
 ## overloaded Base *(...judiProjection...)
 

@@ -4,8 +4,15 @@
 # Date: January 2017
 #
 
+using Pkg; Pkg.activate("JUDI")
 using LinearAlgebra, Random
 using JUDI, JUDI.TimeModeling, SeisIO, PyCall
+
+pushfirst!(PyVector(pyimport("sys")["path"]), joinpath(dirname(pathof(JUDI)), "Python"))
+@pyimport devito as dv
+@pyimport numpy as np
+@pyimport PyModel as pm
+@pyimport JAcoustic_codegen as cg
 
 ## Set up model structure
 n = (120, 100)   # (x,y,z) or (x,z)
@@ -71,15 +78,15 @@ Pr = judiProjection(info, recGeometry)
 F = judiModeling(info, model; options=opt)
 F0 = judiModeling(info, model0; options=opt)
 Ps = judiProjection(info, srcGeometry)
-J = judiJacobian(Pr*F0*Ps', q)
+J = judiJacobian(Pr*F0*adjoint(Ps), q)
 
 # Nonlinear modeling
-dobs = Pr*F*Ps'*q
-qad = Ps*F'*Pr'*dobs
+dobs = Pr*F*adjoint(Ps)*q
+qad = Ps*adjoint(F)*adjoint(Pr)*dobs
 
 # Return wavefields
-u = F*Ps'*q
-v = F'*Pr'*dobs
+u = F*adjoint(Ps)*q
+v = adjoint(F)*adjoint(Pr)*dobs
 
 # Compute norm
 println("forward wavefield 2-norm: ", norm(u))
@@ -87,7 +94,7 @@ println("adjoint wavefield 1-norm: ", norm(v, 1))
 
 # Wavefields as source
 dnew = Pr*F*v
-qnew = Ps*F'*u
+qnew = Ps*adjoint(F)*u
 
 # Wavefields as source + return wavefields
 u2 = F*u
@@ -95,4 +102,4 @@ v2 = F*v
 
 # Linearized modeling
 dD = J*dm
-rtm1 = J'*dD
+rtm1 = adjoint(J)*dD

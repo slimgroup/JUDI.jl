@@ -78,17 +78,17 @@ F0 = judiModeling(info,model0;options=opt)
 Ps = judiProjection(info,srcGeometry)
 q = judiVector(srcGeometry,wavelet)
 
-# Combined operator Pr*F*Ps'
+# Combined operator Pr*F*adjoint(Ps)
 Ffull = judiModeling(info,model,srcGeometry,recGeometry)
 
 # Nonlinear modeling
-d1 = Pr*F*Ps'*q	# equivalent to d = Ffull*q
-qad = Ps*F'*Pr'*d1
+d1 = Pr*F*adjoint(Ps)*q	# equivalent to d = Ffull*q
+qad = Ps*adjoint(F)*adjoint(Pr)*d1
 
 # Linearized modeling
-J = judiJacobian(Pr*F0*Ps',q)	# equivalent to J = judiJacobian(Ffull,q)
+J = judiJacobian(Pr*F0*adjoint(Ps),q)	# equivalent to J = judiJacobian(Ffull,q)
 dD = J*dm
-rtm = J'*dD
+rtm = adjoint(J)*dD
 
 # fwi objective function
 f,g = fwi_objective(model0,q,d1)
@@ -137,13 +137,13 @@ F = judiModeling(info,model;options=opt)
 F0 = judiModeling(info,model0;options=opt0)
 
 # Nonlinear modeling
-dsave = Pr*F*Ps'*q	# equivalent to d = Ffull*q
-qad = Ps*F'*Pr'*d1
+dsave = Pr*F*adjoint(Ps)*q	# equivalent to d = Ffull*q
+qad = Ps*adjoint(F)*adjoint(Pr)*d1
 
 # Linearized modeling
-J = judiJacobian(Pr*F0*Ps',q)	# equivalent to J = judiJacobian(Ffull,q)
+J = judiJacobian(Pr*F0*adjoint(Ps),q)	# equivalent to J = judiJacobian(Ffull,q)
 dDsave = J*dm
-rtm = J'*dD
+rtm = adjoint(J)*dD
 
 # Subsampling
 dsub1 = subsample(d1,1)
