@@ -79,15 +79,19 @@ end
 
 
 """
-    Model
+    Model_TTI
         n::IntTuple
         d::RealTuple
         o::RealTuple
         nb::Integer
         m::Array
+        epsilon::Array
+        delta::Array
+        theta::Array
+        phi::Array
         rho::Array
 
-Model structure for seismic velocity models.
+Model_TTI structure for seismic velocity models.
 
 `n`: number of gridpoints in (x,y,z) for 3D or (x,z) for 2D
 
@@ -99,8 +103,26 @@ Model structure for seismic velocity models.
 
 `m`: velocity model in slowness squared (s^2/km^2)
 
+`epsilon`: Epsilon thomsen parameter ( between -1 and 1)
+
+`delta`: Delta thomsen parameter ( between -1 and 1 and delta < epsilon)
+
+`theta`: Anisotopy dip in radian
+
+`phi`: Anisotropy asymuth in radian
+
 `rho`: density (g / m^3)
 
 
 Constructor
 ===========
+
+
+The parameters `n`, `d`, `o` and `m` are mandatory, whith `nb` and `rho` being optional input arguments.
+
+    Model_TTI(n, d, o, m; nb=40, epsilon=0, delta=0, theta=0, phi=0, rho=ones(n))
+
+
+"""
+
+const Modelall = Union{Model_TTI, Model}

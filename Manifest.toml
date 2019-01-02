@@ -33,9 +33,9 @@ version = "1.0.0"
 
 [[CMake]]
 deps = ["BinDeps", "Libdl", "Test"]
-git-tree-sha1 = "74853a75c26a4a73ac391ee26ee29ebeb5583d9f"
+git-tree-sha1 = "6e39bef3cbb8321e8a464b18a5c20d7cef813938"
 uuid = "631607c0-34d2-5d66-819e-eb0f9aa2061a"
-version = "1.1.0"
+version = "1.1.1"
 
 [[CMakeWrapper]]
 deps = ["BinDeps", "CMake", "Libdl", "Parameters", "Test"]
@@ -96,9 +96,9 @@ uuid = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 
 [[DistributedArrays]]
 deps = ["Distributed", "LinearAlgebra", "Primes", "Random", "Serialization", "SparseArrays", "Statistics", "Test"]
-git-tree-sha1 = "7b76e40191020de42da2b5753291ec463782411b"
+git-tree-sha1 = "68faa3b9d1f8adf1a8e32d9ca72433581c271323"
 uuid = "aaf54ef3-cdf8-58ed-94cc-d582ad619b94"
-version = "0.5.1"
+version = "0.6.0"
 
 [[FFTW]]
 deps = ["AbstractFFTs", "BinaryProvider", "Compat", "Conda", "Libdl", "LinearAlgebra", "Reexport", "Test"]
@@ -160,7 +160,7 @@ version = "0.9.1"
 
 [[JOLI]]
 deps = ["Distributed", "DistributedArrays", "FFTW", "InplaceOps", "InteractiveUtils", "IterativeSolvers", "Libdl", "LinearAlgebra", "NFFT", "Nullables", "Printf", "Random", "SharedArrays", "SparseArrays", "Test", "Wavelets"]
-path = "/home/pwitte3/.julia/dev/JOLI"
+path = "/home/mlouboutin3/.julia/dev/JOLI"
 uuid = "4d9c3512-8cbe-57b4-a7f5-8460a9e6efa7"
 version = "0.0.0"
 
@@ -178,9 +178,9 @@ version = "1.0.3"
 
 [[LegacyStrings]]
 deps = ["Compat"]
-git-tree-sha1 = "7cfb0bf378fab9ec57b393e3c56a419d6afab876"
+git-tree-sha1 = "d4b9bde2694c552fe579cc4462733f1ce08733fe"
 uuid = "1b4a561d-cfcb-5daf-8433-43fcf8b4bea3"
-version = "0.4.0"
+version = "0.4.1"
 
 [[LibCURL]]
 deps = ["BinaryProvider", "Compat", "Libdl", "Printf"]
@@ -246,9 +246,9 @@ version = "1.0.2"
 
 [[Parameters]]
 deps = ["Markdown", "OrderedCollections", "REPL", "Test"]
-git-tree-sha1 = "eec0fe16344cc14aa2e6251874ab30d62aff4f7c"
+git-tree-sha1 = "70bdbfb2bceabb15345c0b54be4544813b3444e4"
 uuid = "d96e819e-fc66-5662-9728-84c9c7592b0a"
-version = "0.10.2"
+version = "0.10.3"
 
 [[Pkg]]
 deps = ["Dates", "LibGit2", "Markdown", "Printf", "REPL", "Random", "SHA", "UUIDs"]
@@ -317,7 +317,7 @@ uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
 
 [[SeisIO]]
 deps = ["Distributed", "Printf", "Test"]
-path = "/home/pwitte3/.julia/dev/SeisIO"
+path = "/home/mlouboutin3/.julia/dev/SeisIO"
 uuid = "e2f1b5a8-5fbb-5d5d-94aa-e39813b81559"
 version = "0.0.0"
 

@@ -78,9 +78,6 @@ function minConf_SPG(funObj, x, funProj, options)
 
     nVars = length(x)
 
-
-	nVars = length(x)
-
 	# Output Log
 	if options.verbose >= 2
 	    if options.testOpt
@@ -104,44 +101,6 @@ function minConf_SPG(funObj, x, funProj, options)
 
 	x_best = x
 	f_best = f
-
-        # Compute Step Direction
-        if i == 1 || ~options.useSpectral
-            alpha = 1
-        else
-            y = g-g_old
-            s = x-x_old
-            if options.bbType == 1
-                alpha = dot(s,s)/dot(s,y)
-            else
-                alpha = dot(s,y)/dot(y,y)
-            end
-            if alpha <= 1e-10 || alpha > 1e10
-                alpha = 1
-            end
-        end
-        global d = -Float32(alpha)*g
-        global f_old = f
-        global x_old = x
-        global g_old = g
-
-        # Compute Projected Step
-        if ~options.curvilinear
-            if i==1
-                d = funProj(x+d)-x
-            else
-                d = funProj(x+d)-x
-            end
-            projects = projects+1
-        end
-        # Check that Progress can be made along the direction
-        gtd = dot(g,d)
-        if gtd > -options.progTol
-            if options.verbose >= 1
-                @printf("Directional Derivative below progTol\n")
-            end
-            break
-        end
 
 	i = 1
 	while funEvals <= options.maxIter
@@ -219,99 +178,6 @@ function minConf_SPG(funObj, x, funProj, options)
                 t = polyinterp([0 f gtd; t f_new sqrt(complex(-1));t_prev f_prev sqrt(complex(-1))]);
             end
 
-	    # Compute reference function for non-monotone condition
-
-            # Evaluate New Point
-            f_prev = f_new
-            t_prev = temp
-            if options.curvilinear
-                x_new = funProj(x + Float32(t)*d)
-                projects = projects+1
-            else
-                x_new = x + Float32(t)*d
-            end
-            f_new, g_new = funObj(x_new)
-            funEvals = funEvals+1
-            lineSearchIters = lineSearchIters+1
-            if funEvals*funEvalMultiplier > options.maxIter
-                if options.verbose >= 1
-                    @printf("Function Evaluations exceeds maxIter\n")
-                end
-                f_new = f
-                g_new = g
-                x_new = x
-                break
-            end
-
-            if lineSearchIters > 20
-                if options.verbose >= 1
-                    @printf("Linesearch Iterations exceeds maxLinesearchIter\n")
-                end
-                f_new = f
-                g_new = g
-                x_new = x
-                break
-            end
-
-	        if i <= options.memory
-	            old_fvals[i] = f
-	        else
-	            old_fvals = [old_fvals[2:end];f]
-	        end
-	        funRef = maximum(old_fvals)
-	    end
-	    # Evaluate the Objective and Gradient at the Initial Step
-	    if options.curvilinear
-	        x_new = funProj(x + Float32(t)*d)
-	        projects = projects+1
-	    else
-	        x_new = x + Float32(t)*d
-	    end
-	    f_new, g_new = funObj(x_new)
-	    funEvals = funEvals+1
-	    # Backtracking Line Search
-	    lineSearchIters = 1
-		@printf("%10s %4.2e %4.2e\n", "LineSearch", f, f_new)
-	    while f_new > funRef + options.suffDec*dot(g,(x_new-x)) || ~isLegal(f_new) || ~isLegal(g_new)
-			@printf("%10s %4.2e %4.2e\n", "LineSearch", f, f_new)
-			temp = t
-			if lineSearchIters == 1
-				@printf("Unit step length not feasible, starting line search\n")
-			end
-			# @printf("%10d %15.5e %15.5e %15.5e %15.5e\n",lineSearchIters,t, f_new,funRef,funRef + options.suffDec*dot(g,(x_new-x)))
-	        if options.interp == 0 || ~isLegal(f_new)
-	            if options.verbose == 3
-	                @printf("Halving Step Size\n");
-	            end
-				t = t/2;
-	        elseif options.interp == 2 && isLegal(g_new)
-	            if options.verbose == 3
-	                @printf("Cubic Backtracking\n");
-	            end
-	            t = polyinterp([0 f gtd; t f_new dot(g_new,d)]);
-	        elseif lineSearchIters < 2 || ~isLegal(f_prev)
-	            if options.verbose == 3
-	                @printf("Quadratic Backtracking\n");
-	            end
-	            t = polyinterp([0 f gtd; t f_new sqrt(complex(-1))]);
-	        else
-	            if options.verbose == 3
-	                @printf("Cubic Backtracking on Function Values\n");
-	            end
-	            t = polyinterp([0 f gtd; t f_new sqrt(complex(-1));t_prev f_prev sqrt(complex(-1))]);
-			end
-
-	        # Check whether step has become too small
-	        if maximum(abs.(t*d)) < options.progTol || t == 0
-	            if options.verbose == 3
-	                @printf("Line Search failed\n")
-	            end
-	            t = 0
-	            f_new = f
-	            g_new = g
-	            break
-	        end
-
 	        # Evaluate New Point
 	        f_prev = f_new
 	        t_prev = temp
@@ -321,30 +187,37 @@ function minConf_SPG(funObj, x, funProj, options)
 	        else
 	            x_new = x + Float32(t)*d
 	        end
+
 	        f_new, g_new = funObj(x_new)
 	        funEvals = funEvals+1
 	        lineSearchIters = lineSearchIters+1
-		    if funEvals*funEvalMultiplier >= options.maxIter
-		        if options.verbose >= 1
-		            @printf("Function Evaluations exceeds maxIter\n")
-		        end
+	        if funEvals*funEvalMultiplier > options.maxIter
+	            if options.verbose >= 1
+	                @printf("Function Evaluations exceeds maxIter\n")
+	            end
 	            f_new = f
 	            g_new = g
-				x_new = x
-		        break
-		    end
+	            x_new = x
+	            break
+	        end
 
-		    if lineSearchIters > 20
-		        if options.verbose >= 1
-		            @printf("Linesearch Iterations exceeds maxLinesearchIter\n")
-		        end
+	        if lineSearchIters > 20
+	            if options.verbose >= 1
+	                @printf("Linesearch Iterations exceeds maxLinesearchIter\n")
+	            end
 	            f_new = f
 	            g_new = g
-				x_new = x
-		        break
-		    end
+	            x_new = x
+	            break
+	        end
 
-	    end
+	        if i <= options.memory
+	            old_fvals[i] = f
+	        else
+	            old_fvals = [old_fvals[2:end];f]
+	        end
+	        funRef = maximum(old_fvals)
+		end
 
 	    # Take Step
 	    x = x_new

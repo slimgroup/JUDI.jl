@@ -20,7 +20,6 @@ mutable struct Options
     num_checkpoints::Union{Integer, Nothing}
     checkpoints_maxmem::Union{Real, Nothing}
     frequencies::Array
-    dft_subsampling_factor::Integer
     isic::Bool
     t_sub::Integer
     h_sub::Integer
