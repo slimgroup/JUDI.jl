@@ -58,13 +58,13 @@ function marineTopmute2D(Dobs::judiVector, muteStart::Integer; mute=Array{Any}(u
         for k=1:length(zax)
             mask[zax[k],xax[k]:end] .= 0f0
         end
-        flipmask == true && (mask = flipdim(mask, 2))
+        flipmask == true && (mask = reverse(mask, dims=2))
         Din.data[j] = Din.data[j].*mask
     end
     return Din
 end
 
-function judiMarineTopmute2D(muteStart,geometry;params=Array{Any}(undef, 3))
+function judiMarineTopmute2D(muteStart,geometry;params=Array{Any}(undef, 3),flipmask=false)
 # JOLI wrapper for the linear depth scaling function
     nsrc = length(geometry.xloc)
     N = 0
@@ -72,8 +72,8 @@ function judiMarineTopmute2D(muteStart,geometry;params=Array{Any}(undef, 3))
         N += geometry.nt[j]*length(geometry.xloc[j])
     end
     D = joLinearFunctionFwd_T(N,N,
-                             v -> marineTopmute2D(v,muteStart;mute=params),
-                             w -> marineTopmute2D(w,muteStart;mute=params),
+                             v -> marineTopmute2D(v,muteStart;mute=params, flipmask=flipmask),
+                             w -> marineTopmute2D(w,muteStart;mute=params, flipmask=flipmask),
                              Float32,Float32,name="Data mute")
     return D
 end
