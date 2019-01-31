@@ -7,6 +7,16 @@ from devito.logger import error
 
 __all__ = ['Model']
 
+class PhysicalDomain(SubDomain):
+
+    name = 'phydomain'
+
+    def __init__(self, nbpml):
+        super(PhysicalDomain, self).__init__()
+        self.nbpml = nbpml
+
+    def define(self, dimensions):
+        return {d: ('middle', self.nbpml, self.nbpml) for d in dimensions}
 
 
 def initialize_damp(damp, nbpml, spacing, mask=False):
@@ -47,17 +57,6 @@ def initialize_damp(damp, nbpml, spacing, mask=False):
 
     initialize_function(damp, data, 0)
 
-class PhysicalDomain(SubDomain):
-
-    name = 'phydomain'
-
-    def __init__(self, nbpml):
-        super(PhysicalDomain, self).__init__()
-        self.nbpml = nbpml
-
-    def define(self, dimensions):
-        return {d: ('middle', self.nbpml, self.nbpml) for d in dimensions}
-
 
 def initialize_function(function, data, nbpml, pad_mode='edge'):
     """Initialize a :class:`Function` with the given ``data``. ``data``
@@ -69,22 +68,9 @@ def initialize_function(function, data, nbpml, pad_mode='edge'):
     :param pad_mode: A string or a suitable padding function as explained in
                      :func:`numpy.pad`.
     """
-    pad_widths = [(nbpml + i.left, nbpml + i.right) for i in function._offset_domain]
+    pad_widths = [(nbpml + i.left, nbpml + i.right) for i in function._size_halo]
     data = np.pad(data, pad_widths, pad_mode)
     function.data_with_halo[:] = data
-
-
-def initialize_function(function, data, nbpml):
-    """Initialize a :class:`Function` with the given ``data``. ``data``
-    does *not* include the PML layers for the absorbing boundary conditions;
-    these are added via padding by this method.
-    :param function: The :class:`Function` to be initialised with some data.
-    :param data: The data array used for initialisation.
-    :param nbpml: Number of PML layers for boundary damping.
-    """
-    pad_list = [(nbpml + i.left, nbpml + i.right) for i in function._offset_domain]
-    function.data_with_halo[:] = np.pad(data, pad_list, 'edge')
-
 
 class Model(object):
     """The physical model used in seismic inversion processes.
@@ -100,7 +86,7 @@ class Model(object):
     :param damp: The damping field for absorbing boundarycondition
     """
     def __init__(self, origin, spacing, shape, vp, rho=1, nbpml=40, dtype=np.float32, dm=None,
-                 epsilon=None, delta=None, theta=None, phi=None, space_order=8):
+                 epsilon=None, delta=None, theta=None, phi=None, space_order=8, in_dim=None):
 
         self.shape = shape
         self.nbpml = int(nbpml)
@@ -114,7 +100,7 @@ class Model(object):
         # Physical extent is calculated per cell, so shape - 1
         extent = tuple(np.array(spacing) * (shape_pml - 1))
         self.grid = Grid(extent=extent, shape=shape_pml, origin=origin_pml, dtype=dtype,
-                         subdomains=phydomain)
+                         subdomains=phydomain, dimensions=in_dim)
 
         # Create square slowness of the wave as symbol `m`
         if isinstance(vp, np.ndarray):

@@ -1,5 +1,5 @@
 from devito import Dimension
-from devito.function import SparseTimeFunction
+from devito.types import SparseTimeFunction
 from devito.logger import error
 import numpy as np
 

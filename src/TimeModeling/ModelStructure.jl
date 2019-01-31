@@ -48,7 +48,8 @@ Constructor
 
 The parameters `n`, `d`, `o` and `m` are mandatory, whith `nb` and `rho` being optional input arguments.
 
-    Model(n, d, o, m; nb=40, rho=ones(n))
+    Model(n, d, o, m; nb=40, rho=ones(n)), :] / 2.0f0
+epsilon =
 
 
 """
@@ -124,5 +125,23 @@ The parameters `n`, `d`, `o` and `m` are mandatory, whith `nb` and `rho` being o
 
 
 """
+
+function Model_TTI(n::IntTuple, d::RealTuple, o::RealTuple, m; epsilon=[], delta=[], theta=[], phi=[], rho=[],nb=40)
+    isempty(epsilon) && (epsilon = 0)
+    isempty(delta) && (delta = 0)
+    isempty(theta) && (theta = 0)
+    isempty(phi) && (phi = 0)
+    isempty(rho) && (rho = 1)
+    return Model_TTI(n,d,o,nb,m,epsilon, delta, theta, phi, rho)
+end
+
+function Model_TTI(n::IntTuple, d::RealTuple, o::RealTuple, m, epsilon, delta, theta, phi, rho; nb=40)
+    isempty(epsilon) && (epsilon = 0)
+    isempty(delta) && (delta = 0)
+    isempty(theta) && (theta = 0)
+    isempty(phi) && (phi = 0)
+    isempty(rho) && (rho = 1)
+    return Model_TTI(n,d,o,nb,m,epsilon, delta, theta, phi, rho)
+end
 
 const Modelall = Union{Model_TTI, Model}

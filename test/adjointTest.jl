@@ -2,8 +2,12 @@
 # Author: Philipp Witte, pwitte@eos.ubc.ca
 # Date: January 2017
 #
+#
 
-using PyCall, PyPlot, JUDI.TimeModeling, Test, LinearAlgebra
+
+using Pkg; Pkg.activate("JUDI")
+using PyCall, PyPlot, JUDI.TimeModeling, Images, LinearAlgebra, Test
+
 
 ## Set up model structure
 n = (101, 121)	# (x,y,z) or (x,z)
@@ -35,7 +39,7 @@ zrec = range(100f0,stop=100f0,length=nxrec)
 
 # receiver sampling and recording time
 timeR = 800f0	# receiver recording time [ms]
-dtR = calculate_dt(n,d,o,v,rho)    # receiver sampling interval
+dtR = calculate_dt(model)    # receiver sampling interval
 
 # Set up receiver structure
 recGeometry = Geometry(xrec,yrec,zrec;dt=dtR,t=timeR,nsrc=nsrc)
@@ -47,7 +51,7 @@ zsrc = 50f0
 
 # source sampling and number of time steps
 timeS = 800f0
-dtS = calculate_dt(n,d,o,v,rho) # receiver sampling interval
+dtS = calculate_dt(model) # receiver sampling interval
 
 # Set up source structure
 srcGeometry = Geometry(xsrc,ysrc,zsrc;dt=dtS,t=timeS)
@@ -64,7 +68,7 @@ wave_rand = wavelet.*rand(Float32,size(wavelet))
 ###################################################################################################
 
 # Modeling operators
-opt = Options(sum_padding=true, isic=false, t_sub=2, h_sub=2)
+opt = Options(sum_padding=true, isic=false, t_sub=1, h_sub=1)
 F = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
 q = judiVector(srcGeometry, wavelet)
 
@@ -81,6 +85,7 @@ q_hat = adjoint(F)*d1
 # Result F
 a = dot(d1, d_hat)
 b = dot(q, q_hat)
+
 @test isapprox(a/b - 1, 0, atol=1f-4)
 
 # Linearized modeling
@@ -91,4 +96,5 @@ dm_hat = adjoint(J)*d_hat
 
 c = dot(dD_hat, d_hat)
 d = dot(dm, dm_hat)
+println(c, ", ", d)
 @test isapprox(c/d - 1, 0, atol=1f-4)

@@ -3,7 +3,10 @@
 # Date: January 2017
 #
 
+
+using Pkg; Pkg.activate("JUDI")
 using PyCall, PyPlot, JUDI.TimeModeling, Images, LinearAlgebra, Test
+
 ## Set up model structure
 n = (151, 151)	# (x,y,z) or (x,z)
 d = (10.,10.)
@@ -14,7 +17,6 @@ function smooth(array, sigma)
 end
 # Velocity [km/s]
 v = ones(Float32,n) * 2.0f0
-println(trunc(Integer, n[2]/3))
 v[:,trunc(Integer, end/3):end] .= 3f0
 v[:,trunc(Integer, 2*end/3):end] .= 4f0
 v0 = smooth(v, 10)
@@ -35,9 +37,9 @@ model = Model_TTI(n,d,o,m; epsilon=epsilon, delta=delta, theta=theta, rho=rho)
 
 ## Set up receiver geometry
 nxrec = 151
-xrec = range(0f0, 1500f0; length=nxrec)
-yrec = range(0f0, 0f0; length=nxrec)
-zrec = range(50f0, 50f0; length=nxrec)
+xrec = range(0f0, stop=1500f0, length=nxrec)
+yrec = range(0f0, stop=0f0, length=nxrec)
+zrec = range(50f0, stop=50f0, length=nxrec)
 
 # receiver sampling and recording time
 timeR = 2500f0	# receiver recording time [ms]

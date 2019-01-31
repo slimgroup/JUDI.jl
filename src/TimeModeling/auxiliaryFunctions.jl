@@ -241,16 +241,9 @@ function load_acoustic_codegen()
     return pyimport("JAcoustic_codegen")
 end
 
-function load_tti_codegen()
+function load_tti_codegen(False)
     pushfirst!(PyVector(pyimport("sys")["path"]), joinpath(JUDIPATH, "Python"))
-    return pyimport("TTI_Staggered")
-end
-
-function calculate_dt(n,d,o,v,rho; epsilon=0)
-    pm = load_pymodel()
-    length(n) == 2 ? pyDim = [n[2], n[1]] : pyDim = [n[3],n[2],n[1]]
-    modelPy = pm["Model"](o, d, pyDim, PyReverseDims(v))
-    dtComp = modelPy[:critical_dt]
+    return pyimport("TTI_operators")
 end
 
 function calculate_dt(model::Model_TTI)
@@ -261,6 +254,15 @@ function calculate_dt(model::Model_TTI)
     end
     scale = sqrt(maximum(1 + 2 *model.epsilon))
     return coeff * minimum(model.d) / (scale*sqrt(1/minimum(model.m)))
+end
+
+function calculate_dt(model::Model)
+    if length(model.n) == 3
+        coeff = 0.38
+    else
+        coeff = 0.42
+    end
+    return coeff * minimum(model.d) / (sqrt(1/minimum(model.m)))
 end
 """
     get_computational_nt(srcGeometry, recGeoemtry, model)
@@ -279,7 +281,7 @@ function get_computational_nt(srcGeometry, recGeometry, model::Modelall)
         nsrc = length(srcGeometry.xloc)
     end
     nt = Array{Any}(undef, nsrc)
-    dtComp = calculate_dt(model.n, model.d, model.o, sqrt.(1f0 ./ model.m), model.rho)
+    dtComp = calculate_dt(model)
     for j=1:nsrc
         ntRec = recGeometry.dt[j]*(recGeometry.nt[j]-1) / dtComp
         ntSrc = srcGeometry.dt[j]*(srcGeometry.nt[j]-1) / dtComp

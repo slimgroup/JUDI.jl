@@ -12,7 +12,7 @@ from numpy.random import randint
 from sympy import solve, cos, sin, expand, symbols
 from sympy import Function as fint
 from devito.logger import set_log_level
-from devito import Eq, Function, TimeFunction, Dimension, Operator, clear_cache, ConditionalDimension, DefaultDimension
+from devito import Eq, Function, TimeFunction, Dimension, Operator, clear_cache, ConditionalDimension, DefaultDimension, Inc
 from devito import first_derivative, left, right
 from PySource import PointSource, Receiver
 from PyModel import Model
@@ -25,8 +25,8 @@ def acoustic_laplacian(v, rho):
         rho = 1
     else:
         if isinstance(rho, Function):
-            Lap = sum([first_derivative(first_derivative(v, order=int(v.space_order/2), side=left, dim=d) / rho,
-                       order=int(v.space_order/2), dim=d, side=right) for d in v.space_dimensions])
+            Lap = sum([first_derivative(first_derivative(v, fd_order=int(v.space_order/2), side=left, dim=d) / rho,
+                       fd_order=int(v.space_order/2), dim=d, side=right) for d in v.space_dimensions])
         else:
             Lap = 1 / rho * v.laplace
     return Lap, rho
@@ -182,8 +182,8 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, nb=40, i
     if isic:
         # Sum ((u.dx * d, / rho).dx for x in dimensions)
         # space_order//2  so that u.dx.dx has the same radius as u.laplace
-        du_aux = sum([first_derivative(first_derivative(u, dim=d, order=space_order//2) * dm / rho,
-                                       order=space_order//2, dim=d)
+        du_aux = sum([first_derivative(first_derivative(u, dim=d, fd_order=space_order//2) * dm / rho,
+                                       fd_order=space_order//2, dim=d)
                       for d in u.space_dimensions])
         lin_source = dm /rho * u.dt2 * m - du_aux
     else:
@@ -252,8 +252,8 @@ def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residu
     else:
         # sum u.dx * v.dx fo x in dimensions.
         # space_order//2
-        diff_u_v = sum([first_derivative(u, dim=d, order=space_order//2)*
-                        first_derivative(v, dim=d, order=space_order//2)
+        diff_u_v = sum([first_derivative(u, dim=d, fd_order=space_order//2)*
+                        first_derivative(v, dim=d, fd_order=space_order//2)
                         for d in u.space_dimensions])
         gradient_update = [Inc(gradient, - dt * (u * v.dt2 * m + diff_u_v) / rho)]
 

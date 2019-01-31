@@ -220,7 +220,7 @@ function devito_interface(modelPy::PyCall.PyObject, origin, srcGeometry::Geometr
 
     # Devito call
     dOut = pycall(ac["forward_modeling"], PyObject, modelPy, PyReverseDims(copy(transpose(src_coords))), PyReverseDims(copy(transpose(qIn))), PyReverseDims(copy(transpose(rec_coords))),
-                  space_order=options.space_order, nb=modelPy[:nbpml], free_surface=options.freesurface)[1]
+                  space_order=options.space_order, nb=modelPy[:nbpml], free_surface=options.free_surface)[1]
     ntRec > ntComp && (dOut = [dOut zeros(size(dOut,1), ntRec - ntComp)])
     dOut = time_resample(dOut,dtComp,recGeometry)
 
