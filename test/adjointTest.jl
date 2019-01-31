@@ -16,7 +16,7 @@ o = (0.,0.)
 
 # Velocity [km/s]
 v = ones(Float32,n) .* 2.0f0
-v[:,Int(round(end/3)):end] .= 4f0
+v[:,Int(round(end/2)):end] .= 4f0
 v0 = smooth10(v,n)
 rho = ones(Float32, n)
 rho[:, Int(round(end/2)):end] .= 1.5f0
@@ -33,9 +33,9 @@ model0 = Model(n,d,o,m0,rho=rho)
 
 ## Set up receiver geometry
 nxrec = 141
-xrec = range(600f0,stop=1000f0,length=nxrec)
+xrec = range(100f0,stop=900f0,length=nxrec)
 yrec = 0f0
-zrec = range(100f0,stop=100f0,length=nxrec)
+zrec = range(50f0,stop=50f0,length=nxrec)
 
 # receiver sampling and recording time
 timeR = 800f0	# receiver recording time [ms]
@@ -45,7 +45,7 @@ dtR = calculate_dt(model)    # receiver sampling interval
 recGeometry = Geometry(xrec,yrec,zrec;dt=dtR,t=timeR,nsrc=nsrc)
 
 ## Set up source geometry (cell array with source locations for each shot)
-xsrc = 800f0
+xsrc = 500f0
 ysrc = 0f0
 zsrc = 50f0
 
@@ -61,14 +61,14 @@ ntComp = get_computational_nt(srcGeometry,recGeometry,model0)
 info = Info(prod(n), nsrc, ntComp)
 
 # setup wavelet
-f0 = 0.01f0
+f0 = 0.015f0
 wavelet = ricker_wavelet(timeS,dtS,f0)
 wave_rand = wavelet.*rand(Float32,size(wavelet))
 
 ###################################################################################################
 
 # Modeling operators
-opt = Options(sum_padding=true, isic=false, t_sub=1, h_sub=1)
+opt = Options(sum_padding=true, isic=false, t_sub=1, h_sub=1, free_surface=false)
 F = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
 q = judiVector(srcGeometry, wavelet)
 

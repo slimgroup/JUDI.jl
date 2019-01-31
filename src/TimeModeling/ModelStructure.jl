@@ -114,18 +114,13 @@ Model_TTI structure for seismic velocity models.
 
 `rho`: density (g / m^3)
 
-
 Constructor
 ===========
-
 
 The parameters `n`, `d`, `o` and `m` are mandatory, whith `nb` and `rho` being optional input arguments.
 
     Model_TTI(n, d, o, m; nb=40, epsilon=0, delta=0, theta=0, phi=0, rho=ones(n))
-
-
 """
-
 function Model_TTI(n::IntTuple, d::RealTuple, o::RealTuple, m; epsilon=[], delta=[], theta=[], phi=[], rho=[],nb=40)
     isempty(epsilon) && (epsilon = 0)
     isempty(delta) && (delta = 0)

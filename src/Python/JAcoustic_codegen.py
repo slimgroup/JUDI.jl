@@ -18,6 +18,24 @@ from PySource import PointSource, Receiver
 from PyModel import Model
 from checkpoint import DevitoCheckpoint, CheckpointOperator
 from pyrevolve import Revolver
+from utils import freesurface
+
+def J_adjoint(model, src_coords, wavelet, rec_coords, recin, space_order=12, nb=40,
+                t_sub_factor=20, h_sub_factor=2, checkpointing=False, free_surface=False,
+                n_checkpoints=None, maxmem=None, dt=None, isic=False):
+    if checkpointing:
+        F = forward_modeling(model, src_coords, wavelet, rec_coords, save=True, space_order=space_order, nb=nb,
+                             t_sub_factor=t_sub_factor, h_sub_factor=h_sub_factor, dt=dt, op_return=True,
+                             free_surface=free_surface)
+        grad = adjoint_born(model, rec_coords, recin, u=u0, op_forward=F, space_order=space_order,
+                            nb=nb, is_residual=True, isic=isic, n_checkpoints=n_checkpoints, maxmem=maxmem,
+                            free_surface=free_surface)
+    else:
+        u0 = forward_modeling(model, src_coords, wavelet, None, save=True, space_order=space_order, nb=nb,
+                              t_sub_factor=t_sub_factor, h_sub_factor=h_sub_factor, dt=dt, free_surface=free_surface)
+        grad = adjoint_born(model, rec_coords, recin, u=u0, space_order=space_order, nb=nb, isic=isic, dt=dt, free_surface=free_surface)
+
+    return grad
 
 def acoustic_laplacian(v, rho):
     if rho is None:
@@ -31,9 +49,9 @@ def acoustic_laplacian(v, rho):
             Lap = 1 / rho * v.laplace
     return Lap, rho
 
-def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_order=8, nb=40, free_surface=False, op_return=False, dt=None, freesurface=False):
+def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_order=8, nb=40,
+                     free_surface=False, op_return=False, dt=None, t_sub_factor=1, h_sub_factor=1):
     clear_cache()
-
     # If wavelet is file, read it
     if isinstance(wavelet, str):
         wavelet = np.load(wavelet)
@@ -84,7 +102,7 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
         expression += rec_term
 
     # Create operator and run
-    set_log_level('INFO')
+
     subs = model.spacing_map
     subs[u.grid.time_dim.spacing] = dt
     op = Operator(expression, subs=subs, dse='advanced', dle='advanced')
@@ -98,8 +116,7 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
         return op
 
 
-def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=8, nb=40, free_surface=False, dt=None,
-                     freesurface=False):
+def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=8, nb=40, free_surface=False, dt=None):
     clear_cache()
 
     # If wavelet is file, read it
@@ -148,7 +165,7 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=8, nb=
         expression += adj_rec
 
     # Create operator and run
-    set_log_level('INFO')
+
     subs = model.spacing_map
     subs[v.grid.time_dim.spacing] = dt
     op = Operator(expression, subs=subs, dse='advanced', dle='advanced')
@@ -205,7 +222,7 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, nb=40, i
     rec_term = rec.interpolate(expr=du)
 
     # Create operator and run
-    set_log_level('INFO')
+
     expression = expression_u + src_term + expression_du + rec_term
 
     # Free surface
@@ -221,7 +238,9 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, nb=40, i
     return rec.data
 
 
-def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residual=False, space_order=8, nb=40, isic=False, dt=None, n_checkpoints=None, maxmem=None, free_surface=False):
+def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residual=False,
+                 space_order=8, nb=40, isic=False, dt=None, n_checkpoints=None, maxmem=None,
+                 free_surface=False):
     clear_cache()
 
     # Parameters
@@ -258,7 +277,7 @@ def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residu
         gradient_update = [Inc(gradient, - dt * (u * v.dt2 * m + diff_u_v) / rho)]
 
     # Create operator and run
-    set_log_level('INFO')
+
     # Free surface
     if free_surface is True:
         expression += freesurface(v, space_order//2, model.nbpml, forward=False)
@@ -344,7 +363,7 @@ def forward_freq_modeling(model, src_coords, wavelet, rec_coords, freq, space_or
     rec_term = rec.interpolate(expr=u)
 
     # Create operator and run
-    set_log_level('INFO')
+
     expression += src_term + rec_term
     # Free surface
     if free_surface is True:
@@ -410,7 +429,7 @@ def adjoint_freq_born(model, rec_coords, rec_data, freq, ufr, ufi, space_order=8
         gradient_update = [Eq(gradient, gradient + (2*np.pi*f)**2/nt*(ufr*cos(2*np.pi*f*tsave*dtf) - ufi*sin(2*np.pi*f*tsave*dtf))*v)]
 
     # Create operator and run
-    set_log_level('INFO')
+
     # Free surface
     if free_surface is True:
         expression += freesurface(v, space_order//2, model.nbpml, forward=False)

@@ -110,7 +110,6 @@ Options(;space_order=8,
 		 isic=false,
          gs=Dict(),
 		 normalize=false,
-		 freesurface=false,
 		 t_sub=1,
 		 h_sub=1,
 		 dft_subsampling_factor=1) =

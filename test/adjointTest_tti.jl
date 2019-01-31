@@ -8,7 +8,7 @@ using Pkg; Pkg.activate("JUDI")
 using PyCall, PyPlot, JUDI.TimeModeling, Images, LinearAlgebra, Test
 
 ## Set up model structure
-n = (151, 151)	# (x,y,z) or (x,z)
+n = (251, 251)	# (x,y,z) or (x,z)
 d = (10.,10.)
 o = (0.,0.)
 
@@ -31,30 +31,30 @@ dm = vec(m - m0)
 
 # Setup info and model structure
 nsrc = 1
-model0 = Model_TTI(n,d,o,m0; epsilon=epsilon, delta=delta, theta=theta, rho=rho)
-model = Model_TTI(n,d,o,m; epsilon=epsilon, delta=delta, theta=theta, rho=rho)
+model0 = Model_TTI(n,d,o,m0; epsilon=epsilon, delta=delta, theta=theta)
+model = Model_TTI(n,d,o,m; epsilon=epsilon, delta=delta, theta=theta)
 # model0 = Model(n,d,o,m0)
 
 ## Set up receiver geometry
 nxrec = 151
-xrec = range(0f0, stop=1500f0, length=nxrec)
+xrec = range(0f0, stop=2500f0, length=nxrec)
 yrec = range(0f0, stop=0f0, length=nxrec)
 zrec = range(50f0, stop=50f0, length=nxrec)
 
 # receiver sampling and recording time
-timeR = 2500f0	# receiver recording time [ms]
+timeR = 1000f0	# receiver recording time [ms]
 dtR = 2.0f0    # receiver sampling interval
 
 # Set up receiver structure
 recGeometry = Geometry(xrec,yrec,zrec;dt=dtR,t=timeR,nsrc=nsrc)
 
 ## Set up source geometry (cell array with source locations for each shot)
-xsrc = 50f0
+xsrc = 1250f0
 ysrc = 0f0
 zsrc = 50f0
 
 # source sampling and number of time steps
-timeS = 2500f0
+timeS = 1000f0
 dtS = 2.0f0 # receiver sampling interval
 
 # Set up source structure
@@ -65,14 +65,14 @@ ntComp = get_computational_nt(srcGeometry,recGeometry,model0)
 info = Info(prod(n), nsrc, ntComp)
 
 # setup wavelet
-f0 = 0.008f0
-wavelet = 1e1*ricker_wavelet(timeS,dtS,f0)
-
+f0 = 0.015f0
+wavelet = ricker_wavelet(timeS,dtS,f0)
+wave_rand = wavelet.*rand(Float32,size(wavelet))
 ###################################################################################################
 
 # Modeling operators
 opt = Options(sum_padding=true) #, isic=false, t_sub=2, h_sub=2)
-F = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
+F = judiModeling(info, model, srcGeometry, recGeometry; options=opt)
 q = judiVector(srcGeometry, wavelet)
 
 # Nonlinear modeling
@@ -88,6 +88,7 @@ q_hat = adjoint(F)*d1
 # Result F
 a = dot(d1, d_hat)
 b = dot(q, q_hat)
+println(a, ", ", b)
 @test isapprox(a/b - 1, 0, atol=1f-4)
 
 # Linearized modeling

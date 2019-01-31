@@ -9,9 +9,9 @@ def freesurface(field, stencil_s, npml, forward=True):
     the acoustic wave equation
     """
     fs = DefaultDimension(name="fs", default_value=stencil_s)
-    
+
     field_m = field.forward if forward else field.backward
-    
-    lhs = field_m.subs({u.indices[-1]: npml - fs - 1})
-    rhs = -field_m.subs({u.indices[-1]: npml + fs + 1})
+
+    lhs = field_m.subs({field.indices[-1]: npml - fs - 1})
+    rhs = -field_m.subs({field.indices[-1]: npml + fs + 1})
     return [Eq(lhs, rhs)]

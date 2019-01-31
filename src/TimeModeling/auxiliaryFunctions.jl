@@ -7,7 +7,47 @@ export ricker_wavelet, get_computational_nt, smooth10, damp_boundary, calculate_
 export convertToCell, limit_model_to_receiver_area, extend_gradient, remove_out_of_bounds_receivers
 export time_resample, remove_padding, backtracking_linesearch, subsample
 export generate_distribution, select_frequencies, process_physical_parameter
-export load_pymodel, load_acoustic_codegen, load_numpy, load_tti_codegen
+export load_pymodel, load_devito_jit, load_numpy, devito_model
+
+function devito_model(model::Model, op, mode, options, dm)
+    pm = load_pymodel()
+    length(model.n) == 3 ? dims = [3,2,1] : dims = [2,1]   # model dimensions for Python are (z,y,x) and (z,x)
+    # Set up Python model structure
+    if op=='J' && mode == 1
+        modelPy = pm[:Model](origin=(0.,0.,0.), spacing=model.d, shape=model.n, vp=process_physical_parameter(sqrt.(1f0./model.m), dims), nbpml=model.nb,
+            rho=process_physical_parameter(model.rho, dims), dm=process_physical_parameter(reshape(dm,model.n), dims), space_order=options.space_order)
+    else
+        modelPy = pm[:Model](origin=(0.,0.,0.), spacing=model.d, shape=model.n, vp=process_physical_parameter(sqrt.(1f0./model.m), dims), nbpml=model.nb,
+            rho=process_physical_parameter(model.rho, dims), space_order=options.space_order)
+    end
+
+end
+
+function devito_model(model::Model_TTI, op, mode, options, dm)
+    pm = load_pymodel()
+    length(model.n) == 3 ? dims = [3,2,1] : dims = [2,1]   # model dimensions for Python are (z,y,x) and (z,x)
+    # Set up Python model structure
+    if op=='J' && mode == 1
+        # Set up Python model structure (force origin to be zero due to current devito bug)
+        modelPy = pm[:Model](origin=(0.,0.,0.), spacing=model.d, shape=model.n, vp=process_physical_parameter(sqrt.(1f0./model.m), dims),
+                           rho=process_physical_parameter(model.rho, dims),
+                           epsilon=process_physical_parameter(model.epsilon, dims),
+                           delta=process_physical_parameter(model.delta, dims),
+                           theta=process_physical_parameter(model.theta, dims),
+                           phi=process_physical_parameter(model.phi, dims), nbpml=model.nb,
+                           dm=process_physical_parameter(reshape(dm,model.n), dims),
+                           space_order=options.space_order)
+    else
+        # Set up Python model structure (force origin to be zero due to current devito bug)
+        modelPy = pm[:Model](origin=(0., 0., 0.), spacing=model.d, shape=model.n, vp=process_physical_parameter(sqrt.(1f0./model.m), dims),
+                           rho=process_physical_parameter(model.rho, dims),
+                           epsilon=process_physical_parameter(model.epsilon, dims),
+                           delta=process_physical_parameter(model.delta, dims),
+                           theta=process_physical_parameter(model.theta, dims),
+                           phi=process_physical_parameter(model.phi, dims), nbpml=model.nb,
+                           space_order=options.space_order)
+    end
+end
 
 function limit_model_to_receiver_area(srcGeometry::Geometry, recGeometry::Geometry, model::Model, buffer; pert=[])
     # Restrict full velocity model to area that contains either sources and receivers
@@ -150,7 +190,7 @@ function extend_gradient(model_full::Modelall,model::Modelall,gradient::Array)
     return full_gradient
 end
 
-function remove_out_of_bounds_receivers(recGeometry::Geometry, model::Model)
+function remove_out_of_bounds_receivers(recGeometry::Geometry, model::Modelall)
 
     # Only keep receivers within the model
     xmin = model.o[1]
@@ -170,7 +210,7 @@ function remove_out_of_bounds_receivers(recGeometry::Geometry, model::Model)
     return recGeometry
 end
 
-function remove_out_of_bounds_receivers(recGeometry::Geometry, recData::Array, model::Model)
+function remove_out_of_bounds_receivers(recGeometry::Geometry, recData::Array, model::Modelall)
 
     # Only keep receivers within the model
     xmin = model.o[1]
@@ -236,14 +276,13 @@ function load_numpy()
     return pyimport("numpy")
 end
 
-function load_acoustic_codegen()
+function load_devito_jit(modelPy)
     pushfirst!(PyVector(pyimport("sys")["path"]), joinpath(JUDIPATH, "Python"))
-    return pyimport("JAcoustic_codegen")
-end
-
-function load_tti_codegen(False)
-    pushfirst!(PyVector(pyimport("sys")["path"]), joinpath(JUDIPATH, "Python"))
-    return pyimport("TTI_operators")
+    if modelPy[:is_tti]
+        return pyimport("TTI_operators")
+    else
+        return pyimport("JAcoustic_codegen")
+    end
 end
 
 function calculate_dt(model::Model_TTI)
@@ -252,7 +291,7 @@ function calculate_dt(model::Model_TTI)
     else
         coeff = 0.42
     end
-    scale = sqrt(maximum(1 + 2 *model.epsilon))
+    scale = sqrt(maximum(1 .+ 2 *model.epsilon))
     return coeff * minimum(model.d) / (scale*sqrt(1/minimum(model.m)))
 end
 

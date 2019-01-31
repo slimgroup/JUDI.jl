@@ -22,12 +22,23 @@ from PySource import PointSource, Receiver
 from PyModel import Model
 from checkpoint import DevitoCheckpoint, CheckpointOperator
 from pyrevolve import Revolver
+from utils import freesurface
 
-def J_transpose(model, src_coords, wavelet, rec_coords, recin, space_order=12, nb=40,
-                t_sub_factor=20, h_sub_factor=2, op_return=False, dt=None, isic=False):
-    rec, u0, v0 = forward_modeling(model, src_coords, wavelet, rec_coords, save=True, space_order=space_order, nb=nb,
-                                   t_sub_factor=t_sub_factor, h_sub_factor=h_sub_factor, dt=dt)
-    grad = adjoint_born(model, rec_coords, recin, u=u0, v=v0, space_order=space_order, nb=nb, isiciso=isic, dt=dt)
+def J_adjoint(model, src_coords, wavelet, rec_coords, recin, space_order=12, nb=40,
+                t_sub_factor=20, h_sub_factor=2, checkpointing=False, free_surface=False,
+                n_checkpoints=None, maxmem=None, dt=None, isic=False):
+    if checkpointing:
+        F = forward_modeling(model, src_coords, wavelet, rec_coords, save=True, space_order=space_order, nb=nb,
+                             t_sub_factor=t_sub_factor, h_sub_factor=h_sub_factor, dt=dt, op_return=True,
+                             free_surface=free_surface)
+        grad = adjoint_born(model, rec_coords, recin, u=u0, op_forward=F, space_order=space_order,
+                            nb=nb, is_residual=True, isic=isic, n_checkpoints=n_checkpoints, maxmem=maxmem,
+                            free_surface=free_surface)
+    else:
+        u0, v0 = forward_modeling(model, src_coords, wavelet, None, save=True, space_order=space_order, nb=nb,
+                                  t_sub_factor=t_sub_factor, h_sub_factor=h_sub_factor, dt=dt, free_surface=free_surface)
+        grad = adjoint_born(model, rec_coords, recin, u=u0, space_order=space_order, nb=nb, isic=isic, dt=dt, free_surface=free_surface)
+
     return grad
 
 def sub_ind(model):
@@ -42,7 +53,7 @@ def sub_ind(model):
 
 
 def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_order=16, nb=40,
-                     t_sub_factor=1, h_sub_factor=1, op_return=False, dt=None, freesurface=False):
+                     t_sub_factor=1, h_sub_factor=1, op_return=False, dt=None, free_surface=False):
     clear_cache()
 
     # Parameters
@@ -106,46 +117,52 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
 
     # Stencils
     s = model.grid.stepping_dim.spacing
-    stencilp = damp * 2 * u - damp **2 * u.backward + damp * s**2 / m * (epsilon * H0 + delta * Hz)
-    stencilr = damp * 2 * v - damp **2 * v.backward + damp * s**2 / m * (delta * H0 + Hz)
+    stencilp = damp * ( 2 * u - damp * u.backward + s**2 / m * (epsilon * H0 + delta * Hz))
+    stencilr = damp * ( 2 * v - damp * v.backward + s**2 / m * (delta * H0 + Hz))
     first_stencil = Eq(u.forward, stencilp)
     second_stencil = Eq(v.forward, stencilr)
     expression = [first_stencil, second_stencil]
+
     # Source symbol with input wavelet
     src = PointSource(name='src', grid=model.grid, ntime=nt, coordinates=src_coords)
     src.data[:] = wavelet[:]
-    src_term = src.inject(field=u.forward, offset=model.nbpml, expr=src * rho * dt**2 / m)
-    src_term += src.inject(field=v.forward, offset=model.nbpml, expr=src * rho * dt**2 / m)
+    src_term = src.inject(field=u.forward, expr=src * rho * dt**2 / m)
+    src_term += src.inject(field=v.forward, expr=src * rho * dt**2 / m)
+
     # Data is sampled at receiver locations
-    rec = Receiver(name='rec', grid=model.grid, ntime=nt, coordinates=rec_coords)
-    rec_term = rec.interpolate(expr=u + v, offset=model.nbpml)
+    if rec_coords is not None:
+        rec = Receiver(name='rec', grid=model.grid, ntime=nt, coordinates=rec_coords)
+        expression += rec.interpolate(expr=u + v)
 
     # Create operator and run
     set_log_level('INFO')
-    expression += src_term + rec_term
+    expression += src_term
     if save:
         expression += eqsave
 
-    if freesurface:
-        fs = DefaultDimension(name="fs", default_value=model.nbpml)
-        expression += [Eq(u.forward.subs({u.indices[-1]: model.nbpml - fs - 1}),
-                          -u.forward.subs({u.indices[-1]: model.nbpml + fs + 1}))]
-        expression += [Eq(v.forward.subs({v.indices[-1]: model.nbpml - fs - 1}),
-                          -v.forward.subs({v.indices[-1]: model.nbpml + fs + 1}))]
+    if free_surface:
+        expression += freesurface(u, space_order//2, model.nbpml)
+        expression += freesurface(v, space_order//2, model.nbpml)
+
     op = Operator(expression, subs=model.spacing_map, dse='aggressive', dle='advanced')
     # from IPython import embed; embed()
     if op_return is False:
+        op()
         if save and (t_sub_factor>1 or h_sub_factor>1):
-            op()
-            return rec.data, usave, vsave
+            if rec_coords is not None:
+                return rec.data, usave, vsave
+            else:
+                return usave, vsave
         else:
-            op()
-            return rec.data, u, v
+            if rec_coords is not None:
+                return rec.data, u, v
+            else:
+                return u, v
     else:
         return op
 
 
-def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=12, nb=40, dt=None):
+def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=12, nb=40, dt=None, free_surface=False):
     clear_cache()
 
     # Parameters
@@ -167,48 +184,52 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=12, nb
     # Create the adjoint wavefield
     p = TimeFunction(name="p", grid=model.grid, time_order=2, space_order=space_order)
     q = TimeFunction(name="q", grid=model.grid, time_order=2, space_order=space_order)
-    temp_p = Function(name="temp_p", grid=model.grid, space_order=p.space_order)
-    temp_r = Function(name="temp_r", grid=model.grid, space_order=q.space_order)
 
     rho = model.rho
     if isinstance(rho, Function):
         FD_kernel = kernels['rho']
-        H0, Hz = FD_kernel(temp_p, temp_r, rho, ang0, ang1, ang2, ang3, space_order)
+        H0, Hz = FD_kernel(epsilon * p + delta * q, delta * p + q,
+                           rho, ang0, ang1, ang2, ang3, space_order)
     else:
         FD_kernel = kernels[len(model.shape)]
-        H0, Hz = FD_kernel(temp_p, temp_r, ang0, ang1, ang2, ang3, space_order)
+        H0, Hz = FD_kernel(epsilon * p + delta * q,
+                           delta * p + q, ang0, ang1, ang2, ang3, space_order)
         H0 = H0 / rho
         Hz = Hz / rho
 
     # Stencils
     s = model.grid.stepping_dim.spacing
-    stencilp = damp * 2 * p - damp **2 * p.forward + damp * s**2 / m * H0
-    stencilr = damp * 2 * q - damp **2 * q.forward + damp * s**2 / m * Hz
+    stencilp = damp * (2 * p - damp * p.forward + s**2 / m * H0)
+    stencilr = damp * (2 * q - damp * q.forward + s**2 / m * Hz)
     first_stencil = Eq(p.backward, stencilp)
     second_stencil = Eq(q.backward, stencilr)
     expression = [first_stencil, second_stencil]
-    expression += [Eq(temp_p, epsilon * p.backward + delta * q.backward), Eq(temp_r, delta * p.backward + q.backward)]
 
     # Adjoint source is injected at receiver locations
     rec = Receiver(name='rec', grid=model.grid, ntime=nt, coordinates=rec_coords)
     rec.data[:] = rec_data[:]
-    adj_src = rec.inject(field=p.backward, offset=model.nbpml, expr=rec * dt**2 / m)
-    adj_src += rec.inject(field=q.backward, offset=model.nbpml, expr=rec * dt**2 / m)
+    adj_src = rec.inject(field=p.backward, expr=rec * dt**2 / m)
+    adj_src += rec.inject(field=q.backward, expr=rec * dt**2 / m)
     # Data is sampled at source locations
     src = PointSource(name='src', grid=model.grid, ntime=nt, coordinates=src_coords)
-    adj_rec = src.interpolate(expr=p+q, offset=model.nbpml)
+    adj_rec = src.interpolate(expr=p+q)
 
     # Create operator and run
     set_log_level('INFO')
     expression += adj_src + adj_rec
+
+    if free_surface:
+        expression += freesurface(p, space_order//2, model.nbpml, forward=False)
+        expression += freesurface(q, space_order//2, model.nbpml, forward=False)
+
     op = Operator(expression, subs=model.spacing_map, dse='advanced', dle='advanced')
     op()
 
-    return src.data, p, q
+    return src.data
 
 
 def forward_born(model, src_coords, wavelet, rec_coords, space_order=12, nb=40, isic=False, dt=None, save=False, isiciso=False,
-                 h_sub_factor=1):
+                 h_sub_factor=1, free_surface=False):
     clear_cache()
 
     # Parameters
@@ -244,25 +265,25 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=12, nb=40, 
 
     # Stencils
     s = model.grid.stepping_dim.spacing
-    stencilp = damp * 2 * u - damp **2 * u.backward + s**2 / m * (epsilon * H0 + delta * Hz)
-    stencilr = damp * 2 * v - damp **2 * v.backward + s**2 / m * (delta * H0 + Hz)
+    stencilp = damp * (2 * u - damp * u.backward + s**2 / m * (epsilon * H0 + delta * Hz))
+    stencilr = damp * (2 * v - damp * v.backward + s**2 / m * (delta * H0 + Hz))
 
-    if isiciso:
-        du_aux_x = first_derivative(u.dx * dm, order=space_order, dim=u.indices[1], diff=h_sub_factor*u.indices[1].spacing)
-        du_aux_y = first_derivative(u.dy * dm, order=space_order, dim=u.indices[2], diff=h_sub_factor*u.indices[2].spacing)
-        du2 =  (dm * u.dt2 * m - du_aux_x - du_aux_y)
-        if len(model.shape) == 3:
-            du2 -= first_derivative(u.dz * dm, order=space_order, dim=u.indices[3], diff=h_sub_factor*u.indices[3].spacing)
-
-        dv_aux_x = first_derivative(v.dx * dm, order=space_order, dim=u.indices[1], diff=h_sub_factor*u.indices[1].spacing)
-        dv_aux_y = first_derivative(v.dy * dm, order=space_order, dim=u.indices[2], diff=h_sub_factor*u.indices[2].spacing)
-        dv2 =  (dm * v.dt2 * m - dv_aux_x - dv_aux_y)
-        if len(model.shape) == 3:
-            dv2 -= first_derivative(v.dz * dm, order=space_order, dim=u.indices[3], diff=h_sub_factor*u.indices[3].spacing)
-
-        stencilpl = damp * 2 * ul - damp **2 * ul.backward + s**2 / m * (epsilon * H0l + delta * Hzl - du2)
-        stencilrl = damp * 2 * vl - damp **2 * vl.backward + s**2 / m * (delta * H0l + Hzl - dv2)
-    elif isic:
+    if isic:
+    #     du_aux_x = first_derivative(u.dx * dm, fd_order=space_order, dim=u.indices[1], diff=h_sub_factor*u.indices[1].spacing)
+    #     du_aux_y = first_derivative(u.dy * dm, fd_order=space_order, dim=u.indices[2], diff=h_sub_factor*u.indices[2].spacing)
+    #     du2 =  (dm * u.dt2 * m - du_aux_x - du_aux_y)
+    #     if len(model.shape) == 3:
+    #         du2 -= first_derivative(u.dz * dm, fd_order=space_order, dim=u.indices[3], diff=h_sub_factor*u.indices[3].spacing)
+    #
+    #     dv_aux_x = first_derivative(v.dx * dm, fd_order=space_order, dim=u.indices[1], diff=h_sub_factor*u.indices[1].spacing)
+    #     dv_aux_y = first_derivative(v.dy * dm, fd_order=space_order, dim=u.indices[2], diff=h_sub_factor*u.indices[2].spacing)
+    #     dv2 =  (dm * v.dt2 * m - dv_aux_x - dv_aux_y)
+    #     if len(model.shape) == 3:
+    #         dv2 -= first_derivative(v.dz * dm, fd_order=space_order, dim=u.indices[3], diff=h_sub_factor*u.indices[3].spacing)
+    #
+    #     stencilpl = damp * (2 * ul - damp * ul.backward + s**2 / m * (epsilon * H0l + delta * Hzl - du2))
+    #     stencilrl = damp * (2 * vl - damp * vl.backward + s**2 / m * (delta * H0l + Hzl - dv2))
+    # elif isic:
         order_loc = int(space_order/2)
         lin_expru = dm * u.dt2 * m - Dx(Dx(u, ang0, ang1, ang2, ang3, order_loc) * dm,
                                                   ang0, ang1, ang2, ang3, order_loc)
@@ -277,11 +298,11 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=12, nb=40, 
                                         ang0, ang1, ang2, ang3, order_loc)
             lin_exprv -= Dy(Dy(v, ang0, ang1, ang2, ang3, order_loc) * dm,
                                     ang0, ang1, ang2, ang3, order_loc)
-        stencilpl = damp * 2 * ul - damp **2 * ul.backward + damp * s**2 / m * (epsilon * H0l + delta * Hzl - lin_expru)
-        stencilrl = damp * 2 * vl - damp **2 * vl.backward + damp * s**2 / m * (delta * H0l + Hzl - lin_exprv)
+        stencilpl = damp * (2 * ul - damp * ul.backward + s**2 / m * (epsilon * H0l + delta * Hzl - lin_expru))
+        stencilrl = damp * (2 * vl - damp * vl.backward + s**2 / m * (delta * H0l + Hzl - lin_exprv))
     else:
-        stencilpl = damp * 2 * ul - damp **2 * ul.backward + damp * s**2 / m * (epsilon * H0l + delta * Hzl - dm * u.dt2)
-        stencilrl = damp * 2 * vl - damp **2 * vl.backward + damp * s**2 / m * (delta * H0l + Hzl - dm * v.dt2)
+        stencilpl = damp * (2 * ul - damp * ul.backward + s**2 / m * (epsilon * H0l + delta * Hzl - dm * u.dt2))
+        stencilrl = damp * (2 * vl - damp * vl.backward + s**2 / m * (delta * H0l + Hzl - dm * v.dt2))
 
     first_stencil = Eq(u.forward, stencilp)
     second_stencil = Eq(v.forward, stencilr)
@@ -292,23 +313,32 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=12, nb=40, 
     # Define source symbol with wavelet
     src = PointSource(name='src', grid=model.grid, ntime=nt, coordinates=src_coords)
     src.data[:] = wavelet[:]
-    src_term = src.inject(field=u.forward, offset=model.nbpml, expr=src * dt**2 / m)
-    src_term += src.inject(field=v.forward, offset=model.nbpml, expr=src * dt**2 / m)
+    src_term = src.inject(field=u.forward, expr=src * dt**2 / m)
+    src_term += src.inject(field=v.forward, expr=src * dt**2 / m)
     # Define receiver symbol
     rec = Receiver(name='rec', grid=model.grid, ntime=nt, coordinates=rec_coords)
-    rec_term = rec.interpolate(expr=ul + vl, offset=model.nbpml)
+    rec_term = rec.interpolate(expr=ul + vl)
 
     # Create operator and run
     set_log_level('INFO')
-    expression = expression_u + expression_du + src_term + rec_term
+    expression = expression_u + expression_du + src_term
+
+    if free_surface:
+        expression += freesurface(u, space_order//2, model.nbpml)
+        expression += freesurface(v, space_order//2, model.nbpml)
+        expression += freesurface(ul, space_order//2, model.nbpml)
+        expression += freesurface(vl, space_order//2, model.nbpml)
+
+    expression += rec_term
     op = Operator(expression, subs=model.spacing_map, dse='advanced', dle='advanced')
     op()
 
-    return rec.data, u, ul
+    return rec.data
 
 
 def adjoint_born(model, rec_coords, rec_data, u=None, v=None, op_forward=None, is_residual=False,
-                 space_order=12, nb=40, isic=False, isiciso=False, isicnothom=False, dt=None):
+                 space_order=12, nb=40, isic=False, dt=None, n_checkpoints=None, maxmem=None,
+                 free_surface=False):
     clear_cache()
     factor_t = u.indices[0].factor if u.indices[0].is_Conditional else 1
     factor_h = u.indices[1].factor if u.indices[1].is_Conditional else 1
@@ -343,8 +373,8 @@ def adjoint_born(model, rec_coords, rec_data, u=None, v=None, op_forward=None, i
     # H0, Hz = FD_kernel(temp_p, temp_r, ang0, ang1, ang2, ang3, space_order)
     # Stencils
     s = model.grid.stepping_dim.spacing
-    stencilp = damp * 2 * p - damp **2 * p.forward + damp * s**2 / m * H0
-    stencilr = damp * 2 * q - damp **2 * q.forward + damp * s**2 / m * Hz
+    stencilp = damp * (2 * p - damp * p.forward + s**2 / m * H0)
+    stencilr = damp * (2 * q - damp * q.forward + s**2 / m * Hz)
     first_stencil = Eq(p.backward, stencilp)
     second_stencil = Eq(q.backward, stencilr)
     expression = [first_stencil, second_stencil]
@@ -353,11 +383,11 @@ def adjoint_born(model, rec_coords, rec_data, u=None, v=None, op_forward=None, i
     rec_g = Receiver(name='rec_g', grid=model.grid, ntime=nt, coordinates=rec_coords)
     if op_forward is None:
         max_in = np.max(rec_data[:])
-        rec_data = np.gradient(rec_data)[0]
-        rec_g.data[:] = max_in * rec_data[:] / np.max(rec_data[:])
+        # rec_data = np.gradient(rec_data)[0]
+        rec_g.data[:] = rec_data[:] #max_in * rec_data[:] / np.max(rec_data[:])
 
-    adj_src = rec_g.inject(field=p.backward, offset=model.nbpml, expr=rec_g * dt**2 / m)
-    adj_src += rec_g.inject(field=q.backward, offset=model.nbpml, expr=rec_g * dt**2 / m)
+    adj_src = rec_g.inject(field=p.backward, expr=rec_g * dt**2 / m)
+    adj_src += rec_g.inject(field=q.backward, expr=rec_g * dt**2 / m)
     # Gradient update
     if u is None:
         u = TimeFunction(name='u', grid=model.grid, time_order=2, space_order=space_order)
@@ -382,41 +412,48 @@ def adjoint_born(model, rec_coords, rec_data, u=None, v=None, op_forward=None, i
             qdy = Dy(q, ang0, ang1, ang2, ang3, order_loc)
             grads += udy * pdy + vdy * qdy
         gradient_update = [Inc(gradient, - factor_h * factor_t * dt * ((u * p.dt2 + v * q.dt2) * m + grads))]
-    elif isiciso is True:
-        grads = u.dx * p.dx + u.dy * p.dy + v.dx * q.dx + v.dy * q.dy
-        if len(model.shape) == 3:
-            grads += u.dz * p.dz + v.dz * q.dz
-        gradient_update = [Inc(gradient, - factor_h * dt * factor_t * ((u * p.dt2 + v * q.dt2) * m + grads))]
-    elif isicnothom is True:
-                order_loc = int(space_order/2)
-                udx = Dx(u, ang0, ang1, ang2, ang3, order_loc)
-                pdx = Dx(p, ang0, ang1, ang2, ang3, order_loc)
-                udz = Dz(u, ang0, ang1, ang2, ang3, order_loc)
-                pdz = Dz(p, ang0, ang1, ang2, ang3, order_loc)
-                vdx = Dx(v, ang0, ang1, ang2, ang3, order_loc)
-                qdx = Dx(q, ang0, ang1, ang2, ang3, order_loc)
-                vdz = Dz(v, ang0, ang1, ang2, ang3, order_loc)
-                qdz = Dz(q, ang0, ang1, ang2, ang3, order_loc)
-                grads = vdz * qdz + udz * pdz + udx * pdx + vdx * qdx
-                if len(model.shape) == 3:
-                    udy = epsilon * Dy(u, ang0, ang1, ang2, ang3, order_loc)
-                    pdy = Dy(p, ang0, ang1, ang2, ang3, order_loc)
-                    vdy = delta * Dy(v, ang0, ang1, ang2, ang3, order_loc)
-                    qdy = Dy(q, ang0, ang1, ang2, ang3, order_loc)
-                    grads += udy * pdy + vdy * qdy
-                gradient_update = [Inc(gradient, - factor_h * factor_t * dt * ((u * p.dt2 + v * q.dt2) * m + grads))]
+    # elif isiciso is True:
+    #     grads = u.dx * p.dx + u.dy * p.dy + v.dx * q.dx + v.dy * q.dy
+    #     if len(model.shape) == 3:
+    #         grads += u.dz * p.dz + v.dz * q.dz
+    #     gradient_update = [Inc(gradient, - factor_h * dt * factor_t * ((u * p.dt2 + v * q.dt2) * m + grads))]
+    # elif isicnothom is True:
+    #             order_loc = int(space_order/2)
+    #             udx = Dx(u, ang0, ang1, ang2, ang3, order_loc)
+    #             pdx = Dx(p, ang0, ang1, ang2, ang3, order_loc)
+    #             udz = Dz(u, ang0, ang1, ang2, ang3, order_loc)
+    #             pdz = Dz(p, ang0, ang1, ang2, ang3, order_loc)
+    #             vdx = Dx(v, ang0, ang1, ang2, ang3, order_loc)
+    #             qdx = Dx(q, ang0, ang1, ang2, ang3, order_loc)
+    #             vdz = Dz(v, ang0, ang1, ang2, ang3, order_loc)
+    #             qdz = Dz(q, ang0, ang1, ang2, ang3, order_loc)
+    #             grads = vdz * qdz + udz * pdz + udx * pdx + vdx * qdx
+    #             if len(model.shape) == 3:
+    #                 udy = epsilon * Dy(u, ang0, ang1, ang2, ang3, order_loc)
+    #                 pdy = Dy(p, ang0, ang1, ang2, ang3, order_loc)
+    #                 vdy = delta * Dy(v, ang0, ang1, ang2, ang3, order_loc)
+    #                 qdy = Dy(q, ang0, ang1, ang2, ang3, order_loc)
+    #                 grads += udy * pdy + vdy * qdy
+    #             gradient_update = [Inc(gradient, - factor_h * factor_t * dt * ((u * p.dt2 + v * q.dt2) * m + grads))]
     else:
         gradient_update = [Inc(gradient, - factor_h * factor_t * dt * (u * p.dt2 + v * q.dt2))]
 
     # Create operator and run
     set_log_level('INFO')
     expression += adj_src + gradient_update
+
+    if free_surface:
+        expression += freesurface(p, space_order//2, model.nbpml, forward=False)
+        expression += freesurface(q, space_order//2, model.nbpml, forward=False)
+
     op = Operator(expression, subs=model.spacing_map, dse='aggressive', dle='speculative')
     # Optimal checkpointing
+
     if op_forward is not None:
         rec = Receiver(name='rec', grid=model.grid, ntime=nt, coordinates=rec_coords)
         cp = DevitoCheckpoint([u, v])
-        n_checkpoints = None
+        if maxmem is not None:
+            n_checkpoints = int(np.floor(maxmem * 10**6 / (cp.size * u.data.itemsize)))
         wrap_fw = CheckpointOperator(op_forward, u=u, v=v, m=model.m, epsilon=model.epsilon, rec=rec)
         wrap_rev = CheckpointOperator(op, u=u, v=v, p=p, q=q, m=model.m, epsilon=model.epsilon, rec_g=rec_g)
 
@@ -435,7 +472,7 @@ def adjoint_born(model, rec_coords, rec_data, u=None, v=None, op_forward=None, i
         op()
     clear_cache()
 
-    if u.indices[1].is_Conditional:
+    if u.indices[1].is_Conditional and u.indices[1].factor>1:
         grad = resample_grad(gradient, model, u.indices[1].factor)
     else:
         grad = gradient.data
@@ -443,99 +480,99 @@ def adjoint_born(model, rec_coords, rec_data, u=None, v=None, op_forward=None, i
         return fval, grad
     else:
         return grad
-
-def adjoint_born_fake(model, rec_coords, rec_data, u=None, v=None, op_forward=None, is_residual=False, space_order=12, nb=40, isic=False, dt=None, isiciso=False):
-    clear_cache()
-
-    # Parameters
-    nt = rec_data.shape[0]
-    if dt is None:
-        dt = model.critical_dt
-    m, damp, epsilon, delta, theta, phi = (model.m, model.damp, model.epsilon,
-                                           model.delta, model.theta, model.phi)
-
-    # Tilt and azymuth setup
-    ang0 = cos(theta)
-    ang1 = sin(theta)
-    ang2 = 1
-    ang3 = 0
-    if len(model.shape) == 3:
-        ang2 = cos(phi)
-        ang3 = sin(phi)
-
-    # Create adjoint wavefield and gradient
-    p = TimeFunction(name='p', grid=model.grid, time_order=2, space_order=space_order)
-    q = TimeFunction(name='q', grid=model.grid, time_order=2, space_order=space_order)
-    gradient = Function(name='gradient', grid=model.grid)
-
-    FD_kernel = kernels[len(model.shape)]
-    H0, Hz = FD_kernel(p, q, ang0, ang1, ang2, ang3, space_order)
-
-    # Stencils
-    s = model.grid.stepping_dim.spacing
-    stencilp = damp * 2 * p - damp **2 * p.forward + s**2 / m * (epsilon * H0 + delta * Hz)
-    stencilr = damp * 2 * q - damp **2 * q.forward + s**2 / m * (delta * H0 +  Hz)
-    first_stencil = Eq(p.backward, stencilp)
-    second_stencil = Eq(q.backward, stencilr)
-    expression = [first_stencil, second_stencil]
-
-
-    # Data at receiver locations as adjoint source
-    rec_g = Receiver(name='rec_g', grid=model.grid, ntime=nt, coordinates=rec_coords)
-    if op_forward is None:
-        rec_g.data[:] = rec_data[:]
-    adj_src = rec_g.inject(field=p.backward, offset=model.nbpml, expr=rec_g * dt**2 / m)
-    adj_src += rec_g.inject(field=q.backward, offset=model.nbpml, expr=rec_g * dt**2 / m)
-    # Gradient update
-    if u is None:
-        u = TimeFunction(name='u', grid=model.grid, time_order=2, space_order=space_order)
-    if v is None:
-        v = TimeFunction(name='v', grid=model.grid, time_order=2, space_order=space_order)
-
-    if isiciso is True:
-        if len(model.shape) == 2:
-            gradient_update = [Inc(gradient, - dt * ((u.dt2 * p + v.dt2 * q) * m +
-                                                              u.dx * p.dx + u.dy * p.dy +
-                                                              v.dx * q.dx + v.dy * q.dy))]
-        else:
-            gradient_update = [Inc(gradient, - dt * ((u.dt2 * p + v.dt2 * q) * m +
-                                                              u.dx * p.dx + u.dy * p.dy + u.dz * p.dz +
-                                                              v.dx * q.dx + v.dy * q.dy + v.dz * q.dz))]
-    else:
-        gradient_update = [Inc(gradient, - dt * u.dt2 * p - dt * v.dt2 * q)]
-    # Create operator and run
-    set_log_level('INFO')
-    expression += adj_src + gradient_update
-    op = Operator(expression, subs=model.spacing_map, dse='advanced', dle='advanced',
-                  name="Gradient%s" % randint(1e5))
-
-    # Optimal checkpointing
-    if op_forward is not None:
-        rec = Receiver(name='rec', grid=model.grid, ntime=nt, coordinates=rec_coords)
-        cp = DevitoCheckpoint([u, v])
-        n_checkpoints = None
-        wrap_fw = CheckpointOperator(op_forward, u=u, v=v, m=model.m.data, rec=rec, dt=dt)
-        wrap_rev = CheckpointOperator(op, u=u, v=v, p=p, q=q, m=model.m.data, rec_g=rec_g, dt=dt)
-
-        # Run forward
-        wrp = Revolver(cp, wrap_fw, wrap_rev, n_checkpoints, nt-2)
-        wrp.apply_forward()
-
-        # Residual and gradient
-        if is_residual is True:  # input data is already the residual
-            rec_g.data[:] = rec_data[:]
-        else:
-            rec_g.data[:] = rec.data[:] - rec_data[:]   # input is observed data
-            fval = .5*np.linalg.norm(rec_g.data[:])**2
-        wrp.apply_reverse()
-    else:
-        op(dt=dt)
-    clear_cache()
-
-    if op_forward is not None and is_residual is not True:
-        return fval, gradient.data
-    else:
-        return gradient.data
+#
+# def adjoint_born_fake(model, rec_coords, rec_data, u=None, v=None, op_forward=None, is_residual=False, space_order=12, nb=40, isic=False, dt=None, isiciso=False):
+#     clear_cache()
+#
+#     # Parameters
+#     nt = rec_data.shape[0]
+#     if dt is None:
+#         dt = model.critical_dt
+#     m, damp, epsilon, delta, theta, phi = (model.m, model.damp, model.epsilon,
+#                                            model.delta, model.theta, model.phi)
+#
+#     # Tilt and azymuth setup
+#     ang0 = cos(theta)
+#     ang1 = sin(theta)
+#     ang2 = 1
+#     ang3 = 0
+#     if len(model.shape) == 3:
+#         ang2 = cos(phi)
+#         ang3 = sin(phi)
+#
+#     # Create adjoint wavefield and gradient
+#     p = TimeFunction(name='p', grid=model.grid, time_order=2, space_order=space_order)
+#     q = TimeFunction(name='q', grid=model.grid, time_order=2, space_order=space_order)
+#     gradient = Function(name='gradient', grid=model.grid)
+#
+#     FD_kernel = kernels[len(model.shape)]
+#     H0, Hz = FD_kernel(p, q, ang0, ang1, ang2, ang3, space_order)
+#
+#     # Stencils
+#     s = model.grid.stepping_dim.spacing
+#     stencilp = damp * 2 * p - damp **2 * p.forward + s**2 / m * (epsilon * H0 + delta * Hz)
+#     stencilr = damp * 2 * q - damp **2 * q.forward + s**2 / m * (delta * H0 +  Hz)
+#     first_stencil = Eq(p.backward, stencilp)
+#     second_stencil = Eq(q.backward, stencilr)
+#     expression = [first_stencil, second_stencil]
+#
+#
+#     # Data at receiver locations as adjoint source
+#     rec_g = Receiver(name='rec_g', grid=model.grid, ntime=nt, coordinates=rec_coords)
+#     if op_forward is None:
+#         rec_g.data[:] = rec_data[:]
+#     adj_src = rec_g.inject(field=p.backward, expr=rec_g * dt**2 / m)
+#     adj_src += rec_g.inject(field=q.backward, expr=rec_g * dt**2 / m)
+#     # Gradient update
+#     if u is None:
+#         u = TimeFunction(name='u', grid=model.grid, time_order=2, space_order=space_order)
+#     if v is None:
+#         v = TimeFunction(name='v', grid=model.grid, time_order=2, space_order=space_order)
+#
+#     if isiciso is True:
+#         if len(model.shape) == 2:
+#             gradient_update = [Inc(gradient, - dt * ((u.dt2 * p + v.dt2 * q) * m +
+#                                                               u.dx * p.dx + u.dy * p.dy +
+#                                                               v.dx * q.dx + v.dy * q.dy))]
+#         else:
+#             gradient_update = [Inc(gradient, - dt * ((u.dt2 * p + v.dt2 * q) * m +
+#                                                               u.dx * p.dx + u.dy * p.dy + u.dz * p.dz +
+#                                                               v.dx * q.dx + v.dy * q.dy + v.dz * q.dz))]
+#     else:
+#         gradient_update = [Inc(gradient, - dt * u.dt2 * p - dt * v.dt2 * q)]
+#     # Create operator and run
+#     set_log_level('INFO')
+#     expression += adj_src + gradient_update
+#     op = Operator(expression, subs=model.spacing_map, dse='advanced', dle='advanced',
+#                   name="Gradient%s" % randint(1e5))
+#
+#     # Optimal checkpointing
+#     if op_forward is not None:
+#         rec = Receiver(name='rec', grid=model.grid, ntime=nt, coordinates=rec_coords)
+#         cp = DevitoCheckpoint([u, v])
+#         n_checkpoints = None
+#         wrap_fw = CheckpointOperator(op_forward, u=u, v=v, m=model.m.data, rec=rec, dt=dt)
+#         wrap_rev = CheckpointOperator(op, u=u, v=v, p=p, q=q, m=model.m.data, rec_g=rec_g, dt=dt)
+#
+#         # Run forward
+#         wrp = Revolver(cp, wrap_fw, wrap_rev, n_checkpoints, nt-2)
+#         wrp.apply_forward()
+#
+#         # Residual and gradient
+#         if is_residual is True:  # input data is already the residual
+#             rec_g.data[:] = rec_data[:]
+#         else:
+#             rec_g.data[:] = rec.data[:] - rec_data[:]   # input is observed data
+#             fval = .5*np.linalg.norm(rec_g.data[:])**2
+#         wrp.apply_reverse()
+#     else:
+#         op(dt=dt)
+#     clear_cache()
+#
+#     if op_forward is not None and is_residual is not True:
+#         return fval, gradient.data
+#     else:
+#         return gradient.data
 
 
 def Gzz_centered(field, costheta, sintheta, cosphi, sinphi, space_order):
@@ -553,19 +590,19 @@ def Gzz_centered(field, costheta, sintheta, cosphi, sinphi, space_order):
     func = list(retrieve_functions(field))[0]
     x, y, z = func.space_dimensions
     Gz = -(sintheta * cosphi * first_derivative(field, dim=x,
-                                                side=centered, order=order1) +
+                                                side=centered, fd_order=order1) +
            sintheta * sinphi * first_derivative(field, dim=y,
-                                                side=centered, order=order1) +
+                                                side=centered, fd_order=order1) +
            costheta * first_derivative(field, dim=z,
-                                       side=centered, order=order1))
+                                       side=centered, fd_order=order1))
     Gzz = (first_derivative(Gz * sintheta * cosphi,
-                            dim=x, side=centered, order=order1,
+                            dim=x, side=centered, fd_order=order1,
                             matvec=transpose) +
            first_derivative(Gz * sintheta * sinphi,
-                            dim=y, side=centered, order=order1,
+                            dim=y, side=centered, fd_order=order1,
                             matvec=transpose) +
            first_derivative(Gz * costheta,
-                            dim=z, side=centered, order=order1,
+                            dim=z, side=centered, fd_order=order1,
                             matvec=transpose))
     return Gzz
 
@@ -582,13 +619,13 @@ def Gzz_centered_2d(field, costheta, sintheta, space_order):
     order1 = space_order / 2
     func = list(retrieve_functions(field))[0]
     x, y = func.space_dimensions
-    Gz = -(sintheta * first_derivative(field, dim=x, side=centered, order=order1) +
-           costheta * first_derivative(field, dim=y, side=centered, order=order1))
+    Gz = -(sintheta * first_derivative(field, dim=x, side=centered, fd_order=order1) +
+           costheta * first_derivative(field, dim=y, side=centered, fd_order=order1))
     Gzz = (first_derivative(Gz * sintheta, dim=x,
-                            side=centered, order=order1,
+                            side=centered, fd_order=order1,
                             matvec=transpose) +
            first_derivative(Gz * costheta, dim=y,
-                            side=centered, order=order1,
+                            side=centered, fd_order=order1,
                             matvec=transpose))
 
     return Gzz
@@ -610,7 +647,7 @@ def Gxxyy_centered(field, costheta, sintheta, cosphi, sinphi, space_order):
     :return: Sum of the 3D rotated second order derivative in the direction x and y
     """
     func = list(retrieve_functions(field))[0]
-    lap = sum([second_derivative(field, dim=d, order=space_order) for d in func.space_dimensions])
+    lap = sum([second_derivative(field, dim=d, fd_order=space_order) for d in func.space_dimensions])
     Gzz = Gzz_centered(field, costheta, sintheta, cosphi, sinphi, space_order)
     return lap - Gzz
 
@@ -631,7 +668,7 @@ def Gxx_centered_2d(field, costheta, sintheta, space_order):
     """
     func = list(retrieve_functions(field))[0]
 
-    lap = sum([second_derivative(field, dim=d, order=space_order) for d in func.space_dimensions])
+    lap = sum([second_derivative(field, dim=d, fd_order=space_order) for d in func.space_dimensions])
     return lap - Gzz_centered_2d(field, costheta, sintheta, space_order)
 
 def kernel_centered_2d(u, v, costheta, sintheta, cosphi, sinphi, space_order):
@@ -699,11 +736,11 @@ def Dx(field, costheta, sintheta, cosphi, sinphi, space_order):
         if isinstance(i, Function):
             dims = i.space_dimensions
             break
-    Dx = (costheta * cosphi * first_derivative(field, dim=dims[0], side=centered, order=order1) -
-          sintheta * first_derivative(field, dim=dims[-1], side=centered, order=order1))
+    Dx = (costheta * cosphi * first_derivative(field, dim=dims[0], side=centered, fd_order=order1) -
+          sintheta * first_derivative(field, dim=dims[-1], side=centered, fd_order=order1))
 
     if len(dims) == 3:
-        Dx += costheta * sinphi * first_derivative(field, dim=dims[1], side=centered, order=order1)
+        Dx += costheta * sinphi * first_derivative(field, dim=dims[1], side=centered, fd_order=order1)
     return Dx
 
 
@@ -724,8 +761,8 @@ def Dy(field, costheta, sintheta, cosphi, sinphi, space_order):
         if isinstance(i, Function):
             dims = i.space_dimensions
             break
-    Dy = (-sinphi * first_derivative(field, dim=dims[0], side=centered, order=order1) +
-          cosphi * first_derivative(field, dim=dims[1],side=centered, order=order1))
+    Dy = (-sinphi * first_derivative(field, dim=dims[0], side=centered, fd_order=order1) +
+          cosphi * first_derivative(field, dim=dims[1],side=centered, fd_order=order1))
 
     return Dy
 
@@ -747,11 +784,11 @@ def Dz(field, costheta, sintheta, cosphi, sinphi, space_order):
         if isinstance(i, Function):
             dims = i.space_dimensions
             break
-    Dz = (sintheta * cosphi * first_derivative(field, dim=dims[0], side=centered, order=order1) +
-          costheta * first_derivative(field, dim=dims[-1], side=centered, order=order1))
+    Dz = (sintheta * cosphi * first_derivative(field, dim=dims[0], side=centered, fd_order=order1) +
+          costheta * first_derivative(field, dim=dims[-1], side=centered, fd_order=order1))
 
     if len(dims) == 3:
-        Dz += sintheta * sinphi * first_derivative(field, dim=dims[1], side=centered, order=order1)
+        Dz += sintheta * sinphi * first_derivative(field, dim=dims[1], side=centered, fd_order=order1)
     return Dz
 
 
