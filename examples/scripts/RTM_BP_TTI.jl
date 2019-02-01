@@ -20,7 +20,7 @@ n = size(m0)
 # Smooth thomsen parameters
 
 
-vp = Float32.(imfilter(vp, Kernel.gaussian(5)))
+vp = Float32.(imfilter(vp, Kernel.gaussian(10)))
 epsilon = Float32.(imfilter(epsilon, Kernel.gaussian(10)))
 delta = Float32.(imfilter(delta, Kernel.gaussian(10)))
 # theta = Float32.(imfilter(theta, Kernel.gaussian(5)))
@@ -47,7 +47,7 @@ d_obs = judiVector(container; segy_depth_key="ElevationScalar")
 
 # Set up source
 src_geometry = Geometry(container; key = "source")
-wavelet = ricker_wavelet(src_geometry.t[1], src_geometry.dt[1], 0.027)  # 8 Hz peak frequency
+wavelet = ricker_wavelet(src_geometry.t[1], src_geometry.dt[1], 0.019)  # 8 Hz peak frequency
 # Info structure for linear operators
 ntComp = get_computational_nt(src_geometry, d_obs.geometry, model0)    # no. of computational time steps
 info = Info(prod(model0.n), d_obs.nsrc, ntComp)
@@ -57,13 +57,14 @@ info = Info(prod(model0.n), d_obs.nsrc, ntComp)
 opt = Options(optimal_checkpointing = true,
               limit_m = true,
               buffer_size = 2000f0,
+              space_order=8,
               isic = true)
 
 # Setup operators
 Pr = judiProjection(info, d_obs.geometry)
 F = judiModeling(info, model0; options=opt)
 Ps = judiProjection(info, src_geometry)
-q = judiVector(src_geometry, wavelet)
+q = judiVector(src_geometry, [0;-diff(wavelet)])
 J = judiJacobian(Pr*F*Ps', q)
 
 # rtm = J'*d_obs

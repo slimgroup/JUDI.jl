@@ -339,7 +339,7 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=12, nb=40, 
 
 def adjoint_born(model, rec_coords, rec_data, u=None, v=None, op_forward=None, is_residual=False,
                  space_order=12, nb=40, isic=False, dt=None, n_checkpoints=None, maxmem=None,
-                 free_surface=False, t_sub_factor=1, h_sub_factor=1, ):
+                 free_surface=False, t_sub_factor=1, h_sub_factor=1):
     clear_cache()
     factor_t = t_sub_factor
     factor_h = h_sub_factor
@@ -396,28 +396,28 @@ def adjoint_born(model, rec_coords, rec_data, u=None, v=None, op_forward=None, i
         v = TimeFunction(name='v', grid=model.grid, time_order=2, space_order=space_order)
 
     if isic is True:
-        order_loc = int(space_order/2)
-        udx = epsilon * Dx(u, ang0, ang1, ang2, ang3, order_loc)
-        pdx = Dx(p, ang0, ang1, ang2, ang3, order_loc)
-        udz = delta * Dz(u, ang0, ang1, ang2, ang3, order_loc)
-        pdz = Dz(p, ang0, ang1, ang2, ang3, order_loc)
-        vdx = delta * Dx(v, ang0, ang1, ang2, ang3, order_loc)
-        qdx = Dx(q, ang0, ang1, ang2, ang3, order_loc)
-        vdz = Dz(v, ang0, ang1, ang2, ang3, order_loc)
-        qdz = Dz(q, ang0, ang1, ang2, ang3, order_loc)
-        grads = vdz * qdz + udz * pdz + udx * pdx + vdx * qdx
-        if len(model.shape) == 3:
-            udy = epsilon * Dy(u, ang0, ang1, ang2, ang3, order_loc)
-            pdy = Dy(p, ang0, ang1, ang2, ang3, order_loc)
-            vdy = delta * Dy(v, ang0, ang1, ang2, ang3, order_loc)
-            qdy = Dy(q, ang0, ang1, ang2, ang3, order_loc)
-            grads += udy * pdy + vdy * qdy
-        gradient_update = [Inc(gradient, - factor_h * factor_t * dt * ((u * p.dt2 + v * q.dt2) * m + grads))]
+        # order_loc = int(space_order/2)
+        # udx = epsilon * Dx(u, ang0, ang1, ang2, ang3, order_loc)
+        # pdx = Dx(p, ang0, ang1, ang2, ang3, order_loc)
+        # udz = delta * Dz(u, ang0, ang1, ang2, ang3, order_loc)
+        # pdz = Dz(p, ang0, ang1, ang2, ang3, order_loc)
+        # vdx = delta * Dx(v, ang0, ang1, ang2, ang3, order_loc)
+        # qdx = Dx(q, ang0, ang1, ang2, ang3, order_loc)
+        # vdz = Dz(v, ang0, ang1, ang2, ang3, order_loc)
+        # qdz = Dz(q, ang0, ang1, ang2, ang3, order_loc)
+        # grads = vdz * qdz + udz * pdz + udx * pdx + vdx * qdx
+        # if len(model.shape) == 3:
+        #     udy = epsilon * Dy(u, ang0, ang1, ang2, ang3, order_loc)
+        #     pdy = Dy(p, ang0, ang1, ang2, ang3, order_loc)
+        #     vdy = delta * Dy(v, ang0, ang1, ang2, ang3, order_loc)
+        #     qdy = Dy(q, ang0, ang1, ang2, ang3, order_loc)
+        #     grads += udy * pdy + vdy * qdy
+        # gradient_update = [Inc(gradient, - factor_h * factor_t * dt * ((u * p.dt2 + v * q.dt2) * m + grads))]
     # elif isiciso is True:
-    #     grads = u.dx * p.dx + u.dy * p.dy + v.dx * q.dx + v.dy * q.dy
-    #     if len(model.shape) == 3:
-    #         grads += u.dz * p.dz + v.dz * q.dz
-    #     gradient_update = [Inc(gradient, - factor_h * dt * factor_t * ((u * p.dt2 + v * q.dt2) * m + grads))]
+        grads = u.dx * p.dx + u.dy * p.dy + v.dx * q.dx + v.dy * q.dy
+        if len(model.shape) == 3:
+            grads += u.dz * p.dz + v.dz * q.dz
+        gradient_update = [Inc(gradient, - factor_h * dt * factor_t * ((u * p.dt2 + v * q.dt2) * m + grads))]
     # elif isicnothom is True:
     #             order_loc = int(space_order/2)
     #             udx = Dx(u, ang0, ang1, ang2, ang3, order_loc)
@@ -455,8 +455,10 @@ def adjoint_born(model, rec_coords, rec_data, u=None, v=None, op_forward=None, i
         cp = DevitoCheckpoint([u, v])
         if maxmem is not None:
             n_checkpoints = int(np.floor(maxmem * 10**6 / (cp.size * u.data.itemsize)))
-        wrap_fw = CheckpointOperator(op_forward, u=u, v=v, m=model.m, epsilon=model.epsilon, rec=rec)
-        wrap_rev = CheckpointOperator(op, u=u, v=v, p=p, q=q, m=model.m, epsilon=model.epsilon, rec_g=rec_g)
+        wrap_fw = CheckpointOperator(op_forward, u=u, v=v, m=model.m, epsilon=model.epsilon,
+                                     delta=model.delta, theta=model.theta, rec=rec)
+        wrap_rev = CheckpointOperator(op, u=u, v=v, p=p, q=q, m=model.m, epsilon=model.epsilon,
+                                      delta=model.delta, theta=model.theta, rec_g=rec_g)
 
         # Run forward
         wrp = Revolver(cp, wrap_fw, wrap_rev, n_checkpoints, nt-2)
