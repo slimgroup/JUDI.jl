@@ -1,4 +1,5 @@
-using JUDI.TimeModeling, SeisIO, JLD, PyPlot
+using Pkg; Pkg.activate("JUDI")
+using PyCall, PyPlot, JUDI.TimeModeling, Images, SeisIO, JLD
 # Load velocity model
 
 vp = segy_read("/data/mlouboutin3/BP2007/Vp_Model.sgy")  # IBM Float32 format [m/s]
@@ -15,6 +16,24 @@ d = (6.25, 6.25)
 o = (0., 0.)
 m0 = (1f0 ./ vp).^2
 n = size(m0)
+
+# Smooth thomsen parameters
+
+
+vp = Float32.(imfilter(vp, Kernel.gaussian(5)))
+epsilon = Float32.(imfilter(epsilon, Kernel.gaussian(10)))
+delta = Float32.(imfilter(delta, Kernel.gaussian(10)))
+# theta = Float32.(imfilter(theta, Kernel.gaussian(5)))
+
+
+wb = find_water_bottom(vp - minimum(vp))
+k = 1
+water_bottom = zeros(size(vp))
+for i in wb
+    water_bottom[k, 1:i]  =1.; k+=1;
+end
+water_bottom = Float32.(water_bottom)
+
 
 # Set up model structure
 
@@ -50,9 +69,18 @@ J = judiJacobian(Pr*F*Ps', q)
 # rtm = J'*d_obs
 # save("rtm_bp_tti_synthetic_full.jld", "x", rtm)
 
+# Right-hand preconditioners
+D = judiDepthScaling(model0)
+T = judiTopmute(model0.n, (1 - water_bottom), [])
+Mr = D*T
+
+d_sub = get_data(d_obs[50:50])#  get_data(d_obs[i])
+Ml = judiMarineTopmute2D(60, d_sub.geometry)
+
 # The above way requires to gather all 1600 gradients, we can split it
 
-rtm = J[50]'*d_obs[50]
+rtm = Mr*J[50:50]'*Ml*d_sub
+
 # save(string("rtm_bp_tti_synthetic_flip_coarse",1,".jld"), "x", rtm)
 # for i=2:19
 # 	println("Running shots ", (i-1)*82+1, " to ", i*82)

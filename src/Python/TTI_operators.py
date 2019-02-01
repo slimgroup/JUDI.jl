@@ -28,16 +28,17 @@ def J_adjoint(model, src_coords, wavelet, rec_coords, recin, space_order=12, nb=
                 t_sub_factor=20, h_sub_factor=2, checkpointing=False, free_surface=False,
                 n_checkpoints=None, maxmem=None, dt=None, isic=False):
     if checkpointing:
-        F = forward_modeling(model, src_coords, wavelet, rec_coords, save=True, space_order=space_order, nb=nb,
+        F = forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_order=space_order, nb=nb,
                              t_sub_factor=t_sub_factor, h_sub_factor=h_sub_factor, dt=dt, op_return=True,
                              free_surface=free_surface)
-        grad = adjoint_born(model, rec_coords, recin, u=u0, op_forward=F, space_order=space_order,
+        grad = adjoint_born(model, rec_coords, recin, op_forward=F, space_order=space_order,
                             nb=nb, is_residual=True, isic=isic, n_checkpoints=n_checkpoints, maxmem=maxmem,
                             free_surface=free_surface)
     else:
         u0, v0 = forward_modeling(model, src_coords, wavelet, None, save=True, space_order=space_order, nb=nb,
                                   t_sub_factor=t_sub_factor, h_sub_factor=h_sub_factor, dt=dt, free_surface=free_surface)
-        grad = adjoint_born(model, rec_coords, recin, u=u0, space_order=space_order, nb=nb, isic=isic, dt=dt, free_surface=free_surface)
+        grad = adjoint_born(model, rec_coords, recin, u=u0, space_order=space_order, nb=nb, isic=isic, dt=dt, free_surface=free_surface,
+                            t_sub_factor=t_sub_factor, h_sub_factor=h_sub_factor)
 
     return grad
 
@@ -338,10 +339,10 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=12, nb=40, 
 
 def adjoint_born(model, rec_coords, rec_data, u=None, v=None, op_forward=None, is_residual=False,
                  space_order=12, nb=40, isic=False, dt=None, n_checkpoints=None, maxmem=None,
-                 free_surface=False):
+                 free_surface=False, t_sub_factor=1, h_sub_factor=1, ):
     clear_cache()
-    factor_t = u.indices[0].factor if u.indices[0].is_Conditional else 1
-    factor_h = u.indices[1].factor if u.indices[1].is_Conditional else 1
+    factor_t = t_sub_factor
+    factor_h = h_sub_factor
     # Parameters
     nt = rec_data.shape[0]
     if dt is None:
@@ -361,7 +362,7 @@ def adjoint_born(model, rec_coords, rec_data, u=None, v=None, op_forward=None, i
     # Create adjoint wavefield and gradient
     p = TimeFunction(name='p', grid=model.grid, time_order=2, space_order=space_order)
     q = TimeFunction(name='q', grid=model.grid, time_order=2, space_order=space_order)
-    gradient = Function(name='gradient', grid=u.grid)
+    gradient = Function(name='gradient', grid=model.grid)
 
     FD_kernel = kernels[len(model.shape)]
     # Create temps adjoint

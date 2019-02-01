@@ -27,7 +27,7 @@ def J_adjoint(model, src_coords, wavelet, rec_coords, recin, space_order=12, nb=
         F = forward_modeling(model, src_coords, wavelet, rec_coords, save=True, space_order=space_order, nb=nb,
                              t_sub_factor=t_sub_factor, h_sub_factor=h_sub_factor, dt=dt, op_return=True,
                              free_surface=free_surface)
-        grad = adjoint_born(model, rec_coords, recin, u=u0, op_forward=F, space_order=space_order,
+        grad = adjoint_born(model, rec_coords, recin, op_forward=F, space_order=space_order,
                             nb=nb, is_residual=True, isic=isic, n_checkpoints=n_checkpoints, maxmem=maxmem,
                             free_surface=free_surface)
     else:

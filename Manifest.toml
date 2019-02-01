@@ -114,9 +114,9 @@ version = "0.2.0"
 
 [[DSP]]
 deps = ["AbstractFFTs", "Compat", "FFTW", "LinearAlgebra", "Polynomials", "Random", "Reexport", "SpecialFunctions"]
-git-tree-sha1 = "c90967ff4c5e99f652b278624634dcef73b58848"
+git-tree-sha1 = "5ec38ebc4ddf6320ad50b826eb8fd7fb521993a5"
 uuid = "717857b8-e6f2-59f4-9121-6e50c889abd2"
-version = "0.5.1"
+version = "0.5.2"
 
 [[DataStructures]]
 deps = ["InteractiveUtils", "OrderedCollections", "Random", "Serialization", "Test"]
@@ -186,9 +186,9 @@ version = "0.4.0"
 
 [[HDF5]]
 deps = ["BinDeps", "Blosc", "CRC32c", "Distributed", "Homebrew", "Libdl", "LinearAlgebra", "Mmap", "Pkg", "Test", "WinRPM"]
-git-tree-sha1 = "2b55a7e957923fa15688c97e91198a3ff24155d2"
+git-tree-sha1 = "dd83e1e9c72e44e3a156438b552cf75dbdda722f"
 uuid = "f67ccb44-e63f-5c2f-98bd-6dc0ccc4ba2f"
-version = "0.10.3"
+version = "0.11.0"
 
 [[HTTPClient]]
 deps = ["Compat", "LibCURL"]
@@ -234,9 +234,9 @@ version = "0.5.2"
 
 [[ImageMetadata]]
 deps = ["AxisArrays", "ColorVectorSpace", "Colors", "Dates", "FixedPointNumbers", "ImageAxes", "ImageCore", "IndirectArrays", "Statistics", "Test"]
-git-tree-sha1 = "e8763955937114ea15cf3bfb5ae00588e19b58c3"
+git-tree-sha1 = "51d989a78a6fc6ab84ba08f93610d5250c083c76"
 uuid = "bc367c6b-8a6b-528e-b4bd-a4b897500b49"
-version = "0.5.2"
+version = "0.6.0"
 
 [[ImageMorphology]]
 deps = ["ImageCore", "Test"]
@@ -298,9 +298,9 @@ version = "1.1.1"
 
 [[IterativeSolvers]]
 deps = ["LinearAlgebra", "Printf", "Random", "RecipesBase", "SparseArrays", "Test"]
-git-tree-sha1 = "57a6970c70224fd62b6ee0fa1f59da842cdce38c"
+git-tree-sha1 = "a7b8056ecd43aa0d112d4b5d04180194d12c3c62"
 uuid = "42fd0dbc-a981-5370-80f2-aaf504508153"
-version = "0.8.0"
+version = "0.7.1"
 
 [[JLD]]
 deps = ["Compat", "FileIO", "HDF5", "LegacyStrings", "Profile", "Random"]
@@ -474,9 +474,9 @@ version = "1.18.5"
 
 [[PyPlot]]
 deps = ["Colors", "Compat", "LaTeXStrings", "PyCall", "VersionParsing"]
-git-tree-sha1 = "777c48006c57c8bd322d2032267085983a5fd50f"
+git-tree-sha1 = "dd9f4a0bba3933f907640a567e1ce2a8ab44c58c"
 uuid = "d330b81b-6aea-500a-939a-2ce795aea3ee"
-version = "2.6.3"
+version = "2.7.0"
 
 [[REPL]]
 deps = ["InteractiveUtils", "Markdown", "Sockets"]
@@ -500,9 +500,9 @@ version = "0.3.0"
 
 [[RecipesBase]]
 deps = ["Random", "Test"]
-git-tree-sha1 = "0b3cb370ee4dc00f47f1193101600949f3dcf884"
+git-tree-sha1 = "b18c3d875ad6805e3db59c4e81f206f04df71d66"
 uuid = "3cdcf5f2-1ef4-517c-9805-6587b60abb01"
-version = "0.6.0"
+version = "0.5.0"
 
 [[Reexport]]
 deps = ["Pkg"]
