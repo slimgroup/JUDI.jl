@@ -118,8 +118,8 @@ def pressure_fields(model, space_order, save=0, t_sub_factor=1, h_sub_factor=1, 
     # Create the forward wavefield
     phsave, pvsave = None, None
     if save>1 and (t_sub_factor>1 or h_sub_factor>1):
-        pv = TimeFunction(name='pv'+name, grid=model.grid, time_order=1, space_order=space_order, staggered='NODE')
-        ph = TimeFunction(name='ph'+name, grid=model.grid, time_order=1, space_order=space_order, staggered='NODE')
+        pv = TimeFunction(name='pv'+name, grid=model.grid, time_order=1, space_order=space_order)
+        ph = TimeFunction(name='ph'+name, grid=model.grid, time_order=1, space_order=space_order)
         if t_sub_factor > 1:
             time_subsampled = ConditionalDimension('t_sub', parent=ph.grid.time_dim, factor=t_sub_factor)
             nsave = (save-1)//t_sub_factor + 2
@@ -140,13 +140,13 @@ def pressure_fields(model, space_order, save=0, t_sub_factor=1, h_sub_factor=1, 
         eqsave = [Eq(phsave, ph), Eq(pvsave, pv)]
     elif save>1 and t_sub_factor==1 and h_sub_factor==1:
         pv = TimeFunction(name='pv'+name, grid=model.grid, time_order=1, space_order=space_order,
-                          save=save, staggered='NODE')
+                          save=save)
         ph = TimeFunction(name='ph'+name, grid=model.grid, time_order=1, space_order=space_order,
-                          save=save, staggered='NODE')
+                          save=save)
         eqsave = []
     else:
-        pv = TimeFunction(name='pv'+name, grid=model.grid, time_order=1, space_order=space_order, staggered='NODE')
-        ph = TimeFunction(name='ph'+name, grid=model.grid, time_order=1, space_order=space_order, staggered='NODE')
+        pv = TimeFunction(name='pv'+name, grid=model.grid, time_order=1, space_order=space_order)
+        ph = TimeFunction(name='ph'+name, grid=model.grid, time_order=1, space_order=space_order)
         eqsave = []
 
     return (pv, ph), (pvsave, phsave), eqsave
@@ -180,8 +180,8 @@ def forward_stencil(model, space_order, save=0, q=(0, 0, 0, 0, 0), name='', h_su
                                                      h_sub_factor=h_sub_factor,
                                                      name=name)
     # Stencils
-    u_vx = [Eq(vx.forward, damp * vx - damp *s/rho*(staggered_diff(ph, dim=x, order=space_order, stagger=left, theta=theta, phi=phi) + q[0]))]
-    u_vz = [Eq(vz.forward, damp * vz - damp *s/rho*(staggered_diff(pv, dim=z, order=space_order, stagger=left, theta=theta, phi=phi) + q[2]))]
+    u_vx = [Eq(vx.forward, damp * vx - damp * s / rho * (staggered_diff(ph, dim=x, order=space_order, stagger=left, theta=theta, phi=phi) + q[0]))]
+    u_vz = [Eq(vz.forward, damp * vz - damp * s / rho * (staggered_diff(pv, dim=z, order=space_order, stagger=left, theta=theta, phi=phi) + q[2]))]
 
     dvx = staggered_diff(vx.forward, dim=x, order=space_order, stagger=right, theta=theta, phi=phi)
     dvz = staggered_diff(vz.forward, dim=z, order=space_order, stagger=right, theta=theta, phi=phi)
@@ -189,13 +189,13 @@ def forward_stencil(model, space_order, save=0, q=(0, 0, 0, 0, 0), name='', h_su
     u_vy = []
     dvy = 0
     if ndim == 3:
-        u_vy = [Eq(vy.forward, damp * vy - damp *s/rho*(staggered_diff(ph, dim=y, order=space_order, stagger=left, theta=theta, phi=phi) + q[1]))]
+        u_vy = [Eq(vy.forward, damp * vy - damp *s / rho *(staggered_diff(ph, dim=y, order=space_order, stagger=left, theta=theta, phi=phi) + q[1]))]
         dvy = staggered_diff(vy.forward, dim=y, order=space_order, stagger=right, theta=theta, phi=phi)
 
 
-    pv_eq = Eq(pv.forward, damp * pv - damp *s * rho / m * (delta*(dvx + dvy) + dvz + q[3]))
+    pv_eq = Eq(pv.forward, damp * pv - damp * s * rho / m * (delta*(dvx + dvy) + dvz + q[3]))
 
-    ph_eq = Eq(ph.forward, damp * ph - damp *s * rho / m * (epsilon*(dvx + dvy) + delta * dvz + q[4]))
+    ph_eq = Eq(ph.forward, damp * ph - damp * s * rho / m * (epsilon*(dvx + dvy) + delta * dvz + q[4]))
 
     vel_expr = u_vx + u_vy + u_vz
     pressure_expr = [ph_eq, pv_eq] + eqsave
@@ -226,9 +226,9 @@ def adjoint_stencil(model, space_order):
 
     vx, vy, vz = particle_velocity(model, space_order, name='a')
 
-    pv = TimeFunction(name='pva', grid=model.grid, stagger='NODE',
+    pv = TimeFunction(name='pva', grid=model.grid,
                       time_order=1, space_order=space_order)
-    ph = TimeFunction(name='pha', grid=model.grid, stagger='NODE',
+    ph = TimeFunction(name='pha', grid=model.grid,
                       time_order=1, space_order=space_order)
     # Stencils
     u_vx = [Eq(vx.backward, damp * vx - damp * s / rho * staggered_diff(delta*pv + epsilon*ph, dim=x,
@@ -278,8 +278,8 @@ def imaging_condition(model, ph, pv, fields, vel_fields, isic=False):
     grad = Function(name="grad", grid=fields[0].grid, space_order=space_order)
     inds = model.grid.dimensions
 
-    phadt = -fields[0].dt.subs({model.grid.stepping_dim: model.grid.stepping_dim - model.grid.stepping_dim.spacing})
-    pvadt = -fields[1].dt.subs({model.grid.stepping_dim: model.grid.stepping_dim - model.grid.stepping_dim.spacing})
+    phadt = -fields[0].dtl
+    pvadt = -fields[1].dtl
 
     factor = model.grid.time_dim.spacing
     if ph.indices[0].is_Conditional:
@@ -291,9 +291,9 @@ def imaging_condition(model, ph, pv, fields, vel_fields, isic=False):
         if model.grid.dim == 3:
             divs += staggered_diff(ph, dim=inds[1], order=space_order, stagger=left, theta=theta, phi=phi) * vel_fields[1]
         divs += (staggered_diff(pv, dim=inds[-1], order=space_order, stagger=left, theta=theta, phi=phi) * vel_fields[-1])
-        grad_expr = [Inc(grad, .5 * factor * (m * ph * phadt /rho + m * pv * pvadt / rho - divs) / rho)]
+        grad_expr = [Inc(grad, .5 * factor * model.critical_dt *(m * ph * phadt /rho + m * pv * pvadt / rho - divs) / rho)]
     else:
-        grad_expr = [Inc(grad, .5 * factor * (ph * phadt /rho + pv * pvadt / rho))]
+        grad_expr = [Inc(grad, .5 * factor * model.critical_dt * (ph * phadt /rho + pv * pvadt / rho))]
 
     return grad, grad_expr
 
@@ -323,7 +323,7 @@ def linearized_source(model, fields, part_vel, isic=False):
 
         lin_src = (dm * dvx / rho, dm * dvy / rho, dm * dvz / rho, dm * dph / rho, dm * dpv / rho)
     else:
-        lin_src = (0, 0, 0, dm * fields[0] / rho, dm * fields[1] / rho)
+        lin_src = (0, 0, 0, - .5 * dm * fields[0].dt / rho, - .5 * dm * fields[1].dt / rho)
 
     return lin_src
 
@@ -439,7 +439,7 @@ def adjoint_born(model, rec_coords, rec_data, ph=None, pv=None, space_order=16, 
 
     # Adjoint source is injected at receiver locations
     _, _, src_term, rec_g = src_rec(model, fields, rec_coords, np.zeros((1, 1)),
-                             rec_data, backward=True)
+                                    rec_data, backward=True)
 
     # Substitute spacing terms to reduce flops
     op = Operator(vel_expr + p_expr + src_term + grad_expr, subs=model.spacing_map,

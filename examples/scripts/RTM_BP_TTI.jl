@@ -80,7 +80,7 @@ Ml = judiMarineTopmute2D(40, d_sub.geometry)
 
 # The above way requires to gather all 1600 gradients, we can split it
 
-rtm = Mr*J[50:50]'*Ml*d_sub
+rtm = Mr*J[150:150]'*Ml*d_sub
 
 # save(string("rtm_bp_tti_synthetic_flip_coarse",1,".jld"), "x", rtm)
 # for i=2:19
