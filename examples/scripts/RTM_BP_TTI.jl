@@ -76,7 +76,7 @@ T = judiTopmute(model0.n, (1 - water_bottom), [])
 Mr = D*T
 
 d_sub = get_data(d_obs[50:50])#  get_data(d_obs[i])
-Ml = judiMarineTopmute2D(60, d_sub.geometry)
+Ml = judiMarineTopmute2D(40, d_sub.geometry)
 
 # The above way requires to gather all 1600 gradients, we can split it
 

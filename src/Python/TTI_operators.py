@@ -24,20 +24,20 @@ from checkpoint import DevitoCheckpoint, CheckpointOperator
 from pyrevolve import Revolver
 from utils import freesurface
 
-def J_adjoint(model, src_coords, wavelet, rec_coords, recin, space_order=12, nb=40,
+def J_adjoint(model, src_coords, wavelet, rec_coords, recin, space_order=12,
                 t_sub_factor=20, h_sub_factor=2, checkpointing=False, free_surface=False,
                 n_checkpoints=None, maxmem=None, dt=None, isic=False):
     if checkpointing:
-        F = forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_order=space_order, nb=nb,
+        F = forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_order=space_order,
                              t_sub_factor=t_sub_factor, h_sub_factor=h_sub_factor, dt=dt, op_return=True,
                              free_surface=free_surface)
         grad = adjoint_born(model, rec_coords, recin, op_forward=F, space_order=space_order,
-                            nb=nb, is_residual=True, isic=isic, n_checkpoints=n_checkpoints, maxmem=maxmem,
+                            is_residual=True, isic=isic, n_checkpoints=n_checkpoints, maxmem=maxmem,
                             free_surface=free_surface)
     else:
-        u0, v0 = forward_modeling(model, src_coords, wavelet, None, save=True, space_order=space_order, nb=nb,
+        u0, v0 = forward_modeling(model, src_coords, wavelet, None, save=True, space_order=space_order,
                                   t_sub_factor=t_sub_factor, h_sub_factor=h_sub_factor, dt=dt, free_surface=free_surface)
-        grad = adjoint_born(model, rec_coords, recin, u=u0, space_order=space_order, nb=nb, isic=isic, dt=dt, free_surface=free_surface,
+        grad = adjoint_born(model, rec_coords, recin, u=u0, space_order=space_order, isic=isic, dt=dt, free_surface=free_surface,
                             t_sub_factor=t_sub_factor, h_sub_factor=h_sub_factor)
 
     return grad
@@ -53,7 +53,7 @@ def sub_ind(model):
     return tuple(sub_dim)
 
 
-def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_order=16, nb=40,
+def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_order=16,
                      t_sub_factor=1, h_sub_factor=1, op_return=False, dt=None, free_surface=False):
     clear_cache()
 
@@ -163,7 +163,7 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
         return op
 
 
-def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=12, nb=40, dt=None, free_surface=False):
+def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=12, dt=None, free_surface=False):
     clear_cache()
 
     # Parameters
@@ -229,7 +229,7 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=12, nb
     return src.data
 
 
-def forward_born(model, src_coords, wavelet, rec_coords, space_order=12, nb=40, isic=False, dt=None, save=False, isiciso=False,
+def forward_born(model, src_coords, wavelet, rec_coords, space_order=12, isic=False, dt=None, save=False, isiciso=False,
                  h_sub_factor=1, free_surface=False):
     clear_cache()
 
@@ -338,7 +338,7 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=12, nb=40, 
 
 
 def adjoint_born(model, rec_coords, rec_data, u=None, v=None, op_forward=None, is_residual=False,
-                 space_order=12, nb=40, isic=False, dt=None, n_checkpoints=None, maxmem=None,
+                 space_order=12, isic=False, dt=None, n_checkpoints=None, maxmem=None,
                  free_surface=False, t_sub_factor=1, h_sub_factor=1):
     clear_cache()
     factor_t = t_sub_factor

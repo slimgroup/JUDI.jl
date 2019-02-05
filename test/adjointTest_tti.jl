@@ -71,7 +71,7 @@ wave_rand = wavelet.*rand(Float32,size(wavelet))
 ###################################################################################################
 
 # Modeling operators
-opt = Options(sum_padding=true) #, isic=false, t_sub=2, h_sub=2)
+opt = Options(sum_padding=true, optimal_checkpointing=true) #, isic=false, t_sub=2, h_sub=2)
 F = judiModeling(info, model, srcGeometry, recGeometry; options=opt)
 q = judiVector(srcGeometry, wavelet)
 
@@ -83,11 +83,11 @@ qr = judiVector(srcGeometry, wave_rand)
 d1 = F*qr
 
 # Adjoint computation
-q_hat = adjoint(F)*d1
+q_hat = adjoint(F)*d_hat
 
 # Result F
 a = dot(d1, d_hat)
-b = dot(q, q_hat)
+b = dot(qr, q_hat)
 println(a, ", ", b)
 @test isapprox(a/b - 1, 0, atol=1f-4)
 
@@ -95,8 +95,8 @@ println(a, ", ", b)
 J = judiJacobian(F,q)
 
 dD_hat = J*dm
-dm_hat = adjoint(J)*d_hat
+dm_hat = adjoint(J)*dD_hat
 
-c = dot(dD_hat, d_hat)
+c = dot(dD_hat, dD_hat)
 d = dot(dm, dm_hat)
 @test isapprox(c/d - 1, 0, atol=1f-4)

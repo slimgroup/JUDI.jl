@@ -279,7 +279,8 @@ end
 function load_devito_jit(modelPy)
     pushfirst!(PyVector(pyimport("sys")["path"]), joinpath(JUDIPATH, "Python"))
     if modelPy[:is_tti]
-        return pyimport("TTI_operators")
+        # return pyimport("TTI_operators")
+        return pyimport("TTI_Staggered")
     else
         return pyimport("JAcoustic_codegen")
     end

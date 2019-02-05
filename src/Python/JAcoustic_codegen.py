@@ -20,20 +20,20 @@ from checkpoint import DevitoCheckpoint, CheckpointOperator
 from pyrevolve import Revolver
 from utils import freesurface
 
-def J_adjoint(model, src_coords, wavelet, rec_coords, recin, space_order=12, nb=40,
+def J_adjoint(model, src_coords, wavelet, rec_coords, recin, space_order=12,
                 t_sub_factor=20, h_sub_factor=2, checkpointing=False, free_surface=False,
                 n_checkpoints=None, maxmem=None, dt=None, isic=False):
     if checkpointing:
-        F = forward_modeling(model, src_coords, wavelet, rec_coords, save=True, space_order=space_order, nb=nb,
+        F = forward_modeling(model, src_coords, wavelet, rec_coords, save=True, space_order=space_order,
                              t_sub_factor=t_sub_factor, h_sub_factor=h_sub_factor, dt=dt, op_return=True,
                              free_surface=free_surface)
         grad = adjoint_born(model, rec_coords, recin, op_forward=F, space_order=space_order,
-                            nb=nb, is_residual=True, isic=isic, n_checkpoints=n_checkpoints, maxmem=maxmem,
+                            is_residual=True, isic=isic, n_checkpoints=n_checkpoints, maxmem=maxmem,
                             free_surface=free_surface)
     else:
-        u0 = forward_modeling(model, src_coords, wavelet, None, save=True, space_order=space_order, nb=nb,
+        u0 = forward_modeling(model, src_coords, wavelet, None, save=True, space_order=space_order,
                               t_sub_factor=t_sub_factor, h_sub_factor=h_sub_factor, dt=dt, free_surface=free_surface)
-        grad = adjoint_born(model, rec_coords, recin, u=u0, space_order=space_order, nb=nb, isic=isic, dt=dt, free_surface=free_surface)
+        grad = adjoint_born(model, rec_coords, recin, u=u0, space_order=space_order, isic=isic, dt=dt, free_surface=free_surface)
 
     return grad
 
@@ -49,7 +49,7 @@ def acoustic_laplacian(v, rho):
             Lap = 1 / rho * v.laplace
     return Lap, rho
 
-def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_order=8, nb=40,
+def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_order=8,
                      free_surface=False, op_return=False, dt=None, t_sub_factor=1, h_sub_factor=1):
     clear_cache()
     # If wavelet is file, read it
@@ -116,7 +116,7 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
         return op
 
 
-def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=8, nb=40, free_surface=False, dt=None):
+def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=8, free_surface=False, dt=None):
     clear_cache()
 
     # If wavelet is file, read it
@@ -175,7 +175,7 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=8, nb=
     else:
         return src.data
 
-def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, nb=40, isic=False, dt=None, free_surface=False):
+def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, isic=False, dt=None, free_surface=False):
     clear_cache()
 
     # Parameters
@@ -239,7 +239,7 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, nb=40, i
 
 
 def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residual=False,
-                 space_order=8, nb=40, isic=False, dt=None, n_checkpoints=None, maxmem=None,
+                 space_order=8, isic=False, dt=None, n_checkpoints=None, maxmem=None,
                  free_surface=False):
     clear_cache()
 
@@ -319,7 +319,7 @@ def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residu
 
 ########################################################################################################################
 
-def forward_freq_modeling(model, src_coords, wavelet, rec_coords, freq, space_order=8, nb=40, dt=None, factor=None, free_surface=False):
+def forward_freq_modeling(model, src_coords, wavelet, rec_coords, freq, space_order=8, dt=None, factor=None, free_surface=False):
     # Forward modeling with on-the-fly DFT of forward wavefields
     clear_cache()
 
@@ -377,7 +377,7 @@ def forward_freq_modeling(model, src_coords, wavelet, rec_coords, freq, space_or
     return rec.data, ufr, ufi
 
 
-def adjoint_freq_born(model, rec_coords, rec_data, freq, ufr, ufi, space_order=8, nb=40, dt=None, isic=False, factor=None,
+def adjoint_freq_born(model, rec_coords, rec_data, freq, ufr, ufi, space_order=8, dt=None, isic=False, factor=None,
                       free_surface=False):
     clear_cache()
 
