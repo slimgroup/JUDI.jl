@@ -161,7 +161,7 @@ def forward_stencil(model, space_order, save=0, q=(0, 0, 0, 0, 0), name='', h_su
     rho * vy.dt = - ph.dy
     rho * vz.dt = - pv.dz
     m / rho * ph.dt = - sqrt(1 + 2 delta) (vx.dx + vy.dy) - vz.dz + Fh
-    m / rho * phv.dt = - (1 + 2 epsilon) (vx.dx + vy.dy) - sqrt(1 + 2 delta) vz.dz + Fv
+    m / rho * pv.dt = - (1 + 2 epsilon) (vx.dx + vy.dy) - sqrt(1 + 2 delta) vz.dz + Fv
 
     """
     m, epsilon, delta, theta, phi, rho = (model.m, model.epsilon, model.delta,
@@ -278,8 +278,8 @@ def imaging_condition(model, ph, pv, fields, vel_fields, isic=False):
     grad = Function(name="grad", grid=fields[0].grid, space_order=space_order)
     inds = model.grid.dimensions
 
-    phadt = -fields[0].dtl
-    pvadt = -fields[1].dtl
+    pha = fields[0] # -fields[0].dtl
+    pva = fields[1] # -fields[1].dtl
 
     factor = model.grid.time_dim.spacing
     if ph.indices[0].is_Conditional:
@@ -287,13 +287,20 @@ def imaging_condition(model, ph, pv, fields, vel_fields, isic=False):
 
     if isic:
         theta, phi = 0, 0
-        divs = (staggered_diff(ph, dim=inds[0], order=space_order, stagger=left, theta=theta, phi=phi) * fields[0])
+        # Bulk kernel : m / rho (ph.dt * pha + pv.dt * pva)
+        K = ph.dt * pha + pv.dt * pva
+
+        # Density kernel :  1/rho (vx.dt * vxa + vy.dt * vya + vz.dt * vza)
+        # after replacement from eq : 1/rho (ph.dx * vxa + ph.dy * vya + pv.dz * vza)
+        R = staggered_diff(ph, dim=inds[0], order=space_order, stagger=left, theta=theta, phi=phi) * fields[0]
         if model.grid.dim == 3:
-            divs += staggered_diff(ph, dim=inds[1], order=space_order, stagger=left, theta=theta, phi=phi) * fields[1]
-        divs += (staggered_diff(pv, dim=inds[-1], order=space_order, stagger=left, theta=theta, phi=phi) * fields[1])
-        grad_expr = [Inc(grad, .5 * factor * model.critical_dt *(m * ph * phadt /rho + m * pv * pvadt / rho - divs) / rho)]
+            R += staggered_diff(ph, dim=inds[1], order=space_order, stagger=left, theta=theta, phi=phi) * fields[1]
+        R += staggered_diff(pv, dim=inds[-1], order=space_order, stagger=left, theta=theta, phi=phi) * fields[-1]
+
+        # Gradient
+        grad_expr = [Inc(grad, - factor * model.critical_dt * (m / rho * K + R / rho))]
     else:
-        grad_expr = [Inc(grad, .5 * factor * model.critical_dt * (ph * phadt /rho + pv * pvadt / rho))]
+        grad_expr = [Inc(grad, - .5 * factor * model.critical_dt * (ph.dt * pha /rho + pv.dt * pva / rho))]
 
     return grad, grad_expr
 
@@ -313,11 +320,11 @@ def linearized_source(model, fields, part_vel, isic=False):
 
     if isic:
         theta, phi = model.theta, model.phi
-        dvx = .5 * staggered_diff(fields[0], dim=inds[0], order=space_order, stagger=right, theta=theta, phi=phi)
+        dvx = staggered_diff(fields[0], dim=inds[0], order=space_order, stagger=right, theta=theta, phi=phi)
         dvy = 0
         if model.grid.dim == 3:
-            dvy = .5 * staggered_diff(fields[0], dim=inds[1], order=space_order, stagger=right, theta=theta, phi=phi)
-        dvz = .5 *  staggered_diff(fields[-1], dim=inds[-1], order=space_order, stagger=right, theta=theta, phi=phi)
+            dvy = staggered_diff(fields[0], dim=inds[1], order=space_order, stagger=right, theta=theta, phi=phi)
+        dvz = staggered_diff(fields[-1], dim=inds[-1], order=space_order, stagger=right, theta=theta, phi=phi)
         dph = .5 * m * fields[0].dt
         dpv = .5 * m * fields[1].dt
 
@@ -328,7 +335,7 @@ def linearized_source(model, fields, part_vel, isic=False):
     return lin_src
 
 
-def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_order=16,
+def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_order=4,
                      h_sub_factor=1, t_sub_factor=1,op_return=False,
                      free_surface=False):
     """
@@ -361,7 +368,7 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
             return saved_fields[0], saved_fields[1]
 
 
-def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=16, free_surface=False):
+def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=4, free_surface=False):
     """
     Constructor method for the adjoint modelling operator in an acoustic media
     :param model: :class:`Model` object containing the physical parameters
@@ -383,7 +390,7 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=16, fr
     return rec.data
 
 
-def forward_born(model, src_coords, wavelet, rec_coords, space_order=16, isic=False, save=False,
+def forward_born(model, src_coords, wavelet, rec_coords, space_order=4, isic=False, save=False,
                  h_sub_factor=1, t_sub_factor=1, free_surface=False):
     """
     Constructor method for the born modelling operator in an acoustic media
@@ -412,7 +419,7 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=16, isic=Fa
     op()
     return rec.data
 
-def adjoint_born(model, rec_coords, rec_data, ph=None, pv=None, space_order=16, isic=False,
+def adjoint_born(model, rec_coords, rec_data, ph=None, pv=None, space_order=4, isic=False,
                  n_checkpoints=None, maxmem=None, op_forward=None, is_residual=False,
                  free_surface=False, t_sub_factor=1, h_sub_factor=1):
     """

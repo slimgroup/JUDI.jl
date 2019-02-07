@@ -68,8 +68,8 @@ function marineTopmute2D(Dobs::judiVector, muteStart::Integer; mute=Array{Any}(u
             mute[2] = z0
             mute[3] = slope
         else#if j==1 && isassigned(mute)
-            x0 = mute[1]
-            z0 = mute[2]
+            x0 = Int64(mute[1])
+            z0 = Int64(mute[2])
             slope = mute[3]
         end
 
@@ -91,7 +91,7 @@ function marineTopmute2D(Dobs::judiVector, muteStart::Integer; mute=Array{Any}(u
             xax = Int(round(x0))
         end
         for k=1:length(zax)
-            mask[zax[k],xax[k]:end] .= 0f0
+            mask[min(zax[k], nt),xax[k]:end] .= 0f0
         end
         flipmask == true && (mask = reverse(mask, dims=2))
         Din.data[j] = Din.data[j].*mask

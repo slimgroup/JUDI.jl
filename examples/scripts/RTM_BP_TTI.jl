@@ -19,12 +19,10 @@ n = size(m0)
 
 # Smooth thomsen parameters
 
-
 vp = Float32.(imfilter(vp, Kernel.gaussian(10)))
 epsilon = Float32.(imfilter(epsilon, Kernel.gaussian(10)))
 delta = Float32.(imfilter(delta, Kernel.gaussian(10)))
 # theta = Float32.(imfilter(theta, Kernel.gaussian(5)))
-
 
 wb = find_water_bottom(vp - minimum(vp))
 k = 1
@@ -41,12 +39,12 @@ model0 = Model_TTI(n, d, o, m0; epsilon=epsilon, delta=delta, theta=theta)
 
 # Scan directory for segy files and create out-of-core data container
 
-container = segy_scan("/data/mlouboutin3/BP2007/shots/", "Ani", ["GroupX", "GroupY", "RecSourceScalar", "dt"])
+container = segy_scan("/data/mlouboutin3/BP2007/shots/", "Ani", ["GroupX", "GroupY", "RecGroupElevation", "dt"])
 
-d_obs = judiVector(container; segy_depth_key="ElevationScalar")
+d_obs = judiVector(container; segy_depth_key="RecGroupElevation")
 
 # Set up source
-src_geometry = Geometry(container; key = "source")
+src_geometry = Geometry(container; key="source")
 wavelet = ricker_wavelet(src_geometry.t[1], src_geometry.dt[1], 0.019)  # 8 Hz peak frequency
 # Info structure for linear operators
 ntComp = get_computational_nt(src_geometry, d_obs.geometry, model0)    # no. of computational time steps
@@ -57,14 +55,14 @@ info = Info(prod(model0.n), d_obs.nsrc, ntComp)
 opt = Options(optimal_checkpointing = true,
               limit_m = true,
               buffer_size = 2000f0,
-              space_order=8,
-              isic = false)
+              space_order=12,
+              isic = true)
 
 # Setup operators
 Pr = judiProjection(info, d_obs.geometry)
 F = judiModeling(info, model0; options=opt)
 Ps = judiProjection(info, src_geometry)
-q = judiVector(src_geometry, [0;-diff(wavelet)])
+q = judiVector(src_geometry, wavelet)
 J = judiJacobian(Pr*F*Ps', q)
 
 # rtm = J'*d_obs
@@ -75,12 +73,13 @@ D = judiDepthScaling(model0)
 T = judiTopmute(model0.n, (1 - water_bottom), [])
 Mr = D*T
 
-d_sub = get_data(d_obs[150:150])#  get_data(d_obs[i])
-Ml = judiMarineTopmute2D(40, d_sub.geometry, flipmask=true)
+d_sub = get_data(d_obs[50:50])#  get_data(d_obs[i])
+Ml = judiMarineTopmute2D(30, d_sub.geometry, flipmask=true, params=[1, 29, 1.1])
+# d_syn = Pr[500:500]*F[50:50]*Ps[50:500]'*q[50:50]
 
 # The above way requires to gather all 1600 gradients, we can split it
 
-rtm = Mr*J[150:150]'*Ml*d_sub
+# rtm = Mr*J[50:50]'*Ml*d_sub
 
 # save(string("rtm_bp_tti_synthetic_flip_coarse",1,".jld"), "x", rtm)
 # for i=2:19
