@@ -58,7 +58,7 @@ opt = Options(optimal_checkpointing = true,
               limit_m = true,
               buffer_size = 2000f0,
               space_order=8,
-              isic = true)
+              isic = false)
 
 # Setup operators
 Pr = judiProjection(info, d_obs.geometry)
@@ -75,8 +75,8 @@ D = judiDepthScaling(model0)
 T = judiTopmute(model0.n, (1 - water_bottom), [])
 Mr = D*T
 
-d_sub = get_data(d_obs[50:50])#  get_data(d_obs[i])
-Ml = judiMarineTopmute2D(40, d_sub.geometry)
+d_sub = get_data(d_obs[150:150])#  get_data(d_obs[i])
+Ml = judiMarineTopmute2D(40, d_sub.geometry, flipmask=true)
 
 # The above way requires to gather all 1600 gradients, we can split it
 

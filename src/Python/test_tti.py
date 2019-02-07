@@ -64,9 +64,9 @@ rec.coordinates.data[:, 0] = np.linspace(0, model0.domain_size[0], num=nrec)
 rec.coordinates.data[:, 1] = 20.
 # Save wavefields
 dpred_data, u0, v0 = forward_modeling(model0, src.coordinates.data, src.data, rec.coordinates.data, save=True)
-g1 = adjoint_born(model0, rec.coordinates.data, dpred_data[:] - dobs.data[:], ph=u0, pv=v0, isic='noop')
-g2 = adjoint_born(model0, rec.coordinates.data, dpred_data[:] - dobs.data[:], ph=u0, pv=v0, isic='isotropic')
-g3 = adjoint_born(model0, rec.coordinates.data, dpred_data[:] - dobs.data[:], ph=u0, pv=v0, isic='rotated')
+g1 = adjoint_born(model0, rec.coordinates.data, dpred_data[:] - dobs.data[:], ph=u0, pv=v0, isic=False)
+g2 = adjoint_born(model0, rec.coordinates.data, dpred_data[:] - dobs.data[:], ph=u0, pv=v0, isic=True)
+# g3 = adjoint_born(model0, rec.coordinates.data, dpred_data[:] - dobs.data[:], ph=u0, pv=v0, isic='rotated')
 # g5 = adjoint_born(model0, rec.coordinates.data, dpred_data[:] - dobs.data[:], ph=u0, pv=v0, dt=dt)
 # du = forward_born(model0, src.coordinates.data, src.data, rec.coordinates.data, dt=dt)
 # Acoustic for reference
@@ -80,9 +80,9 @@ src.coordinates.data[0,:] = np.array(model.domain_size) * 0.1
 src.coordinates.data[0,-1] = 20.
 dobs, utrue, v1 = forward_modeling(model, src.coordinates.data, src.data, rec_t.coordinates.data)
 dpred_data, u01, v01 = forward_modeling(model0, src.coordinates.data, src.data, rec.coordinates.data, save=True)
-g12 = adjoint_born(model0, rec.coordinates.data, dpred_data[:] - dobs.data[:], ph=u01, pv=v01, isic='noop')
-g22 = adjoint_born(model0, rec.coordinates.data, dpred_data[:] - dobs.data[:], ph=u01, pv=v01, isic='isotropic')
-g32 = adjoint_born(model0, rec.coordinates.data, dpred_data[:] - dobs.data[:], ph=u01, pv=v01, isic='rotated')
+g12 = adjoint_born(model0, rec.coordinates.data, dpred_data[:] - dobs.data[:], ph=u01, pv=v01, isic=False)
+g22 = adjoint_born(model0, rec.coordinates.data, dpred_data[:] - dobs.data[:], ph=u01, pv=v01, isic=True)
+# g32 = adjoint_born(model0, rec.coordinates.data, dpred_data[:] - dobs.data[:], ph=u01, pv=v01, isic='rotated')
 # g52 = adjoint_born(model0, rec.coordinates.data, dpred_data[:] - dobs.data[:], ph=u01, pv=v01, dt=dt)
 # # Acoustic for reference
 dobs, utrue = fwd(model, src.coordinates.data, src.data, rec_t.coordinates.data)
@@ -90,8 +90,8 @@ dpred_data, u03 = fwd(model0, src.coordinates.data, src.data, rec.coordinates.da
 g42 = grad(model0, rec.coordinates.data, dpred_data[:] - dobs.data[:], u=u03, isic=True)
 g52 = grad(model0, rec.coordinates.data, dpred_data[:] - dobs.data[:], u=u03)
 
-scacle1= .1*1e-0
-scacle2= .05*1e0
+scacle1= .1*1e0
+scacle2= .05*1e1
 scale = .5*1e1
 plt.figure()
 plt.subplot(351)
@@ -99,10 +99,10 @@ plt.imshow(np.transpose(g1[40:-40, 40:-40]), vmin=-scacle2, vmax=scacle2, cmap="
 plt.title("No isic")
 plt.subplot(352)
 plt.imshow(np.transpose(g2[40:-40, 40:-40]), vmin=-scacle1, vmax=scacle1, cmap="seismic")
-plt.title("isotropic isic")
-plt.subplot(353)
-plt.imshow(np.transpose(g3[40:-40, 40:-40]), vmin=-scacle1, vmax=scacle1, cmap="seismic")
-plt.title("roated isic")
+plt.title("tti isic")
+# plt.subplot(353)
+# plt.imshow(np.transpose(g3[40:-40, 40:-40]), vmin=-scacle1, vmax=scacle1, cmap="seismic")
+# plt.title("roated isic")
 plt.subplot(354)
 plt.imshow(np.transpose(g4[40:-40, 40:-40]), vmin=-scale, vmax=scale, cmap="seismic")
 plt.title("isotropic isic isotropic media")
@@ -115,8 +115,8 @@ plt.subplot(356)
 plt.imshow(np.transpose(g12[40:-40, 40:-40]), vmin=-scacle2, vmax=scacle2, cmap="seismic")
 plt.subplot(357)
 plt.imshow(np.transpose(g22[40:-40, 40:-40]), vmin=-scacle1, vmax=scacle1, cmap="seismic")
-plt.subplot(358)
-plt.imshow(np.transpose(g32[40:-40, 40:-40]), vmin=-scacle1, vmax=scacle1, cmap="seismic")
+# plt.subplot(358)
+# plt.imshow(np.transpose(g32[40:-40, 40:-40]), vmin=-scacle1, vmax=scacle1, cmap="seismic")
 plt.subplot(359)
 plt.imshow(np.transpose(g42[40:-40, 40:-40]), vmin=-scale, vmax=scale, cmap="seismic")
 plt.subplot(3, 5, 10)
@@ -126,8 +126,8 @@ plt.subplot(3, 5, 11)
 plt.imshow(np.transpose(g12[40:-40, 40:-40]+g1[40:-40, 40:-40]), vmin=-scacle2, vmax=scacle2, cmap="seismic")
 plt.subplot(3,5, 12)
 plt.imshow(np.transpose(g22[40:-40, 40:-40]+g2[40:-40, 40:-40]), vmin=-scacle1, vmax=scacle1, cmap="seismic")
-plt.subplot(3,5,13)
-plt.imshow(np.transpose(g32[40:-40, 40:-40]+g3[40:-40, 40:-40]), vmin=-scacle1, vmax=scacle1, cmap="seismic")
+# plt.subplot(3,5,13)
+# plt.imshow(np.transpose(g32[40:-40, 40:-40]+g3[40:-40, 40:-40]), vmin=-scacle1, vmax=scacle1, cmap="seismic")
 plt.subplot(3,5,14)
 plt.imshow(np.transpose(g42[40:-40, 40:-40]+g4[40:-40, 40:-40]), vmin=-scale, vmax=scale, cmap="seismic")
 plt.subplot(3,5,15)

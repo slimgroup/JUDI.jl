@@ -286,11 +286,11 @@ def imaging_condition(model, ph, pv, fields, vel_fields, isic=False):
         factor *= ph.indices[0].factor
 
     if isic:
-        theta, phi = model.theta, model.phi
-        divs = (staggered_diff(ph, dim=inds[0], order=space_order, stagger=left, theta=theta, phi=phi) * vel_fields[0])
+        theta, phi = 0, 0
+        divs = (staggered_diff(ph, dim=inds[0], order=space_order, stagger=left, theta=theta, phi=phi) * fields[0])
         if model.grid.dim == 3:
-            divs += staggered_diff(ph, dim=inds[1], order=space_order, stagger=left, theta=theta, phi=phi) * vel_fields[1]
-        divs += (staggered_diff(pv, dim=inds[-1], order=space_order, stagger=left, theta=theta, phi=phi) * vel_fields[-1])
+            divs += staggered_diff(ph, dim=inds[1], order=space_order, stagger=left, theta=theta, phi=phi) * fields[1]
+        divs += (staggered_diff(pv, dim=inds[-1], order=space_order, stagger=left, theta=theta, phi=phi) * fields[1])
         grad_expr = [Inc(grad, .5 * factor * model.critical_dt *(m * ph * phadt /rho + m * pv * pvadt / rho - divs) / rho)]
     else:
         grad_expr = [Inc(grad, .5 * factor * model.critical_dt * (ph * phadt /rho + pv * pvadt / rho))]
