@@ -64,7 +64,7 @@ info = Info(prod(n), nsrc, ntComp)
 ######################## WITH DENSITY ############################################
 
 # Write shots as segy files to disk
-opt = Options(save_data_to_disk=false, file_path=pwd(), file_name="observed_shot", optimal_checkpointing=false)
+opt = Options(save_data_to_disk=false, file_path=pwd(), file_name="observed_shot", optimal_checkpointing=false, free_surface=true)
 
 # Setup operators
 Pr = judiProjection(info, recGeometry)

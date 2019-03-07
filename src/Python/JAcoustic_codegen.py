@@ -84,17 +84,6 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
     # stencil = solve(eqn, u.forward)
     expression = [Eq(u.forward, stencil)]
 
-    # Free surface
-    if free_surface is True:
-        expression += freesurface(u, space_order//2, model.nbpml)
-
-    # Source symbol with input wavelet
-    if src_coords is not None:
-        src = PointSource(name='src', grid=model.grid, ntime=nt, coordinates=src_coords)
-        src.data[:] = wavelet[:]
-        src_term = src.inject(field=u.forward, expr=src * rho * dt**2 / m)
-        expression += src_term
-
     # Data is sampled at receiver locations
     if rec_coords is not None:
         rec = Receiver(name='rec', grid=model.grid, ntime=nt, coordinates=rec_coords)
@@ -102,6 +91,18 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
         expression += rec_term
 
     # Create operator and run
+
+    # Free surface
+    kwargs = dict()
+    if free_surface is True:
+        expression += freesurface(u, space_order//2, model.nbpml)
+
+    # Source symbol with input wavelet
+    if src_coords is not None:
+        src = PointSource(name='src', grid=model.grid, ntime=nt, coordinates=src_coords)
+        src.data[:] = wavelet[:]
+        src_term = src.inject(field=u.forward, expr=src.dt * rho * dt**2 / m)
+        expression += src_term
 
     subs = model.spacing_map
     subs[u.grid.time_dim.spacing] = dt
@@ -139,12 +140,13 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=8, fre
     vlaplace, rho = acoustic_laplacian(v, rho)
 
     # Input data is wavefield
+    full_q = 0
     if isinstance(rec_data, TimeFunction):
         wf_rec = TimeFunction(name='wf_rec', grid=model.grid, time_order=2, space_order=space_order, save=nt)
         wf_rec._data = rec_data._data
-        eqn -= wf_rec
+        full_q = wf_rec
 
-    stencil = damp * (2.0 * v - damp * v.forward + dt**2 * rho / m * vlaplace)
+    stencil = damp * (2.0 * v - damp * v.forward + dt**2 * rho / m * (vlaplace + full_q))
     expression = [Eq(v.backward, stencil)]
 
     # Free surface

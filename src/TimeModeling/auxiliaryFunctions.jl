@@ -14,10 +14,10 @@ function devito_model(model::Model, op, mode, options, dm)
     length(model.n) == 3 ? dims = [3,2,1] : dims = [2,1]   # model dimensions for Python are (z,y,x) and (z,x)
     # Set up Python model structure
     if op=='J' && mode == 1
-        modelPy = pm[:Model](origin=(0.,0.,0.), spacing=model.d, shape=model.n, vp=process_physical_parameter(sqrt.(1f0./model.m), dims), nbpml=model.nb,
+        modelPy = pm.Model(origin=model.o, spacing=model.d, shape=model.n, vp=process_physical_parameter(sqrt.(1f0./model.m), dims), nbpml=model.nb,
             rho=process_physical_parameter(model.rho, dims), dm=process_physical_parameter(reshape(dm,model.n), dims), space_order=options.space_order)
     else
-        modelPy = pm[:Model](origin=(0.,0.,0.), spacing=model.d, shape=model.n, vp=process_physical_parameter(sqrt.(1f0./model.m), dims), nbpml=model.nb,
+        modelPy = pm.Model(origin=model.o, spacing=model.d, shape=model.n, vp=process_physical_parameter(sqrt.(1f0./model.m), dims), nbpml=model.nb,
             rho=process_physical_parameter(model.rho, dims), space_order=options.space_order)
     end
 
@@ -29,7 +29,7 @@ function devito_model(model::Model_TTI, op, mode, options, dm)
     # Set up Python model structure
     if op=='J' && mode == 1
         # Set up Python model structure (force origin to be zero due to current devito bug)
-        modelPy = pm[:Model](origin=(0.,0.,0.), spacing=model.d, shape=model.n, vp=process_physical_parameter(sqrt.(1f0./model.m), dims),
+        modelPy = pm[:Model](origin=model.o, spacing=model.d, shape=model.n, vp=process_physical_parameter(sqrt.(1f0./model.m), dims),
                            rho=process_physical_parameter(model.rho, dims),
                            epsilon=process_physical_parameter(model.epsilon, dims),
                            delta=process_physical_parameter(model.delta, dims),
@@ -39,7 +39,7 @@ function devito_model(model::Model_TTI, op, mode, options, dm)
                            space_order=options.space_order)
     else
         # Set up Python model structure (force origin to be zero due to current devito bug)
-        modelPy = pm[:Model](origin=(0., 0., 0.), spacing=model.d, shape=model.n, vp=process_physical_parameter(sqrt.(1f0./model.m), dims),
+        modelPy = pm[:Model](origin=model.o, spacing=model.d, shape=model.n, vp=process_physical_parameter(sqrt.(1f0./model.m), dims),
                            rho=process_physical_parameter(model.rho, dims),
                            epsilon=process_physical_parameter(model.epsilon, dims),
                            delta=process_physical_parameter(model.delta, dims),
@@ -215,7 +215,7 @@ function remove_out_of_bounds_receivers(recGeometry::Geometry, recData::Array, m
     # Only keep receivers within the model
     xmin = model.o[1]
     if typeof(recGeometry.xloc[1]) <: Array
-        idx_xrec = findall(x -> x > xmin, recGeometry.xloc[1])
+        idx_xrec = findall(x -> x >= xmin, recGeometry.xloc[1])
         recGeometry.xloc[1] = recGeometry.xloc[1][idx_xrec]
         recGeometry.zloc[1] = recGeometry.zloc[1][idx_xrec]
         recData[1] = recData[1][:, idx_xrec]
@@ -267,18 +267,18 @@ function ricker_wavelet(tmax, dt, f0)
 end
 
 function load_pymodel()
-    pushfirst!(PyVector(pyimport("sys")["path"]), joinpath(JUDIPATH, "Python"))
+    pushfirst!(PyVector(pyimport("sys")."path"), joinpath(JUDIPATH, "Python"))
     return pyimport("PyModel")
 end
 
 function load_numpy()
-    pushfirst!(PyVector(pyimport("sys")["path"]), joinpath(JUDIPATH, "Python"))
+    pushfirst!(PyVector(pyimport("sys")."path"), joinpath(JUDIPATH, "Python"))
     return pyimport("numpy")
 end
 
 function load_devito_jit(modelPy)
-    pushfirst!(PyVector(pyimport("sys")["path"]), joinpath(JUDIPATH, "Python"))
-    if modelPy[:is_tti]
+    pushfirst!(PyVector(pyimport("sys")."path"), joinpath(JUDIPATH, "Python"))
+    if modelPy.is_tti
         # return pyimport("TTI_operators")
         return pyimport("TTI_Staggered")
     else

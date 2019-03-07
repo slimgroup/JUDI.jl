@@ -73,17 +73,18 @@ D = judiDepthScaling(model0)
 T = judiTopmute(model0.n, (1 - water_bottom), [])
 Mr = D*T
 
-d_sub = get_data(d_obs[50:50])#  get_data(d_obs[i])
+d_sub = get_data(d_obs[1:4])#  get_data(d_obs[i])
 Ml = judiMarineTopmute2D(30, d_sub.geometry, flipmask=true, params=[1, 29, 1.1])
 # d_syn = Pr[500:500]*F[50:50]*Ps[50:500]'*q[50:50]
 
 # The above way requires to gather all 1600 gradients, we can split it
 
-# rtm = Mr*J[50:50]'*Ml*d_sub
-
+rtm = Mr*J[1:4]'*Ml*d_sub
+save("rtm_bp_tti_synthetic_checkpinting.jld", "x", rtm)
 # save(string("rtm_bp_tti_synthetic_flip_coarse",1,".jld"), "x", rtm)
-# for i=2:19
-# 	println("Running shots ", (i-1)*82+1, " to ", i*82)
-# 	rtm += J[(i-1)*82+1:i*82]'*d_obs[(i-1)*82+1:i*82]
-# 	save(string("rtm_bp_tti_synthetic_flip_coarse",i,".jld"), "x", rtm)
-# end
+for i=2:trunc(Int64, d_obs.nsrc/4)
+    global d_sub = get_data(d_obs[(i-1)*4+1:i*4])#  get_data(d_obs[i])
+    global Ml = judiMarineTopmute2D(30, d_sub.geometry, flipmask=true, params=[1, 29, 1.1])
+	global rtm += Mr*J[(i-1)*4+1:i*4]'*Ml*d_sub
+	save("rtm_bp_tti_synthetic_checkpinting.jld", "x", rtm)
+end

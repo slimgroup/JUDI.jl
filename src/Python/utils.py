@@ -13,5 +13,5 @@ def freesurface(field, stencil_s, npml, forward=True):
     field_m = field.forward if forward else field.backward
 
     lhs = field_m.subs({field.indices[-1]: npml - fs - 1})
-    rhs = -field_m.subs({field.indices[-1]: npml + fs + 1})
+    rhs = -field_m.subs({field.indices[-1]: npml + fs})
     return [Eq(lhs, rhs)]
