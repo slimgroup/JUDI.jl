@@ -29,7 +29,7 @@ function devito_model(model::Model_TTI, op, mode, options, dm)
     # Set up Python model structure
     if op=='J' && mode == 1
         # Set up Python model structure (force origin to be zero due to current devito bug)
-        modelPy = pm[:Model](origin=model.o, spacing=model.d, shape=model.n, vp=process_physical_parameter(sqrt.(1f0./model.m), dims),
+        modelPy = pm.Model(origin=model.o, spacing=model.d, shape=model.n, vp=process_physical_parameter(sqrt.(1f0./model.m), dims),
                            rho=process_physical_parameter(model.rho, dims),
                            epsilon=process_physical_parameter(model.epsilon, dims),
                            delta=process_physical_parameter(model.delta, dims),
@@ -39,7 +39,7 @@ function devito_model(model::Model_TTI, op, mode, options, dm)
                            space_order=options.space_order)
     else
         # Set up Python model structure (force origin to be zero due to current devito bug)
-        modelPy = pm[:Model](origin=model.o, spacing=model.d, shape=model.n, vp=process_physical_parameter(sqrt.(1f0./model.m), dims),
+        modelPy = pm.Model(origin=model.o, spacing=model.d, shape=model.n, vp=process_physical_parameter(sqrt.(1f0./model.m), dims),
                            rho=process_physical_parameter(model.rho, dims),
                            epsilon=process_physical_parameter(model.epsilon, dims),
                            delta=process_physical_parameter(model.delta, dims),
