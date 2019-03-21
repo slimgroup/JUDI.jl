@@ -1,5 +1,6 @@
 #__precompile__()
 
+using Distributed
 module JUDI
 
 using PyCall, JOLI, SeisIO, Dierckx, Distributed, Pkg, Printf

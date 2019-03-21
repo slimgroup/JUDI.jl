@@ -1,11 +1,13 @@
+#__precompile__()
 # Module with functions for time-domain modeling and inversion using OPESCI/devito
 # Author: Philipp Witte, pwitte@eos.ubc.ca
 # Date: January, 2017
 #
+using Distributed
 
 module TimeModeling
 
-using JUDI, PyCall, JOLI, SeisIO, Dierckx, Distributed, LinearAlgebra, Base.Broadcast, FFTW, Random
+using JUDI, PyCall, JOLI, Distributed, SeisIO, Dierckx, LinearAlgebra, Base.Broadcast, FFTW, Random
 
 import Base.*, Base./, Base.+, Base.-, Base.copy!
 import Base.getindex, Base.setindex!, Base.firstindex, Base.lastindex, Base.axes, Base.ndims
