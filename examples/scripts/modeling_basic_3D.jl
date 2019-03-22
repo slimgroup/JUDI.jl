@@ -3,8 +3,6 @@
 # Author: Philipp Witte, pwitte@eos.ubc.ca
 # Date: January 2017
 #
-
-using Pkg; Pkg.activate("JUDI")
 using JUDI.TimeModeling
 
 ## Set up model structure

@@ -3,10 +3,8 @@
 # Author: Philipp Witte, pwitte@eos.ubc.ca
 # Date: January 2017
 #
-using Distributed
 
-@everywhere using Pkg; Pkg.activate("JUDI")
-@everywhere using JUDI.TimeModeling, SeisIO, LinearAlgebra
+using JUDI.TimeModeling, SeisIO, LinearAlgebra
 
 ## Set up model structure
 n = (120, 100)   # (x,y,z) or (x,z)

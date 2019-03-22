@@ -3,7 +3,6 @@
 # Date: December 2017
 #
 
-using Pkg; Pkg.activate("JUDI")
 using Statistics, Random, LinearAlgebra
 using JUDI.TimeModeling, HDF5, NLopt, SeisIO
 

@@ -4,8 +4,6 @@
 #
 #
 
-
-using Pkg; Pkg.activate("JUDI")
 using PyCall, PyPlot, JUDI.TimeModeling, Images, LinearAlgebra, Test
 
 

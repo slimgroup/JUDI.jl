@@ -1,4 +1,4 @@
-using Pkg; Pkg.activate("JUDI")
+
 using PyCall, PyPlot, JUDI.TimeModeling, Images, SeisIO, JLD
 # Load velocity model
 
