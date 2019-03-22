@@ -4,7 +4,7 @@
 #
 
 export marineTopmute2D, judiMarineTopmute2D
-export model_topmute, judiTopmute, find_water_bottom, depth_scaling, judiDepthScaling, laplace
+export model_topmute, judiTopmute, find_water_bottom, depth_scaling, judiDepthScaling, laplace, low_filter
 
 
 ############################################ Data space preconditioners ################################################

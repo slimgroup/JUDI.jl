@@ -129,8 +129,8 @@ function limit_model_to_receiver_area(srcGeometry::Geometry,recGeometry::Geometr
     end
 
     # extract part of the model that contains sources/receivers
-    nx_min = Int(round(min_x/model.d[1])) + 1
-    nx_max = Int(round(max_x/model.d[1])) + 1
+    nx_min = Int(round((min_x - model.o[1])/model.d[1])) + 1
+    nx_max = Int(round((max_x - model.o[1])/model.d[1])) + 1
     if ndim == 2
         ox = Float32((nx_min - 1)*model.d[1])
         oz = model.o[2]

@@ -7,7 +7,7 @@ using Distributed
 
 module TimeModeling
 
-using JUDI, PyCall, JOLI, Distributed, SeisIO, Dierckx, LinearAlgebra, Base.Broadcast, FFTW, Random
+using JUDI, PyCall, JOLI, Distributed, SeisIO, Dierckx, LinearAlgebra, Base.Broadcast, FFTW, Random, DSP
 
 import Base.*, Base./, Base.+, Base.-, Base.copy!
 import Base.getindex, Base.setindex!, Base.firstindex, Base.lastindex, Base.axes, Base.ndims

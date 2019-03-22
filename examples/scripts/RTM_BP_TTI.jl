@@ -45,7 +45,7 @@ d_obs = judiVector(container; segy_depth_key="RecGroupElevation")
 
 # Set up source
 src_geometry = Geometry(container; key="source")
-wavelet = ricker_wavelet(src_geometry.t[1], src_geometry.dt[1], 0.019)  # 8 Hz peak frequency
+wavelet = [0; -diff(ricker_wavelet(src_geometry.t[1], src_geometry.dt[1], 0.018))]  # 8 Hz peak frequency
 # Info structure for linear operators
 ntComp = get_computational_nt(src_geometry, d_obs.geometry, model0)    # no. of computational time steps
 info = Info(prod(model0.n), d_obs.nsrc, ntComp)

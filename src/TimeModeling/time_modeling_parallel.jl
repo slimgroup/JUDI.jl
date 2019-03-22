@@ -35,34 +35,34 @@ function time_modeling(model::Modelall, srcGeometry, srcData, recGeometry, recDa
             if op=='F' && mode==1
                 srcDataLocal = Array{Any}(undef, 1)
                 srcDataLocal[1] = srcData[j]
-                @async results[j] = time_modeling(model, srcGeometryLocal, srcDataLocal, recGeometryLocal, nothing, nothing, j, op, mode, opt_local)
+                results[j] = @spawn time_modeling(model, srcGeometryLocal, srcDataLocal, recGeometryLocal, nothing, nothing, j, op, mode, opt_local)
             elseif op=='F' && mode==-1
                 recDataLocal = Array{Any}(undef, 1)
                 recDataLocal[1] = recData[j]
-                @async results[j] = time_modeling(model, srcGeometryLocal, nothing, recGeometryLocal, recDataLocal, nothing, j, op, mode, opt_local)
+                results[j] = @spawn time_modeling(model, srcGeometryLocal, nothing, recGeometryLocal, recDataLocal, nothing, j, op, mode, opt_local)
             elseif op=='J' && mode==1
                 srcDataLocal = Array{Any}(undef, 1)
                 srcDataLocal[1] = srcData[j]
-                @async results[j] = time_modeling(model, srcGeometryLocal, srcDataLocal, recGeometryLocal, nothing, perturbation, j, op, mode, opt_local)
+                results[j] = @spawn time_modeling(model, srcGeometryLocal, srcDataLocal, recGeometryLocal, nothing, perturbation, j, op, mode, opt_local)
             elseif op=='J' && mode==-1
                 srcDataLocal = Array{Any}(undef, 1)
                 srcDataLocal[1] = srcData[j]
                 recDataLocal = Array{Any}(undef, 1)
                 recDataLocal[1] = recData[j]
-                @async results[j] = time_modeling(model, srcGeometryLocal, srcDataLocal, recGeometryLocal, recDataLocal, nothing, j, op, mode, opt_local)
+                results[j] = @spawn time_modeling(model, srcGeometryLocal, srcDataLocal, recGeometryLocal, recDataLocal, nothing, j, op, mode, opt_local)
             end
         end
     end
 
     if op=='F' || (op=='J' && mode==1)
-        argout1 = results[1]
+        argout1 = fetch(results[1])
         for j=2:numSources
-            argout1 = [argout1; results[j]]
+            argout1 = [argout1; fetch(results[j])]
         end
     elseif op=='J' && mode==-1
-        argout1 = results[1]
+        argout1 = fetch(results[1])
         for j=2:numSources
-            argout1 += results[j]
+            argout1 += fetch(results[j])
         end
     else
         error("operation no defined")
