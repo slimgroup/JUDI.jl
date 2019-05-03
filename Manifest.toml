@@ -158,12 +158,6 @@ git-tree-sha1 = "95fd5d7f129918a75d0535aaaf5b8e235e6e0b0b"
 uuid = "4138dd39-2aa7-5051-a626-17a0bb65d9c8"
 version = "0.9.1"
 
-[[JOLI]]
-deps = ["Distributed", "DistributedArrays", "FFTW", "InplaceOps", "InteractiveUtils", "IterativeSolvers", "Libdl", "LinearAlgebra", "NFFT", "Nullables", "Printf", "Random", "SharedArrays", "SparseArrays", "Test", "Wavelets"]
-path = "/home/pwitte3/.julia/dev/JOLI"
-uuid = "4d9c3512-8cbe-57b4-a7f5-8460a9e6efa7"
-version = "0.0.0"
-
 [[JSON]]
 deps = ["Dates", "Distributed", "Mmap", "Sockets", "Test", "Unicode"]
 git-tree-sha1 = "1f7a25b53ec67f5e9422f1f551ee216503f4a0fa"
@@ -314,12 +308,6 @@ version = "0.2.0"
 
 [[SHA]]
 uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
-
-[[SeisIO]]
-deps = ["Distributed", "Printf", "Test"]
-path = "/home/pwitte3/.julia/dev/SeisIO"
-uuid = "e2f1b5a8-5fbb-5d5d-94aa-e39813b81559"
-version = "0.0.0"
 
 [[Serialization]]
 uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
