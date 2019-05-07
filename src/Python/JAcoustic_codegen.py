@@ -271,7 +271,7 @@ def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residu
     if isic is not True:
         gradient_update = [Inc(gradient, - dt * u.dt2 / rho * v)]
     else:
-        # sum u.dx * v.dx fo x in dimensions.
+        # summodel0.dm = dm u.dx * v.dx fo x in dimensions.
         # space_order//2
         diff_u_v = sum([first_derivative(u, dim=d, fd_order=space_order//2)*
                         first_derivative(v, dim=d, fd_order=space_order//2)
@@ -329,7 +329,8 @@ def forward_freq_modeling(model, src_coords, wavelet, rec_coords, freq, space_or
     nt = wavelet.shape[0]
     if dt is None:
         dt = model.critical_dt
-    m, damp = model.m, model.damp
+    m, rho, damp = model.m, model.rho, model.damp
+
     freq_dim = Dimension(name='freq_dim')
     time = model.grid.time_dim
     if factor is None:
@@ -349,21 +350,22 @@ def forward_freq_modeling(model, src_coords, wavelet, rec_coords, freq, space_or
     ufr = Function(name='ufr', dimensions=(freq_dim,) + u.indices[1:], shape=(nfreq,) + model.shape_domain)
     ufi = Function(name='ufi', dimensions=(freq_dim,) + u.indices[1:], shape=(nfreq,) + model.shape_domain)
 
+    ulaplace, rho = acoustic_laplacian(u, rho)
+
     # Set up PDE and rearrange
-    eqn = m * u.dt2 - u.laplace + damp * u.dt
-    stencil = solve(eqn, u.forward, simplify=False, rational=False)[0]
+    stencil = damp * (2.0 * u - damp * u.backward + dt**2 * rho / m * ulaplace)
     expression = [Eq(u.forward, stencil)]
-    expression += [Eq(ufr, ufr + factor*u*cos(2*np.pi*f*tsave*factor*dt))]
-    expression += [Eq(ufi, ufi - factor*u*sin(2*np.pi*f*tsave*factor*dt))]
+    expression += [Inc(ufr, ufr + factor*u*cos(2*np.pi*f*tsave*factor*dt))]
+    expression += [Inc(ufi, ufi - factor*u*sin(2*np.pi*f*tsave*factor*dt))]
 
     # Source symbol with input wavelet
     src = PointSource(name='src', grid=model.grid, ntime=nt, coordinates=src_coords)
     src.data[:] = wavelet[:]
-    src_term = src.inject(field=u.forward, offset=model.nbpml, expr=src * dt**2 / m)
+    src_term = src.inject(field=u.forward, expr=src * dt**2 / m)
 
     # Data is sampled at receiver locations
     rec = Receiver(name='rec', grid=model.grid, ntime=nt, coordinates=rec_coords)
-    rec_term = rec.interpolate(expr=u, offset=model.nbpml)
+    rec_term = rec.interpolate(expr=u)
 
     # Create operator and run
     set_log_level('ERROR')
@@ -384,7 +386,7 @@ def adjoint_freq_born(model, rec_coords, rec_data, freq, ufr, ufi, space_order=8
     nt = rec_data.shape[0]
     if dt is None:
         dt = model.critical_dt
-    m, damp = model.m, model.damp
+    m, rho, damp = model.m, model.rho, model.damp
     nfreq = ufr.shape[0]
     time = model.grid.time_dim
     if factor is None:
@@ -403,16 +405,16 @@ def adjoint_freq_born(model, rec_coords, rec_data, freq, ufr, ufi, space_order=8
     f = Function(name='f', dimensions=(ufr.indices[0],), shape=(nfreq,))
     f.data[:] = freq[:]
     gradient = Function(name="gradient", grid=model.grid)
+    vlaplace, rho = acoustic_laplacian(v, rho)
 
     # Set up PDE and rearrange
-    eqn = m * v.dt2 - v.laplace - damp * v.dt
-    stencil = solve(eqn, v.backward, simplify=False, rational=False)[0]
+    stencil = damp * (2.0 * v - damp * v.forward + dt**2 * rho / m * vlaplace)
     expression = [Eq(v.backward, stencil)]
 
     # Data at receiver locations as adjoint source
     rec = Receiver(name='rec', grid=model.grid, ntime=nt, coordinates=rec_coords)
     rec.data[:] = rec_data[:]
-    adj_src = rec.inject(field=v.backward, offset=model.nbpml, expr=rec * dt**2 / m)
+    adj_src = rec.inject(field=v.backward, expr=rec * dt**2 / m)
 
     # Gradient update
     if isic is True:

@@ -9,7 +9,8 @@ import h5py
 import matplotlib.pyplot as plt
 
 # Load Sigsbee model
-sigsbee = h5py.File('/scratch/slim/shared/mathias-philipp/sigsbee2A/Sigsbee_LSRTM.h5','r+')
+#sigsbee = h5py.File('/scratch/slim/shared/mathias-philipp/sigsbee2A/Sigsbee_LSRTM.h5','r+')
+sigsbee = h5py.File('/data/pwitte3/sigsbee2A-shared/Sigsbee_LSRTM.h5','r+')
 m0 = np.transpose(np.array(sigsbee['m0']))
 dm = np.transpose(np.array(sigsbee['dm']))
 
@@ -65,5 +66,3 @@ tb = time.time()
 print('Optimal checkpointing: ', tb - ta)
 timings_oc = np.array(tb - ta)
 timings_oc.dump('timing_sigsbee_optimal_checkpointing.dat')
-
-

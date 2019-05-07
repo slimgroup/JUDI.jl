@@ -28,8 +28,7 @@ m0 = (1./v0)**2
 dm = m - m0
 
 model = Model(shape=shape, origin=origin, spacing=spacing, vp=v)
-model0 = Model(shape=shape, origin=origin, spacing=spacing, vp=v0)
-model0.dm = dm
+model0 = Model(shape=shape, origin=origin, spacing=spacing, vp=v0, dm=dm)
 
 # Time axis
 t0 = 0.
