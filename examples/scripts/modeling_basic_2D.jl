@@ -15,7 +15,7 @@ o = (0., 0.)
 # Velocity [km/s]
 v = ones(Float32,n) .+ 0.4f0
 v0 = ones(Float32,n) .+ 0.4f0
-v[:,Int(round(end/2)):end] .= 3f0
+#v[:,Int(round(end/2)):end] .= 3f0
 
 # Slowness squared [s^2/km^2]
 m = (1f0 ./ v).^2
@@ -75,12 +75,12 @@ J = judiJacobian(Pr*F0*adjoint(Ps), q)
 
 # Nonlinear modeling
 dobs = Pr*F*adjoint(Ps)*q
-qad = Ps*adjoint(F)*adjoint(Pr)*dobs
-
-# Linearized modeling
-#J.options.file_name = "linearized_shot"
-dD = J*dm
-rtm = adjoint(J)*dD
-
-# evaluate FWI objective function
-f, g = fwi_objective(model0, q, dobs; options=opt)
+# qad = Ps*adjoint(F)*adjoint(Pr)*dobs
+#
+# # Linearized modeling
+# #J.options.file_name = "linearized_shot"
+# dD = J*dm
+# rtm = adjoint(J)*dD
+#
+# # evaluate FWI objective function
+# f, g = fwi_objective(model0, q, dobs; options=opt)

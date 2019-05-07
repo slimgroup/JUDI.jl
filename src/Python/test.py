@@ -11,7 +11,7 @@ from PyModel import Model
 from checkpoint import DevitoCheckpoint, CheckpointOperator
 from pyrevolve import Revolver
 import matplotlib.pyplot as plt
-from JAcoustic_codegen import forward_modeling, adjoint_born
+from JAcoustic_codegen import forward_modeling, adjoint_born, adjoint_modeling, forward_born
 
 # Model
 shape = (101, 101)
@@ -22,8 +22,14 @@ v[:, :51] = 1.5
 v[:, 51:] = 2.5
 v0 = np.empty(shape, dtype=np.float32)
 v0[:, :] = 1.5
+
+m = (1./v)**2
+m0 = (1./v0)**2
+dm = m - m0
+
 model = Model(shape=shape, origin=origin, spacing=spacing, vp=v)
 model0 = Model(shape=shape, origin=origin, spacing=spacing, vp=v0)
+model0.dm = dm
 
 # Time axis
 t0 = 0.
@@ -45,23 +51,29 @@ rec_t.coordinates.data[:, 1] = 20.
 
 # Observed data
 dobs, utrue = forward_modeling(model, src.coordinates.data, src.data, rec_t.coordinates.data)
+usave = forward_modeling(model, src.coordinates.data, src.data, rec_t.coordinates.data, save=True)[1]
+usub = forward_modeling(model, src.coordinates.data, src.data, rec_t.coordinates.data, save=True, tsub_factor=2)[1]
+
+# adjoint modeling
+v = adjoint_modeling(model, None, rec_t.coordinates.data, dobs.data)
+
+# forward born
+dlin = forward_born(model0, src.coordinates.data, src.data, rec_t.coordinates.data)
+disic = forward_born(model0, src.coordinates.data, src.data, rec_t.coordinates.data, isic=True)
 
 ##################################################################################################################
-
-# Receiver for predicted data
-rec = Receiver(name='rec', grid=model0.grid, npoint=101, ntime=nt)
-rec.coordinates.data[:, 0] = np.linspace(0, model0.domain_size[0], num=101)
-rec.coordinates.data[:, 1] = 20.
-
-# Save wavefields
-dpred_data, u0 = forward_modeling(model0, src.coordinates.data, src.data, rec.coordinates.data, save=True, dt=dt)
-g1 = adjoint_born(model0, rec.coordinates.data, dpred_data[:] - dobs.data[:], u=u0, dt=dt)
-
-# Checkpointing
-op_predicted = forward_modeling(model0, src.coordinates.data, src.data, rec.coordinates.data, op_return=True, dt=dt)
-f2, g2 = adjoint_born(model0, rec.coordinates.data, dobs.data, op_forward=op_predicted, dt=dt)
-
-print('Error: ', np.linalg.norm(g1 - g2))
-
-
-
+#
+# # Receiver for predicted data
+# rec = Receiver(name='rec', grid=model0.grid, npoint=101, ntime=nt)
+# rec.coordinates.data[:, 0] = np.linspace(0, model0.domain_size[0], num=101)
+# rec.coordinates.data[:, 1] = 20.
+#
+# # Save wavefields
+# dpred_data, u0 = forward_modeling(model0, src.coordinates.data, src.data, rec.coordinates.data, save=True, dt=dt)
+# g1 = adjoint_born(model0, rec.coordinates.data, dpred_data[:] - dobs.data[:], u=u0, dt=dt)
+#
+# # Checkpointing
+# op_predicted = forward_modeling(model0, src.coordinates.data, src.data, rec.coordinates.data, op_return=True, dt=dt)
+# f2, g2 = adjoint_born(model0, rec.coordinates.data, dobs.data, op_forward=op_predicted, dt=dt)
+#
+# print('Error: ', np.linalg.norm(g1 - g2))
