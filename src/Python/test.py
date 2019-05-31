@@ -12,6 +12,7 @@ from checkpoint import DevitoCheckpoint, CheckpointOperator
 from pyrevolve import Revolver
 import matplotlib.pyplot as plt
 from JAcoustic_codegen import forward_modeling, adjoint_born, adjoint_modeling, forward_born
+from scipy import ndimage
 
 # Model
 shape = (101, 101)
@@ -19,9 +20,10 @@ spacing = (10., 10.)
 origin = (0., 0.)
 v = np.empty(shape, dtype=np.float32)
 v[:, :51] = 1.5
-v[:, 51:] = 2.5
-v0 = np.empty(shape, dtype=np.float32)
-v0[:, :] = 1.5
+v[:, 51:] = 5
+v0 = ndimage.gaussian_filter(v, sigma=5)
+#v0 = np.empty(shape, dtype=np.float32)
+#v0[:, :] = 1.5
 
 m = (1./v)**2
 m0 = (1./v0)**2
@@ -50,15 +52,31 @@ rec_t.coordinates.data[:, 1] = 20.
 
 # Observed data
 dobs, utrue = forward_modeling(model, src.coordinates.data, src.data, rec_t.coordinates.data)
-usave = forward_modeling(model, src.coordinates.data, src.data, rec_t.coordinates.data, save=True)[1]
-usub = forward_modeling(model, src.coordinates.data, src.data, rec_t.coordinates.data, save=True, tsub_factor=2)[1]
+#usave = forward_modeling(model, src.coordinates.data, src.data, rec_t.coordinates.data, save=True)[1]
+#usub = forward_modeling(model, src.coordinates.data, src.data, rec_t.coordinates.data, save=True, tsub_factor=2)[1]
 
 # adjoint modeling
-v = adjoint_modeling(model, None, rec_t.coordinates.data, dobs.data)
+#v = adjoint_modeling(model, None, rec_t.coordinates.data, dobs.data)
 
 # forward born
-dlin = forward_born(model0, src.coordinates.data, src.data, rec_t.coordinates.data)
-disic = forward_born(model0, src.coordinates.data, src.data, rec_t.coordinates.data, isic=True)
+#dlin = forward_born(model0, src.coordinates.data, src.data, rec_t.coordinates.data)
+#disic = forward_born(model0, src.coordinates.data, src.data, rec_t.coordinates.data, isic=True)
+
+# Receiver for predicted data
+rec = Receiver(name='rec', grid=model0.grid, npoint=101, ntime=nt)
+rec.coordinates.data[:, 0] = np.linspace(0, model0.domain_size[0], num=101)
+rec.coordinates.data[:, 1] = 20.
+dpred, u0 = forward_modeling(model0, src.coordinates.data, src.data, rec.coordinates.data, save=True, dt=dt, tsub_factor=2)
+
+#g1 = adjoint_born(model0, rec.coordinates.data, disic, u=u0, dt=dt, isic=False)
+# plt.imshow(np.transpose(g), vmin=-1e1, vmax=1e1); plt.show()
+
+g1 = adjoint_born(model0, rec.coordinates.data, dpred - dobs, u=u0, dt=dt, isic=False)
+op_predicted = forward_modeling(model0, src.coordinates.data, src.data, rec.coordinates.data, op_return=True, dt=dt)
+f1, g2 = adjoint_born(model0, rec.coordinates.data, dobs, op_forward=op_predicted, dt=dt, is_residual=False)
+
+print('Error: ', np.linalg.norm(g1 - g2))
+
 
 ##################################################################################################################
 #

@@ -15,7 +15,7 @@ o = (0., 0.)
 # Velocity [km/s]
 v = ones(Float32,n) .+ 0.4f0
 v0 = ones(Float32,n) .+ 0.4f0
-#v[:,Int(round(end/2)):end] .= 3f0
+v[:,Int(round(end/2)):end] .= 5f0
 
 # Slowness squared [s^2/km^2]
 m = (1f0 ./ v).^2
@@ -64,7 +64,7 @@ info = Info(prod(n), nsrc, ntComp)
 ######################## WITH DENSITY ############################################
 
 # Write shots as segy files to disk
-opt = Options(save_data_to_disk=false, file_path=pwd(), file_name="observed_shot", optimal_checkpointing=false)
+opt = Options(save_data_to_disk=false, file_path=pwd(), file_name="observed_shot", optimal_checkpointing=false, isic=false, subsampling_factor=2)
 
 # Setup operators
 Pr = judiProjection(info, recGeometry)
@@ -75,12 +75,12 @@ J = judiJacobian(Pr*F0*adjoint(Ps), q)
 
 # Nonlinear modeling
 dobs = Pr*F*adjoint(Ps)*q
-# qad = Ps*adjoint(F)*adjoint(Pr)*dobs
-#
-# # Linearized modeling
-# #J.options.file_name = "linearized_shot"
-# dD = J*dm
-# rtm = adjoint(J)*dD
-#
-# # evaluate FWI objective function
-# f, g = fwi_objective(model0, q, dobs; options=opt)
+qad = Ps*adjoint(F)*adjoint(Pr)*dobs
+
+# Linearized modeling
+#J.options.file_name = "linearized_shot"
+dD = J*dm
+rtm = adjoint(J)*dD
+
+# evaluate FWI objective function
+f, g = fwi_objective(model0, q, dobs; options=opt)

@@ -104,6 +104,7 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
     if op_return is False:
         op()
         if save is True and tsub_factor > 1:
+            print("Shape of usave: ", usave.shape)
             if rec_coords is None:
                 return usave
             else:
@@ -224,7 +225,7 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, nb=40, i
     rec = Receiver(name='rec', grid=model.grid, ntime=nt, coordinates=rec_coords)
     rec_term = rec.interpolate(expr=du)
 
-    expression = expression_u + src_term + expression_du + rec_term
+    expression = expression_u + expression_du + src_term + rec_term
 
     # Free surface
     if free_surface is True:
@@ -284,7 +285,7 @@ def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residu
 
     # Create operator and run
     set_log_level('ERROR')
-    expression += adj_src + gradient_update
+    expression += gradient_update + adj_src
     subs = model.spacing_map
     subs[u.grid.time_dim.spacing] = dt
     op = Operator(expression, subs=subs, dse='advanced', dle='advanced')

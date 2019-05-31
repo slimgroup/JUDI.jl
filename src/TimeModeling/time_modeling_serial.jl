@@ -296,9 +296,9 @@ function devito_interface(modelPy::PyCall.PyObject, origin, srcGeometry::Geometr
                       options.frequencies, uf_real, uf_imag, space_order=options.space_order, nb=modelPy[:nbpml], isic=options.isic, factor=options.dft_subsampling_factor)
     else
         u0 = pycall(ac["forward_modeling"], PyObject, modelPy, PyReverseDims(copy(transpose(src_coords))), PyReverseDims(copy(transpose(qIn))), PyReverseDims(copy(transpose(rec_coords))),
-                    space_order=options.space_order, nb=modelPy[:nbpml], save=true)[2]
+                    space_order=options.space_order, nb=modelPy[:nbpml], save=true, tsub_factor=options.subsampling_factor)[2]
         grad = pycall(ac["adjoint_born"], Array{Float32, length(modelPy[:shape])}, modelPy, PyReverseDims(copy(transpose(rec_coords))), PyReverseDims(copy(transpose(dIn))), u=u0,
-                      space_order=options.space_order, nb=modelPy[:nbpml], isic=options.isic)
+                      space_order=options.space_order, tsub_factor=options.subsampling_factor, nb=modelPy[:nbpml], isic=options.isic)
     end
 
     # Remove PML and return gradient as Array

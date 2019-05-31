@@ -56,9 +56,9 @@ function fwi_objective(model_full::Model, source::judiVector, dObs::judiVector, 
                 argout2 = pycall(ac["adjoint_freq_born"], Array{Float32, length(model.n)}, modelPy, PyReverseDims(copy(transpose(rec_coords))), PyReverseDims(copy(transpose((dPredicted - dObserved)))),
                                  options.frequencies, factor=options.dft_subsampling_factor, uf_real, uf_imag, space_order=options.space_order, nb=model.nb)
     else
-        dPredicted, u0 = pycall(ac["forward_modeling"], PyObject, modelPy, PyReverseDims(copy(transpose(src_coords))), PyReverseDims(copy(transpose(qIn))), PyReverseDims(copy(transpose(rec_coords))), save=true)
+        dPredicted, u0 = pycall(ac["forward_modeling"], PyObject, modelPy, PyReverseDims(copy(transpose(src_coords))), PyReverseDims(copy(transpose(qIn))), PyReverseDims(copy(transpose(rec_coords))), save=true, tsub_factor=options.subsampling_factor)
         argout1 = .5f0*dot(vec(dPredicted) - vec(dObserved), vec(dPredicted) - vec(dObserved))*dtComp # FWI objective function value
-        argout2 = pycall(ac["adjoint_born"], Array{Float32}, modelPy, PyReverseDims(copy(transpose(rec_coords))), PyReverseDims(copy(transpose((dPredicted  - dObserved)))),
+        argout2 = pycall(ac["adjoint_born"], Array{Float32}, modelPy, PyReverseDims(copy(transpose(rec_coords))), PyReverseDims(copy(transpose((dPredicted  - dObserved)))), tsub_factor=options.subsampling_factor,
                          u=u0, is_residual=true)
     end
     argout2 = remove_padding(argout2, model.nb, true_adjoint=options.sum_padding)
