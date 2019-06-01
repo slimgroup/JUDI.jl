@@ -104,7 +104,6 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
     if op_return is False:
         op()
         if save is True and tsub_factor > 1:
-            print("Shape of usave: ", usave.shape)
             if rec_coords is None:
                 return usave
             else:
