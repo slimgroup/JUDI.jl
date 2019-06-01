@@ -3,6 +3,7 @@
 # Date: May 2018
 #
 
+using Pkg; Pkg.activate("JUDI")
 using JUDI.TimeModeling, PyPlot, JLD, SeisIO
 
 # Load Sigsbee model
@@ -34,10 +35,10 @@ opt = Options(isic=true, optimal_checkpointing=true)    # use impedance imaging
 Pr = judiProjection(info, d_lin.geometry)
 F0 = judiModeling(info, model0; options=opt)
 Ps = judiProjection(info, q.geometry)
-J = judiJacobian(Pr*F0*Ps', q)
+J = judiJacobian(Pr*F0*adjoint(Ps), q)
 
 # Time-domain RTM w/ optimal checkpointing
-rtm_time = J'*d_lin
+rtm_time = adjoint(J)*d_lin
 
 # Save time-domain result
 save("sigsbee2A_rtm_time_domain", "rtm", reshape(rtm_time, model0.n))
@@ -56,8 +57,7 @@ for j=1:d_lin.nsrc
 end
 
 # Frequency-domain RTM w/ on-the-fly DFTs
-rtm_freq = J'*d_lin
+rtm_freq = adjoint(J)*d_lin
 
 # Save frequency-domain result
 save("sigsbee2A_rtm_frequency_domain", "rtm", reshape(rtm_freq, model0.n))
-

@@ -3,6 +3,7 @@
 # Date: May 2018
 #
 
+using Pkg; Pkg.activate("JUDI")
 using JUDI.TimeModeling, PyPlot, JLD, SeisIO, JOLI
 
 # Load Sigsbee model
@@ -48,11 +49,11 @@ z = zeros(Float32, info.n)
 batchsize = 100
 niter = 20
 fval = zeros(Float32, niter)
-t = 2f-5 
+t = 2f-5
 
 # Soft thresholding functions and Curvelet transform
-soft_thresholding(x::Array{Float64}, lambda) = sign.(x) .* max.(abs.(x) - convert(Float64,lambda), 0.0)
-soft_thresholding(x::Array{Float32}, lambda) = sign.(x) .* max.(abs.(x) - convert(Float32,lambda), 0f0)
+soft_thresholding(x::Array{Float64}, lambda) = sign.(x) .* max.(abs.(x) .- convert(Float64, lambda), 0.0)
+soft_thresholding(x::Array{Float32}, lambda) = sign.(x) .* max.(abs.(x) .- convert(Float32, lambda), 0f0)
 C = joCurvelet2D(model0.n[1], model0.n[2]; zero_finest=true, DDT=Float32, RDT=Float64)
 lambda = []
 
@@ -69,14 +70,12 @@ for j=1:niter
     # Step size and update variable
     fval[j] = .5*norm(r)^2
     isempty(t) && (t = norm(r)^2/norm(g)^2)
-    j==1 && (lambda = 0.01*norm(C*t*g, Inf))   # estimate thresholding parameter in 1st iteration
+    j==1 && (global lambda = 0.01*norm(C*t*g, Inf))   # estimate thresholding parameter in 1st iteration
 
     # Update variables and save snapshot
-    z -= t*g
-    x = C'*soft_thresholding(C*z, lambda)
+    global z -= t*g
+    global x = adjoint(C)*soft_thresholding(C*z, lambda)
 
     # Save snapshot
     save(join(["/path/to/snapshots/splsrtm_checkpointing_iteration_", string(j),".jld"]), "x", reshape(x, model0.n), "z", reshape(z, model0.n))
 end
-
-

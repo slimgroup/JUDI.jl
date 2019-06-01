@@ -2,7 +2,7 @@
 # Author: Philipp Witte, pwitte.slim@gmail.com
 # Date: May 2018
 #
-
+using Pkg; Pkg.activate("JUDI")
 using JUDI.TimeModeling, PyPlot, JLD, SeisIO
 
 # Load Sigsbee model
@@ -26,20 +26,20 @@ xmid = domain_x / 2
 
 # Source/receivers
 nsrc = Int(length(xmin:source_spacing:xmax))
-xrec = Array{Any}(nsrc)
-yrec = Array{Any}(nsrc)
-zrec = Array{Any}(nsrc)
-xsrc = Array{Any}(nsrc)
-ysrc = Array{Any}(nsrc)
-zsrc = Array{Any}(nsrc)
+xrec = Array{Any}(undef, nsrc)
+yrec = Array{Any}(undef, nsrc)
+zrec = Array{Any}(undef, nsrc)
+xsrc = Array{Any}(undef, nsrc)
+ysrc = Array{Any}(undef, nsrc)
+zsrc = Array{Any}(undef, nsrc)
 
 # Vessel goes from left to right in right-hand side of model
 nsrc_half = Int(nsrc/2)
 for j=1:nsrc_half
     xloc = xmid + (j-1)*source_spacing
-    xrec[j] = linspace(xloc - max_offset, xloc - min_offset, nrec)
+    xrec[j] = range(xloc - max_offset, xloc - min_offset, length=nrec)
     yrec[j] = 0.
-    zrec[j] = linspace(50f0, 50f0, nrec)
+    zrec[j] = range(50f0, 50f0, length=nrec)
     xsrc[j] = xloc
     ysrc[j] = 0f0
     zsrc[j] = 20f0
@@ -48,9 +48,9 @@ end
 # Vessel goes from right to left in left-hand side of model
 for j=1:nsrc_half
     xloc = xmid - (j-1)*source_spacing
-    xrec[nsrc_half + j] = linspace(xloc + min_offset, xloc + max_offset, nrec)
+    xrec[nsrc_half + j] = range(xloc + min_offset, xloc + max_offset, length=nrec)
     yrec[nsrc_half + j] = 0f0
-    zrec[nsrc_half + j] = linspace(50f0, 50f0, nrec)
+    zrec[nsrc_half + j] = range(50f0, 50f0, length=nrec)
     xsrc[nsrc_half + j] = xloc
     ysrc[nsrc_half + j] = 0f0
     zsrc[nsrc_half + j] = 20f0
@@ -83,7 +83,7 @@ info = Info(prod(model0.n),nsrc,ntComp)
 
 opt = Options(isic=true,    # impedance modeling
               save_data_to_disk=true,
-              file_path="/path/to/directory/",  # directory for saving generated shots
+              file_path="/home/philipp/JUDI/examples/compressive_splsrtm/Sigsbee2A/",  # directory for saving generated shots
               file_name="sigsbee2A_marine"
               )
 
@@ -95,5 +95,3 @@ J = judiJacobian(Pr*F0*Ps', q)
 
 # Linearized modeling (shots written to disk as SEG-Y files automatically)
 J*dm
-
-

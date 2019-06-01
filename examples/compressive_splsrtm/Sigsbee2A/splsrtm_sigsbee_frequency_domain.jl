@@ -3,6 +3,7 @@
 # Date: May 2018
 #
 
+using Pkg; Pkg.activate("JUDI")
 using JUDI.TimeModeling, PyPlot, JLD, SeisIO, JOLI
 
 # Load Sigsbee model
@@ -50,12 +51,11 @@ niter = 20
 nfreq = 20
 fval = zeros(Float32, niter)
 q_dist = generate_distribution(q)
-J.options.frequencies = Array{Any}(d_lin.nsrc)
+J.options.frequencies = Array{Any}(undef, d_lin.nsrc)
 
 # Soft thresholding functions and Curvelet transform
-soft_thresholding(x::Array{Float64}, lambda) = sign.(x) .* max.(abs.(x) - convert(Float64,lambda), 0.0)
-soft_thresholding(x::Array{Float32}, lambda) = sign.(x) .* max.(abs.(x) - convert(Float32,lambda), 0f0)
-C = joCurvelet2D(model0.n[1], model0.n[2]; zero_finest=true, DDT=Float32, RDT=Float64)
+soft_thresholding(x::Array{Float64}, lambda) = sign.(x) .* max.(abs.(x) .- convert(Float64, lambda), 0.0)
+soft_thresholding(x::Array{Float32}, lambda) = sign.(x) .* max.(abs.(x) .- convert(Float32, lambda), 0f0) joCurvelet2D(model0.n[1], model0.n[2]; zero_finest=true, DDT=Float32, RDT=Float64)
 lambda = []
 t = 2f-5    # 4f-5 for nfreq=10
 
@@ -76,11 +76,11 @@ for j=1:niter
 
     # Step size and update variable
     fval[j] = .5*norm(r)^2
-    j==1 && (lambda = 0.05*norm(C*t*g, Inf))   # estimate thresholding parameter in 1st iteration
+    j==1 && (global lambda = 0.05*norm(C*t*g, Inf))   # estimate thresholding parameter in 1st iteration
 
     # Update variables
-    z -= t*g
-    x = C'*soft_thresholding(C*z, lambda)
+    global z -= t*g
+    global x = adjoint(C)*soft_thresholding(C*z, lambda)
 
     # Save snapshot
     save(join(["/path/to/snapshots/splsrtm_fourier_iteration_", string(j),".jld"]), "x", reshape(x, model0.n), "z", reshape(z, model0.n))
@@ -88,4 +88,3 @@ end
 
 # Save final result
 save("sigsbee2A_splsrtm_frequency_domain.jld", "x", x, "fval", fval, "lambda", lambda)
-
