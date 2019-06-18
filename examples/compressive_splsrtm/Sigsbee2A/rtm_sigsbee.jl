@@ -38,26 +38,27 @@ Ps = judiProjection(info, q.geometry)
 J = judiJacobian(Pr*F0*adjoint(Ps), q)
 
 # Time-domain RTM w/ optimal checkpointing
-rtm_time = adjoint(J)*d_lin
+#rtm_time = adjoint(J)*d_lin
 
 # Save time-domain result
-save("sigsbee2A_rtm_time_domain", "rtm", reshape(rtm_time, model0.n))
+#save("sigsbee2A_rtm_time_domain", "rtm", reshape(rtm_time, model0.n))
 
 # Frequency-domain RTM w/ linearized inverse scattering imaging condition
-J.options.optimal_checkpointing = false
-
-# Generate probability density function from source spectrum
-q_dist = generate_distribution(q)
-
-# Select 20 random frequencies per source location
-nfreq = 20
-J.options.frequencies = Array{Any}(d_lin.nsrc)
-for j=1:d_lin.nsrc
-    J.options.frequencies[j] = select_frequencies(q_dist; fmin=0.003, fmax=0.04, nf=nfreq)
-end
-
-# Frequency-domain RTM w/ on-the-fly DFTs
-rtm_freq = adjoint(J)*d_lin
-
-# Save frequency-domain result
-save("sigsbee2A_rtm_frequency_domain", "rtm", reshape(rtm_freq, model0.n))
+# J.options.optimal_checkpointing = false
+#
+# # Generate probability density function from source spectrum
+# q_dist = generate_distribution(q)
+#
+# # Select 20 random frequencies per source location
+# nfreq = 1
+# J.options.frequencies = Array{Any}(undef, d_lin.nsrc)
+# for j=1:d_lin.nsrc
+#     J.options.frequencies[j] = select_frequencies(q_dist; fmin=0.003, fmax=0.04, nf=nfreq)
+# end
+# J.options.dft_subsampling_factor = 8
+#
+# # Frequency-domain RTM w/ on-the-fly DFTs
+# rtm_freq = adjoint(J)*d_lin
+#
+# # Save frequency-domain result
+# save("sigsbee2A_rtm_frequency_domain", "rtm", reshape(rtm_freq, model0.n))

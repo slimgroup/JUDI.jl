@@ -83,7 +83,7 @@ info = Info(prod(model0.n),nsrc,ntComp)
 
 opt = Options(isic=true,    # impedance modeling
               save_data_to_disk=true,
-              file_path="/home/philipp/JUDI/examples/compressive_splsrtm/Sigsbee2A/",  # directory for saving generated shots
+              file_path="/path/to/data",  # directory for saving generated shots
               file_name="sigsbee2A_marine"
               )
 
@@ -94,4 +94,4 @@ Ps = judiProjection(info, srcGeometry)
 J = judiJacobian(Pr*F0*Ps', q)
 
 # Linearized modeling (shots written to disk as SEG-Y files automatically)
-J*dm
+#J*dm
