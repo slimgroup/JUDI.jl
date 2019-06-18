@@ -5,10 +5,11 @@
 
 using JUDI.TimeModeling, SeisIO, JLD, PyPlot, JOLI
 
-# Load velocity model
-path = "/scratch/slim/shared/mathias-philipp/bp_synthetic_2004"
-vp = load(join([path, "/model/vp_smooth_100.jld"]))["vp"] / 1f3
-water_bottom = load(join([path, "/model/water_bottom_fine.jld"]))["wb"]
+# Load velocity model(replace with correct paths)
+model_path = "/path/to/model/"
+data_path = "/path/to/data/"
+vp = load(join([model_path, "bp_synthetic_2004_migration_velocity.jld"]))["vp"] / 1f3
+water_bottom = load(join([model_path, "bp_synthetic_2004_water_bottom.jld"]))["wb"]
 
 # Set up model structure
 d = (6.25, 6.25)
@@ -18,7 +19,7 @@ n = size(m0)
 model0 = Model(n, d, o, m0)
 
 # Scan directory for segy files and create out-of-core data container
-container = segy_scan(join([path, "/data_no_multiples/"]), "bp_observed_data", ["GroupX", "GroupY", "RecGroupElevation", "SourceSurfaceElevation", "dt"])
+container = segy_scan(data_path, "bp_observed_data", ["GroupX", "GroupY", "RecGroupElevation", "SourceSurfaceElevation", "dt"])
 d_obs = judiVector(container; segy_depth_key = "SourceDepth")
 
 # Set up source
@@ -86,7 +87,7 @@ for j=1:niter
     else
         r = Ml*d_sub*(-1f0)    # skip forward modeling in first iteration
     end
-    
+
     # Residual and gradient
     g = Mr'*J[i]'*Ml'*r
 
@@ -104,6 +105,3 @@ for j=1:niter
     # Save snapshot
     save(join([path, "/results/splsrtm_freq_iteration_", string(j), ".jld"]), "x", reshape(x, model0.n), "z", reshape(z, model0.n), "t", t, "lambda", lambda, "fval", fval[j])
 end
-
-
-

@@ -1,9 +1,16 @@
-using JUDI.TimeModeling, SeisIO, JLD, PyPlot
+using JUDI, JUDI.TimeModeling, SeisIO, JLD, PyPlot
 
-# Load velocity model
-path = "/scratch/slim/shared/mathias-philipp/bp_synthetic_2004"
-vp = load(join([path, "/model/vp_fine.jld"]))["vp"] / 1f3
-rho = load(join([path, "/model/rho_fine.jld"]))["rho"]
+# Path to model (insert correct path)
+model_path = "/path/to/model/"
+data_path = "/path/to/data/"
+geometry_path = "/path/to/geometry/"
+
+# Load velocity and density
+vp = load(join([model_path, "bp_synthetic_2004_true_velocity.jld"]))["vp"] / 1f3
+rho = load(join([model_path, "bp_synthetic_2004_density.jld"]))["rho"]
+
+# Load geometry of original BP data set
+geometry = load(join([geometry_path, "bp_synthetic_2004_header_geometry.jld"]))
 
 # Set up model structure
 d = (6.25, 6.25)
@@ -12,35 +19,31 @@ m0 = (1f0 ./ vp).^2
 n = size(m0)
 model0 = Model(n, d, o, m0; rho=rho)
 
-# Scan directory for segy files and create out-of-core data container
-container = segy_scan(join([path, "/data/"]), "shots", ["GroupX", "GroupY", "RecGroupElevation", "SourceSurfaceElevation", "dt"])
-d_obs = judiVector(container; segy_depth_key = "SourceDepth")
+# Load header geometry from original data set
+src_geometry = geometry["src_geometry"]
+rec_geometry = geometry["rec_geometry"]
+nsrc = geometry["nsrc"]
 
 # Set up source
-src_geometry = Geometry(container; key = "source")
 wavelet = ricker_wavelet(src_geometry.t[1], src_geometry.dt[1], 0.020)  # 27 Hz peak frequency
 q = judiVector(src_geometry, wavelet)
 
 # Info structure for linear operators
-ntComp = get_computational_nt(src_geometry, d_obs.geometry, model0)    # no. of computational time steps
-info = Info(prod(model0.n), d_obs.nsrc, ntComp)
+ntComp = get_computational_nt(src_geometry, rec_geometry, model0)    # no. of computational time steps
+info = Info(prod(model0.n), nsrc, ntComp)
 
 ###################################################################################################
 
-# Enable optimal checkpointing
+# Save data to disk
 opt = Options(limit_m = true,
               space_order = 16,
               buffer_size = 4000f0,
-              save_data_to_disk = true, 
-              file_path = join([path, "/data_no_multiples"]),
+              save_data_to_disk = true,
+              file_path = data_path,
               file_name = "bp_observed_data_")
 
 # Setup operators
-F = judiModeling(info, model0, q.geometry, d_obs.geometry; options=opt)
+F = judiModeling(info, model0, q.geometry, rec_geometry; options=opt)
 
-# Model data
-d_container = F*q
-save(join([path, "/data_no_multiples/observed_data_container.jld"]), "d_container", d_container)
-
-
-
+# Model data (write to disk)
+F*q

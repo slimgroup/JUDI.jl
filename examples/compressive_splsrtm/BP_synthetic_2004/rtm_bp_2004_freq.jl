@@ -1,8 +1,9 @@
 using JUDI.TimeModeling, SeisIO, JLD, PyPlot
 
-# Load velocity model
-path = "/scratch/slim/shared/mathias-philipp/bp_synthetic_2004"
-vp = load(join([path, "/model/vp_smooth_100.jld"]))["vp"] / 1f3
+# Load velocity model (replace with correct paths)
+model_path = "/path/to/model/"
+data_path = "/path/to/data/"
+vp = load(join([model_path, "bp_synthetic_2004_migration_velocity.jld"]))["vp"] / 1f3
 
 # Set up model structure
 d = (6.25, 6.25)
@@ -12,7 +13,7 @@ n = size(m0)
 model0 = Model(n, d, o, m0)
 
 # Scan directory for segy files and create out-of-core data container
-container = segy_scan(join([path, "/data_no_multiples/"]), "bp_observed_data", ["GroupX", "GroupY", "RecGroupElevation", "SourceSurfaceElevation", "dt"])
+container = segy_scan(data_path, "bp_observed_data", ["GroupX", "GroupY", "RecGroupElevation", "SourceSurfaceElevation", "dt"])
 d_obs = judiVector(container; segy_depth_key = "SourceDepth")
 
 # Set up source
@@ -57,5 +58,4 @@ d_lin = Ml*d_lin
 
 # RTM
 rtm = J'*d_lin
-save("/scratch/slim/pwitte/bp_synthetic_2004/rtm_smooth100_bp_synthetic_freq_1_400.jld", "rtm", rtm)
-
+save("bp_synethic_2004_rtm_frequency.jld", "rtm", rtm)
