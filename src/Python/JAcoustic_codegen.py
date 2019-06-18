@@ -355,8 +355,8 @@ def forward_freq_modeling(model, src_coords, wavelet, rec_coords, freq, space_or
     # Set up PDE and rearrange
     stencil = damp * (2.0 * u - damp * u.backward + dt**2 * rho / m * ulaplace)
     expression = [Eq(u.forward, stencil)]
-    expression += [Inc(ufr, ufr + factor*u*cos(2*np.pi*f*tsave*factor*dt))]
-    expression += [Inc(ufi, ufi - factor*u*sin(2*np.pi*f*tsave*factor*dt))]
+    expression += [Inc(ufr, factor*u*cos(2*np.pi*f*tsave*factor*dt))]
+    expression += [Inc(ufi, -factor*u*sin(2*np.pi*f*tsave*factor*dt))]
 
     # Source symbol with input wavelet
     src = PointSource(name='src', grid=model.grid, ntime=nt, coordinates=src_coords)
