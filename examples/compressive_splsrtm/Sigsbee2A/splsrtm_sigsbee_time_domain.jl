@@ -75,7 +75,7 @@ for j=1:niter
 
     # Step size and update variable
     fval[j] = .5*norm(r)^2
-    isempty(t) && (t = norm(r)^2/norm(g)^2)
+    isempty(t) && (global t = norm(r)^2/norm(g)^2)
     j==1 && (global lambda = 0.01*norm(C*t*g, Inf))   # estimate thresholding parameter in 1st iteration
 
     # Update variables and save snapshot
