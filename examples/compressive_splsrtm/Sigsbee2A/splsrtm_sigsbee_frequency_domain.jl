@@ -3,8 +3,14 @@
 # Date: May 2018
 #
 
+# TO DO:
+# Replace w/ full path the observed data directory
+#path_to_data = "/path/to/directory/"
+path_to_data="/home/pwitte3/.julia/dev/JUDI/examples/compressive_splsrtm/Sigsbee2A/"
+data_name = "sigsbee2A_marine"  # common base name of all shots
+
 using Pkg; Pkg.activate("JUDI")
-using JUDI.TimeModeling, PyPlot, JLD, SeisIO, JOLI
+using JUDI.TimeModeling, PyPlot, JLD, SeisIO, JOLI, Random, LinearAlgebra
 
 # Load Sigsbee model
 M = load("sigsbee2A_model.jld")
@@ -14,7 +20,7 @@ model0 = Model(M["n"], M["d"], M["o"], M["m0"])
 dm = vec(M["dm"])
 
 # Load data
-container = segy_scan("/path/to/directory/", "sigsbee2A_marine", ["GroupX","GroupY","RecGroupElevation","SourceSurfaceElevation","dt"])
+container = segy_scan(path_to_data, data_name, ["GroupX","GroupY","RecGroupElevation","SourceSurfaceElevation","dt"])
 d_lin = judiVector(container)
 
 # Set up source
@@ -52,10 +58,12 @@ nfreq = 20
 fval = zeros(Float32, niter)
 q_dist = generate_distribution(q)
 J.options.frequencies = Array{Any}(undef, d_lin.nsrc)
+J.options.dft_subsampling_factor = 8
 
 # Soft thresholding functions and Curvelet transform
 soft_thresholding(x::Array{Float64}, lambda) = sign.(x) .* max.(abs.(x) .- convert(Float64, lambda), 0.0)
-soft_thresholding(x::Array{Float32}, lambda) = sign.(x) .* max.(abs.(x) .- convert(Float32, lambda), 0f0) joCurvelet2D(model0.n[1], model0.n[2]; zero_finest=true, DDT=Float32, RDT=Float64)
+soft_thresholding(x::Array{Float32}, lambda) = sign.(x) .* max.(abs.(x) .- convert(Float32, lambda), 0f0)
+C = joCurvelet2D(model0.n[1], model0.n[2]; zero_finest=true, DDT=Float32, RDT=Float64)
 lambda = []
 t = 2f-5    # 4f-5 for nfreq=10
 
@@ -70,7 +78,7 @@ for j=1:niter
 
     # Compute residual and gradient
     i = randperm(d_lin.nsrc)[1:batchsize]
-    d_sub = grab_shots(d_lin[i])    # load current shots into memory
+    d_sub = get_data(d_lin[i])    # load current shots into memory
     r = J[i]*Mr*x - d_sub
     g = Mr'*J[i]'*r
 
@@ -83,7 +91,7 @@ for j=1:niter
     global x = adjoint(C)*soft_thresholding(C*z, lambda)
 
     # Save snapshot
-    save(join(["/path/to/snapshots/splsrtm_fourier_iteration_", string(j),".jld"]), "x", reshape(x, model0.n), "z", reshape(z, model0.n))
+    save(join(["snapshot_splsrtm_fourier_iteration_", string(j),".jld"]), "x", reshape(x, model0.n), "z", reshape(z, model0.n))
 end
 
 # Save final result

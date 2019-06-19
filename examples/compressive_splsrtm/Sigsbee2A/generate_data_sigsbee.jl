@@ -2,10 +2,19 @@
 # Author: Philipp Witte, pwitte.slim@gmail.com
 # Date: May 2018
 #
+
+# TO DO:
+# Replace w/ full path the directory where the observed data will be stored
+file_path="/path/to/data/"
+file_name="sigsbee2A_marine"
+
 using Pkg; Pkg.activate("JUDI")
 using JUDI.TimeModeling, PyPlot, JLD, SeisIO
 
 # Load Sigsbee model
+if !isfile("sigsbee2A_model.jld")
+    run(`wget ftp://slim.gatech.edu/data/SoftwareRelease/Imaging.jl/CompressiveLSRTM/sigsbee2A_model.jld`)
+end
 M = load("sigsbee2A_model.jld")
 
 # Setup info and model structure
@@ -83,8 +92,8 @@ info = Info(prod(model0.n),nsrc,ntComp)
 
 opt = Options(isic=true,    # impedance modeling
               save_data_to_disk=true,
-              file_path="/path/to/data",  # directory for saving generated shots
-              file_name="sigsbee2A_marine"
+              file_path = file_path,  # directory for saving generated shots
+              file_name = file_name
               )
 
 # Setup operators
@@ -94,4 +103,4 @@ Ps = judiProjection(info, srcGeometry)
 J = judiJacobian(Pr*F0*Ps', q)
 
 # Linearized modeling (shots written to disk as SEG-Y files automatically)
-#J*dm
+J[500]*dm

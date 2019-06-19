@@ -82,7 +82,7 @@ end
 ############################################ Model space preconditioners ###############################################
 
 
-function model_topmute(n::Tuple{Int64,Int64},mute_end::Array{Int64,1},length::Int64,x_orig)
+function model_topmute(n::Tuple{Int64,Int64}, mute_end::Array{Integer,1}, length::Int64, x_orig)
 # Model domain topmute for a velocity model of dimensions n = [nx, nz].
     x = copy(reshape(x_orig,n))
     for j=1:n[1]
@@ -99,7 +99,7 @@ function model_topmute(n::Tuple{Int64,Int64},mute_end::Array{Int64,1},length::In
     return vec(x)
 end
 
-function model_topmute(n::Tuple{Int64,Int64},mute_end::Int64,length::Int64,x_orig)
+function model_topmute(n::Tuple{Int64,Int64}, mute_end::Int64, length::Int64, x_orig)
 # Model domain topmute for a velocity model of dimensions n = [nx, nz].
     x = copy(reshape(x_orig,n))
     mute_start = mute_end - length
@@ -118,12 +118,12 @@ end
 
 model_topmute(n::Tuple{Int64,Int64}, mute_end::Array{Float32, 2}, length, x) = vec(mute_end) .* vec(x)
 
-function judiTopmute(n,mute_start,length)
+function judiTopmute(n, mute_start, length)
     # JOLI wrapper for model domain topmute
     N = prod(n)
     T = joLinearFunctionFwd_T(N,N,
-                             v -> model_topmute(n,mute_start,length,v),
-                             w -> model_topmute(n,mute_start,length,w),
+                             v -> model_topmute(n, mute_start, length, v),
+                             w -> model_topmute(n, mute_start, length, w),
                              Float32,Float32,name="Model topmute")
     return T
 end

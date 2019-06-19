@@ -3,7 +3,7 @@
 # Date: March 2018
 #
 
-using JUDI.TimeModeling, SeisIO, JLD, PyPlot, JOLI
+using JUDI.TimeModeling, SeisIO, JLD, PyPlot, JOLI, Random
 
 # Load velocity model(replace with correct paths)
 model_path = "/path/to/model/"
