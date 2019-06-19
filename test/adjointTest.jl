@@ -81,7 +81,7 @@ q_hat = adjoint(F)*d1
 # Result F
 a = dot(d1, d_hat)
 b = dot(q, q_hat)
-@test isapprox(a/b - 1, 0, atol=1f-4)
+@test isapprox(a/b - 1, 0, atol=1f-2)
 
 # Linearized modeling
 J = judiJacobian(F,q)
@@ -91,4 +91,4 @@ dm_hat = adjoint(J)*d_hat
 
 c = dot(dD_hat, d_hat)
 d = dot(dm, dm_hat)
-@test isapprox(c/d - 1, 0, atol=1f-4)
+@test isapprox(c/d - 1, 0, atol=1f-2)

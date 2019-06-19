@@ -8,10 +8,10 @@ JUDI is a framework for large-scale seismic modeling and inversion and designed 
 
 ## Installation and prerequisites
 
-First, install Devito using `pip`, or see the [Devito homepage](https://github.com/opesci/devito) for installation with Conda and further information. The current release of JUDI requires Python 3 and Devito v.3.2.0. Run all of the following commands from the (bash) terminal command line (not in the Julia REPL):
+First, install Devito using `pip`, or see the [Devito homepage](https://github.com/opesci/devito) for installation with Conda and further information. The current release of JUDI requires Python 3 and the current Devito version. Run all of the following commands from the (bash) terminal command line (not in the Julia REPL):
 
 ```julia
-pip install --user git+https://github.com/opesci/devito.git@v3.2.0
+pip install --user git+https://github.com/opesci/devito.git
 ```
 
 For reading and writing seismic SEG-Y data, JUDI uses the [SeisIO](https://github.com/slimgroup/SeisIO.jl) package and matrix-free linear operators are based the [Julia Operator LIbrary](https://github.com/slimgroup/JOLI.jl/tree/master/src) (JOLI):
@@ -59,7 +59,7 @@ Devito uses just-in-time compilation for the underlying wave equation solves. Th
 export DEVITO_ARCH=gnu
 ```
 
-Devito uses shared memory OpenMP parallelism for solving PDEs. OpenMP is disabled by default, but you can enable OpenMP and define the number of threads (per PDE solve) as follows: 
+Devito uses shared memory OpenMP parallelism for solving PDEs. OpenMP is disabled by default, but you can enable OpenMP and define the number of threads (per PDE solve) as follows:
 
 ```
 export DEVITO_OPENMP=1  # Enable OpenMP. Set to 0 to disable again.
@@ -121,7 +121,7 @@ function objective_function(x)
 	fval, grad = fwi_objective(model0, q[i], dobs[i]; options=opt)
 	grad = reshape(grad, model0.n); grad[:, 1:21] .= 0f0	# reset gradient in water column to 0.
 	grad = .1f0*grad/maximum(abs.(grad))	# scale gradient for line search
-	
+
 	global count; count += 1; fvals[count] = fval
     return fval, vec(grad)
 end
@@ -141,7 +141,7 @@ figure(); plot(fvals); title("Function value")
 ```
 
 #### Figure: {#f1}
-![](docs/fwi.png){width=70%} 
+![](docs/fwi.png){width=70%}
 
 
 ## Least squares reverse-time migration
@@ -213,7 +213,7 @@ end
 ```
 
 #### Figure: {#f1}
-![](docs/lsrtm.png){width=80%} 
+![](docs/lsrtm.png){width=80%}
 
 ## Authors
 
@@ -224,11 +224,9 @@ If you use our software for your research, please cite us using the following re
  * Philipp A. Witte, Mathias Louboutin, Navjot Kukreja, Fabio Luporini, Michael Lange, Gerard J. Gorman and Felix J. Herrmann. A large-scale framework for symbolic implementations of seismic inversion algorithms in Julia. Submitted to GEOPHYSICS. 2018. <https://www.slim.eos.ubc.ca/content/large-scale-framework-symbolic-implementations-seismic-inversion-algorithms-julia>
 
  * Mathias Louboutin, Michael Lange, Fabio Luporini, Navjot Kukreja, Philipp A. Witte, Felix J. Herrmann, Paulius Velesko and Gerard J. Gorman. Devito: An embedded domain-specific language for finite differences and geophysical exploration. Submitted to Geoscientific Model Development. 2018. <https://arxiv.org/abs/1808.01995>.
- 
+
  * Fabio Luporini, Michael Lange, Mathias Louboutin, Najvot Kukreja, Jan Hueckelheim, Charles Yount, Philipp A. Witte, Paul H. J. Kelly, Gerard J. Gorman and Felix J. Herrmann. Architecture and performance of Devito, a system for automated stencil computation. Submitted to SIAM Journal on Scientific Computing. 2018. <https://arxiv.org/abs/1807.03032>.
 
 Also visit the Devito homepage at <https://www.devitoproject.org/publications> for more information and references.
 
 Contact authors via: pwitte3@gatech.edu and mlouboutin3@gatech.edu.
-
-

@@ -15,7 +15,7 @@ o = (0., 0.)
 # Velocity [km/s]
 v = ones(Float32,n) .+ 0.4f0
 v0 = ones(Float32,n) .+ 0.4f0
-v[:,Int(round(end/2)):end] .= 3f0
+v[:,Int(round(end/2)):end] .= 5f0
 
 # Slowness squared [s^2/km^2]
 m = (1f0 ./ v).^2
@@ -64,7 +64,7 @@ info = Info(prod(n), nsrc, ntComp)
 ######################## WITH DENSITY ############################################
 
 # Write shots as segy files to disk
-opt = Options(save_data_to_disk=false, file_path=pwd(), file_name="observed_shot", optimal_checkpointing=false)
+opt = Options(save_data_to_disk=false, file_path=pwd(), file_name="observed_shot", optimal_checkpointing=false, isic=false, subsampling_factor=2)
 
 # Setup operators
 Pr = judiProjection(info, recGeometry)

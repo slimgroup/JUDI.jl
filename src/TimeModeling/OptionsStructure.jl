@@ -20,6 +20,7 @@ mutable struct Options
     num_checkpoints::Union{Integer, Nothing}
     checkpoints_maxmem::Union{Real, Nothing}
     frequencies::Array
+    subsampling_factor::Integer
     dft_subsampling_factor::Integer
     isic::Bool
 end
@@ -40,6 +41,7 @@ end
         num_checkpoints::Integer
         checkpoints_maxmem::Real
         frequencies::Array
+        subsampling_factor::Integer
         dft_subsampling_factor::Integer
         isic::Bool
 
@@ -72,6 +74,8 @@ Options structure for seismic modeling.
 
 `frequencies`: calculate the FWI/LS-RTM gradient in the frequency domain for a given set of frequencies
 
+`subsampling_factor`: compute forward wavefield on a time axis that is reduced by a given factor (default is 1)
+
 `dft_subsampling_factor`: compute on-the-fly DFTs on a time axis that is reduced by a given factor (default is 1)
 
 `isic`: use linearized inverse scattering imaging condition
@@ -83,13 +87,13 @@ Constructor
 All arguments are optional keyword arguments with the following default values:
 
     Options(; space_order, free_surface, limit_m=false, buffer_size=1e3, save_data_to_disk=false, save_wavefield_to_disk=false, file_path=pwd(), file_name="shot",
-        sum_padding=false, optimal_checkpointing=false, num_checkpoints=log(nt), checkpoints_maxmem=[], frequencies=[], dft_subsampling_factor=[], isic=false)
+        sum_padding=false, optimal_checkpointing=false, num_checkpoints=log(nt), checkpoints_maxmem=[], frequencies=[], subsampling_factor=[], dft_subsampling_factor=[], isic=false)
 
 """
 Options(; space_order=8, free_surface=false, limit_m=false, buffer_size=1e3, save_data_to_disk=false, save_wavefield_to_disk=false, file_path="", file_name="shot", sum_padding=false,
-    optimal_checkpointing=false, num_checkpoints=nothing, checkpoints_maxmem=nothing, frequencies=[], dft_subsampling_factor=1, isic=false) =
+    optimal_checkpointing=false, num_checkpoints=nothing, checkpoints_maxmem=nothing, frequencies=[], subsampling_factor=1, dft_subsampling_factor=1, isic=false) =
     Options(space_order, free_surface, limit_m, buffer_size, save_data_to_disk, save_wavefield_to_disk, file_path, file_name,
-    sum_padding, optimal_checkpointing, num_checkpoints, checkpoints_maxmem, frequencies, dft_subsampling_factor, isic)
+    sum_padding, optimal_checkpointing, num_checkpoints, checkpoints_maxmem, frequencies, subsampling_factor, dft_subsampling_factor, isic)
 
 
 function subsample(options::Options, srcnum)
