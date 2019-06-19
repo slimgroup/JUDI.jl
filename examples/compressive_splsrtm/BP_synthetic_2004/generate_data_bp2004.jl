@@ -1,16 +1,34 @@
+# Create BP Synthetic data w/ 20 Hz peak frequency and using
+# the same geometry as the original data set, but w/o surface
+# related multiples.
+# Author: Philipp Witte, pwitte.slim@gmail.com
+# Date: May 2018
+#
+
+# TO DO
+# Set up path where data will be saved
+data_path = "/path/to/data/"
+
+using Pkg; Pkg.activate("JUDI")
 using JUDI, JUDI.TimeModeling, SeisIO, JLD, PyPlot
 
-# Path to model (insert correct path)
-model_path = "/path/to/model/"
-data_path = "/path/to/data/"
-geometry_path = "/path/to/geometry/"
+# Load velocity
+if !isfile("bp_synthetic_2004_true_velocity.jld")
+    run(`wget ftp://slim.gatech.edu/data/SoftwareRelease/Imaging.jl/CompressiveLSRTM/bp_synthetic_2004_true_velocity.jld`)
+end
+vp = load(join([pwd(), "/bp_synthetic_2004_true_velocity.jld"]))["vp"] / 1f3
 
-# Load velocity and density
-vp = load(join([model_path, "bp_synthetic_2004_true_velocity.jld"]))["vp"] / 1f3
-rho = load(join([model_path, "bp_synthetic_2004_density.jld"]))["rho"]
+# Load density
+if !isfile("bp_synthetic_2004_density.jld")
+    run(`wget ftp://slim.gatech.edu/data/SoftwareRelease/Imaging.jl/CompressiveLSRTM/bp_synthetic_2004_density.jld`)
+end
+rho = load(join([pwd(), "/bp_synthetic_2004_density.jld"]))["rho"]
 
 # Load geometry of original BP data set
-geometry = load(join([geometry_path, "bp_synthetic_2004_header_geometry.jld"]))
+if !isfile("bp_synthetic_2004_header_geometry.jld")
+    run(`wget ftp://slim.gatech.edu/data/SoftwareRelease/Imaging.jl/CompressiveLSRTM/bp_synthetic_2004_header_geometry.jld`)
+end
+geometry = load(join([pwd(), "/bp_synthetic_2004_header_geometry.jld"]))
 
 # Set up model structure
 d = (6.25, 6.25)

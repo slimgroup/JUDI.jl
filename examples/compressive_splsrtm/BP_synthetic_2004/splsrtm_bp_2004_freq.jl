@@ -3,13 +3,23 @@
 # Date: March 2018
 #
 
-using JUDI.TimeModeling, SeisIO, JLD, PyPlot, JOLI, Random
+# TO DO
+# Set up path where data will be saved
+data_path = "/path/to/data/"
+
+using Pkg; Pkg.activate("JUDI")
+using JUDI.TimeModeling, SeisIO, JLD, PyPlot, JOLI, Random, LinearAlgebra
 
 # Load velocity model(replace with correct paths)
-model_path = "/path/to/model/"
-data_path = "/path/to/data/"
-vp = load(join([model_path, "bp_synthetic_2004_migration_velocity.jld"]))["vp"] / 1f3
-water_bottom = load(join([model_path, "bp_synthetic_2004_water_bottom.jld"]))["wb"]
+if !isfile("bp_synthetic_2004_migration_velocity.jld")
+    run(`wget ftp://slim.gatech.edu/data/SoftwareRelease/Imaging.jl/CompressiveLSRTM/bp_synthetic_2004_migration_velocity.jld`)
+end
+vp = load(join([pwd(), "/bp_synthetic_2004_migration_velocity.jld"]))["vp"] / 1f3
+
+if !isfile("bp_synthetic_2004_water_bottom.jld")
+    run(`wget ftp://slim.gatech.edu/data/SoftwareRelease/Imaging.jl/CompressiveLSRTM/bp_synthetic_2004_water_bottom.jld`)
+end
+water_bottom = load(join([pwd(), "/bp_synthetic_2004_water_bottom.jld"]))["wb"]
 
 # Set up model structure
 d = (6.25, 6.25)
@@ -46,7 +56,7 @@ J = judiJacobian(F, q)
 
 # Right-hand preconditioners
 D = judiDepthScaling(model0)
-T = judiTopmute(model0.n, (1 - water_bottom), [])
+T = judiTopmute(model0.n, (1 .- water_bottom), [])
 Mr = D*T
 
 # Linearized Bregman parameters
@@ -57,7 +67,7 @@ niter = 20
 nfreq = 20
 fval = zeros(Float32, niter)
 q_dist = generate_distribution(q)
-J.options.frequencies = Array{Any}(d_obs.nsrc)
+J.options.frequencies = Array{Any}(undef, d_obs.nsrc)
 
 # Soft thresholding functions and Curvelet transform
 soft_thresholding(x::Array{Float64}, lambda) = sign.(x) .* max.(abs.(x) - convert(Float64,lambda), 0.0)
@@ -89,18 +99,18 @@ for j=1:niter
     end
 
     # Residual and gradient
-    g = Mr'*J[i]'*Ml'*r
+    g = adjoint(Mr)*adjoint(J[i])*adjoint(Ml)*r
 
     # Step size and update variable
     fval[j] = .5*norm(r)^2
     t = norm(r)^2/norm(g)^2 # divide by 10
     println("    Stepsize: ", t)
 
-    j==1 && (lambda = 0.03*norm(C*t*g, Inf))   # estimate thresholding parameter in 1st iteration
+    j==1 && (global lambda = 0.03*norm(C*t*g, Inf))   # estimate thresholding parameter in 1st iteration
 
     # Update variables
-    z -= t*g
-    x = C'*soft_thresholding(C*z, lambda)
+    global z -= t*g
+    global x = adjoint(C)*soft_thresholding(C*z, lambda)
 
     # Save snapshot
     save(join([path, "/results/splsrtm_freq_iteration_", string(j), ".jld"]), "x", reshape(x, model0.n), "z", reshape(z, model0.n), "t", t, "lambda", lambda, "fval", fval[j])

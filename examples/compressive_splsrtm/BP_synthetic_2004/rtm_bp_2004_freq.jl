@@ -1,9 +1,20 @@
-using JUDI.TimeModeling, SeisIO, JLD, PyPlot
+# RTM of the BP synthetic 2007 data set
+# Author: Philipp Witte
+# Date: March 2018
+#
 
-# Load velocity model (replace with correct paths)
-model_path = "/path/to/model/"
+# TO DO
+# Set up path where data will be saved
 data_path = "/path/to/data/"
-vp = load(join([model_path, "bp_synthetic_2004_migration_velocity.jld"]))["vp"] / 1f3
+
+using Pkg; Pkg.activate("JUDI")
+using JUDI.TimeModeling, SeisIO, JLD, PyPlot, LinearAlgebra
+
+# Load velocity model
+if !isfile("bp_synthetic_2004_migration_velocity.jld")
+    run(`wget ftp://slim.gatech.edu/data/SoftwareRelease/Imaging.jl/CompressiveLSRTM/bp_synthetic_2004_migration_velocity.jld`)
+end
+vp = load(join([pwd(), "/bp_synthetic_2004_migration_velocity.jld"]))["vp"] / 1f3
 
 # Set up model structure
 d = (6.25, 6.25)
@@ -40,7 +51,8 @@ J = judiJacobian(F, q)
 
 # Set up random frequencies
 nfreq = 10
-J.options.frequencies = Array{Any}(d_obs.nsrc)
+J.options.frequencies = Array{Any}(undef, d_obs.nsrc)
+J.options.dft_subsampling_factor = 8
 for k=1:d_obs.nsrc
     J.options.frequencies[k] = select_frequencies(q_dist; fmin=0.003, fmax=0.04, nf=nfreq)
 end
@@ -57,5 +69,5 @@ Ml = judiMarineTopmute2D(35, d_lin.geometry)    # data topmute
 d_lin = Ml*d_lin
 
 # RTM
-rtm = J'*d_lin
+rtm = adjoint(J)*d_lin
 save("bp_synethic_2004_rtm_frequency.jld", "rtm", rtm)
