@@ -70,8 +70,8 @@ q_dist = generate_distribution(q)
 J.options.frequencies = Array{Any}(undef, d_obs.nsrc)
 
 # Soft thresholding functions and Curvelet transform
-soft_thresholding(x::Array{Float64}, lambda) = sign.(x) .* max.(abs.(x) - convert(Float64,lambda), 0.0)
-soft_thresholding(x::Array{Float32}, lambda) = sign.(x) .* max.(abs.(x) - convert(Float32,lambda), 0f0)
+soft_thresholding(x::Array{Float64}, lambda) = sign.(x) .* max.(abs.(x) .- convert(Float64,lambda), 0.0)
+soft_thresholding(x::Array{Float32}, lambda) = sign.(x) .* max.(abs.(x) .- convert(Float32,lambda), 0f0)
 C = joCurvelet2D(model0.n[1], model0.n[2]; zero_finest=true, DDT=Float32, RDT=Float64)
 lambda = []
 t = []  # t = 1f-4
