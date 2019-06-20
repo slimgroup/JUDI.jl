@@ -103,4 +103,4 @@ Ps = judiProjection(info, srcGeometry)
 J = judiJacobian(Pr*F0*Ps', q)
 
 # Linearized modeling (shots written to disk as SEG-Y files automatically)
-J[500]*dm
+J*dm
