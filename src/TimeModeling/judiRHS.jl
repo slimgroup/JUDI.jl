@@ -16,6 +16,7 @@ struct judiRHS{vDT<:Number} <: joAbstractLinearOperator{vDT,vDT}
     info::Info
     geometry::Geometry
     data
+    weights
 end
 
 mutable struct judiRHSexception <: Exception
@@ -35,6 +36,7 @@ end
         info::Info
         geometry::Geometry
         data
+        weights
 
 Abstract sparse vector for right-hand-sides of the modeling operators. The `judiRHS` vector has the\\
 dimensions of the full time history of the wavefields, but contains only the data defined at the \\
@@ -55,12 +57,12 @@ seismic vectors of type `judiVector`, then a `judiRHS` vector can be created as 
     rhs = Ps'*q    # right-hand-side with injected wavelet
 
 """
-function judiRHS(info,geometry,data;vDT::DataType=Float32)
+function judiRHS(info,geometry,data;vDT::DataType=Float32,weights=nothing)
     vDT == Float32 || throw(judiRHSexception("Domain type not supported"))
     # length of vector
     m = info.n * sum(info.nt)
     n = 1
-    return judiRHS{Float32}("judiRHS",m,n,info,geometry,data)
+    return judiRHS{Float32}("judiRHS",m,n,info,geometry,data,weights)
 end
 
 ####################################################################
@@ -68,15 +70,15 @@ end
 
 # conj(jo)
 conj(A::judiRHS{vDT}) where vDT =
-    judiRHS{vDT}("conj("*A.name*")",A.m,A.n,A.info,A.geometry,A.data)
+    judiRHS{vDT}("conj("*A.name*")",A.m,A.n,A.info,A.geometry,A.data,A.weights)
 
 # transpose(jo)
 transpose(A::judiRHS{vDT}) where vDT =
-    judiRHS{vDT}(""*A.name*".'",A.n,A.m,A.info,A.geometry,A.data)
+    judiRHS{vDT}(""*A.name*".'",A.n,A.m,A.info,A.geometry,A.data,A.weights)
 
 # adjoint(jo)
 adjoint(A::judiRHS{vDT}) where vDT =
-    judiRHS{vDT}(""*A.name*"'",A.n,A.m,A.info,A.geometry,A.data)
+    judiRHS{vDT}(""*A.name*"'",A.n,A.m,A.info,A.geometry,A.data,A.weights)
 
 ####################################################################
 
@@ -115,7 +117,7 @@ function +(A::judiRHS{avDT}, B::judiRHS{bvDT}) where {avDT, bvDT}
     geometry = Geometry(xloc,yloc,zloc,dt,nt,t)
     nvDT = promote_type(avDT,bvDT)
 
-    return judiRHS{nvDT}("judiRHS",m,n,A.info,geometry,data)
+    return judiRHS{nvDT}("judiRHS",m,n,A.info,geometry,data,A.weights)
 end
 
 # -(judiRHS,judiRHS)
@@ -153,13 +155,13 @@ function -(A::judiRHS{avDT}, B::judiRHS{bvDT}) where {avDT, bvDT}
     geometry = Geometry(xloc,yloc,zloc,dt,nt,t)
     nvDT = promote_type(avDT,bvDT)
 
-    return judiRHS{nvDT}("judiRHS",m,n,A.info,geometry,data)
+    return judiRHS{nvDT}("judiRHS",m,n,A.info,geometry,data,A.weights)
 end
 
 function subsample(a::judiRHS{avDT},srcnum) where avDT
     info = Info(a.info.n, length(srcnum), a.info.nt[srcnum])
     geometry = subsample(a.geometry,srcnum)     # Geometry of subsampled data container
-    return judiRHS(info,geometry,a.data[srcnum];vDT=avDT)
+    return judiRHS(info,geometry,a.data[srcnum],a.weights;vDT=avDT)
 end
 
 getindex(x::judiRHS,a) = subsample(x,a)

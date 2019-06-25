@@ -15,7 +15,7 @@ mutable struct judiVector{vDT<:Number} <: joAbstractLinearOperator{vDT,vDT}
     m::Integer
     n::Integer
     nsrc::Integer
-    geometry::Geometry
+    geometry::Union{Geometry, Nothing}
     data
 end
 
@@ -120,6 +120,20 @@ function judiVector(geometry::Geometry,data::Union{Array{Any,1},Array{Array,1}};
     end
     n = 1
     return judiVector{Float32}("Seismic data vector",m,n,nsrc,geometry,data)
+end
+
+# constructor if no geometry is passed
+function judiVector(data::Array; nsrc=1, vDT::DataType=Float32)
+    vDT == Float32 || throw(judiVectorException("Domain type not supported"))
+
+    # length of vector
+    n = 1
+    m = prod(size(data))
+    dataCell = Array{Array}(undef, nsrc)
+    for j=1:nsrc
+        dataCell[j] = data
+    end
+    return judiVector{Float32}("Seismic data vector",m,n,nsrc,nothing,dataCell)
 end
 
 
