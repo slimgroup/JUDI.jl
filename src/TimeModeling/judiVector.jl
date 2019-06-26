@@ -357,6 +357,17 @@ function *(a::Number,b::judiVector{bvDT}) where bvDT
     return c
 end
 
+# *(Array, judiVector)
+function *(A::Union{Array, Adjoint}, x::judiVector)
+    xvec = vec(x.data[1])
+    if x.nsrc > 1
+        for j=2:nsrc
+            xvec = [xvec; vec(x.data[j])]
+        end
+    end
+    return A*xvec
+end
+
 # /(judiVector, number)
 function /(a::judiVector{avDT},b::Number) where avDT
     c = deepcopy(a)
@@ -443,7 +454,7 @@ function vcat(a::judiVector{avDT},b::judiVector{bvDT}) where {avDT, bvDT}
             t[j] = b.geometry.t[j-a.nsrc]
         end
     end
-    
+
     if typeof(data) == Array{SeisIO.SeisCon,1}
         geometry = GeometryOOC(data,dt,nt,t,nsamples,a.geometry.key,a.geometry.segy_depth_key)
     elseif isnothing(a.geometry) && isnothing(b.geometry)
@@ -525,8 +536,6 @@ function subsample(a::judiVector{avDT},srcnum) where avDT
     geometry = subsample(a.geometry,srcnum)     # Geometry of subsampled data container
     return judiVector(geometry,a.data[srcnum];vDT=avDT)
 end
-
-getindex(x::judiVector,a) = subsample(x,a)
 
 # Create SeisBlock from judiVector container to write to file
 function judiVector_to_SeisBlock(d::judiVector{avDT}, q::judiVector{avDT}; source_depth_key="SourceSurfaceElevation", receiver_depth_key="RecGroupElevation") where avDT
@@ -658,7 +667,8 @@ end
 ####################################################################################################
 # Indexing
 
-#getindex(x::judiVector, i) = x.data[i]
+getindex(x::judiVector,a::Integer) = subsample(x,a)
+#getindex(x::judiVector,a::Integer) = subsample(x,a)
 
 setindex!(x::judiVector, y, i) = x.data[i][:] = y
 

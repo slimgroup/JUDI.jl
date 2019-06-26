@@ -23,7 +23,7 @@ mutable struct Options
     subsampling_factor::Integer
     dft_subsampling_factor::Integer
     isic::Bool
-    weights::Array
+    weights::Union{Array, Nothing}
 end
 
 """

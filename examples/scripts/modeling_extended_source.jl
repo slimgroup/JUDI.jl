@@ -73,13 +73,14 @@ F0 = judiModeling(info, model0; options=opt)
 Ps = judiProjection(info, srcGeometry)
 J = judiJacobian(Pr*F0*adjoint(Ps), q)
 
-# Nonlinear modeling
-dobs = Pr*F*adjoint(Ps)*q
-qad = Ps*adjoint(F)*adjoint(Pr)*dobs
+# Random weights (size of the model)
+w = judiVector(randn(model0.n); nsrc=2)
 
-# Linearized modeling
-dD = J*dm
-rtm = adjoint(J)*dD
+# Create operator for injecting the weights, multiplied by the source function
+Pw = judiLRWF(info, srcGeometry, wavelet)
 
-# evaluate FWI objective function
-f, g = fwi_objective(model0, q, dobs; options=opt)
+# Model observed data w/ extended source
+d_obs = Pr*F*adjoint(Pw)*w
+
+# Corresponding adjoint operation
+dw = Pw*adjoint(F)*adjoint(Pr)*d_obs

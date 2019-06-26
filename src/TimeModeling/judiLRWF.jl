@@ -55,7 +55,7 @@ function judiLRWF(info::Info, geometry::GeometryIC, data; DDT::DataType=Float32,
     for j=1:info.nsrc
         wavelet[j] = data
     end
-    return judiLRWF{Float32,Float32}("restriction operator",m,n,info,geometry,data)
+    return judiLRWF{Float32,Float32}("restriction operator",m,n,info,geometry,wavelet)
 end
 
 
