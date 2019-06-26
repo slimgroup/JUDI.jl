@@ -303,6 +303,10 @@ end
 subsample(geometry::GeometryOOC, srcnum) = Geometry(geometry.container[srcnum]; key=geometry.key, segy_depth_key=geometry.segy_depth_key)
 
 # Compare if geometries match
+function compareGeometry(geometry_A::Nothing, geometry_B::Nothing)
+    return true
+end
+
 function compareGeometry(geometry_A::Geometry, geometry_B::Geometry)
     if isequal(geometry_A.xloc, geometry_B.xloc) && isequal(geometry_A.yloc, geometry_B.yloc) && isequal(geometry_A.zloc, geometry_B.zloc) &&
     isequal(geometry_A.dt, geometry_B.dt) && isequal(geometry_A.nt, geometry_B.nt)

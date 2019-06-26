@@ -399,47 +399,55 @@ function vcat(a::judiVector{avDT},b::judiVector{bvDT}) where {avDT, bvDT}
         data = Array{Array}(undef, nsrc)
     end
 
-    dt = Array{Any}(undef, nsrc)
-    nt = Array{Any}(undef, nsrc)
-    t = Array{Any}(undef, nsrc)
-    if typeof(data) == Array{SeisIO.SeisCon,1}
-        nsamples = Array{Any}(undef, nsrc)
-    else
-        xloc = Array{Any}(undef, nsrc)
-        yloc = Array{Any}(undef, nsrc)
-        zloc = Array{Any}(undef, nsrc)
+    if !isnothing(a.geometry) && !isnothing(b.geometry)
+        dt = Array{Any}(undef, nsrc)
+        nt = Array{Any}(undef, nsrc)
+        t = Array{Any}(undef, nsrc)
+        if typeof(data) == Array{SeisIO.SeisCon,1}
+            nsamples = Array{Any}(undef, nsrc)
+        else
+            xloc = Array{Any}(undef, nsrc)
+            yloc = Array{Any}(undef, nsrc)
+            zloc = Array{Any}(undef, nsrc)
+        end
     end
 
     # Merge data sets and geometries
     for j=1:a.nsrc
         data[j] = a.data[j]
-        if typeof(data) == Array{SeisIO.SeisCon,1}
-            nsamples[j] = a.geometry.nsamples[j]
-        else
-            xloc[j] = a.geometry.xloc[j]
-            yloc[j] = a.geometry.yloc[j]
-            zloc[j] = a.geometry.zloc[j]
+        if !isnothing(a.geometry) && !isnothing(b.geometry)
+            if typeof(data) == Array{SeisIO.SeisCon,1}
+                nsamples[j] = a.geometry.nsamples[j]
+            else
+                xloc[j] = a.geometry.xloc[j]
+                yloc[j] = a.geometry.yloc[j]
+                zloc[j] = a.geometry.zloc[j]
+            end
+            dt[j] = a.geometry.dt[j]
+            nt[j] = a.geometry.nt[j]
+            t[j] = a.geometry.t[j]
         end
-        dt[j] = a.geometry.dt[j]
-        nt[j] = a.geometry.nt[j]
-        t[j] = a.geometry.t[j]
     end
     for j=a.nsrc+1:nsrc
         data[j] = b.data[j-a.nsrc]
-        if typeof(data) == Array{SeisIO.SeisCon,1}
-            nsamples[j] = b.geometry.nsamples[j-a.nsrc]
-        else
-            xloc[j] = b.geometry.xloc[j-a.nsrc]
-            yloc[j] = b.geometry.yloc[j-a.nsrc]
-            zloc[j] = b.geometry.zloc[j-a.nsrc]
+        if !isnothing(a.geometry) && !isnothing(b.geometry)
+            if typeof(data) == Array{SeisIO.SeisCon,1}
+                nsamples[j] = b.geometry.nsamples[j-a.nsrc]
+            else
+                xloc[j] = b.geometry.xloc[j-a.nsrc]
+                yloc[j] = b.geometry.yloc[j-a.nsrc]
+                zloc[j] = b.geometry.zloc[j-a.nsrc]
+            end
+            dt[j] = b.geometry.dt[j-a.nsrc]
+            nt[j] = b.geometry.nt[j-a.nsrc]
+            t[j] = b.geometry.t[j-a.nsrc]
         end
-        dt[j] = b.geometry.dt[j-a.nsrc]
-        nt[j] = b.geometry.nt[j-a.nsrc]
-        t[j] = b.geometry.t[j-a.nsrc]
     end
-
+    
     if typeof(data) == Array{SeisIO.SeisCon,1}
         geometry = GeometryOOC(data,dt,nt,t,nsamples,a.geometry.key,a.geometry.segy_depth_key)
+    elseif isnothing(a.geometry) && isnothing(b.geometry)
+        geometry = nothing
     else
         geometry = Geometry(xloc,yloc,zloc,dt,nt,t)
     end
@@ -453,8 +461,14 @@ function dot(a::judiVector{avDT}, b::judiVector{bvDT}) where {avDT, bvDT}
     size(a) == size(b) || throw(judiVectorException("dimension mismatch"))
     compareGeometry(a.geometry, b.geometry) == 1 || throw(judiVectorException("geometry mismatch"))
     dotprod = 0f0
-    for j=1:a.nsrc
-        dotprod += a.geometry.dt[j] * dot(vec(a.data[j]),vec(b.data[j]))
+    if isnothing(a.geometry)
+        for j=1:a.nsrc
+            dotprod += dot(vec(a.data[j]),vec(b.data[j]))
+        end
+    else
+        for j=1:a.nsrc
+            dotprod += a.geometry.dt[j] * dot(vec(a.data[j]),vec(b.data[j]))
+        end
     end
     return dotprod
 end
@@ -462,8 +476,14 @@ end
 # norm
 function norm(a::judiVector{avDT}, p::Real=2) where avDT
     x = 0.f0
-    for j=1:a.nsrc
-        x += a.geometry.dt[j] * sum(abs.(vec(a.data[j])).^p)
+    if isnothing(a.geometry)
+        for j=1:a.nsrc
+            x += sum(abs.(vec(a.data[j])).^p)
+        end
+    else
+        for j=1:a.nsrc
+            x += a.geometry.dt[j] * sum(abs.(vec(a.data[j])).^p)
+        end
     end
     return x^(1.f0/p)
 end
@@ -725,4 +745,3 @@ dot(x::Float32, y::SeisIO.IBMFloat32) = dot(x, convert(Float32,y))
 
 /(a::Number, x::SeisIO.SeisCon) = /(a,x[1].data)
 /(x::SeisIO.SeisCon, a::Number) = /(x[1].data,a)
-

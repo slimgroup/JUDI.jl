@@ -73,14 +73,19 @@ F0 = judiModeling(info, model0; options=opt)
 Ps = judiProjection(info, srcGeometry)
 J = judiJacobian(Pr*F0*adjoint(Ps), q)
 
+w = judiVector(randn(model0.n); nsrc=2)
+Pw = judiLRWF(info, srcGeometry, wavelet)
+rhs = adjoint(Pw)*w
+
+
 # Nonlinear modeling
-dobs = Pr*F*adjoint(Ps)*q
-qad = Ps*adjoint(F)*adjoint(Pr)*dobs
-
-# Linearized modeling
-#J.options.file_name = "linearized_shot"
-dD = J*dm
-rtm = adjoint(J)*dD
-
-# evaluate FWI objective function
-f, g = fwi_objective(model0, q, dobs; options=opt)
+# dobs = Pr*F*adjoint(Ps)*q
+# qad = Ps*adjoint(F)*adjoint(Pr)*dobs
+#
+# # Linearized modeling
+# #J.options.file_name = "linearized_shot"
+# dD = J*dm
+# rtm = adjoint(J)*dD
+#
+# # evaluate FWI objective function
+# f, g = fwi_objective(model0, q, dobs; options=opt)

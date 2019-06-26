@@ -44,6 +44,7 @@ include("judiProjection.jl")    # source/receiver projection operator
 include("judiPDEfull.jl")   # modeling operator with source and receiver projection: P*F*P'
 include("judiPDE.jl")   # modeling operator with lhs projection only: P*F
 include("judiJacobian.jl")  # linearized modeling operator J
+include("judiLRWF.jl")   # low rank wavefield (point source(s))
 
 #############################################################################
 # Preconditioners and optimization
