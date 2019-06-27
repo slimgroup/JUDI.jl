@@ -15,7 +15,7 @@ mutable struct judiVector{vDT<:Number} <: joAbstractLinearOperator{vDT,vDT}
     m::Integer
     n::Integer
     nsrc::Integer
-    geometry::Union{Geometry, Nothing}
+    geometry::Geometry
     data
 end
 
@@ -120,20 +120,6 @@ function judiVector(geometry::Geometry,data::Union{Array{Any,1},Array{Array,1}};
     end
     n = 1
     return judiVector{Float32}("Seismic data vector",m,n,nsrc,geometry,data)
-end
-
-# constructor if no geometry is passed
-function judiVector(data::Array; nsrc=1, vDT::DataType=Float32)
-    vDT == Float32 || throw(judiVectorException("Domain type not supported"))
-
-    # length of vector
-    n = 1
-    m = prod(size(data))
-    dataCell = Array{Array}(undef, nsrc)
-    for j=1:nsrc
-        dataCell[j] = data
-    end
-    return judiVector{Float32}("Seismic data vector",m,n,nsrc,nothing,dataCell)
 end
 
 
@@ -358,10 +344,10 @@ function *(a::Number,b::judiVector{bvDT}) where bvDT
 end
 
 # *(Array, judiVector)
-function *(A::Union{Array, Adjoint}, x::judiVector)
+function *(A::Union{Array, Adjoint, Transpose}, x::judiVector)
     xvec = vec(x.data[1])
     if x.nsrc > 1
-        for j=2:nsrc
+        for j=2:x.nsrc
             xvec = [xvec; vec(x.data[j])]
         end
     end
@@ -668,7 +654,16 @@ end
 # Indexing
 
 getindex(x::judiVector,a::Integer) = subsample(x,a)
-#getindex(x::judiVector,a::Integer) = subsample(x,a)
+getindex(x::judiVector,a::Integer, b::Integer, c::Integer, d::Integer) = subsample(x,a)
+
+function reshape(x::judiVector, dims...)
+    prod((dims)) == prod((x.m, x.n)) || throw(judiVectorException(join(["DimensionMismatch(\"new dimensions ", string(dims), " must be consistent with array size ", string(prod((x.m, x.n)))])))
+    length(dims) <= 2 || throw(judiVectorException("Cannot reshape into array with dimensions > 2"))
+    x_out = deepcopy(x)
+    x_out.m = dims[1]
+    x_out.n = dims[2]
+    return x_out
+end
 
 setindex!(x::judiVector, y, i) = x.data[i][:] = y
 

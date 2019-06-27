@@ -23,8 +23,8 @@ v[:, :51] = 1.5
 v[:, 51:] = 5
 m = (1./v)**2
 
-#w = np.random.randn(shape[0], shape[1]).astype('float32')
-w = np.ones(shape, dtype=np.float32)
+w = np.random.randn(shape[0], shape[1]).astype('float32')
+#w = np.ones(shape, dtype=np.float32)
 
 model = Model(shape=shape, origin=origin, spacing=spacing, vp=v, nbpml=0)
 
@@ -47,8 +47,8 @@ rec_t.coordinates.data[:, 0] = np.linspace(0, model.domain_size[0], num=101)
 rec_t.coordinates.data[:, 1] = 20.
 
 # Observed data
-dobs, utrue = forward_modeling(model, src.coordinates.data, np.asarray(src.data)[:,0], rec_t.coordinates.data, weight=w)
-w2 = adjoint_modeling(model, src.coordinates, rec_t.coordinates.data, dobs.data, wavelet=np.asarray(src.data)[:,0])
+dobs, utrue = forward_modeling(model, None, np.asarray(src.data)[:,0], rec_t.coordinates.data, weight=w)
+w2 = adjoint_modeling(model, None, rec_t.coordinates.data, dobs.data, wavelet=np.asarray(src.data)[:,0])
 
-plt.imshow(dobs.data, vmin=-4, vmax=4, aspect='auto', cmap='gray'); plt.show()
-
+plt.imshow(dobs.data, vmin=-1e3, vmax=1e3, aspect='auto', cmap='gray');
+plt.figure(); plt.imshow(np.transpose(w2.data), vmin=-1e7, vmax=1e7, aspect='auto', cmap='gray'); plt.show()

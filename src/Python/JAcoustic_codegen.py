@@ -36,6 +36,9 @@ def acoustic_laplacian(v, rho):
 def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_order=8, nb=40, weight=None, free_surface=False, op_return=False, u_return=False, dt=None, tsub_factor=1):
     clear_cache()
 
+    if weight is not None:
+        wavelet = np.asarray(wavelet)[:,0]
+
     # If wavelet is file, read it
     if isinstance(wavelet, str):
         wavelet = np.load(wavelet)
@@ -130,6 +133,9 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
 def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=8, nb=40, free_surface=False, dt=None, wavelet=None):
     clear_cache()
 
+    if wavelet is not None:
+        wavelet = np.asarray(wavelet)[:,0]
+
     # If wavelet is file, read it
     if isinstance(rec_data, str):
         rec_data = np.load(rec_data)
@@ -169,13 +175,13 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=8, nb=
         rec.data[:] = rec_data[:]
         adj_src = rec.inject(field=v.backward, expr=rec * rho * dt**2 / m)
         expression += adj_src
- 
+
     # Data is sampled at source locations
     if src_coords is not None and wavelet is None:
         src = PointSource(name='src', grid=model.grid, ntime=nt, coordinates=src_coords)
         adj_rec = src.interpolate(expr=v)
         expression += adj_rec
-    
+
     # Data is sampled everywhere as a sum over time
     if wavelet is not None:
         w_out = Function(name='src_weight', grid=model.grid)

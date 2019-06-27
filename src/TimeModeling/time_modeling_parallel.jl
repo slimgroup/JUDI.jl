@@ -35,11 +35,23 @@ function time_modeling(model::Model, srcGeometry, srcData, recGeometry, recData,
             if op=='F' && mode==1
                 srcDataLocal = Array{Any}(undef, 1)
                 srcDataLocal[1] = srcData[j]
-                @async results[j] = time_modeling(model, srcGeometryLocal, srcDataLocal, recGeometryLocal, nothing, nothing, j, op, mode, opt_local)
+                if !isnothing(perturbation) # perturbation contains extended source weights
+                    weights = Array{Any}(undef, 1)
+                    weights[1] = perturbation[j]
+                else
+                    weights = nothing
+                end
+                @async results[j] = time_modeling(model, srcGeometryLocal, srcDataLocal, recGeometryLocal, nothing, weights, j, op, mode, opt_local)
             elseif op=='F' && mode==-1
                 recDataLocal = Array{Any}(undef, 1)
                 recDataLocal[1] = recData[j]
-                @async results[j] = time_modeling(model, srcGeometryLocal, nothing, recGeometryLocal, recDataLocal, nothing, j, op, mode, opt_local)
+                if !isnothing(srcData)
+                    srcDataLocal = Array{Any}(undef, 1)
+                    srcDataLocal[1] = srcData[j]
+                else
+                    srcDataLocal = nothing
+                end
+                @async results[j] = time_modeling(model, srcGeometryLocal, srcDataLocal, recGeometryLocal, recDataLocal, nothing, j, op, mode, opt_local)
             elseif op=='J' && mode==1
                 srcDataLocal = Array{Any}(undef, 1)
                 srcDataLocal[1] = srcData[j]

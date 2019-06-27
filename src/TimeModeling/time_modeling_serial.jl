@@ -305,3 +305,51 @@ function devito_interface(modelPy::PyCall.PyObject, origin, srcGeometry::Geometr
     grad = remove_padding(grad,modelPy[:nbpml], true_adjoint=options.sum_padding)
     return vec(grad)
 end
+
+# d_obs = Pr*F*Pw'*w - modeling w/ extended source
+function devito_interface(modelPy::PyCall.PyObject, origin, srcGeometry::Nothing, srcData::Array, recGeometry::Geometry, recData::Nothing, dm::Array, options::Options)
+    ac = load_acoustic_codegen()
+    #typeof(dm) == Array{Array, 1} && (dm = dm[1])
+    #typeof(dm) == Array{Any, 1} && (dm = dm[1])
+
+    # Interpolate input data to computational grid
+    dtComp = modelPy[:critical_dt]
+    qIn = time_resample(srcData[1],recGeometry,dtComp)[1]
+    ntComp = size(qIn,1)
+    ntRec = Int(trunc(recGeometry.t[1]/dtComp + 1))
+
+    # Set up coordinates with devito dimensions
+    rec_coords = setup_grid(recGeometry, modelPy[:shape], origin)
+
+    # Devito call
+    dOut = pycall(ac["forward_modeling"], PyObject, modelPy, nothing, PyReverseDims(copy(transpose(qIn))), PyReverseDims(copy(transpose(rec_coords))),
+                  space_order=options.space_order, nb=modelPy[:nbpml], free_surface=options.free_surface, weight=PyReverseDims(copy(transpose(dm[1]))))[1]
+    ntRec > ntComp && (dOut = [dOut zeros(size(dOut,1), ntRec - ntComp)])
+    dOut = time_resample(dOut,dtComp,recGeometry)
+
+    # Output shot record as judiVector
+    return judiVector(recGeometry,dOut)
+end
+
+# dw = Pw*F'*Pr'*d_obs - adjoint modeling w/ extended source
+function devito_interface(modelPy::PyCall.PyObject, origin, srcGeometry::Nothing, srcData::Array, recGeometry::Geometry, recData::Array, dm::Nothing, options::Options)
+    ac = load_acoustic_codegen()
+
+    # Interpolate input data to computational grid
+    dtComp = modelPy[:critical_dt]
+    dIn = time_resample(recData[1],recGeometry,dtComp)[1]
+    qIn = time_resample(srcData[1],recGeometry,dtComp)[1]
+    ntComp = size(dIn,1)
+    ntSrc = Int(trunc(recGeometry.t[1]/dtComp + 1))
+
+    # Set up coordinates with devito dimensions
+    rec_coords = setup_grid(recGeometry, modelPy[:shape], origin)
+
+    # Devito call
+    wOut = pycall(ac["adjoint_modeling"], Array{Float32,2}, modelPy, nothing, PyReverseDims(copy(transpose(rec_coords))), PyReverseDims(copy(transpose(dIn))),
+                  space_order=options.space_order, nb=modelPy[:nbpml], free_surface=options.free_surface, wavelet=PyReverseDims(copy(transpose(qIn))))
+    ntSrc > ntComp && (qOut = [qOut zeros(size(qOut), ntSrc - ntComp)])
+
+    # Output adjoint data as judiVector
+    return judiWeights(wOut)
+end

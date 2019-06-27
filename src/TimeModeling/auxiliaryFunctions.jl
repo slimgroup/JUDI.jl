@@ -209,6 +209,17 @@ function get_computational_nt(srcGeometry, recGeometry, model::Model)
     return nt
 end
 
+function get_computational_nt(geometry, model::Model)
+    # Determine number of computational time steps
+    nsrc = length(geometry.xloc)
+    nt = Array{Any}(undef, nsrc)
+    dtComp = calculate_dt(model.n, model.d, model.o, sqrt.(1f0 ./ model.m), model.rho)
+    for j=1:nsrc
+        nt[j] = Int(ceil(geometry.dt[j]*(geometry.nt[j]-1) / dtComp))
+    end
+    return nt
+end
+
 function setup_grid(geometry,n, origin)
     # 3D grid
     if length(n)==3

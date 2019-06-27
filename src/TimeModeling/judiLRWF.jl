@@ -16,7 +16,6 @@ struct judiLRWF{DDT<:Number,RDT<:Number} <: joAbstractLinearOperator{DDT,RDT}
     m::Integer
     n::Integer
     info::Info
-    geometry::Geometry
     wavelet
 end
 
@@ -32,38 +31,37 @@ end
     judiLRWF(info, geometry)
 
 Low-rank wavefield operator which injects a wavelet q at every point of the subsurface. \\
-`info` is an `Info` structure, `geometry` is a `Geometry` structure with either source or\\
-receiver locations and `data` is a cell array containing the wavelet(s).
+`info` is an `Info` structure and `wavelet` is a cell array containing the wavelet(s).
 
 Examples
 ========
 
-`F` is a modeling operator of type `judiModeling` and `w` is a weighting matrix of type `judiVector`:
+`F` is a modeling operator of type `judiModeling` and `w` is a weighting matrix of type `judiWeights`:
 
     Pr = judiProjection(info, rec_geometry)
-    Ps = judiLRWF(info, q.geometry, q.data)
+    Pw = judiLRWF(info, q.data)
 
-    dobs = Pr*F*Ps'*w
-    dw = Ps*F'*Pr'*dobs
+    dobs = Pr*F*Pw'*w
+    dw = Pw*F'*Pr'*dobs
 
 """
-function judiLRWF(info::Info, geometry::GeometryIC, data; DDT::DataType=Float32, RDT::DataType=DDT)
+function judiLRWF(info::Info, data; DDT::DataType=Float32, RDT::DataType=DDT)
     (DDT == Float32 && RDT == Float32) || throw(judiProjectionException("Domain and range types not supported"))
-    m = info.n
+    m = info.n * info.nsrc
     n = info.n * sum(info.nt)
     wavelet = Array{Any}(undef, info.nsrc)
     for j=1:info.nsrc
         wavelet[j] = data
     end
-    return judiLRWF{Float32,Float32}("restriction operator",m,n,info,geometry,wavelet)
+    return judiLRWF{Float32,Float32}("restriction operator",m,n,info,wavelet)
 end
 
 
-function judiLRWF(info::Info, geometry::GeometryIC, wavelet::Array{Any}; DDT::DataType=Float32, RDT::DataType=DDT)
+function judiLRWF(info::Info, wavelet::Array{Array}; DDT::DataType=Float32, RDT::DataType=DDT)
     (DDT == Float32 && RDT == Float32) || throw(judiProjectionException("Domain and range types not supported"))
-    m = info.n
+    m = info.n * info.nsrc
     n = info.n * sum(info.nt)
-    return judiLRWF{Float32,Float32}("restriction operator",m,n,info,geometry,wavelet)
+    return judiLRWF{Float32,Float32}("restriction operator",m,n,info,wavelet)
 end
 
 
@@ -73,24 +71,24 @@ end
 
 # conj(judiProjection)
 conj(A::judiLRWF{DDT,RDT}) where {DDT,RDT} =
-    judiLRWF{DDT,RDT}("conj("*A.name*")",A.m,A.n,A.info,A.geometry,A.wavelet)
+    judiLRWF{DDT,RDT}("conj("*A.name*")",A.m,A.n,A.info,A.wavelet)
 
 # transpose(judiProjection)
 transpose(A::judiLRWF{DDT,RDT}) where {DDT,RDT} =
-    judiLRWF{DDT,RDT}("injection operator",A.n,A.m,A.info,A.geometry,A.wavelet)
+    judiLRWF{DDT,RDT}("injection operator",A.n,A.m,A.info,A.wavelet)
 
 adjoint(A::judiLRWF{DDT,RDT}) where {DDT,RDT} =
-    judiLRWF{DDT,RDT}("injection operator",A.n,A.m,A.info,A.geometry,A.wavelet)
+    judiLRWF{DDT,RDT}("injection operator",A.n,A.m,A.info,A.wavelet)
 
 ############################################################
 ## overloaded Base *(...judiProjection...)
 
 # *(judiLRWF,judiVector)
-function *(A::judiLRWF{ADDT,ARDT},v::judiVector{vDT}) where {ADDT,ARDT,vDT}
+function *(A::judiLRWF{ADDT,ARDT},v::judiWeights{vDT}) where {ADDT,ARDT,vDT}
     A.n == size(v,1) || throw(judiLRWFexception("shape mismatch"))
     jo_check_type_match(ADDT,vDT,join(["DDT for *(judiLRWF,judiVector):",A.name,typeof(A),vDT]," / "))
-    V = judiRHS(A.info,A.geometry,A.wavelet;weights=v.data)
-    jo_check_type_match(ARDT,eltype(V),join(["RDT from *(judiProjection,judiVector):",A.name,typeof(A),eltype(V)]," / "))
+    V = judiExtendedSource(A.info,A.wavelet,v.weights)
+    jo_check_type_match(ARDT,eltype(V),join(["RDT from *(judiLRWF,judiWeights):",A.name,typeof(A),eltype(V)]," / "))
     return V
 end
 
@@ -124,9 +122,8 @@ end
 
 # Subsample Modeling operator
 function subsample(P::judiLRWF{ADDT,ARDT}, srcnum) where {ADDT,ARDT}
-    geometry = subsample(P.geometry,srcnum)     # Geometry of subsampled data container
     info = Info(P.info.n, length(srcnum), P.info.nt[srcnum])
-    return judiLRWF(info, geometry, data[srcnum];DDT=ADDT,RDT=ARDT)
+    return judiLRWF(info, data[srcnum];DDT=ADDT,RDT=ARDT)
 end
 
 getindex(P::judiProjection,a) = subsample(P,a)

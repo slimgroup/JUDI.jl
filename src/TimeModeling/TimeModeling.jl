@@ -7,7 +7,7 @@ module TimeModeling
 
 using JUDI, PyCall, JOLI, SeisIO, Dierckx, Distributed, LinearAlgebra, Base.Broadcast, FFTW
 
-import Base.*, Base./, Base.+, Base.-, Base.copy!
+import Base.*, Base./, Base.+, Base.-, Base.copy!, Base.reshape
 import Base.getindex, Base.setindex!, Base.firstindex, Base.lastindex, Base.axes, Base.ndims
 import LinearAlgebra.transpose, LinearAlgebra.conj, LinearAlgebra.vcat, LinearAlgebra.adjoint
 import LinearAlgebra.vec, LinearAlgebra.dot, LinearAlgebra.norm, LinearAlgebra.abs
@@ -28,7 +28,9 @@ include("auxiliaryFunctions.jl")
 # Abstract vectors
 include("judiWavefield.jl") # dense RHS (wavefield)
 include("judiRHS.jl")   # sparse RHS (point source(s))
+include("judiExtendedSource.jl")   # sparse RHS (point source(s))
 include("judiVector.jl")    # Julia data container
+include("judiWeights.jl")    # Extended source weight vector
 
 #############################################################################
 # PDE solvers
@@ -41,10 +43,11 @@ include("fwi_objective_parallel.jl")    # parallelization for FWI gradient
 # Linear operators
 include("judiModeling.jl")  # nonlinear modeling operator F (no projection operators)
 include("judiProjection.jl")    # source/receiver projection operator
+include("judiLRWF.jl")   # low rank wavefield (point source(s))
 include("judiPDEfull.jl")   # modeling operator with source and receiver projection: P*F*P'
+include("judiPDEextended.jl")   # modeling operator for extended sources
 include("judiPDE.jl")   # modeling operator with lhs projection only: P*F
 include("judiJacobian.jl")  # linearized modeling operator J
-include("judiLRWF.jl")   # low rank wavefield (point source(s))
 
 #############################################################################
 # Preconditioners and optimization
