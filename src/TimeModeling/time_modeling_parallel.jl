@@ -60,7 +60,11 @@ function time_modeling(model::Model, srcGeometry, srcData, recGeometry, recData,
                 srcDataLocal = Array{Any}(undef, 1)
                 srcDataLocal[1] = srcData[j]
                 recDataLocal = Array{Any}(undef, 1)
-                recDataLocal[1] = recData[j]
+                if typeof(recData) == Array{Array, 1}
+                    recDataLocal[1] = recData[j]
+                else
+                    recDataLocal[1] = recData[:,:,j]
+                end
                 @async results[j] = time_modeling(model, srcGeometryLocal, srcDataLocal, recGeometryLocal, recDataLocal, nothing, j, op, mode, opt_local)
             end
         end

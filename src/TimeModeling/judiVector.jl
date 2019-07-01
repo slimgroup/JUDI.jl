@@ -383,6 +383,7 @@ function *(A::joLinearOperator{ADDT,ARDT},v::judiVector{avDT}) where {ADDT, ARDT
     return V
 end
 
+
 # vcat
 function vcat(a::judiVector{avDT},b::judiVector{bvDT}) where {avDT, bvDT}
     typeof(a.geometry) == typeof(b.geometry) || throw(judiVectorException("Geometry type mismatch"))

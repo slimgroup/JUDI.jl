@@ -24,6 +24,7 @@ mutable struct Options
     dft_subsampling_factor::Integer
     isic::Bool
     weights::Union{Array, Nothing}
+    return_array::Bool
 end
 
 """
@@ -46,6 +47,7 @@ end
         dft_subsampling_factor::Integer
         isic::Bool
         weights::Array
+        return_array::Bool
 
 Options structure for seismic modeling.
 
@@ -83,19 +85,21 @@ Options structure for seismic modeling.
 
 `weights`: array of size of the model. If set, injects the source wavelet at every grid point and weighted as the corresponding array.
 
+`return_array`: return linearized data from Born modeling as a plain Julia array.
+
 Constructor
 ==========
 
 All arguments are optional keyword arguments with the following default values:
 
     Options(; space_order, free_surface, limit_m=false, buffer_size=1e3, save_data_to_disk=false, save_wavefield_to_disk=false, file_path=pwd(), file_name="shot",
-        sum_padding=false, optimal_checkpointing=false, num_checkpoints=log(nt), checkpoints_maxmem=[], frequencies=[], subsampling_factor=[], dft_subsampling_factor=[], isic=false, weights=[])
+        sum_padding=false, optimal_checkpointing=false, num_checkpoints=log(nt), checkpoints_maxmem=[], frequencies=[], subsampling_factor=[], dft_subsampling_factor=[], isic=false, weights=[], return_array=false)
 
 """
 Options(; space_order=8, free_surface=false, limit_m=false, buffer_size=1e3, save_data_to_disk=false, save_wavefield_to_disk=false, file_path="", file_name="shot", sum_padding=false,
-    optimal_checkpointing=false, num_checkpoints=nothing, checkpoints_maxmem=nothing, frequencies=[], subsampling_factor=1, dft_subsampling_factor=1, isic=false, weights=nothing) =
+    optimal_checkpointing=false, num_checkpoints=nothing, checkpoints_maxmem=nothing, frequencies=[], subsampling_factor=1, dft_subsampling_factor=1, isic=false, weights=nothing, return_array=false) =
     Options(space_order, free_surface, limit_m, buffer_size, save_data_to_disk, save_wavefield_to_disk, file_path, file_name,
-    sum_padding, optimal_checkpointing, num_checkpoints, checkpoints_maxmem, frequencies, subsampling_factor, dft_subsampling_factor, isic, weights)
+    sum_padding, optimal_checkpointing, num_checkpoints, checkpoints_maxmem, frequencies, subsampling_factor, dft_subsampling_factor, isic, weights, return_array)
 
 
 function subsample(options::Options, srcnum)
