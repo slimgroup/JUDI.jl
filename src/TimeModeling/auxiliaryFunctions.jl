@@ -162,25 +162,25 @@ function ricker_wavelet(tmax, dt, f0)
 end
 
 function load_pymodel()
-    pushfirst!(PyVector(pyimport("sys")["path"]), joinpath(JUDIPATH, "Python"))
+    pushfirst!(PyVector(pyimport("sys")."path"), joinpath(JUDIPATH, "Python"))
     return pyimport("PyModel")
 end
 
 function load_numpy()
-    pushfirst!(PyVector(pyimport("sys")["path"]), joinpath(JUDIPATH, "Python"))
+    pushfirst!(PyVector(pyimport("sys")."path"), joinpath(JUDIPATH, "Python"))
     return pyimport("numpy")
 end
 
 function load_acoustic_codegen()
-    pushfirst!(PyVector(pyimport("sys")["path"]), joinpath(JUDIPATH, "Python"))
+    pushfirst!(PyVector(pyimport("sys")."path"), joinpath(JUDIPATH, "Python"))
     return pyimport("JAcoustic_codegen")
 end
 
 function calculate_dt(n,d,o,v,rho; epsilon=0)
     pm = load_pymodel()
     length(n) == 2 ? pyDim = [n[2], n[1]] : pyDim = [n[3],n[2],n[1]]
-    modelPy = pm["Model"](o, d, pyDim, PyReverseDims(v))
-    dtComp = modelPy[:critical_dt]
+    modelPy = pm."Model"(o, d, pyDim, PyReverseDims(v))
+    dtComp = modelPy.critical_dt
 end
 
 """

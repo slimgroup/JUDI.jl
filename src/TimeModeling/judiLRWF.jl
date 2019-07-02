@@ -126,4 +126,4 @@ function subsample(P::judiLRWF{ADDT,ARDT}, srcnum) where {ADDT,ARDT}
     return judiLRWF(info, data[srcnum];DDT=ADDT,RDT=ARDT)
 end
 
-getindex(P::judiProjection,a) = subsample(P,a)
+getindex(P::judiLRWF,a) = subsample(P,a)
