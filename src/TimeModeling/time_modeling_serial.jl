@@ -279,7 +279,7 @@ function devito_interface(modelPy::PyCall.PyObject, origin, srcGeometry::Geometr
     # Interpolate input data to computational grid
     dtComp = modelPy[:critical_dt]
     qIn = time_resample(srcData[1],srcGeometry,dtComp)[1]
-    if typeof(recData) == Array{Any, 1}
+    if typeof(recData) == Array{Array, 1} || typeof(recData) == Array{Any, 1}
         dIn = time_resample(recData[1],recGeometry,dtComp)[1]
     else
         dIn = time_resample(recData[:,:,1],recGeometry,dtComp)[1]
