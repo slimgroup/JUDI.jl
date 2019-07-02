@@ -3,12 +3,12 @@ using Statistics, Random, LinearAlgebra
 using JUDI.TimeModeling, JUDI.SLIM_optim, HDF5, SeisIO, PyPlot
 
 # Load background velocity model
-n,d,o,m0 = read(h5open("overthrust_model.h5","r"), "n", "d", "o", "m0")
+n,d,o,m0 = read(h5open("../../data/overthrust_model.h5","r"), "n", "d", "o", "m0")
 model0 = Model((n[1],n[2]), (d[1],d[2]), (o[1],o[2]), m0)
-n,d,o,m = read(h5open("overthrust_model.h5","r"), "n", "d", "o", "m")
+n,d,o,m = read(h5open("../../data/overthrust_model.h5","r"), "n", "d", "o", "m")
 
 # Load data
-block = segy_read("overthrust_shot_records.segy")
+block = segy_read("../../data/overthrust_shot_records.segy")
 d_obs = judiVector(block)
 
 # Read original geometry (16 single sources)
@@ -70,7 +70,7 @@ end
 
 figure(); imshow(δd.data[1], vmin=-5e2, vmax=5e2, cmap="gray")
 title("Simultaneous shot")
-figure();imshow(transpose(δm̂_time), vmin=-2e4, vmax=2e4);
+figure();imshow(transpose(δm̂_time), vmin=-8e5, vmax=8e5);
 title("Sim source RTM time-domain")
 figure();imshow(transpose(δm̂_freq_5), vmin=-1e4, vmax=1e4)
 title("Sim source RTM frequency-domain")
