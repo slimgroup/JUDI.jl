@@ -638,7 +638,35 @@ ndims(x::judiVector) = length(size(x))
 
 similar(x::judiVector, element_type::DataType, dims::Union{AbstractUnitRange, Integer}...) = judiVector(x.geometry, x.data)*0f0
 
+function sum(x::judiVector)
+    s = 0f0
+    for j=1:length(x.data)
+        s += vec(x.data[j])
+    end
+    return s
+end
+
 ####################################################################################################
+
+broadcasted(::typeof(+), x::judiVector, y::judiVector) = x + y
+
+broadcasted(::typeof(-), x::judiVector, y::judiVector) = x - y
+
+function broadcasted(::typeof(*), x::judiVector, y::judiVector)
+    z = deepcopy(x)
+    for j=1:length(x.data)
+        z.data[j] = x.data[j] .* y.data[j]
+    end
+    return z
+end
+
+function broadcasted(::typeof(/), x::judiVector, y::judiVector)
+    z = deepcopy(x)
+    for j=1:length(x.data)
+        z.data[j] = x.data[j] ./ y.data[j]
+    end
+    return z
+end
 
 broadcast!(.*, x::judiVector, y::judiVector, a::Number) = scale!(y, a)
 
