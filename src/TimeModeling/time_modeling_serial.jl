@@ -41,11 +41,13 @@ function time_modeling(model_full::Model, srcGeometry, srcData, recGeometry, rec
     end
 
     # Remove receivers outside the modeling domain (otherwise leads to segmentation faults)
-    if mode==1 && recGeometry != nothing
-        recGeometry = remove_out_of_bounds_receivers(recGeometry, model)
-    elseif mode==-1 && recGeometry != nothing
-        recGeometry, recData = remove_out_of_bounds_receivers(recGeometry, recData, model)
-    end
+    # if mode==1 && recGeometry != nothing
+    #     recGeometry = remove_out_of_bounds_receivers(recGeometry, model)
+    # elseif mode==-1 && recGeometry != nothing
+    #     print(typeof(recGeometry))
+    #     print(typeof(recData))
+    #     recGeometry, recData = remove_out_of_bounds_receivers(recGeometry, recData, model)
+    # end
 
     # Devito interface
     argout = devito_interface(modelPy, model.o, srcGeometry, srcData, recGeometry, recData, dm, options)
