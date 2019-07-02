@@ -648,6 +648,10 @@ end
 
 ####################################################################################################
 
+BroadcastStyle(::Type{judiVector}) = Base.Broadcast.DefaultArrayStyle{1}()
+
+ndims(::Type{judiVector{Float32}}) = 1
+
 broadcasted(::typeof(+), x::judiVector, y::judiVector) = x + y
 
 broadcasted(::typeof(-), x::judiVector, y::judiVector) = x - y
@@ -660,12 +664,26 @@ function broadcasted(::typeof(*), x::judiVector, y::judiVector)
     return z
 end
 
+function broadcasted!(::typeof(*), x::judiVector, y::judiVector)
+    for j=1:length(x.data)
+        x.data[j] = x.data[j] .* y.data[j]
+    end
+    return x
+end
+
 function broadcasted(::typeof(/), x::judiVector, y::judiVector)
     z = deepcopy(x)
     for j=1:length(x.data)
         z.data[j] = x.data[j] ./ y.data[j]
     end
     return z
+end
+
+function broadcasted!(::typeof(/), x::judiVector, y::judiVector)
+    for j=1:length(x.data)
+        x.data[j] = x.data[j] .* y.data[j]
+    end
+    return x
 end
 
 broadcast!(.*, x::judiVector, y::judiVector, a::Number) = scale!(y, a)
@@ -739,4 +757,3 @@ dot(x::Float32, y::SeisIO.IBMFloat32) = dot(x, convert(Float32,y))
 
 /(a::Number, x::SeisIO.SeisCon) = /(a,x[1].data)
 /(x::SeisIO.SeisCon, a::Number) = /(x[1].data,a)
-
