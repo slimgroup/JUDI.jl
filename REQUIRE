@@ -3,6 +3,7 @@ FFTW
 HDF5
 IterativeSolvers
 JLD
+HDF5
 PolynomialRoots
 PyCall
 PyPlot

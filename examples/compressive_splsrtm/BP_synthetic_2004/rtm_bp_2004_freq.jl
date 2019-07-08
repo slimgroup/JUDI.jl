@@ -7,7 +7,6 @@
 # Set up path where data will be saved
 data_path = "/path/to/data/"
 
-using Pkg; Pkg.activate("JUDI")
 using JUDI.TimeModeling, SeisIO, JLD, PyPlot, LinearAlgebra
 
 # Load velocity model

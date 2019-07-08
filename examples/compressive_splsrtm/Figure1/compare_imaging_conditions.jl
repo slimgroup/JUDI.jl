@@ -4,7 +4,6 @@
 # Date: January 2017
 #
 
-using Pkg; Pkg.activate("JUDI")
 using JUDI.TimeModeling, PyPlot, JLD, SeisIO, LinearAlgebra
 
 # Load Sigsbee model

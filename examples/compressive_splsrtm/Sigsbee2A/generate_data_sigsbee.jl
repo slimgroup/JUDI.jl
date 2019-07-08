@@ -8,7 +8,6 @@
 file_path="/path/to/data/"
 file_name="sigsbee2A_marine"
 
-using Pkg; Pkg.activate("JUDI")
 using JUDI.TimeModeling, PyPlot, JLD, SeisIO
 
 # Load Sigsbee model
