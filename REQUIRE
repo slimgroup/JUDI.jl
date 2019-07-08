@@ -1,0 +1,10 @@
+Dierckx
+Distributed
+FFTW
+HDF5
+IterativeSolvers
+JLD
+LinearAlgebra
+PolynomialRoots
+PyCall
+PyPlot
