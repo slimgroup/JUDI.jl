@@ -1,4 +1,3 @@
-using Pkg; Pkg.activate("JUDI")
 using Statistics, Random, LinearAlgebra
 using JUDI.TimeModeling, JUDI.SLIM_optim, HDF5, SeisIO, PyPlot
 

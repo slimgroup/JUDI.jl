@@ -4,7 +4,6 @@
 # Date: January 2017
 #
 
-using Pkg; Pkg.activate("JUDI")
 using JUDI.TimeModeling, SeisIO, LinearAlgebra, PyPlot
 
 ## Set up model structure

@@ -18,7 +18,6 @@ module JOLI4Flux
 end
 # end of hack
 
-using Pkg; Pkg.activate("JUDI")
 using JUDI.TimeModeling, SeisIO, LinearAlgebra, Flux, JOLI
 
 
