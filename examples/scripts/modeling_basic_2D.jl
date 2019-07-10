@@ -74,6 +74,8 @@ J = judiJacobian(Pr*F0*adjoint(Ps), q)
 
 # Nonlinear modeling
 dobs = Pr*F*adjoint(Ps)*q
+d0 = Pr*F0*adjoint(Ps)*q
+g = adjoint(J)*(dobs - d0)
 # qad = Ps*adjoint(F)*adjoint(Pr)*dobs
 #
 # # Linearized modeling

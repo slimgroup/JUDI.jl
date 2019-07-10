@@ -112,7 +112,6 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
         if freesurface:
             z_m += model.nbpml
         op(y_m=z_m)
-        from IPython import embed; embed()
         if rec_coords is None:
             return u
         else:
@@ -153,7 +152,7 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=8, fre
     # Set up PDE and rearrange
     vlaplace, rho = acoustic_laplacian(v, rho)
     H = symbols('H')
-    eqn = m / rho * v.dt2 - H + 2 * damp * v.dt + damp * damp * v
+    eqn = m / rho * v.dt2 - H + 2 * damp * v.dt.T + damp * damp * v
     stencil = solve(eqn, v.backward).subs({H: vlaplace + full_q})
 
     expression = [Eq(v.backward, stencil)]
@@ -277,8 +276,8 @@ def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residu
     # Set up PDE and rearrange
     vlaplace, rho = acoustic_laplacian(v, rho)
     H = symbols('H')
-    eqn = m / rho * v.dt2 - H + 2 * damp * v.dt + damp * damp * v
-    stencil = solve(eqn, v.backward).subs({H: vlaplace })
+    eqn = m / rho * v.dt2 - H + 2 * damp * v.dt.T + damp * damp * v
+    stencil = solve(eqn, v.backward).subs({H: vlaplace})
 
     expression = [Eq(v.backward, stencil)]
     # Data at receiver locations as adjoint source
@@ -335,7 +334,6 @@ def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residu
         wrp.apply_reverse(y_m=z_m)
     else:
         op(y_m=z_m)
-    clear_cache()
 
     if op_forward is not None and is_residual is not True:
         return fval, gradient.data

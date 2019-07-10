@@ -235,7 +235,7 @@ class Model(object):
         # dt <= coeff * h / (max(velocity))
         coeff = 0.38 if len(self.shape) == 3 else 0.42
         dt = self.dtype(coeff * np.min(self.spacing) / (self.scale*np.max(self.vp)))
-        return self.dtype(.001 * int(1000 * dt))
+        return self.dtype('%.3f' % dt)
 
     @property
     def vp(self):
