@@ -35,25 +35,29 @@ def initialize_damp(damp, nbpml, spacing, mask=False):
     pad_widths = [(nbpml, nbpml) for i in range(damp.ndim)]
     data = np.pad(data, pad_widths, 'edge')
 
-    dampcoeff = 1.5 * np.log(1.0 / 0.001) / (40.)
+    # dampcoeff = 1.5 * np.log(1.0 / 0.001) / (40.)
+    
+    L = nbpml
+    dampcoeff = 1.5*np.log(1/.5) * 3 / (2 * L**3)
 
     assert all(damp._offset_domain[0] == i for i in damp._offset_domain)
 
     for i in range(damp.ndim):
         for j in range(nbpml):
             # Dampening coefficient
-            pos = np.abs((nbpml - j + 1) / float(nbpml))
-            val = dampcoeff * (pos - np.sin(2*np.pi*pos)/(2*np.pi))
+            pos = np.abs((nbpml - j + 1))
+            val = dampcoeff * pos**2
             if mask:
-                val = -val
+                pos = np.abs((nbpml - j + 1) / float(nbpml))
+                val = -dampcoeff * (pos - np.sin(2*np.pi*pos)/(2*np.pi))
             # : slices
             all_ind = [slice(0, d) for d in data.shape]
             # Left slice for dampening for dimension i
             all_ind[i] = slice(j, j+1)
-            data[tuple(all_ind)] += val/spacing[i]
+            data[tuple(all_ind)] += val
             # right slice for dampening for dimension i
             all_ind[i] = slice(data.shape[i]-j, data.shape[i]-j+1)
-            data[tuple(all_ind)] += val/spacing[i]
+            data[tuple(all_ind)] += val
 
     initialize_function(damp, data, 0)
 
@@ -119,7 +123,7 @@ class Model(object):
 
         # Create dampening field as symbol `damp`
         self.damp = Function(name="damp", grid=self.grid)
-        initialize_damp(self.damp, self.nbpml, self.spacing, mask=True)
+        initialize_damp(self.damp, self.nbpml, self.spacing, mask=False)
 
         # Additional parameter fields for TTI operators
         self.scale = 1.

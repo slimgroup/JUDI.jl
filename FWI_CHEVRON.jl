@@ -29,36 +29,37 @@ wavelet = [wavelet; zeros(length(0:dtwavelet:8000) - length(wavelet), 1)]
 wavelet = time_resample(wavelet, dtwavelet, Geometry(d_obs[1].geometry))
 
 full_wavelet = copy(wavelet)
-wave_low = low_filter(wavelet, 4.0; fmin=1.0, fmax=5.0)
+wave_low = low_filter(wavelet, 4.0; fmin=.1, fmax=4.0)
 src_geometry = Geometry(container; key = "source", segy_depth_key="SourceDepth")
 q = judiVector(src_geometry, wave_low)
 
 
 shot1 = d_obs.data[1][1]
-shot1_filtered = low_filter(Float32.(shot1.data), 4.0; fmin=1.0, fmax=5.0)
+shot1_filtered = low_filter(Float32.(shot1.data), 4.0; fmin=.1, fmax=4.0)
 
 
 ############################### Linear operators for testing ############
 #
-# ntComp = get_computational_nt(src_geometry, d_obs.geometry, model0)    # no. of computational time steps
-# info = Info(prod(model0.n), d_obs.nsrc, ntComp)
-# # Enable optimal checkpointing
-# opt = Options(optimal_checkpointing = false,
-#               limit_m = true,
-#               buffer_size = 1500f0,
-#               freesurface=true)
+ntComp = get_computational_nt(src_geometry, d_obs.geometry, model0)    # no. of computational time steps
+info = Info(prod(model0.n), d_obs.nsrc, ntComp)
+# Enable optimal checkpointing
+opt = Options(optimal_checkpointing = false,
+              limit_m = true,
+              buffer_size = 1000f0,
+              free_surface=true,
+			  normalize=true,
+			  space_order=12)
 #
-# # Setup operators
-# Pr = judiProjection(info, d_obs.geometry)
-# F = judiModeling(info, model0; options=opt)
-# Ps = judiProjection(info, src_geometry)
-# # q = judiVector(src_geometry, wavelet)
-# J = judiJacobian(Pr*F*Ps', q)
-#
-# D0 = Pr[1]*F[1]*Ps[1]'*q[1]
+# Setup operators
+Pr = judiProjection(info, d_obs.geometry)
+F = judiModeling(info, model0; options=opt)
+Ps = judiProjection(info, src_geometry)
+# q = judiVector(src_geometry, wavelet)
+J = judiJacobian(Pr*F*Ps', q)
+
+D0 = Pr[1]*F[1]*Ps[1]'*q[1]
 
 ############################### FWI ###########################################
-opt = Options(limit_m=true, buffer_size=1000f0, normalize=true, freesurface=true)
 
 # Bound projection
 ProjBound(x) = boundproject(x, maximum(m0), .9*minimum(m0))
@@ -114,7 +115,7 @@ x, fsave, funEvals= minConf_SPG(fwi_obj, x, ProjBound, options)
 save("FWI-10.jld", "m0", m0, "x", reshape(x, model0.n), "fval", fsave, "funEvals", funEvals)
 
 ############################### GS-FWI-shot ###########################################
-opt = Options(limit_m=true, buffer_size=1000f0, freesurface=true, normalize=true, gs=Dict("maxshift" => 400.0f0, "strategy" => "shot"))
+opt = Options(limit_m=true, buffer_size=1000f0, free_surface=true, normalize=true, gs=Dict("maxshift" => 400.0f0, "strategy" => "shot"))
 srand(1)    # set seed of random number generator
 # Objective function for minConf library
 
@@ -142,7 +143,7 @@ x, fsave, funEvals= minConf_SPG(fwi_obj, x, ProjBound, options)
 save("FWIgss-10.jld", "m0", m0, "x", reshape(x, model0.n), "fval", fsave, "funEvals", funEvals)
 
 ############################### GS-FWI-trace ###########################################
-opt = Options(limit_m=true, buffer_size=1000f0, freesurface=true, normalize=true, gs=Dict("maxshift" => 400.0f0, "strategy" => "trace"))
+opt = Options(limit_m=true, buffer_size=1000f0, free_surface=true, normalize=true, gs=Dict("maxshift" => 400.0f0, "strategy" => "trace"))
 srand(1)    # set seed of random number generator
 
 

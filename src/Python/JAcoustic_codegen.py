@@ -9,10 +9,10 @@ from __future__ import print_function
 import numpy as np
 import gc, os, psutil
 from numpy.random import randint
-from sympy import solve, cos, sin, expand, symbols
+from sympy import cos, sin, expand, symbols
 from sympy import Function as fint
 from devito.logger import set_log_level
-from devito import Eq, Function, TimeFunction, Dimension, Operator, clear_cache, ConditionalDimension, DefaultDimension, Inc
+from devito import Eq, Function, TimeFunction, Dimension, Operator, clear_cache, ConditionalDimension, DefaultDimension, Inc, solve
 from devito import first_derivative, left, right
 from PySource import PointSource, Receiver
 from PyModel import Model
@@ -70,9 +70,9 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
 
     # Set up PDE and rearrange
     ulaplace, rho = acoustic_laplacian(u, rho)
-    # H = symbols('H')
-    # eqn = m / rho * u.dt2 - H + damp * u.dt
-    stencil = damp * ( 2.0 * u - damp * u.backward + dt**2 * rho / m * ulaplace)
+    H = symbols('H')
+    eqn = m / rho * u.dt2 - H + 2 * damp * u.dt + damp * damp * u
+    stencil = solve(eqn, u.forward).subs({H: ulaplace})
 
     # Input source is wavefield
     if isinstance(wavelet, TimeFunction):
@@ -107,8 +107,12 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
     subs = model.spacing_map
     subs[u.grid.time_dim.spacing] = dt
     op = Operator(expression, subs=subs, dse='advanced', dle='advanced')
+    z_m = op.arguments()["y_m"]
     if op_return is False:
-        op()
+        if freesurface:
+            z_m += model.nbpml
+        op(y_m=z_m)
+        from IPython import embed; embed()
         if rec_coords is None:
             return u
         else:
@@ -146,7 +150,12 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=8, fre
         wf_rec._data = rec_data._data
         full_q = wf_rec
 
-    stencil = damp * (2.0 * v - damp * v.forward + dt**2 * rho / m * (vlaplace + full_q))
+    # Set up PDE and rearrange
+    vlaplace, rho = acoustic_laplacian(v, rho)
+    H = symbols('H')
+    eqn = m / rho * v.dt2 - H + 2 * damp * v.dt + damp * damp * v
+    stencil = solve(eqn, v.backward).subs({H: vlaplace + full_q})
+
     expression = [Eq(v.backward, stencil)]
 
     # Free surface
@@ -171,7 +180,10 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=8, fre
     subs = model.spacing_map
     subs[v.grid.time_dim.spacing] = dt
     op = Operator(expression, subs=subs, dse='advanced', dle='advanced')
-    op()
+    z_m = op.arguments()["y_m"]
+    if freesurface:
+        z_m += model.nbpml
+    op(y_m=z_m)
     if src_coords is None:
         return v
     else:
@@ -208,8 +220,13 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, isic=Fal
     else:
         lin_source = dm / rho * u.dt2
 
-    stencil_u = damp * (2.0 * u - damp * u.backward + dt**2 * rho / m * ulaplace)
-    stencil_du = damp * (2.0 * du - damp * du.backward + dt**2 * rho / m * (dulaplace - lin_source))
+    # Set up PDE and rearrange
+    H = symbols('H')
+    eqn = m / rho * u.dt2 - H + 2 * damp * u.dt + damp * damp * u
+    stencil_u = solve(eqn, u.forward).subs({H: ulaplace})
+
+    eqn = m / rho * du.dt2 - H + 2 * damp * du.dt + damp * damp * du
+    stencil_u = solve(eqn, du.forward).subs({H: dulaplace - lin_source})
 
     expression_u = [Eq(u.forward, stencil_u)]
     expression_du = [Eq(du.forward, stencil_du)]
@@ -235,8 +252,10 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, isic=Fal
     subs = model.spacing_map
     subs[u.grid.time_dim.spacing] = dt
     op = Operator(expression, subs=subs, dse='advanced', dle='advanced')
-    op()
-
+    z_m = op.arguments()["y_m"]
+    if freesurface:
+        z_m += model.nbpml
+    op(y_m=z_m)
     return rec.data
 
 
@@ -257,7 +276,10 @@ def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residu
 
     # Set up PDE and rearrange
     vlaplace, rho = acoustic_laplacian(v, rho)
-    stencil = damp * (2.0 * v - damp * v.forward + dt**2 * rho / m * vlaplace)
+    H = symbols('H')
+    eqn = m / rho * v.dt2 - H + 2 * damp * v.dt + damp * damp * v
+    stencil = solve(eqn, v.backward).subs({H: vlaplace })
+
     expression = [Eq(v.backward, stencil)]
     # Data at receiver locations as adjoint source
     rec_g = Receiver(name='rec_g', grid=model.grid, ntime=nt, coordinates=rec_coords)
@@ -288,7 +310,9 @@ def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residu
     subs = model.spacing_map
     subs[u.grid.time_dim.spacing] = dt
     op = Operator(expression, subs=subs, dse='advanced', dle='advanced')
-
+    z_m = op.arguments()["y_m"]
+    if freesurface:
+        z_m += model.nbpml
     # Optimal checkpointing
     if op_forward is not None:
         rec = Receiver(name='rec', grid=model.grid, ntime=nt, coordinates=rec_coords)
@@ -300,7 +324,7 @@ def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residu
 
         # Run forward
         wrp = Revolver(cp, wrap_fw, wrap_rev, n_checkpoints, nt-2)
-        wrp.apply_forward()
+        wrp.apply_forward(y_m=z_m)
 
         # Residual and gradient
         if is_residual is True:  # input data is already the residual
@@ -308,9 +332,9 @@ def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residu
         else:
             rec_g.data[:] = rec.data[:] - rec_data[:]   # input is observed data
             fval = .5*np.dot(rec_g.data[:].flatten(), rec_g.data[:].flatten()) * dt
-        wrp.apply_reverse()
+        wrp.apply_reverse(y_m=z_m)
     else:
-        op()
+        op(y_m=z_m)
     clear_cache()
 
     if op_forward is not None and is_residual is not True:

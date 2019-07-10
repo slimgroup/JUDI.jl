@@ -23,7 +23,7 @@ dm = vec(m - m0)
 
 # Setup info and model structure
 nsrc = 2	# number of sources
-model = Model(n, d, o, m)
+model = Model(n, d, o, m; rho=ones(n))
 model0 = Model(n, d, o, m0)
 
 ## Set up receiver geometry
@@ -74,12 +74,12 @@ J = judiJacobian(Pr*F0*adjoint(Ps), q)
 
 # Nonlinear modeling
 dobs = Pr*F*adjoint(Ps)*q
-qad = Ps*adjoint(F)*adjoint(Pr)*dobs
-
-# Linearized modeling
-#J.options.file_name = "linearized_shot"
-dD = J*dm
-rtm = adjoint(J)*dD
-
-# evaluate FWI objective function
-f, g = fwi_objective(model0, q, dobs; options=opt)
+# qad = Ps*adjoint(F)*adjoint(Pr)*dobs
+#
+# # Linearized modeling
+# #J.options.file_name = "linearized_shot"
+# dD = J*dm
+# rtm = adjoint(J)*dD
+#
+# # evaluate FWI objective function
+# f, g = fwi_objective(model0, q, dobs; options=opt)
