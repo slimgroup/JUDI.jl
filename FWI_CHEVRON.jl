@@ -73,7 +73,7 @@ batchsize = 80
 fmin = 1.0
 options = spg_options(verbose=3, maxIter=fevals, memory=1)
 # Optimization parameters
-srand(1)    # set seed of random number generator
+Random.seed!(1)    # set seed of random number generator
 
 
 # Objective function for minConf library
@@ -121,7 +121,7 @@ f, g = fwi_obj(x)
 
 ############################### GS-FWI-shot ###########################################
 opt = Options(limit_m=true, buffer_size=1000f0, free_surface=true, normalize=true, gs=Dict("maxshift" => 400.0f0, "strategy" => "shot"))
-srand(1)    # set seed of random number generator
+Random.seed!(1)   # set seed of random number generator
 # Objective function for minConf library
 
 
@@ -149,7 +149,7 @@ f2, g2 = fwi_obj(x)
 
 ############################### GS-FWI-trace ###########################################
 opt = Options(limit_m=true, buffer_size=1000f0, free_surface=true, normalize=true, gs=Dict("maxshift" => 400.0f0, "strategy" => "trace"))
-srand(1)    # set seed of random number generator
+Random.seed!(1)    # set seed of random number generator
 
 
 # FWI with SPG

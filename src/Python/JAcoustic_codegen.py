@@ -34,7 +34,10 @@ def J_adjoint(model, src_coords, wavelet, rec_coords, recin, space_order=12,
         u0 = forward_modeling(model, src_coords, wavelet, None, save=True, space_order=space_order,
                               t_sub_factor=t_sub_factor, h_sub_factor=h_sub_factor, dt=dt, free_surface=free_surface)
         grad = adjoint_born(model, rec_coords, recin, u=u0, space_order=space_order, isic=isic, dt=dt, free_surface=free_surface)
-
+    
+    clear_cache()
+    del u0
+    clear_cache()
     return grad
 
 def acoustic_laplacian(v, rho):
@@ -334,7 +337,10 @@ def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residu
         wrp.apply_reverse(y_m=z_m)
     else:
         op(y_m=z_m)
-
+    
+    clear_cache()
+    del u
+    clear_cache()
     if op_forward is not None and is_residual is not True:
         return fval, gradient.data
     else:
