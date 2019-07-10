@@ -1,29 +1,29 @@
-using JUDI.TimeModeling, JUDI.SLIM_optim, SeisIO, JLD, PyPlot
+using JUDI.TimeModeling, JUDI.SLIM_optim, SeisIO, JLD, PyPlot, DelimitedFiles
 
-vp = segy_read("/data/slim/data/ChevronTexaco/ChevronSEG2014/SEG14.Vpsmoothstarting.segy")  # IBM Float32 format [m/s]
+vp = segy_read("/Users/mathiaslouboutin//data/ChevronSEG2014/SEG14.Vpsmoothstarting.segy")  # IBM Float32 format [m/s]
 
-vp = Float32.(vp.data) / 1f3
+vp = Float32.(vp.data)[1:2:end, 1:2:end] ./ 1f3
 # Pad for sources outside
 last = vp[:, end]
-vp = hcat(vp, last*ones(Float32, 1, 100))'
+vp = hcat(vp, last*ones(Float32, 1, 50))'
 
 rho = Float32.(0.31 * (1f3*vp).^0.25)
-rho[vp .< 1.55] = 1.0
+rho[vp .< 1.55] .= 1.0
 
-d = (12.5, 12.5)
+d = (25, 25)
 n = size(vp)
 o = (0., 0.)
-m0 = 1./vp.^2
+m0 = 1f0 ./ vp.^2
 
-model0 = Model(n, d, o, m0; nb=40)
+model0 = Model(n, d, o, m0; nb=40, rho=rho)
 
 # Read datasets
-container = segy_scan("/data/slim/data/ChevronTexaco/ChevronSEG2014/", "Piso", ["GroupX", "GroupY", "RecGroupElevation", "dt"])
+container = segy_scan("/Users/mathiaslouboutin/data/ChevronSEG2014/", "Piso", ["GroupX", "GroupY", "RecGroupElevation", "dt"])
 d_obs = judiVector(container; segy_depth_key="RecGroupElevation")
 
 # read source and resample
 
-wavelet = readdlm("/data/slim/data/ChevronTexaco/ChevronSEG2014/Wavelet.txt", ',')[2:end]
+wavelet = readdlm("/Users/mathiaslouboutin/data/ChevronSEG2014/Wavelet.txt", ',')[2:end]
 dtwavelet = 2.0/3.0
 wavelet = [wavelet; zeros(length(0:dtwavelet:8000) - length(wavelet), 1)]
 wavelet = time_resample(wavelet, dtwavelet, Geometry(d_obs[1].geometry))
