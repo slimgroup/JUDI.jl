@@ -656,9 +656,18 @@ function gs_residual_shot(maxshift, dtComp, dPredicted, dObserved, normalize)
 	residual = zeros(Float32, data_size)
 	dPredicted = [zeros(Float32, nshift, size(dPredicted,2)); dPredicted; zeros(Float32, nshift, size(dPredicted,2))]
 	dObserved = [zeros(Float32, nshift, size(dPredicted,2)); dObserved; zeros(Float32, nshift, size(dPredicted,2))]
-	if normalize
+	if normalize == "shot"
 		dPredicted /= norm(vec(dPredicted))
 		dObserved /= norm(vec(dObserved))
+	elseif normalize == "trace"
+		for i = 1:size(dPredicted,2)
+			if norm(dPredicted[:, i]) > 0
+				dPredicted[:, i] /= norm(dPredicted[:, i])
+			end
+			if norm(dObserved[:, i]) > 0
+				dObserved[:, i] /= norm(dObserved[:, i])
+			end
+		end
 	end
 	aux = zeros(Float32, size(dPredicted))
 
@@ -711,4 +720,31 @@ function gs_residual(gs, dtComp, dPredicted, dObserved, normalize)
 		residual = gs_residual_trace(gs["maxshift"], dtComp, dPredicted, dObserved, normalize)
 	end
 	return residual
+end
+
+function misfit(d1, d2, normalize)
+    if normalize == "shot"
+            obj = norm(vec(d1)) - dot(vec(d1),vec(d2))/norm(vec(d2))
+    elseif normalize == "trace"
+        indnz = [i for i in 1:size(d2, 2) if norm(d2[:, i])>0]
+        obj = sum(norm(vec(d1[:, i])) - dot(vec(d1[:, i]),vec(d2[:, i]))/norm(vec(d2[:, i])) for i in indnz)
+    else
+        obj = .5f0*norm(vec(d1) - vec(d2),2)^2.f0
+    end
+
+	return obj
+end
+
+function adjoint_src(d1, d2; normalize_adj=false)
+    if normalize_adj == "trace"
+		for i in indnz
+			adj_src[:, i] = d1[:, i]/norm(vec(d1[:, i])) - d2[:, i]/norm(vec(d2[:, i]))
+		end
+	elseif normalize == "shot"
+        adj_src = d1/norm(vec(d1)) - d2/norm(vec(d2))
+    else
+        adj_src = d1 - d2
+    end
+
+	return adj_src
 end

@@ -68,27 +68,28 @@ function fwi_objective(model_full::Model, source::judiVector, dObs::judiVector, 
                          options.frequencies, uf_real, uf_imag, space_order=options.space_order,
 						 nb=model.nb, free_surface=options.free_surface)
     else
-        dPredicted, u0 = pycall(ac."forward_modeling", PyObject, modelPy,
-								PyReverseDims(copy(transpose(src_coords))),
-								PyReverseDims(copy(transpose(qIn))),
-								PyReverseDims(copy(transpose(rec_coords))),
-								save=true, free_surface=options.free_surface)
-    	# Data misfit
-        if isempty(options.gs)
-            # wrong misfit for trace based
-            argout1 = misfit(dPredicted, dObserved, options.normalize)
-            residual = adjoint_src(dPredicted, dObserved, options.normalize)
-        else
-            argout1 = misfit(dPredicted, dObserved, options.normalize; trace=options.gs["strategy"])
-            residual = gs_residual(options.gs, dtComp, dPredicted, dObserved, options.normalize)
-        end
+        fwd_pred = pycall(ac."forward_modeling", PyObject, modelPy,
+						  PyReverseDims(copy(transpose(src_coords))),
+						  PyReverseDims(copy(transpose(qIn))),
+						  PyReverseDims(copy(transpose(rec_coords))), save=true,
+						  tsub_factor=options.subsampling_factor)
+		dPredicted = get(fwd_pred, 0) 
+        # wrong misfit for trace based
+		if isempty(options.gs)
+        	adj_src = adjoint_src(dPredicted, dObserved; normalize_adj=options.normalize)
+		else
+			adj_src = gs_residual(options.gs, dtComp, dPredicted, dObserved, options.normalize)
+		end
+        argout1 = misfit(dPredicted, dObserved, options.normalize)
+		
         argout2 = pycall(ac."adjoint_born", Array{Float32}, modelPy,
 						 PyReverseDims(copy(transpose(rec_coords))),
-						 PyReverseDims(copy(transpose(residual))), u=u0,
-						 is_residual=true, free_surface=options.free_surface)
+						 PyReverseDims(copy(transpose(adj_src))),
+						 tsub_factor=options.subsampling_factor,
+                         u=get(fwd_pred, 1), is_residual=true)
     end
     argout2 = remove_padding(argout2, model.nb, true_adjoint=options.sum_padding)
-    if options.limit_m==true
+    if options.limit_m==true && length(model_full.n) == 3
         argout2 = extend_gradient(model_full,model,argout2)
     end
     return [argout1; vec(argout2)]
@@ -138,29 +139,56 @@ function fwi_objective(model_full::Model_TTI, source::judiVector, dObs::judiVect
 
     # Forward modeling to generate synthetic data and background wavefields
     if options.optimal_checkpointing == true
-        op_F = pycall(ac."forward_modeling", PyObject, modelPy, PyReverseDims(copy(transpose(src_coords))), PyReverseDims(copy(transpose(qIn))), PyReverseDims(copy(transpose(rec_coords))), op_return=true)
-        argout1, argout2 = pycall(ac."adjoint_born", PyObject, modelPy, PyReverseDims(copy(transpose(rec_coords))), PyReverseDims(copy(transpose(dObserved))),
-                                  op_forward=op_F, is_residual=false, n_checkpoints=options.num_checkpoints, maxmem=options.checkpoints_maxmem)
+        op_F = pycall(ac."forward_modeling", PyObject, modelPy,
+					  PyReverseDims(copy(transpose(src_coords))),
+					  PyReverseDims(copy(transpose(qIn))),
+					  PyReverseDims(copy(transpose(rec_coords))), op_return=true)
+        argout1, argout2 = pycall(ac."adjoint_born", PyObject, modelPy,
+								  PyReverseDims(copy(transpose(rec_coords))),
+								  PyReverseDims(copy(transpose(dObserved))),
+                                  op_forward=op_F, is_residual=false,
+								  n_checkpoints=options.num_checkpoints,
+								  maxmem=options.checkpoints_maxmem)
     elseif ~isempty(options.frequencies)
                 typeof(options.frequencies) == Array{Any,1} && (options.frequencies = options.frequencies[srcnum])
-                dPredicted, uf_real, uf_imag = pycall(ac."forward_freq_modeling", PyObject, modelPy, PyReverseDims(copy(transpose(src_coords))), PyReverseDims(copy(transpose(qIn))), PyReverseDims(copy(transpose(rec_coords))),
-                                                      options.frequencies, space_order=options.space_order, nb=model.nb, factor=options.dft_subsampling_factor)
+                dPredicted, uf_real, uf_imag = pycall(ac."forward_freq_modeling", PyObject, modelPy,
+													  PyReverseDims(copy(transpose(src_coords))),
+													  PyReverseDims(copy(transpose(qIn))),
+													  PyReverseDims(copy(transpose(rec_coords))),
+													  options.frequencies, space_order=options.space_order,
+													  nb=model.nb, factor=options.dft_subsampling_factor)
                 argout1 = .5f0*dot(vec(dPredicted) - vec(dObserved), vec(dPredicted) - vec(dObserved))*dtComp  # FWI objective function value
-                argout2 = pycall(ac."adjoint_freq_born", Array{Float32, length(model.n)}, modelPy, PyReverseDims(copy(transpose(rec_coords))), PyReverseDims(copy(transpose((dPredicted - dObserved)))),
-                                 options.frequencies, factor=options.dft_subsampling_factor, uf_real, uf_imag, space_order=options.space_order, nb=model.nb)
+                argout2 = pycall(ac."adjoint_freq_born", Array{Float32, length(model.n)}, modelPy,
+				                 PyReverseDims(copy(transpose(rec_coords))),
+								 PyReverseDims(copy(transpose((dPredicted - dObserved)))),
+								 options.frequencies, factor=options.dft_subsampling_factor,
+								 uf_real, uf_imag, space_order=options.space_order, nb=model.nb)
     else
-        dPredicted, u0 = pycall(ac."forward_modeling", PyObject, modelPy, PyReverseDims(copy(transpose(src_coords))), PyReverseDims(copy(transpose(qIn))), PyReverseDims(copy(transpose(rec_coords))), save=true, tsub_factor=options.subsampling_factor)
-        argout1 = .5f0*dot(vec(dPredicted) - vec(dObserved), vec(dPredicted) - vec(dObserved))*dtComp # FWI objective function value
-        argout2 = pycall(ac."adjoint_born", Array{Float32}, modelPy, PyReverseDims(copy(transpose(rec_coords))), PyReverseDims(copy(transpose((dPredicted  - dObserved)))), tsub_factor=options.subsampling_factor,
-                         u=u0, is_residual=true)
+        fwd_pred = pycall(ac."forward_modeling", PyObject, modelPy,
+						  PyReverseDims(copy(transpose(src_coords))),
+						  PyReverseDims(copy(transpose(qIn))),
+						  PyReverseDims(copy(transpose(rec_coords))), save=true,
+						  tsub_factor=options.subsampling_factor)
+		dPredicted = get(fwd_pred, 0) 
+        # wrong misfit for trace based
+		if isempty(options.gs)
+        	adj_src = adjoint_src(dPredicted, dObserved; normalize_adj=options.normalize)
+		else
+			adj_src = gs_residual(options.gs, dtComp, dPredicted, dObserved, options.normalize)
+		end
+        argout1 = misfit(dPredicted, dObserved, options.normalize)
+		
+        argout2 = pycall(ac."adjoint_born", Array{Float32}, modelPy,
+						 PyReverseDims(copy(transpose(rec_coords))),
+						 PyReverseDims(copy(transpose(adj_src))),
+						 tsub_factor=options.subsampling_factor,
+                         u=get(fwd_pred, 1), is_residual=true)
     end
     argout2 = remove_padding(argout2, model.nb, true_adjoint=options.sum_padding)
-    if options.limit_m==true
+    if options.limit_m==true && length(model_full.n) == 3
         argout2 = extend_gradient(model_full,model,argout2)
     end
-    u0 = []
-    u0 = 0.
-    u0 = []
+
     return [argout1; vec(argout2)]
 end
 
