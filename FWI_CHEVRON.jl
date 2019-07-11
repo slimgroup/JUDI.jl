@@ -15,7 +15,7 @@ n = size(vp)
 o = (0., 0.)
 m0 = 1f0 ./ vp.^2
 
-model0 = Model(n, d, o, m0; nb=40, rho=rho)
+model0 = Model(n, d, o, m0; nb=40)
 
 # Read datasets
 container = segy_scan("/Users/mathiaslouboutin/data/ChevronSEG2014/", "Piso", ["GroupX", "GroupY", "RecGroupElevation", "dt"])
@@ -69,7 +69,7 @@ J = judiJacobian(Pr*F*Ps', q)
 ProjBound(x) = boundproject(x, maximum(m0), .9*minimum(m0))
 
 fevals = 10
-batchsize = 80
+batchsize = 5
 fmin = 1.0
 options = spg_options(verbose=3, maxIter=fevals, memory=1)
 # Optimization parameters

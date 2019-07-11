@@ -122,7 +122,7 @@ class Model(object):
         self.vp = vp
 
         # Create dampening field as symbol `damp`
-        self.damp = Function(name="damp", grid=self.grid)
+        self.damp = Function(name="damp", grid=self.grid, space_order=0)
         initialize_damp(self.damp, self.nbpml, self.spacing, mask=False)
 
         # Additional parameter fields for TTI operators

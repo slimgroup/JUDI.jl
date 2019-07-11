@@ -23,6 +23,7 @@ from utils import freesurface
 def J_adjoint(model, src_coords, wavelet, rec_coords, recin, space_order=12,
                 t_sub_factor=20, h_sub_factor=2, checkpointing=False, free_surface=False,
                 n_checkpoints=None, maxmem=None, dt=None, isic=False):
+    clear_cache()
     if checkpointing:
         F = forward_modeling(model, src_coords, wavelet, rec_coords, save=True, space_order=space_order,
                              t_sub_factor=t_sub_factor, h_sub_factor=h_sub_factor, dt=dt, op_return=True,
@@ -35,9 +36,6 @@ def J_adjoint(model, src_coords, wavelet, rec_coords, recin, space_order=12,
                               t_sub_factor=t_sub_factor, h_sub_factor=h_sub_factor, dt=dt, free_surface=free_surface)
         grad = adjoint_born(model, rec_coords, recin, u=u0, space_order=space_order, isic=isic, dt=dt, free_surface=free_surface)
     
-    clear_cache()
-    del u0
-    clear_cache()
     return grad
 
 def acoustic_laplacian(v, rho):
@@ -93,13 +91,6 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
         rec_term = rec.interpolate(expr=u)
         expression += rec_term
 
-    # Create operator and run
-
-    # Free surface
-    kwargs = dict()
-    if free_surface is True:
-        expression += freesurface(u, space_order//2, model.nbpml)
-
     # Source symbol with input wavelet
     if src_coords is not None:
         src = PointSource(name='src', grid=model.grid, ntime=nt, coordinates=src_coords)
@@ -107,9 +98,15 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
         src_term = src.inject(field=u.forward, expr=src.dt * rho * dt**2 / m)
         expression += src_term
 
+    # Free surface
+    kwargs = dict()
+    if free_surface is True:
+        expression += freesurface(u, space_order//2, model.nbpml)
+
     subs = model.spacing_map
     subs[u.grid.time_dim.spacing] = dt
-    op = Operator(expression, subs=subs, dse='advanced', dle='advanced')
+
+    op = Operator(expression, subs=subs, dse='advanced', dle='advanced', name='Forward')
     z_m = op.arguments()["y_m"]
     if op_return is False:
         if freesurface:
@@ -160,9 +157,6 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=8, fre
 
     expression = [Eq(v.backward, stencil)]
 
-    # Free surface
-    if free_surface is True:
-        expression += freesurface(v, space_order//2, model.nbpml, forward=False)
 
     # Adjoint source is injected at receiver locations
     if rec_coords is not None:
@@ -177,11 +171,15 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=8, fre
         adj_rec = src.interpolate(expr=v)
         expression += adj_rec
 
+    # Free surface
+    if free_surface is True:
+        expression += freesurface(v, space_order//2, model.nbpml, forward=False)
+
     # Create operator and run
 
     subs = model.spacing_map
     subs[v.grid.time_dim.spacing] = dt
-    op = Operator(expression, subs=subs, dse='advanced', dle='advanced')
+    op = Operator(expression, subs=subs, dse='advanced', dle='advanced', name='Adjoint')
     z_m = op.arguments()["y_m"]
     if freesurface:
         z_m += model.nbpml
@@ -253,7 +251,7 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, isic=Fal
 
     subs = model.spacing_map
     subs[u.grid.time_dim.spacing] = dt
-    op = Operator(expression, subs=subs, dse='advanced', dle='advanced')
+    op = Operator(expression, subs=subs, dse='advanced', dle='advanced', name='Born')
     z_m = op.arguments()["y_m"]
     if freesurface:
         z_m += model.nbpml
@@ -304,14 +302,15 @@ def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residu
 
     # Create operator and run
 
+    expression += adj_src + gradient_update
+
     # Free surface
     if free_surface is True:
         expression += freesurface(v, space_order//2, model.nbpml, forward=False)
 
-    expression += adj_src + gradient_update
     subs = model.spacing_map
     subs[u.grid.time_dim.spacing] = dt
-    op = Operator(expression, subs=subs, dse='advanced', dle='advanced')
+    op = Operator(expression, subs=subs, dse='advanced', dle='advanced', name='Forward')
     z_m = op.arguments()["y_m"]
     if freesurface:
         z_m += model.nbpml
@@ -337,10 +336,7 @@ def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residu
         wrp.apply_reverse(y_m=z_m)
     else:
         op(y_m=z_m)
-    
-    clear_cache()
-    del u
-    clear_cache()
+
     if op_forward is not None and is_residual is not True:
         return fval, gradient.data
     else:
