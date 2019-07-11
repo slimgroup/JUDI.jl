@@ -14,13 +14,13 @@ function devito_model(model::Model, op, mode, options, dm)
     length(model.n) == 3 ? dims = [3,2,1] : dims = [2,1]   # model dimensions for Python are (z,y,x) and (z,x)
     # Set up Python model structure
     if op=='J' && mode == 1
-        modelPy = pm.Model(origin=model.o, spacing=model.d, shape=model.n, vp=process_physical_parameter(sqrt.(1f0./model.m), dims), nbpml=model.nb,
+        modelPy = pm."Model"(origin=model.o, spacing=model.d, shape=model.n, vp=process_physical_parameter(sqrt.(1f0./model.m), dims), nbpml=model.nb,
             rho=process_physical_parameter(model.rho, dims), dm=process_physical_parameter(reshape(dm,model.n), dims), space_order=options.space_order)
     else
-        modelPy = pm.Model(origin=model.o, spacing=model.d, shape=model.n, vp=process_physical_parameter(sqrt.(1f0./model.m), dims), nbpml=model.nb,
+        modelPy = pm."Model"(origin=model.o, spacing=model.d, shape=model.n, vp=process_physical_parameter(sqrt.(1f0./model.m), dims), nbpml=model.nb,
             rho=process_physical_parameter(model.rho, dims), space_order=options.space_order)
     end
-
+    return modelPy
 end
 
 function devito_model(model::Model_TTI, op, mode, options, dm)
@@ -29,7 +29,7 @@ function devito_model(model::Model_TTI, op, mode, options, dm)
     # Set up Python model structure
     if op=='J' && mode == 1
         # Set up Python model structure (force origin to be zero due to current devito bug)
-        modelPy = pm.Model(origin=model.o, spacing=model.d, shape=model.n, vp=process_physical_parameter(sqrt.(1f0./model.m), dims),
+        modelPy = pm."Model"(origin=model.o, spacing=model.d, shape=model.n, vp=process_physical_parameter(sqrt.(1f0./model.m), dims),
                            rho=process_physical_parameter(model.rho, dims),
                            epsilon=process_physical_parameter(model.epsilon, dims),
                            delta=process_physical_parameter(model.delta, dims),
@@ -39,7 +39,7 @@ function devito_model(model::Model_TTI, op, mode, options, dm)
                            space_order=options.space_order)
     else
         # Set up Python model structure (force origin to be zero due to current devito bug)
-        modelPy = pm.Model(origin=model.o, spacing=model.d, shape=model.n, vp=process_physical_parameter(sqrt.(1f0./model.m), dims),
+        modelPy = pm."Model"(origin=model.o, spacing=model.d, shape=model.n, vp=process_physical_parameter(sqrt.(1f0./model.m), dims),
                            rho=process_physical_parameter(model.rho, dims),
                            epsilon=process_physical_parameter(model.epsilon, dims),
                            delta=process_physical_parameter(model.delta, dims),
@@ -47,6 +47,7 @@ function devito_model(model::Model_TTI, op, mode, options, dm)
                            phi=process_physical_parameter(model.phi, dims), nbpml=model.nb,
                            space_order=options.space_order)
     end
+    return modelPy
 end
 
 function limit_model_to_receiver_area(srcGeometry::Geometry, recGeometry::Geometry, model::Model, buffer; pert=[])

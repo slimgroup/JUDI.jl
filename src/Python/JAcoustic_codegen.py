@@ -52,7 +52,7 @@ def acoustic_laplacian(v, rho):
 
 
 def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_order=8,
-                     free_surface=False, op_return=False, dt=None, t_sub_factor=1, h_sub_factor=1):
+                     free_surface=False, op_return=False, dt=None, tsub_factor=1, h_sub_factor=1):
     clear_cache()
     # If wavelet is file, read it
     if isinstance(wavelet, str):
@@ -243,7 +243,7 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, isic=Fal
     # Define source symbol with wavelet
     src = PointSource(name='src', grid=model.grid, ntime=nt, coordinates=src_coords)
     src.data[:] = wavelet[:]
-    src_term = src.inject(field=u.forward, expr=src * rho * dt**2 / m)
+    src_term = src.inject(field=u.forward, expr=src.dt * rho * dt**2 / m)
 
     # Define receiver symbol
     rec = Receiver(name='rec', grid=model.grid, ntime=nt, coordinates=rec_coords)
@@ -270,7 +270,7 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, isic=Fal
 
 def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residual=False,
                  space_order=8, isic=False, dt=None, n_checkpoints=None, maxmem=None,
-                 free_surface=False, t_sub_factor=1):
+                 free_surface=False, tsub_factor=1):
     clear_cache()
 
     # Parameters
