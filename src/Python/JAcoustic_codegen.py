@@ -97,15 +97,23 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
     subs[u.grid.time_dim.spacing] = dt
 
     op = Operator(expression, subs=subs, dse='advanced', dle='advanced', name='Forward')
-    z_m = op.arguments()["y_m"]
+    z_m = 0
+
+    if freesurface:
+        z_m += model.nbpml
     if op_return is False:
-        if freesurface:
-            z_m += model.nbpml
         op(y_m=z_m)
-        if rec_coords is None:
-            return u
+        if save is True and tsub_factor > 1:
+            if rec_coords is None:
+                return usave
+            else:
+                return rec.data, usave
         else:
-           return rec.data, u
+            if rec_coords is None:
+                return u
+            else:
+                return rec.data, u
+
     # For optimal checkpointing, return operator only
     else:
         return op
@@ -170,7 +178,7 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=8, fre
     subs = model.spacing_map
     subs[v.grid.time_dim.spacing] = dt
     op = Operator(expression, subs=subs, dse='advanced', dle='advanced', name='Adjoint')
-    z_m = op.arguments()["y_m"]
+    z_m = 0
     if freesurface:
         z_m += model.nbpml
     op(y_m=z_m)
@@ -243,7 +251,7 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, isic=Fal
     subs = model.spacing_map
     subs[u.grid.time_dim.spacing] = dt
     op = Operator(expression, subs=subs, dse='advanced', dle='advanced', name='Born')
-    z_m = op.arguments()["y_m"]
+    z_m = 0
     if freesurface:
         z_m += model.nbpml
     op(y_m=z_m)
@@ -301,12 +309,13 @@ def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residu
 
     subs = model.spacing_map
     subs[u.grid.time_dim.spacing] = dt
-    op = Operator(expression, subs=subs, dse='advanced', dle='advanced', name='Forward')
-    z_m = op.arguments()["y_m"]
+    op = Operator(expression, subs=subs, dse='advanced', dle='advanced', name='Gradient')
+    z_m = 0
     if freesurface:
         z_m += model.nbpml
     # Optimal checkpointing
     if op_forward is not None:
+        print("hello")
         rec = Receiver(name='rec', grid=model.grid, ntime=nt, coordinates=rec_coords)
         cp = DevitoCheckpoint([u])
         if maxmem is not None:

@@ -22,7 +22,7 @@ m0 = (1f0 ./ v0).^2
 dm = vec(m - m0)
 
 # Setup info and model structure
-nsrc = 10	# number of sources
+nsrc = 2	# number of sources
 model = Model(n, d, o, m; rho=ones(n))
 model0 = Model(n, d, o, m0)
 

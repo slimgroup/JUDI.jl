@@ -41,15 +41,6 @@ function fwi_objective(model_full::Model, source::judiVector, dObs::judiVector, 
     src_coords = setup_grid(source.geometry, model.n, model.o)  # shifts source coordinates by origin
     rec_coords = setup_grid(dObs.geometry, model.n, model.o)    # shifts rec coordinates by origin
 
-    argout2 = compute_grad(model, modelPy, src_coords, rec_coords, qIn, dObserved, options)
-    if options.limit_m==true
-        argout2 = extend_gradient(model_full,model,argout2)
-    end
-    return [argout1; vec(argout2)]
-end
-
-
-function compute_grad(model, modelPy, src_coords, rec_coords, qIn, dObserved, options)
     ac = load_devito_jit(modelPy)
 
     if options.optimal_checkpointing == true
@@ -97,8 +88,10 @@ function compute_grad(model, modelPy, src_coords, rec_coords, qIn, dObserved, op
 						 is_residual=true, free_surface=options.free_surface)
     end
     argout2 = remove_padding(argout2, model.nb, true_adjoint=options.sum_padding)
-	
-	return argout2
+    if options.limit_m==true
+        argout2 = extend_gradient(model_full,model,argout2)
+    end
+    return [argout1; vec(argout2)]
 end
 
 
