@@ -345,7 +345,8 @@ def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residu
         wrp.apply_reverse(y_m=z_m)
     else:
         op(y_m=z_m)
-
+    
+    clear_cache()
     if op_forward is not None and is_residual is not True:
         return fval, gradient.data
     else:

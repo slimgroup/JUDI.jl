@@ -1,9 +1,7 @@
-#__precompile__()
 # Module with functions for time-domain modeling and inversion using OPESCI/devito
 # Author: Philipp Witte, pwitte@eos.ubc.ca
 # Date: January, 2017
 #
-using Distributed
 
 module TimeModeling
 

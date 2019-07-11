@@ -48,8 +48,7 @@ Constructor
 
 The parameters `n`, `d`, `o` and `m` are mandatory, whith `nb` and `rho` being optional input arguments.
 
-    Model(n, d, o, m; nb=40, rho=ones(n)), :] / 2.0f0
-epsilon =
+    Model(n, d, o, m; nb=40, rho=ones(n))
 
 
 """

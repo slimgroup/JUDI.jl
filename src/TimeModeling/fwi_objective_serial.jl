@@ -77,7 +77,7 @@ function compute_grad(model, modelPy, src_coords, rec_coords, qIn, dObserved, op
                          options.frequencies, uf_real, uf_imag, space_order=options.space_order,
 						 nb=model.nb, free_surface=options.free_surface)
     else
-        dPredicted, u0 = pycall(ac."forward_modeling", PyAny, modelPy,
+        dPredicted, u0 = pycall(ac."forward_modeling", PyObject, modelPy,
 								PyReverseDims(copy(transpose(src_coords))),
 								PyReverseDims(copy(transpose(qIn))),
 								PyReverseDims(copy(transpose(rec_coords))),
