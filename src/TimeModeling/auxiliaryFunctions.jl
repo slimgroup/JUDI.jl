@@ -566,26 +566,26 @@ function resample_model(array, inh, modelfull)
     return resampled
 end
 
-function gs_residual_trace(maxshift, dtComp, dPredicted, dObserved, normalize)
+function gs_residual_trace(maxshift, dtComp, d1, d2, normalize)
 	#shifts
 	nshift = round(Int64, maxshift/dtComp)
 	nSamples = 2*nshift + 1
 
-	data_size = size(dPredicted)
+	data_size = size(d1)
 	residual = zeros(Float32, data_size)
-	dPredicted = [zeros(Float32, nshift, size(dPredicted,2)); dPredicted; zeros(Float32, nshift, size(dPredicted,2))]
-	dObserved = [zeros(Float32, nshift, size(dPredicted,2)); dObserved; zeros(Float32, nshift, size(dPredicted,2))]
-	# residual_plot = zeros(Float32, size(dObserved))
-	# syn_plot = zeros(Float32, size(dObserved))
-    indnz = [i for i in 1:size(dPredicted,2) if (norm(dObserved[:,i])>0 && norm(dPredicted[:,i])>0)]
+	d1 = [zeros(Float32, nshift, size(d1,2)); d1; zeros(Float32, nshift, size(d1,2))]
+	d2 = [zeros(Float32, nshift, size(d1,2)); d2; zeros(Float32, nshift, size(d1,2))]
+	# residual_plot = zeros(Float32, size(d2))
+	# syn_plot = zeros(Float32, size(d2))
+    indnz = [i for i in 1:size(d1,2) if (norm(d2[:,i])>0 && norm(d1[:,i])>0)]
 
-    weights = [norm(dObserved[:,i]) for i in 1:size(dPredicted,2)]
+    weights = [norm(d2[:,i]) for i in 1:size(d1,2)]
 
 	for rr in indnz
-		aux = zeros(Float32, size(dPredicted, 1))
+		aux = zeros(Float32, size(d1, 1))
 
-		syn = dPredicted[:, rr]
-		obs = dObserved[:, rr]
+		syn = d1[:, rr]
+		obs = d2[:, rr]
 
 		if normalize
 			syn /= norm(syn)
@@ -630,7 +630,7 @@ function gs_residual_trace(maxshift, dtComp, dPredicted, dObserved, normalize)
 			residual[:, rr] += alphas[i] * circshift(circshift(syn, shift) - obs, -2*shift)[nshift+1:(end-nshift)]
 			# residual_plot[:, rr] +=  alphas[i] * (circshift(syn, shift) - obs)
 			# syn_plot[:, rr] +=  alphas[i] * circshift(syn, shift)
-			#residual += alphas[i] * circshift(circshift(dPredicted, (0,shift)) - dObserved, (0, -2*shift))[:, nshift+1:(end-nshift)]
+			#residual += alphas[i] * circshift(circshift(d1, (0,shift)) - d2, (0, -2*shift))[:, nshift+1:(end-nshift)]
 		end
 		# if rr%50==0
 		# 	figure();plot(syn_plot[rr,:], "-b");plot(syn, "-r");plot(obs, "-g")
@@ -638,38 +638,38 @@ function gs_residual_trace(maxshift, dtComp, dPredicted, dObserved, normalize)
         residual[:, rr] = weights[rr] * residual[:, rr]
 	end
 	# figure();imshow(syn_plot', vmin=-1e1, vmax=1e1, cmap="seismic", aspect=.2)
-	# figure();imshow(dPredicted', vmin=-1e1, vmax=1e1, cmap="seismic", aspect=.2)
-	# figure();imshow(dObserved', vmin=-1e1, vmax=1e1, cmap="seismic", aspect=.2)
+	# figure();imshow(d1', vmin=-1e1, vmax=1e1, cmap="seismic", aspect=.2)
+	# figure();imshow(d2', vmin=-1e1, vmax=1e1, cmap="seismic", aspect=.2)
 	# figure();imshow(residual_plot', vmin=-1e1, vmax=1e1, cmap="seismic", aspect=.2)
-	# figure();imshow(dPredicted' - dObserved', vmin=-1e1, vmax=1e1, cmap="seismic", aspect=.2)
+	# figure();imshow(d1' - d2', vmin=-1e1, vmax=1e1, cmap="seismic", aspect=.2)
 	#
 	return residual
 end
 
-function gs_residual_shot(maxshift, dtComp, dPredicted, dObserved, normalize)
+function gs_residual_shot(maxshift, dtComp, d1, d2, normalize)
 	#shifts
 	nshift = round(Int64, maxshift/dtComp)
 	# println(nshift, " ", dtComp)
 	nSamples = 2*nshift + 1
 
-	data_size = size(dPredicted)
+	data_size = size(d1)
 	residual = zeros(Float32, data_size)
-	dPredicted = [zeros(Float32, nshift, size(dPredicted,2)); dPredicted; zeros(Float32, nshift, size(dPredicted,2))]
-	dObserved = [zeros(Float32, nshift, size(dPredicted,2)); dObserved; zeros(Float32, nshift, size(dPredicted,2))]
+	d1 = [zeros(Float32, nshift, size(d1,2)); d1; zeros(Float32, nshift, size(d1,2))]
+	d2 = [zeros(Float32, nshift, size(d1,2)); d2; zeros(Float32, nshift, size(d1,2))]
 	if normalize == "shot"
-		dPredicted /= norm(vec(dPredicted))
-		dObserved /= norm(vec(dObserved))
+		d1 /= norm(vec(d1))
+		d2 /= norm(vec(d2))
 	elseif normalize == "trace"
-		for i = 1:size(dPredicted,2)
-			if norm(dPredicted[:, i]) > 0
-				dPredicted[:, i] /= norm(dPredicted[:, i])
+		for i = 1:size(d1,2)
+			if norm(d1[:, i]) > 0
+				d1[:, i] /= norm(d1[:, i])
 			end
-			if norm(dObserved[:, i]) > 0
-				dObserved[:, i] /= norm(dObserved[:, i])
+			if norm(d2[:, i]) > 0
+				d2[:, i] /= norm(d2[:, i])
 			end
 		end
 	end
-	aux = zeros(Float32, size(dPredicted))
+	aux = zeros(Float32, size(d1))
 
 	H =zeros(Float32, length(1:5:nSamples),  length(1:5:nSamples));
 
@@ -678,13 +678,13 @@ function gs_residual_shot(maxshift, dtComp, dPredicted, dObserved, normalize)
 		shift = i - nshift - 1
 		iloc +=1
 		jloc=iloc
-		dshift = vec(circshift(dPredicted, (shift, 0)) - dObserved)
+		dshift = vec(circshift(d1, (shift, 0)) - d2)
 		H[iloc, iloc] = dot(dshift, dshift)
 		for j = (i+5):5:nSamples
 			jloc+=1
 			shift2 = j - nshift - 1
-			circshift!(aux, dPredicted, (shift2, 0))
-			broadcast!(-, aux, aux, dObserved)
+			circshift!(aux, d1, (shift2, 0))
+			broadcast!(-, aux, aux, d2)
 			H[iloc, jloc] = dot(dshift, vec(aux))
 			H[jloc, iloc] = H[iloc, jloc]
 		end
@@ -707,27 +707,30 @@ function gs_residual_shot(maxshift, dtComp, dPredicted, dObserved, normalize)
 	# Data misfit
 	for i = 1:2*nshift+1
 		shift = i - nshift - 1
-		residual += alphas[i] * circshift(abs.(circshift(dPredicted, (shift, 0))).*(circshift(dPredicted, (shift, 0)) - dObserved), (-2*shift, 0))[nshift+1:(end-nshift), :]
+		residual += alphas[i] * circshift(abs.(circshift(d1, (shift, 0))).*(circshift(d1, (shift, 0)) - d2), (-2*shift, 0))[nshift+1:(end-nshift), :]
 	end
 
 	return residual
 end
 
-function gs_residual(gs, dtComp, dPredicted, dObserved, normalize)
+function gs_residual(gs, dtComp, d1, d2; normalize_adj=false)
 	if gs["strategy"] == "shot"
-		residual = gs_residual_shot(gs["maxshift"], dtComp, dPredicted, dObserved, normalize)
+		residual = gs_residual_shot(gs["maxshift"], dtComp, d1, d2, normalize)
 	else
-		residual = gs_residual_trace(gs["maxshift"], dtComp, dPredicted, dObserved, normalize)
+		residual = gs_residual_trace(gs["maxshift"], dtComp, d1, d2, normalize)
 	end
 	return residual
 end
 
-function misfit(d1, d2, normalize)
+function misfit(d1::Array{Float32, 2}, d2::Array{Float32, 2}; normalize_adj=false)
+	obj = 0.0f0
     if normalize == "shot"
             obj = norm(vec(d1)) - dot(vec(d1),vec(d2))/norm(vec(d2))
     elseif normalize == "trace"
-        indnz = [i for i in 1:size(d2, 2) if norm(d2[:, i])>0]
-        obj = sum(norm(vec(d1[:, i])) - dot(vec(d1[:, i]),vec(d2[:, i]))/norm(vec(d2[:, i])) for i in indnz)
+		for i=1:size(d2, 2)
+			norm(d2[:, i])>0 ? n2 = norm(d2[:, i]) : n2 = 1
+       		obj += norm(d1[:, i]) - dot(d1[:, i], d2[:, i])/n2
+		end
     else
         obj = .5f0*norm(vec(d1) - vec(d2),2)^2.f0
     end
@@ -735,10 +738,13 @@ function misfit(d1, d2, normalize)
 	return obj
 end
 
-function adjoint_src(d1, d2; normalize_adj=false)
+function adjoint_src(d1::Array{Float32, 2}, d2::Array{Float32, 2}; normalize_adj=false)
+	adj_src = similar(d1)
     if normalize_adj == "trace"
-		for i in indnz
-			adj_src[:, i] = d1[:, i]/norm(vec(d1[:, i])) - d2[:, i]/norm(vec(d2[:, i]))
+		for i =1:size(d1,2)
+			norm(d1[:, i])>0 ? n1 = norm(d1[:, i]) : n1 = 1
+			norm(d2[:, i])>0 ? n2 = norm(d2[:, i]) : n2 = 1
+			adj_src[:, i] = d1[:, i]/n1 - d2[:, i]/n2
 		end
 	elseif normalize == "shot"
         adj_src = d1/norm(vec(d1)) - d2/norm(vec(d2))

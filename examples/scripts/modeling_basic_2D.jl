@@ -77,7 +77,7 @@ dobs = Pr*F*adjoint(Ps)*q
 # d0 = Pr*F0*adjoint(Ps)*q
 # g = adjoint(J)*(dobs - d0)
 
-f, g = fwi_objective(model0, q, dobs)
+f, g = fwi_objective(model0, q, dobs; options=opt)
 # qad = Ps*adjoint(F)*adjoint(Pr)*dobs
 #
 # # Linearized modeling
