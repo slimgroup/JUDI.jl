@@ -24,7 +24,7 @@ mutable struct Options
     t_sub::Integer
     h_sub::Integer
     gs::Dict
-    normalize::Bool
+    normalize
     dft_subsampling_factor::Integer
 end
 

@@ -315,7 +315,6 @@ def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residu
         z_m += model.nbpml
     # Optimal checkpointing
     if op_forward is not None:
-        print("hello")
         rec = Receiver(name='rec', grid=model.grid, ntime=nt, coordinates=rec_coords)
         cp = DevitoCheckpoint([u])
         if maxmem is not None:

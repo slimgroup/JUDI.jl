@@ -72,7 +72,7 @@ function fwi_objective(model_full::Model, source::judiVector, dObs::judiVector, 
 						  PyReverseDims(copy(transpose(src_coords))),
 						  PyReverseDims(copy(transpose(qIn))),
 						  PyReverseDims(copy(transpose(rec_coords))), save=true,
-						  tsub_factor=options.subsampling_factor)
+						  tsub_factor=options.t_sub)
 		dPredicted = get(fwd_pred, 0) 
         # wrong misfit for trace based
 		if isempty(options.gs)
@@ -85,7 +85,7 @@ function fwi_objective(model_full::Model, source::judiVector, dObs::judiVector, 
         argout2 = pycall(ac."adjoint_born", Array{Float32}, modelPy,
 						 PyReverseDims(copy(transpose(rec_coords))),
 						 PyReverseDims(copy(transpose(adj_src))),
-						 tsub_factor=options.subsampling_factor,
+						 tsub_factor=options.t_sub,
                          u=get(fwd_pred, 1), is_residual=true)
     end
     argout2 = remove_padding(argout2, model.nb, true_adjoint=options.sum_padding)
@@ -168,7 +168,7 @@ function fwi_objective(model_full::Model_TTI, source::judiVector, dObs::judiVect
 						  PyReverseDims(copy(transpose(src_coords))),
 						  PyReverseDims(copy(transpose(qIn))),
 						  PyReverseDims(copy(transpose(rec_coords))), save=true,
-						  tsub_factor=options.subsampling_factor)
+						  tsub_factor=options.t_sub)
 		dPredicted = get(fwd_pred, 0) 
         # wrong misfit for trace based
 		if isempty(options.gs)
@@ -181,7 +181,7 @@ function fwi_objective(model_full::Model_TTI, source::judiVector, dObs::judiVect
         argout2 = pycall(ac."adjoint_born", Array{Float32}, modelPy,
 						 PyReverseDims(copy(transpose(rec_coords))),
 						 PyReverseDims(copy(transpose(adj_src))),
-						 tsub_factor=options.subsampling_factor,
+						 tsub_factor=options.t_sub,
                          u=get(fwd_pred, 1), is_residual=true)
     end
     argout2 = remove_padding(argout2, model.nb, true_adjoint=options.sum_padding)
@@ -190,26 +190,4 @@ function fwi_objective(model_full::Model_TTI, source::judiVector, dObs::judiVect
     end
 
     return [argout1; vec(argout2)]
-end
-
-
-function misfit(dPredicted, dObserved, normalize; trace="shot")
-    if normalize
-        if trace=="shot"
-            obj = norm(vec(dPredicted)) - dot(vec(dPredicted),vec(dObserved))/norm(vec(dObserved))
-        else
-            indnz = [i for i in 1:size(dObserved, 2) if norm(dObserved[:, i])>0]
-            obj = sum(norm(vec(dPredicted[:, i])) - dot(vec(dPredicted[:, i]),vec(dObserved[:, i]))/norm(vec(dObserved[:, i])) for i in indnz)
-        end
-    else
-        obj = .5f0*norm(vec(dPredicted) - vec(dObserved),2)^2.f0
-    end
-end
-
-function adjoint_src(dPredicted, dObserved, normalize)
-    if normalize
-        adj_src = dPredicted/norm(vec(dPredicted)) - dObserved/norm(vec(dObserved))
-    else
-        adj_src = dPredicted - dObserved
-    end
 end
