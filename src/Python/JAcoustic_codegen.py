@@ -20,24 +20,6 @@ from checkpoint import DevitoCheckpoint, CheckpointOperator
 from pyrevolve import Revolver
 from utils import freesurface
 
-def J_adjoint(model, src_coords, wavelet, rec_coords, recin, space_order=12,
-                t_sub_factor=20, h_sub_factor=2, checkpointing=False, free_surface=False,
-                n_checkpoints=None, maxmem=None, dt=None, isic=False):
-    clear_cache()
-    if checkpointing:
-        F = forward_modeling(model, src_coords, wavelet, rec_coords, save=True, space_order=space_order,
-                             t_sub_factor=t_sub_factor, h_sub_factor=h_sub_factor, dt=dt, op_return=True,
-                             free_surface=free_surface)
-        grad = adjoint_born(model, rec_coords, recin, op_forward=F, space_order=space_order,
-                            is_residual=True, isic=isic, n_checkpoints=n_checkpoints, maxmem=maxmem,
-                            free_surface=free_surface)
-    else:
-        u0 = forward_modeling(model, src_coords, wavelet, None, save=True, space_order=space_order,
-                              t_sub_factor=t_sub_factor, h_sub_factor=h_sub_factor, dt=dt, free_surface=free_surface)
-        grad = adjoint_born(model, rec_coords, recin, u=u0, space_order=space_order, isic=isic, dt=dt, free_surface=free_surface)
-    
-    return grad
-
 def acoustic_laplacian(v, rho):
     if rho is None:
         Lap = v.laplace
