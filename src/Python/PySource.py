@@ -12,7 +12,6 @@ __all__ = ['PointSource', 'Receiver', 'Shot', 'RickerSource', 'GaborSource']
 
 class PointSource(SparseTimeFunction):
     """Symbolic data object for a set of sparse point sources
-
     :param name: Name of the symbol representing this source
     :param grid: :class:`Grid` object defining the computational domain.
     :param coordinates: Point coordinates for this source
@@ -21,7 +20,6 @@ class PointSource(SparseTimeFunction):
     :param npoint: (Optional) Number of sparse points represented by this source
     :param dimension: :(Optional) class:`Dimension` object for
                        representing the number of points in this source
-
     Note, either the dimensions `ntime` and `npoint` or the fully
     initialised `data` array need to be provided.
     """
@@ -73,7 +71,6 @@ class WaveletSource(PointSource):
     """
     Abstract base class for symbolic objects that encapsulate a set of
     sources with a pre-defined source signal wavelet.
-
     :param name: Name for the resulting symbol
     :param grid: :class:`Grid` object defining the computational domain.
     :param f0: Peak frequency for Ricker wavelet in kHz
@@ -105,7 +102,6 @@ class WaveletSource(PointSource):
     def wavelet(self, f0, t):
         """
         Defines a wavelet with a peak frequency f0 at time t.
-
         :param f0: Peak frequency in kHz
         :param t: Discretized values of time in ms
         """
@@ -116,9 +112,7 @@ class RickerSource(WaveletSource):
     """
     Symbolic object that encapsulate a set of sources with a
     pre-defined Ricker wavelet:
-
     http://subsurfwiki.org/wiki/Ricker_wavelet
-
     :param name: Name for the resulting symbol
     :param grid: :class:`Grid` object defining the computational domain.
     :param f0: Peak frequency for Ricker wavelet in kHz
@@ -128,7 +122,6 @@ class RickerSource(WaveletSource):
     def wavelet(self, f0, t):
         """
         Defines a Ricker wavelet with a peak frequency f0 at time t.
-
         :param f0: Peak frequency in kHz
         :param t: Discretized values of time in ms
         """
@@ -140,9 +133,7 @@ class GaborSource(WaveletSource):
     """
     Symbolic object that encapsulate a set of sources with a
     pre-defined Gabor wavelet:
-
     https://en.wikipedia.org/wiki/Gabor_wavelet
-
     :param name: Name for the resulting symbol
     :param grid: :class:`Grid` object defining the computational domain.
     :param f0: Peak frequency for Ricker wavelet in kHz
@@ -152,7 +143,6 @@ class GaborSource(WaveletSource):
     def wavelet(self, f0, t):
         """
         Defines a Gabor wavelet with a peak frequency f0 at time t.
-
         :param f0: Peak frequency in kHz
         :param t: Discretized values of time in ms
         """

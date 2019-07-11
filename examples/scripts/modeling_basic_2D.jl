@@ -7,14 +7,14 @@
 using JUDI.TimeModeling, SeisIO, LinearAlgebra
 
 ## Set up model structure
-n = (120, 100)   # (x,y,z) or (x,z)
+n = (500, 500)   # (x,y,z) or (x,z)
 d = (10., 10.)
 o = (0., 0.)
 
 # Velocity [km/s]
 v = ones(Float32,n) .+ 0.4f0
 v0 = ones(Float32,n) .+ 0.4f0
-v[:,Int(round(end/2)):end] .= 3f0
+v[:,Int(round(end/2)):end] .= 5f0
 
 # Slowness squared [s^2/km^2]
 m = (1f0 ./ v).^2
@@ -22,7 +22,7 @@ m0 = (1f0 ./ v0).^2
 dm = vec(m - m0)
 
 # Setup info and model structure
-nsrc = 2	# number of sources
+nsrc = 10	# number of sources
 model = Model(n, d, o, m; rho=ones(n))
 model0 = Model(n, d, o, m0)
 
@@ -33,7 +33,7 @@ yrec = 0f0
 zrec = range(50f0, stop=50f0, length=nxrec)
 
 # receiver sampling and recording time
-timeR = 1000f0   # receiver recording time [ms]
+timeR = 4000f0   # receiver recording time [ms]
 dtR = 4f0    # receiver sampling interval [ms]
 
 # Set up receiver structure
@@ -45,7 +45,7 @@ ysrc = convertToCell(range(0f0, stop=0f0, length=nsrc))
 zsrc = convertToCell(range(200f0, stop=200f0, length=nsrc))
 
 # source sampling and number of time steps
-timeS = 1000f0  # ms
+timeS = 4000f0  # ms
 dtS = 4f0   # ms
 
 # Set up source structure
@@ -74,8 +74,10 @@ J = judiJacobian(Pr*F0*adjoint(Ps), q)
 
 # Nonlinear modeling
 dobs = Pr*F*adjoint(Ps)*q
-d0 = Pr*F0*adjoint(Ps)*q
-g = adjoint(J)*(dobs - d0)
+# d0 = Pr*F0*adjoint(Ps)*q
+# g = adjoint(J)*(dobs - d0)
+
+f, g = fwi_objective(model0, q, dobs)
 # qad = Ps*adjoint(F)*adjoint(Pr)*dobs
 #
 # # Linearized modeling

@@ -9,7 +9,8 @@ module TimeModeling
 
 using JUDI, PyCall, JOLI, Distributed, SeisIO, Dierckx, LinearAlgebra, Base.Broadcast, FFTW, Random, DSP
 
-import Base.*, Base./, Base.+, Base.-, Base.copy!
+import Base.*, Base./, Base.+, Base.-, Base.copy!, Base.sum, Base.ndims
+import Base.Broadcast.broadcasted, Base.BroadcastStyle, Base.Broadcast.DefaultArrayStyle
 import Base.getindex, Base.setindex!, Base.firstindex, Base.lastindex, Base.axes, Base.ndims
 import LinearAlgebra.transpose, LinearAlgebra.conj, LinearAlgebra.vcat, LinearAlgebra.adjoint
 import LinearAlgebra.vec, LinearAlgebra.dot, LinearAlgebra.norm, LinearAlgebra.abs

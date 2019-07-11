@@ -8,10 +8,10 @@ JUDI is a framework for large-scale seismic modeling and inversion and designed 
 
 ## Installation and prerequisites
 
-First, install Devito using `pip`, or see the [Devito homepage](https://github.com/opesci/devito) for installation with Conda and further information. The current release of JUDI requires Python 3 and Devito v.3.2.0. Run all of the following commands from the (bash) terminal command line (not in the Julia REPL):
+First, install Devito using `pip`, or see the [Devito homepage](https://github.com/opesci/devito) for installation with Conda and further information. The current release of JUDI requires Python 3 and the current Devito version. Run all of the following commands from the (bash) terminal command line (not in the Julia REPL):
 
 ```julia
-pip install --user git+https://github.com/opesci/devito.git@v3.2.0
+pip install --user git+https://github.com/opesci/devito.git
 ```
 
 For reading and writing seismic SEG-Y data, JUDI uses the [SeisIO](https://github.com/slimgroup/SeisIO.jl) package and matrix-free linear operators are based the [Julia Operator LIbrary](https://github.com/slimgroup/JOLI.jl/tree/master/src) (JOLI):
@@ -96,7 +96,6 @@ run(`wget ftp://slim.gatech.edu/data/SoftwareRelease/WaveformInversion.jl/2DFWI/
 The first step is to load the velocity model and the observed data into Julia, as well as setting up bound constraints for the inversion, which prevent too high or low velocities in the final result. Furthermore, we define an 8 Hertz Ricker wavelet as the source function:
 
 ```julia
-using Pkg; Pkg.activate("JUDI")
 using PyPlot, HDF5, SeisIO, JUDI.TimeModeling, JUDI.SLIM_optim, Statistics, Random
 
 # Load starting model
@@ -174,7 +173,6 @@ run(`wget ftp://slim.gatech.edu/data/SoftwareRelease/Imaging.jl/2DLSRTM/marmousi
 Once again, load the starting model and the data and set up the source wavelet. For this example, we use a Ricker wavelet with 30 Hertz peak frequency. For setting up matrix-free linear operators, an `info` structure with the dimensions of the problem is required:
 
 ```julia
-using Pkg; Pkg.activate("JUDI")
 using PyPlot, HDF5, JUDI.TimeModeling, SeisIO, Random
 
 # Load smooth migration velocity model

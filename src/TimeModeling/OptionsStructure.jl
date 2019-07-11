@@ -52,6 +52,7 @@ end
 	    dft_subsampling_factor::Integer
 
 
+
 Options structure for seismic modeling.
 
 `space_order`: finite difference space order for wave equation (default is 8, needs to be multiple of 4)
@@ -79,6 +80,8 @@ Options structure for seismic modeling.
 `checkpoints_maxmem`: maximum amount of memory that can be allocated for checkpoints (MB)
 
 `frequencies`: calculate the FWI/LS-RTM gradient in the frequency domain for a given set of frequencies
+
+`subsampling_factor`: compute forward wavefield on a time axis that is reduced by a given factor (default is 1)
 
 `dft_subsampling_factor`: compute on-the-fly DFTs on a time axis that is reduced by a given factor (default is 1)
 

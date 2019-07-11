@@ -28,7 +28,6 @@ def initialize_damp(damp, nbpml, spacing, mask=False):
         mask => 1 inside the domain and decreases in the layer
         not mask => 0 inside the domain and increase in the layer
     """
-
     phy_shape = damp.grid.subdomains['phydomain'].shape
     data = np.ones(phy_shape) if mask else np.zeros(phy_shape)
 
@@ -60,7 +59,6 @@ def initialize_damp(damp, nbpml, spacing, mask=False):
             data[tuple(all_ind)] += val
 
     initialize_function(damp, data, 0)
-
 
 def initialize_function(function, data, nbpml, pad_mode='edge'):
     """Initialize a :class:`Function` with the given ``data``. ``data``

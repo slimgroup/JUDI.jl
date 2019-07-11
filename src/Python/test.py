@@ -24,6 +24,7 @@ v0 = np.empty(shape, dtype=np.float32)
 v0[:, :] = 1.5
 model = Model(shape=shape, origin=origin, spacing=spacing, vp=v, epsilon=.2*(v - 1.5), delta=.1*(v - 1.5), theta=np.pi/5*np.ones(shape))
 model0 = Model(shape=shape, origin=origin, spacing=spacing, vp=v0, epsilon=.2*(v - 1.5), delta=.1*(v - 1.5), theta=np.pi/5*np.ones(shape))
+
 # Time axis
 t0 = 0.
 tn = 1000.
@@ -45,12 +46,19 @@ rec_t.coordinates.data[:, 1] = 20.
 # Observed data
 dobs, utrue, v = forward_modeling(model, src.coordinates.data, src.data, rec_t.coordinates.data)
 
-##################################################################################################################
+
+# adjoint modeling
+#v = adjoint_modeling(model, None, rec_t.coordinates.data, dobs.data)
+
+# forward born
+#dlin = forward_born(model0, src.coordinates.data, src.data, rec_t.coordinates.data)
+#disic = forward_born(model0, src.coordinates.data, src.data, rec_t.coordinates.data, isic=True)
 
 # Receiver for predicted data
 rec = Receiver(name='rec', grid=model0.grid, npoint=101, ntime=nt)
 rec.coordinates.data[:, 0] = np.linspace(0, model0.domain_size[0], num=101)
 rec.coordinates.data[:, 1] = 20.
+dpred, u0 = forward_modeling(model0, src.coordinates.data, src.data, rec.coordinates.data, save=True, dt=dt, tsub_factor=2)
 
 # Save wavefields
 dpred_data, u0, v0 = forward_modeling(model0, src.coordinates.data, src.data, rec.coordinates.data, save=True, dt=dt)
