@@ -57,7 +57,7 @@ Ps = judiProjection(info, src_geometry)
 # q = judiVector(src_geometry, wavelet)
 J = judiJacobian(Pr*F*Ps', q)
 
-# D0 = Pr[1]*F[1]*Ps[1]'*q[1]
+D0 = Pr[1]*F[1]*Ps[1]'*q[1]
 #
 # D0.data[1] = D0.data[1]/maximum(D0.data[1]) - shot1_filtered/maximum(shot1_filtered)
 #

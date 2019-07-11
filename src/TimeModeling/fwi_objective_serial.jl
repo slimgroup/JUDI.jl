@@ -53,17 +53,17 @@ function compute_grad(model, modelPy, src_coords, rec_coords, qIn, dObserved, op
     ac = load_devito_jit(modelPy)
 
     if options.optimal_checkpointing == true
-        op_F = pycall(ac.forward_modeling, PyObject, modelPy,
+        op_F = pycall(ac."forward_modeling", PyObject, modelPy,
 					  PyReverseDims(copy(transpose(src_coords))),
 					  PyReverseDims(copy(transpose(qIn))),
 					  PyReverseDims(copy(transpose(rec_coords))), op_return=true)
-        argout1, argout2 = pycall(ac.adjoint_born, PyObject, modelPy,
+        argout1, argout2 = pycall(ac."adjoint_born", PyObject, modelPy,
 								  PyReverseDims(copy(transpose(rec_coords))),
 								  PyReverseDims(copy(transpose(dObserved))),
                                   op_forward=op_F, is_residual=false, free_surface=options.free_surface)
     elseif ~isempty(options.frequencies)
         typeof(options.frequencies) == Array{Any,1} && (options.frequencies = options.frequencies[srcnum])
-        dPredicted, uf_real, uf_imag = pycall(ac.forward_freq_modeling, PyObject, modelPy,
+        dPredicted, uf_real, uf_imag = pycall(ac."forward_freq_modeling", PyObject, modelPy,
 											  PyReverseDims(copy(transpose(src_coords))),
 											  PyReverseDims(copy(transpose(qIn))),
 											  PyReverseDims(copy(transpose(rec_coords))),
@@ -71,13 +71,13 @@ function compute_grad(model, modelPy, src_coords, rec_coords, qIn, dObserved, op
 											  nb=model.nb, free_surface=options.free_surface)
 
         argout1 = .5f0*norm(vec(dPredicted) - vec(dObserved),2)^2.f0    # data misfit
-        argout2 = pycall(ac.adjoint_freq_born, Array{Float32, length(model.n)}, modelPy,
+        argout2 = pycall(ac."adjoint_freq_born", Array{Float32, length(model.n)}, modelPy,
 						 PyReverseDims(copy(transpose(src_coords))),
 						 PyReverseDims(copy(transpose(dPredicted - dObserved))),
                          options.frequencies, uf_real, uf_imag, space_order=options.space_order,
 						 nb=model.nb, free_surface=options.free_surface)
     else
-        dPredicted, u0 = pycall(ac.forward_modeling, PyAny, modelPy,
+        dPredicted, u0 = pycall(ac."forward_modeling", PyAny, modelPy,
 								PyReverseDims(copy(transpose(src_coords))),
 								PyReverseDims(copy(transpose(qIn))),
 								PyReverseDims(copy(transpose(rec_coords))),
@@ -91,7 +91,7 @@ function compute_grad(model, modelPy, src_coords, rec_coords, qIn, dObserved, op
             argout1 = misfit(dPredicted, dObserved, options.normalize; trace=options.gs["strategy"])
             residual = gs_residual(options.gs, dtComp, dPredicted, dObserved, options.normalize)
         end
-        argout2 = pycall(ac.adjoint_born, Array{Float32}, modelPy,
+        argout2 = pycall(ac."adjoint_born", Array{Float32}, modelPy,
 						 PyReverseDims(copy(transpose(rec_coords))),
 						 PyReverseDims(copy(transpose(residual))), u=u0,
 						 is_residual=true, free_surface=options.free_surface)

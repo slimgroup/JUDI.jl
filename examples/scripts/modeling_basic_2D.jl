@@ -42,7 +42,7 @@ recGeometry = Geometry(xrec, yrec, zrec; dt=dtR, t=timeR, nsrc=nsrc)
 ## Set up source geometry (cell array with source locations for each shot)
 xsrc = convertToCell(range(400f0, stop=800f0, length=nsrc))
 ysrc = convertToCell(range(0f0, stop=0f0, length=nsrc))
-zsrc = convertToCell(range(20f0, stop=20f0, length=nsrc))
+zsrc = convertToCell(range(200f0, stop=200f0, length=nsrc))
 
 # source sampling and number of time steps
 timeS = 1000f0  # ms

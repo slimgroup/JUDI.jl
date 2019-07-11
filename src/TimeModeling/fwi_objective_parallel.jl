@@ -23,20 +23,14 @@ function fwi_objective(model::Modelall, source::judiVector, dObs::judiVector; op
     results = Array{Any}(undef, dObs.nsrc)
     @sync begin
         for j=1:dObs.nsrc
-			# Local geometry for current position
-			opt_local = subsample(options, j)
-			srcLocal = subsample(source, j)
-			recLocal = subsample(dObs, j)
-
-            @async results[j] = fwi_objective(model, srcLocal, recLocal, j;
-											  options=opt_local, frequencies=frequencies)
+            results[j] = @spawn fwi_objective(model, source[j], dObs[j], j; options=options, frequencies=frequencies)
         end
     end
 
     # Collect and reduce gradients
     gradient = zeros(Float32,prod(model.n)+1)
     for j=1:dObs.nsrc
-        gradient += results[j]; results[j] = []
+        gradient += fetch(results[j]); results[j] = []
     end
 
     # first value corresponds to function value, the rest to the gradient

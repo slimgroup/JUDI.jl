@@ -99,7 +99,6 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
         expression += src_term
 
     # Free surface
-    kwargs = dict()
     if free_surface is True:
         expression += freesurface(u, space_order//2, model.nbpml)
 
