@@ -60,17 +60,18 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
         u = TimeFunction(name='u', grid=model.grid, time_order=2, space_order=space_order, save=nt)
         eqsave = []
 
-    # Set up PDE
-    ulaplace, rho = acoustic_laplacian(u, rho)
-    H = symbols('H')
-    eqn = m / rho * u.dt2 - H + 2 * damp * u.dt + damp * damp * u
-    stencil = solve(eqn, u.forward).subs({H: ulaplace})
-
     # Input source is wavefield
+    wf_src = 0
     if isinstance(wavelet, TimeFunction):
         wf_src = TimeFunction(name='wf_src', grid=model.grid, time_order=2, space_order=space_order, save=nt)
         wf_src._data = wavelet._data
-        eqn -= wf_src
+
+    # Set up PDE
+    ulaplace, rho = acoustic_laplacian(u, rho)
+    H = symbols('H')
+    # eqn = m / rho * u.dt2 - H + 2 * damp * u.dt + damp * damp * u
+    # stencil = solve(eqn, u.forward).subs({H: ulaplace})
+    stencil = ((2 - damp * damp * dt**2) * u + (damp * dt - 1) * u.backward + dt**2 * m * (ulaplace - wf_src))/ (1 + damp * dt)
 
     # Rearrange expression
     # stencil = solve(eqn, u.forward)
@@ -150,9 +151,10 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=8, fre
 
     # Set up PDE and rearrange
     vlaplace, rho = acoustic_laplacian(v, rho)
-    H = symbols('H')
-    eqn = m / rho * v.dt2 - H + 2 * damp * v.dt.T + damp * damp * v
-    stencil = solve(eqn, v.backward).subs({H: vlaplace + full_q})
+    # H = symbols('H')
+    # eqn = m / rho * v.dt2 - H + 2 * damp * v.dt.T + damp * damp * v
+    # stencil = solve(eqn, v.backward).subs({H: vlaplace + full_q})
+    stencil = ((2 - damp * damp * dt**2) * v + (damp * dt - 1) * v.forward + dt**2 * m * vlaplace)/ (1 + damp * dt)
 
     expression = [Eq(v.backward, stencil)]
 
@@ -220,13 +222,15 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, isic=Fal
         lin_source = dm / rho * u.dt2
 
     # Set up PDE and rearrange
-    H = symbols('H')
-    eqn = m / rho * u.dt2 - H + 2 * damp * u.dt + damp * damp * u
-    stencil_u = solve(eqn, u.forward).subs({H: ulaplace})
+    # H = symbols('H')
+    # eqn = m / rho * u.dt2 - H + 2 * damp * u.dt + damp * damp * u
+    # stencil_u = solve(eqn, u.forward).subs({H: ulaplace})
+    #
+    # eqn = m / rho * du.dt2 - H + 2 * damp * du.dt + damp * damp * du
+    # stencil_du = solve(eqn, du.forward).subs({H: dulaplace - lin_source})
 
-    eqn = m / rho * du.dt2 - H + 2 * damp * du.dt + damp * damp * du
-    stencil_du = solve(eqn, du.forward).subs({H: dulaplace - lin_source})
-
+    stencil_u = ((2 - damp * damp * dt**2) * u + (damp * dt - 1) * u.backward + dt**2 * m * ulaplace)/ (1 + damp * dt)
+    stencil_du = ((2 - damp * damp * dt**2) * du + (damp * dt - 1) * du.backward + dt**2 * m * (dulaplace - lin_source))/ (1 + damp * dt)
     expression_u = [Eq(u.forward, stencil_u)]
     expression_du = [Eq(du.forward, stencil_du)]
 
@@ -275,9 +279,10 @@ def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residu
 
     # Set up PDE and rearrange
     vlaplace, rho = acoustic_laplacian(v, rho)
-    H = symbols('H')
-    eqn = m / rho * v.dt2 - H + 2 * damp * v.dt.T + damp * damp * v
-    stencil = solve(eqn, v.backward).subs({H: vlaplace})
+    # H = symbols('H')
+    # eqn = m / rho * v.dt2 - H + 2 * damp * v.dt.T + damp * damp * v
+    # stencil = solve(eqn, v.backward).subs({H: vlaplace})
+    stencil = ((2 - damp * damp * dt**2) * v + (damp * dt - 1) * v.forward + dt**2 * m * vlaplace)/ (1 + damp * dt)
 
     expression = [Eq(v.backward, stencil)]
     # Data at receiver locations as adjoint source

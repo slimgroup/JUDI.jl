@@ -29,7 +29,8 @@ function fwi_objective(model::Model, source::judiVector, dObs::judiVector; optio
     end
 
     # Collect and reduce gradients
-    gradient = zeros(Float32,prod(model.n)+1)
+    gradient = zeros(Float32,prod(model.n))
+	println(size(gradient), " ", [size(r) for r in results])
     for j=1:dObs.nsrc
         gradient += results[j]; results[j] = []
     end

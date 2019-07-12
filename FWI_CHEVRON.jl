@@ -47,7 +47,7 @@ opt = Options(optimal_checkpointing = false,
               limit_m = true,
               buffer_size = 1000f0,
               free_surface=true,
-			  normalize=true,
+			  normalized="shot",
 			  space_order=12)
 #
 # Setup operators
@@ -120,7 +120,7 @@ f, g = fwi_obj(x)
 # save("FWI-10.jld", "m0", m0, "x", reshape(x, model0.n), "fval", fsave, "funEvals", funEvals)
 
 ############################### GS-FWI-shot ###########################################
-opt = Options(limit_m=true, buffer_size=1000f0, free_surface=true, normalize=true, gs=Dict("maxshift" => 400.0f0, "strategy" => "shot"))
+opt = Options(limit_m=true, buffer_size=1000f0, free_surface=true, normalized="shot", gs=Dict("maxshift" => 400.0f0, "strategy" => "shot"))
 Random.seed!(1)   # set seed of random number generator
 # Objective function for minConf library
 
@@ -148,7 +148,7 @@ f2, g2 = fwi_obj(x)
 # save("FWIgss-10.jld", "m0", m0, "x", reshape(x, model0.n), "fval", fsave, "funEvals", funEvals)
 
 ############################### GS-FWI-trace ###########################################
-opt = Options(limit_m=true, buffer_size=1000f0, free_surface=true, normalize=true, gs=Dict("maxshift" => 400.0f0, "strategy" => "trace"))
+opt = Options(limit_m=true, buffer_size=1000f0, free_surface=true, normalized="trace", gs=Dict("maxshift" => 400.0f0, "strategy" => "trace"))
 Random.seed!(1)    # set seed of random number generator
 
 

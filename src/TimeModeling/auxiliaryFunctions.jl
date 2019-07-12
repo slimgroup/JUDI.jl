@@ -552,7 +552,7 @@ function resample_model(array, inh, modelfull)
     return resampled
 end
 
-function misfit(d1::Array{Float32, 2}, d2::Array{Float32, 2}; normalized=false)
+function misfit(d1::Array{Float32, 2}, d2::Array{Float32, 2}, normalized)
 	obj = 0.0f0
     if normalized == "shot"
             obj = norm(vec(d1)) - dot(vec(d1),vec(d2))/norm(vec(d2))
@@ -568,7 +568,7 @@ function misfit(d1::Array{Float32, 2}, d2::Array{Float32, 2}; normalized=false)
 	return obj
 end
 
-function adjoint_src(d1::Array{Float32, 2}, d2::Array{Float32, 2}; normalized=false)
+function adjoint_src(d1::Array{Float32, 2}, d2::Array{Float32, 2}, normalized)
 	adj_src = similar(d1)
     if normalized == "trace"
 		for i =1:size(d1,2)
