@@ -18,9 +18,10 @@ Example
 function fwi_objective(model::Model, source::judiVector, dObs::judiVector; options=Options(), frequencies=[])
 # fwi_objective function for multiple sources. The function distributes the sources and the input data amongst the available workers.
  	
-	p = default_worker_pool()
+    # p = default_worker_pool()
+    # time_modeling_par = remote(TimeModeling.time_modeling)
     # Process shots from source channel asynchronously
-    fwi_objective = retry(TimeModeling.fwi_objective)
+    # fwi_objective = retry(TimeModeling.fwi_objective)
     results = Array{Any}(undef, dObs.nsrc)
     @sync begin
         for j=1:dObs.nsrc
@@ -29,8 +30,8 @@ function fwi_objective(model::Model, source::judiVector, dObs::judiVector; optio
     end
 
     # Collect and reduce gradients
-    gradient = zeros(Float32,prod(model.n))
-	println(size(gradient), " ", [size(r) for r in results])
+    gradient = zeros(Float32,prod(model.n) + 1)
+
     for j=1:dObs.nsrc
         gradient += results[j]; results[j] = []
     end

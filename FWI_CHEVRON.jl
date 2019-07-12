@@ -15,7 +15,7 @@ n = size(vp)
 o = (0., 0.)
 m0 = 1f0 ./ vp.^2
 
-model0 = Model(n, d, o, m0; nb=40)
+model0 = Model(n, d, o, m0; nb=80, rho=rho)
 
 # Read datasets
 container = segy_scan("/Users/mathiaslouboutin/data/ChevronSEG2014/", "Piso", ["GroupX", "GroupY", "RecGroupElevation", "dt"])
@@ -91,7 +91,7 @@ function objective_function(x, fmin, fmax, opt)
 	q = judiVector(src_geometry, wave_low)
 	fval, grad = fwi_objective(model0, q[i], d_sub; options=opt)
 	grad = reshape(grad, model0.n)
-	grad[vp .< 1.55] = 0
+	grad[x .> .42] .= 0
 	grad = .5f0*grad/maximum(abs.(grad))  # scale for line search
 
 	global count; count+= 1

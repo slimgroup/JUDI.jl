@@ -37,7 +37,7 @@ def initialize_damp(damp, nbpml, spacing, mask=False):
     # dampcoeff = 1.5 * np.log(1.0 / 0.001) / (40.)
     
     L = nbpml
-    dampcoeff = 1.5*np.log(1/.5) * 3 / (2 * L**3)
+    dampcoeff = 2.5*np.log(1/.5) * 3 / (2 * L**3)
 
     assert all(damp._offset_domain[0] == i for i in damp._offset_domain)
 

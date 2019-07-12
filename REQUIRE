@@ -10,3 +10,5 @@ PyPlot
 JOLI
 SeisIO
 DSP
+Ipopt
+MathProgBase

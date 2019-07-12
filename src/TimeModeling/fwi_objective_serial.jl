@@ -90,13 +90,13 @@ function fwi_objective(model_full::Modelall, source::judiVector, dObs::judiVecto
 		argout1 = misfit(dObserved, dObserved, options.normalized)
         argout2 = pycall(ac."adjoint_born", Array{Float32}, modelPy,
 						 PyReverseDims(copy(transpose(rec_coords))),
-						 PyReverseDims(copy(transpose(dObserved))),
+						 PyReverseDims(copy(transpose(adj_src))),
 						 tsub_factor=options.t_sub,
                          u=get(fwd_pred, 1), is_residual=true)
     end
     argout2 = remove_padding(argout2, model.nb, true_adjoint=options.sum_padding)
-    if options.limit_m==true && length(model_full.n) == 3
-        argout2 = extend_gradient(model_full,model,argout2)
+    if options.limit_m==true
+        argout2 = extend_gradient(model_full, model, argout2)
     end
     return [argout1; vec(argout2)]
 end
