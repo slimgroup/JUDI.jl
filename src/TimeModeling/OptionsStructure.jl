@@ -24,7 +24,7 @@ mutable struct Options
     t_sub::Integer
     h_sub::Integer
     gs::Dict
-    normalize
+    normalized
     dft_subsampling_factor::Integer
 end
 
@@ -48,7 +48,7 @@ end
 	    t_sub::Integer
 	    h_sub::Integer
 	    gs::Dict
-	    normalize::Bool
+	    normalized
 	    dft_subsampling_factor::Integer
 
 
@@ -112,7 +112,7 @@ Options(;space_order=8,
 		 frequencies=[],
 		 isic=false,
          gs=Dict(),
-		 normalize=false,
+		 normalized=false,
 		 t_sub=1,
 		 h_sub=1,
 		 dft_subsampling_factor=1) =
@@ -133,7 +133,7 @@ Options(;space_order=8,
 				 t_sub,
 				 h_sub,
 				 gs,
-				 normalize,
+				 normalized,
 				 dft_subsampling_factor)
 
 function subsample(options::Options, srcnum)

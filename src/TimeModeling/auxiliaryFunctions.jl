@@ -8,6 +8,7 @@ export convertToCell, limit_model_to_receiver_area, extend_gradient, remove_out_
 export time_resample, remove_padding, backtracking_linesearch, subsample
 export generate_distribution, select_frequencies, process_physical_parameter
 export load_pymodel, load_devito_jit, load_numpy, devito_model
+export misfit, adjoint_src, gs_residual
 
 function devito_model(model::Model, op, mode, options, dm)
     pm = load_pymodel()
@@ -566,15 +567,22 @@ function resample_model(array, inh, modelfull)
     return resampled
 end
 
-function gs_residual_trace(maxshift, dtComp, d1, d2, normalize)
+function gs_residual_trace(maxshift, dtComp, d1::Array{Float32, 2}, d2::Array{Float32, 2}, normalized)
 	#shifts
 	nshift = round(Int64, maxshift/dtComp)
 	nSamples = 2*nshift + 1
 
 	data_size = size(d1)
-	residual = zeros(Float32, data_size)
+	adj_src = similar(d1)
+	
+	if normalized == "shot"
+		d1 /= norm(d1)
+		d2 /= norm(d1)
+	end
+
 	d1 = [zeros(Float32, nshift, size(d1,2)); d1; zeros(Float32, nshift, size(d1,2))]
 	d2 = [zeros(Float32, nshift, size(d1,2)); d2; zeros(Float32, nshift, size(d1,2))]
+
 	# residual_plot = zeros(Float32, size(d2))
 	# syn_plot = zeros(Float32, size(d2))
     indnz = [i for i in 1:size(d1,2) if (norm(d2[:,i])>0 && norm(d1[:,i])>0)]
@@ -583,11 +591,11 @@ function gs_residual_trace(maxshift, dtComp, d1, d2, normalize)
 
 	for rr in indnz
 		aux = zeros(Float32, size(d1, 1))
-
 		syn = d1[:, rr]
 		obs = d2[:, rr]
 
-		if normalize
+		weight = norm(obs)
+		if normalized == "trace"
 			syn /= norm(syn)
 			obs /= norm(obs)
 		end
@@ -618,7 +626,6 @@ function gs_residual_trace(maxshift, dtComp, d1, d2, normalize)
 		H = evalgrid(spl, x0, y0)
 
 		# get coefficients
-
 		H = Array{Float64}(H)
 		H = .5*(H'+ H)
 		A = ones(Float32, 1, nSamples)
@@ -627,46 +634,32 @@ function gs_residual_trace(maxshift, dtComp, d1, d2, normalize)
 		# Data misfit
 		for i = 1:2*nshift+1
 			shift = i - nshift - 1
-			residual[:, rr] += alphas[i] * circshift(circshift(syn, shift) - obs, -2*shift)[nshift+1:(end-nshift)]
-			# residual_plot[:, rr] +=  alphas[i] * (circshift(syn, shift) - obs)
-			# syn_plot[:, rr] +=  alphas[i] * circshift(syn, shift)
-			#residual += alphas[i] * circshift(circshift(d1, (0,shift)) - d2, (0, -2*shift))[:, nshift+1:(end-nshift)]
+			adj_src[:, rr] += alphas[i] * circshift(circshift(syn, shift) - obs, -2*shift)[nshift+1:(end-nshift)]
 		end
-		# if rr%50==0
-		# 	figure();plot(syn_plot[rr,:], "-b");plot(syn, "-r");plot(obs, "-g")
-		# end
-        residual[:, rr] = weights[rr] * residual[:, rr]
+        adj_src[:, rr] = weight * adj_src[:, rr]
 	end
-	# figure();imshow(syn_plot', vmin=-1e1, vmax=1e1, cmap="seismic", aspect=.2)
-	# figure();imshow(d1', vmin=-1e1, vmax=1e1, cmap="seismic", aspect=.2)
-	# figure();imshow(d2', vmin=-1e1, vmax=1e1, cmap="seismic", aspect=.2)
-	# figure();imshow(residual_plot', vmin=-1e1, vmax=1e1, cmap="seismic", aspect=.2)
-	# figure();imshow(d1' - d2', vmin=-1e1, vmax=1e1, cmap="seismic", aspect=.2)
-	#
-	return residual
+	return adj_src
 end
 
-function gs_residual_shot(maxshift, dtComp, d1, d2, normalize)
+function gs_residual_shot(maxshift, dtComp, d1::Array{Float32, 2}, d2::Array{Float32, 2}, normalized)
 	#shifts
 	nshift = round(Int64, maxshift/dtComp)
 	# println(nshift, " ", dtComp)
 	nSamples = 2*nshift + 1
 
 	data_size = size(d1)
-	residual = zeros(Float32, data_size)
+	adj_src = similar(d1)
 	d1 = [zeros(Float32, nshift, size(d1,2)); d1; zeros(Float32, nshift, size(d1,2))]
 	d2 = [zeros(Float32, nshift, size(d1,2)); d2; zeros(Float32, nshift, size(d1,2))]
-	if normalize == "shot"
+	if normalized == "shot"
 		d1 /= norm(vec(d1))
 		d2 /= norm(vec(d2))
-	elseif normalize == "trace"
+	elseif normalized == "trace"
 		for i = 1:size(d1,2)
-			if norm(d1[:, i]) > 0
-				d1[:, i] /= norm(d1[:, i])
-			end
-			if norm(d2[:, i]) > 0
-				d2[:, i] /= norm(d2[:, i])
-			end
+			norm(d1[:, i]) > 0 ? n1 = norm(d1[:, i]) : n1 = 1
+			norm(d2[:, i]) > 0 ? n2 = norm(d2[:, i]) : n2 = 1
+			d1[:, i] /= n1
+			d2[:, i] /= n1
 		end
 	end
 	aux = zeros(Float32, size(d1))
@@ -707,26 +700,26 @@ function gs_residual_shot(maxshift, dtComp, d1, d2, normalize)
 	# Data misfit
 	for i = 1:2*nshift+1
 		shift = i - nshift - 1
-		residual += alphas[i] * circshift(abs.(circshift(d1, (shift, 0))).*(circshift(d1, (shift, 0)) - d2), (-2*shift, 0))[nshift+1:(end-nshift), :]
+		adj_src += alphas[i] * circshift(abs.(circshift(d1, (shift, 0))).*(circshift(d1, (shift, 0)) - d2), (-2*shift, 0))[nshift+1:(end-nshift), :]
 	end
 
-	return residual
+	return adj_src
 end
 
-function gs_residual(gs, dtComp, d1, d2; normalize_adj=false)
+function gs_residual(gs::Dict, dtComp, d1::Array{Float32, 2}, d2::Array{Float32, 2}; normalized=false)
 	if gs["strategy"] == "shot"
-		residual = gs_residual_shot(gs["maxshift"], dtComp, d1, d2, normalize)
+		adj_src = gs_residual_shot(gs["maxshift"], dtComp, d1, d2, normalized)
 	else
-		residual = gs_residual_trace(gs["maxshift"], dtComp, d1, d2, normalize)
+		adj_src = gs_residual_trace(gs["maxshift"], dtComp, d1, d2, normalized)
 	end
-	return residual
+	return adj_src
 end
 
-function misfit(d1::Array{Float32, 2}, d2::Array{Float32, 2}; normalize_adj=false)
+function misfit(d1::Array{Float32, 2}, d2::Array{Float32, 2}; normalized=false)
 	obj = 0.0f0
-    if normalize == "shot"
+    if normalized == "shot"
             obj = norm(vec(d1)) - dot(vec(d1),vec(d2))/norm(vec(d2))
-    elseif normalize == "trace"
+    elseif normalized == "trace"
 		for i=1:size(d2, 2)
 			norm(d2[:, i])>0 ? n2 = norm(d2[:, i]) : n2 = 1
        		obj += norm(d1[:, i]) - dot(d1[:, i], d2[:, i])/n2
@@ -738,19 +731,18 @@ function misfit(d1::Array{Float32, 2}, d2::Array{Float32, 2}; normalize_adj=fals
 	return obj
 end
 
-function adjoint_src(d1::Array{Float32, 2}, d2::Array{Float32, 2}; normalize_adj=false)
+function adjoint_src(d1::Array{Float32, 2}, d2::Array{Float32, 2}; normalized=false)
 	adj_src = similar(d1)
-    if normalize_adj == "trace"
+    if normalized == "trace"
 		for i =1:size(d1,2)
 			norm(d1[:, i])>0 ? n1 = norm(d1[:, i]) : n1 = 1
 			norm(d2[:, i])>0 ? n2 = norm(d2[:, i]) : n2 = 1
 			adj_src[:, i] = d1[:, i]/n1 - d2[:, i]/n2
 		end
-	elseif normalize == "shot"
+	elseif normalized == "shot"
         adj_src = d1/norm(vec(d1)) - d2/norm(vec(d2))
     else
         adj_src = d1 - d2
     end
-
 	return adj_src
 end

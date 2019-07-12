@@ -54,18 +54,25 @@ function fwi_objective(model_full::Model, source::judiVector, dObs::judiVector, 
                                   op_forward=op_F, is_residual=false, free_surface=options.free_surface)
     elseif ~isempty(options.frequencies)
         typeof(options.frequencies) == Array{Any,1} && (options.frequencies = options.frequencies[srcnum])
-        dPredicted, uf_real, uf_imag = pycall(ac."forward_freq_modeling", PyObject, modelPy,
-											  PyReverseDims(copy(transpose(src_coords))),
-											  PyReverseDims(copy(transpose(qIn))),
-											  PyReverseDims(copy(transpose(rec_coords))),
-                                              options.frequencies, space_order=options.space_order,
-											  nb=model.nb, free_surface=options.free_surface)
-
-        argout1 = .5f0*norm(vec(dPredicted) - vec(dObserved),2)^2.f0    # data misfit
+        fwd_pred = pycall(ac."forward_freq_modeling", PyObject, modelPy,
+						  PyReverseDims(copy(transpose(src_coords))),
+						  PyReverseDims(copy(transpose(qIn))),
+						  PyReverseDims(copy(transpose(rec_coords))),
+						  options.frequencies, space_order=options.space_order,
+						  nb=model.nb, free_surface=options.free_surface)
+  		dPredicted = get(fwd_pred, 0)
+  		argout1 = misfit(dObserved, dObserved; normalized=options.normalized)
+          # Why the fuck does this prevent memory release
+  		if isempty(options.gs)
+  		    adj_src = adjoint_src(dPredicted, dObserved; normalized=options.normalized)
+  		else
+  			adj_src = gs_residual(options.gs, dtComp, dPredicted, dObserved; normalized=options.normalized)
+  		end
         argout2 = pycall(ac."adjoint_freq_born", Array{Float32, length(model.n)}, modelPy,
 						 PyReverseDims(copy(transpose(src_coords))),
 						 PyReverseDims(copy(transpose(dPredicted - dObserved))),
-                         options.frequencies, uf_real, uf_imag, space_order=options.space_order,
+                         options.frequencies, get(fwd_pred, 1), get(fwd_pred, 2),
+						 space_order=options.space_order,
 						 nb=model.nb, free_surface=options.free_surface)
     else
         fwd_pred = pycall(ac."forward_modeling", PyObject, modelPy,
@@ -73,16 +80,14 @@ function fwi_objective(model_full::Model, source::judiVector, dObs::judiVector, 
 						  PyReverseDims(copy(transpose(qIn))),
 						  PyReverseDims(copy(transpose(rec_coords))),
 						  save=true, tsub_factor=options.t_sub)
-		# dPredicted = get(fwd_pred, 0) 
+		dPredicted = get(fwd_pred, 0)
+		argout1 = misfit(dObserved, dObserved; normalized=options.normalized)
         # Why the fuck does this prevent memory release
-		# if isempty(options.gs)
-		#         	adj_src = dPredicted - dObserved #adjoint_src(dPredicted, dObserved; normalize_adj=options.normalize)
-		# else
-		# 	adj_src = gs_residual(options.gs, dtComp, dPredicted, dObserved, options.normalize)
-		# end
-		# adj_src = - dObserved
-	    # argout1 = misfit(dObserved, dObserved; normalize_adj=options.normalize)
-		argout1 = .5*norm(dObserved)^2
+		if isempty(options.gs)
+		    adj_src = adjoint_src(dPredicted, dObserved; normalized=options.normalized)
+		else
+			adj_src = gs_residual(options.gs, dtComp, dPredicted, dObserved; normalized=options.normalized)
+		end
         argout2 = pycall(ac."adjoint_born", Array{Float32}, modelPy,
 						 PyReverseDims(copy(transpose(rec_coords))),
 						 PyReverseDims(copy(transpose(dObserved))),
