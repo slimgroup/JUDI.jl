@@ -34,11 +34,11 @@ function lbfgsHvFunc2(v,Hdiag,N,M)
         pr =  Array{Float32}(ssbin(M,500))
         L = spdiagm((pr,),0)
         Hv = v/Hdiag - N*L*((L*M*L)\(L*(transpose(N)*v)))
-
+    
     else
         Hv = v/Hdiag - N*(M\(transpose(N)*v))
     end
-
+    
     return Hv
 end
 
@@ -94,7 +94,7 @@ function solveSubProblem(x,g,H,funProj,optTol,progTol,maxIter,testOpt,feasibleIn
                           feasibleInit = feasibleInit)
     funObj(p) = subHv(p,x,g,H);
     p, f, funEvals, subProjects, hist = minConf_SPG(funObj,x_init,funProj,options);
-    return p, subProjects
+    return p, subProjects 
 end
 
 function subHv(p,x,g,HvFunc)
@@ -224,6 +224,6 @@ function polyinterp(points;xminBound=-Inf,xmaxBound=Inf)
             end
         end
     end
-
+    
     return minPos, fmin
 end

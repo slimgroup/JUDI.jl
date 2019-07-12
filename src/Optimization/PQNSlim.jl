@@ -17,11 +17,11 @@ mutable struct PQN_params
     SPGtestOpt
 end
 
-function pqn_options(;verbose=3, optTol=1f-5, progTol=1f-7,
-                     maxIter=20, maxProject=100000, suffDec=1f-4,
-                     corrections=10, adjustStep=false, bbInit=false,
-                     SPGoptTol=1f-6, SPGprogTol=1f-7,
-                     SPGiters=10, SPGtestOpt=false)
+function pqn_options(;verbose=3,optTol=1f-5,progTol=1f-7,
+                     maxIter=20,maxProject=100000, suffDec=1f-4,
+                     corrections=10, adjustStep=false,bbInit=false,
+                     SPGoptTol=1f-6,SPGprogTol=1f-7,
+                     SPGiters=10,SPGtestOpt=false)
     return PQN_params(verbose,optTol,progTol,maxIter,
                       maxProject,suffDec,corrections,
                       adjustStep,bbInit,SPGoptTol,
@@ -169,9 +169,9 @@ function  minConf_PQN(funObj,x,funProj,options)
         end
 
         # Bound Step length on first iteration
-        # if i == 1
-        #     t = min(1,1/sum(abs.(d)));
-        # end
+        if i == 1
+            t = min(1,1/sum(abs.(d)));
+        end
 
         # Evaluate the Objective and Gradient at the Initial Step
         if t == 1
@@ -184,10 +184,9 @@ function  minConf_PQN(funObj,x,funProj,options)
 
         # Backtracking Line Search
         f_old = f;
-        @printf("%10s %4.2e %4.2e\n", "LineSearch", f, f_new)
         while f_new > f + options.suffDec*dot(g,(x_new-x)) || ~isLegal(f_new) || ~isLegal(g_new)
             temp = t;
-            @printf("%10s %4.2e %4.2e\n", "LineSearch", f, f_new)
+
             # Backtrack to next trial value
             if ~isLegal(f_new) || ~isLegal(g_new)
                 if options.verbose == 3
@@ -198,8 +197,7 @@ function  minConf_PQN(funObj,x,funProj,options)
                 if options.verbose == 3
                     @printf("Cubic Backtracking\n");
                 end
-                t = polyinterp([0 f gtd; t f_new g_new'*d]);
-                @printf("%4.2e %4.2e %4.2e %4.2e %4.2e \n", f, gtd,  t, f_new, g_new'*d)
+                t = polyinterp([0 f gtd; t f_new transpose(g_new)*d]);
             end
 
             # Adjust if change is too small/large
@@ -207,7 +205,7 @@ function  minConf_PQN(funObj,x,funProj,options)
                 if options.verbose == 3
                     @printf("Interpolated value too small, Adjusting\n");
                 end
-                t = temp/2;
+                t = temp*1e-3;
             elseif t > temp*0.6
                 if options.verbose == 3
                     @printf("Interpolated value too large, Adjusting\n");

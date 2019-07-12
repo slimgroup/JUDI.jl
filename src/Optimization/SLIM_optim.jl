@@ -5,10 +5,9 @@
 
 module SLIM_optim
 
-using PolynomialRoots, Printf, Statistics, LinearAlgebra, Random, DSP
+using PolynomialRoots, Printf, Statistics, LinearAlgebra, Random
 
-
-using JUDI.TimeModeling
+import JUDI
 
 #############################################################################
 # Optimization algorithms
@@ -17,6 +16,5 @@ include("PQNSlim.jl")   # minConf_PQN
 include("OptimizationFunctions.jl") # common functions
 include("Constraints.jl") # Constriaints projection
 include("fwi_linesearch.jl")
-include("preconditioners.jl")
 
 end

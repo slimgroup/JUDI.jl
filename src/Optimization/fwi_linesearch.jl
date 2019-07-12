@@ -8,15 +8,15 @@ function backtracking_linesearch(model_orig, q, dobs, f_prev, g, proj; alpha=1f0
         model.m = proj(model_orig.m + alpha*reshape(p,model.n))
 
         # Set up linear operator and calculate data residual
-        info = Info(prod(model.n), dobs.nsrc, get_computational_nt(q.geometry,dobs.geometry,model))
-        F = judiModeling(info,model,q.geometry,dobs.geometry)
+        info = JUDI.TimeModeling.Info(prod(model.n), dobs.nsrc, JUDI.TimeModeling.get_computational_nt(q.geometry,dobs.geometry,model))
+        F = JUDI.TimeModeling.judiModeling(info,model,q.geometry,dobs.geometry)
         dpred = F*q
         return .5f0*norm(dpred - dobs)^2
     end
-
+    
     model = deepcopy(model_orig)    # don't modify original model
     p = -g/norm(g,Inf)  # normalized descent direction
-    f_new = objective(alpha, p)
+    f_new = objective(alpha,p)
     iter = 1
     verbose == true && println("    Iter LS: ", iter, "; ", f_new, " <= ", f_prev + c1*alpha*dot(g,p), "; alpha: ", alpha)
 
@@ -51,3 +51,6 @@ function backtracking_linesearch(model_orig, q, dobs, f_prev, g, proj, objective
     end
     return alpha*p
 end
+
+
+
