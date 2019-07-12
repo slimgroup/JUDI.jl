@@ -17,7 +17,8 @@ Example
 """
 function fwi_objective(model::Model, source::judiVector, dObs::judiVector; options=Options(), frequencies=[])
 # fwi_objective function for multiple sources. The function distributes the sources and the input data amongst the available workers.
-
+ 	
+	p = default_worker_pool()
     # Process shots from source channel asynchronously
     fwi_objective = retry(TimeModeling.fwi_objective)
     results = Array{Any}(undef, dObs.nsrc)
