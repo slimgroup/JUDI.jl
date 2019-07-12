@@ -266,14 +266,14 @@ function load_numpy()
     return pyimport("numpy")
 end
 
-function load_devito_jit(modelPy)
+function load_devito_jit(model::Model)
     pushfirst!(PyVector(pyimport("sys")."path"), joinpath(JUDIPATH, "Python"))
-    if modelPy.is_tti
-        # return pyimport("TTI_operators")
-        return pyimport("TTI_Staggered")
-    else
-        return pyimport("JAcoustic_codegen")
-    end
+    return pyimport("JAcoustic_codegen")
+end
+
+function load_devito_jit(model::Model_TTI)
+    pushfirst!(PyVector(pyimport("sys")."path"), joinpath(JUDIPATH, "Python"))
+    return pyimport("TTI_Staggered")
 end
 
 function calculate_dt(model::Model_TTI)
@@ -320,7 +320,7 @@ function get_computational_nt(srcGeometry, recGeometry, model::Modelall)
     return nt
 end
 
-function setup_grid(geometry, n, origin)
+function setup_grid(geometry, n)
     # 3D grid
     if length(n)==3
         if length(geometry.xloc[1]) > 1
@@ -328,7 +328,6 @@ function setup_grid(geometry, n, origin)
         else
             source_coords = Array{Float32,2}([geometry.xloc[1] geometry.yloc[1] geometry.zloc[1]])
         end
-        orig = Array{Float32}([origin[1] origin[2] origin[3]])
     else
     # 2D grid
         if length(geometry.xloc[1]) > 1
@@ -336,7 +335,6 @@ function setup_grid(geometry, n, origin)
         else
             source_coords = Array{Float32,2}([geometry.xloc[1] geometry.zloc[1]])
         end
-        orig = Array{Float32}([origin[1] origin[2]])
     end
     return source_coords
 end

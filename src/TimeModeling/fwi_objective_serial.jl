@@ -38,10 +38,10 @@ function fwi_objective(model_full::Modelall, source::judiVector, dObs::judiVecto
     ntRec = Int(trunc(tmaxRec/dtComp+1))
 
     # Set up coordinates
-    src_coords = setup_grid(source.geometry, model.n, model.o)  # shifts source coordinates by origin
-    rec_coords = setup_grid(dObs.geometry, model.n, model.o)    # shifts rec coordinates by origin
+    src_coords = setup_grid(source.geometry, model.n)  # shifts source coordinates by origin
+    rec_coords = setup_grid(dObs.geometry, model.n)    # shifts rec coordinates by origin
 
-    ac = load_devito_jit(modelPy)
+    ac = load_devito_jit(model)
 
     if options.optimal_checkpointing == true
         op_F = pycall(ac."forward_modeling", PyObject, modelPy,
@@ -62,15 +62,15 @@ function fwi_objective(model_full::Modelall, source::judiVector, dObs::judiVecto
 						  nb=model.nb, free_surface=options.free_surface)
   		dPredicted = get(fwd_pred, 0)
   		argout1 = misfit(dObserved, dObserved; normalized=options.normalized)
-          # Why the fuck does this prevent memory release
-  		# if isempty(options.gs)
+	      # Why the fuck does this prevent memory release
+  		if isempty(options.gs)
   		    adj_src = adjoint_src(dPredicted, dObserved; normalized=options.normalized)
-  		# else
-  		# 	adj_src = gs_residual(options.gs, dtComp, dPredicted, dObserved; normalized=options.normalized)
-  		# end
+  		else
+  			adj_src = gs_residual(options.gs, dtComp, dPredicted, dObserved; normalized=options.normalized)
+  		end
         argout2 = pycall(ac."adjoint_freq_born", Array{Float32, length(model.n)}, modelPy,
 						 PyReverseDims(copy(transpose(src_coords))),
-						 PyReverseDims(copy(transpose(dPredicted - dObserved))),
+						 PyReverseDims(copy(transpose(adj_src))),
                          options.frequencies, get(fwd_pred, 1), get(fwd_pred, 2),
 						 space_order=options.space_order,
 						 nb=model.nb, free_surface=options.free_surface)

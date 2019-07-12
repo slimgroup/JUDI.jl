@@ -41,7 +41,7 @@ function time_modeling(model_full::Modelall, srcGeometry, srcData, recGeometry, 
     end
 
     # Devito interface
-    argout = devito_interface(modelPy, model.o, srcGeometry, srcData, recGeometry, recData, dm, options)
+    argout = devito_interface(modelPy, model, srcGeometry, srcData, recGeometry, recData, dm, options)
 
     # Extend gradient back to original model size
     if op=='J' && mode==-1 && options.limit_m==true
@@ -58,8 +58,8 @@ time_modeling(model::Modelall, srcGeometry::Geometry, srcData, recGeometry::Geom
 ######################################################################################################################################################
 
 # d_obs = Pr*F*Ps'*q
-function devito_interface(modelPy::PyCall.PyObject, origin, srcGeometry::Geometry, srcData::Array, recGeometry::Geometry, recData::Nothing, dm::Nothing, options::Options)
-    ac = load_devito_jit(modelPy)
+function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Geometry, srcData::Array, recGeometry::Geometry, recData::Nothing, dm::Nothing, options::Options)
+    ac = load_devito_jit(model)
 
     # Interpolate input data to computational grid
     dtComp = modelPy.critical_dt
@@ -68,12 +68,15 @@ function devito_interface(modelPy::PyCall.PyObject, origin, srcGeometry::Geometr
     ntRec = Int(trunc(recGeometry.t[1]/dtComp + 1))
 
     # Set up coordinates with devito dimensions
-    src_coords = setup_grid(srcGeometry, modelPy.shape, origin)
-    rec_coords = setup_grid(recGeometry, modelPy.shape, origin)
+    src_coords = setup_grid(srcGeometry, modelPy.shape)
+    rec_coords = setup_grid(recGeometry, modelPy.shape)
 
     # Devito call
-    dOut = get(pycall(ac."forward_modeling", PyObject, modelPy, PyReverseDims(copy(transpose(src_coords))), PyReverseDims(copy(transpose(qIn))), PyReverseDims(copy(transpose(rec_coords))),
-                  space_order=options.space_order, free_surface=options.free_surface), 0)
+    dOut = get(pycall(ac."forward_modeling", PyObject, modelPy,
+					  PyReverseDims(copy(transpose(src_coords))),
+					  PyReverseDims(copy(transpose(qIn))),
+					  PyReverseDims(copy(transpose(rec_coords))),
+					  space_order=options.space_order, free_surface=options.free_surface), 0)
     ntRec > ntComp && (dOut = [dOut zeros(size(dOut,1), ntRec - ntComp)])
     dOut = time_resample(dOut,dtComp,recGeometry)
 
@@ -87,8 +90,8 @@ function devito_interface(modelPy::PyCall.PyObject, origin, srcGeometry::Geometr
 end
 
 # q_ad = Ps*F'*Pr'*d_obs
-function devito_interface(modelPy::PyCall.PyObject, origin, srcGeometry::Geometry, srcData::Nothing, recGeometry::Geometry, recData::Array, dm::Nothing, options::Options)
-    ac = load_devito_jit(modelPy)
+function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Geometry, srcData::Nothing, recGeometry::Geometry, recData::Array, dm::Nothing, options::Options)
+    ac = load_devito_jit(model)
 
     # Interpolate input data to computational grid
     dtComp = modelPy.critical_dt
@@ -97,11 +100,14 @@ function devito_interface(modelPy::PyCall.PyObject, origin, srcGeometry::Geometr
     ntSrc = Int(trunc(srcGeometry.t[1]/dtComp + 1))
 
     # Set up coordinates with devito dimensions
-    src_coords = setup_grid(srcGeometry, modelPy.shape, origin)
-    rec_coords = setup_grid(recGeometry, modelPy.shape, origin)
+    src_coords = setup_grid(srcGeometry, modelPy.shape)
+    rec_coords = setup_grid(recGeometry, modelPy.shape)
 
     # Devito call
-    qOut = pycall(ac."adjoint_modeling", Array{Float32,2}, modelPy, PyReverseDims(copy(transpose(src_coords))), PyReverseDims(copy(transpose(rec_coords))), PyReverseDims(copy(transpose(dIn))),
+    qOut = pycall(ac."adjoint_modeling", Array{Float32,2}, modelPy,
+				  PyReverseDims(copy(transpose(src_coords))),
+				  PyReverseDims(copy(transpose(rec_coords))),
+				  PyReverseDims(copy(transpose(dIn))),
                   space_order=options.space_order, free_surface=options.free_surface)
     ntSrc > ntComp && (qOut = [qOut zeros(size(qOut), ntSrc - ntComp)])
     qOut = time_resample(qOut,dtComp,srcGeometry)
@@ -111,8 +117,8 @@ function devito_interface(modelPy::PyCall.PyObject, origin, srcGeometry::Geometr
 end
 
 # u = F*Ps'*q
-function devito_interface(modelPy::PyCall.PyObject, origin, srcGeometry::Geometry, srcData::Array, recGeometry::Nothing, recData::Nothing, dm::Nothing, options::Options)
-    ac = load_devito_jit(modelPy)
+function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Geometry, srcData::Array, recGeometry::Nothing, recData::Nothing, dm::Nothing, options::Options)
+    ac = load_devito_jit(model)
 
     # Interpolate input data to computational grid
     dtComp = modelPy.critical_dt
@@ -120,10 +126,12 @@ function devito_interface(modelPy::PyCall.PyObject, origin, srcGeometry::Geometr
     ntComp = size(qIn,1)
 
     # Set up coordinates with devito dimensions
-    src_coords = setup_grid(srcGeometry, modelPy.shape, origin)
+    src_coords = setup_grid(srcGeometry, modelPy.shape)
 
     # Devito call
-    u = pycall(ac."forward_modeling", PyObject, modelPy, PyReverseDims(copy(transpose(src_coords))), PyReverseDims(copy(transpose(qIn))), nothing,
+    u = pycall(ac."forward_modeling", PyObject, modelPy,
+			   PyReverseDims(copy(transpose(src_coords))),
+			   PyReverseDims(copy(transpose(qIn))), nothing,
                space_order=options.space_order, free_surface=options.free_surface)
 
     # Output forward wavefield as judiWavefield
@@ -132,8 +140,8 @@ function devito_interface(modelPy::PyCall.PyObject, origin, srcGeometry::Geometr
 end
 
 # v = F'*Pr'*d_obs
-function devito_interface(modelPy::PyCall.PyObject, origin, srcGeometry::Nothing, srcData::Nothing, recGeometry::Geometry, recData::Array, dm::Nothing, options::Options)
-    ac = load_devito_jit(modelPy)
+function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Nothing, srcData::Nothing, recGeometry::Geometry, recData::Array, dm::Nothing, options::Options)
+    ac = load_devito_jit(model)
 
     # Interpolate input data to computational grid
     dtComp = modelPy.critical_dt
@@ -141,10 +149,12 @@ function devito_interface(modelPy::PyCall.PyObject, origin, srcGeometry::Nothing
     ntComp = size(dIn,1)
 
     # Set up coordinates with devito dimensions
-    rec_coords = setup_grid(recGeometry, modelPy.shape, origin)
+    rec_coords = setup_grid(recGeometry, modelPy.shape)
 
     # Devito call
-    v = pycall(ac."adjoint_modeling", PyObject, modelPy, nothing, PyReverseDims(copy(transpose(rec_coords))), PyReverseDims(copy(transpose(dIn))),
+    v = pycall(ac."adjoint_modeling", PyObject, modelPy, nothing,
+			   PyReverseDims(copy(transpose(rec_coords))),
+			   PyReverseDims(copy(transpose(dIn))),
                space_order=options.space_order, free_surface=options.free_surface)
 
     # Output adjoint wavefield as judiWavefield
@@ -153,19 +163,20 @@ function devito_interface(modelPy::PyCall.PyObject, origin, srcGeometry::Nothing
 end
 
 # d_obs = Pr*F*u
-function devito_interface(modelPy::PyCall.PyObject, origin, srcGeometry::Nothing, srcData::Array, recGeometry::Geometry, recData::Nothing, dm::Nothing, options::Options)
-    ac = load_devito_jit(modelPy)
+function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Nothing, srcData::Array, recGeometry::Geometry, recData::Nothing, dm::Nothing, options::Options)
+    ac = load_devito_jit(model)
 
     # Interpolate input data to computational grid
     dtComp = modelPy.critical_dt
     ntRec = Int(trunc(recGeometry.t[1]/dtComp + 1))
 
     # Set up coordinates with devito dimensions
-    rec_coords = setup_grid(recGeometry, modelPy.shape, origin)
+    rec_coords = setup_grid(recGeometry, modelPy.shape)
 
     # Devito call
-    dOut = get(pycall(ac."forward_modeling", PyObject, modelPy, nothing, srcData[1], PyReverseDims(copy(transpose(rec_coords))),
-                  space_order=options.space_order, free_surface=options.free_surface), 0)
+    dOut = get(pycall(ac."forward_modeling", PyObject, modelPy, nothing, srcData[1],
+					  PyReverseDims(copy(transpose(rec_coords))),
+					  space_order=options.space_order, free_surface=options.free_surface), 0)
     #ntRec > ntComp && (dOut = [dOut zeros(size(dOut,1), ntRec - ntComp)])
     dOut = time_resample(dOut,dtComp,recGeometry)
 
@@ -178,18 +189,19 @@ function devito_interface(modelPy::PyCall.PyObject, origin, srcGeometry::Nothing
 end
 
 # q_ad = Ps*F'*v
-function devito_interface(modelPy::PyCall.PyObject, origin, srcGeometry::Geometry, srcData::Nothing, recGeometry::Nothing, recData::Array, dm::Nothing, options::Options)
-    ac = load_devito_jit(modelPy)
+function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Geometry, srcData::Nothing, recGeometry::Nothing, recData::Array, dm::Nothing, options::Options)
+    ac = load_devito_jit(model)
 
     # Interpolate input data to computational grid
     dtComp = modelPy.critical_dt
     ntSrc = Int(trunc(srcGeometry.t[1]/dtComp + 1))
 
     # Set up coordinates with devito dimensions
-    src_coords = setup_grid(srcGeometry, modelPy.shape, origin)
+    src_coords = setup_grid(srcGeometry, modelPy.shape)
 
     # Devito call
-    qOut = pycall(ac."adjoint_modeling", Array{Float32,2}, modelPy, PyReverseDims(copy(transpose(src_coords))), nothing, recData[1],
+    qOut = pycall(ac."adjoint_modeling", Array{Float32,2}, modelPy,
+				  PyReverseDims(copy(transpose(src_coords))), nothing, recData[1],
                   space_order=options.space_order, free_surface=options.free_surface)
     #ntSrc > ntComp && (qOut = [qOut zeros(size(qOut), ntSrc - ntComp)])
     qOut = time_resample(qOut,dtComp,srcGeometry)
@@ -199,8 +211,8 @@ function devito_interface(modelPy::PyCall.PyObject, origin, srcGeometry::Geometr
 end
 
 # u_out = F*u_in
-function devito_interface(modelPy::PyCall.PyObject, origin, srcGeometry::Nothing, srcData::Array, recGeometry::Nothing, recData::Nothing, dm::Nothing, options::Options)
-    ac = load_devito_jit(modelPy)
+function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Nothing, srcData::Array, recGeometry::Nothing, recData::Nothing, dm::Nothing, options::Options)
+    ac = load_devito_jit(model)
 
     # Interpolate input data to computational grid
     dtComp = modelPy.critical_dt
@@ -208,7 +220,7 @@ function devito_interface(modelPy::PyCall.PyObject, origin, srcGeometry::Nothing
 
     # Devito call
     u = pycall(ac."forward_modeling", PyObject, modelPy, nothing, srcData[1], nothing,
-                  space_order=options.space_order, free_surface=options.free_surface)
+               space_order=options.space_order, free_surface=options.free_surface)
 
     # Output forward wavefield as judiWavefield
     options.save_wavefield_to_disk && (u = dump_wavefield(u))
@@ -216,8 +228,8 @@ function devito_interface(modelPy::PyCall.PyObject, origin, srcGeometry::Nothing
 end
 
 # v_out = F'*v_in
-function devito_interface(modelPy::PyCall.PyObject, origin, srcGeometry::Nothing, srcData::Nothing, recGeometry::Nothing, recData::Array, dm::Nothing, options::Options)
-    ac = load_devito_jit(modelPy)
+function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Nothing, srcData::Nothing, recGeometry::Nothing, recData::Array, dm::Nothing, options::Options)
+    ac = load_devito_jit(model)
 
     # Interpolate input data to computational grid
     dtComp = modelPy.critical_dt
@@ -225,7 +237,7 @@ function devito_interface(modelPy::PyCall.PyObject, origin, srcGeometry::Nothing
 
     # Devito call
     v = pycall(ac."adjoint_modeling", PyObject, modelPy, nothing, nothing, recData[1],
-                  space_order=options.space_order, free_surface=options.free_surface)
+               space_order=options.space_order, free_surface=options.free_surface)
 
     # Output adjoint wavefield as judiWavefield
     options.save_wavefield_to_disk && (v = dump_wavefield(v))
@@ -233,8 +245,8 @@ function devito_interface(modelPy::PyCall.PyObject, origin, srcGeometry::Nothing
 end
 
 # d_lin = J*dm
-function devito_interface(modelPy::PyCall.PyObject, origin, srcGeometry::Geometry, srcData::Array, recGeometry::Geometry, recData::Nothing, dm::Array, options::Options)
-    ac = load_devito_jit(modelPy)
+function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Geometry, srcData::Array, recGeometry::Geometry, recData::Nothing, dm::Array, options::Options)
+    ac = load_devito_jit(model)
 
     # Interpolate input data to computational grid
     dtComp = modelPy.critical_dt
@@ -245,11 +257,14 @@ function devito_interface(modelPy::PyCall.PyObject, origin, srcGeometry::Geometr
 
     # Set up coordinates with devito dimensions
     #origin = get_origin(modelPy)
-    src_coords = setup_grid(srcGeometry, modelPy.shape, origin)
-    rec_coords = setup_grid(recGeometry, modelPy.shape, origin)
+    src_coords = setup_grid(srcGeometry, modelPy.shape)
+    rec_coords = setup_grid(recGeometry, modelPy.shape)
 
     # Devito call
-    dOut = pycall(ac."forward_born", Array{Float32,2}, modelPy, PyReverseDims(copy(transpose(src_coords))), PyReverseDims(copy(transpose(qIn))), PyReverseDims(copy(transpose(rec_coords))),
+    dOut = pycall(ac."forward_born", Array{Float32,2}, modelPy,
+				  PyReverseDims(copy(transpose(src_coords))),
+				  PyReverseDims(copy(transpose(qIn))),
+				  PyReverseDims(copy(transpose(rec_coords))),
                   space_order=options.space_order, isic=options.isic)
     ntRec > ntComp && (dOut = [dOut zeros(size(dOut,1), ntRec - ntComp)])
     dOut = time_resample(dOut,dtComp,recGeometry)
@@ -264,8 +279,8 @@ function devito_interface(modelPy::PyCall.PyObject, origin, srcGeometry::Geometr
 end
 
 # dm = J'*d_lin
-function devito_interface(modelPy::PyCall.PyObject, origin, srcGeometry::Geometry, srcData::Array, recGeometry::Geometry, recData::Array, dm::Nothing, options::Options)
-    ac = load_devito_jit(modelPy)
+function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Geometry, srcData::Array, recGeometry::Geometry, recData::Array, dm::Nothing, options::Options)
+    ac = load_devito_jit(model)
 
     # Interpolate input data to computational grid
     dtComp = modelPy.critical_dt
@@ -273,25 +288,45 @@ function devito_interface(modelPy::PyCall.PyObject, origin, srcGeometry::Geometr
     dIn = time_resample(recData[1],recGeometry,dtComp)[1]
 
     # Set up coordinates with devito dimensions
-    src_coords = setup_grid(srcGeometry, modelPy.shape, origin)
-    rec_coords = setup_grid(recGeometry, modelPy.shape, origin)
+    src_coords = setup_grid(srcGeometry, modelPy.shape)
+    rec_coords = setup_grid(recGeometry, modelPy.shape)
 
     if options.optimal_checkpointing == true
-        op_F = pycall(ac."forward_modeling", PyObject, modelPy, PyReverseDims(copy(transpose(src_coords))), PyReverseDims(copy(transpose(qIn))), PyReverseDims(copy(transpose(rec_coords))),
+        op_F = pycall(ac."forward_modeling", PyObject, modelPy,
+					  PyReverseDims(copy(transpose(src_coords))),
+					  PyReverseDims(copy(transpose(qIn))),
+					  PyReverseDims(copy(transpose(rec_coords))),
                       op_return=true, space_order=options.space_order, nb=modelPy.nbpml)
-        grad = pycall(ac."adjoint_born", Array{Float32, length(modelPy.shape)}, modelPy, PyReverseDims(copy(transpose(rec_coords))), PyReverseDims(copy(transpose(dIn))), op_forward=op_F, space_order=options.space_order,
-            is_residual=true, isic=options.isic, n_checkpoints=options.num_checkpoints, maxmem=options.checkpoints_maxmem)
+        grad = pycall(ac."adjoint_born", Array{Float32, length(modelPy.shape)}, modelPy,
+					  PyReverseDims(copy(transpose(rec_coords))),
+					  PyReverseDims(copy(transpose(dIn))), op_forward=op_F,
+					  space_order=options.space_order,
+					  is_residual=true, isic=options.isic,
+					  n_checkpoints=options.num_checkpoints,
+					  maxmem=options.checkpoints_maxmem)
     elseif ~isempty(options.frequencies)    # gradient in frequency domain
         typeof(options.frequencies) == Array{Any,1} && (options.frequencies = options.frequencies[1])
-        d_pred, uf_real, uf_imag = pycall(ac."forward_freq_modeling", PyObject, modelPy, PyReverseDims(copy(transpose(src_coords))), PyReverseDims(copy(transpose(qIn))), PyReverseDims(copy(transpose(rec_coords))),
-                                          options.frequencies, space_order=options.space_order, factor=options.dft_subsampling_factor)
-        grad = pycall(ac."adjoint_freq_born", Array{Float32, length(modelPy.shape)}, modelPy, PyReverseDims(copy(transpose(rec_coords))), PyReverseDims(copy(transpose(dIn))),
-                      options.frequencies, uf_real, uf_imag, space_order=options.space_order, isic=options.isic, factor=options.dft_subsampling_factor)
+        d_pred, uf_real, uf_imag = pycall(ac."forward_freq_modeling", PyObject, modelPy,
+										  PyReverseDims(copy(transpose(src_coords))),
+										  PyReverseDims(copy(transpose(qIn))),
+										  PyReverseDims(copy(transpose(rec_coords))),
+                                          options.frequencies, space_order=options.space_order,
+										  factor=options.dft_subsampling_factor)
+        grad = pycall(ac."adjoint_freq_born", Array{Float32, length(modelPy.shape)}, modelPy,
+					  PyReverseDims(copy(transpose(rec_coords))), PyReverseDims(copy(transpose(dIn))),
+                      options.frequencies, uf_real, uf_imag, space_order=options.space_order, isic=options.isic,
+					  factor=options.dft_subsampling_factor)
     else
-        u0 = get(pycall(ac."forward_modeling", PyObject, modelPy, PyReverseDims(copy(transpose(src_coords))), PyReverseDims(copy(transpose(qIn))), PyReverseDims(copy(transpose(rec_coords))),
-                    space_order=options.space_order, save=true, tsub_factor=options.t_sub), 1)
-        grad = pycall(ac."adjoint_born", Array{Float32, length(modelPy.shape)}, modelPy, PyReverseDims(copy(transpose(rec_coords))), PyReverseDims(copy(transpose(dIn))), u=u0,
-                      space_order=options.space_order, tsub_factor=options.t_sub, isic=options.isic)
+        u0 = get(pycall(ac."forward_modeling", PyObject, modelPy,
+					    PyReverseDims(copy(transpose(src_coords))),
+						PyReverseDims(copy(transpose(qIn))),
+						PyReverseDims(copy(transpose(rec_coords))),
+                        space_order=options.space_order, save=true, tsub_factor=options.t_sub), 1)
+        grad = pycall(ac."adjoint_born", Array{Float32, length(modelPy.shape)}, modelPy,
+					  PyReverseDims(copy(transpose(rec_coords))),
+					  PyReverseDims(copy(transpose(dIn))), u=u0,
+                      space_order=options.space_order, tsub_factor=options.t_sub,
+					  isic=options.isic)
     end
 
     # Remove PML and return gradient as Array

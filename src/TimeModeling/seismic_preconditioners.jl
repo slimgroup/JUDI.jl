@@ -22,6 +22,28 @@ function judiFilter(geometry, fmin, fmax)
     return D
 end
 
+function low_filter(Din::Array{Float32, 2}, dt_in; fmin=0.0, fmax=25.0)	
+    Dout = deepcopy(Din)	
+    responsetype = Bandpass(fmin, fmax; fs=1e3/dt_in)	
+    designmethod = Butterworth(5)	
+    for i=1:size(Dout,2)	
+        Dout[:, i] = filt(digitalfilter(responsetype, designmethod), Float32.(Dout[:, i]))	
+    end	
+    return Dout	
+end	
+
+ function low_filter(Din::judiVector, dt_in; fmin=0.0, fmax=25.0)	
+    responsetype = Bandpass(fmin, fmax; fs=1e3/dt_in)	
+    designmethod = Butterworth(5)	
+    Dout = deepcopy(Din)	
+    for j=1:Dout.nsrc	
+        for i=1:size(Din.data[j],2)	
+            Dout.data[j][:, i] = filt(digitalfilter(responsetype, designmethod), Float32.(Dout.data[j][:, i]))	
+        end	
+    end	
+    return Dout	
+end
+
 
 function marineTopmute2D(Dobs::judiVector, muteStart::Integer; mute=Array{Any}(undef, 3), flipmask=false)
     # Data topmute for end-on spread marine streamer data

@@ -133,7 +133,6 @@ class Model(object):
             self.dm = 1
 
         if epsilon is not None:
-            self._is_tti = True
             if isinstance(epsilon, np.ndarray):
                 self.epsilon = Function(name="epsilon", grid=self.grid, space_order=space_order)
                 initialize_function(self.epsilon, 1 + 2 * epsilon, self.nbpml)
@@ -148,7 +147,6 @@ class Model(object):
             self.scale = 1.0
 
         if delta is not None:
-            self._is_tti = True
             if isinstance(delta, np.ndarray):
                 self.delta = Function(name="delta", grid=self.grid, space_order=space_order)
                 initialize_function(self.delta, np.sqrt(1 + 2 * delta), self.nbpml)
@@ -158,7 +156,6 @@ class Model(object):
             self.delta = 1.0
 
         if theta is not None:
-            self._is_tti = True
             if isinstance(theta, np.ndarray):
                 self.theta = Function(name="theta", grid=self.grid, space_order=space_order)
                 initialize_function(self.theta, theta, self.nbpml)
@@ -168,7 +165,6 @@ class Model(object):
             self.theta = 0.0
 
         if phi is not None:
-            self._is_tti = True
             if isinstance(phi, np.ndarray):
                 self.phi = Function(name="phi", grid=self.grid, space_order=space_order)
                 initialize_function(self.phi, phi, self.nbpml)
@@ -176,11 +172,6 @@ class Model(object):
                 self.phi = phi
         else:
             self.phi = 0.0
-
-
-    @property
-    def is_tti(self):
-        return self._is_tti
 
     @property
     def dim(self):
