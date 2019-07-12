@@ -48,5 +48,6 @@ include("judiJacobian.jl")  # linearized modeling operator J
 #############################################################################
 # Preconditioners and optimization
 include("seismic_preconditioners.jl")
+# include("gs_functions.jl")
 
 end

@@ -1,7 +1,7 @@
 
 export fwi_objective
 
-function fwi_objective(model_full::Model, source::judiVector, dObs::judiVector, srcnum::Integer; options=Options(), frequencies=[])
+function fwi_objective(model_full::Modelall, source::judiVector, dObs::judiVector, srcnum::Integer; options=Options(), frequencies=[])
 # Setup time-domain linear or nonlinear foward and adjoint modeling and interface to OPESCI/devito
 
     # Load full geometry for out-of-core geometry containers
@@ -63,11 +63,11 @@ function fwi_objective(model_full::Model, source::judiVector, dObs::judiVector, 
   		dPredicted = get(fwd_pred, 0)
   		argout1 = misfit(dObserved, dObserved; normalized=options.normalized)
           # Why the fuck does this prevent memory release
-  		if isempty(options.gs)
+  		# if isempty(options.gs)
   		    adj_src = adjoint_src(dPredicted, dObserved; normalized=options.normalized)
-  		else
-  			adj_src = gs_residual(options.gs, dtComp, dPredicted, dObserved; normalized=options.normalized)
-  		end
+  		# else
+  		# 	adj_src = gs_residual(options.gs, dtComp, dPredicted, dObserved; normalized=options.normalized)
+  		# end
         argout2 = pycall(ac."adjoint_freq_born", Array{Float32, length(model.n)}, modelPy,
 						 PyReverseDims(copy(transpose(src_coords))),
 						 PyReverseDims(copy(transpose(dPredicted - dObserved))),

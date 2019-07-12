@@ -13,41 +13,28 @@ export misfit, adjoint_src, gs_residual
 function devito_model(model::Model, op, mode, options, dm)
     pm = load_pymodel()
     length(model.n) == 3 ? dims = [3,2,1] : dims = [2,1]   # model dimensions for Python are (z,y,x) and (z,x)
+	op=='J' && mode == 1 ? dm = process_physical_parameter(reshape(dm,model.n), dims) : dm = nothing
     # Set up Python model structure
-    if op=='J' && mode == 1
-        modelPy = pm."Model"(origin=model.o, spacing=model.d, shape=model.n, vp=process_physical_parameter(sqrt.(1f0./model.m), dims), nbpml=model.nb,
-            rho=process_physical_parameter(model.rho, dims), dm=process_physical_parameter(reshape(dm,model.n), dims), space_order=options.space_order)
-    else
-        modelPy = pm."Model"(origin=model.o, spacing=model.d, shape=model.n, vp=process_physical_parameter(sqrt.(1f0./model.m), dims), nbpml=model.nb,
-            rho=process_physical_parameter(model.rho, dims), space_order=options.space_order)
-    end
+    modelPy = pm."Model"(origin=model.o, spacing=model.d, shape=model.n,
+						 vp=process_physical_parameter(sqrt.(1f0./model.m), dims),
+						 nbpml=model.nb, rho=process_physical_parameter(model.rho, dims),
+						 dm=dm, space_order=options.space_order)
     return modelPy
 end
 
 function devito_model(model::Model_TTI, op, mode, options, dm)
     pm = load_pymodel()
     length(model.n) == 3 ? dims = [3,2,1] : dims = [2,1]   # model dimensions for Python are (z,y,x) and (z,x)
-    # Set up Python model structure
-    if op=='J' && mode == 1
-        # Set up Python model structure (force origin to be zero due to current devito bug)
-        modelPy = pm."Model"(origin=model.o, spacing=model.d, shape=model.n, vp=process_physical_parameter(sqrt.(1f0./model.m), dims),
-                           rho=process_physical_parameter(model.rho, dims),
-                           epsilon=process_physical_parameter(model.epsilon, dims),
-                           delta=process_physical_parameter(model.delta, dims),
-                           theta=process_physical_parameter(model.theta, dims),
-                           phi=process_physical_parameter(model.phi, dims), nbpml=model.nb,
-                           dm=process_physical_parameter(reshape(dm,model.n), dims),
-                           space_order=options.space_order)
-    else
-        # Set up Python model structure (force origin to be zero due to current devito bug)
-        modelPy = pm."Model"(origin=model.o, spacing=model.d, shape=model.n, vp=process_physical_parameter(sqrt.(1f0./model.m), dims),
-                           rho=process_physical_parameter(model.rho, dims),
-                           epsilon=process_physical_parameter(model.epsilon, dims),
-                           delta=process_physical_parameter(model.delta, dims),
-                           theta=process_physical_parameter(model.theta, dims),
-                           phi=process_physical_parameter(model.phi, dims), nbpml=model.nb,
-                           space_order=options.space_order)
-    end
+	op=='J' && mode == 1 ? dm = process_physical_parameter(reshape(dm,model.n), dims) : dm = nothing
+    # Set up Python model structure (force origin to be zero due to current devito bug)
+    modelPy = pm."Model"(origin=model.o, spacing=model.d, shape=model.n,
+						 vp=process_physical_parameter(sqrt.(1f0./model.m), dims),
+						 rho=process_physical_parameter(model.rho, dims),
+						 epsilon=process_physical_parameter(model.epsilon, dims),
+						 delta=process_physical_parameter(model.delta, dims),
+						 theta=process_physical_parameter(model.theta, dims),
+						 phi=process_physical_parameter(model.phi, dims), nbpml=model.nb,
+						 dm=dm, space_order=options.space_order)
     return modelPy
 end
 
@@ -333,7 +320,7 @@ function get_computational_nt(srcGeometry, recGeometry, model::Modelall)
     return nt
 end
 
-function setup_grid(geometry,n, origin)
+function setup_grid(geometry, n, origin)
     # 3D grid
     if length(n)==3
         if length(geometry.xloc[1]) > 1
@@ -533,7 +520,7 @@ function select_frequencies(q_dist; fmin=0f0, fmax=Inf, nf=1)
 end
 
 function process_physical_parameter(param, dims)
-    if length(param) ==1
+    if length(param) == 1
         return param
     else
         return PyReverseDims(permutedims(param, dims))
@@ -565,154 +552,6 @@ function resample_model(array, inh, modelfull)
     end
     resampled = pycall(interpolator,  Array{Float32, ndim}, gridnew)
     return resampled
-end
-
-function gs_residual_trace(maxshift, dtComp, d1::Array{Float32, 2}, d2::Array{Float32, 2}, normalized)
-	#shifts
-	nshift = round(Int64, maxshift/dtComp)
-	nSamples = 2*nshift + 1
-
-	data_size = size(d1)
-	adj_src = similar(d1)
-	
-	if normalized == "shot"
-		d1 /= norm(d1)
-		d2 /= norm(d1)
-	end
-
-	d1 = [zeros(Float32, nshift, size(d1,2)); d1; zeros(Float32, nshift, size(d1,2))]
-	d2 = [zeros(Float32, nshift, size(d1,2)); d2; zeros(Float32, nshift, size(d1,2))]
-
-	# residual_plot = zeros(Float32, size(d2))
-	# syn_plot = zeros(Float32, size(d2))
-    indnz = [i for i in 1:size(d1,2) if (norm(d2[:,i])>0 && norm(d1[:,i])>0)]
-
-    weights = [norm(d2[:,i]) for i in 1:size(d1,2)]
-
-	for rr in indnz
-		aux = zeros(Float32, size(d1, 1))
-		syn = d1[:, rr]
-		obs = d2[:, rr]
-
-		weight = norm(obs)
-		if normalized == "trace"
-			syn /= norm(syn)
-			obs /= norm(obs)
-		end
-		H =zeros(Float32, length(1:5:nSamples),  length(1:5:nSamples));
-
-		iloc=0
-		for i = 1:5:nSamples
-			shift = i - nshift - 1
-			iloc +=1
-			jloc=iloc
-			dshift = circshift(syn, shift) - obs
-			H[iloc, iloc] = dot(dshift, dshift)
-			for j = (i+5):5:nSamples
-				jloc+=1
-				shift2 = j - nshift - 1
-				circshift!(aux, syn, shift2)
-				broadcast!(-, aux, aux, obs)
-				H[iloc, jloc] = dot(dshift, vec(aux))
-				H[jloc, iloc] = H[iloc, jloc]
-			end
-		end
-
-		x = 1:5:nSamples
-		y = 1:5:nSamples
-		spl = Spline2D(x, y, H)
-		x0 = 1:nSamples
-		y0 = 1:nSamples
-		H = evalgrid(spl, x0, y0)
-
-		# get coefficients
-		H = Array{Float64}(H)
-		H = .5*(H'+ H)
-		A = ones(Float32, 1, nSamples)
-		sol = quadprog(0, H, A, '=', 1., 0., 1., IpoptSolver(print_level=1))
-		alphas = Array{Float32}(sol.sol)
-		# Data misfit
-		for i = 1:2*nshift+1
-			shift = i - nshift - 1
-			adj_src[:, rr] += alphas[i] * circshift(circshift(syn, shift) - obs, -2*shift)[nshift+1:(end-nshift)]
-		end
-        adj_src[:, rr] = weight * adj_src[:, rr]
-	end
-	return adj_src
-end
-
-function gs_residual_shot(maxshift, dtComp, d1::Array{Float32, 2}, d2::Array{Float32, 2}, normalized)
-	#shifts
-	nshift = round(Int64, maxshift/dtComp)
-	# println(nshift, " ", dtComp)
-	nSamples = 2*nshift + 1
-
-	data_size = size(d1)
-	adj_src = similar(d1)
-	d1 = [zeros(Float32, nshift, size(d1,2)); d1; zeros(Float32, nshift, size(d1,2))]
-	d2 = [zeros(Float32, nshift, size(d1,2)); d2; zeros(Float32, nshift, size(d1,2))]
-	if normalized == "shot"
-		d1 /= norm(vec(d1))
-		d2 /= norm(vec(d2))
-	elseif normalized == "trace"
-		for i = 1:size(d1,2)
-			norm(d1[:, i]) > 0 ? n1 = norm(d1[:, i]) : n1 = 1
-			norm(d2[:, i]) > 0 ? n2 = norm(d2[:, i]) : n2 = 1
-			d1[:, i] /= n1
-			d2[:, i] /= n1
-		end
-	end
-	aux = zeros(Float32, size(d1))
-
-	H =zeros(Float32, length(1:5:nSamples),  length(1:5:nSamples));
-
-	iloc=0
-	for i = 1:5:nSamples
-		shift = i - nshift - 1
-		iloc +=1
-		jloc=iloc
-		dshift = vec(circshift(d1, (shift, 0)) - d2)
-		H[iloc, iloc] = dot(dshift, dshift)
-		for j = (i+5):5:nSamples
-			jloc+=1
-			shift2 = j - nshift - 1
-			circshift!(aux, d1, (shift2, 0))
-			broadcast!(-, aux, aux, d2)
-			H[iloc, jloc] = dot(dshift, vec(aux))
-			H[jloc, iloc] = H[iloc, jloc]
-		end
-	end
-
-	x = 1:5:nSamples
-	y = 1:5:nSamples
-	spl = Spline2D(x, y, H)
-	x0 = 1:nSamples
-	y0 = 1:nSamples
-	H = evalgrid(spl, x0, y0)
-
-	# get coefficientsn
-
-	H = Array{Float64}(H)
-	H = .5*(H'+H)
-	A = ones(Float32, 1, nSamples)
-	sol = quadprog(0, H, A, '=', 1., 0., 1., IpoptSolver(print_level=1))
-	alphas = Array{Float32}(sol.sol)
-	# Data misfit
-	for i = 1:2*nshift+1
-		shift = i - nshift - 1
-		adj_src += alphas[i] * circshift(abs.(circshift(d1, (shift, 0))).*(circshift(d1, (shift, 0)) - d2), (-2*shift, 0))[nshift+1:(end-nshift), :]
-	end
-
-	return adj_src
-end
-
-function gs_residual(gs::Dict, dtComp, d1::Array{Float32, 2}, d2::Array{Float32, 2}; normalized=false)
-	if gs["strategy"] == "shot"
-		adj_src = gs_residual_shot(gs["maxshift"], dtComp, d1, d2, normalized)
-	else
-		adj_src = gs_residual_trace(gs["maxshift"], dtComp, d1, d2, normalized)
-	end
-	return adj_src
 end
 
 function misfit(d1::Array{Float32, 2}, d2::Array{Float32, 2}; normalized=false)
