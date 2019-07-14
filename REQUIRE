@@ -10,5 +10,5 @@ PyPlot
 JOLI
 SeisIO
 DSP
-Ipopt
-MathProgBase
+Compat
+OSQP
