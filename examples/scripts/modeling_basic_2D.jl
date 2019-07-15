@@ -65,7 +65,7 @@ info = Info(prod(n), nsrc, ntComp)
 # Write shots as segy files to disk
 opt = Options(save_data_to_disk=false, file_path=pwd(), file_name="observed_shot",
 			  optimal_checkpointing=false, free_surface=true, normalized="trace",
-			  gs=Dict("maxshift" => 200.0f0, "strategy" => "trace"))
+			  gs=Dict("maxshift" => 200.0f0, "strategy" => "shot"))
 
 # Setup operators
 Pr = judiProjection(info, recGeometry)

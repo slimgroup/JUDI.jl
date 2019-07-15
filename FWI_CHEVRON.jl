@@ -104,7 +104,7 @@ x = vec(m0)
 fmin=0.1
 fmax=5.0
 fwi_obj(x) = objective_function(x, fmin, fmax, opt)
-# f, g = fwi_obj(x)
+f, g = fwi_obj(x)
 # save("first_grad.jld", "m0", m0, "g", reshape(g, model0.n))
 # x, fsave, funEvals= minConf_SPG(fwi_obj, x, ProjBound, options)
 # save("FWI-5.jld", "m0", m0, "x", reshape(x, model0.n), "fval", fsave, "funEvals", funEvals)
@@ -130,7 +130,7 @@ Random.seed!(1)   # set seed of random number generator
 fmin=0.1
 fmax=5.0
 fwi_obj(x) = objective_function(x, fmin, fmax, opt)
-# f2, g2 = fwi_obj(x)
+f2, g2 = fwi_obj(x)
 # # save("first_gradgss.jld", "m0", m0, "g", reshape(g, model0.n))
 # x, fsave, funEvals= minConf_SPG(fwi_obj, vec(x), ProjBound, options)
 # save("FWIgss-5.jld", "m0", m0, "x", reshape(x, model0.n), "fval", fsave, "funEvals", funEvals)
