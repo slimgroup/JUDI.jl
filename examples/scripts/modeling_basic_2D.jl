@@ -80,6 +80,12 @@ dobs = Pr*F*adjoint(Ps)*q
 # g = adjoint(J)*(dobs - d0)
 
 f, g = fwi_objective(model0, q, dobs; options=opt)
+
+opt = Options(save_data_to_disk=false, file_path=pwd(), file_name="observed_shot",
+			  optimal_checkpointing=false, free_surface=true, normalized="trace",
+			  gs=Dict("maxshift" => 200.0f0, "strategy" => "trace"))
+			  
+f, g = fwi_objective(model0, q, dobs; options=opt)
 # qad = Ps*adjoint(F)*adjoint(Pr)*dobs
 #
 # # Linearized modeling

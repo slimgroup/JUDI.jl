@@ -6,7 +6,7 @@
 module TimeModeling
 
 using JUDI, PyCall, JOLI, Distributed, SeisIO, Dierckx, LinearAlgebra, Base.Broadcast, FFTW, Random, DSP, Printf
-using Compat.SparseArrays, OSQP
+using Convex, ECOS
 
 import Base.*, Base./, Base.+, Base.-, Base.copy!, Base.sum, Base.ndims
 import Base.Broadcast.broadcasted, Base.BroadcastStyle, Base.Broadcast.DefaultArrayStyle

@@ -98,7 +98,7 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
     op = Operator(expression, subs=subs, dse='advanced', dle='advanced', name='Forward')
     z_m = 0
 
-    if freesurface:
+    if free_surface:
         z_m += model.nbpml - 1
     if op_return is False:
         op(y_m=z_m)
@@ -177,7 +177,7 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=8, fre
     subs[v.grid.time_dim.spacing] = dt
     op = Operator(expression, subs=subs, dse='advanced', dle='advanced', name='Adjoint')
     z_m = 0
-    if freesurface:
+    if free_surface:
         z_m += model.nbpml - 1
     op(y_m=z_m)
 
@@ -247,7 +247,7 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, isic=Fal
     subs[u.grid.time_dim.spacing] = dt
     op = Operator(expression, subs=subs, dse='advanced', dle='advanced', name='Born')
     z_m = 0
-    if freesurface:
+    if free_surface:
         z_m += model.nbpml - 1
     op(y_m=z_m)
     return rec.data
@@ -305,7 +305,7 @@ def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residu
     subs[u.grid.time_dim.spacing] = dt
     op = Operator(expression, subs=subs, dse='advanced', dle='advanced', name='Gradient')
     z_m = 0
-    if freesurface:
+    if free_surface:
         z_m += model.nbpml - 1
     # Optimal checkpointing
     if op_forward is not None:

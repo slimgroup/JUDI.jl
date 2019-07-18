@@ -574,7 +574,7 @@ function adjoint_src(d1::Array{Float32, 2}, d2::Array{Float32, 2}, normalized)
 		for i =1:size(d1,2)
 			norm(d1[:, i])>0 ? n1 = norm(d1[:, i]) : n1 = 1
 			norm(d2[:, i])>0 ? n2 = norm(d2[:, i]) : n2 = 1
-			adj_src[:, i] = d1[:, i]/n1 - d2[:, i]/n2
+			adj_src[:, i] = n2*(d1[:, i]/n1 - d2[:, i]/n2)
 		end
 	elseif normalized == "shot"
         adj_src = d1/norm(vec(d1)) - d2/norm(vec(d2))

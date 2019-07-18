@@ -4,6 +4,7 @@ function gs_residual_trace(maxshift, dtComp, d1_in::Array{Float32, 2}, d2_in::Ar
 	#shifts
 	nshift = round(Int64, maxshift/dtComp)
 	nSamples = 4*nshift + 1
+	nSQP = 2*nshift + 1
 	# Initialze tmp for speed
 	adj_src = similar(d1_in)
 	nt, nrec = size(d1_in)
@@ -11,19 +12,17 @@ function gs_residual_trace(maxshift, dtComp, d1_in::Array{Float32, 2}, d2_in::Ar
 	global syn = zeros(Float32, nt+nSamples-1)
 	global aux = similar(obs)
 	global center = zeros(Float32, 4*nshift + 1)
-
-	# QP setup
-	nSQP =  2*nshift + 1
 	global H = zeros(nSQP, nSQP)
-	q = zeros(nSQP)
-	lb = zeros(nSQP+1)
-	lb[end] = 1
-	ub = ones(nSQP+1)
-	A = sparse([Matrix{Float64}(I, nSQP, nSQP); ones(1, nSQP)])
-    global sqpm = OSQP.Model()
-	OSQP.setup!(sqpm; P=sparse(H), q=q, A=A, l=lb, u=ub,
-			    linsys_solver="qdldl", verbose=0)
-	sol = OSQP.solve!(sqpm)
+	# QP setup
+	# get coefficientsn
+	x = Convex.Variable(nSQP)
+	A = Variable(nSQP, nSQP)
+	A.value = zeros(nSQP, nSQP)
+	p = Convex.minimize(Convex.quadform(x, A.value))
+	un = ones(1, nSQP)
+	p.constraints += un * x == 1
+	p.constraints += [x >= 0; x <= 1]
+
 	if normalized == "shot"
 		d1 = d1_in/norm(d1_in)
 		d2 = d1_in/norm(d2_in)
@@ -51,20 +50,24 @@ function gs_residual_trace(maxshift, dtComp, d1_in::Array{Float32, 2}, d2_in::Ar
 			broadcast!(-, aux, aux, obs)
 			global center[i] = dot(aux, syn - obs)/norm(aux)
 		end
-
+		center[center .< 1f-5] .= 1f-5
 		@inbounds for i = 1:2*nshift + 1
 			start = 2*nshift + 1 - i + 1
 			lastind = 2*nshift + 1 + start - 1
 			global H[i, :] .+= .5f0 .* center[start:lastind]
 		end
 		global H .+= H'
+		# Make posef, bit costly though
+		if ~isposdef(H)
+			v = eigvals(H)[1]
+			println("Non positive definite matrix, adding ", real(v)," I to make it posdef")
+			global H .+= (-1.01*real(v))*Matrix(I, nSQP, nSQP)
+		end
 
-		# println("Setup time ", time() - start1, " ")
- 	   	# start2 = time()
-		OSQP.update!(sqpm, Px=triu(sparse(H)).nzval)
-		sol = OSQP.solve!(sqpm)
-		# println("Quadprog time ", time() - start2)
-		alphas = Array{Float32}(sol.x)
+		A.value = H
+		fix!(A)
+		solve!(p, ECOSSolver(verbose=0, max_iters=100))
+		alphas = Array{Float32}(x.value)
 		# Data misfit
 		for i = 1:2*nshift+1
 			shift = i - nshift - 1
@@ -80,7 +83,7 @@ function gs_residual_shot(maxshift, dtComp, d1_in::Array{Float32, 2}, d2_in::Arr
 	#shifts
 	nshift = round(Int64, maxshift/dtComp)
 	# println(nshift, " ", dtComp)
-	nSamples = 2*nshift + 1
+	nSQP = 2*nshift + 1
 
 	adj_src = similar(d1_in)
 	nt, nrec = size(d1_in)
@@ -101,14 +104,7 @@ function gs_residual_shot(maxshift, dtComp, d1_in::Array{Float32, 2}, d2_in::Arr
 	aux = zeros(Float32, size(d1))
 
 	# QP setup
-	nSQP =  2*nshift + 1
 	global H = zeros(nSQP, nSQP)
-	q = zeros(nSQP)
-	lb = zeros(nSQP+1)
-	lb[end] = 1
-	ub = ones(nSQP+1)
-	A = sparse([Matrix{Float64}(I, nSQP, nSQP); ones(1, nSQP)])
-    sqpm = OSQP.Model()
 
 	# Build H
 	center = zeros(Float32, 4*nshift + 1)
@@ -117,20 +113,34 @@ function gs_residual_shot(maxshift, dtComp, d1_in::Array{Float32, 2}, d2_in::Arr
 		broadcast!(-, aux, aux, d2)
 		global center[i] = dot(aux, d1 - d2)/norm(aux)
 	end
-	for i = 1:2*nshift + 1
+	center[center .< 1f-5] .= 1f-5
+
+	for i = 1:nSQP
 		start = 2*nshift + 1 - i + 1
 		lastind = 2*nshift + 1 + start - 1
 		H[i, :] .+= .5f0 .* center[start:lastind]
 	end
 	H .+= H'
+	# Make posef, bit costly though
+	if ~isposdef(H)
+		v = eigvals(H)[1]
+		println("Non positive definite matrix, adding ", real(v)," I to make it posdef")
+		H .+= (-1.01*real(v))*Matrix(I, nSQP, nSQP)
+	end
+
 
 	# get coefficientsn
-	OSQP.setup!(sqpm; P=sparse(H), q=q, A=A, l=lb, u=ub,
-			    linsys_solver="qdldl", verbose=0)
-	sol = OSQP.solve!(sqpm)
-	alphas = Array{Float32}(sol.x)
+	x = Convex.Variable(nSQP)
+	p = Convex.minimize(Convex.quadform(x, H))
+	un = ones(1, nSQP)
+	p.constraints += un * x == 1
+	p.constraints += [x >= 0; x <= 1]
+
+	solve!(p, ECOSSolver(verbose=0, max_iters=100))
+
+	alphas = Array{Float32}(x.value)
 	# Data misfit
-	for i = 1:2*nshift+1
+	for i = 1:nSQP
 		shift = i - nshift - 1
 		adj_src += alphas[i] * circshift(abs.(circshift(d1, (shift, 0))).*(circshift(d1, (shift, 0)) - d2), (-2*shift, 0))[2*nshift+1:(end-2*nshift), :]
 	end

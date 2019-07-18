@@ -4,52 +4,87 @@
 # Date: January 2017
 #
 
-using JUDI.TimeModeling, JUDI.SLIM_optim, HDF5, SeisIO, PyPlot, Images, Dierckx
+using JUDI.TimeModeling, JUDI.SLIM_optim, PyPlot, Random
 
 ## Set up model structure
 n = (201,201)   # (x,y,z) or (x,z)
-d = (10.,10.)
+d = (25.,25.)
 o = (0.,0.)
 
 # Velocity [km/s]
-v0 = ones(Float32,n) + 1.0f0
+v0 = ones(Float32,n) .+ 1.0f0
 
-x = linspace(0.0f0, 2000f0, 201)
-z = linspace(0.0f0, 2000f0, 201)
+x = Float32.(range(0.0f0, stop=5000f0, length=201))
 
-v = 2.0f0 - .6f0*exp.(-(x - 1000.0f0).^2/400f0^2)*exp.(-(x - 1000.0f0).^2/400f0^2)';
+v = 2.0f0 .- .6f0*exp.(-(x .- 2500.0f0).^2/600f0^2)*exp.(-(x .- 2500.0f0).^2/600f0^2)';
 
 # Slowness squared [s^2/km^2]
-m = (1./v).^2
-m0 = (1./v0).^2
+m = (1 ./v).^2
+m0 = (1 ./v0).^2
 # Slowness squared [s^2/km^2]
-mmin = (1f0./v).^2
-mmax = (1f0./v).^2
+mmin = (1f0 ./v).^2
+mmax = (1f0 ./v).^2
 # Setup info and model structure
 model = Model(n,d,o,m)
 model0 = Model(n,d,o,m0)
 
-container = segy_scan("/data/mlouboutin3/Gaussian_sing/8Hz", "gaussian", ["GroupX", "GroupY", "ElevationScalar", "dt"])
-d_obs = judiVector(container; segy_depth_key="RecGroupElevation")
+## Set up receiver geometry
+nsrc = 51
+nxrec = 201
+xrec = range(4950f0, stop=4950f0, length=nxrec)
+yrec = 0f0
+zrec = range(50f0, stop=4950f0, length=nxrec)
+
+# receiver sampling and recording time
+timeR = 5000f0   # receiver recording time [ms]
+dtR = 4f0    # receiver sampling interval [ms]
+
+# Set up receiver structure
+recGeometry = Geometry(xrec, yrec, zrec; dt=dtR, t=timeR, nsrc=nsrc)
+
+## Set up source geometry (cell array with source locations for each shot)
+xsrc = convertToCell(range(50f0, stop=50f0, length=nsrc))
+ysrc = convertToCell(range(0f0, stop=0f0, length=nsrc))
+zsrc = convertToCell(range(50f0, stop=4950f0, length=nsrc))
+
+# source sampling and number of time steps
+timeS = 5000f0  # ms
+dtS = 4f0   # ms
+
+# Set up source structure
+srcGeometry = Geometry(xsrc, ysrc, zsrc; dt=dtS, t=timeS)
 
 # setup wavelet
-src_geometry = Geometry(container; key="source")
-f0 = 0.005
-wavelet = ricker_wavelet(src_geometry.t[1],src_geometry.dt[1], f0)
-q = judiVector(src_geometry, wavelet)
+f0 = 0.005f0     # MHz
+wavelet = ricker_wavelet(timeS, dtS, f0)
+q = judiVector(srcGeometry, wavelet)
 
+# Set up info structure for linear operators
+ntComp = get_computational_nt(srcGeometry, recGeometry, model)
+info = Info(prod(n), nsrc, ntComp)
+
+
+# Write shots as segy files to disk
+opt = Options()
+
+# Setup operators
+Pr = judiProjection(info, recGeometry)
+F = judiModeling(info, model; options=opt)
+Ps = judiProjection(info, srcGeometry)
+
+
+d_obs = Pr * F * Ps' * q
 
 ############################### FWI ###########################################
-opt = Options(normalize=true)
+opt = Options(normalized="trace")
 
 # Bound projection
 ProjBound(x) = boundproject(x, maximum(m), .9*minimum(m))
 
 fevals = 20
-batchsize = 21
+batchsize = 25
 fmin = 1.0
 # Optimization parameters
-srand(1)    # set seed of random number generator
 
 
 # Objective function for minConf library
@@ -58,51 +93,83 @@ function objective_function(x, opt)
 	model0.m = reshape(x,model0.n);
 	# fwi function value and gradient
 	i = randperm(d_obs.nsrc)[1:batchsize]
-	d_sub = get_data(d_obs[i])
+	d_sub = d_obs[i]
 	fval, grad = fwi_objective(model0, q[i], d_sub; options=opt)
 	grad = reshape(grad, model0.n)
-	grad[:, 1:5] = 0
-	grad[:, end-5:end] = 0
-	grad = .5f0*grad/maximum(abs.(grad))  # scale for line search
+	grad[1:15, :] .= 0
+	grad[end-15:end, :] .= 0
+	grad = .5f0 .* grad ./maximum(abs.(grad))  # scale for line search
 
 	global count; count+= 1
     return fval, vec(grad)
 end
 
 # FWI with SPG
-options = pqn_options(verbose=3, maxIter=fevals, corrections=10)
-# options = spg_options(verbose=3, maxIter=fevals, memory=1)
-x = vec(m0)
-fmax=5.0
-fwi_obj(x) = objective_function(x, opt)
-f, g = fwi_obj(x)
-# save("first_grad.jld", "m0", m0, "g", reshape(g, model0.n))
-x, fsave, funEvals= minConf_PQN(fwi_obj, x, ProjBound, options)
-save("FWI.jld", "m0", m0, "x", reshape(x, model0.n), "fval", fsave, "funEvals", funEvals)
-
-# fmax = 8.0
-# fwi_obj(x) = objective_function(x, fmin, fmax, opt)
-# x, fsave, funEvals= minConf_SPG(fwi_obj, x, ProjBound, options)
-# save("FWI-8.jld", "m0", m0, "x", reshape(x, model0.n), "fval", fsave, "funEvals", funEvals)
-#
-# fmax = 12.0
-# fwi_obj(x) = objective_function(x, fmin, fmax, opt)
-# x, fsave, funEvals= minConf_SPG(fwi_obj, x, ProjBound, options)
-# save("FWI-10.jld", "m0", m0, "x", reshape(x, model0.n), "fval", fsave, "funEvals", funEvals)
-
-############################### GS-FWI-shot ###########################################
-opt = Options(normalize=true, gs=Dict("maxshift" => 400.0f0, "strategy" => "shot"))
-srand(1)    # set seed of random number generator
+# options = pqn_options(verbose=3, maxIter=fevals, corrections=10)
+options = spg_options(verbose=3, maxIter=fevals, memory=5)
+fmax = 5.0
+############################### FWI-shot-n ###########################################
+opt = Options(normalized="shot")
 # Objective function for minConf library
 
 
 # FWI with SPG
 x = vec(m0)
 fwi_obj(x) = objective_function(x, opt)
-fgss, ggss = fwi_obj(x)
+# ffwis, gfwis = fwi_obj(x)
 # save("first_gradgss.jld", "m0", m0, "g", reshape(g, model0.n))
-x, fsave, funEvals= minConf_PQN(fwi_obj, vec(x), ProjBound, options)
-save("FWIgss.jld", "m0", m0, "x", reshape(x, model0.n), "fval", fsave, "funEvals", funEvals)
+xs, fsave, funEvals= minConf_SPG(fwi_obj, vec(x), ProjBound, options)
+# save("FWIs.jld", "m0", m0, "x", reshape(xs, model0.n), "fval", fsave, "funEvals", funEvals)
+
+# fmax = 8.0
+# opt.gs["maxshift"] = Float32(2000./fmax)
+# fwi_obj(x) = objective_function(x, fmin, fmax, opt)
+# x, fsave, funEvals= minConf_SPG(fwi_obj, x, ProjBound, options)
+# save("FWIgss-8.jld", "m0", m0, "x", reshape(x, model0.n), "fval", fsave, "funEvals", funEvals)
+#
+# fmax = 12.0
+# opt.gs["maxshift"] = Float32(2000./fmax)
+# fwi_obj(x) = objective_function(x, fmin, fmax, opt)
+# x, fsave, funEvals= minConf_SPG(fwi_obj, x, ProjBound, options)
+# save("FWIgss-10.jld", "m0", m0, "x", reshape(x, model0.n), "fval", fsave, "funEvals", funEvals)
+
+############################### FWI-trace-n ###########################################
+opt = Options(normalized="trace")
+# Objective function for minConf library
+
+
+# FWI with SPG
+x = vec(m0)
+fwi_obj(x) = objective_function(x, opt)
+# ffwit, gfwit = fwi_obj(x)
+# save("first_gradgss.jld", "m0", m0, "g", reshape(g, model0.n))
+# xt, fsave, funEvals= minConf_SPG(fwi_obj, vec(x), ProjBound, options)
+# save("FWIt.jld", "m0", m0, "x", reshape(xt, model0.n), "fval", fsave, "funEvals", funEvals)
+
+# fmax = 8.0
+# opt.gs["maxshift"] = Float32(2000./fmax)
+# fwi_obj(x) = objective_function(x, fmin, fmax, opt)
+# x, fsave, funEvals= minConf_SPG(fwi_obj, x, ProjBound, options)
+# save("FWIgss-8.jld", "m0", m0, "x", reshape(x, model0.n), "fval", fsave, "funEvals", funEvals)
+#
+# fmax = 12.0
+# opt.gs["maxshift"] = Float32(2000./fmax)
+# fwi_obj(x) = objective_function(x, fmin, fmax, opt)
+# x, fsave, funEvals= minConf_SPG(fwi_obj, x, ProjBound, options)
+# save("FWIgss-10.jld", "m0", m0, "x", reshape(x, model0.n), "fval", fsave, "funEvals", funEvals)
+
+############################### GS-FWI-shot ###########################################
+opt = Options(normalized="shot", gs=Dict("maxshift" => 400.0f0, "strategy" => "shot"))
+# Objective function for minConf library
+
+
+# FWI with SPG
+x = vec(m0)
+fwi_obj(x) = objective_function(x, opt)
+# fgss, ggss = fwi_obj(x)
+# save("first_gradgss.jld", "m0", m0, "g", reshape(g, model0.n))
+xgs, fsave, funEvals= minConf_SPG(fwi_obj, vec(x), ProjBound, options)
+# save("FWIt.jld", "m0", m0, "x", reshape(xgs, model0.n), "fval", fsave, "funEvals", funEvals)
 
 # fmax = 8.0
 # opt.gs["maxshift"] = Float32(2000./fmax)
@@ -117,18 +184,17 @@ save("FWIgss.jld", "m0", m0, "x", reshape(x, model0.n), "fval", fsave, "funEvals
 # save("FWIgss-10.jld", "m0", m0, "x", reshape(x, model0.n), "fval", fsave, "funEvals", funEvals)
 
 ############################### GS-FWI-trace ###########################################
-opt = Options(normalize=true, gs=Dict("maxshift" => 400.0f0, "strategy" => "trace"))
-srand(1)    # set seed of random number generator
+opt = Options(normalized="trace", gs=Dict("maxshift" => 400.0f0, "strategy" => "trace"))
 
 
 # FWI with SPG
 x = vec(m0)
 # fmax=5.0
 fwi_obj(x) = objective_function(x, opt)
-fgst, gst = fwi_obj(x)
+# fgst, ggst = fwi_obj(x)
 # save("first_gradgst.jld", "m0", m0, "g", reshape(g, model0.n))
-x, fsave, funEvals= minConf_PQN(fwi_obj, x, ProjBound, options)
-save("FWIgst.jld", "m0", m0, "x", reshape(x, model0.n), "fval", fsave, "funEvals", funEvals)
+xgt, fsave, funEvals= minConf_SPG(fwi_obj, vec(x), ProjBound, options)
+# save("FWIt.jld", "m0", m0, "x", reshape(xgt, model0.n), "fval", fsave, "funEvals", funEvals)
 #
 # fmax = 8.0
 # opt.gs["maxshift"] = Float32(2000./fmax)
@@ -141,3 +207,10 @@ save("FWIgst.jld", "m0", m0, "x", reshape(x, model0.n), "fval", fsave, "funEvals
 # fwi_obj(x) = objective_function(x, fmin, fmax, opt)
 # x, fsave, funEvals= minConf_SPG(fwi_obj, x, ProjBound, options)
 # save("FWIgst-10.jld", "m0", m0, "x", reshape(x, model0.n), "fval", fsave, "funEvals", funEvals)
+
+
+figure();imshow(reshape(sqrt.(1 ./xs), model0.n)', vmin=1.5, vmax=2.0, cmap="seismic")
+# figure();imshow(reshape(sqrt.(1./xt), model0.n)', vmin=1.5, vmax=2.0 cmap="seismic")
+figure();imshow(reshape(sqrt.(1 ./xgs), model0.n)', vmin=1.5, vmax=2.0, cmap="seismic")
+figure();imshow(reshape(sqrt.(1 ./xgt), model0.n)', vmin=1.5, vmax=2.0, cmap="seismic")
+# figure();imshow(reshape(v, model0.n)', vmin=1.5, vmax=2.0, cmap="seismic")

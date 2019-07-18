@@ -132,18 +132,14 @@ function minConf_SPG(funObj, x, funProj, options)
                 alpha = 1
             end
         end
-        global d = -Float32(alpha)*g
+        d = -Float32(alpha)*g
         global f_old = f
         global x_old = x
         global g_old = g
 
         # Compute Projected Step
         if ~options.curvilinear
-            if i==1
-                d = funProj(x+d)-x
-            else
-                d = funProj(x+d)-x
-            end
+            d = funProj(x+d)-x
             projects = projects+1
         end
         # Check that Progress can be made along the direction
@@ -185,12 +181,12 @@ function minConf_SPG(funObj, x, funProj, options)
         funEvals = funEvals+1
         # Backtracking Line Search
         lineSearchIters = 1
-        while f_new > funRef + options.suffDec*dot(g,(x_new-x)) || ~isLegal(f_new) || ~isLegal(g_new)
+        while f_new > funRef + options.suffDec*dot(-d,(x_new-x)) || ~isLegal(f_new) || ~isLegal(g_new)
             temp = t
             if lineSearchIters == 1
                 @printf("Unit step length not feasible, starting line search\n")
             end
-            # @printf("%10d %15.5e %15.5e %15.5e %15.5e\n",lineSearchIters,t, f_new,funRef,funRef + options.suffDec*dot(g,(x_new-x)))
+            @printf("%10d %15.5e %15.5e %15.5e %15.5e\n",lineSearchIters, t, f_new, funRef, options.suffDec*dot(-d,(x_new-x)))
             if options.interp == 0 || ~isLegal(f_new)
                 if options.verbose == 3
                     @printf("Halving Step Size\n");
