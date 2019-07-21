@@ -1,4 +1,4 @@
-using JUDI.TimeModeling, JUDI4Flux, LinearAlgebra, Flux, JOLI
+using JUDI.TimeModeling, JUDI4Flux, LinearAlgebra, Flux, JOLI, LinearAlgebra, SparseArrays
 
 ## Set up model structure
 n = (120, 100)   # (x,y,z) or (x,z)
@@ -62,6 +62,8 @@ opt = Options(return_array=true)
 # Setup operators
 F = judiModeling(info, model, srcGeometry, recGeometry; options=opt)
 F0 = judiModeling(info, model, srcGeometry, recGeometry; options=opt)
+J = judiJacobian(F0, q)
+J.options.return_array = true
 
 ℱ(m) = modeling(F, m, q=q) # non-linear modeling operator
 
@@ -78,20 +80,24 @@ predict(x) = ℱ(abs.(m(x)))
 loss(x,y) = Flux.mse(predict(x), y)
 f = loss(x, y)
 
+gs = Tracker.gradient(() -> loss(x, y), params(m))
+gs[m.weight]
+gs[m.bias]
+
 ##################################### FLUX DENSE LAYER #############################################
 
 # Test non-linear modeling operator w/ Flux Dense Layer
-W = randn(Float32, 100, length(y))
-b = randn(Float32, 100)
-x = model0.m
+W1 = spdiagm(0 => ones(info.n))
+W2 = randn(Float32, 100, length(y))
+b1 = zeros(Float32, info.n)
+b2 = randn(Float32, 100)
+x = vec(model0.m)
 y = randn(Float32, 100)
 
-predict(x) = W*(ℱ(x)) .+ b
+predict(x) = W2*(ℱ(W1*x .+ b1)) .+ b2
 loss(x,y) = Flux.mse(predict(x), y)
 
-W = param(W)
-b = param(b)
-
-gs = Tracker.gradient(() -> loss(x, y), params(W, b))
-
-gs[W]
+W1 = param(W1)
+b1 = param(b1)
+W2 = param(W2)
+b2 = param(b2)
