@@ -20,17 +20,21 @@ spacing = (10., 10.)
 origin = (0., 0.)
 v = np.empty(shape, dtype=np.float32)
 v[:, :51] = 1.5
-v[:, 51:] = 5
+v[:, 51:] = 3
+v0 = np.empty(shape, dtype=np.float32)
+v0[:, :] = 1.5
 m = (1./v)**2
+m0 = (1./v0)**2
+dm = m - m0
 
 w = np.random.randn(shape[0], shape[1]).astype('float32')
-#w = np.ones(shape, dtype=np.float32)
 
-model = Model(shape=shape, origin=origin, spacing=spacing, vp=v, nbpml=0)
+model = Model(shape=shape, origin=origin, spacing=spacing, vp=v)
+model0 = Model(shape=shape, origin=origin, spacing=spacing, vp=v0, dm=dm)
 
 # Time axis
 t0 = 0.
-tn = 1000.
+tn = 800.
 dt = model.critical_dt
 nt = int(1 + (tn-t0) / dt)
 time = np.linspace(t0,tn,nt)
@@ -47,8 +51,15 @@ rec_t.coordinates.data[:, 0] = np.linspace(0, model.domain_size[0], num=101)
 rec_t.coordinates.data[:, 1] = 20.
 
 # Observed data
-dobs, utrue = forward_modeling(model, None, np.asarray(src.data)[:,0], rec_t.coordinates.data, weight=w)
-w2 = adjoint_modeling(model, None, rec_t.coordinates.data, dobs.data, wavelet=np.asarray(src.data)[:,0])
+#dobs, utrue = forward_modeling(model, None, src.data, rec_t.coordinates.data, weight=w)
+#w2 = adjoint_modeling(model, None, rec_t.coordinates.data, dobs.data, wavelet=src.data)
 
-plt.imshow(dobs.data, vmin=-1e3, vmax=1e3, aspect='auto', cmap='gray');
-plt.figure(); plt.imshow(np.transpose(w2.data), vmin=-1e7, vmax=1e7, aspect='auto', cmap='gray'); plt.show()
+# Linearized modeling
+dlin = forward_born(model0, src.coordinates.data, src.data, rec_t.coordinates.data, weight=w)
+
+# Adjoint modeling
+u0 = forward_modeling(model0, src.coordinates.data, src.data, None, weight=w, save=True)
+g = adjoint_born(model0, rec_t.coordinates.data, dlin.data, u=u0)
+
+plt.imshow(dlin.data, aspect='auto', cmap='gray')
+plt.figure(); plt.imshow(np.transpose(g.data), vmin=np.min(g.data), vmax=np.max(g.data), aspect='auto', cmap='gray'); plt.show()

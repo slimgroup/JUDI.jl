@@ -69,16 +69,21 @@ w_adj = adjoint(F)*d_sim
 
 # LSQR
 w_inv = zeros(Float32, info.n)
-lsqr!(w_inv, F, d_sim; maxiter=20, verbose=true)
+lsqr!(w_inv, F, d_sim; maxiter=20, verbose=true, damp=1e2)
+
+d_pred = F*vec(w_inv);
 
 # Plot results
 figure()
-imshow(reshape(d_sim, recGeometry.nt[1], nxrec), vmin=-5e2, vmax=5e2, cmap="gray"); title("Sim Shot")
+subplot(1,2,1)
+imshow(reshape(d_sim, recGeometry.nt[1], nxrec), vmin=-5e2, vmax=5e2, cmap="gray"); title("Observed data")
+subplot(1,2,2)
+imshow(reshape(d_pred, recGeometry.nt[1], nxrec), vmin=-2e2, vmax=2e2, cmap="gray"); title("Predicted data")
 
 figure()
 subplot(1,3,1)
 imshow(adjoint(reshape(w, model.n)), vmin=-3, vmax=3, cmap="gray"); title("Weights")
 subplot(1,3,2)
-imshow(adjoint(reshape(w_adj, model.n)), vmin=-5e6, vmax=5e6, cmap="gray"); title("Adjoint")
+imshow(adjoint(reshape(w_adj, model.n)), vmin=minimum(w_adj), vmax=maximum(w_adj), cmap="gray"); title("Adjoint")
 subplot(1,3,3)
-imshow(adjoint(reshape(w_inv, model.n)), vmin=-2e-1, vmax=2e-1, cmap="gray"); title("LSQR")
+imshow(adjoint(reshape(w_inv, model.n)), vmin=minimum(w_inv), vmax=maximum(w_inv), cmap="gray"); title("LSQR")
