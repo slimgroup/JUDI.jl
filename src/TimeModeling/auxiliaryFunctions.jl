@@ -7,7 +7,7 @@ export ricker_wavelet, get_computational_nt, smooth10, damp_boundary, calculate_
 export convertToCell, limit_model_to_receiver_area, extend_gradient, remove_out_of_bounds_receivers
 export time_resample, remove_padding, backtracking_linesearch, subsample
 export generate_distribution, select_frequencies, process_physical_parameter
-export load_pymodel, load_acoustic_codegen, load_numpy
+export load_pymodel, load_acoustic_codegen, load_numpy, convert_to_cell_array
 
 function limit_model_to_receiver_area(srcGeometry::Geometry, recGeometry::Geometry, model::Model, buffer; pert=[])
     # Restrict full velocity model to area that contains either sources and receivers
@@ -425,4 +425,10 @@ function process_physical_parameter(param, dims)
     else
         return PyReverseDims(permutedims(param, dims))
     end
+end
+
+function convert_to_cell_array(x)
+    x_cell = Array{Any}(undef, 1)
+    x_cell[1] = x
+    return x_cell
 end

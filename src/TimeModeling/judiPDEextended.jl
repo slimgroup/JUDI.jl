@@ -53,10 +53,17 @@ function judiPDEextended(info::Info,model::Model, wavelet::Array, recGeometry::G
         srcnum = 1
     end
 
-    return F = judiPDEextended{Float32,Float32}("Proj*F*Proj'", m, n, info, model, wavelet, recGeometry, options,
-                              w -> time_modeling(model, nothing, wavelet, recGeometry, nothing, w.weights, srcnum, 'F', 1, options),
-                              rec -> time_modeling(model, nothing, wavelet, recGeometry, rec.data, nothing, srcnum, 'F', -1, options),
-                              )
+    if options.return_array == true
+        return F = judiPDEextended{Float32,Float32}("Proj*F*Proj'", m, n, info, model, wavelet, recGeometry, options,
+                                  w -> time_modeling(model, nothing, wavelet, recGeometry, nothing, reshape(w, model.n[1], model.n[2], info.nsrc), srcnum, 'F', 1, options),
+                                  rec -> time_modeling(model, nothing, wavelet, recGeometry, reshape(rec, recGeometry.nt[1], length(recGeometry.xloc[1]), info.nsrc), nothing, srcnum, 'F', -1, options),
+                                  )
+    else
+        return F = judiPDEextended{Float32,Float32}("Proj*F*Proj'", m, n, info, model, wavelet, recGeometry, options,
+                                  w -> time_modeling(model, nothing, wavelet, recGeometry, nothing, w.weights, srcnum, 'F', 1, options),
+                                  rec -> time_modeling(model, nothing, wavelet, recGeometry, rec.data, nothing, srcnum, 'F', -1, options),
+                                  )
+    end
 end
 
 
@@ -104,6 +111,16 @@ function *(A::judiPDEextended{ADDT,ARDT},v::judiVector{vDT}) where {ADDT,ARDT,vD
     jo_check_type_match(ARDT,eltype(V),join(["RDT from *(judiPDEextended,judiWeights):",A.name,typeof(A),eltype(V)]," / "))
     return V
 end
+
+# *(judiPDEextended,vec)
+function *(A::judiPDEextended{ADDT,ARDT},v::AbstractVector{vDT}) where {ADDT,ARDT,vDT}
+    A.n == size(v,1) || throw(judiPDEextendedException("shape mismatch"))
+    jo_check_type_match(ADDT,vDT,join(["DDT for *(judiPDEextended,AbstractVector):",A.name,typeof(A),vDT]," / "))
+    V = A.fop(v)
+    jo_check_type_match(ARDT,eltype(V),join(["RDT from *(judiPDEextended,AbstractVector):",A.name,typeof(A),eltype(V)]," / "))
+    return V
+end
+
 
 # *(num,judiPDEextended)
 function *(a::Number,A::judiPDEextended{ADDT,ARDT}) where {ADDT,ARDT}

@@ -10,6 +10,14 @@ function time_modeling(model_full::Model, srcGeometry, srcData, recGeometry, rec
     typeof(srcGeometry) == GeometryOOC && (srcGeometry = Geometry(srcGeometry))
     length(model_full.n) == 3 ? dims = [3,2,1] : dims = [2,1]   # model dimensions for Python are (z,y,x) and (z,x)
 
+    # Convert srcData and recData into (single) cell arrays if they are regular arrays
+    if !isnothing(srcData) && length(size(srcData)) == 3
+        srcData = convert_to_cell_array(srcData)
+    end
+    if !isnothing(recData) && length(size(recData)) == 3
+        recData = convert_to_cell_array(recData)
+    end
+
     # limit model to area with sources/receivers
     if options.limit_m == true
         model = deepcopy(model_full)
@@ -319,8 +327,7 @@ end
 # d_obs = Pr*F*Pw'*w - modeling w/ extended source
 function devito_interface(modelPy::PyCall.PyObject, origin, srcGeometry::Nothing, srcData::Array, recGeometry::Geometry, recData::Nothing, dm::Array, options::Options)
     ac = load_acoustic_codegen()
-    #typeof(dm) == Array{Array, 1} && (dm = dm[1])
-    #typeof(dm) == Array{Any, 1} && (dm = dm[1])
+    length(size(dm)) == 3 && (dm = convert_to_cell_array(dm[:,:,1]))
 
     # Interpolate input data to computational grid
     dtComp = modelPy.critical_dt
@@ -338,7 +345,11 @@ function devito_interface(modelPy::PyCall.PyObject, origin, srcGeometry::Nothing
     dOut = time_resample(dOut,dtComp,recGeometry)
 
     # Output shot record as judiVector
-    return judiVector(recGeometry,dOut)
+    if options.return_array == true
+        return vec(dOut)
+    else
+        return judiVector(recGeometry,dOut)
+    end
 end
 
 # dw = Pw*F'*Pr'*d_obs - adjoint modeling w/ extended source
@@ -361,5 +372,9 @@ function devito_interface(modelPy::PyCall.PyObject, origin, srcGeometry::Nothing
     ntSrc > ntComp && (qOut = [qOut zeros(size(qOut), ntSrc - ntComp)])
 
     # Output adjoint data as judiVector
-    return judiWeights(wOut)
+    if options.return_array == true
+        return vec(wOut)
+    else
+        return judiWeights(wOut)
+    end
 end
