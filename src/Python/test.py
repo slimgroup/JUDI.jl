@@ -55,10 +55,10 @@ rec_t.coordinates.data[:, 1] = 20.
 #w2 = adjoint_modeling(model, None, rec_t.coordinates.data, dobs.data, wavelet=src.data)
 
 # Linearized modeling
-dlin = forward_born(model0, src.coordinates.data, src.data, rec_t.coordinates.data, weight=w)
+dlin = forward_born(model0, None, src.data, rec_t.coordinates.data, weight=w)
 
 # Adjoint modeling
-u0 = forward_modeling(model0, src.coordinates.data, src.data, None, weight=w, save=True)
+u0 = forward_modeling(model0, None, src.data, None, weight=w, save=True)
 g = adjoint_born(model0, rec_t.coordinates.data, dlin.data, u=u0)
 
 plt.imshow(dlin.data, aspect='auto', cmap='gray')

@@ -49,7 +49,7 @@ function judiLRWF(info::Info, data; DDT::DataType=Float32, RDT::DataType=DDT)
     (DDT == Float32 && RDT == Float32) || throw(judiProjectionException("Domain and range types not supported"))
     m = info.n * info.nsrc
     n = info.n * sum(info.nt)
-    wavelet = Array{Any}(undef, info.nsrc)
+    wavelet = Array{Array}(undef, info.nsrc)
     for j=1:info.nsrc
         wavelet[j] = data
     end
@@ -123,7 +123,7 @@ end
 # Subsample Modeling operator
 function subsample(P::judiLRWF{ADDT,ARDT}, srcnum) where {ADDT,ARDT}
     info = Info(P.info.n, length(srcnum), P.info.nt[srcnum])
-    return judiLRWF(info, data[srcnum];DDT=ADDT,RDT=ARDT)
+    return judiLRWF(info, P.wavelet[srcnum];DDT=ADDT,RDT=ARDT)
 end
 
 getindex(P::judiLRWF,a) = subsample(P,a)

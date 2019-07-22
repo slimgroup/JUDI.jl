@@ -4,7 +4,7 @@
 # Date: January 2017
 #
 
-using JUDI.TimeModeling, SeisIO, LinearAlgebra, PyPlot, IterativeSolvers
+using JUDI.TimeModeling, SeisIO, LinearAlgebra, PyPlot, IterativeSolvers, JOLI
 
 ## Set up model structure
 n = (120, 100)   # (x,y,z) or (x,z)
@@ -59,7 +59,10 @@ w = randn(Float32, model.n)
 Pw = judiLRWF(info, wavelet)
 
 # Model observed data w/ extended source
+lambda = 1e2
+I = joDirac(info.n, DDT=Float32, RDT=Float32)
 F = Pr*F*adjoint(Pw)
+F̄ = [F; lambda*I]
 
 # Simultaneous observed data
 d_sim = F*vec(w)
@@ -69,7 +72,7 @@ w_adj = adjoint(F)*d_sim
 
 # LSQR
 w_inv = zeros(Float32, info.n)
-lsqr!(w_inv, F, d_sim; maxiter=20, verbose=true, damp=1e2)
+lsqr!(w_inv, F̄, [d_sim; vec(w)]; maxiter=20, verbose=true, damp=1e2)
 
 d_pred = F*vec(w_inv);
 

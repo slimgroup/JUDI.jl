@@ -36,6 +36,8 @@ include("judiWeights.jl")    # Extended source weight vector
 # PDE solvers
 include("time_modeling_serial.jl")  # forward/adjoint linear/nonlinear modeling
 include("time_modeling_parallel.jl")    # parallelization for modeling
+include("extended_source_interface_serial.jl")  # forward/adjoint linear/nonlinear modeling w/ extended source
+include("extended_source_interface_parallel.jl")    # parallelization for modeling w/ extended source
 include("fwi_objective_serial.jl")  # FWI objective function value and gradient
 include("fwi_objective_parallel.jl")    # parallelization for FWI gradient
 
@@ -48,6 +50,7 @@ include("judiPDEfull.jl")   # modeling operator with source and receiver project
 include("judiPDEextended.jl")   # modeling operator for extended sources
 include("judiPDE.jl")   # modeling operator with lhs projection only: P*F
 include("judiJacobian.jl")  # linearized modeling operator J
+include("judiJacobianExtendedSource.jl")  # Jacobian of extended source modeling operator
 
 #############################################################################
 # Preconditioners and optimization

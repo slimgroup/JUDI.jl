@@ -55,13 +55,13 @@ function judiPDEextended(info::Info,model::Model, wavelet::Array, recGeometry::G
 
     if options.return_array == true
         return F = judiPDEextended{Float32,Float32}("Proj*F*Proj'", m, n, info, model, wavelet, recGeometry, options,
-                                  w -> time_modeling(model, nothing, wavelet, recGeometry, nothing, reshape(w, model.n[1], model.n[2], info.nsrc), srcnum, 'F', 1, options),
-                                  rec -> time_modeling(model, nothing, wavelet, recGeometry, reshape(rec, recGeometry.nt[1], length(recGeometry.xloc[1]), info.nsrc), nothing, srcnum, 'F', -1, options),
+                                  w -> extended_source_modeling(model, wavelet, recGeometry, nothing, reshape(w, model.n[1], model.n[2], info.nsrc), nothing, srcnum, 'F', 1, options),
+                                  rec -> extended_source_modeling(model, wavelet, recGeometry, reshape(rec, recGeometry.nt[1], length(recGeometry.xloc[1]), info.nsrc), nothing, nothing, srcnum, 'F', -1, options),
                                   )
     else
         return F = judiPDEextended{Float32,Float32}("Proj*F*Proj'", m, n, info, model, wavelet, recGeometry, options,
-                                  w -> time_modeling(model, nothing, wavelet, recGeometry, nothing, w.weights, srcnum, 'F', 1, options),
-                                  rec -> time_modeling(model, nothing, wavelet, recGeometry, rec.data, nothing, srcnum, 'F', -1, options),
+                                  w -> extended_source_modeling(model, wavelet, recGeometry, nothing, w.weights, nothing, srcnum, 'F', 1, options),
+                                  rec -> extended_source_modeling(model, wavelet, recGeometry, rec.data, nothing, nothing, srcnum, 'F', -1, options),
                                   )
     end
 end

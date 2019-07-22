@@ -69,7 +69,6 @@ function judiWeights(weights::Union{Array{Any,1},Array{Array,1}}; vDT::DataType=
 end
 
 
-
 ############################################################
 ## overloaded Base functions
 

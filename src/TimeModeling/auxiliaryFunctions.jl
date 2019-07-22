@@ -428,7 +428,17 @@ function process_physical_parameter(param, dims)
 end
 
 function convert_to_cell_array(x)
-    x_cell = Array{Any}(undef, 1)
-    x_cell[1] = x
+    nsrc = size(x)[end]
+    ndim = length(size(x)) - 1
+    x_cell = Array{Array}(undef, nsrc)
+    for j=1:nsrc
+        if ndim == 2
+            x_cell[j] = x[:,:,j]
+        elseif ndim==3
+            x_cell[j] = x[:,:,:,j]
+        else
+           throw("Number of dimensions not supported.")
+        end
+    end
     return x_cell
 end
