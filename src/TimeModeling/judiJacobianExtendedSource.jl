@@ -80,7 +80,15 @@ function judiJacobian(F::judiPDEextended, weights::judiWeights; DDT::DataType=Fl
     end
 end
 
-judiJacobian(F::judiPDEextended, weights::Array; DDT::DataType=Float32, RDT::DataType=DDT) = judiJacobian(F, judiWeights(weights); DDT=DDT, RDT=RDT)
+# Constructor if weights are given as 1D vector (for one or multiple extended sources)
+function judiJacobian(F::judiPDEextended, weights::Array; DDT::DataType=Float32, RDT::DataType=DDT)
+    weights = reshape(weights, F.model.n[1], F.model.n[2], F.info.nsrc)
+    weights_cell = Array{Array}(undef, F.info.nsrc)
+    for j=1:F.info.nsrc
+        weights_cell[j] = weights[:,:,j]
+    end
+    return judiJacobian(F, judiWeights(weights_cell); DDT=DDT, RDT=RDT)
+end
 
 ############################################################
 ## overloaded Base functions

@@ -68,18 +68,18 @@ function extended_source_modeling(model::Model, srcData, recGeometry, recData, w
         end
     end
 
-    if op=='F' || (op=='J' && mode==1)
-        argout1 = results[1]
-        for j=2:numSources
-            argout1 = [argout1; results[j]]
-        end
-    elseif op=='J' && mode==-1
-        argout1 = results[1]
-        for j=2:numSources
-            argout1 += results[j]
-        end
-    else
-        error("operation no defined")
+    # if op=='F' || (op=='J' && mode==1)
+    argout1 = results[1]
+    for j=2:numSources
+        argout1 = [argout1; results[j]]
     end
+    # elseif op=='J' && mode==-1
+    #     argout1 = results[1]
+    #     for j=2:numSources
+    #         argout1 += results[j]
+    #     end
+    # else
+    #     error("operation no defined")
+    # end
     return argout1
 end
