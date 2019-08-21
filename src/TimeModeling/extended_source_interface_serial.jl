@@ -154,6 +154,8 @@ function devito_interface(modelPy::PyCall.PyObject, origin, srcData::Array, recG
     qIn = time_resample(srcData[1],recGeometry,dtComp)[1]
     if typeof(recData) == Array{Array, 1} || typeof(recData) == Array{Any, 1}
         dIn = time_resample(recData[1],recGeometry,dtComp)[1]
+    elseif typeof(recData) == Array{Array{Float32, 2}, 1}
+        dIn = time_resample(recData[1],recGeometry,dtComp)[1]
     else
         dIn = time_resample(recData[:,:,1],recGeometry,dtComp)[1]
     end
