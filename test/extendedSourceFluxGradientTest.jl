@@ -4,8 +4,7 @@
 # Date: January 2017
 #
 
-using PyCall, PyPlot, JUDI.TimeModeling, Test, LinearAlgebra, JUDI4Flux
-import LinearAlgebra.norm
+using PyCall, PyPlot, JUDI.TimeModeling, Test, LinearAlgebra, JUDI4Flux, Flux
 
 ## Set up model structure
 n = (120,100)	# (x,y,z) or (x,z)
@@ -16,7 +15,8 @@ o = (0.,0.)
 v = ones(Float32,n) .* 2.0f0
 v[:,Int(round(end/2)):end] .= 3.0f0
 v0 = smooth10(v,n)
-
+rho = ones(Float32, n)
+rho[:, Int(round(end/2)):end] .= 1.5f0
 
 # Slowness squared [s^2/km^2]
 m = (1f0 ./ v).^2
@@ -27,8 +27,8 @@ dm = m0 - m
 nsrc = 1	# number of sources
 ntComp = 250
 info = Info(prod(n), nsrc, ntComp)	# number of gridpoints, number of experiments, number of computational time steps
-model = Model(n,d,o,m)
-model0 = Model(n,d,o,m0)
+model = Model(n,d,o,m;rho=rho)
+model0 = Model(n,d,o,m0;rho=rho)
 
 ## Set up receiver geometry
 nxrec = 81
@@ -59,9 +59,6 @@ srcGeometry = Geometry(xsrc,ysrc,zsrc;dt=dtS,t=timeS)
 f0 = 0.01f0
 wavelet = ricker_wavelet(timeS,dtS,f0)
 
-nt = get_computational_nt(srcGeometry, recGeometry, model0)
-dt_comp = timeR / (nt[1] - 1)
-
 ###################################################################################################
 
 # Gradient test
@@ -79,41 +76,47 @@ F = judiModeling(info, model; options=opt)
 F0 = judiModeling(info, model0; options=opt)
 Pw = judiLRWF(info, wavelet)
 
-# Random weights (size of the model)
-weights = zeros(Float32, model.n)
-weights[:, 5] = randn(Float32, n[1])/1f2
+# Random surface weights
+weights = randn(Float32, model.n)
+#weights[:, 5] = randn(Float32, model.n[1])
+jw = judiWeights(weights)
+w = reshape(weights, n[1], n[2], 1, 1)
 
 # Combined operators and Jacobian
 F = Pr*F*adjoint(Pw)
 F0 = Pr*F0*adjoint(Pw)
+J = judiJacobian(F0, jw)
 
 function my_norm(x; dt=1, p=2)
     x = dt * sum(abs.(vec(x)).^p)
     return x^(1.f0/p)
 end
 
-function objective_function(F, w, m0, d)
-    G = ExtendedQAdjoint(F)
-    r = G(d, m0) - w
-    J = judiJacobian(G.F, judiWeights(r[:,:,1,1]))
-    f = .5f0*my_norm(vec(r); dt=dt_comp)^2
-    g = adjoint(J)*d
-    return f, g
+function objective_function(F, w, m, d)
+    Fc = deepcopy(F)
+    Fc.model.m = m[:,:,1,1]
+    J = judiJacobian(Fc, jw)
+    r = Fc*vec(w) - vec(d)
+    f = .5f0*my_norm(r; dt=dtR)^2
+    g = adjoint(J)*r
+    return f, vec(g)
 end
 
-# Observed data
+# Simultaneous observed data
 d = F*vec(weights)
-w = adjoint(F)*d
-w = reshape(w, n[1], n[2], 1, 1)
+d = reshape(d, recGeometry.nt[1], nxrec, 1, 1)
+m0 = reshape(m0, n[1], n[2], 1, 1)
+dm = reshape(dm, n[1], n[2], 1, 1)
 
 # FWI gradient and function value for m0
 Jm0, grad = objective_function(F0, w, m0, d)
 
-for j=1:iter
 
-	# Adjoint extended source function gradient and function falue
-	Jm, gradm = objective_function(F0, w, m0 + h*dm, d)
-	dJ = dot(grad,vec(dm))
+for j=1:iter
+	# FWI gradient and function falue for m0 + h*dm
+    Jm, grad = objective_function(F0, w, m0 + h*dm, d)
+
+	dJ = dot(grad, vec(dm))
 
 	# Check convergence
 	error1[j] = abs(Jm - Jm0)
@@ -130,12 +133,12 @@ rate_1st_order = 4^(iter - 1)   # error decays w/ factor 4
 
 # Plot errors
 if isinteractive()
-    loglog(h_all, error1); loglog(h_all, 1e9*h_all)
-    loglog(h_all, error2); loglog(h_all, 1e6*h_all.^2)
+    loglog(h_all, error1); loglog(h_all, 1e2*h_all)
+    loglog(h_all, error2); loglog(h_all, 1e2*h_all.^2)
     legend([L"$\Phi(m) - \Phi(m0)$", "1st order", L"$\Phi(m) - \Phi(m0) - \nabla \Phi \delta m$", "2nd order"], loc="lower right")
     xlabel("h")
     ylabel(L"Error $||\cdot||^\infty$")
-    title("Adjoint extended source gradient test")
+    title("FWI gradient test")
 end
 
 @test error1[end] <= error1[1] / rate_0th_order
