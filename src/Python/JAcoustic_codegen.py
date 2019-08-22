@@ -77,7 +77,7 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
         wavelett = Function(name='wf_src', dimensions=(time,), shape=(nt,))
         wavelett.data[:] = wavelet[:]
         source_weight = Function(name='src_weight', grid=model.grid)
-        slices = [slice(model.nbpml, -model.nbpml, 1) for _ in range(model.grid.dim)]
+        slices = tuple(slice(model.nbpml, -model.nbpml, 1) for _ in range(model.grid.dim))
         source_weight.data[slices] = weight
         stencil += dt**2 * rho / m * source_weight*wavelett
 
@@ -198,7 +198,7 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=8, nb=
     op = Operator(expression, subs=subs, dse='advanced', dle='advanced')
     op()
     if wavelet is not None:
-        slices = [slice(model.nbpml, -model.nbpml, 1) for _ in range(model.grid.dim)]
+        slices = tuple([slice(model.nbpml, -model.nbpml, 1) for _ in range(model.grid.dim)])
         return w_out.data[slices]
     if src_coords is None:
         return v
@@ -249,7 +249,7 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, nb=40, i
         wavelett = Function(name='wf_src', dimensions=(time,), shape=(nt,))
         wavelett.data[:] = wavelet[:]
         source_weight = Function(name='src_weight', grid=model.grid)
-        slices = [slice(model.nbpml, -model.nbpml, 1) for _ in range(model.grid.dim)]
+        slices = tuple([slice(model.nbpml, -model.nbpml, 1) for _ in range(model.grid.dim)])
         source_weight.data[slices] = weight
         stencil_u += dt**2 * rho / m * source_weight*wavelett
     else:
