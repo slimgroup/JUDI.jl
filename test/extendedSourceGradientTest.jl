@@ -4,7 +4,7 @@
 # Date: January 2017
 #
 
-using PyCall, PyPlot, JUDI.TimeModeling, Test, LinearAlgebra
+using PyCall, PyPlot, JUDI.TimeModeling, Test, LinearAlgebra, JUDI4Flux
 import LinearAlgebra.norm
 
 ## Set up model structure
@@ -79,14 +79,11 @@ F0 = judiModeling(info, model0; options=opt)
 Pw = judiLRWF(info, wavelet)
 
 # Random weights (size of the model)
-weights = randn(Float32, model.n)
-jw = judiWeights(weights)
-w = vec(weights)
+w = randn(Float32, model.n)
 
 # Combined operators and Jacobian
 F = Pr*F*adjoint(Pw)
 F0 = Pr*F0*adjoint(Pw)
-J = judiJacobian(F0, jw)
 
 function my_norm(x; dt=1, p=2)
     x = dt * sum(abs.(vec(x)).^p)
@@ -94,26 +91,24 @@ function my_norm(x; dt=1, p=2)
 end
 
 function objective_function(F, w, m0, d)
-    Fc = deepcopy(F)
-    Fc.model.m = m0
-    J = judiJacobian(Fc, jw)
-    r = Fc*w - d
+    𝒢 = ExtendedQForward(F)
+    r = 𝒢(w, m0) - d
+    J = judiJacobian(𝒢.F, judiWeights(w))
     f = .5f0*my_norm(r; dt=dtR)^2
-    g = adjoint(J)*r
+    g = adjoint(J)*vec(r)
     return f, g
 end
 
 # Observed data
-d = F*w
+d = F*vec(w)
+d = reshape(d, recGeometry.nt[1], nxrec)
 
 # FWI gradient and function value for m0
 Jm0, grad = objective_function(F0, w, m0, d)
 
 for j=1:iter
 	# FWI gradient and function falue for m0 + h*dm
-	#modelH.m = model0.m + h*dm
 	Jm, gradm = objective_function(F0, w, m0 + h*dm, d)
-
 	dJ = dot(grad,vec(dm))
 
 	# Check convergence

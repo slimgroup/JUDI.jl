@@ -93,9 +93,9 @@ function my_norm(x; dt=1, p=2)
 end
 
 function objective_function(F, w, m0, d)
-    G = ExtendedQAdjoint(F)
-    r = G(d, m0) - w
-    J = judiJacobian(G.F, judiWeights(r[:,:,1,1]))
+    𝒢_T = ExtendedQAdjoint(F)
+    r = 𝒢_T(d, m0) - w
+    J = judiJacobian(𝒢_T.F, judiWeights(r[:,:,1,1]))
     f = .5f0*my_norm(vec(r); dt=dt_comp)^2
     g = adjoint(J)*d
     return f, g
