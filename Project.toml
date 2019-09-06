@@ -1,3 +1,8 @@
+name = "JUDI"
+uuid = "dad007b9-1e96-48aa-80a3-1b78615e9407"
+authors = ["Philipp Witte, Mathias Louboutin"]
+version = "1.2.1"
+
 [deps]
 Dierckx = "39dd38d3-220a-591b-8e3c-4c3a8c710a94"
 FFTW = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
