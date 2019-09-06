@@ -26,7 +26,7 @@ before_install:
   - pip install -r docker/devito_requirements.txt
   - CURL_USER_AGENT="Travis-CI $(curl --version | head -n 1)"
   - mkdir -p ~/julia
-  - curl -A "$CURL_USER_AGENT" -s -L --retry 7 'https://julialang-s3.julialang.org/bin/linux/x64/1.1/julia-1.1.1-linux-x86_64.tar.gz' | tar -C ~/julia -x -z --strip-components=1 -f -
+  - curl -A "$CURL_USER_AGENT" -s -L --retry 7 'https://julialang-s3.julialang.org/bin/linux/x64/1.2/julia-1.2.0-linux-x86_64.tar.gz' | tar -C ~/julia -x -z --strip-components=1 -f -
   - export PATH="${PATH}:${HOME}/julia/bin"
   - julia -e 'using Pkg; Pkg.clone("https://github.com/slimgroup/SeisIO.jl")'
   - julia -e 'using Pkg; Pkg.clone("https://github.com/slimgroup/JOLI.jl.git")'
