@@ -33,7 +33,7 @@ function time_modeling(model_full::Model, srcGeometry, srcData, recGeometry, rec
 
     # Load shot record if stored on disk
     if recData != nothing
-        if typeof(recData[1]) == SeisIO.SeisCon
+        if typeof(recData[1]) == SegyIO.SeisCon
             recDataCell = Array{Any}(undef, 1); recDataCell[1] = convert(Array{Float32,2},recData[1][1].data); recData = recDataCell
         elseif typeof(recData[1]) == String
             recData = load(recData[1])."d".data

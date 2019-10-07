@@ -30,7 +30,7 @@ function fwi_objective(model_full::Model, source::judiVector, dObs::judiVector, 
 
     # Extrapolate input data to computational grid
     qIn = time_resample(source.data[1],source.geometry,dtComp)[1]
-    if typeof(dObs.data[1]) == SeisIO.SeisCon
+    if typeof(dObs.data[1]) == SegyIO.SeisCon
         data = convert(Array{Float32,2},dObs.data[1][1].data)
         dObs = judiVector(dObs.geometry,data)
     end

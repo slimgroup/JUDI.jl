@@ -47,14 +47,14 @@ can also be a single (non-cell) array, in which case the data is the same for al
 
     judiVector(geometry, data)
 
-Construct vector for observed data from `SeisIO.SeisBlock`. `segy_depth_key` is the `SeisIO` keyword \\
+Construct vector for observed data from `SegyIO.SeisBlock`. `segy_depth_key` is the `SegyIO` keyword \\
 that contains the receiver depth coordinate:
 
-    judiVector(SeisIO.SeisBlock; segy_depth_key="RecGroupElevation")
+    judiVector(SegyIO.SeisBlock; segy_depth_key="RecGroupElevation")
 
-Construct vector for observed data from out-of-core data container of type `SeisIO.SeisCon`:
+Construct vector for observed data from out-of-core data container of type `SegyIO.SeisCon`:
 
-    judiVector(SeisIO.SeisCon; segy_depth_key="RecGroupElevation")
+    judiVector(SegyIO.SeisCon; segy_depth_key="RecGroupElevation")
 
 Examples
 ========
@@ -68,15 +68,15 @@ wavelets or a single wavelet as an array):
 
     q = judiVector(src_geometry, wavelet)
 
-(3) Construct data vector from `SeisIO.SeisBlock` object:
+(3) Construct data vector from `SegyIO.SeisBlock` object:
 
-    using SeisIO
+    using SegyIO
     seis_block = segy_read("test_file.segy")
     dobs = judiVector(seis_block; segy_depth_key="RecGroupElevation")
 
-(4) Construct out-of-core data vector from `SeisIO.SeisCon` object (for large SEG-Y files):
+(4) Construct out-of-core data vector from `SegyIO.SeisCon` object (for large SEG-Y files):
 
-    using SeisIO
+    using SegyIO
     seis_container = segy_scan("/path/to/data/directory","filenames",["GroupX","GroupY","RecGroupElevation","SourceDepth","dt"])
     dobs = judiVector(seis_container; segy_depth_key="RecGroupElevation")
 
@@ -127,7 +127,7 @@ end
 # constructors from SEGY files or out-of-core containers
 
 # contructor for in-core data container
-function judiVector(data::SeisIO.SeisBlock; segy_depth_key="RecGroupElevation", vDT::DataType=Float32)
+function judiVector(data::SegyIO.SeisBlock; segy_depth_key="RecGroupElevation", vDT::DataType=Float32)
     vDT == Float32 || throw(judiVectorException("Domain and range types not supported"))
 
     # length of data vector
@@ -154,7 +154,7 @@ function judiVector(data::SeisIO.SeisBlock; segy_depth_key="RecGroupElevation", 
 end
 
 # contructor for in-core data container and given geometry
-function judiVector(geometry::Geometry, data::SeisIO.SeisBlock; vDT::DataType=Float32)
+function judiVector(geometry::Geometry, data::SegyIO.SeisBlock; vDT::DataType=Float32)
     vDT == Float32 || throw(judiVectorException("Domain and range types not supported"))
 
     # length of data vector
@@ -177,7 +177,7 @@ function judiVector(geometry::Geometry, data::SeisIO.SeisBlock; vDT::DataType=Fl
 end
 
 # contructor for out-of-core data container from single container
-function judiVector(data::SeisIO.SeisCon; segy_depth_key="RecGroupElevation", vDT::DataType=Float32)
+function judiVector(data::SegyIO.SeisCon; segy_depth_key="RecGroupElevation", vDT::DataType=Float32)
     vDT == Float32 || throw(judiVectorException("Domain and range types not supported"))
 
     # length of data vector
@@ -193,7 +193,7 @@ function judiVector(data::SeisIO.SeisCon; segy_depth_key="RecGroupElevation", vD
     geometry = Geometry(data; key="receiver", segy_depth_key=segy_depth_key)
 
     # fill data vector with pointers to data location
-    dataCell = Array{SeisIO.SeisCon}(undef, nsrc)
+    dataCell = Array{SegyIO.SeisCon}(undef, nsrc)
     for j=1:nsrc
         dataCell[j] = split(data,j)
     end
@@ -202,7 +202,7 @@ function judiVector(data::SeisIO.SeisCon; segy_depth_key="RecGroupElevation", vD
 end
 
 # contructor for single out-of-core data container and given geometry
-function judiVector(geometry::Geometry, data::SeisIO.SeisCon; vDT::DataType=Float32)
+function judiVector(geometry::Geometry, data::SegyIO.SeisCon; vDT::DataType=Float32)
     vDT == Float32 || throw(judiVectorException("Domain and range types not supported"))
 
     # length of data vector
@@ -215,7 +215,7 @@ function judiVector(geometry::Geometry, data::SeisIO.SeisCon; vDT::DataType=Floa
     n = 1
 
     # fill data vector with pointers to data location
-    dataCell = Array{SeisIO.SeisCon}(undef, nsrc)
+    dataCell = Array{SegyIO.SeisCon}(undef, nsrc)
     for j=1:nsrc
         dataCell[j] = split(data,j)
     end
@@ -224,7 +224,7 @@ function judiVector(geometry::Geometry, data::SeisIO.SeisCon; vDT::DataType=Floa
 end
 
 # contructor for out-of-core data container from cell array of containers
-function judiVector(data::Array{SeisIO.SeisCon,1}; segy_depth_key="RecGroupElevation", vDT::DataType=Float32)
+function judiVector(data::Array{SegyIO.SeisCon,1}; segy_depth_key="RecGroupElevation", vDT::DataType=Float32)
     vDT == Float32 || throw(judiVectorException("Domain and range types not supported"))
 
     # length of data vector
@@ -240,7 +240,7 @@ function judiVector(data::Array{SeisIO.SeisCon,1}; segy_depth_key="RecGroupEleva
     geometry = Geometry(data; key="receiver", segy_depth_key=segy_depth_key)
 
     # fill data vector with pointers to data location
-    dataCell = Array{SeisIO.SeisCon}(undef, nsrc)
+    dataCell = Array{SegyIO.SeisCon}(undef, nsrc)
     for j=1:nsrc
         dataCell[j] = data[j]
     end
@@ -249,7 +249,7 @@ function judiVector(data::Array{SeisIO.SeisCon,1}; segy_depth_key="RecGroupEleva
 end
 
 # contructor for out-of-core data container from cell array of containers and given geometry
-function judiVector(geometry::Geometry, data::Array{SeisIO.SeisCon}; vDT::DataType=Float32)
+function judiVector(geometry::Geometry, data::Array{SegyIO.SeisCon}; vDT::DataType=Float32)
     vDT == Float32 || throw(judiVectorException("Domain and range types not supported"))
 
     # length of data vector
@@ -262,7 +262,7 @@ function judiVector(geometry::Geometry, data::Array{SeisIO.SeisCon}; vDT::DataTy
     n = 1
 
     # fill data vector with pointers to data location
-    dataCell = Array{SeisIO.SeisCon}(undef, nsrc)
+    dataCell = Array{SegyIO.SeisCon}(undef, nsrc)
     for j=1:nsrc
         dataCell[j] = data[j]
     end
@@ -379,8 +379,8 @@ function vcat(a::judiVector{avDT},b::judiVector{bvDT}) where {avDT, bvDT}
     n = 1
     nsrc = a.nsrc + b.nsrc
 
-    if typeof(a.data) == Array{SeisIO.SeisCon,1} && typeof(b.data) == Array{SeisIO.SeisCon,1}
-        data = Array{SeisIO.SeisCon}(undef, nsrc)
+    if typeof(a.data) == Array{SegyIO.SeisCon,1} && typeof(b.data) == Array{SegyIO.SeisCon,1}
+        data = Array{SegyIO.SeisCon}(undef, nsrc)
     else
         data = Array{Array}(undef, nsrc)
     end
@@ -388,7 +388,7 @@ function vcat(a::judiVector{avDT},b::judiVector{bvDT}) where {avDT, bvDT}
     dt = Array{Any}(undef, nsrc)
     nt = Array{Any}(undef, nsrc)
     t = Array{Any}(undef, nsrc)
-    if typeof(data) == Array{SeisIO.SeisCon,1}
+    if typeof(data) == Array{SegyIO.SeisCon,1}
         nsamples = Array{Any}(undef, nsrc)
     else
         xloc = Array{Any}(undef, nsrc)
@@ -399,7 +399,7 @@ function vcat(a::judiVector{avDT},b::judiVector{bvDT}) where {avDT, bvDT}
     # Merge data sets and geometries
     for j=1:a.nsrc
         data[j] = a.data[j]
-        if typeof(data) == Array{SeisIO.SeisCon,1}
+        if typeof(data) == Array{SegyIO.SeisCon,1}
             nsamples[j] = a.geometry.nsamples[j]
         else
             xloc[j] = a.geometry.xloc[j]
@@ -412,7 +412,7 @@ function vcat(a::judiVector{avDT},b::judiVector{bvDT}) where {avDT, bvDT}
     end
     for j=a.nsrc+1:nsrc
         data[j] = b.data[j-a.nsrc]
-        if typeof(data) == Array{SeisIO.SeisCon,1}
+        if typeof(data) == Array{SegyIO.SeisCon,1}
             nsamples[j] = b.geometry.nsamples[j-a.nsrc]
         else
             xloc[j] = b.geometry.xloc[j-a.nsrc]
@@ -424,7 +424,7 @@ function vcat(a::judiVector{avDT},b::judiVector{bvDT}) where {avDT, bvDT}
         t[j] = b.geometry.t[j-a.nsrc]
     end
 
-    if typeof(data) == Array{SeisIO.SeisCon,1}
+    if typeof(data) == Array{SegyIO.SeisCon,1}
         geometry = GeometryOOC(data,dt,nt,t,nsamples,a.geometry.key,a.geometry.segy_depth_key)
     else
         geometry = Geometry(xloc,yloc,zloc,dt,nt,t)
@@ -727,33 +727,33 @@ end
 
 ###########################################################################################################
 
-# Overload base function for SeisIO objects
+# Overload base function for SegyIO objects
 
-vec(x::SeisIO.SeisCon) = vec(x[1].data)
-norm(x::SeisIO.IBMFloat32; kwargs...) = norm(convert(Float32,x); kwargs...)
-dot(x::SeisIO.IBMFloat32, y::SeisIO.IBMFloat32) = dot(convert(Float32,x), convert(Float32,y))
-dot(x::SeisIO.IBMFloat32, y::Float32) = dot(convert(Float32,x), y)
-dot(x::Float32, y::SeisIO.IBMFloat32) = dot(x, convert(Float32,y))
+vec(x::SegyIO.SeisCon) = vec(x[1].data)
+norm(x::SegyIO.IBMFloat32; kwargs...) = norm(convert(Float32,x); kwargs...)
+dot(x::SegyIO.IBMFloat32, y::SegyIO.IBMFloat32) = dot(convert(Float32,x), convert(Float32,y))
+dot(x::SegyIO.IBMFloat32, y::Float32) = dot(convert(Float32,x), y)
+dot(x::Float32, y::SegyIO.IBMFloat32) = dot(x, convert(Float32,y))
 
 # binary operations return dense arrays
-+(x::SeisIO.SeisCon, y::SeisIO.SeisCon) = +(x[1].data,y[1].data)
-+(x::SeisIO.IBMFloat32, y::SeisIO.IBMFloat32) = +(convert(Float32,x),convert(Float32,y))
-+(x::SeisIO.IBMFloat32, y::Float32) = +(convert(Float32,x),y)
-+(x::Float32, y::SeisIO.IBMFloat32) = +(x,convert(Float32,y))
++(x::SegyIO.SeisCon, y::SegyIO.SeisCon) = +(x[1].data,y[1].data)
++(x::SegyIO.IBMFloat32, y::SegyIO.IBMFloat32) = +(convert(Float32,x),convert(Float32,y))
++(x::SegyIO.IBMFloat32, y::Float32) = +(convert(Float32,x),y)
++(x::Float32, y::SegyIO.IBMFloat32) = +(x,convert(Float32,y))
 
--(x::SeisIO.SeisCon, y::SeisIO.SeisCon) = -(x[1].data,y[1].data)
--(x::SeisIO.IBMFloat32, y::SeisIO.IBMFloat32) = -(convert(Float32,x),convert(Float32,y))
--(x::SeisIO.IBMFloat32, y::Float32) = -(convert(Float32,x),y)
--(x::Float32, y::SeisIO.IBMFloat32) = -(x,convert(Float32,y))
+-(x::SegyIO.SeisCon, y::SegyIO.SeisCon) = -(x[1].data,y[1].data)
+-(x::SegyIO.IBMFloat32, y::SegyIO.IBMFloat32) = -(convert(Float32,x),convert(Float32,y))
+-(x::SegyIO.IBMFloat32, y::Float32) = -(convert(Float32,x),y)
+-(x::Float32, y::SegyIO.IBMFloat32) = -(x,convert(Float32,y))
 
-+(a::Number, x::SeisIO.SeisCon) = .+(a,x[1].data)
-+(x::SeisIO.SeisCon, a::Number) = .+(x[1].data,a)
++(a::Number, x::SegyIO.SeisCon) = .+(a,x[1].data)
++(x::SegyIO.SeisCon, a::Number) = .+(x[1].data,a)
 
--(a::Number, x::SeisIO.SeisCon) = -(a,x[1].data)
--(x::SeisIO.SeisCon, a::Number) = -(x[1].data,a)
+-(a::Number, x::SegyIO.SeisCon) = -(a,x[1].data)
+-(x::SegyIO.SeisCon, a::Number) = -(x[1].data,a)
 
-*(a::Number, x::SeisIO.SeisCon) = *(a,x[1].data)
-*(x::SeisIO.SeisCon, a::Number) = *(x[1].data,a)
+*(a::Number, x::SegyIO.SeisCon) = *(a,x[1].data)
+*(x::SegyIO.SeisCon, a::Number) = *(x[1].data,a)
 
-/(a::Number, x::SeisIO.SeisCon) = /(a,x[1].data)
-/(x::SeisIO.SeisCon, a::Number) = /(x[1].data,a)
+/(a::Number, x::SegyIO.SeisCon) = /(a,x[1].data)
+/(x::SegyIO.SeisCon, a::Number) = /(x[1].data,a)
