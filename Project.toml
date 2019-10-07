@@ -17,7 +17,7 @@ PolynomialRoots = "3a141323-8675-5d76-9d11-e1df1406c778"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 PyCall = "438e738f-606a-5dbb-bf0a-cddfbfd45ab0"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
-SeisIO = "7f75f292-7034-11e9-3579-f32821507df7"
+SegyIO = "157a0f19-4d44-4de5-a0d0-07e2f0ac4dfa"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
