@@ -28,7 +28,7 @@ before_install:
   - mkdir -p ~/julia
   - curl -A "$CURL_USER_AGENT" -s -L --retry 7 'https://julialang-s3.julialang.org/bin/linux/x64/1.2/julia-1.2.0-linux-x86_64.tar.gz' | tar -C ~/julia -x -z --strip-components=1 -f -
   - export PATH="${PATH}:${HOME}/julia/bin"
-  - julia -e 'using Pkg; Pkg.clone("https://github.com/slimgroup/SeisIO.jl")'
+  - julia -e 'using Pkg; Pkg.clone("https://github.com/slimgroup/SegyIO.jl")'
   - julia -e 'using Pkg; Pkg.clone("https://github.com/slimgroup/JOLI.jl.git")'
   - julia -e 'using Pkg; Pkg.add("PyCall")'
 install:
@@ -37,4 +37,4 @@ install:
 script:
   - julia --check-bounds=yes --color=yes -e 'using Pkg; using Test; Pkg.test("JUDI", coverage=true)'
 after_success:
-  - julia -e 'using Pkg; cd(Pkg.dir("JUDI")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())' 
+  - julia -e 'using Pkg; cd(Pkg.dir("JUDI")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'
