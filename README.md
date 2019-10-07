@@ -2,6 +2,7 @@
 
 [![Build Status](https://travis-ci.org/slimgroup/JUDI.jl.svg?branch=master)](https://travis-ci.org/slimgroup/JUDI.jl)
 
+
 ## Overview
 
 JUDI is a framework for large-scale seismic modeling and inversion and designed to enable rapid translations of algorithms to fast and efficient code that scales to industry-size 3D problems. The focus of the package lies on seismic modeling as well as PDE-constrained optimization such as full-waveform inversion (FWI) and imaging (LS-RTM). Wave equations in JUDI are solved with [Devito](https://github.com/opesci/devito), a Python domain-specific language for automated finite-difference (FD) computations.
