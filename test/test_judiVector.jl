@@ -3,7 +3,7 @@
 # May 2018
 #
 
-using JUDI.TimeModeling, SeisIO, Test, LinearAlgebra
+using JUDI.TimeModeling, SegyIO, Test, LinearAlgebra
 import LinearAlgebra.BLAS.axpy!
 
 function example_rec_geometry(; nsrc=2, nrec=120)
@@ -72,7 +72,7 @@ ns = 251
     d_cont = judiVector(container; segy_depth_key="RecGroupElevation")
 
     @test isequal(d_cont.nsrc, nsrc)
-    @test isequal(typeof(d_cont.data), Array{SeisIO.SeisCon, 1})
+    @test isequal(typeof(d_cont.data), Array{SegyIO.SeisCon, 1})
     @test isequal(typeof(d_cont.geometry), GeometryOOC)
     @test isequal(size(d_cont), dsize)
 
@@ -80,20 +80,20 @@ ns = 251
     d_cont = judiVector(rec_geometry, container)
 
     @test isequal(d_cont.nsrc, nsrc)
-    @test isequal(typeof(d_cont.data), Array{SeisIO.SeisCon, 1})
+    @test isequal(typeof(d_cont.data), Array{SegyIO.SeisCon, 1})
     @test isequal(typeof(d_cont.geometry), GeometryIC)
     @test isequal(rec_geometry, d_cont.geometry)
     @test isequal(size(d_cont), dsize)
 
     # contructor for out-of-core data container from cell array of containers
-    container_cell = Array{SeisIO.SeisCon}(undef, nsrc)
+    container_cell = Array{SegyIO.SeisCon}(undef, nsrc)
     for j=1:nsrc
         container_cell[j] = split(container, j)
     end
     d_cont =  judiVector(container_cell; segy_depth_key="RecGroupElevation")
 
     @test isequal(d_cont.nsrc, nsrc)
-    @test isequal(typeof(d_cont.data), Array{SeisIO.SeisCon, 1})
+    @test isequal(typeof(d_cont.data), Array{SegyIO.SeisCon, 1})
     @test isequal(typeof(d_cont.geometry), GeometryOOC)
     @test isequal(size(d_cont), dsize)
 
@@ -101,7 +101,7 @@ ns = 251
     d_cont =  judiVector(rec_geometry, container_cell)
 
     @test isequal(d_cont.nsrc, nsrc)
-    @test isequal(typeof(d_cont.data), Array{SeisIO.SeisCon, 1})
+    @test isequal(typeof(d_cont.data), Array{SegyIO.SeisCon, 1})
     @test isequal(typeof(d_cont.geometry), GeometryIC)
     @test isequal(rec_geometry, d_cont.geometry)
     @test isequal(size(d_cont), dsize)
@@ -174,14 +174,14 @@ ns = 251
     d_cont_sub = d_cont[1]
     @test isequal(d_cont_sub.nsrc, 1)
     @test isequal(typeof(d_cont_sub.geometry), GeometryOOC)
-    @test isequal(typeof(d_cont_sub.data), Array{SeisIO.SeisCon, 1})
+    @test isequal(typeof(d_cont_sub.data), Array{SegyIO.SeisCon, 1})
 
     d_cont_sub = d_cont[1:2]
     @test isequal(d_cont_sub.nsrc, 2)
     @test isequal(typeof(d_cont_sub.geometry), GeometryOOC)
-    @test isequal(typeof(d_cont_sub.data), Array{SeisIO.SeisCon, 1})
+    @test isequal(typeof(d_cont_sub.data), Array{SegyIO.SeisCon, 1})
 
-    # Conversion to SeisIO.Block
+    # Conversion to SegyIO.Block
     src_geometry = Geometry(block; key="source", segy_depth_key="SourceSurfaceElevation")
     wavelet = randn(Float32, src_geometry.nt[1])
     q = judiVector(src_geometry, wavelet)

@@ -7,7 +7,7 @@
 # Set up path where data will be saved
 data_path = "/path/to/data/"
 
-using JUDI.TimeModeling, SeisIO, JLD, PyPlot, JOLI, Random, LinearAlgebra
+using JUDI.TimeModeling, SegyIO, JLD, PyPlot, JOLI, Random, LinearAlgebra
 
 # Load velocity model(replace with correct paths)
 if !isfile("bp_synthetic_2004_migration_velocity.jld")

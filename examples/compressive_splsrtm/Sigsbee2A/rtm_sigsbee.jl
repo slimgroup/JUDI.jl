@@ -8,7 +8,7 @@
 path_to_data = "/path/to/directory/"
 data_name = "sigsbee2A_marine"  # common base name of all shots
 
-using JUDI.TimeModeling, PyPlot, JLD, SeisIO
+using JUDI.TimeModeling, PyPlot, JLD, SegyIO
 
 # Load Sigsbee model
 M = load("sigsbee2A_model.jld")

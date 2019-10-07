@@ -4,7 +4,7 @@
 # Date: January 2017
 #
 
-using PyCall, PyPlot, JUDI.TimeModeling, SeisIO
+using PyCall, PyPlot, JUDI.TimeModeling, SegyIO
 using LinearAlgebra
 
 ## Set up model structure

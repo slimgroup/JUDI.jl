@@ -3,7 +3,7 @@
 # May 2018
 #
 
-using JUDI.TimeModeling, SeisIO, Test, LinearAlgebra
+using JUDI.TimeModeling, SegyIO, Test, LinearAlgebra
 
 @testset "Geometry Unit Test" begin
 
@@ -64,7 +64,7 @@ using JUDI.TimeModeling, SeisIO, Test, LinearAlgebra
     @test isequal(prod(size(block.data)), sum(rec_geometry.nsamples))
 
     # Set up geometry summary from out-of-core data container passed as cell array
-    container_cell = Array{SeisIO.SeisCon}(undef, nsrc)
+    container_cell = Array{SegyIO.SeisCon}(undef, nsrc)
     for j=1:nsrc
         container_cell[j] = split(container, j)
     end

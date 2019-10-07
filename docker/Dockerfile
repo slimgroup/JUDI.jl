@@ -27,7 +27,7 @@ RUN wget "https://julialang-s3.julialang.org/bin/linux/x64/1.0/julia-1.0.2-linux
 	ln -s /julia/julia-1.0.2/bin/julia /usr/local/bin/julia
 
 # Manually install unregistered packages and JUDI
-RUN julia -e 'using Pkg; Pkg.clone("https://github.com/slimgroup/SeisIO.jl")' && \
+RUN julia -e 'using Pkg; Pkg.clone("https://github.com/slimgroup/SegyIO.jl")' && \
 	julia -e 'using Pkg; Pkg.clone("https://github.com/slimgroup/JOLI.jl.git")' && \
 	julia -e 'using Pkg; Pkg.clone("https://github.com/slimgroup/JUDI.jl.git")'
 
@@ -47,4 +47,3 @@ WORKDIR /app/judi/notebooks
 EXPOSE 8888
 
 CMD /root/.local/bin/jupyter-notebook --ip="*" --no-browser --allow-root
-

@@ -4,7 +4,7 @@
 # Date: January 2017
 #
 
-using JUDI.TimeModeling, PyPlot, JLD, SeisIO, LinearAlgebra
+using JUDI.TimeModeling, PyPlot, JLD, SegyIO, LinearAlgebra
 
 # Load Sigsbee model
 if !isfile("sigsbee2A_model.jld")

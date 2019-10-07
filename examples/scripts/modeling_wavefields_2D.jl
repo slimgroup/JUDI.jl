@@ -5,7 +5,7 @@
 #
 
 using LinearAlgebra, Random
-using JUDI, JUDI.TimeModeling, SeisIO, PyCall
+using JUDI, JUDI.TimeModeling, SegyIO, PyCall
 
 pushfirst!(PyVector(pyimport("sys")["path"]), joinpath(dirname(pathof(JUDI)), "Python"))
 @pyimport devito as dv

@@ -4,7 +4,7 @@
 # Date: January 2017
 #
 
-using JUDI.TimeModeling, PyPlot, JLD, SeisIO, LinearAlgebra
+using JUDI.TimeModeling, PyPlot, JLD, SegyIO, LinearAlgebra
 
 # Load Marmousi (4 km x 2 km)
 if !isfile("marmousi_small.jld")

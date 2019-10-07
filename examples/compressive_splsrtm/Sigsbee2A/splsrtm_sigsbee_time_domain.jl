@@ -9,7 +9,7 @@
 path_to_data="/home/pwitte3/.julia/dev/JUDI/examples/compressive_splsrtm/Sigsbee2A/"
 data_name = "sigsbee2A_marine"  # common base name of all shots
 
-using JUDI.TimeModeling, PyPlot, JLD, SeisIO, JOLI, Random
+using JUDI.TimeModeling, PyPlot, JLD, SegyIO, JOLI, Random
 
 # Load Sigsbee model
 M = load("sigsbee2A_model.jld")
