@@ -8,4 +8,4 @@ PolynomialRoots
 PyCall
 PyPlot
 JOLI
-SeisIO
+SegyIO

@@ -267,12 +267,12 @@ version = "0.2.0"
 [[SHA]]
 uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
 
-[[SeisIO]]
+[[SegyIO]]
 deps = ["Distributed", "Printf"]
 git-tree-sha1 = "788e987837e17adddf100663e2009ac3980438e2"
 repo-rev = "master"
-repo-url = "https://github.com/slimgroup/SeisIO.jl"
-uuid = "7f75f292-7034-11e9-3579-f32821507df7"
+repo-url = "https://github.com/slimgroup/SegyIO.jl"
+uuid = "157a0f19-4d44-4de5-a0d0-07e2f0ac4dfa"
 version = "0.7.0"
 
 [[Serialization]]

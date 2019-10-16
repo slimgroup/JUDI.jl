@@ -19,7 +19,7 @@ end
 
 # Out-of-core geometry structure, contains look-up table instead of coordinates
 mutable struct GeometryOOC <: Geometry
-    container::Array{SeisIO.SeisCon,1}
+    container::Array{SegyIO.SeisCon,1}
     dt::Array{Any,1}
     nt::Array{Any,1}
     t::Array{Any,1}
@@ -55,13 +55,13 @@ Pass single array as coordinates/parameters for all `nsrc` experiments:
 
     Geometry(xloc, yloc, zloc, dt=[], nt=[], nsrc=1)
 
-Create geometry structure for either source or receivers from a SeisIO.SeisBlock object.\\
-`segy_depth_key` is the SeisIO keyword that contains the depth coordinate and `key` is \\
+Create geometry structure for either source or receivers from a SegyIO.SeisBlock object.\\
+`segy_depth_key` is the SegyIO keyword that contains the depth coordinate and `key` is \\
 set to either `source` for source geometry or `receiver` for receiver geometry:
 
     Geometry(SeisBlock; key="source", segy_depth_key="")
 
-Create geometry structure for from a SeisIO.SeisCon object (seismic data container):
+Create geometry structure for from a SegyIO.SeisCon object (seismic data container):
 
     Geometry(SeisCon; key="source", segy_depth_key="")
 
@@ -88,7 +88,7 @@ Examples
 
 (3) Read source and receiver geometries from SEG-Y file:
 
-    using SeisIO
+    using SegyIO
     seis_block = segy_read("test_file.segy")
     rec_geometry = Geometry(seis_block; key="receiver", segy_depth_key="RecGroupElevation")
     src_geometry = Geometry(seis_block; key="source", segy_depth_key="SourceDepth")
@@ -100,7 +100,7 @@ keyword is typically `RecGroupElevation`.
 (4) Read source and receiver geometries from out-of-core SEG-Y files (for large data sets). Returns an out-of-core \\
 geometry object `GeometryOOC` without the source/receiver coordinates, but a lookup table instead:
 
-    using SeisIO
+    using SegyIO
     seis_container = segy_scan("/path/to/data/directory","filenames",["GroupX","GroupY","RecGroupElevation","SourceDepth","dt"])
     rec_geometry = Geometry(seis_container; key="receiver", segy_depth_key="RecGroupElevation")
     src_geometry = Geometry(seis_container; key="source", segy_depth_key="SourceDepth")
@@ -160,7 +160,7 @@ end
 ################################################ Constructors from SEGY data  ####################################################
 
 # Set up source geometry object from in-core data container
-function Geometry(data::SeisIO.SeisBlock; key="source", segy_depth_key="")
+function Geometry(data::SegyIO.SeisBlock; key="source", segy_depth_key="")
     src = get_header(data,"FieldRecord")
     nsrc = length(unique(src))
     if key=="source"
@@ -200,7 +200,7 @@ function Geometry(data::SeisIO.SeisBlock; key="source", segy_depth_key="")
 end
 
 # Set up geometry summary from out-of-core data container
-function Geometry(data::SeisIO.SeisCon; key="source", segy_depth_key="")
+function Geometry(data::SegyIO.SeisCon; key="source", segy_depth_key="")
 
     if key=="source"
         isempty(segy_depth_key) && (segy_depth_key="SourceSurfaceElevation")
@@ -212,7 +212,7 @@ function Geometry(data::SeisIO.SeisCon; key="source", segy_depth_key="")
 
     # read either source or receiver geometry
     nsrc = length(data)
-    container = Array{SeisIO.SeisCon}(undef, nsrc)
+    container = Array{SegyIO.SeisCon}(undef, nsrc)
     dt = Array{Any}(undef, nsrc); nt = Array{Any}(undef, nsrc); t = Array{Any}(undef, nsrc)
     nsamples = Array{Any}(undef, nsrc)
     for j=1:nsrc
@@ -226,7 +226,7 @@ function Geometry(data::SeisIO.SeisCon; key="source", segy_depth_key="")
 end
 
 # Set up geometry summary from out-of-core data container passed as cell array
-function Geometry(data::Array{SeisIO.SeisCon,1}; key="source", segy_depth_key="")
+function Geometry(data::Array{SegyIO.SeisCon,1}; key="source", segy_depth_key="")
 
     if key=="source"
         isempty(segy_depth_key) && (segy_depth_key="SourceSurfaceElevation")
@@ -237,7 +237,7 @@ function Geometry(data::Array{SeisIO.SeisCon,1}; key="source", segy_depth_key=""
     end
 
     nsrc = length(data)
-    container = Array{SeisIO.SeisCon}(undef, nsrc)
+    container = Array{SegyIO.SeisCon}(undef, nsrc)
     dt = Array{Any}(undef, nsrc); nt = Array{Any}(undef, nsrc); t = Array{Any}(undef, nsrc)
     nsamples = Array{Any}(undef, nsrc)
     for j=1:nsrc

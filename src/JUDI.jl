@@ -2,7 +2,7 @@
 
 module JUDI
 
-using PyCall, JOLI, SeisIO, Dierckx, Distributed, Pkg, Printf
+using PyCall, JOLI, SegyIO, Dierckx, Distributed, Pkg, Printf
 
 export JUDIPATH
 JUDIPATH = dirname(pathof(JUDI))

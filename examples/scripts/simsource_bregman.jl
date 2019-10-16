@@ -1,5 +1,5 @@
 using Statistics, Random, LinearAlgebra
-using JUDI.TimeModeling, JUDI.SLIM_optim, HDF5, SeisIO, PyPlot, JOLI
+using JUDI.TimeModeling, JUDI.SLIM_optim, HDF5, SegyIO, PyPlot, JOLI
 
 # Load background velocity model
 n,d,o,m0 = read(h5open("../../data/overthrust_model.h5","r"), "n", "d", "o", "m0")

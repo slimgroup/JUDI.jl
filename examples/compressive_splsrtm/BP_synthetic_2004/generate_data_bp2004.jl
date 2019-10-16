@@ -10,7 +10,7 @@
 data_path = "/path/to/data/"
 
 using Pkg; Pkg.activate("JUDI")
-using JUDI, JUDI.TimeModeling, SeisIO, JLD, PyPlot
+using JUDI, JUDI.TimeModeling, SegyIO, JLD, PyPlot
 
 # Load velocity
 if !isfile("bp_synthetic_2004_true_velocity.jld")

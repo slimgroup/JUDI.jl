@@ -18,7 +18,7 @@ module JOLI4Flux
 end
 # end of hack
 
-using JUDI.TimeModeling, SeisIO, LinearAlgebra, Flux, JOLI
+using JUDI.TimeModeling, SegyIO, LinearAlgebra, Flux, JOLI
 
 
 ## Set up model structure

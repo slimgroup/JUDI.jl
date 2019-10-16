@@ -4,7 +4,7 @@
 #
 
 using Statistics, Random, LinearAlgebra
-using JUDI.TimeModeling, HDF5, NLopt, SeisIO
+using JUDI.TimeModeling, HDF5, NLopt, SegyIO
 
 # Load starting model
 n,d,o,m0 = read(h5open("../../data/overthrust_model.h5","r"), "n", "d", "o", "m0")

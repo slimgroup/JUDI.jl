@@ -4,7 +4,7 @@
 # Date: January 2017
 #
 
-using JUDI.TimeModeling, SeisIO, LinearAlgebra, PyPlot, IterativeSolvers, JOLI
+using JUDI.TimeModeling, SegyIO, LinearAlgebra, PyPlot, IterativeSolvers, JOLI
 
 ## Set up model structure
 n = (120, 100)   # (x,y,z) or (x,z)
