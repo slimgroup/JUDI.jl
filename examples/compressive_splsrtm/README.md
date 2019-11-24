@@ -78,6 +78,10 @@ First, we generate the observed (non-linear) data using the true velocity model 
 
 The reproducible examples on this page are featured in the following journal publication:
 
- * Philipp A. Witte, Mathias Louboutin, Fabio Luporini, Gerard J. Gorman and Felix J. Herrmann. Compressive least-squares migration with on-the-fly Fourier transforms. GEOPHYSICS. 2019. Just-Accepted-Articles. <https://library.seg.org/doi/abs/10.1190/geo2018-0490.1>
+ * Philipp A. Witte, Mathias Louboutin, Fabio Luporini, Gerard J. Gorman and Felix J. Herrmann. Compressive least-squares migration with on-the-fly Fourier transforms. GEOPHYSICS, vol. 84 (5), pp. R655-R672, 2019. <https://library.seg.org/doi/abs/10.1190/geo2018-0490.1>
+
+ * Copyright (c) 2019 Geophysics
+
+ * DOI: 10.1190/geo2018-0490.1
 
 Contact authors via: pwitte3@gatech.edu and mlouboutin3@gatech.edu.
