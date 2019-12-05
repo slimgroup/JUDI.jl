@@ -145,32 +145,7 @@ figure(); plot(fvals); title("Function value")
 
 ## Least squares reverse-time migration
 
-JUDI includes matrix-free linear operators for modeling and linearized (## Machine Learning
-
-The JUDI4Flux interface allows integrating JUDI modeling operators into convolutional neural networks for deep learning. For example, the following code snippet shows how to create a shallow CNN consisting of two convolutional layers with a nonlinear forward modeling layer in-between them. JUDI4Flux enables backpropagation through Flux' automatic differentiation tool, but calls the corresponding adjoint JUDI operators under the hood. For more details, please check out the [JUDI4Flux Github](https://github.com/slimgroup/JUDI4Flux.jl) page.
-
-```julia
-# Nonlinear JUDI modeling operator
-model = Model(n, d, o, m)
-F = judiModeling(info, model, rec_geometry, src_geometry)
-
-# Network layers
-ℱ = ForwardModel(F, q)
-conv1 = Conv((3, 3), 1=>1, pad=1, stride=1)
-conv2 = Conv((3, 3), 1=>1, pad=1, stride=1)
-
-# Network and loss
-predict(x) = conv2(ℱ(conv1(x)))
-loss(x, y) = Flux.mse(predict(x), y)
-
-# Compute gradient w/ Flux
-gs = Tracker.gradient(() -> loss(x, y), params(m))
-gs[m]   # evalute gradient w.r.t. m
-```
-
-JUDI4Flux allows implementing physics-augmented neural networks for seismic inversion, such as loop-unrolled seismic imaging algorithms. For example, the following results are a conventional RTM image, an LS-RTM image and a loop-unrolled LS-RTM image for a single simultaneous shot record.
-
-![](docs/figure1.png)Born) modeling, that let you write algorithms for migration that follow the mathematical notation of standard least squares problems. This example demonstrates how to use Julia Devito to perform least-squares reverse-time migration on the 2D Marmousi model. Start by downloading the test data set (1.1 GB) and the model:
+JUDI includes matrix-free linear operators for modeling and linearized (Born) modeling, that let you write algorithms for migration that follow the mathematical notation of standard least squares problems. This example demonstrates how to use Julia Devito to perform least-squares reverse-time migration on the 2D Marmousi model. Start by downloading the test data set (1.1 GB) and the model:
 
 ```julia
 run(`wget ftp://slim.gatech.edu/data/SoftwareRelease/Imaging.jl/2DLSRTM/marmousi_2D.segy`)
