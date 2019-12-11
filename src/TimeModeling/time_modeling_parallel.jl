@@ -33,23 +33,13 @@ function time_modeling(model::Model, srcGeometry, srcData, recGeometry, recData,
 
             # Parallelization
             if op=='F' && mode==1
-                srcDataLocal = Array{Any}(undef, 1)
-                srcDataLocal[1] = srcData[j]
-                @async results[j] = time_modeling(model, srcGeometryLocal, srcDataLocal, recGeometryLocal, nothing, nothing, j, op, mode, opt_local)
+                @async results[j] = time_modeling(model, srcGeometryLocal, copy(srcData[j:j]), recGeometryLocal, nothing, nothing, j, op, mode, opt_local)
             elseif op=='F' && mode==-1
-                recDataLocal = Array{Any}(undef, 1)
-                recDataLocal[1] = recData[j]
-                @async results[j] = time_modeling(model, srcGeometryLocal, nothing, recGeometryLocal, recDataLocal, nothing, j, op, mode, opt_local)
+                @async results[j] = time_modeling(model, srcGeometryLocal, nothing, recGeometryLocal, copy(recData[j:j]), nothing, j, op, mode, opt_local)
             elseif op=='J' && mode==1
-                srcDataLocal = Array{Any}(undef, 1)
-                srcDataLocal[1] = srcData[j]
-                @async results[j] = time_modeling(model, srcGeometryLocal, srcDataLocal, recGeometryLocal, nothing, perturbation, j, op, mode, opt_local)
+                @async results[j] = time_modeling(model, srcGeometryLocal, copy(srcData[j:j]), recGeometryLocal, nothing, perturbation, j, op, mode, opt_local)
             elseif op=='J' && mode==-1
-                srcDataLocal = Array{Any}(undef, 1)
-                srcDataLocal[1] = srcData[j]
-                recDataLocal = Array{Any}(undef, 1)
-                recDataLocal[1] = recData[j]
-                @async results[j] = time_modeling(model, srcGeometryLocal, srcDataLocal, recGeometryLocal, recDataLocal, nothing, j, op, mode, opt_local)
+                @async results[j] = time_modeling(model, srcGeometryLocal, copy(srcData[j:j]), recGeometryLocal, copy(recData[j:j]), nothing, j, op, mode, opt_local)
             end
         end
     end

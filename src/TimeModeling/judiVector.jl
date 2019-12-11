@@ -711,7 +711,7 @@ end
 #end
 
 function get_data(x::judiVector)
-    shots = Array{Any}(undef, x.nsrc)
+    shots = Array{Array}(undef, x.nsrc)
     rec_geometry = Geometry(x.geometry)
 
     for j=1:x.nsrc
