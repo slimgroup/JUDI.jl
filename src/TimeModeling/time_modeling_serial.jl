@@ -88,6 +88,8 @@ function devito_interface(modelPy::PyCall.PyObject, origin, srcGeometry::Geometr
     if options.save_data_to_disk
         container = write_shot_record(srcGeometry,srcData,recGeometry,dOut,options)
         return judiVector(container)
+    elseif options.return_array == true
+        return vec(dOut)
     else
         return judiVector(recGeometry,dOut)
     end
@@ -114,7 +116,11 @@ function devito_interface(modelPy::PyCall.PyObject, origin, srcGeometry::Geometr
     qOut = time_resample(qOut,dtComp,srcGeometry)
 
     # Output adjoint data as judiVector
-    return judiVector(srcGeometry,qOut)
+    if options.return_array == true
+        return vec(qOut)
+    else
+        return judiVector(srcGeometry,qOut)
+    end
 end
 
 # u = F*Ps'*q

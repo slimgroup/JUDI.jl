@@ -59,8 +59,8 @@ function judiModeling(info::Info,model::Model, srcGeometry::Geometry, recGeometr
     end
 
     return F = judiPDEfull{Float32,Float32}("Proj*F*Proj'", m, n, info, model, srcGeometry, recGeometry, options,
-                              src -> time_modeling(model, srcGeometry, src.data, recGeometry, nothing, nothing, srcnum, 'F', 1, options),
-                              rec -> time_modeling(model, srcGeometry, nothing, recGeometry, rec.data, nothing, srcnum, 'F', -1, options),
+                              src -> time_modeling(model, srcGeometry, process_input_data(src, srcGeometry, info), recGeometry, nothing, nothing, srcnum, 'F', 1, options),
+                              rec -> time_modeling(model, srcGeometry, nothing, recGeometry, process_input_data(rec, recGeometry, info), nothing, srcnum, 'F', -1, options),
                               )
 end
 
@@ -91,6 +91,15 @@ adjoint(A::judiPDEfull{DDT,RDT}) where {DDT,RDT} =
 
 ############################################################
 ## overloaded Base *(...judiPDEfull...)
+
+# *(judiPDEfull,vec)
+function *(A::judiPDEfull{ADDT,ARDT},v::AbstractVector{vDT}) where {ADDT,ARDT,vDT}
+    A.n == size(v,1) || throw(judiPDEfullException("shape mismatch"))
+    jo_check_type_match(ADDT,vDT,join(["DDT for *(judiPDEfull,judiVector):",A.name,typeof(A),vDT]," / "))
+    V = A.fop(v)
+    jo_check_type_match(ARDT,eltype(V),join(["RDT from *(judiPDEfull,judiVector):",A.name,typeof(A),eltype(V)]," / "))
+    return V
+end
 
 # *(judiPDEfull,judiVector)
 function *(A::judiPDEfull{ADDT,ARDT},v::judiVector{vDT}) where {ADDT,ARDT,vDT}
