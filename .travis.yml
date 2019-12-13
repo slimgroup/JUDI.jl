@@ -13,7 +13,7 @@ branches:
 notifications:
   email: false
 git:
-  depth: 99999999
+  depth: 9999999
 env:
   global:
     - DEVITO_ARCH="gcc"
