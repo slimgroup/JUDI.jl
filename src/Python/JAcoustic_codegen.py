@@ -32,7 +32,7 @@ def acoustic_laplacian(v, rho):
             Lap = 1 / rho * v.laplace
     return Lap, rho
 
-def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_order=8, nb=40, free_surface=False, op_return=False, u_return=False, dt=None, tsub_factor=1):
+def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_order=8, nb=40, free_surface=False, op_return=False, u_return=False, dt=None, tsub_factor=1, return_devito_obj=False):
     clear_cache()
 
     # If wavelet is file, read it
@@ -64,9 +64,12 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
     stencil = damp * ( 2.0 * u - damp * u.backward + dt**2 * rho / m * ulaplace)
 
     # Input source is wavefield
-    if isinstance(wavelet, TimeFunction):
+    if src_coords is None:
         wf_src = TimeFunction(name='wf_src', grid=model.grid, time_order=2, space_order=space_order, save=nt)
-        wf_src._data = wavelet._data
+        if isinstance(wavelet, TimeFunction):
+            wf_src._data = wavelet._data
+        else:
+            wf_src.data[:] = wavelet[:]
         stencil -= wf_src
 
     # Rearrange expression
@@ -105,14 +108,15 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
         op()
         if save is True and tsub_factor > 1:
             if rec_coords is None:
-                return usave
+                print("udim: ", usave.shape)
+                return (usave  if return_devito_obj is True else usave.data)
             else:
-                return rec.data, usave
+                return rec.data, (usave  if return_devito_obj is True else usave.data)
         else:
             if rec_coords is None:
-                return u
+                return u.data
             else:
-                return rec.data, u
+                return rec.data, (u  if return_devito_obj is True else u.data)
 
     # For optimal checkpointing, return operator only
     else:
@@ -143,9 +147,12 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=8, nb=
 
     # Input data is wavefield
     full_q = 0
-    if isinstance(rec_data, TimeFunction):
+    if rec_coords is None:
         wf_rec = TimeFunction(name='wf_rec', grid=model.grid, time_order=2, space_order=space_order, save=nt)
-        wf_rec._data = rec_data._data
+        if isinstance(rec_data, TimeFunction):
+            wf_rec._data = rec_data._data
+        else:
+            wf_rec.data[:] = rec_data[:]
         full_q = wf_rec
 
     stencil = damp * (2.0 * v - damp * v.forward + dt**2 * rho / m * (vlaplace + full_q))
@@ -175,7 +182,7 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=8, nb=
     op = Operator(expression, subs=subs, dse='advanced', dle='advanced')
     op()
     if src_coords is None:
-        return v
+        return v.data
     else:
         return src.data
 

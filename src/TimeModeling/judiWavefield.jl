@@ -27,6 +27,27 @@ end
 
 ## outer constructors
 
+"""
+judiWavefield
+        name::String
+        m::Integer
+        n::Integer
+        info::Info
+        dt::Real
+        data
+
+Abstract vector for seismic wavefields.
+
+Constructors
+============
+
+Construct wavefield vector from an info structure, a cell array of wavefields and the computational \\
+time step dt:
+
+    judiWavefield(info, nt, data)
+
+
+"""
 function judiWavefield(info,dt::Real,data::Union{Array, PyCall.PyObject, String}; vDT::DataType=Float32)
 
 	# length of vector
@@ -36,14 +57,14 @@ function judiWavefield(info,dt::Real,data::Union{Array, PyCall.PyObject, String}
 	for j=1:info.nsrc
 		dataCell[j] = data
 	end
-	return judiWavefield{vDT}("judiWavefield",m,n,info,dt,dataCell)
+	return judiWavefield{vDT}("judiWavefield",m,n,info, Float32(dt),dataCell)
 end
 
 function judiWavefield(info,dt::Real,data::Array{Any,1};vDT::DataType=Float32)
 	# length of vector
 	m = info.n * sum(info.nt)
 	n = 1
-	return judiWavefield{vDT}("judiWavefield",m,n,info,dt,data)
+	return judiWavefield{vDT}("judiWavefield",m,n,info, Float32(dt),data)
 end
 
 
@@ -63,6 +84,69 @@ ctranspose(A::judiWavefield{vDT}) where vDT =
 	judiWavefield{vDT}(""*A.name*"'",A.n,A.m,A.info,A.dt,A.data)
 
 ####################################################################
+
+# +(judiWavefield, judiWavefield)
+function +(a::judiWavefield{avDT}, b::judiWavefield{bvDT}) where {avDT, bvDT}
+    size(a) == size(b) || throw(judiWavefieldException("dimension mismatch"))
+    c = deepcopy(a)
+    c.data = a.data + b.data
+    return c
+end
+
+# -(judiWavefield, judiWavefield)
+function -(a::judiWavefield{avDT}, b::judiWavefield{bvDT}) where {avDT, bvDT}
+    size(a) == size(b) || throw(judiWavefieldException("dimension mismatch"))
+    c = deepcopy(a)
+    c.data = a.data - b.data
+    return c
+end
+
+# +(judiWavefield, number)
+function +(a::judiWavefield{avDT},b::Number) where avDT
+    c = deepcopy(a)
+    c.data = c.data .+ b
+    return c
+end
+
+# +(number, judiWavefield)
+function +(a::Number,b::judiWavefield{avDT}) where avDT
+    c = deepcopy(b)
+    c.data = b.data .+ a
+    return c
+end
+
+# -(judiWavefield, number)
+function -(a::judiWavefield{avDT},b::Number) where avDT
+    c = deepcopy(a)
+    c.data = c.data .- b
+    return c
+end
+
+# *(judiWavefield, number)
+function *(a::judiWavefield{avDT},b::Number) where avDT
+    c = deepcopy(a)
+    c.data = c.data .* b
+    return c
+end
+
+# *(number, judiWavefield)
+function *(a::Number,b::judiWavefield{bvDT}) where bvDT
+    c = deepcopy(b)
+    c.data = a .* c.data
+    return c
+end
+
+# /(judiWavefield, number)
+function /(a::judiWavefield{avDT},b::Number) where avDT
+    c = deepcopy(a)
+    if iszero(b)
+        error("Division by zero")
+    else
+        c.data = c.data/b
+    end
+    return c
+end
+
 
 function vcat(a::judiWavefield{avDT},b::judiWavefield{bvDT}) where {avDT, bvDT}
 	m = a.m + b.m
@@ -132,30 +216,29 @@ end
 
 # norm
 function norm(a::judiWavefield{avDT}, p::Real=2) where avDT
-	np = load_numpy()
     x = 0.f0
     for j=1:a.info.nsrc
-        if typeof(a.data[j]) == String
-            x += a.dt * sum(np[:abs](np[:load](a.data[j])).^p)
-        else
-            x += a.dt * sum(np[:abs](a.data[j]["data"]).^p)
-        end
+            x += Float32(a.dt) * sum(abs.(vec(a.data[j])).^p)
     end
     return x^(1.f0/p)
 end
 
-# Save wavefield to disk
-function dump_wavefield(u::PyObject)
-    name = join(["wavefield_", randstring(8), ".dat"])
-    u["data"][:dump](name)
-    return name
+# inner product
+function dot(a::judiWavefield{avDT}, b::judiWavefield{bvDT}) where {avDT, bvDT}
+	# Dot product for data containers
+	size(a) == size(b) || throw(judiWavefieldException("dimension mismatch"))
+	dotprod = 0f0
+	for j=1:a.info.nsrc
+		dotprod += Float32(a.dt) * dot(vec(a.data[j]),vec(b.data[j]))
+	end
+	return dotprod
 end
 
-function dump_wavefield(u::judiWavefield)
-    name = Array{Any}(undef, u.info.nsrc)
-    for j=1:u.info.nsrc
-        name[j] = join(["wavefield_", randstring(8), ".dat"])
-        u.data[j]["data"][:dump](name[j])
-    end
-    return name
+# abs
+function abs(a::judiWavefield{avDT}) where avDT
+	b = deepcopy(a)
+	for j=1:a.info.nsrc
+		b.data[j] = abs.(a.data[j])
+	end
+	return b
 end

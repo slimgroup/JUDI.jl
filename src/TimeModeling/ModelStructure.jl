@@ -6,7 +6,7 @@
 const IntTuple = Union{Tuple{Integer,Integer}, Tuple{Integer,Integer,Integer},Array{Int64,1},Array{Int32,1}}
 const RealTuple = Union{Tuple{Real,Real}, Tuple{Real,Real,Real},Array{Float64,1},Array{Float32,1}}
 
-export Model
+export Model, get_dt
 
 # Object for velocity/slowness models
 mutable struct Model
@@ -61,3 +61,12 @@ function Model(n::IntTuple, d::RealTuple, o::RealTuple, m, rho; nb=40)
     isempty(rho) && (rho = 1)
     return Model(n,d,o,nb,m,rho)
 end
+
+function get_dt(n,d,o,v,rho; epsilon=0)
+    pm = load_pymodel()
+    length(n) == 2 ? pyDim = [n[2], n[1]] : pyDim = [n[3],n[2],n[1]]
+    modelPy = pm."Model"(o, d, pyDim, PyReverseDims(v))
+    dtComp = modelPy.critical_dt
+end
+
+get_dt(model::Model) = get_dt(model.n, model.d, model.o, sqrt.(1f0 ./ model.m), model.rho)

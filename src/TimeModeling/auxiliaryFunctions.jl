@@ -7,7 +7,7 @@ export ricker_wavelet, get_computational_nt, smooth10, damp_boundary, calculate_
 export convertToCell, limit_model_to_receiver_area, extend_gradient, remove_out_of_bounds_receivers
 export time_resample, remove_padding, backtracking_linesearch, subsample
 export generate_distribution, select_frequencies, process_physical_parameter
-export load_pymodel, load_acoustic_codegen, load_numpy
+export load_pymodel, load_acoustic_codegen, load_numpy, process_input_data, reshape
 
 function limit_model_to_receiver_area(srcGeometry::Geometry, recGeometry::Geometry, model::Model, buffer; pert=[])
     # Restrict full velocity model to area that contains either sources and receivers
@@ -414,4 +414,28 @@ function process_physical_parameter(param, dims)
     else
         return PyReverseDims(permutedims(param, dims))
     end
+end
+
+process_input_data(input::judiVector, geometry::Geometry, info::Info) = input.data
+
+function process_input_data(input::Array{Float32, 1}, geometry::Geometry, info::Info)
+    # Input data is pure Julia array: assume fixed no.
+    # of receivers and reshape into data cube nt x nrec x nsrc
+    nt = geometry.nt[1]
+    nrec = length(geometry.xloc[1])
+    nsrc = info.nsrc
+    data = reshape(input, nt, nrec, nsrc)
+    dataCell = Array{Array}(undef, nsrc)
+    for j=1:nsrc
+        dataCell[j] = data[:,:,j]
+    end
+    return dataCell
+end
+
+
+function reshape(x::Array{Float32, 1}, geometry::Geometry)
+    nt = geometry.nt[1]
+    nrec = length(geometry.xloc[1])
+    nsrc = Int(length(x) / nt / nrec)
+    return reshape(x, nt, nrec, nsrc)
 end
