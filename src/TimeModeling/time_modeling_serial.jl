@@ -196,7 +196,6 @@ function devito_interface(modelPy::PyCall.PyObject, origin, srcGeometry::Geometr
 
     # Devito call
     qOut = pycall(ac."adjoint_modeling", Array{Float32,2}, modelPy, src_coords, nothing, recData[1], space_order=options.space_order, nb=modelPy.nbpml, free_surface=options.free_surface)
-    #ntSrc > ntComp && (qOut = [qOut zeros(size(qOut), ntSrc - ntComp)])
     qOut = time_resample(qOut,dtComp,srcGeometry)
 
     # Output adjoint data as judiVector

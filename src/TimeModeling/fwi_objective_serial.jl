@@ -45,21 +45,17 @@ function fwi_objective(model_full::Model, source::judiVector, dObs::judiVector, 
 
     # Forward modeling to generate synthetic data and background wavefields
     if options.optimal_checkpointing == true
-        op_F = pycall(ac."forward_modeling", PyObject, modelPy, PyReverseDims(copy(transpose(src_coords))), PyReverseDims(copy(transpose(qIn))), PyReverseDims(copy(transpose(rec_coords))), op_return=true)
-        argout1, argout2 = pycall(ac."adjoint_born", PyObject, modelPy, PyReverseDims(copy(transpose(rec_coords))), PyReverseDims(copy(transpose(dObserved))),
-                                  op_forward=op_F, is_residual=false, n_checkpoints=options.num_checkpoints, maxmem=options.checkpoints_maxmem)
+        op_F = pycall(ac."forward_modeling", PyObject, modelPy, src_coords, qIn, rec_coords, op_return=true)
+        argout1, argout2 = pycall(ac."adjoint_born", PyObject, modelPy, rec_coords, dObserved, op_forward=op_F, is_residual=false, n_checkpoints=options.num_checkpoints, maxmem=options.checkpoints_maxmem)
     elseif ~isempty(options.frequencies)
                 typeof(options.frequencies) == Array{Any,1} && (options.frequencies = options.frequencies[srcnum])
-                dPredicted, uf_real, uf_imag = pycall(ac."forward_freq_modeling", PyObject, modelPy, PyReverseDims(copy(transpose(src_coords))), PyReverseDims(copy(transpose(qIn))), PyReverseDims(copy(transpose(rec_coords))),
-                                                      options.frequencies, space_order=options.space_order, nb=model.nb, factor=options.dft_subsampling_factor)
+                dPredicted, uf_real, uf_imag = pycall(ac."forward_freq_modeling", PyObject, modelPy, src_coords, qIn, rec_coords, options.frequencies, space_order=options.space_order, nb=model.nb, factor=options.dft_subsampling_factor)
                 argout1 = .5f0*dot(vec(dPredicted) - vec(dObserved), vec(dPredicted) - vec(dObserved))*dtComp  # FWI objective function value
-                argout2 = pycall(ac."adjoint_freq_born", Array{Float32, length(model.n)}, modelPy, PyReverseDims(copy(transpose(rec_coords))), PyReverseDims(copy(transpose((dPredicted - dObserved)))),
-                                 options.frequencies, factor=options.dft_subsampling_factor, uf_real, uf_imag, space_order=options.space_order, nb=model.nb)
+                argout2 = pycall(ac."adjoint_freq_born", Array{Float32, length(model.n)}, modelPy, rec_coords, (dPredicted - dObserved), options.frequencies, factor=options.dft_subsampling_factor, uf_real, uf_imag, space_order=options.space_order, nb=model.nb)
     else
-        dPredicted, u0 = pycall(ac."forward_modeling", PyObject, modelPy, PyReverseDims(copy(transpose(src_coords))), PyReverseDims(copy(transpose(qIn))), PyReverseDims(copy(transpose(rec_coords))), save=true, tsub_factor=options.subsampling_factor)
+        dPredicted, u0 = pycall(ac."forward_modeling", PyObject, modelPy, src_coords, qIn, rec_coords, save=true, tsub_factor=options.subsampling_factor, return_devito_obj=true)
         argout1 = .5f0*dot(vec(dPredicted) - vec(dObserved), vec(dPredicted) - vec(dObserved))*dtComp # FWI objective function value
-        argout2 = pycall(ac."adjoint_born", Array{Float32}, modelPy, PyReverseDims(copy(transpose(rec_coords))), PyReverseDims(copy(transpose((dPredicted  - dObserved)))), tsub_factor=options.subsampling_factor,
-                         u=u0, is_residual=true)
+        argout2 = pycall(ac."adjoint_born", Array{Float32}, modelPy, rec_coords, (dPredicted  - dObserved), tsub_factor=options.subsampling_factor, u=u0, is_residual=true)
     end
     argout2 = remove_padding(argout2, model.nb, true_adjoint=options.sum_padding)
     if options.limit_m==true && length(model_full.n) == 3
