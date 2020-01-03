@@ -23,7 +23,7 @@ before_install:
   - sudo apt-get install -y gfortran
   - pip install --upgrade pip
   - pip install -U scikit-build
-  - pip install git+https://github.com/opesci/devito.git
+  - pip install git+https://github.com/devitocodes/devito.git
   - pip install -r docker/devito_requirements.txt
   - CURL_USER_AGENT="Travis-CI $(curl --version | head -n 1)"
   - mkdir -p ~/julia
