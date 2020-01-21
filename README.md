@@ -1,7 +1,6 @@
 # The Julia Devito Inversion framework (JUDI)
 
-[![Build Status](https://travis-ci.org/slimgroup/JUDI.jl.svg?branch=master)](https://travis-ci.org/slimgroup/JUDI.jl)
-
+[![Build Status ](https://github.com/slimgroup/JUDI.jl/workflows/CI-tests/badge.svg)](https://github.com/slimgroup/JUDI.jl/actions?query=workflow%3ACI-tests)
 
 ## Overview
 
