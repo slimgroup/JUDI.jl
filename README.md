@@ -244,13 +244,22 @@ JUDI4Flux allows implementing physics-augmented neural networks for seismic inve
 
 This package was written by [Philipp Witte](https://www.slim.eos.ubc.ca/philip) and [Mathias Louboutin](https://www.slim.eos.ubc.ca/content/mathias-louboutin) from the Seismic Laboratory for Imaging and Modeling (SLIM) at the Georgia Institute of Technology.
 
-If you use our software for your research, please cite us using the following references:
+If you use our software for your research, please cite us using the following reference:
 
- * Philipp A. Witte, Mathias Louboutin, Navjot Kukreja, Fabio Luporini, Michael Lange, Gerard J. Gorman and Felix J. Herrmann. A large-scale framework for symbolic implementations of seismic inversion algorithms in Julia. Submitted to GEOPHYSICS. 2018. <https://www.slim.eos.ubc.ca/content/large-scale-framework-symbolic-implementations-seismic-inversion-algorithms-julia>
-
- * Mathias Louboutin, Michael Lange, Fabio Luporini, Navjot Kukreja, Philipp A. Witte, Felix J. Herrmann, Paulius Velesko and Gerard J. Gorman. Devito: An embedded domain-specific language for finite differences and geophysical exploration. Submitted to Geoscientific Model Development. 2018. <https://arxiv.org/abs/1808.01995>.
-
- * Fabio Luporini, Michael Lange, Mathias Louboutin, Najvot Kukreja, Jan Hueckelheim, Charles Yount, Philipp A. Witte, Paul H. J. Kelly, Gerard J. Gorman and Felix J. Herrmann. Architecture and performance of Devito, a system for automated stencil computation. Submitted to SIAM Journal on Scientific Computing. 2018. <https://arxiv.org/abs/1807.03032>.
+```
+@article{witteJUDI2019,
+author = {Philipp A. Witte and Mathias Louboutin and Navjot Kukreja and Fabio Luporini and Michael Lange and Gerard J. Gorman and Felix J. Herrmann},
+title = {A large-scale framework for symbolic implementations of seismic inversion algorithms in Julia},
+journal = {GEOPHYSICS},
+volume = {84},
+number = {3},
+pages = {F57-F71},
+year = {2019},
+doi = {10.1190/geo2018-0174.1},
+URL = {https://doi.org/10.1190/geo2018-0174.1},
+eprint = {https://doi.org/10.1190/geo2018-0174.1}
+}
+```
 
 Also visit the Devito homepage at <https://www.devitoproject.org/publications> for more information and references.
 
