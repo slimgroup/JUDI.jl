@@ -243,7 +243,7 @@ JUDI4Flux allows implementing physics-augmented neural networks for seismic inve
 
 This package was written by [Philipp Witte](https://www.slim.eos.ubc.ca/philip) and [Mathias Louboutin](https://www.slim.eos.ubc.ca/content/mathias-louboutin) from the Seismic Laboratory for Imaging and Modeling (SLIM) at the Georgia Institute of Technology.
 
-If you use our software for your research, please cite our [Geophysics paper](https://library.seg.org/action/showCitFormats?doi=10.1190%2Fgeo2018-0174.1):
+If you use our software for your research, please cite our [Geophysics paper](https://library.seg.org/doi/abs/10.1190/geo2018-0174.1#):
 
 ```
 @article{witteJUDI2019,
