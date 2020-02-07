@@ -11,7 +11,7 @@ JUDI is a framework for large-scale seismic modeling and inversion and designed 
 First, install Devito using `pip`, or see the [Devito's GitHub page](https://github.com/devitocodes/devito) for installation with Conda and further information. The current release of JUDI requires Python 3 and the current Devito version. Run all of the following commands from the (bash) terminal command line (not in the Julia REPL):
 
 ```julia
-pip install --user git+https://github.com/devitocodes/devito.git
+pip3 install --user git+https://github.com/devitocodes/devito.git
 ```
 
 For reading and writing seismic SEG-Y data, JUDI uses the [SegyIO](https://github.com/slimgroup/SegyIO.jl) package and matrix-free linear operators are based the [Julia Operator LIbrary](https://github.com/slimgroup/JOLI.jl/tree/master/src) (JOLI):
