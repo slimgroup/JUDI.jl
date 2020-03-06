@@ -1,0 +1,117 @@
+from kernels import wave_kernel
+from geom_utils import src_rec
+from wave_utils import wavefield, grad_expr, lin_src
+
+from devito import Operator, Function
+
+
+def name(model):
+    return "tti" if model.is_tti else ""
+
+
+# Forward propagation
+def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
+            q=0, extra_expr=None, freesurface=False):
+    """
+    Compute forward wavefield u = A(m)^{-1}*f and related quantities (u(xrcv))
+    """
+    # Setting adjoint wavefield
+    u = wavefield(model, space_order, save=save, nt=wavelet.shape[0])
+
+    # Set up PDE expression and rearrange
+    pde = wave_kernel(model, u, q=q, fs=freesurface)
+
+    # Setup source and receiver
+    geom_expr, src, rcv = src_rec(model, u, src_coords=src_coords,
+                                  rec_coords=rcv_coords, wavelet=wavelet)
+    # extras expressions
+    extras = extra_expr or []
+    # Create operator and run
+    subs = model.spacing_map
+    op = Operator(pde + geom_expr + extras, subs=subs,
+                  dse="advanced", dle="advanced", name="forward"+name(model))
+    op()
+
+    # Output
+    return rcv.data, u
+
+
+def adjoint(model, y, src_coords, rcv_coords, space_order=8, save=False):
+    """
+    Compute adjoint wavefield v = adjoint(F(m))*y
+    and related quantities (||v||_w, v(xsrc))
+    """
+    # Setting adjoint wavefield
+    v = wavefield(model, space_order, save=save, nt=y.shape[0], fw=False)
+
+    # Set up PDE expression and rearrange
+    pde = wave_kernel(model, v, fw=False)
+
+    # Setup source and receiver
+    geom_expr, _, rcv = src_rec(model, v, src_coords=rcv_coords,
+                                rec_coords=src_coords, wavelet=y, fw=False)
+
+    # Create operator and run
+    subs = model.spacing_map
+    op = Operator(pde + geom_expr, subs=subs, dse="advanced", dle="advanced",
+                  name="adjoint"+name(model))
+
+    op()
+
+    # Output
+    return rcv.data
+
+
+def gradient(model, residual, rcv_coords, u, dt=None, space_order=8, w=None):
+    """
+    Compute adjoint wavefield v = adjoint(F(m))*y
+    and related quantities (||v||_w, v(xsrc))
+    """
+    # Setting adjoint wavefieldgradient
+    v = wavefield(model, space_order, fw=False)
+
+    # Set up PDE expression and rearrange
+    pde = wave_kernel(model, v, fw=False)
+
+    # Setup source and receiver
+    geom_expr, _, _ = src_rec(model, v, src_coords=rcv_coords,
+                              wavelet=residual, fw=False)
+
+    # Setup gradient wrt m
+    gradm = Function(name="gradm", grid=model.grid)
+    w = w or model.grid.time_dim.spacing
+    g_expr = grad_expr(gradm, u, v, w=w)
+
+    # Create operator and run
+    subs = model.spacing_map
+    op = Operator(pde + geom_expr + g_expr, subs=subs,
+                  dse="advanced", dle="advanced", name="gradient"+name(model))
+    op()
+
+    # Output
+    return gradm.data
+
+
+def born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False, freesurface=False):
+    """
+    Compute adjoint wavefield v = adjoint(F(m))*y
+    and related quantities (||v||_w, v(xsrc))
+    """
+    # Setting adjoint wavefield
+    u = wavefield(model, space_order, save=save, nt=wavelet.shape[0])
+    ul = wavefield(model, space_order, name="l")
+    # Set up PDE expression and rearrange
+    pde = wave_kernel(model, u, fs=freesurface)
+    pdel = wave_kernel(model, ul, q=lin_src(model, u), fs=freesurface)
+    # Setup source and receiver
+    geom_expr, _, _ = src_rec(model, u, src_coords=src_coords, wavelet=wavelet)
+    geom_exprl, _, rcvl = src_rec(model, ul, rec_coords=rcv_coords, nt=wavelet.shape[0])
+
+    # Create operator and run
+    subs = model.spacing_map
+    op = Operator(pde + geom_expr + pdel + geom_exprl, subs=subs,
+                  dse="advanced", dle="advanced", name="born"+name(model))
+    op()
+
+    # Output
+    return rcvl.data, u
