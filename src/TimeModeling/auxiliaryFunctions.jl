@@ -273,7 +273,7 @@ end
 
 function load_devito_jit(model::Model_TTI)
     pushfirst!(PyVector(pyimport("sys")."path"), joinpath(JUDIPATH, "Python"))
-    return pyimport("TTI_Staggered")
+    return pyimport("TTI_operators")
 end
 
 function calculate_dt(model::Model_TTI)
@@ -525,6 +525,7 @@ function process_physical_parameter(param, dims)
     end
 end
 
+
 function resample_model(array, inh, modelfull)
     # size in
     shape = size(array)
@@ -552,6 +553,7 @@ function resample_model(array, inh, modelfull)
     return resampled
 end
 
+
 function misfit(d1::Array{Float32, 2}, d2::Array{Float32, 2}, normalized)
 	obj = 0.0f0
     if normalized == "shot"
@@ -568,6 +570,7 @@ function misfit(d1::Array{Float32, 2}, d2::Array{Float32, 2}, normalized)
 	return obj
 end
 
+
 function adjoint_src(d1::Array{Float32, 2}, d2::Array{Float32, 2}, normalized)
 	adj_src = similar(d1)
     if normalized == "trace"
@@ -582,4 +585,28 @@ function adjoint_src(d1::Array{Float32, 2}, d2::Array{Float32, 2}, normalized)
         adj_src = d1 - d2
     end
 	return adj_src
+end
+
+process_input_data(input::judiVector, geometry::Geometry, info::Info) = input.data
+
+function process_input_data(input::Array{Float32, 1}, geometry::Geometry, info::Info)
+    # Input data is pure Julia array: assume fixed no.
+    # of receivers and reshape into data cube nt x nrec x nsrc
+    nt = geometry.nt[1]
+    nrec = length(geometry.xloc[1])
+    nsrc = info.nsrc
+    data = reshape(input, nt, nrec, nsrc)
+    dataCell = Array{Array}(undef, nsrc)
+    for j=1:nsrc
+        dataCell[j] = data[:,:,j]
+    end
+    return dataCell
+end
+
+
+function reshape(x::Array{Float32, 1}, geometry::Geometry)
+    nt = geometry.nt[1]
+    nrec = length(geometry.xloc[1])
+    nsrc = Int(length(x) / nt / nrec)
+    return reshape(x, nt, nrec, nsrc)
 end

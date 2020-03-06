@@ -1,27 +1,27 @@
 # The Julia Devito Inversion framework (JUDI)
 
-[![Build Status](https://travis-ci.org/slimgroup/JUDI.jl.svg?branch=wavefield_support)](https://travis-ci.org/slimgroup/JUDI.jl)
+[![Build Status ](https://github.com/slimgroup/JUDI.jl/workflows/CI-tests/badge.svg)](https://github.com/slimgroup/JUDI.jl/actions?query=workflow%3ACI-tests)
 
 ## Overview
 
-JUDI is a framework for large-scale seismic modeling and inversion and designed to enable rapid translations of algorithms to fast and efficient code that scales to industry-size 3D problems. The focus of the package lies on seismic modeling as well as PDE-constrained optimization such as full-waveform inversion (FWI) and imaging (LS-RTM). Wave equations in JUDI are solved with [Devito](https://github.com/opesci/devito), a Python domain-specific language for automated finite-difference (FD) computations.
+JUDI is a framework for large-scale seismic modeling and inversion and designed to enable rapid translations of algorithms to fast and efficient code that scales to industry-size 3D problems. The focus of the package lies on seismic modeling as well as PDE-constrained optimization such as full-waveform inversion (FWI) and imaging (LS-RTM). Wave equations in JUDI are solved with [Devito](https://www.devitoproject.org), a Python domain-specific language for automated finite-difference (FD) computations. JUDI's modeling operators can also be used as layers in (convolutional) neural networks to implement physics-augmented deep learning algorithms. For this, check out JUDI's deep learning extension [JUDI4Flux](https://github.com/slimgroup/JUDI4Flux.jl).
 
 ## Installation and prerequisites
 
-First, install Devito using `pip`, or see the [Devito homepage](https://github.com/opesci/devito) for installation with Conda and further information. The current release of JUDI requires Python 3 and the current Devito version. Run all of the following commands from the (bash) terminal command line (not in the Julia REPL):
+First, install Devito using `pip`, or see the [Devito's GitHub page](https://github.com/devitocodes/devito) for installation with Conda and further information. The current release of JUDI requires Python 3 and the current Devito version. Run all of the following commands from the (bash) terminal command line (not in the Julia REPL):
 
 ```julia
-pip install --user git+https://github.com/opesci/devito.git
+pip3 install --user git+https://github.com/devitocodes/devito.git
 ```
 
-For reading and writing seismic SEG-Y data, JUDI uses the [SeisIO](https://github.com/slimgroup/SeisIO.jl) package and matrix-free linear operators are based the [Julia Operator LIbrary](https://github.com/slimgroup/JOLI.jl/tree/master/src) (JOLI):
+For reading and writing seismic SEG-Y data, JUDI uses the [SegyIO](https://github.com/slimgroup/SegyIO.jl) package and matrix-free linear operators are based the [Julia Operator LIbrary](https://github.com/slimgroup/JOLI.jl/tree/master/src) (JOLI):
 
 ```julia
-julia -e 'using Pkg; Pkg.clone("https://github.com/slimgroup/SeisIO.jl.git")'
+julia -e 'using Pkg; Pkg.clone("https://github.com/slimgroup/SegyIO.jl.git")'
 julia -e 'using Pkg; Pkg.clone("https://github.com/slimgroup/JOLI.jl.git")'
 ```
 
-Once Devito, SeisIO and JOLI are installed, you can install JUDI with Julia's `Pkg.clone`. For Devito 3.2.0, it is also necessary to install some Devito dependencies by hand:
+Once Devito, SegyIO and JOLI are installed, you can install JUDI with Julia's `Pkg.clone`. For Devito 3.2.0, it is also necessary to install some Devito dependencies by hand:
 
 ```julia
 julia -e 'using Pkg; Pkg.clone("https://github.com/slimgroup/JUDI.jl")'
@@ -96,7 +96,7 @@ run(`wget ftp://slim.gatech.edu/data/SoftwareRelease/WaveformInversion.jl/2DFWI/
 The first step is to load the velocity model and the observed data into Julia, as well as setting up bound constraints for the inversion, which prevent too high or low velocities in the final result. Furthermore, we define an 8 Hertz Ricker wavelet as the source function:
 
 ```julia
-using PyPlot, HDF5, SeisIO, JUDI.TimeModeling, JUDI.SLIM_optim, Statistics, Random
+using PyPlot, HDF5, SegyIO, JUDI.TimeModeling, JUDI.SLIM_optim, Statistics, Random
 
 # Load starting model
 n, d, o, m0 = read(h5open("overthrust_2D_initial_model.h5", "r"), "n", "d", "o", "m0")
@@ -157,8 +157,7 @@ figure(); imshow(sqrt.(1./adjoint(reshape(x, model0.n)))); title("FWI")
 figure(); plot(fvals); title("Function value")
 ```
 
-#### Figure: {#f1}
-![](docs/fwi.png){width=70%}
+![](docs/fwi.png)
 
 
 ## Least squares reverse-time migration
@@ -173,7 +172,7 @@ run(`wget ftp://slim.gatech.edu/data/SoftwareRelease/Imaging.jl/2DLSRTM/marmousi
 Once again, load the starting model and the data and set up the source wavelet. For this example, we use a Ricker wavelet with 30 Hertz peak frequency. For setting up matrix-free linear operators, an `info` structure with the dimensions of the problem is required:
 
 ```julia
-using PyPlot, HDF5, JUDI.TimeModeling, SeisIO, Random
+using PyPlot, HDF5, JUDI.TimeModeling, SegyIO, Random
 
 # Load smooth migration velocity model
 n,d,o,m0 = read(h5open("marmousi_migration_velocity.h5","r"), "n", "d", "o", "m0")
@@ -228,20 +227,56 @@ for j=1:niter
 end
 ```
 
-#### Figure: {#f1}
-![](docs/lsrtm.png){width=80%}
+![](docs/lsrtm.png)
+
+
+## Machine Learning
+
+The JUDI4Flux interface allows integrating JUDI modeling operators into convolutional neural networks for deep learning. For example, the following code snippet shows how to create a shallow CNN consisting of two convolutional layers with a nonlinear forward modeling layer in-between them. JUDI4Flux enables backpropagation through Flux' automatic differentiation tool, but calls the corresponding adjoint JUDI operators under the hood. For more details, please check out the [JUDI4Flux Github](https://github.com/slimgroup/JUDI4Flux.jl) page.
+
+```julia
+# Nonlinear JUDI modeling operator
+model = Model(n, d, o, m)
+F = judiModeling(info, model, rec_geometry, src_geometry)
+
+# Network layers
+ℱ = ForwardModel(F, q)
+conv1 = Conv((3, 3), 1=>1, pad=1, stride=1)
+conv2 = Conv((3, 3), 1=>1, pad=1, stride=1)
+
+# Network and loss
+predict(x) = conv2(ℱ(conv1(x)))
+loss(x, y) = Flux.mse(predict(x), y)
+
+# Compute gradient w/ Flux
+gs = Tracker.gradient(() -> loss(x, y), params(m))
+gs[m]   # evalute gradient w.r.t. m
+```
+
+JUDI4Flux allows implementing physics-augmented neural networks for seismic inversion, such as loop-unrolled seismic imaging algorithms. For example, the following results are a conventional RTM image, an LS-RTM image and a loop-unrolled LS-RTM image for a single simultaneous shot record.
+
+![](docs/figure1.png)
 
 ## Authors
 
 This package was written by [Philipp Witte](https://www.slim.eos.ubc.ca/philip) and [Mathias Louboutin](https://www.slim.eos.ubc.ca/content/mathias-louboutin) from the Seismic Laboratory for Imaging and Modeling (SLIM) at the Georgia Institute of Technology.
 
-If you use our software for your research, please cite us using the following references:
+If you use our software for your research, please cite our [Geophysics paper](https://library.seg.org/doi/abs/10.1190/geo2018-0174.1#):
 
- * Philipp A. Witte, Mathias Louboutin, Navjot Kukreja, Fabio Luporini, Michael Lange, Gerard J. Gorman and Felix J. Herrmann. A large-scale framework for symbolic implementations of seismic inversion algorithms in Julia. Submitted to GEOPHYSICS. 2018. <https://www.slim.eos.ubc.ca/content/large-scale-framework-symbolic-implementations-seismic-inversion-algorithms-julia>
-
- * Mathias Louboutin, Michael Lange, Fabio Luporini, Navjot Kukreja, Philipp A. Witte, Felix J. Herrmann, Paulius Velesko and Gerard J. Gorman. Devito: An embedded domain-specific language for finite differences and geophysical exploration. Submitted to Geoscientific Model Development. 2018. <https://arxiv.org/abs/1808.01995>.
-
- * Fabio Luporini, Michael Lange, Mathias Louboutin, Najvot Kukreja, Jan Hueckelheim, Charles Yount, Philipp A. Witte, Paul H. J. Kelly, Gerard J. Gorman and Felix J. Herrmann. Architecture and performance of Devito, a system for automated stencil computation. Submitted to SIAM Journal on Scientific Computing. 2018. <https://arxiv.org/abs/1807.03032>.
+```
+@article{witteJUDI2019,
+author = {Philipp A. Witte and Mathias Louboutin and Navjot Kukreja and Fabio Luporini and Michael Lange and Gerard J. Gorman and Felix J. Herrmann},
+title = {A large-scale framework for symbolic implementations of seismic inversion algorithms in Julia},
+journal = {GEOPHYSICS},
+volume = {84},
+number = {3},
+pages = {F57-F71},
+year = {2019},
+doi = {10.1190/geo2018-0174.1},
+URL = {https://doi.org/10.1190/geo2018-0174.1},
+eprint = {https://doi.org/10.1190/geo2018-0174.1}
+}
+```
 
 Also visit the Devito homepage at <https://www.devitoproject.org/publications> for more information and references.
 

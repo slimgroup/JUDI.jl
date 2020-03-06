@@ -8,7 +8,7 @@ PolynomialRoots
 PyCall
 PyPlot
 JOLI
-SeisIO
+SegyIO
 DSP
 Compat
 OSQP

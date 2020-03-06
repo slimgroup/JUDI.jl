@@ -68,7 +68,9 @@ function judiJacobian(F::judiPDEfull, source::judiVector; DDT::DataType=Float32,
     end
     return J = judiJacobian{Float32,Float32}("linearized wave equation", m, n, F.info, F.model, F.srcGeometry, F.recGeometry, source.data, F.options,
                                            v -> time_modeling(F.model, F.srcGeometry, source.data, F.recGeometry, nothing, v, srcnum, 'J', 1, F.options),
-                                           w -> time_modeling(F.model, F.srcGeometry, source.data, F.recGeometry, w.data, nothing, srcnum, 'J', -1, F.options)
+                                           w -> time_modeling(F.model, F.srcGeometry, source.data, F.recGeometry, 
+                                           process_input_data(w, F.recGeometry, F.info),     # if input is not judiVector -> reshape into data cube
+                                           nothing, srcnum, 'J', -1, F.options)
                                            )
 end
 
@@ -108,6 +110,9 @@ function *(A::judiJacobian{ADDT,ARDT},v::AbstractVector{vDT}) where {ADDT,ARDT,v
     jo_check_type_match(ARDT,eltype(V),join(["RDT from *(judiJacobian,vec):",A.name,typeof(A),eltype(V)]," / "))
     return V
 end
+
+*(A::judiJacobian{ADDT,ARDT},v::AbstractMatrix{vDT}) where {ADDT,ARDT,vDT} = *(A, vec(v))
+
 
 # *(judiJacobian,judiVector)
 function *(A::judiJacobian{ADDT,ARDT},v::judiVector{vDT}) where {ADDT,ARDT,vDT}

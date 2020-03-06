@@ -8,7 +8,7 @@
 file_path="/path/to/data/"
 file_name="sigsbee2A_marine"
 
-using JUDI.TimeModeling, PyPlot, JLD, SeisIO
+using JUDI.TimeModeling, PyPlot, JLD, SegyIO
 
 # Load Sigsbee model
 if !isfile("sigsbee2A_model.jld")

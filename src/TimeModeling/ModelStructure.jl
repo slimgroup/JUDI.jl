@@ -6,7 +6,8 @@
 const IntTuple = Union{Tuple{Integer,Integer}, Tuple{Integer,Integer,Integer},Array{Int64,1},Array{Int32,1}}
 const RealTuple = Union{Tuple{Real,Real}, Tuple{Real,Real,Real},Array{Float64,1},Array{Float32,1}}
 
-export Model, Modelall, Model_TTI
+export Model, Modelall, Model_TTI, get_dt
+
 
 # Object for velocity/slowness models
 mutable struct Model
@@ -61,7 +62,6 @@ function Model(n::IntTuple, d::RealTuple, o::RealTuple, m, rho; nb=40)
     isempty(rho) && (rho = 1)
     return Model(n,d,o,nb,m,rho)
 end
-
 
 # Object for velocity/slowness models
 mutable struct Model_TTI
@@ -139,3 +139,5 @@ function Model_TTI(n::IntTuple, d::RealTuple, o::RealTuple, m, epsilon, delta, t
 end
 
 const Modelall = Union{Model_TTI, Model}
+
+get_dt(Model::Modelall) = calculate_dt(Model)

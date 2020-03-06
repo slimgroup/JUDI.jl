@@ -5,13 +5,7 @@
 #
 
 using LinearAlgebra, Random
-using JUDI, JUDI.TimeModeling, SeisIO, PyCall
-
-pushfirst!(PyVector(pyimport("sys")["path"]), joinpath(dirname(pathof(JUDI)), "Python"))
-@pyimport devito as dv
-@pyimport numpy as np
-@pyimport PyModel as pm
-@pyimport JAcoustic_codegen as cg
+using JUDI, JUDI.TimeModeling, SegyIO, PyCall
 
 ## Set up model structure
 n = (120, 100)   # (x,y,z) or (x,z)
@@ -29,7 +23,7 @@ m0 = (1f0 ./ v0).^2
 dm = vec(m - m0)
 
 # Setup info and model structure
-nsrc = 1	# number of sources
+nsrc = 2	# number of sources
 model = Model(n, d, o, m)
 model0 = Model(n, d, o, m0)
 
@@ -47,9 +41,9 @@ dtR = 4f0    # receiver sampling interval [ms]
 recGeometry = Geometry(xrec, yrec, zrec; dt=dtR, t=timeR, nsrc=nsrc)
 
 ## Set up source geometry (cell array with source locations for each shot)
-xsrc = convertToCell([500f0])
-ysrc = convertToCell([0f0])
-zsrc = convertToCell([20f0])
+xsrc = convertToCell([400f0, 800f0])
+ysrc = convertToCell([0f0, 0f0])
+zsrc = convertToCell([20f0, 20f0])
 
 # source sampling and number of time steps
 timeS = 1000f0  # ms
@@ -70,7 +64,7 @@ info = Info(prod(n), nsrc, ntComp)
 ######################## WITH DENSITY ############################################
 
 # Write shots as segy files to disk
-opt = Options(save_data_to_disk=false, file_path=pwd(), file_name="observed_shot", optimal_checkpointing=false)
+opt = Options()
 
 # Setup operators
 Pr = judiProjection(info, recGeometry)
@@ -87,18 +81,31 @@ qad = Ps*adjoint(F)*adjoint(Pr)*dobs
 u = F*adjoint(Ps)*q
 v = adjoint(F)*adjoint(Pr)*dobs
 
-# Compute norm
-println("forward wavefield 2-norm: ", norm(u))
-println("adjoint wavefield 1-norm: ", norm(v, 1))
+# Modify wavefields
+v = abs(v)  # take absolute value
+u = 2*u # multiple by scalar
 
 # Wavefields as source
 dnew = Pr*F*v
 qnew = Ps*adjoint(F)*u
 
+# Create custom wavefield as source (needs to be on computational time axis and contain padding)
+dtComp = get_dt(model)
+u0 = zeros(Float32, ntComp[1], model.n[1] + 2*model.nb, model.n[2] + 2*model.nb)
+u0[:, 100, 45] = wavelet = -ricker_wavelet(timeS, dtComp, f0)
+uf = judiWavefield(info, dtComp, u0)
+dobs2 = Pr*F*uf # same as dobs
+
 # Wavefields as source + return wavefields
 u2 = F*u
 v2 = F*v
 
-# Linearized modeling
-dD = J*dm
-rtm1 = adjoint(J)*dD
+# Supported algebraic operations
+u_add = u + u
+u_sub = u - v
+u_mult = u * 2f0
+u_div = u / 2f0
+u_norm = norm(u)
+u_dot = dot(u, u)
+u_abs = abs(u)
+

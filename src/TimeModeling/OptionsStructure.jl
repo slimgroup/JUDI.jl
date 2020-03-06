@@ -26,6 +26,7 @@ mutable struct Options
     gs::Dict
     normalized
     dft_subsampling_factor::Integer
+    return_array::Bool
 end
 
 """
@@ -50,6 +51,7 @@ end
 	    gs::Dict
 	    normalized
 	    dft_subsampling_factor::Integer
+        return_array::Bool
 
 
 
@@ -87,6 +89,8 @@ Options structure for seismic modeling.
 
 `isic`: use linearized inverse scattering imaging condition
 
+`return_array`: return data from nonlinear/linear modeling as a plain Julia array.
+
 
 Constructor
 ==========
@@ -115,7 +119,8 @@ Options(;space_order=8,
 		 normalized=false,
 		 t_sub=1,
 		 h_sub=1,
-		 dft_subsampling_factor=1) =
+		 dft_subsampling_factor=1,
+         return_array=false) =
 		 Options(space_order,
 		 		 free_surface,
 		         limit_m,
@@ -134,7 +139,8 @@ Options(;space_order=8,
 				 h_sub,
 				 gs,
 				 normalized,
-				 dft_subsampling_factor)
+				 dft_subsampling_factor,
+                 return_array)
 
 function subsample(options::Options, srcnum)
     if isempty(options.frequencies)

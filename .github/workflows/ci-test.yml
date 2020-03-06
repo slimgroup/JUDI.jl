@@ -1,0 +1,64 @@
+name: CI-tests
+
+on:
+  # Trigger the workflow on push to master or pull request
+  # to be merged in master
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  test:
+    name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+
+      matrix:
+        version:
+          - '1.0'
+          - '1.1'
+          - '1.2'
+          - '1.3'
+          - 'nightly'
+        os:
+          - ubuntu-latest
+          - macos-latest
+        arch:
+          - x64
+
+    steps:
+      - name: Checkout JUDI
+        uses: actions/checkout@v2
+
+      - name: Setup julia
+        uses: julia-actions/setup-julia@v1
+        with:
+          version: ${{ matrix.version }}
+          arch: ${{ matrix.arch }}
+
+      - name: Set up Python 3.7
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.7
+
+      - name: Install devito
+        run: |
+          python -m pip install --upgrade pip
+          pip install git+https://github.com/devitocodes/devito.git
+          pip install -r docker/devito_requirements.txt
+
+      - name: Build JUDI
+        uses: julia-actions/julia-buildpkg@latest
+
+      - name: Run tests
+        uses: julia-actions/julia-runtest@latest
+    
+      - name: Run simple example
+        if: runner.os == 'linux'
+        run: julia --project examples/scripts/modeling_basic_2D.jl
+

@@ -4,7 +4,7 @@
 # Date: January 2017
 #
 
-using PyCall, PyPlot, JUDI.TimeModeling, SeisIO
+using PyCall, PyPlot, JUDI.TimeModeling, SegyIO
 
 ## Set up model structure
 n = (120,100)	# (x,y,z) or (x,z)

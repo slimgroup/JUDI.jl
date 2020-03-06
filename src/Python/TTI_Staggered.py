@@ -153,7 +153,7 @@ def pressure_fields(model, space_order, save=0, t_sub_factor=1, h_sub_factor=1, 
 
 
 def forward_stencil(model, space_order, save=0, q=(0, 0, 0, 0, 0), name='', h_sub_factor=1,
-                    t_sub_factor=1):
+                    t_sub_factor=1, **kwargs):
     """
     Forward wave equation
     # Solves the TTI elastic system:
@@ -337,7 +337,7 @@ def linearized_source(model, fields, part_vel, isic=False):
 
 def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_order=4,
                      h_sub_factor=1, t_sub_factor=1,op_return=False,
-                     free_surface=False):
+                     free_surface=False, **kwargs):
     """
     Constructor method for the forward modelling operator in an acoustic media
     :param model: :class:`Model` object containing the physical parameters
@@ -346,7 +346,6 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
     :param space_order: Space discretization order
     :param save: Saving flag, True saves all time steps, False only the three
     """
-    clear_cache()
     save_p = wavelet.shape[0] if save else 0
     vel_expr, p_expr, fields, _, saved_fields = forward_stencil(model, space_order, save=save_p,
                                                                 h_sub_factor=h_sub_factor,
@@ -368,7 +367,7 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
             return saved_fields[0], saved_fields[1]
 
 
-def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=4, free_surface=False):
+def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=4, free_surface=False, **kwargs):
     """
     Constructor method for the adjoint modelling operator in an acoustic media
     :param model: :class:`Model` object containing the physical parameters
@@ -377,7 +376,6 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=4, fre
     :param space_order: Space discretization order
     :param save: Saving flag, True saves all time steps, False only the three
     """
-    clear_cache()
     vel_expr, p_expr, fields, _ = adjoint_stencil(model, space_order)
     # Adjoint source is injected at receiver locations
     rec, rec_term, src_term, _ = src_rec(model, fields, rec_coords, src_coords, rec_data,
@@ -391,7 +389,7 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=4, fre
 
 
 def forward_born(model, src_coords, wavelet, rec_coords, space_order=4, isic=False, save=False,
-                 h_sub_factor=1, t_sub_factor=1, free_surface=False):
+                 h_sub_factor=1, t_sub_factor=1, free_surface=False, **kwargs):
     """
     Constructor method for the born modelling operator in an acoustic media
     :param model: :class:`Model` object containing the physical parameters
@@ -400,7 +398,6 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=4, isic=Fal
     :param space_order: Space discretization order
     :param save: Saving flag, True saves all time steps, False only the three
     """
-    clear_cache()
     save_p = wavelet.shape[0] if save else 0
     vel_expr, p_expr, fields, part_vel, saved_fields = forward_stencil(model, space_order, save=save_p,
                                                                        h_sub_factor=h_sub_factor,
@@ -421,7 +418,7 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=4, isic=Fal
 
 def adjoint_born(model, rec_coords, rec_data, ph=None, pv=None, space_order=4, isic=False,
                  n_checkpoints=None, maxmem=None, op_forward=None, is_residual=False,
-                 free_surface=False, t_sub_factor=1, h_sub_factor=1):
+                 free_surface=False, t_sub_factor=1, h_sub_factor=1, **kwargs):
     """
     Constructor method for the adjoint born modelling operator in an acoustic media
     :param model: :class:`Model` object containing the physical parameters
@@ -430,7 +427,6 @@ def adjoint_born(model, rec_coords, rec_data, ph=None, pv=None, space_order=4, i
     :param space_order: Space discretization order
     :param save: Saving flag, True saves all time steps, False only the three
     """
-    clear_cache()
     vel_expr, p_expr, fields, vel_fields = adjoint_stencil(model, space_order)
     adj_fields = {f.name: f for f in fields+vel_fields if hasattr(f, 'name')}
     resample = False

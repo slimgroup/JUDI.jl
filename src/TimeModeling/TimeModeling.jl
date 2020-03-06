@@ -5,10 +5,10 @@
 
 module TimeModeling
 
-using JUDI, PyCall, JOLI, Distributed, SeisIO, Dierckx, LinearAlgebra, Base.Broadcast, FFTW, Random, DSP, Printf
+using JUDI, PyCall, JOLI, Distributed, SegyIO, Dierckx, LinearAlgebra, Base.Broadcast, FFTW, Random, DSP, Printf
 using Convex, ECOS
 
-import Base.*, Base./, Base.+, Base.-, Base.copy!, Base.sum, Base.ndims
+import Base.*, Base./, Base.+, Base.-, Base.copy!, Base.sum, Base.ndims, Base.reshape
 import Base.Broadcast.broadcasted, Base.BroadcastStyle, Base.Broadcast.DefaultArrayStyle
 import Base.getindex, Base.setindex!, Base.firstindex, Base.lastindex, Base.axes, Base.ndims
 import LinearAlgebra.transpose, LinearAlgebra.conj, LinearAlgebra.vcat, LinearAlgebra.adjoint
@@ -23,13 +23,13 @@ include("ModelStructure.jl")    # model container
 include("InfoStructure.jl") # basic information required by all operators
 include("GeometryStructure.jl") # source or receiver setup, recording time and sampling
 include("OptionsStructure.jl")
-include("auxiliaryFunctions.jl")
 
 #############################################################################
 # Abstract vectors
 include("judiWavefield.jl") # dense RHS (wavefield)
 include("judiRHS.jl")   # sparse RHS (point source(s))
 include("judiVector.jl")    # Julia data container
+include("auxiliaryFunctions.jl")
 
 #############################################################################
 # PDE solvers

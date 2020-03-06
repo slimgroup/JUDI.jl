@@ -69,7 +69,7 @@ wave_rand = wavelet.*rand(Float32,size(wavelet))
 ###################################################################################################
 
 # Modeling operators
-opt = Options(sum_padding=true, optimal_checkpointing=true) #, isic=false, t_sub=2, h_sub=2)
+opt = Options(sum_padding=true, optimal_checkpointing=false) #, isic=false, t_sub=2, h_sub=2)
 F = judiModeling(info, model, srcGeometry, recGeometry; options=opt)
 q = judiVector(srcGeometry, wavelet)
 

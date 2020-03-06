@@ -32,10 +32,9 @@ def acoustic_laplacian(v, rho):
             Lap = 1 / rho * v.laplace
     return Lap, rho
 
-
-def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_order=8,
-                     free_surface=False, op_return=False, dt=None, tsub_factor=1, h_sub_factor=1):
-    clear_cache()
+def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_order=8, nb=40,
+                     free_surface=False, op_return=False, u_return=False, dt=None, tsub_factor=1, return_devito_obj=False,
+                     **kwargs):
     # If wavelet is file, read it
     if isinstance(wavelet, str):
         wavelet = np.load(wavelet)
@@ -61,15 +60,17 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
         eqsave = []
 
     # Input source is wavefield
-    wf_src = 0
-    if isinstance(wavelet, TimeFunction):
-        wf_src = TimeFunction(name='wf_src', grid=model.grid, time_order=2, space_order=space_order, save=nt)
-        wf_src._data = wavelet._data
-
     # Set up PDE
     ulaplace, rho = acoustic_laplacian(u, rho)
     stencil = ((2 * m /rho - damp * damp * dt**2) * u + (2 * damp * dt - m / rho) * u.backward +
-               dt**2 * (ulaplace - wf_src))/ (m / rho + 2 * damp * dt)
+               dt**2 * ulaplace )/ (m / rho + 2 * damp * dt)
+    if src_coords is None:
+        wf_src = TimeFunction(name='wf_src', grid=model.grid, time_order=2, space_order=space_order, save=nt)
+        if isinstance(wavelet, TimeFunction):
+            wf_src._data = wavelet._data
+        else:
+            wf_src.data[:] = wavelet[:]
+        stencil += m/ rho * dt**2  * wf_src
 
     # Rearrange expression
     # stencil = solve(eqn, u.forward)
@@ -104,22 +105,22 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
         op(y_m=z_m)
         if save is True and tsub_factor > 1:
             if rec_coords is None:
-                return usave
+                print("udim: ", usave.shape)
+                return (usave  if return_devito_obj is True else usave.data)
             else:
-                return rec.data, usave
+                return rec.data, (usave  if return_devito_obj is True else usave.data)
         else:
             if rec_coords is None:
-                return u
+                return u.data
             else:
-                return rec.data, u
+                return rec.data, (u  if return_devito_obj is True else u.data)
 
     # For optimal checkpointing, return operator only
     else:
         return op
 
 
-def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=8, free_surface=False, dt=None):
-    clear_cache()
+def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=8, free_surface=False, dt=None, **kwargs):
 
     # If wavelet is file, read it
     if isinstance(rec_data, str):
@@ -142,9 +143,12 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=8, fre
 
     # Input data is wavefield
     full_q = 0
-    if isinstance(rec_data, TimeFunction):
+    if rec_coords is None:
         wf_rec = TimeFunction(name='wf_rec', grid=model.grid, time_order=2, space_order=space_order, save=nt)
-        wf_rec._data = rec_data._data
+        if isinstance(rec_data, TimeFunction):
+            wf_rec._data = rec_data._data
+        else:
+            wf_rec.data[:] = rec_data[:]
         full_q = wf_rec
 
     # Set up PDE and rearrange
@@ -182,12 +186,11 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=8, fre
     op(y_m=z_m)
 
     if src_coords is None:
-        return v
+        return v.data
     else:
         return src.data
 
-def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, isic=False, dt=None, free_surface=False):
-    clear_cache()
+def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, isic=False, dt=None, free_surface=False, **kwargs):
 
     # Parameters
     nt = wavelet.shape[0]
@@ -255,9 +258,7 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, isic=Fal
 
 def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residual=False,
                  space_order=8, isic=False, dt=None, n_checkpoints=None, maxmem=None,
-                 free_surface=False, tsub_factor=1):
-    clear_cache()
-
+                 free_surface=False, tsub_factor=1, **kwargs):
     # Parameters
     nt = rec_data.shape[0]
     if dt is None:
@@ -329,7 +330,7 @@ def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residu
         wrp.apply_reverse(y_m=z_m)
     else:
         op(y_m=z_m)
-    
+
     clear_cache()
     if op_forward is not None and is_residual is not True:
         return fval, gradient.data
@@ -339,9 +340,8 @@ def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residu
 
 ########################################################################################################################
 
-def forward_freq_modeling(model, src_coords, wavelet, rec_coords, freq, space_order=8, dt=None, factor=None, free_surface=False):
+def forward_freq_modeling(model, src_coords, wavelet, rec_coords, freq, space_order=8, dt=None, factor=None, free_surface=False, **kwargs):
     # Forward modeling with on-the-fly DFT of forward wavefields
-    clear_cache()
 
     # Parameters
     nt = wavelet.shape[0]
@@ -401,8 +401,7 @@ def forward_freq_modeling(model, src_coords, wavelet, rec_coords, freq, space_or
 
 
 def adjoint_freq_born(model, rec_coords, rec_data, freq, ufr, ufi, space_order=8, dt=None, isic=False, factor=None,
-                      free_surface=False):
-    clear_cache()
+                      free_surface=False, **kwargs):
 
     # Parameters
     nt = rec_data.shape[0]

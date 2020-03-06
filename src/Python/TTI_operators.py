@@ -54,8 +54,7 @@ def sub_ind(model):
 
 
 def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_order=16,
-                     t_sub_factor=1, h_sub_factor=1, op_return=False, dt=None, free_surface=False):
-    clear_cache()
+                     t_sub_factor=1, h_sub_factor=1, op_return=False, dt=None, free_surface=False, **kwargs):
 
     # Parameters
     nt = wavelet.shape[0]
@@ -136,7 +135,6 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
         expression += rec.interpolate(expr=u + v)
 
     # Create operator and run
-    set_log_level('INFO')
     expression += src_term
     if save:
         expression += eqsave
@@ -163,8 +161,7 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
         return op
 
 
-def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=12, dt=None, free_surface=False):
-    clear_cache()
+def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=12, dt=None, free_surface=False, **kwargs):
 
     # Parameters
     nt = rec_data.shape[0]
@@ -216,7 +213,6 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=12, dt
     adj_rec = src.interpolate(expr=p+q)
 
     # Create operator and run
-    set_log_level('INFO')
     expression += adj_src + adj_rec
 
     if free_surface:
@@ -230,8 +226,7 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=12, dt
 
 
 def forward_born(model, src_coords, wavelet, rec_coords, space_order=12, isic=False, dt=None, save=False, isiciso=False,
-                 h_sub_factor=1, free_surface=False):
-    clear_cache()
+                 h_sub_factor=1, free_surface=False, **kwargs):
 
     # Parameters
     nt = wavelet.shape[0]
@@ -270,21 +265,6 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=12, isic=Fa
     stencilr = damp * (2 * v - damp * v.backward + s**2 / m * (delta * H0 + Hz))
 
     if isic:
-    #     du_aux_x = first_derivative(u.dx * dm, fd_order=space_order, dim=u.indices[1], diff=h_sub_factor*u.indices[1].spacing)
-    #     du_aux_y = first_derivative(u.dy * dm, fd_order=space_order, dim=u.indices[2], diff=h_sub_factor*u.indices[2].spacing)
-    #     du2 =  (dm * u.dt2 * m - du_aux_x - du_aux_y)
-    #     if len(model.shape) == 3:
-    #         du2 -= first_derivative(u.dz * dm, fd_order=space_order, dim=u.indices[3], diff=h_sub_factor*u.indices[3].spacing)
-    #
-    #     dv_aux_x = first_derivative(v.dx * dm, fd_order=space_order, dim=u.indices[1], diff=h_sub_factor*u.indices[1].spacing)
-    #     dv_aux_y = first_derivative(v.dy * dm, fd_order=space_order, dim=u.indices[2], diff=h_sub_factor*u.indices[2].spacing)
-    #     dv2 =  (dm * v.dt2 * m - dv_aux_x - dv_aux_y)
-    #     if len(model.shape) == 3:
-    #         dv2 -= first_derivative(v.dz * dm, fd_order=space_order, dim=u.indices[3], diff=h_sub_factor*u.indices[3].spacing)
-    #
-    #     stencilpl = damp * (2 * ul - damp * ul.backward + s**2 / m * (epsilon * H0l + delta * Hzl - du2))
-    #     stencilrl = damp * (2 * vl - damp * vl.backward + s**2 / m * (delta * H0l + Hzl - dv2))
-    # elif isic:
         order_loc = int(space_order/2)
         lin_expru = dm * u.dt2 * m - Dx(Dx(u, ang0, ang1, ang2, ang3, order_loc) * dm,
                                                   ang0, ang1, ang2, ang3, order_loc)
@@ -321,7 +301,6 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=12, isic=Fa
     rec_term = rec.interpolate(expr=ul + vl)
 
     # Create operator and run
-    set_log_level('INFO')
     expression = expression_u + expression_du + src_term
 
     if free_surface:
@@ -339,8 +318,7 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=12, isic=Fa
 
 def adjoint_born(model, rec_coords, rec_data, u=None, v=None, op_forward=None, is_residual=False,
                  space_order=12, isic=False, dt=None, n_checkpoints=None, maxmem=None,
-                 free_surface=False, t_sub_factor=1, h_sub_factor=1):
-    clear_cache()
+                 free_surface=False, t_sub_factor=1, h_sub_factor=1, **kwargs):
     factor_t = t_sub_factor
     factor_h = h_sub_factor
     # Parameters
@@ -440,14 +418,13 @@ def adjoint_born(model, rec_coords, rec_data, u=None, v=None, op_forward=None, i
         gradient_update = [Inc(gradient, - factor_h * factor_t * dt * (u * p.dt2 + v * q.dt2))]
 
     # Create operator and run
-    set_log_level('INFO')
     expression += adj_src + gradient_update
 
     if free_surface:
         expression += freesurface(p, space_order//2, model.nbpml, forward=False)
         expression += freesurface(q, space_order//2, model.nbpml, forward=False)
 
-    op = Operator(expression, subs=model.spacing_map, dse='aggressive', dle='speculative')
+    op = Operator(expression, subs=model.spacing_map, dse='advanced', dle='advanced')
     # Optimal checkpointing
 
     if op_forward is not None:
@@ -589,7 +566,7 @@ def Gzz_centered(field, costheta, sintheta, cosphi, sinphi, space_order):
     :param space_order: discretization order
     :return: rotated second order derivative wrt z
     """
-    order1 = space_order / 2
+    order1 = space_order // 2
     func = list(retrieve_functions(field))[0]
     x, y, z = func.space_dimensions
     Gz = -(sintheta * cosphi * first_derivative(field, dim=x,
@@ -619,7 +596,7 @@ def Gzz_centered_2d(field, costheta, sintheta, space_order):
     :param space_order: discretization order
     :return: rotated second order derivative wrt z
     """
-    order1 = space_order / 2
+    order1 = space_order // 2
     func = list(retrieve_functions(field))[0]
     x, y = func.space_dimensions
     Gz = -(sintheta * first_derivative(field, dim=x, side=centered, fd_order=order1) +

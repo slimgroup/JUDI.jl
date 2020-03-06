@@ -3,7 +3,7 @@
 # May 2018
 #
 
-using JUDI.TimeModeling, SeisIO, Test, LinearAlgebra
+using JUDI.TimeModeling, SegyIO, Test, LinearAlgebra
 
 # Example structures
 
