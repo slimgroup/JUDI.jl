@@ -33,6 +33,7 @@ include("auxiliaryFunctions.jl")
 
 #############################################################################
 # PDE solvers
+include("python_interface.jl")  # forward/adjoint linear/nonlinear modeling
 include("time_modeling_serial.jl")  # forward/adjoint linear/nonlinear modeling
 include("time_modeling_parallel.jl")    # parallelization for modeling
 include("fwi_objective_serial.jl")  # FWI objective function value and gradient

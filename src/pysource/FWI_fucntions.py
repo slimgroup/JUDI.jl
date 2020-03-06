@@ -10,35 +10,24 @@ import numpy.linalg as npla
 from utils import applyfilt
 from propagators import forward, gradient
 
+def fwi_gradient_checkpointing():
+    # Optimal checkpointing
+    op_f, u, rec = forward()
+    op, g = gradient(op_return=True)
+    cp = DevitoCheckpoint([u])
+    if maxmem is not None:
+        n_checkpoints = int(np.floor(maxmem * 10**6 / (cp.size * u.data.itemsize)))
+    wrap_fw = CheckpointOperator(op_f, u=u, m=model.m, rec=rec)
+    wrap_rev = CheckpointOperator(op, u=u, v=v, m=model.m, src=src)
 
-# Objective functional
-def obj_fwi(model, src_coords, rcv_coords, src, data, Filter=None,
-            mode="eval", space_order=8):
-    """
-    Evaluate FWI objective functional/gradients for current m
-    """
-    dt = model.critical_dt
-    # Normalization constant
-    data_filtered = applyfilt(data, Filter)
-    eta = dt * npla.norm(data_filtered.reshape(-1))**2
+    # Run forward
+    wrp = Revolver(cp, wrap_fw, wrap_rev, n_checkpoints, nt-2)
+    wrp.apply_forward(**op_kwargs(model, fs=free_surface))
 
-    # Computing residual
-    dmod, u = forward(model, src_coords, rcv_coords, src, space_order=space_order,
-                      save=(mode == "grad"))
-    Pres = applyfilt(data - dmod, Filter)
-
-    # ||P*r||^2
-    norm_Pr2 = dt * npla.norm(Pres.reshape(-1))**2
-
-    # Functional evaluation
-    fun = norm_Pr2 / eta
-
-    # Gradient computation
-    if mode == "grad":
-        gradm = gradient(model, Pres, rcv_coords, u, space_order=space_order, w=2*dt/eta)
-
-    # Return output
-    if mode == "eval":
-        return fun
-    elif mode == "grad":
-        return fun, gradm
+    # Residual and gradient
+    if is_residual is True:  # input data is already the residual
+        rec_g.data[:] = rec_data[:]
+    else:
+        rec_g.data[:] = rec.data[:] - rec_data[:]   # input is observed data
+        fval = .5*np.dot(rec_g.data[:].flatten(), rec_g.data[:].flatten()) * dt
+    wrp.apply_reverse(**op_kwargs(model, fs=free_surface))

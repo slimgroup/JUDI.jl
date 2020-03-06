@@ -61,7 +61,7 @@ rec_t.coordinates.data[:, 1] = 20.
 d_hat, u1 = forward(model, src1.coordinates.data, rec_t.coordinates.data, src1.data)
 
 # Adjoint
-q0 = adjoint(model, d_hat, src1.coordinates.data, rec_t.coordinates.data)
+q0, _ = adjoint(model, d_hat, src1.coordinates.data, rec_t.coordinates.data)
 
 # Adjoint test
 a = np.dot(d_hat.flatten(), d_hat.flatten())

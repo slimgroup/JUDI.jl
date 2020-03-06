@@ -39,10 +39,27 @@ def weighted_norm(u, weight=None):
     return norm_vy2, n_v
 
 
-def grad_expr(gradm, vPTy, u, w=1):
-    if type(vPTy) is tuple:
-        return [Inc(gradm, -w * (vPTy[0] * u[0].dt2 + vPTy[1] * u[1].dt2))]
-    return [Inc(gradm, -w * vPTy * u.dt2)]
+def grad_expr(gradm, v, u, w=1, freq=False):
+    # tti
+    tsave = gradm.grid.time_dim
+    dtf = gradm.grid.time_dim.spacing
+    if type(v) is tuple:
+        if freq:
+            ufr1, ufi1 = u[0]
+            ufr12, ufi2 = u[1]
+            expr = w*(ufr1*cos(2*np.pi*f*tsave*dtf) - ufi1*sin(2*np.pi*f*tsave*dtf))*v[0]
+            expr += w*(ufr2*cos(2*np.pi*f*tsave*dtf) - ufi2*sin(2*np.pi*f*tsave*dtf))*v[1]
+        else:
+            expr = -w * (v[0] * u[0].dt2 + v[1] * u[1].dt2)
+    # Acoustic
+    else:
+        if freq:
+            ufr, ufi = u
+            tsave = gradm.grid.time_dim
+            expr = w*(ufr*cos(2*np.pi*f*tsave*dtf) - ufi*sin(2*np.pi*f*tsave*dtf))*v
+        else:
+            expr = -w * v * u.dt2
+    return [Inc(gradm, expr)]
 
 
 def wf_as_src(v, w=1):
@@ -71,3 +88,23 @@ def freesurface(field, npml, forward=True):
         rhs = -f_m.subs({f.indices[-1]: npml + fs + 1})
         fs_eq += [Eq(lhs, rhs), Eq(f_m.subs({f.indices[-1]: npml}), 0)]
     return fs_eq
+
+
+def otf_dft(u, freq, factor=None):
+    if freq is None:
+        return [], None
+    # init
+    dft = []
+    dft_modes = []
+    freq_dim = Dimension(name='freq_dim')
+    nfreq = freq.shape[0]
+    f = Function(name='f', dimensions=(freq_dim,), shape=(nfreq,))
+    f.data[:] = freq[:]
+    for wf in as_tuple(u):
+        tsave = wf.grid.time_dim
+        ufr = Function(name='ufr%s'%wf.name, dimensions=(freq_dim,) + wf.indices[1:], shape=(nfreq,) + model.shape_domain)
+        ufi = Function(name='ufi%s'%wf.name, dimensions=(freq_dim,) + wf.indices[1:], shape=(nfreq,) + model.shape_domain)
+        dft += [Inc(ufr, wf*cos(2*np.pi*f*tsave*factor*dt))]
+        dft += [Inc(ufi, -dwf*sin(2*np.pi*f*tsave*factor*dt))]
+        dft_modes += [(ufr, ufi)]
+    return dft, dft_modes
