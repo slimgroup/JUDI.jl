@@ -12,9 +12,7 @@ def laplacian(v, irho):
         Lap = v.laplace
     else:
         if isinstance(irho, Function):
-            Lap = Lap = sum([first_derivative(first_derivative(v, fd_order=int(v.space_order/2), side=left, dim=d) * irho,
-                                              fd_order=int(v.space_order/2), dim=d, side=right)
-                             for d in dims])
+            Lap = grad(irho).T * grad(v) + irho * v.laplace
         else:
             Lap = irho * v.laplace
 

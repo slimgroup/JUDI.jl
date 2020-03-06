@@ -79,7 +79,7 @@ def gradient(model, residual, rcv_coords, u, dt=None, space_order=8, w=None):
 
     # Setup gradient wrt m
     gradm = Function(name="gradm", grid=model.grid)
-    w = w or model.grid.time_dim.spacing
+    w = w or model.grid.time_dim.spacing * model.irho
     g_expr = grad_expr(gradm, u, v, w=w)
 
     # Create operator and run

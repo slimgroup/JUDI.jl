@@ -51,7 +51,7 @@ def wf_as_src(v, w=1):
     return w * v
 
 def lin_src(model, v):
-    w = -model.dm * model.grid.time_dim.spacing
+    w = -model.dm * model.grid.time_dim.spacing * model.irho
     if type(v) is tuple:
         return (w * v[0].dt2, w * v[1].dt2)
     return w * v.dt2

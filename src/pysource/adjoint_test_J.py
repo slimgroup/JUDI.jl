@@ -26,20 +26,20 @@ rho = np.empty(shape, dtype=np.float32)
 v[:] = 1.5  # Top velocity (background)
 rho[:] = 1.0
 vp_i = np.linspace(1.5, 4.5, args.nlayer)
-rho_i = np.linspace(1.0, 2.8, args.nlayer)
 for i in range(1, args.nlayer):
     v[..., i*int(shape[-1] / args.nlayer):] = vp_i[i]  # Bottom velocity
-    rho[..., i*int(shape[-1] / args.nlayer):] = rho_i[i]  # Bottom velocity
 
 v0 = ndimage.gaussian_filter(v, sigma=10)
 v0[v < 1.51] = v[v < 1.51]
-rho0 = ndimage.gaussian_filter(rho, sigma=10)
+v0 = ndimage.gaussian_filter(v0, sigma=3)
+rho0 = (v0+.5)/2
 dm = v0**(-2) - v**(-2)
+dm[:, -1] = 0.
 # Set up model structures
 if is_tti:
     model = Model(shape=shape, origin=origin, spacing=spacing,
-                  vp=v0, epsilon=.05*(v0-1.5), delta=.03*(v0-1.5),
-                  theta=.1*(v0-1.5), rho=rho0, dm=dm, space_order=8)
+                  vp=v0, epsilon=.045*(v0-1.5), delta=.03*(v0-1.5),
+                  rho=rho0, theta=.1*(v0-1.5), dm=dm, space_order=8)
 else:
     model = Model(shape=shape, origin=origin, spacing=spacing,
                   vp=v0, rho=rho0, dm=dm)
