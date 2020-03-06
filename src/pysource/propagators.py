@@ -103,7 +103,7 @@ def gradient(model, residual, rcv_coords, u, eturn_op=False, space_order=8,
     return gradm.data
 
 
-def born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False, free_surface=False, free_surface=False):
+def born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False, free_surface=False):
     """
     Compute adjoint wavefield v = adjoint(F(m))*y
     and related quantities (||v||_w, v(xsrc))

@@ -15,7 +15,7 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Geometry
     rec_coords = setup_grid(recGeometry, modelPy.shape)
 
     # Devito call
-    dOut = get(pycall(ac."forward", PyObject, modelPy, src_coords, qIn, rec_coords, space_order=options.space_order,
+    dOut = get(pycall(ac."forward_rec", PyObject, modelPy, src_coords, qIn, rec_coords, space_order=options.space_order,
         nb=modelPy.nbpml, free_surface=options.free_surface), 0)
     ntRec > ntComp && (dOut = [dOut zeros(size(dOut,1), ntRec - ntComp)])
     dOut = time_resample(dOut,dtComp,recGeometry)
@@ -46,7 +46,7 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Geometry
     rec_coords = setup_grid(recGeometry, modelPy.shape)
 
     # Devito call
-    qOut = pycall(ac."adjoint", Array{Float32,2}, modelPy, src_coords, rec_coords, dIn, space_order=options.space_order, nb=modelPy.nbpml, free_surface=options.free_surface)
+    qOut = pycall(ac."adjoint_rec", Array{Float32,2}, modelPy, src_coords, rec_coords, dIn, space_order=options.space_order, nb=modelPy.nbpml, free_surface=options.free_surface)
     ntSrc > ntComp && (qOut = [qOut zeros(size(qOut), ntSrc - ntComp)])
     qOut = time_resample(qOut,dtComp,srcGeometry)
 

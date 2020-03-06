@@ -257,23 +257,18 @@ function ricker_wavelet(tmax, dt, f0)
 end
 
 function load_pymodel()
-    pushfirst!(PyVector(pyimport("sys")."path"), joinpath(JUDIPATH, "Python"))
-    return pyimport("PyModel")
+    pushfirst!(PyVector(pyimport("sys")."path"), joinpath(JUDIPATH, "pysource"))
+    return pyimport("models")
 end
 
 function load_numpy()
-    pushfirst!(PyVector(pyimport("sys")."path"), joinpath(JUDIPATH, "Python"))
+    pushfirst!(PyVector(pyimport("sys")."path"), joinpath(JUDIPATH, "pysource"))
     return pyimport("numpy")
 end
 
-function load_devito_jit(model::Model)
-    pushfirst!(PyVector(pyimport("sys")."path"), joinpath(JUDIPATH, "Python"))
-    return pyimport("JAcoustic_codegen")
-end
-
-function load_devito_jit(model::Model_TTI)
-    pushfirst!(PyVector(pyimport("sys")."path"), joinpath(JUDIPATH, "Python"))
-    return pyimport("TTI_operators")
+function load_devito_jit(model::Modelall)
+    pushfirst!(PyVector(pyimport("sys")."path"), joinpath(JUDIPATH, "pysource"))
+    return pyimport("interface")
 end
 
 function calculate_dt(model::Model_TTI)
