@@ -13,12 +13,12 @@ class PhysicalDomain(SubDomain):
 
     name = 'phydomain'
 
-    def __init__(self, nbpml):
+    def __init__(self, nbl):
         super(PhysicalDomain, self).__init__()
-        self.nbpml = nbpml
+        self.nbl = nbl
 
     def define(self, dimensions):
-        return {d: ('middle', self.nbpml, self.nbpml) for d in dimensions}
+        return {d: ('middle', self.nbl, self.nbl) for d in dimensions}
 
 
 def initialize_damp(damp, nbl, spacing, mask=False):

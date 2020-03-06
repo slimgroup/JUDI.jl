@@ -1,3 +1,5 @@
+from devito.tools import Pickable
+
 from sources import *
 
 
@@ -7,7 +9,7 @@ def src_rec(model, u, src_coords=None, rec_coords=None, wavelet=None, fw=True, n
     dt = model.grid.time_dim.spacing
     geom_expr = []
     src = None
-    nt = nt or  wavelet.shape[0]
+    nt = nt or wavelet.shape[0]
     if src_coords is not None:
         src = PointSource(name="src", grid=model.grid, ntime=nt, coordinates=src_coords)
         src.data[:] = wavelet[:] if wavelet is not None else 0.
@@ -26,7 +28,6 @@ def src_rec(model, u, src_coords=None, rec_coords=None, wavelet=None, fw=True, n
         adj_rcv = rcv.interpolate(expr=rec_expr)
         geom_expr += adj_rcv
     return geom_expr, src, rcv
-
 
 
 class AcquisitionGeometry(Pickable):
@@ -129,7 +130,8 @@ class AcquisitionGeometry(Pickable):
                                coordinates=self.src_positions)
         else:
             return sources[self.src_type](name='src', grid=self.grid, f0=self.f0,
-                                          time=self.time_axis.time_values, npoint=self.nsrc,
+                                          time=self.time_axis.time_values,
+                                          npoint=self.nsrc,
                                           coordinates=self.src_positions)
 
     _pickle_args = ['model', 'rec_positions', 'src_positions', 't0', 'tn']

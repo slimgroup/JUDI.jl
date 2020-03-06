@@ -1,6 +1,6 @@
 from kernels import wave_kernel
 from geom_utils import src_rec
-from wave_utils import wavefield, grad_expr, lin_src
+from wave_utils import wavefield, grad_expr, lin_src, otf_dft
 
 from devito import Operator, Function
 
@@ -8,12 +8,14 @@ from devito import Operator, Function
 def name(model):
     return "tti" if model.is_tti else ""
 
+
 def op_kwargs(model, fs=False):
     kw = {}
     if fs:
         z = model.grid.dimensions[-1].name
         kw.update({'%s_m' % z: model.nbl})
     return kw
+
 
 # Forward propagation
 def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
@@ -25,7 +27,7 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     u = wavefield(model, space_order, save=save, nt=wavelet.shape[0])
 
     # Set up PDE expression and rearrange
-    pde = wave_kernel(model, u, q=q, fs=freesurface)
+    pde = wave_kernel(model, u, q=q, fs=free_surface)
 
     # Setup source and receiver
     geom_expr, src, rcv = src_rec(model, u, src_coords=src_coords,
@@ -34,11 +36,11 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     dft, dft_modes = otf_dft(u, freq_list)
     # Create operator and run
     subs = model.spacing_map
-    op = Operator(pde + geom_expr + extras, subs=subs,
+    op = Operator(pde + geom_expr, subs=subs,
                   dse="advanced", dle="advanced", name="forward"+name(model))
     if return_op:
         return op, u, rcv
-    op(**op_kwargs(mpdel, fs=free_surface))
+    op(**op_kwargs(model, fs=free_surface))
 
     # Output
     return rcv.data, dft_modes or u
@@ -54,7 +56,7 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0,
     v = wavefield(model, space_order, save=save, nt=y.shape[0], fw=False)
 
     # Set up PDE expression and rearrange
-    pde = wave_kernel(model, v, q=q, fw=False)
+    pde = wave_kernel(model, v, q=q, fw=False, fs=free_surface)
 
     # Setup source and receiver
     geom_expr, _, rcv = src_rec(model, v, src_coords=rcv_coords,
@@ -64,14 +66,14 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0,
     subs = model.spacing_map
     op = Operator(pde + geom_expr, subs=subs, dse="advanced", dle="advanced",
                   name="adjoint"+name(model))
-    op(**op_kwargs(mpdel, fs=free_surface))
+    op(**op_kwargs(model, fs=free_surface))
 
     # Output
     return rcv.data, v
 
 
-def gradient(model, residual, rcv_coords, u, eturn_op=False, space_order=8,
-             w=None, free_surface=False, freq=False):
+def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8,
+             w=None, free_surface=False, freq=None):
     """
     Compute adjoint wavefield v = adjoint(F(m))*y
     and related quantities (||v||_w, v(xsrc))
@@ -80,7 +82,7 @@ def gradient(model, residual, rcv_coords, u, eturn_op=False, space_order=8,
     v = wavefield(model, space_order, fw=False)
 
     # Set up PDE expression and rearrange
-    pde = wave_kernel(model, v, fw=False)
+    pde = wave_kernel(model, v, fw=False, fs=free_surface)
 
     # Setup source and receiver
     geom_expr, src, _ = src_rec(model, v, src_coords=rcv_coords,
@@ -103,7 +105,8 @@ def gradient(model, residual, rcv_coords, u, eturn_op=False, space_order=8,
     return gradm.data
 
 
-def born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False, free_surface=False):
+def born(model, src_coords, rcv_coords, wavelet, space_order=8,
+         save=False, free_surface=False):
     """
     Compute adjoint wavefield v = adjoint(F(m))*y
     and related quantities (||v||_w, v(xsrc))
@@ -112,8 +115,8 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False, free
     u = wavefield(model, space_order, save=save, nt=wavelet.shape[0])
     ul = wavefield(model, space_order, name="l")
     # Set up PDE expression and rearrange
-    pde = wave_kernel(model, u, fs=freesurface)
-    pdel = wave_kernel(model, ul, q=lin_src(model, u), fs=freesurface)
+    pde = wave_kernel(model, u, fs=free_surface)
+    pdel = wave_kernel(model, ul, q=lin_src(model, u), fs=free_surface)
     # Setup source and receiver
     geom_expr, _, _ = src_rec(model, u, src_coords=src_coords, wavelet=wavelet)
     geom_exprl, _, rcvl = src_rec(model, ul, rec_coords=rcv_coords, nt=wavelet.shape[0])
@@ -122,7 +125,7 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False, free
     subs = model.spacing_map
     op = Operator(pde + geom_expr + pdel + geom_exprl, subs=subs,
                   dse="advanced", dle="advanced", name="born"+name(model))
-    op(**op_kwargs(mpdel, fs=free_surface))
+    op(**op_kwargs(model, fs=free_surface))
 
     # Output
     return rcvl.data, u

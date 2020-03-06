@@ -21,8 +21,8 @@ def weight_srcfocus(model, src_coords, delta=np.float32(0.01)):
     """
 
     ix, iz = model.grid.dimensions
-    isrc = (np.float32(model.nbpml) + src_coords[0, 0] / model.spacing[0],
-            np.float32(model.nbpml) + src_coords[0, 1] / model.spacing[1])
+    isrc = (np.float32(model.nbl) + src_coords[0, 0] / model.spacing[0],
+            np.float32(model.nbl) + src_coords[0, 1] / model.spacing[1])
     h = np.sqrt(model.spacing[0]*model.spacing[1])
     return sqrt((ix-isrc[0])**2+(iz-isrc[1])**2+(delta/h)**np.float32(2))/(delta/h)
 
@@ -33,8 +33,8 @@ def weight_depth(model, src_coords, delta=np.float32(0.01)):
     """
 
     _, iz = model.grid.dimensions
-    isrc = (np.float32(model.nbpml)+src_coords[0, 0]/model.spacing[0],
-            np.float32(model.nbpml)+src_coords[0, 1]/model.spacing[1])
+    isrc = (np.float32(model.nbl)+src_coords[0, 0]/model.spacing[0],
+            np.float32(model.nbl)+src_coords[0, 1]/model.spacing[1])
     h = np.sqrt(model.spacing[0]*model.spacing[1])
     return sqrt((iz-isrc[1])**2+(delta/h)**np.float32(2))/(delta/h)
 
