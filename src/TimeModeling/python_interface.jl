@@ -188,7 +188,7 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Geometry
     rec_coords = setup_grid(recGeometry, modelPy.shape)
 
     # Devito call
-    dOut = pycall(ac."born", Array{Float32,2}, modelPy, src_coords, qIn, rec_coords, space_order=options.space_order, isic=options.isic)
+    dOut = pycall(ac."born_rec", Array{Float32,2}, modelPy, src_coords, qIn, rec_coords, space_order=options.space_order)
     ntRec > ntComp && (dOut = [dOut zeros(size(dOut,1), ntRec - ntComp)])
     dOut = time_resample(dOut,dtComp,recGeometry)
 
@@ -215,11 +215,12 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Geometry
     # Set up coordinates with devito dimensions
     src_coords = setup_grid(srcGeometry, modelPy.shape)
     rec_coords = setup_grid(recGeometry, modelPy.shape)
-    grad = pycall(ac."J_adjoint", Array{Float32, length(modelPy.shape)}, modelPy, rec_coords, dIn,
-                  u=u0, space_order=options.space_order, checkpointing=options.checkpointing
+    grad = pycall(ac."J_adjoint", Array{Float32, length(modelPy.shape)}, modelPy,
+                  src_coords, qIn, rec_coords, dIn,
+                  space_order=options.space_order, checkpointing=options.optimal_checkpointing,
                   freq_list=options.frequencies)
 
     # Remove PML and return gradient as Array
-    grad = remove_padding(grad,modelPy.nbl, true_adjoint=options.sum_padding)
+    grad = remove_padding(grad, modelPy.nbl, true_adjoint=options.sum_padding)
     return vec(grad)
 end

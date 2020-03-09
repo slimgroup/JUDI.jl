@@ -39,26 +39,20 @@ def weighted_norm(u, weight=None):
     return norm_vy2, n_v
 
 
-def grad_expr(gradm, v, u, w=1, freq=False):
-    # tti
-    tsave = gradm.grid.time_dim
-    dtf = gradm.grid.time_dim.spacing
-    if type(v) is tuple:
-        if freq:
-            ufr1, ufi1 = u[0]
-            ufr12, ufi2 = u[1]
-            expr = w*(ufr1*cos(2*np.pi*f*tsave*dtf) - ufi1*sin(2*np.pi*f*tsave*dtf))*v[0]
-            expr += w*(ufr2*cos(2*np.pi*f*tsave*dtf) - ufi2*sin(2*np.pi*f*tsave*dtf))*v[1]
-        else:
-            expr = -w * (v[0] * u[0].dt2 + v[1] * u[1].dt2)
-    # Acoustic
+def corr_fields(u, v, freq=False):
+    if freq:
+        ufr, ufi = u
+        tsave = u.grid.time_dim
+        expr = (ufr*cos(2*np.pi*f*tsave*dtf) - ufi*sin(2*np.pi*f*tsave*dtf))*v
     else:
-        if freq:
-            ufr, ufi = u
-            tsave = gradm.grid.time_dim
-            expr = w*(ufr*cos(2*np.pi*f*tsave*dtf) - ufi*sin(2*np.pi*f*tsave*dtf))*v
-        else:
-            expr = -w * v * u.dt2
+        expr = - v * u.dt2
+    return expr
+
+
+def grad_expr(gradm, v, u, w=1, freq=False):
+    expr = 0
+    for wfu, wfv in zip(as_tuple(u), as_tuple(v)):
+        expr += w * corr_fields(wfu, wfv)
     return [Inc(gradm, expr)]
 
 
@@ -68,7 +62,7 @@ def wf_as_src(v, w=1):
     return w * v
 
 def lin_src(model, v):
-    w = -model.dm * model.grid.time_dim.spacing * model.irho
+    w = - model.dm * model.irho
     if type(v) is tuple:
         return (w * v[0].dt2, w * v[1].dt2)
     return w * v.dt2

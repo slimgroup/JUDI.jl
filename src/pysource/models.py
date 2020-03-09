@@ -202,6 +202,7 @@ class Model(GenericModel):
                                     subdomains)
 
         self.scale = 1
+        from IPython import embed; embed()
         # Create square slowness of the wave as symbol `m`
         self._vp = self._gen_phys_param(vp, 'vp', space_order)
         self.irho = self._gen_phys_param(1./rho, 'irho', space_order, default_value=1)

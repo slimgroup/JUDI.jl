@@ -9,6 +9,5 @@ PyCall
 PyPlot
 JOLI
 SegyIO
-DSP
 Compat
-OSQP
+Convex

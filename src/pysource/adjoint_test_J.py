@@ -66,7 +66,7 @@ print("Forward J")
 dD_hat, u0l = born(model, src.coordinates.data, rec_t.coordinates.data, src.data, save=True)
 
 # Adjoint
-print("Adjoint J")
+print("Forward")
 _, u0 = forward(model, src.coordinates.data, rec_t.coordinates.data, src.data, save=True)
 
 # Adjoint
@@ -74,7 +74,7 @@ print("Adjoint J")
 dm_hat = gradient(model, dD_hat, rec_t.coordinates.data, u0l)
 
 # Adjoint test
-a = np.dot(dD_hat.flatten(), dD_hat.flatten())
+a = model.critical_dt * np.dot(dD_hat.flatten(), dD_hat.flatten())
 b = np.dot(dm_hat.flatten(), model.dm.data.flatten())
 if is_tti:
     c = np.linalg.norm(u0[0].data.flatten()- u0l[0].data.flatten())
@@ -85,5 +85,3 @@ print("Difference between saving with forward and born", c)
 print("Adjoint test J")
 print("Difference: ", a - b)
 print("Relative error: ", a/b - 1)
-
-from IPython import embed; embed()

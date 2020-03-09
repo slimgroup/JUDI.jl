@@ -150,8 +150,9 @@ function limit_model_to_receiver_area(srcGeometry::Geometry,recGeometry::Geometr
         typeof(model.rho) <: Array && (model.rho = model.rho[nx_min: nx_max, :])
         model.o = (ox, oy, oz)
     end
+    println("N old: ", model.n)
     model.n = size(model.m)
-    # println("N new: ", model.n)
+    println("N new: ", model.n)
     if isempty(pert)
         return model
     else
