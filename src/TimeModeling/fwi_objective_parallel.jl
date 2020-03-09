@@ -15,7 +15,7 @@ Example
     function_value, gradient = fwi_objective(model, source, dobs)
 
 """
-function fwi_objective(model::Model, source::judiVector, dObs::judiVector; options=Options(), frequencies=[])
+function fwi_objective(model::Modelall, source::judiVector, dObs::judiVector; options=Options(), frequencies=[])
 # fwi_objective function for multiple sources. The function distributes the sources and the input data amongst the available workers.
 
     # fwi_objective_par = remote(TimeModeling.fwi_objective)
