@@ -11,24 +11,10 @@ n = (120,100)	# (x,y,z) or (x,z)
 d = (10.,10.)
 o = (0.,0.)
 
-# # Velocity [km/s]
-# v = ones(Float32,n) * 2.0f0
-# v[:,Int(round(end/2)):end] = 3.0f0
-# v0 = smooth10(v,n)
-# rho = ones(Float32, n)
-# rho[:, Int(round(end/2)):end] = 1.5f0
-#
-# # Slowness squared [s^2/km^2]
-# m = (1f0./v).^2
-# m0 = (1f0./v0).^2
-# dm = m0 - m
-#
 # # Setup info and model structure
 nsrc = 1	# number of sources
 ntComp = 250
 info = Info(prod(n), nsrc, ntComp)	# number of gridpoints, number of experiments, number of computational time steps
-# model = Model(n,d,o,m;rho=rho)
-# model0 = Model(n,d,o,m0;rho=rho)
 
 
 # Velocity [km/s]
@@ -96,7 +82,7 @@ F = judiModeling(info,model,srcGeometry,recGeometry;options=opt)
 q = judiVector(srcGeometry,wavelet)
 d = F*q
 
-# # FWI gradient and function value for m0
+# # # FWI gradient and function value for m0
 # Jm0, grad = fwi_objective(model0,q,d;options=opt)
 #
 # for j=1:iter
@@ -122,7 +108,7 @@ d = F*q
 # xlabel("h")
 # ylabel(L"Error $||\cdot||^\infty$")
 # title("FWI gradient test")
-# #axis((h_all[end], h_all[1], 1.0e-8,500))
+#axis((h_all[end], h_all[1], 1.0e-8,500))
 
 
 # FWI gradient and function value for m0

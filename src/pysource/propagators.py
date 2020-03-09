@@ -43,7 +43,7 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     op(**op_kwargs(model, fs=free_surface))
 
     # Output
-    return rcv.data, dft_modes or u
+    return getattr(rcv, 'data', None), dft_modes or u
 
 
 def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0,
@@ -69,7 +69,7 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0,
     op(**op_kwargs(model, fs=free_surface))
 
     # Output
-    return rcv.data, v
+    return getattr(rcv, 'data', None), v
 
 
 def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8,
