@@ -1,6 +1,7 @@
 # The Julia Devito Inversion framework (JUDI)
 
 [![Build Status ](https://github.com/slimgroup/JUDI.jl/workflows/CI-tests/badge.svg)](https://github.com/slimgroup/JUDI.jl/actions?query=workflow%3ACI-tests)
+**[[Documentation](https://slimgroup.github.io/JUDI.jl/)]**
 
 ## Overview
 
