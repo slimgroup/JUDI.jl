@@ -38,6 +38,7 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     subs = model.spacing_map
     op = Operator(pde + geom_expr, subs=subs,
                   dse="advanced", dle="advanced", name="forward"+name(model))
+
     if return_op:
         return op, u, rcv
     op(**op_kwargs(model, fs=free_surface))

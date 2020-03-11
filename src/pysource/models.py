@@ -107,7 +107,7 @@ class GenericModel(object):
                                 parameter=is_param)
             initialize_function(function, field, self.nbl)
         else:
-            function = Constant(name=name, value=field)
+            return field
         self._physical_parameters.append(name)
         return function
 

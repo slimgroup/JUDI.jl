@@ -1,13 +1,10 @@
 from devito import grad, first_derivative, centered, transpose, Function, div, left, right
-from devito.symbolics import retrieve_functions
 
 
 def laplacian(v, irho):
     """
     Laplacian with density div( 1/rho grad) (u)
     """
-    func = list(retrieve_functions(v))[0]
-    dims = func.space_dimensions
     if irho is None or irho == 1:
         Lap = v.laplace
     else:
@@ -64,8 +61,7 @@ def Gzz(field, costheta, sintheta, cosphi, sinphi, irho):
         return Gzz2d(field, costheta, sintheta, irho)
 
     order1 = field.space_order // 2
-    func = list(retrieve_functions(field))[0]
-    x, y, z = func.space_dimensions
+    x, y, z = field.grid.dimensions
     Gz = -(sintheta * cosphi * first_derivative(field, dim=x, side=centered,
                                                 fd_order=order1) +
            sintheta * sinphi * first_derivative(field, dim=y, side=centered,
@@ -95,9 +91,11 @@ def Gzz2d(field, costheta, sintheta, irho):
     :param space_order: discretization order
     :return: rotated second order derivative wrt ztranspose
     """
+    if sintheta == 0:
+        return getattr(field, 'd%s2'%field.grid.dimensions[-1])
+
     order1 = field.space_order // 2
-    func = list(retrieve_functions(field))[0]
-    x, z = func.space_dimensions
+    x, z = field.grid.dimensions
     Gz = -(sintheta * first_derivative(field, dim=x, side=centered, fd_order=order1) +
            costheta * first_derivative(field, dim=z, side=centered, fd_order=order1))
     Gzz = (first_derivative(Gz * sintheta * irho, dim=x, side=centered,
@@ -122,9 +120,11 @@ def Gxxyy(field, costheta, sintheta, cosphi, sinphi, irho):
     :param space_order: discretization order
     :return: Sum of the 3D rotated second order derivative in the direction x and y
     """
+    if sintheta == 0 and sinphi == 0:
+        return sum([getattr(field, 'd%s2'%d) for d in field.grid.dimensions[:-1]])
+
     lap = laplacian(field, irho)
-    func = list(retrieve_functions(field))[0]
-    if func.grid.dim == 2:
+    if field.grid.dim == 2:
         Gzzr = Gzz2d(field, costheta, sintheta, irho)
     else:
         Gzzr = Gzz(field, costheta, sintheta, cosphi, sinphi, irho)
