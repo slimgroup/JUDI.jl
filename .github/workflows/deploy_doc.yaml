@@ -1,0 +1,35 @@
+name: Publish docs via GitHub Pages
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    name: Deploy docs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout master
+        uses: actions/checkout@v1
+
+      - name: Set up Python 3.7
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.7
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install mkdocs jupyter pymdown-extensions python-markdown-math
+
+      - name: Build doc
+        run: for f in *.ipynb;do jupyter nbconvert --to markdown --output-dir='../../docs/tutorials' $f; done
+        working-directory: examples/notebooks/
+
+      - run: mkdocs build
+
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./site
