@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  
+  
+  <link rel="shortcut icon" href="../../img/favicon.ico">
+  <title>Acoustic FWI - JUDI documentation</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700" />
+
+  <link rel="stylesheet" href="../../css/theme.css" />
+  <link rel="stylesheet" href="../../css/theme_extra.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" />
+  
+  <script>
+    // Current page data
+    var mkdocs_page_name = "Acoustic FWI";
+    var mkdocs_page_input_path = "tutorials/full_waveform_inversion.md";
+    var mkdocs_page_url = null;
+  </script>
+  
+  <script src="../../js/jquery-2.1.1.min.js" defer></script>
+  <script src="../../js/modernizr-2.8.3.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script> 
+  
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+        <a href="../.." class="icon icon-home"> JUDI documentation</a>
+        <div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                    </li>
+                </ul>
+                <p class="caption"><span class="caption-text">Tutorials</span></p>
+                <ul class="current">
+                    <li class="toctree-l1 current"><a class="reference internal current" href="./">Acoustic FWI</a>
+    <ul class="current">
+    </ul>
+                    </li>
+                    <li class="toctree-l1"><a class="reference internal" href="../fwi_example_NLopt/">Acoustic RTM with NLopt</a>
+                    </li>
+                    <li class="toctree-l1"><a class="reference internal" href="../judi_leading_edge_tutorial/">FWI tutorial with JUDI (TLE tuto)</a>
+                    </li>
+                </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../..">JUDI documentation</a>
+      </nav>
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../..">Docs</a> &raquo;</li>
+    
+      
+        
+          <li>Tutorials &raquo;</li>
+        
+      
+    
+    <li>Acoustic FWI</li>
+    <li class="wy-breadcrumbs-aside">
+      
+    </li>
+  </ul>
+  
+  <hr/>
+</div>
+          <div role="main">
+            <div class="section">
+              
+                <h2 id="fwiwith-devito-and-judi">FWIwith Devito and JUDI</h2>
+<div class="highlight"><pre><span></span><code><span class="n">addprocs</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+<span class="k">using</span> <span class="n">SegyIO</span><span class="p">,</span> <span class="n">HDF5</span><span class="p">,</span> <span class="n">PyPlot</span><span class="p">,</span> <span class="n">JUDI</span><span class="o">.</span><span class="n">TimeModeling</span><span class="p">,</span> <span class="n">JUDI</span><span class="o">.</span><span class="n">SLIM_optim</span>
+</code></pre></div>
+
+<div class="highlight"><pre><span></span><code><span class="n">m0</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">o</span> <span class="o">=</span> <span class="n">read</span><span class="p">(</span><span class="n">h5open</span><span class="p">(</span><span class="s">&quot;overthrust_model.h5&quot;</span><span class="p">,</span><span class="s">&quot;r&quot;</span><span class="p">),</span><span class="s">&quot;m0&quot;</span><span class="p">,</span><span class="s">&quot;n&quot;</span><span class="p">,</span><span class="s">&quot;d&quot;</span><span class="p">,</span><span class="s">&quot;o&quot;</span><span class="p">);</span> <span class="n">title</span><span class="p">(</span><span class="s">&quot;Starting model&quot;</span><span class="p">)</span>
+<span class="n">model0</span> <span class="o">=</span> <span class="n">Model</span><span class="p">((</span><span class="n">n</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span><span class="n">n</span><span class="p">[</span><span class="mi">2</span><span class="p">]),</span> <span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span><span class="n">d</span><span class="p">[</span><span class="mi">2</span><span class="p">]),</span> <span class="p">(</span><span class="n">o</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span><span class="n">o</span><span class="p">[</span><span class="mi">2</span><span class="p">]),</span> <span class="n">m0</span><span class="p">);</span>
+<span class="n">imshow</span><span class="p">(</span><span class="n">sqrt</span><span class="o">.</span><span class="p">(</span><span class="mf">1f0</span><span class="o">./</span><span class="n">m0</span><span class="p">)</span><span class="o">&#39;</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s">&quot;GnBu&quot;</span><span class="p">,</span> <span class="n">extent</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">10</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">0</span><span class="p">));</span>
+<span class="n">xlabel</span><span class="p">(</span><span class="s">&quot;Lateral position [km]&quot;</span><span class="p">);</span>
+<span class="n">ylabel</span><span class="p">(</span><span class="s">&quot;Depth [km]&quot;</span><span class="p">);</span>
+</code></pre></div>
+
+<p><img alt="png" src="../full_waveform_inversion_files/full_waveform_inversion_2_0.png" /></p>
+<div class="highlight"><pre><span></span><code><span class="n">block</span> <span class="o">=</span> <span class="n">segy_read</span><span class="p">(</span><span class="s">&quot;overthrust_shot_records.segy&quot;</span><span class="p">);</span>
+<span class="n">d_obs</span> <span class="o">=</span> <span class="n">judiVector</span><span class="p">(</span><span class="n">block</span><span class="p">);</span>
+</code></pre></div>
+
+<pre><code>[1m[33mWARNING: [39m[22m[33mFixed length trace flag set in stream: IOBuffer(data=UInt8[...], readable=true, writable=false, seekable=true, append=false, size=7076688, maxsize=Inf, ptr=3601, mark=-1)[39m
+</code></pre>
+<div class="highlight"><pre><span></span><code><span class="n">println</span><span class="p">(</span><span class="n">typeof</span><span class="p">(</span><span class="n">d_obs</span><span class="p">))</span>
+</code></pre></div>
+
+<pre><code>JUDI.TimeModeling.judiVector{Float32}
+</code></pre>
+<div class="highlight"><pre><span></span><code><span class="n">imshow</span><span class="p">(</span><span class="n">d_obs</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">8</span><span class="p">],</span> <span class="n">cmap</span><span class="o">=</span><span class="s">&quot;seismic&quot;</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=-</span><span class="mi">3</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">extent</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="n">size</span><span class="p">(</span><span class="n">d_obs</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">8</span><span class="p">],</span><span class="mi">2</span><span class="p">),</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">]);</span> 
+<span class="n">ax1</span> <span class="o">=</span> <span class="n">gca</span><span class="p">();</span> <span class="n">ax1</span><span class="p">[</span><span class="o">:</span><span class="n">set_aspect</span><span class="p">](</span><span class="s">&quot;auto&quot;</span><span class="p">);</span> <span class="n">xlabel</span><span class="p">(</span><span class="s">&quot;Receiver no.&quot;</span><span class="p">);</span> <span class="n">ylabel</span><span class="p">(</span><span class="s">&quot;Time [s]&quot;</span><span class="p">)</span>
+<span class="n">colorbar</span><span class="p">();</span> <span class="n">title</span><span class="p">(</span><span class="s">&quot;Observed data&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<p><img alt="png" src="../full_waveform_inversion_files/full_waveform_inversion_5_0.png" /></p>
+<pre><code>PyObject &lt;matplotlib.text.Text object at 0x13bab1190&gt;
+</code></pre>
+<div class="highlight"><pre><span></span><code><span class="n">src_geometry</span> <span class="o">=</span> <span class="n">Geometry</span><span class="p">(</span><span class="n">block</span><span class="p">;</span> <span class="n">key</span><span class="o">=</span><span class="s">&quot;source&quot;</span><span class="p">);</span>
+<span class="n">src_data</span> <span class="o">=</span> <span class="n">ricker_wavelet</span><span class="p">(</span><span class="n">src_geometry</span><span class="o">.</span><span class="n">t</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">src_geometry</span><span class="o">.</span><span class="n">dt</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mf">0.008f0</span><span class="p">);</span>
+<span class="n">q</span> <span class="o">=</span> <span class="n">judiVector</span><span class="p">(</span><span class="n">src_geometry</span><span class="p">,</span> <span class="n">src_data</span><span class="p">);</span>
+<span class="n">plot</span><span class="p">(</span><span class="n">q</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">1</span><span class="p">]);</span>
+</code></pre></div>
+
+<p><img alt="png" src="../full_waveform_inversion_files/full_waveform_inversion_6_0.png" /></p>
+<div class="highlight"><pre><span></span><code><span class="n">ntComp</span> <span class="o">=</span> <span class="n">get_computational_nt</span><span class="p">(</span><span class="n">q</span><span class="o">.</span><span class="n">geometry</span><span class="p">,</span> <span class="n">d_obs</span><span class="o">.</span><span class="n">geometry</span><span class="p">,</span> <span class="n">model0</span><span class="p">);</span>
+<span class="n">info</span> <span class="o">=</span> <span class="n">Info</span><span class="p">(</span><span class="n">prod</span><span class="p">(</span><span class="n">model0</span><span class="o">.</span><span class="n">n</span><span class="p">),</span> <span class="n">d_obs</span><span class="o">.</span><span class="n">nsrc</span><span class="p">,</span> <span class="n">ntComp</span><span class="p">);</span>
+</code></pre></div>
+
+<div class="highlight"><pre><span></span><code><span class="n">Ainv</span> <span class="o">=</span> <span class="n">judiModeling</span><span class="p">(</span><span class="n">info</span><span class="p">,</span> <span class="n">model0</span><span class="p">);</span>
+<span class="n">Pr</span> <span class="o">=</span> <span class="n">judiProjection</span><span class="p">(</span><span class="n">info</span><span class="p">,</span> <span class="n">d_obs</span><span class="o">.</span><span class="n">geometry</span><span class="p">);</span>
+<span class="n">Ps</span> <span class="o">=</span> <span class="n">judiProjection</span><span class="p">(</span><span class="n">info</span><span class="p">,</span> <span class="n">q</span><span class="o">.</span><span class="n">geometry</span><span class="p">);</span>
+</code></pre></div>
+
+<div class="highlight"><pre><span></span><code><span class="n">i</span> <span class="o">=</span> <span class="mi">8</span><span class="p">;</span>
+<span class="n">d_pred</span> <span class="o">=</span> <span class="n">Pr</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">*</span><span class="n">Ainv</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">*</span><span class="n">Ps</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">&#39;*</span><span class="n">q</span><span class="p">[</span><span class="n">i</span><span class="p">];</span>
+<span class="n">imshow</span><span class="p">(</span><span class="n">d_pred</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">cmap</span><span class="o">=</span><span class="s">&quot;seismic&quot;</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=-</span><span class="mi">3</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">extent</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="n">size</span><span class="p">(</span><span class="n">d_obs</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">8</span><span class="p">],</span><span class="mi">2</span><span class="p">),</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">]);</span> 
+<span class="n">ax1</span> <span class="o">=</span> <span class="n">gca</span><span class="p">();</span> <span class="n">ax1</span><span class="p">[</span><span class="o">:</span><span class="n">set_aspect</span><span class="p">](</span><span class="s">&quot;auto&quot;</span><span class="p">);</span> <span class="n">xlabel</span><span class="p">(</span><span class="s">&quot;Receiver no.&quot;</span><span class="p">);</span> <span class="n">ylabel</span><span class="p">(</span><span class="s">&quot;Time [s]&quot;</span><span class="p">)</span>
+<span class="n">colorbar</span><span class="p">();</span> <span class="n">title</span><span class="p">(</span><span class="s">&quot;Predicted data&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<p><img alt="png" src="../full_waveform_inversion_files/full_waveform_inversion_9_0.png" /></p>
+<pre><code>PyObject &lt;matplotlib.text.Text object at 0x1253df150&gt;
+</code></pre>
+<div class="highlight"><pre><span></span><code><span class="n">J</span> <span class="o">=</span> <span class="n">judiJacobian</span><span class="p">(</span><span class="n">Pr</span><span class="o">*</span><span class="n">Ainv</span><span class="o">*</span><span class="n">Ps</span><span class="o">&#39;</span><span class="p">,</span><span class="n">q</span><span class="p">);</span>
+<span class="c">#H_GN = J&#39;*J    # Gauss-Newton Hessian</span>
+<span class="n">g</span> <span class="o">=</span> <span class="n">J</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">&#39;*</span><span class="p">(</span><span class="n">d_pred</span> <span class="o">-</span> <span class="n">d_obs</span><span class="p">[</span><span class="n">i</span><span class="p">]);</span>
+<span class="n">imshow</span><span class="p">(</span><span class="n">reshape</span><span class="p">(</span><span class="n">g</span><span class="p">,</span><span class="n">model0</span><span class="o">.</span><span class="n">n</span><span class="p">)</span><span class="o">&#39;</span><span class="p">,</span><span class="n">vmin</span><span class="o">=-</span><span class="mf">2e2</span><span class="p">,</span><span class="n">vmax</span><span class="o">=</span><span class="mf">2e2</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s">&quot;GnBu&quot;</span><span class="p">);</span> <span class="n">title</span><span class="p">(</span><span class="s">&quot;Single gradient&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<p><img alt="png" src="../full_waveform_inversion_files/full_waveform_inversion_10_0.png" /></p>
+<pre><code>PyObject &lt;matplotlib.text.Text object at 0x125097d10&gt;
+</code></pre>
+<p>This is a markdown cell <span><span class="MathJax_Preview">\mathbf{Ax} = \mathbf{b}</span><script type="math/tex">\mathbf{Ax} = \mathbf{b}</script></span></p>
+<div class="highlight"><pre><span></span><code><span class="c"># Set up bound constrains</span>
+<span class="n">v0</span> <span class="o">=</span> <span class="n">sqrt</span><span class="o">.</span><span class="p">(</span><span class="mf">1f0</span><span class="o">./</span><span class="n">model0</span><span class="o">.</span><span class="n">m</span><span class="p">)</span>
+<span class="n">vmin</span> <span class="o">=</span> <span class="n">ones</span><span class="p">(</span><span class="kt">Float32</span><span class="p">,</span> <span class="n">model0</span><span class="o">.</span><span class="n">n</span><span class="p">)</span><span class="o">*</span><span class="mf">1.3f0</span><span class="p">;</span>
+<span class="n">vmax</span> <span class="o">=</span> <span class="n">ones</span><span class="p">(</span><span class="kt">Float32</span><span class="p">,</span> <span class="n">model0</span><span class="o">.</span><span class="n">n</span><span class="p">)</span><span class="o">*</span><span class="mf">6.5f0</span><span class="p">;</span>
+
+<span class="c"># Fix water column</span>
+<span class="n">vmin</span><span class="p">[</span><span class="o">:</span><span class="p">,</span><span class="mi">1</span><span class="o">:</span><span class="mi">21</span><span class="p">]</span> <span class="o">=</span> <span class="n">v0</span><span class="p">[</span><span class="o">:</span><span class="p">,</span><span class="mi">1</span><span class="o">:</span><span class="mi">21</span><span class="p">];</span>
+<span class="n">vmax</span><span class="p">[</span><span class="o">:</span><span class="p">,</span><span class="mi">1</span><span class="o">:</span><span class="mi">21</span><span class="p">]</span> <span class="o">=</span> <span class="n">v0</span><span class="p">[</span><span class="o">:</span><span class="p">,</span><span class="mi">1</span><span class="o">:</span><span class="mi">21</span><span class="p">];</span>
+
+<span class="c"># Convert to squared slowness</span>
+<span class="n">mmin</span> <span class="o">=</span> <span class="n">vec</span><span class="p">((</span><span class="mf">1f0</span><span class="o">./</span><span class="n">vmax</span><span class="p">)</span><span class="o">.^</span><span class="mi">2</span><span class="p">);</span>
+<span class="n">mmax</span> <span class="o">=</span> <span class="n">vec</span><span class="p">((</span><span class="mf">1f0</span><span class="o">./</span><span class="n">vmin</span><span class="p">)</span><span class="o">.^</span><span class="mi">2</span><span class="p">);</span>
+</code></pre></div>
+
+<p>** This example requires ~200 MB of memory per gradient, i.e. 800 MB with 4 parallel workers. It runs for approximately 15 minutes. **</p>
+<div class="highlight"><pre><span></span><code><span class="n">maxiter</span> <span class="o">=</span> <span class="mi">10</span>
+<span class="n">batchsize</span> <span class="o">=</span> <span class="mi">8</span>
+<span class="n">proj</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">=</span> <span class="n">reshape</span><span class="p">(</span><span class="n">median</span><span class="p">([</span><span class="n">vec</span><span class="p">(</span><span class="n">mmin</span><span class="p">)</span> <span class="n">vec</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="n">vec</span><span class="p">(</span><span class="n">mmax</span><span class="p">)],</span><span class="mi">2</span><span class="p">),</span> <span class="n">model0</span><span class="o">.</span><span class="n">n</span><span class="p">)</span>
+<span class="n">fhistory</span> <span class="o">=</span> <span class="n">zeros</span><span class="p">(</span><span class="kt">Float32</span><span class="p">,</span><span class="n">maxiter</span><span class="p">)</span>
+
+<span class="c"># Main loop</span>
+<span class="k">for</span> <span class="n">j</span><span class="o">=</span><span class="mi">1</span><span class="o">:</span><span class="n">maxiter</span>
+    <span class="n">println</span><span class="p">(</span><span class="s">&quot;Iteration: &quot;</span><span class="p">,</span><span class="n">j</span><span class="p">)</span>
+
+    <span class="c"># get fwi objective function value and gradient</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">randperm</span><span class="p">(</span><span class="n">d_obs</span><span class="o">.</span><span class="n">nsrc</span><span class="p">)[</span><span class="mi">1</span><span class="o">:</span><span class="n">batchsize</span><span class="p">]</span>
+    <span class="n">fval</span><span class="p">,</span> <span class="n">gradient</span> <span class="o">=</span> <span class="n">fwi_objective</span><span class="p">(</span><span class="n">model0</span><span class="p">,</span> <span class="n">q</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">d_obs</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+    <span class="n">fhistory</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">fval</span>
+
+    <span class="c"># linesearch</span>
+    <span class="n">step</span> <span class="o">=</span> <span class="n">backtracking_linesearch</span><span class="p">(</span><span class="n">model0</span><span class="p">,</span> <span class="n">q</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">d_obs</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">fval</span><span class="p">,</span> <span class="n">gradient</span><span class="p">,</span> <span class="n">proj</span><span class="p">;</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">1f0</span><span class="p">)</span>
+    <span class="n">model0</span><span class="o">.</span><span class="n">m</span> <span class="o">=</span> <span class="n">proj</span><span class="p">(</span><span class="n">model0</span><span class="o">.</span><span class="n">m</span> <span class="o">+</span> <span class="n">reshape</span><span class="p">(</span><span class="n">step</span><span class="p">,</span> <span class="n">model0</span><span class="o">.</span><span class="n">n</span><span class="p">))</span>
+
+<span class="k">end</span>
+</code></pre></div>
+
+<pre><code>Iteration: 1
+Iteration: 2
+Iteration: 3
+Iteration: 4
+Iteration: 5
+Iteration: 6
+Iteration: 7
+Iteration: 8
+Iteration: 9
+Iteration: 10
+</code></pre>
+<div class="highlight"><pre><span></span><code><span class="n">imshow</span><span class="p">(</span><span class="n">sqrt</span><span class="o">.</span><span class="p">(</span><span class="mf">1f0</span><span class="o">./</span><span class="n">model0</span><span class="o">.</span><span class="n">m</span><span class="p">)</span><span class="o">&#39;</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s">&quot;GnBu&quot;</span><span class="p">,</span> <span class="n">extent</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">10</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">0</span><span class="p">),</span> <span class="n">vmin</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mf">5.4</span><span class="p">);</span> <span class="n">title</span><span class="p">(</span><span class="s">&quot;FWI with SGD&quot;</span><span class="p">)</span>
+<span class="n">xlabel</span><span class="p">(</span><span class="s">&quot;Lateral position [km]&quot;</span><span class="p">);</span>
+<span class="n">ylabel</span><span class="p">(</span><span class="s">&quot;Depth [km]&quot;</span><span class="p">);</span>
+</code></pre></div>
+
+<p><img alt="png" src="../full_waveform_inversion_files/full_waveform_inversion_15_0.png" /></p>
+<p>** DO NOT RUN. This example requires ~200 MB of memory per gradient, i.e. 800 MB with 4 parallel workers. It takes approximately 16 minutes per iteration and 2.5 hours for the full loop. **</p>
+<div class="highlight"><pre><span></span><code><span class="c"># Optimization parameters</span>
+<span class="k">using</span> <span class="n">IterativeSolvers</span>
+<span class="n">model0</span><span class="o">.</span><span class="n">m</span> <span class="o">=</span> <span class="n">m0</span>    <span class="c"># reset velocity model</span>
+<span class="n">maxiter_GN</span> <span class="o">=</span> <span class="mi">6</span>
+<span class="n">fhistory_GN</span> <span class="o">=</span> <span class="n">zeros</span><span class="p">(</span><span class="kt">Float32</span><span class="p">,</span><span class="n">maxiter</span><span class="p">)</span>
+
+<span class="c"># Gauss-Newton method</span>
+<span class="k">for</span> <span class="n">j</span><span class="o">=</span><span class="mi">1</span><span class="o">:</span><span class="n">maxiter</span>
+    <span class="n">println</span><span class="p">(</span><span class="s">&quot;Iteration: &quot;</span><span class="p">,</span><span class="n">j</span><span class="p">)</span>
+
+    <span class="c"># Model predicted data for subset of sources</span>
+    <span class="n">d_pred</span> <span class="o">=</span> <span class="n">Pr</span><span class="o">*</span><span class="n">Ainv</span><span class="o">*</span><span class="n">Ps</span><span class="o">&#39;*</span><span class="n">q</span>
+    <span class="n">fhistory_GN</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="o">.</span><span class="mf">5f0</span><span class="o">*</span><span class="n">norm</span><span class="p">(</span><span class="n">d_pred</span> <span class="o">-</span> <span class="n">d_obs</span><span class="p">)</span><span class="o">^</span><span class="mi">2</span>
+
+    <span class="c"># GN update direction</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="n">lsqr</span><span class="p">(</span><span class="n">J</span><span class="p">,</span> <span class="n">d_pred</span> <span class="o">-</span> <span class="n">d_obs</span><span class="p">;</span> <span class="n">maxiter</span><span class="o">=</span><span class="n">maxiter_GN</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">false</span><span class="p">)</span>
+
+    <span class="c"># update model and bound constraints</span>
+    <span class="n">model0</span><span class="o">.</span><span class="n">m</span> <span class="o">=</span> <span class="n">proj</span><span class="p">(</span><span class="n">model0</span><span class="o">.</span><span class="n">m</span> <span class="o">-</span> <span class="n">reshape</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">model0</span><span class="o">.</span><span class="n">n</span><span class="p">))</span>    <span class="c"># alpha=1</span>
+<span class="k">end</span>
+</code></pre></div>
+
+<pre><code>Iteration: 1
+Iteration: 2
+Iteration: 3
+Iteration: 4
+Iteration: 5
+Iteration: 6
+Iteration: 7
+Iteration: 8
+Iteration: 9
+Iteration: 10
+</code></pre>
+<div class="highlight"><pre><span></span><code><span class="n">imshow</span><span class="p">(</span><span class="n">sqrt</span><span class="o">.</span><span class="p">(</span><span class="mf">1f0</span><span class="o">./</span><span class="n">model0</span><span class="o">.</span><span class="n">m</span><span class="p">)</span><span class="o">&#39;</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s">&quot;GnBu&quot;</span><span class="p">,</span> <span class="n">extent</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">10</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">0</span><span class="p">),</span> <span class="n">vmin</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mf">5.4</span><span class="p">);</span> <span class="n">title</span><span class="p">(</span><span class="s">&quot;FWI with GN method&quot;</span><span class="p">)</span>
+<span class="n">xlabel</span><span class="p">(</span><span class="s">&quot;Lateral position [km]&quot;</span><span class="p">);</span>
+<span class="n">ylabel</span><span class="p">(</span><span class="s">&quot;Depth [km]&quot;</span><span class="p">);</span>
+</code></pre></div>
+
+<p><img alt="png" src="../full_waveform_inversion_files/full_waveform_inversion_18_0.png" /></p>
+<div class="highlight"><pre><span></span><code><span class="n">fhistory_SG</span> <span class="o">=</span> <span class="n">fhistory</span><span class="o">/</span><span class="n">norm</span><span class="p">(</span><span class="n">fhistory</span><span class="p">,</span><span class="nb">Inf</span><span class="p">);</span>
+<span class="n">fhistory_GN</span> <span class="o">=</span> <span class="n">fhistory_GN</span><span class="o">/</span><span class="n">norm</span><span class="p">(</span><span class="n">fhistory_GN</span><span class="p">,</span><span class="nb">Inf</span><span class="p">);</span>
+<span class="n">plot</span><span class="p">(</span><span class="mi">1</span><span class="o">:</span><span class="mi">10</span><span class="p">,</span> <span class="n">fhistory_SG</span><span class="p">,</span> <span class="mi">1</span><span class="o">:</span><span class="mi">10</span><span class="p">,</span> <span class="n">fhistory_GN</span><span class="p">);</span>
+<span class="n">xlabel</span><span class="p">(</span><span class="s">&quot;Iteration no.&quot;</span><span class="p">);</span> <span class="n">ylabel</span><span class="p">(</span><span class="s">&quot;Normalized function value&quot;</span><span class="p">);</span>
+</code></pre></div>
+
+<p><img alt="png" src="../full_waveform_inversion_files/full_waveform_inversion_19_0.png" /></p>
+<pre><code>PyObject &lt;matplotlib.text.Text object at 0x123c19ed0&gt;
+</code></pre>
+              
+            </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="../fwi_example_NLopt/" class="btn btn-neutral float-right" title="Acoustic RTM with NLopt">Next <span class="icon icon-circle-arrow-right"></span></a>
+      
+      
+        <a href="../.." class="btn btn-neutral" title="Home"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+    
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+      
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="versions">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      
+      
+        <span><a href="../.." style="color: #fcfcfc;">&laquo; Previous</a></span>
+      
+      
+        <span style="margin-left: 15px"><a href="../fwi_example_NLopt/" style="color: #fcfcfc">Next &raquo;</a></span>
+      
+    </span>
+</div>
+    <script>var base_url = '../..';</script>
+    <script src="../../js/theme.js" defer></script>
+      <script src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML" defer></script>
+      <script src="../../search/main.js" defer></script>
+    <script defer>
+        window.onload = function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        };
+    </script>
+
+</body>
+</html>

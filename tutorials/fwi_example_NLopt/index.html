@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  
+  
+  <link rel="shortcut icon" href="../../img/favicon.ico">
+  <title>Acoustic RTM with NLopt - JUDI documentation</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700" />
+
+  <link rel="stylesheet" href="../../css/theme.css" />
+  <link rel="stylesheet" href="../../css/theme_extra.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" />
+  
+  <script>
+    // Current page data
+    var mkdocs_page_name = "Acoustic RTM with NLopt";
+    var mkdocs_page_input_path = "tutorials/fwi_example_NLopt.md";
+    var mkdocs_page_url = null;
+  </script>
+  
+  <script src="../../js/jquery-2.1.1.min.js" defer></script>
+  <script src="../../js/modernizr-2.8.3.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script> 
+  
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+        <a href="../.." class="icon icon-home"> JUDI documentation</a>
+        <div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                    </li>
+                </ul>
+                <p class="caption"><span class="caption-text">Tutorials</span></p>
+                <ul class="current">
+                    <li class="toctree-l1"><a class="reference internal" href="../full_waveform_inversion/">Acoustic FWI</a>
+                    </li>
+                    <li class="toctree-l1 current"><a class="reference internal current" href="./">Acoustic RTM with NLopt</a>
+    <ul class="current">
+    </ul>
+                    </li>
+                    <li class="toctree-l1"><a class="reference internal" href="../judi_leading_edge_tutorial/">FWI tutorial with JUDI (TLE tuto)</a>
+                    </li>
+                </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../..">JUDI documentation</a>
+      </nav>
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../..">Docs</a> &raquo;</li>
+    
+      
+        
+          <li>Tutorials &raquo;</li>
+        
+      
+    
+    <li>Acoustic RTM with NLopt</li>
+    <li class="wy-breadcrumbs-aside">
+      
+    </li>
+  </ul>
+  
+  <hr/>
+</div>
+          <div role="main">
+            <div class="section">
+              
+                <h2 id="fwi-with-quasi-newton-methods-from-the-nlopt-library">FWI with Quasi-Newton methods from the NLopt library</h2>
+<p>In this notebook, we demonstrate how to interface the NLopt optimization library for full-waveform inversion with a limited-memory Quasi-Newton (L-BFGS) algorithm. Once again, we start by adding additional workers for parallel computing and by loading all necessary modules:</p>
+<div class="highlight"><pre><span></span><code><span class="n">addprocs</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+<span class="k">using</span> <span class="n">SegyIO</span><span class="p">,</span> <span class="n">HDF5</span><span class="p">,</span> <span class="n">PyPlot</span><span class="p">,</span> <span class="n">JUDI</span><span class="o">.</span><span class="n">TimeModeling</span><span class="p">,</span> <span class="n">NLopt</span>
+</code></pre></div>
+
+<p>We load the FWI starting model from the HDF5 model file and set up the JUDI model structure:</p>
+<div class="highlight"><pre><span></span><code><span class="n">m0</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">o</span> <span class="o">=</span> <span class="n">read</span><span class="p">(</span><span class="n">h5open</span><span class="p">(</span><span class="s">&quot;overthrust_model.h5&quot;</span><span class="p">,</span><span class="s">&quot;r&quot;</span><span class="p">),</span><span class="s">&quot;m0&quot;</span><span class="p">,</span><span class="s">&quot;n&quot;</span><span class="p">,</span><span class="s">&quot;d&quot;</span><span class="p">,</span><span class="s">&quot;o&quot;</span><span class="p">);</span> <span class="n">title</span><span class="p">(</span><span class="s">&quot;Starting model&quot;</span><span class="p">)</span>
+<span class="n">model0</span> <span class="o">=</span> <span class="n">Model</span><span class="p">((</span><span class="n">n</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span><span class="n">n</span><span class="p">[</span><span class="mi">2</span><span class="p">]),</span> <span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span><span class="n">d</span><span class="p">[</span><span class="mi">2</span><span class="p">]),</span> <span class="p">(</span><span class="n">o</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span><span class="n">o</span><span class="p">[</span><span class="mi">2</span><span class="p">]),</span> <span class="n">m0</span><span class="p">);</span>
+<span class="n">imshow</span><span class="p">(</span><span class="n">sqrt</span><span class="o">.</span><span class="p">(</span><span class="mf">1f0</span><span class="o">./</span><span class="n">m0</span><span class="p">)</span><span class="o">&#39;</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s">&quot;GnBu&quot;</span><span class="p">,</span> <span class="n">extent</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">10</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">0</span><span class="p">));</span>
+<span class="n">xlabel</span><span class="p">(</span><span class="s">&quot;Lateral position [km]&quot;</span><span class="p">);</span>
+<span class="n">ylabel</span><span class="p">(</span><span class="s">&quot;Depth [km]&quot;</span><span class="p">);</span>
+</code></pre></div>
+
+<p><img alt="png" src="../fwi_example_NLopt_files/fwi_example_NLopt_3_0.png" /></p>
+<p>Then we read the SEG-Y file containing our test data set. The data was generated with a 2D excerpt from the Overthrust velocity model and consists of 31 shot records with 2 seconds recording time. We load the data and set up a JUDI seismic data vector:</p>
+<div class="highlight"><pre><span></span><code><span class="n">block</span> <span class="o">=</span> <span class="n">segy_read</span><span class="p">(</span><span class="s">&quot;overthrust_shot_records.segy&quot;</span><span class="p">);</span>
+<span class="n">d_obs</span> <span class="o">=</span> <span class="n">judiVector</span><span class="p">(</span><span class="n">block</span><span class="p">);</span>
+</code></pre></div>
+
+<p>Since the SEG-Y file contains the source coordinates, but not the wavelet itself, we create a JUDI <code>Geometry</code> structure for the source and then manually set up an 8 Hz Ricker wavelet. As for the observed data, we set up a JUDI seismic data vector <code>q</code> with the source geometry and wavelet:</p>
+<div class="highlight"><pre><span></span><code><span class="n">src_geometry</span> <span class="o">=</span> <span class="n">Geometry</span><span class="p">(</span><span class="n">block</span><span class="p">;</span> <span class="n">key</span><span class="o">=</span><span class="s">&quot;source&quot;</span><span class="p">);</span>
+<span class="n">src_data</span> <span class="o">=</span> <span class="n">ricker_wavelet</span><span class="p">(</span><span class="n">src_geometry</span><span class="o">.</span><span class="n">t</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">src_geometry</span><span class="o">.</span><span class="n">dt</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mf">0.008f0</span><span class="p">);</span>
+<span class="n">q</span> <span class="o">=</span> <span class="n">judiVector</span><span class="p">(</span><span class="n">src_geometry</span><span class="p">,</span> <span class="n">src_data</span><span class="p">);</span>
+</code></pre></div>
+
+<h2 id="optimization">Optimization</h2>
+<p>Rather than implementing the L-BFGS algorithms in Julia ourselves, we interface the NLopt optimization library. This library requires objective functions with the current variable and gradient as input arguments and the function value as the only output argument. For this reason, we build a wrapper that is customized for the NLopt library around our <code>fwi_objective</code> function. The function <code>f!</code> takes a vectorized estimate of the current model as well as the (vectorized) gradient as input arguments. NLopt uses double precision for floating point variables, so the first step inside <code>f!</code> is to reshape and convert the model to single precision. Then we choose a randomized subset of sources and shot records and compute the function value <code>fval</code> and <code>gradient</code> of the FWI objective function. We then set the gradient in the water layer to zero and overwrite the input gradient <code>grad</code> with the new gradient. Furthermore, we keep track of the number of function evaluations through increasing the <code>count</code> variable, which will serve as the termination criterion for the algorithm. In Julia, we set up <code>f!</code> in the following way: </p>
+<div class="highlight"><pre><span></span><code><span class="n">batchsize</span> <span class="o">=</span> <span class="mi">8</span><span class="p">;</span>
+<span class="n">count</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+
+<span class="c"># NLopt objective function</span>
+<span class="n">println</span><span class="p">(</span><span class="s">&quot;No.  &quot;</span><span class="p">,</span> <span class="s">&quot;fval         &quot;</span><span class="p">,</span> <span class="s">&quot;norm(gradient)&quot;</span><span class="p">);</span>
+<span class="k">function</span> <span class="n">f!</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">grad</span><span class="p">)</span>
+
+    <span class="c"># Update model</span>
+    <span class="n">model0</span><span class="o">.</span><span class="n">m</span> <span class="o">=</span> <span class="n">convert</span><span class="p">(</span><span class="kt">Array</span><span class="p">{</span><span class="kt">Float32</span><span class="p">,</span><span class="mi">2</span><span class="p">},</span> <span class="n">reshape</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">model0</span><span class="o">.</span><span class="n">n</span><span class="p">))</span>
+
+    <span class="c"># Seclect batch and calculate gradient</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">randperm</span><span class="p">(</span><span class="n">d_obs</span><span class="o">.</span><span class="n">nsrc</span><span class="p">)[</span><span class="mi">1</span><span class="o">:</span><span class="n">batchsize</span><span class="p">]</span>
+    <span class="n">fval</span><span class="p">,</span> <span class="n">gradient</span> <span class="o">=</span> <span class="n">fwi_objective</span><span class="p">(</span><span class="n">model0</span><span class="p">,</span> <span class="n">q</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">d_obs</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+
+    <span class="c"># Reset gradient in water column to zero</span>
+    <span class="n">gradient</span> <span class="o">=</span> <span class="n">reshape</span><span class="p">(</span><span class="n">gradient</span><span class="p">,</span> <span class="n">model0</span><span class="o">.</span><span class="n">n</span><span class="p">);</span> <span class="n">gradient</span><span class="p">[</span><span class="o">:</span><span class="p">,</span><span class="mi">1</span><span class="o">:</span><span class="mi">21</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0f0</span>
+    <span class="n">grad</span><span class="p">[</span><span class="mi">1</span><span class="o">:</span><span class="k">end</span><span class="p">]</span> <span class="o">=</span> <span class="n">vec</span><span class="p">(</span><span class="n">gradient</span><span class="p">)</span>
+
+    <span class="kd">global</span> <span class="n">count</span><span class="p">;</span> <span class="n">count</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="n">println</span><span class="p">(</span><span class="n">count</span><span class="p">,</span> <span class="s">&quot;    &quot;</span><span class="p">,</span> <span class="n">fval</span><span class="p">,</span> <span class="s">&quot;    &quot;</span><span class="p">,</span> <span class="n">norm</span><span class="p">(</span><span class="n">grad</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">convert</span><span class="p">(</span><span class="kt">Float64</span><span class="p">,</span><span class="n">fval</span><span class="p">)</span>
+<span class="k">end</span><span class="p">;</span>
+</code></pre></div>
+
+<pre><code>No.  fval         norm(gradient)
+</code></pre>
+<p>As in our gradient descent and Gauss-Newton example, we define bound constraints for the squared slowness to prevent velocities from becoming negative or too large:</p>
+<div class="highlight"><pre><span></span><code><span class="c"># Set up bound constrains</span>
+<span class="n">v0</span> <span class="o">=</span> <span class="n">sqrt</span><span class="o">.</span><span class="p">(</span><span class="mf">1f0</span><span class="o">./</span><span class="n">model0</span><span class="o">.</span><span class="n">m</span><span class="p">)</span>
+<span class="n">vmin</span> <span class="o">=</span> <span class="n">ones</span><span class="p">(</span><span class="kt">Float32</span><span class="p">,</span> <span class="n">model0</span><span class="o">.</span><span class="n">n</span><span class="p">)</span><span class="o">*</span><span class="mf">1.3f0</span><span class="p">;</span>
+<span class="n">vmax</span> <span class="o">=</span> <span class="n">ones</span><span class="p">(</span><span class="kt">Float32</span><span class="p">,</span> <span class="n">model0</span><span class="o">.</span><span class="n">n</span><span class="p">)</span><span class="o">*</span><span class="mf">6.5f0</span><span class="p">;</span>
+
+<span class="c"># Convert to squared slowness</span>
+<span class="n">mmin</span> <span class="o">=</span> <span class="n">vec</span><span class="p">((</span><span class="mf">1f0</span><span class="o">./</span><span class="n">vmax</span><span class="p">)</span><span class="o">.^</span><span class="mi">2</span><span class="p">);</span>
+<span class="n">mmax</span> <span class="o">=</span> <span class="n">vec</span><span class="p">((</span><span class="mf">1f0</span><span class="o">./</span><span class="n">vmin</span><span class="p">)</span><span class="o">.^</span><span class="mi">2</span><span class="p">);</span>
+</code></pre></div>
+
+<p>The NLopt library offers a range of different optimization algorithms, from which we choose the L-BFGS method. We create an optimization object called <code>opt</code> by specifying the algorithm we want to use and the dimenions of the unknown model vector. We then set the upper and lower bounds of the variable, define <code>f!</code> as the objective function and set the termination criterion to be a maximum of 15 function evaluations:</p>
+<div class="highlight"><pre><span></span><code><span class="n">opt</span> <span class="o">=</span> <span class="n">Opt</span><span class="p">(</span><span class="o">:</span><span class="n">LD_LBFGS</span><span class="p">,</span> <span class="n">prod</span><span class="p">(</span><span class="n">model0</span><span class="o">.</span><span class="n">n</span><span class="p">));</span>
+<span class="n">lower_bounds!</span><span class="p">(</span><span class="n">opt</span><span class="p">,</span> <span class="n">mmin</span><span class="p">);</span> <span class="n">upper_bounds!</span><span class="p">(</span><span class="n">opt</span><span class="p">,</span> <span class="n">mmax</span><span class="p">);</span>
+<span class="n">min_objective!</span><span class="p">(</span><span class="n">opt</span><span class="p">,</span> <span class="n">f!</span><span class="p">);</span>
+<span class="n">maxeval!</span><span class="p">(</span><span class="n">opt</span><span class="p">,</span><span class="mi">15</span><span class="p">);</span>
+</code></pre></div>
+
+<p>Remark: Subsampling the number of sources should in practice never be used for second order methods such as L-BFGS. Specialized stochastic second order methods exist, but differ from standard Quasi-Newton methods. We only use source subsampling to reduce the computational cost of our example. Having set up the objective function, bound constraints and termination criterion, we can now run the inversion:</p>
+<p>** This example requires ~200 MB of memory per gradient, i.e. 800 MB with four parallel workers. It runs for approximately 15 minutes. **</p>
+<div class="highlight"><pre><span></span><code><span class="p">(</span><span class="n">minf</span><span class="p">,</span> <span class="n">minx</span><span class="p">,</span> <span class="n">ret</span><span class="p">)</span> <span class="o">=</span> <span class="n">optimize</span><span class="p">(</span><span class="n">opt</span><span class="p">,</span> <span class="n">vec</span><span class="p">(</span><span class="n">model0</span><span class="o">.</span><span class="n">m</span><span class="p">));</span>
+</code></pre></div>
+
+<pre><code>1    117860.28    130616.90869340736
+2    160411.58    311453.8448771197
+3    69925.836    89549.46655312144
+4    59138.29    139285.26673455827
+5    56818.96    136675.77349063082
+6    37720.637    109625.42544280257
+7    29491.7    82812.97361001468
+8    28428.938    66032.27074425873
+9    20023.656    56098.345552341074
+10    17170.744    50347.75187661317
+11    14758.285    54018.45093329857
+12    12197.124    49297.37586998672
+13    9908.839    36408.764355669744
+14    8806.9795    26504.501201566738
+15    7206.034    26467.189999004884
+</code></pre>
+<p>We plot the final velocity model after 15 function evaluations:</p>
+<div class="highlight"><pre><span></span><code><span class="n">imshow</span><span class="p">(</span><span class="n">sqrt</span><span class="o">.</span><span class="p">(</span><span class="mf">1f0</span><span class="o">./</span><span class="n">reshape</span><span class="p">(</span><span class="n">minx</span><span class="p">,</span> <span class="n">model0</span><span class="o">.</span><span class="n">n</span><span class="p">))</span><span class="o">&#39;</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s">&quot;GnBu&quot;</span><span class="p">,</span> <span class="n">extent</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">10</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">0</span><span class="p">),</span> <span class="n">vmin</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mf">5.4</span><span class="p">);</span> <span class="n">title</span><span class="p">(</span><span class="s">&quot;FWI with L-BFGS&quot;</span><span class="p">)</span>
+<span class="n">xlabel</span><span class="p">(</span><span class="s">&quot;Lateral position [km]&quot;</span><span class="p">);</span>
+<span class="n">ylabel</span><span class="p">(</span><span class="s">&quot;Depth [km]&quot;</span><span class="p">);</span>
+</code></pre></div>
+
+<p><img alt="png" src="../fwi_example_NLopt_files/fwi_example_NLopt_18_0.png" /></p>
+              
+            </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="../judi_leading_edge_tutorial/" class="btn btn-neutral float-right" title="FWI tutorial with JUDI (TLE tuto)">Next <span class="icon icon-circle-arrow-right"></span></a>
+      
+      
+        <a href="../full_waveform_inversion/" class="btn btn-neutral" title="Acoustic FWI"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+    
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+      
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="versions">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      
+      
+        <span><a href="../full_waveform_inversion/" style="color: #fcfcfc;">&laquo; Previous</a></span>
+      
+      
+        <span style="margin-left: 15px"><a href="../judi_leading_edge_tutorial/" style="color: #fcfcfc">Next &raquo;</a></span>
+      
+    </span>
+</div>
+    <script>var base_url = '../..';</script>
+    <script src="../../js/theme.js" defer></script>
+      <script src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML" defer></script>
+      <script src="../../search/main.js" defer></script>
+    <script defer>
+        window.onload = function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        };
+    </script>
+
+</body>
+</html>
