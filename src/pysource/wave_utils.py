@@ -15,30 +15,6 @@ def wavefield(model, space_order, save=False, nt=None, fw=True, name=''):
                             space_order=space_order, save=None if not save else nt)
 
 
-def weighted_norm(u, weight=None):
-    """
-    Space-time nor of a wavefield, split into norm in time first then in space to avoid
-    breaking loops
-    """
-    if type(u) is tuple:
-        expr = u[0]**2 + u[1]**2
-        grid = u[0].grid
-    else:
-        expr = u**2
-        grid = u.grid
-    # Norm in time
-    norm_vy2_t = Function(name="nvy2t", grid=grid)
-    n_v = [Inc(norm_vy2_t, expr)]
-    # Then norm in space
-    i = Dimension(name="i", )
-    norm_vy2 = Function(name="nvy2", shape=(1,), dimensions=(i, ), grid=grid)
-    if weight is None:
-        n_v += [Inc(norm_vy2[0], norm_vy2_t)]
-    else:
-        n_v += [Inc(norm_vy2[0], norm_vy2_t / weight**2)]
-    return norm_vy2, n_v
-
-
 def corr_fields(u, v, freq=False):
     if freq:
         ufr, ufi = u
@@ -49,11 +25,11 @@ def corr_fields(u, v, freq=False):
     return expr
 
 
-def grad_expr(gradm, v, u, w=1, freq=False):
+def grad_expr(gradm, u, v, w=1, freq=False):
     expr = 0
     for wfu, wfv in zip(as_tuple(u), as_tuple(v)):
         expr += w * corr_fields(wfu, wfv)
-    return [Inc(gradm, expr)]
+    return [Eq(gradm, expr + gradm)]
 
 
 def wf_as_src(v, w=1):

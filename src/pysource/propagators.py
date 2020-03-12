@@ -37,7 +37,7 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     # Create operator and run
     subs = model.spacing_map
     op = Operator(pde + geom_expr, subs=subs,
-                  dse="advanced", dle="advanced", name="forward"+name(model))
+                  dse="aggressive", dle="advanced", name="forward"+name(model))
 
     if return_op:
         return op, u, rcv
@@ -65,7 +65,7 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0,
 
     # Create operator and run
     subs = model.spacing_map
-    op = Operator(pde + geom_expr, subs=subs, dse="advanced", dle="advanced",
+    op = Operator(pde + geom_expr, subs=subs, dse="aggressive", dle="advanced",
                   name="adjoint"+name(model))
     op(**op_kwargs(model, fs=free_surface))
 
@@ -97,7 +97,8 @@ def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8,
     # Create operator and run
     subs = model.spacing_map
     op = Operator(pde + geom_expr + g_expr, subs=subs,
-                  dse="advanced", dle="advanced", name="gradient"+name(model))
+                  dse="aggressive", dle="advanced", name="gradient"+name(model))
+
     if return_op:
         return op, gradm
     op(**op_kwargs(model, fs=free_surface))
@@ -125,7 +126,7 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8,
     # Create operator and run
     subs = model.spacing_map
     op = Operator(pde + geom_expr + pdel + geom_exprl, subs=subs,
-                  dse="advanced", dle="advanced", name="born"+name(model))
+                  dse="aggressive", dle="advanced", name="born"+name(model))
     op(**op_kwargs(model, fs=free_surface))
 
     # Output

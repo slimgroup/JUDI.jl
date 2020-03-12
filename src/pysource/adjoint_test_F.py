@@ -11,7 +11,8 @@ parser.add_argument("--tti", default=False, action='store_true',
                     help="Test acoustic or tti")
 parser.add_argument('-nlayer', dest='nlayer', default=3, type=int,
                     help="Number of layers in model")
-
+parser.add_argument("--ssa", default=False, action='store_true',
+                    help="Test tti or ssa tti")
 args = parser.parse_args()
 is_tti = args.tti
 
@@ -32,8 +33,8 @@ for i in range(1, args.nlayer):
 # Set up model structures
 if is_tti:
     model = Model(shape=shape, origin=origin, spacing=spacing,
-                  vp=v, epsilon=.05*(v-1.5), delta=.03*(v-1.5),
-                  theta=.1*(v-1.5), rho=rho, space_order=8)
+                  vp=v, epsilon=.09*(v-1.5), delta=.075*(v-1.5),
+                  rho=1, space_order=8)
 else:
     model = Model(shape=shape, origin=origin, spacing=spacing,
                   vp=v, rho=rho)
@@ -41,7 +42,7 @@ else:
 
 # Time axis
 t0 = 0.
-tn = 1500.
+tn = 1300.
 dt = model.critical_dt
 nt = int(1 + (tn-t0) / dt)
 time_axis = np.linspace(t0, tn, nt)

@@ -4,17 +4,26 @@
 # Date: January 2017
 #
 
-using JUDI.TimeModeling, SegyIO, LinearAlgebra
+using JUDI.TimeModeling, SegyIO, LinearAlgebra, Images
 
+###
+function smooth(v; sigma=5)
+    return Float32.(imfilter(v, Kernel.gaussian(sigma)))
+end
 ## Set up model structure
 n = (500, 500)   # (x,y,z) or (x,z)
 d = (10., 10.)
 o = (0., 0.)
 
 # Velocity [km/s]
-v = ones(Float32,n) .+ 0.4f0
-v0 = ones(Float32,n) .+ 0.4f0
-v[:,Int(round(end/2)):end] .= 5f0
+v = ones(Float32,n) .+ 0.5f0
+v0 = ones(Float32,n) .+ 0.5f0
+v[:,Int(round(end/2)):end] .= 3.5f0
+rho = (v0 .+ .5f0) ./ 2
+
+epsilon = smooth((v0[:, :] .- 1.5f0)/5.0f0, sigma=3)
+delta =  smooth((v0[:, :] .- 1.5f0)/10.0f0, sigma=3)
+theta =  smooth((v0[:, :] .- 1.5f0)/2.0, sigma=3)
 
 # Slowness squared [s^2/km^2]
 m = (1f0 ./ v).^2
@@ -23,8 +32,8 @@ dm = vec(m - m0)
 
 # Setup info and model structure
 nsrc = 2	# number of sources
-model = Model(n, d, o, m; rho=ones(n))
-model0 = Model(n, d, o, m0)
+model = Model_TTI(n, d, o, m; rho=rho, epsilon=epsilon, delta=delta, theta=theta)
+model0 = Model_TTI(n, d, o, m0; rho=rho, epsilon=epsilon, delta=delta, theta=theta)
 
 ## Set up receiver geometry
 nxrec = 120
@@ -79,13 +88,13 @@ dobs = Pr*F*adjoint(Ps)*q
 # d0 = Pr*F0*adjoint(Ps)*q
 # g = adjoint(J)*(dobs - d0)
 
-f, g = fwi_objective(model0, q, dobs; options=opt)
-
-opt = Options(save_data_to_disk=false, file_path=pwd(), file_name="observed_shot",
-			  optimal_checkpointing=false, free_surface=true, normalized="trace",
-			  gs=Dict("maxshift" => 200.0f0, "strategy" => "trace"))
-			  
-f, g = fwi_objective(model0, q, dobs; options=opt)
+# f, g = fwi_objective(model0, q, dobs; options=opt)
+#
+# opt = Options(save_data_to_disk=false, file_path=pwd(), file_name="observed_shot",
+# 			  optimal_checkpointing=false, free_surface=true, normalized="trace",
+# 			  gs=Dict("maxshift" => 200.0f0, "strategy" => "trace"))
+#
+# f, g = fwi_objective(model0, q, dobs; options=opt)
 # qad = Ps*adjoint(F)*adjoint(Pr)*dobs
 #
 # # Linearized modeling

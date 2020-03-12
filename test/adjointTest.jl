@@ -49,9 +49,9 @@ dm = m0 .- m
 # Setup info and model structure
 nsrc = 1
 if parsed_args["tti"]
-    epsilon = smooth((v0[:, :] .- 1.5f0)/5.0f0, sigma=3)
-    delta =  smooth((v0[:, :] .- 1.5f0)/10.0f0, sigma=3)
-    theta =  smooth((v0[:, :] .- 1.5f0)/2.0, sigma=3)
+    epsilon = smooth((v0[:, :] .- 1.5f0)/12f0, sigma=3)
+    delta =  smooth((v0[:, :] .- 1.5f0)/14f0, sigma=3)
+    theta =  smooth((v0[:, :] .- 1.5f0)/4, sigma=3)
     model0 = Model_TTI(n,d,o,m0; epsilon=epsilon, delta=delta, theta=theta)
     model = Model_TTI(n,d,o,m; epsilon=epsilon, delta=delta, theta=theta)
 else

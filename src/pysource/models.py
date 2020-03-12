@@ -99,12 +99,13 @@ class GenericModel(object):
         return {i.name: kwargs.get(i.name, i) or i for i in known}
 
     def _gen_phys_param(self, field, name, space_order, is_param=False,
-                        default_value=0):
+                        default_value=0, func=lambda x: x):
         if field is None:
             return default_value
         if isinstance(field, np.ndarray):
             function = Function(name=name, grid=self.grid, space_order=space_order,
                                 parameter=is_param)
+            filler = func(field)
             initialize_function(function, field, self.nbl)
         else:
             return field
@@ -204,15 +205,17 @@ class Model(GenericModel):
         self.scale = 1
         # Create square slowness of the wave as symbol `m`
         self._vp = self._gen_phys_param(vp, 'vp', space_order)
-        self.irho = self._gen_phys_param(1./rho, 'irho', space_order, default_value=1)
+        # density
+        self.irho = self._gen_phys_param(rho, 'irho', space_order, func=lambda x: 1/x)
         self.dm = self._gen_phys_param(dm, 'dm', space_order)
         # Additional parameter fields for TTI operators
         self._is_tti = any(p is not None for p in [epsilon, delta, theta, phi])
         if self._is_tti:
-            self.epsilon = self._gen_phys_param(1 + 2 *epsilon, 'epsilon', space_order)
+            epsilon = 0 if epsilon is None else 1 + 2 * epsilon
+            delta = 0 if delta is None else 1 + 2 * delta
+            self.epsilon = self._gen_phys_param(1 + 2 * epsilon, 'epsilon', space_order)
             self.scale = 1 if epsilon is None else np.sqrt(1 + 2 * np.max(epsilon))
-
-            self.delta = self._gen_phys_param(np.sqrt(1 + 2*delta), 'delta', space_order)
+            self.delta = self._gen_phys_param(1 + 2 * delta, 'delta', space_order)
             self.theta = self._gen_phys_param(theta, 'theta', space_order)
             self.phi = self._gen_phys_param(phi, 'phi', space_order)
 
