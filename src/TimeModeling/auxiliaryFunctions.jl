@@ -10,7 +10,12 @@ export generate_distribution, select_frequencies, process_physical_parameter
 export load_pymodel, load_devito_jit, load_numpy, devito_model
 export misfit, adjoint_src, gs_residual
 
-function devito_model(model::Model, op, mode, options, dm)
+
+@cache function devito_model(model::Modelall, op, mode, options, dm)
+    return devito_model_py(model, op, mode, options, dm)
+end
+
+function devito_model_py(model::Model, op, mode, options, dm)
     pm = load_pymodel()
     length(model.n) == 3 ? dims = [3,2,1] : dims = [2,1]   # model dimensions for Python are (z,y,x) and (z,x)
 	op=='J' && mode == 1 ? dm = process_physical_parameter(reshape(dm,model.n), dims) : dm = nothing
@@ -22,7 +27,7 @@ function devito_model(model::Model, op, mode, options, dm)
     return modelPy
 end
 
-function devito_model(model::Model_TTI, op, mode, options, dm)
+function devito_model_py(model::Model_TTI, op, mode, options, dm)
     pm = load_pymodel()
     length(model.n) == 3 ? dims = [3,2,1] : dims = [2,1]   # model dimensions for Python are (z,y,x) and (z,x)
 	op=='J' && mode == 1 ? dm = process_physical_parameter(reshape(dm,model.n), dims) : dm = nothing

@@ -140,17 +140,18 @@ def J_adjoint(model, src_coords, wavelet, rec_coords, recin, space_order=8,
     if checkpointing:
         grad = J_adjoint_checkpointing(model, src_coords, wavelet, rec_coords,
                                        recin, space_order=8, free_surface=False,
-                                       n_checkpoints=n_checkpoints,
+                                       n_checkpoints=n_checkpoints, is_residual=True,
                                        maxmem=maxmem)
     elif len(freq_list) > 0:
         grad = J_adjoint_freq(model, src_coords, wavelet, rec_coords, recin,
-                              space_order=space_order,
+                              space_order=space_order, is_residual=True,
                               free_surface=free_surface, freq_list=freq_list)
     else:
         grad = J_adjoint_standard(model, src_coords, wavelet, rec_coords, recin,
+                                  is_residual=True,
                                   space_order=space_order, free_surface=free_surface)
 
-    return grad.data
+    return grad
 
 
 def J_adjoint_freq(model, src_coords, wavelet, rec_coords, recin,

@@ -1,3 +1,4 @@
+from sympy import sqrt, cos, sin
 from devito import grad, first_derivative, centered, transpose, Function, div, left, right
 
 
@@ -16,116 +17,181 @@ def laplacian(v, irho):
     return Lap
 
 
-def rotated_weighted_lap(u, v, costheta, sintheta, cosphi, sinphi,
-                         epsilon, delta, irho, fw=True):
+def ssa_tti(u, v, model):
     """
     TTI finite difference kernel. The equation we solve is:
-    u.dt2 = (1+2 *epsilon) (Gxx(u)) + sqrt(1+ 2*delta) Gzz(v)
-    v.dt2 = sqrt(1+ 2*delta) (Gxx(u)) +  Gzz(v)
-    where epsilon and delta are the thomsen parameters. This function computes
-    H0 = Gxx(u) + Gyy(u)
-    Hz = Gzz(v)
+    see ref
     :param u: first TTI field
     :param v: second TTI field
-    :param costheta: cosine of the tilt angle
-    :param sintheta:  sine of the tilt angle
-    :param cosphi: cosine of the azymuth angle, has to be 0 in 2D
-    :param sinphi: sine of the azymuth angle, has to be 0 in 2D
-    :param space_order: discretization order
-    :return: u and v component of the rotated Laplacian in 2D
+    :param  model: Model structure
+    :return: RHS of PDE for each component
     """
-    if fw:
-        Gxx = Gxxyy(u, costheta, sintheta, cosphi, sinphi, irho)
-        Gzzr = Gzz(v, costheta, sintheta, cosphi, sinphi, irho)
-        return (epsilon * Gxx + delta * Gzzr, delta * Gxx + Gzzr)
-    else:
-        a = epsilon * u + delta * v
-        b = delta * u + v
-        H0 = Gxxyy(a, costheta, sintheta, cosphi, sinphi, irho)
-        H1 = Gzz(b, costheta, sintheta, cosphi, sinphi, irho)
-        return H0, H1
+
+    return ssa_1(u, v, model), ssa_2(u, v, model)
+
+def ssa_1(u, v, model):
+    """
+    First row of
+    gx_t(A * gx(P)) + gy_t( A1 * gy(P)) + gz_T( A2 * gz(P))
+    """
+    delta, epsilon, irho = model.delta, model.epsilon, model.irho
+    a11 = irho * delta
+    a12 = irho * sqrt( (epsilon - delta) * delta)
+    b11 = irho
+    b12 = 0
+
+    g1 = gx_T(a11 * gx(u, model) + a12 * gx(v, model), model)
+    if model.dim == 3:
+        g1 += gy_T(a11 * gy(u, model) + a12 * gy(v, model), model)
+    g1 +=  gz_T(b11 * gz(u, model) + b12 * gz(v, model), model)
+    return g1
 
 
-def Gzz(field, costheta, sintheta, cosphi, sinphi, irho):
+def ssa_2(u, v, model):
     """
-    3D rotated second order derivative in the direction z
-    :param field: symbolic data whose derivative we are computing
-    :param costheta: cosine of the tilt angle
-    :param sintheta:  sine of the tilt angle
-    :param cosphi: cosine of the azymuth angle
-    :param sinphi: sine of the azymuth angle
-    :param space_order: discretization order
-    :return: rotated second order derivative wrt z
+    Second row of
+    gx_t(A * gx(P)) + gy_t( A1 * gy(P)) + gz_T( A2 * gz(P))
     """
-    if field.grid.dim == 2:
-        return Gzz2d(field, costheta, sintheta, irho)
+    delta, epsilon, irho = model.delta, model.epsilon, model.irho
+    a21 = irho * sqrt( (epsilon - delta) * delta)
+    a22 = irho * (epsilon - delta)
+    b21 = 0
+    b22 = 0
 
+    g2 = gx_T(a21 * gx(u, model) + a22 * gx(v, model), model)
+    if model.dim == 3:
+        g2 += gy_T(a21 * gy(u, model) + a22 * gy(v, model), model)
+    g2 += gz_T(b21 * gz(u, model) + b22 * gz(v, model), model)
+    return g2
+
+
+def angles_to_trig(model):
+
+    return cos(model.theta), sin(model.theta), cos(model.phi), sin(model.phi)
+
+
+def gx(field, model):
+    """
+    Rotated first derivative in x
+    :param u: TTI field
+    :param  model: Model structure
+    :return: du/dx in rotated coordinates
+    """
+    costheta, sintheta, cosphi, sinphi =  angles_to_trig(model)
+    dims = field.dimensions[1:]
     order1 = field.space_order // 2
-    x, y, z = field.grid.dimensions
-    Gz = -(sintheta * cosphi * first_derivative(field, dim=x, side=centered,
-                                                fd_order=order1) +
-           sintheta * sinphi * first_derivative(field, dim=y, side=centered,
-                                                fd_order=order1) +
-           costheta * first_derivative(field, dim=z, side=centered,
-                                       fd_order=order1))
-    Gzz = (first_derivative(Gz * sintheta * cosphi * irho,
-                            dim=x, side=centered, fd_order=order1,
-                            matvec=transpose) +
-           first_derivative(Gz * sintheta * sinphi * irho,
-                            dim=y, side=centered, fd_order=order1,
-                            matvec=transpose) +
-           first_derivative(Gz * costheta * irho,
-                            dim=z, side=centered, fd_order=order1,
-                            matvec=transpose))
-    return Gzz
+
+    Dx = (costheta * cosphi * first_derivative(field, dim=dims[0], side=left, fd_order=order1) -
+          sintheta * first_derivative(field, dim=dims[-1], side=left, fd_order=order1))
+
+    if len(dims) == 3:
+        Dx += costheta * sinphi * first_derivative(field, dim=dims[1], side=left, fd_order=order1)
+    return Dx
 
 
-def Gzz2d(field, costheta, sintheta, irho):
+def gy(field, model):
     """
-    3D rotated second order derivative in the direction z
-    :param field: symbolic data whose derivative we are computing
-    :param costheta: cosine of the tilt angle
-    :param sintheta:  sine of the tilt angle
-    :param cosphi: cosine of the azymuth angle
-    :param sinphi: sine of the azymuth angle
-    :param space_order: discretization order
-    :return: rotated second order derivative wrt ztranspose
+    Rotated first derivative in y
+    :param u: TTI field
+    :param  model: Model structure
+    :return: du/dy in rotated coordinates
     """
-    if sintheta == 0:
-        return getattr(field, 'd%s2'%field.grid.dimensions[-1])
-
+    costheta, sintheta, cosphi, sinphi =  angles_to_trig(model)
+    dims = field.dimensions[1:]
     order1 = field.space_order // 2
-    x, z = field.grid.dimensions
-    Gz = -(sintheta * first_derivative(field, dim=x, side=centered, fd_order=order1) +
-           costheta * first_derivative(field, dim=z, side=centered, fd_order=order1))
-    Gzz = (first_derivative(Gz * sintheta * irho, dim=x, side=centered,
-                            fd_order=order1, matvec=transpose) +
-           first_derivative(Gz * costheta * irho, dim=z, side=centered,
-                            fd_order=order1, matvec=transpose))
-    return Gzz
+
+    Dy = (-sinphi * first_derivative(field, dim=dims[0], side=centered, fd_order=order1) +
+          cosphi * first_derivative(field, dim=dims[1],side=centered, fd_order=order1))
+
+    return Dy
 
 
-# Centered case produces directly Gxx + Gyy
-def Gxxyy(field, costheta, sintheta, cosphi, sinphi, irho):
+def gz(field, model):
     """
-    Sum of the 3D rotated second order derivative in the direction x and y.
-    As the Laplacian is rotation invariant, it is computed as the conventional
-    Laplacian minus the second order rotated second order derivative in the direction z
-    Gxx + Gyy = field.laplace - Gzz
-    :param field: symbolic data whose derivative we are computing
-    :param costheta: cosine of the tilt angle
-    :param sintheta:  sine of the tilt angle
-    :param cosphi: cosine of the azymuth angle
-    :param sinphi: sine of the azymuth angle
-    :param space_order: discretization order
-    :return: Sum of the 3D rotated second order derivative in the direction x and y
+    Rotated first derivative in z
+    :param u: TI field
+    :param  model: Model structure
+    :return: du/dz in rotated coordinates
     """
-    if sintheta == 0 and sinphi == 0:
-        return sum([getattr(field, 'd%s2'%d) for d in field.grid.dimensions[:-1]])
+    costheta, sintheta, cosphi, sinphi =  angles_to_trig(model)
+    dims = field.dimensions[1:]
+    order1 = field.space_order // 2
 
-    lap = laplacian(field, irho)
-    if field.grid.dim == 2:
-        Gzzr = Gzz2d(field, costheta, sintheta, irho)
-    else:
-        Gzzr = Gzz(field, costheta, sintheta, cosphi, sinphi, irho)
-    return lap - Gzzr
+    Dz = (sintheta * cosphi * first_derivative(field, dim=dims[0], side=right, fd_order=order1) +
+          costheta * first_derivative(field, dim=dims[-1], side=right, fd_order=order1))
+
+    if len(dims) == 3:
+        Dz += sintheta * sinphi * first_derivative(field, dim=dims[1], side=right, fd_order=order1)
+    return Dz
+
+
+def gx_T(field, model):
+    """
+    Rotated first derivative in x
+    :param u: TTI field
+    :param  model: Model structure
+    :return: du/dx in rotated coordinates
+    """
+    if field == 0:
+        return 0
+
+    costheta, sintheta, cosphi, sinphi =  angles_to_trig(model)
+    dims = field.dimensions[1:]
+    order1 = field.space_order // 2
+
+    Dx = -(first_derivative(costheta * cosphi * field, dim=dims[0],
+                           side=left, fd_order=order1, matvec=transpose) -
+          first_derivative(sintheta * field, dim=dims[-1],
+                           side=left, fd_order=order1, matvec=transpose))
+
+    if len(dims) == 3:
+        Dx += first_derivative(costheta * sinphi * field, dim=dims[1],
+                               side=left, fd_order=order1, matvec=transpose)
+    return Dx
+
+
+def gy_T(field, model):
+    """
+    Rotated first derivative in y
+    :param u: TTI field
+    :param  model: Model structure
+    :return: du/dy in rotated coordinates
+    """
+    if field == 0:
+        return 0
+
+    costheta, sintheta, cosphi, sinphi =  angles_to_trig(model)
+    dims = field.dimensions[1:]
+    order1 = field.space_order // 2
+
+    Dy = (first_derivative(-sinphi * field, dim=dims[0], matvec=transpose,
+                           side=centered, fd_order=order1) +
+          first_derivative(cosphi * field, dim=dims[1], matvec=transpose,
+                           side=centered, fd_order=order1))
+
+    return Dy
+
+
+def gz_T(field, model):
+    """
+    Rotated first derivative in z
+    :param u: TI field
+    :param  model: Model structure
+    :return: du/dz in rotated coordinates
+    """
+    if field == 0:
+        return 0
+
+    costheta, sintheta, cosphi, sinphi =  angles_to_trig(model)
+    dims = field.dimensions[1:]
+    order1 = field.space_order // 2
+
+    Dz = -(first_derivative(sintheta * cosphi * field, dim=dims[0],
+                            side=right, fd_order=order1, matvec=transpose) +
+           first_derivative(costheta * field, dim=dims[-1],
+                            side=right, fd_order=order1, matvec=transpose))
+
+    if len(dims) == 3:
+        Dz += first_derivative(sintheta * sinphi * field, dim=dims[1],
+                               side=right, fd_order=order1, matvec=transpose)
+    return Dz
