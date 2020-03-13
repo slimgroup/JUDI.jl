@@ -85,3 +85,5 @@ print("Difference between saving with forward and born", c)
 print("Adjoint test J")
 print("Difference: ", a - b)
 print("Relative error: ", a/b - 1)
+
+from IPython import embed; embed()

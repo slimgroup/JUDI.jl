@@ -25,21 +25,11 @@ def corr_fields(u, v, freq=False):
     return expr
 
 
-def corr_fields(u, v, freq=False):
-    if freq:
-        ufr, ufi = u
-        tsave = u.grid.time_dim
-        expr = (ufr*cos(2*np.pi*f*tsave*dtf) - ufi*sin(2*np.pi*f*tsave*dtf))*v
-    else:
-        expr = - v * u.dt2
-    return expr
-
-
-def grad_expr(gradm, v, u, w=1, freq=False):
+def grad_expr(gradm, u, v, w=1, freq=False):
     expr = 0
     for wfu, wfv in zip(as_tuple(u), as_tuple(v)):
         expr += w * corr_fields(wfu, wfv)
-    return [Inc(gradm, expr)]
+    return [Eq(gradm, expr + gradm)]
 
 
 def wf_as_src(v, w=1):
