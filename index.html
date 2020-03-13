@@ -111,7 +111,8 @@
             <div class="section">
               
                 <h1 id="the-julia-devito-inversion-framework-judi">The Julia Devito Inversion framework (JUDI)</h1>
-<p><a href="https://github.com/slimgroup/JUDI.jl/actions?query=workflow%3ACI-tests"><img alt="Build Status " src="https://github.com/slimgroup/JUDI.jl/workflows/CI-tests/badge.svg" /></a></p>
+<p><a href="https://github.com/slimgroup/JUDI.jl/actions?query=workflow%3ACI-tests"><img alt="Build Status " src="https://github.com/slimgroup/JUDI.jl/workflows/CI-tests/badge.svg" /></a>
+<strong>[<a href="https://slimgroup.github.io/JUDI.jl/">Documentation</a>]</strong></p>
 <h2 id="overview">Overview</h2>
 <p>JUDI is a framework for large-scale seismic modeling and inversion and designed to enable rapid translations of algorithms to fast and efficient code that scales to industry-size 3D problems. The focus of the package lies on seismic modeling as well as PDE-constrained optimization such as full-waveform inversion (FWI) and imaging (LS-RTM). Wave equations in JUDI are solved with <a href="https://www.devitoproject.org">Devito</a>, a Python domain-specific language for automated finite-difference (FD) computations. JUDI's modeling operators can also be used as layers in (convolutional) neural networks to implement physics-augmented deep learning algorithms. For this, check out JUDI's deep learning extension <a href="https://github.com/slimgroup/JUDI4Flux.jl">JUDI4Flux</a>.</p>
 <h2 id="installation-and-prerequisites">Installation and prerequisites</h2>
@@ -217,7 +218,7 @@ export OMP_NUM_THREADS=4    # Number of OpenMP threads
 <span class="n">figure</span><span class="p">();</span> <span class="n">plot</span><span class="p">(</span><span class="n">fvals</span><span class="p">);</span> <span class="n">title</span><span class="p">(</span><span class="s">&quot;Function value&quot;</span><span class="p">)</span>
 </code></pre></div>
 
-<p><img alt="" src="docs/img/fwi.png" /></p>
+<p><img alt="fwi" src="img/fwi.png" /></p>
 <h2 id="least-squares-reverse-time-migration">Least squares reverse-time migration</h2>
 <p>JUDI includes matrix-free linear operators for modeling and linearized (Born) modeling, that let you write algorithms for migration that follow the mathematical notation of standard least squares problems. This example demonstrates how to use Julia Devito to perform least-squares reverse-time migration on the 2D Marmousi model. Start by downloading the test data set (1.1 GB) and the model:</p>
 <div class="highlight"><pre><span></span><code><span class="n">run</span><span class="p">(</span><span class="sb">`wget ftp://slim.gatech.edu/data/SoftwareRelease/Imaging.jl/2DLSRTM/marmousi_2D.segy`</span><span class="p">)</span>
@@ -278,7 +279,7 @@ export OMP_NUM_THREADS=4    # Number of OpenMP threads
 <span class="k">end</span>
 </code></pre></div>
 
-<p><img alt="" src="docs/img/lsrtm.png" /></p>
+<p><img alt="lsrtm" src="img/lsrtm.png" /></p>
 <h2 id="machine-learning">Machine Learning</h2>
 <p>The JUDI4Flux interface allows integrating JUDI modeling operators into convolutional neural networks for deep learning. For example, the following code snippet shows how to create a shallow CNN consisting of two convolutional layers with a nonlinear forward modeling layer in-between them. JUDI4Flux enables backpropagation through Flux' automatic differentiation tool, but calls the corresponding adjoint JUDI operators under the hood. For more details, please check out the <a href="https://github.com/slimgroup/JUDI4Flux.jl">JUDI4Flux Github</a> page.</p>
 <div class="highlight"><pre><span></span><code><span class="c"># Nonlinear JUDI modeling operator</span>
@@ -300,7 +301,7 @@ export OMP_NUM_THREADS=4    # Number of OpenMP threads
 </code></pre></div>
 
 <p>JUDI4Flux allows implementing physics-augmented neural networks for seismic inversion, such as loop-unrolled seismic imaging algorithms. For example, the following results are a conventional RTM image, an LS-RTM image and a loop-unrolled LS-RTM image for a single simultaneous shot record.</p>
-<p><img alt="" src="docs/img/figure1.png" /></p>
+<p><img alt="flux" src="img/figure1.png" /></p>
 <h2 id="authors">Authors</h2>
 <p>This package was written by <a href="https://www.slim.eos.ubc.ca/philip">Philipp Witte</a> and <a href="https://www.slim.eos.ubc.ca/content/mathias-louboutin">Mathias Louboutin</a> from the Seismic Laboratory for Imaging and Modeling (SLIM) at the Georgia Institute of Technology.</p>
 <p>If you use our software for your research, please cite our <a href="https://library.seg.org/doi/abs/10.1190/geo2018-0174.1#">Geophysics paper</a>:</p>
@@ -374,5 +375,5 @@ eprint = {https://doi.org/10.1190/geo2018-0174.1}
 
 <!--
 MkDocs version : 1.1
-Build Date UTC : 2020-03-11 18:39:56
+Build Date UTC : 2020-03-13 18:28:35
 -->
