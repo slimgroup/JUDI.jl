@@ -43,13 +43,19 @@ function fwi_objective(model_full::Modelall, source::judiVector, dObs::judiVecto
 
     ac = load_devito_jit(model)
 
+
     if options.optimal_checkpointing == true
-        argout1, argout2 = pycall(ac."J_adjoint_checkpointing", PyObject, modelPy, src_coords, qIn, rec_coords, dObserved, is_residual=true, return_obj=true)
+        argout1, argout2 = pycall(ac."J_adjoint_checkpointing", PyObject, modelPy, src_coords, qIn, rec_coords, dObserved, is_residual=false, return_obj=true)
     elseif ~isempty(options.frequencies)
         typeof(options.frequencies) == Array{Any,1} && (options.frequencies = options.frequencies[srcnum])
-        argout1, argout2 = pycall(ac."J_adjoint_freq", PyObject, modelPy, src_coords, qIn, rec_coords, dObserved, is_residual=true, return_obj=true, freq_list=options.frequencies)
+        argout1, argout2 = pycall(ac."J_adjoint_freq", PyObject, modelPy, src_coords, qIn, rec_coords, dObserved, is_residual=false, return_obj=true, freq_list=options.frequencies)
+    elseif ~isempty(options.gs)
+        dPredicted, u = pycall(ac."forward_rec_wf", PyObject, modelPy, src_coords, qIn, rec_coords, space_order=options.space_order, free_surface=options.free_surface)
+        adj_src = gs_residual(options.gs, dtComp, dPredicted, dObserved, options.normalized)
+        argout1 = misfit(dObserved, dObserved, options.normalized)
+        argout2 = pycall(ac."grad_fwi", Array{Float32, length(modelPy.shape)}, modelPy, adj_src, rec_coords, u, space_order=options.space_order, free_surface=options.free_surface)
     else
-        argout1, argout2 = pycall(ac."J_adjoint_standard", PyObject, modelPy, src_coords, qIn, rec_coords, dObserved, is_residual=true, return_obj=true)
+        argout1, argout2 = pycall(ac."J_adjoint_standard", PyObject, modelPy, src_coords, qIn, rec_coords, dObserved, is_residual=false, return_obj=true)
     end
     argout2 = remove_padding(argout2, model.nb, true_adjoint=options.sum_padding)
     if options.limit_m==true

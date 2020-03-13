@@ -1,3 +1,5 @@
+using ECOS
+
 export gs_residual, gs_residual_trace, gs_residual_shot
 
 function gs_residual_trace(maxshift, dtComp, d1_in::Array{Float32, 2}, d2_in::Array{Float32, 2}, normalized)
@@ -66,7 +68,7 @@ function gs_residual_trace(maxshift, dtComp, d1_in::Array{Float32, 2}, d2_in::Ar
 
 		A.value = H
 		fix!(A)
-		solve!(p, ECOSSolver(verbose=0, max_iters=100))
+		solve!(p, ECOS.Optimizer(verbose=0, max_iters=100))
 		alphas = Array{Float32}(x.value)
 		# Data misfit
 		for i = 1:2*nshift+1
@@ -136,7 +138,7 @@ function gs_residual_shot(maxshift, dtComp, d1_in::Array{Float32, 2}, d2_in::Arr
 	p.constraints += un * x == 1
 	p.constraints += [x >= 0; x <= 1]
 
-	solve!(p, ECOSSolver(verbose=0, max_iters=100))
+	solve!(p, ECOS.Optimizer(verbose=0, max_iters=100))
 
 	alphas = Array{Float32}(x.value)
 	# Data misfit

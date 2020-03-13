@@ -15,6 +15,16 @@ def forward_rec(model, src_coords, wavelet, rec_coords,
                      space_order=space_order, free_surface=free_surface)
     return rec.data
 
+def forward_rec_wf(model, src_coords, wavelet, rec_coords,
+                   space_order=8, free_surface=False):
+    """
+    Forward modeling of a point source.
+    Outputs the shot record.
+    """
+    rec, u = forward(model, src_coords, rec_coords, wavelet, save=True,
+                     space_order=space_order, free_surface=free_surface)
+    return rec.data, u
+
 
 def forward_no_rec(model, src_coords, wav, space_order=8, free_surface=False):
     """
@@ -113,9 +123,16 @@ def adjoint_wf_src_norec(model, u, src_coords,
     return v.data
 
 
+# Gradient only
+def grad_fwi(model, recin, rec_coords, u, space_order=8, free_surface=False):
+    g = gradient(model, recin, rec_coords, u, space_order=space_order,
+                 free_surface=free_surface)
+    return g.data
+
+
 # Linearized modeling
 def born_rec(model, src_coords, wavelet, rec_coords,
-                space_order=8, free_surface=False):
+             space_order=8, free_surface=False):
     """
     Linearized (Born) modeling of a point source for a model perturbation (square slowness) dm.
     Output the linearized data.
@@ -162,7 +179,7 @@ def J_adjoint_freq(model, src_coords, wavelet, rec_coords, recin,
     Fourier transform.
     Outputs gradient, and objective function (least-square) if requested.
     """
-    rec, u = forward(model, src_coords, None, wavelet, save=True,
+    rec, u = forward(model, src_coords, rec_coords, wavelet, save=True,
                    space_order=space_order, free_surface=free_surface,
                    freq_list=freq_list)
     # Residual and gradient
@@ -183,7 +200,7 @@ def J_adjoint_standard(model, src_coords, wavelet, rec_coords, recin,
     Gradient (appication of Jacobian to a shot record) computed with the standard sum over time.
     Outputs gradient, and objective function (least-square) if requested.
     """
-    rec, u = forward(model, src_coords, None, wavelet, save=True,
+    rec, u = forward(model, src_coords, rec_coords, wavelet, save=True,
                      space_order=space_order, free_surface=free_surface)
     # Residual and gradient
     if is_residual is not True:  # input data is already the residual
