@@ -2,6 +2,7 @@
 # Author: Philipp Witte, pwitte@eos.ubc.ca
 # Date: December 2017
 #
+using DSP
 
 export marineTopmute2D, judiMarineTopmute2D
 export model_topmute, judiTopmute, find_water_bottom, depth_scaling, judiDepthScaling, laplace, low_filter
@@ -22,6 +23,13 @@ function judiFilter(geometry, fmin, fmax)
     return D
 end
 
+function low_filter(Din::Array{Float32, 1}, dt_in; fmin=0.0, fmax=25.0)	
+    Dout = deepcopy(Din)	
+    responsetype = Bandpass(fmin, fmax; fs=1e3/dt_in)	
+    designmethod = Butterworth(5)	
+    return filt(digitalfilter(responsetype, designmethod), Float32.(Dout))	
+end	
+
 function low_filter(Din::Array{Float32, 2}, dt_in; fmin=0.0, fmax=25.0)	
     Dout = deepcopy(Din)	
     responsetype = Bandpass(fmin, fmax; fs=1e3/dt_in)	
@@ -32,14 +40,16 @@ function low_filter(Din::Array{Float32, 2}, dt_in; fmin=0.0, fmax=25.0)
     return Dout	
 end	
 
- function low_filter(Din::judiVector, dt_in; fmin=0.0, fmax=25.0)	
-    responsetype = Bandpass(fmin, fmax; fs=1e3/dt_in)	
-    designmethod = Butterworth(5)	
+function low_filter(Din::judiVector, dt_in; fmin=0.0, fmax=25.0)	
     Dout = deepcopy(Din)	
-    for j=1:Dout.nsrc	
-        for i=1:size(Din.data[j],2)	
-            Dout.data[j][:, i] = filt(digitalfilter(responsetype, designmethod), Float32.(Dout.data[j][:, i]))	
-        end	
+    for j=1:Dout.nsrc
+		if size(Din.data[j], 2) == 1
+			Dout.data[j] = low_filter(Dout.data[j], dt_in; fmin=fmin, fmax=fmax)
+		else
+	        for i=1:size(Din.data[j], 2)	
+	            Dout.data[j][:, i] = low_filter(Dout.data[j][:, i], dt_in; fmin=fmin, fmax=fmax)
+	        end	
+		end
     end	
     return Dout	
 end
