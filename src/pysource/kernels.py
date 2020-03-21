@@ -53,4 +53,4 @@ def tti_kernel(model, u1, u2, fw=True, q=None):
     stencilr = damp * (2 * u2 - damp * u2_p + s**2 * wmr * (H1 + q[1]))
     first_stencil = Eq(u1_n, stencilp)
     second_stencil = Eq(u2_n, stencilr)
-    return [second_stencil, first_stencil]
+    return [first_stencil, second_stencil]

@@ -8,7 +8,7 @@ def wavefield(model, space_order, save=False, nt=None, fw=True, name=''):
         u = TimeFunction(name="%s1" % name, grid=model.grid, time_order=2,
                          space_order=space_order, save=None if not save else nt)
         v = TimeFunction(name="%s2" % name, grid=model.grid, time_order=2,
-                         space_order=space_order, save=None if not save else nt)
+                         space_order=space_order, save=None)
         return (u, v)
     else:
         return TimeFunction(name=name, grid=model.grid, time_order=2,
@@ -27,14 +27,14 @@ def corr_fields(u, v, freq=False):
 
 def grad_expr(gradm, u, v, w=1, freq=False):
     expr = 0
-    for wfu, wfv in zip(as_tuple(u), as_tuple(v)):
-        expr += w * corr_fields(wfu, wfv)
+    # for wfu, wfv in zip(as_tuple(u), as_tuple(v)):
+    expr = w * corr_fields(as_tuple(u)[0], as_tuple(v)[0])
     return [Eq(gradm, expr + gradm)]
 
 
 def wf_as_src(v, w=1):
     if type(v) is tuple:
-        return (w * v[0], w * v[1])
+        return (w * v[0], 0)
     return w * v
 
 def lin_src(model, v):

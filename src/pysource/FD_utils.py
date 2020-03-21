@@ -78,7 +78,7 @@ def gx(field, model):
     :return: du/dx in rotated coordinates
     """
     costheta, sintheta, cosphi, sinphi =  angles_to_trig(model)
-    dims = field.dimensions[1:]
+    dims = field.dimensions[1:model.dim+1]
     order1 = field.space_order // 2
 
     Dx = (costheta * cosphi * first_derivative(field, dim=dims[0], side=left, fd_order=order1) -
@@ -97,7 +97,7 @@ def gy(field, model):
     :return: du/dy in rotated coordinates
     """
     costheta, sintheta, cosphi, sinphi =  angles_to_trig(model)
-    dims = field.dimensions[1:]
+    dims = field.dimensions[1:model.dim+1]
     order1 = field.space_order // 2
 
     Dy = (-sinphi * first_derivative(field, dim=dims[0], side=centered, fd_order=order1) +
@@ -114,7 +114,7 @@ def gz(field, model):
     :return: du/dz in rotated coordinates
     """
     costheta, sintheta, cosphi, sinphi =  angles_to_trig(model)
-    dims = field.dimensions[1:]
+    dims = field.dimensions[1:model.dim+1]
     order1 = field.space_order // 2
 
     Dz = (sintheta * cosphi * first_derivative(field, dim=dims[0], side=right, fd_order=order1) +
@@ -136,7 +136,7 @@ def gx_T(field, model):
         return 0
 
     costheta, sintheta, cosphi, sinphi =  angles_to_trig(model)
-    dims = field.dimensions[1:]
+    dims = field.dimensions[1:model.dim+1]
     order1 = field.space_order // 2
 
     Dx = -(first_derivative(costheta * cosphi * field, dim=dims[0],
@@ -161,7 +161,7 @@ def gy_T(field, model):
         return 0
 
     costheta, sintheta, cosphi, sinphi =  angles_to_trig(model)
-    dims = field.dimensions[1:]
+    dims = field.dimensions[1:model.dim+1]
     order1 = field.space_order // 2
 
     Dy = (first_derivative(-sinphi * field, dim=dims[0], matvec=transpose,
@@ -183,7 +183,7 @@ def gz_T(field, model):
         return 0
 
     costheta, sintheta, cosphi, sinphi =  angles_to_trig(model)
-    dims = field.dimensions[1:]
+    dims = field.dimensions[1:model.dim+1]
     order1 = field.space_order // 2
 
     Dz = -(first_derivative(sintheta * cosphi * field, dim=dims[0],
