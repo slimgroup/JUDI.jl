@@ -293,7 +293,9 @@ function +(a::judiVector{avDT}, b::judiVector{bvDT}) where {avDT, bvDT}
     size(a) == size(b) || throw(judiVectorException("dimension mismatch"))
     compareGeometry(a.geometry, b.geometry) == 1 || throw(judiVectorException("geometry mismatch"))
     c = deepcopy(a)
-    c.data = a.data + b.data
+	for j=1:c.nsrc
+    	c.data[j] = a.data[j]  + b.data[j]
+	end
     return c
 end
 
@@ -302,42 +304,54 @@ function -(a::judiVector{avDT}, b::judiVector{bvDT}) where {avDT, bvDT}
     size(a) == size(b) || throw(judiVectorException("dimension mismatch"))
     compareGeometry(a.geometry, b.geometry) == 1 || throw(judiVectorException("geometry mismatch"))
     c = deepcopy(a)
-    c.data = a.data - b.data
+	for j=1:c.nsrc
+    	c.data[j] = a.data[j]  - b.data[j]
+	end
     return c
 end
 
 # +(judiVector, number)
 function +(a::judiVector{avDT},b::Number) where avDT
     c = deepcopy(a)
-    c.data = c.data .+ b
+	for j=1:c.nsrc
+	    c.data[j] = c.data[j] .+ b
+	end
     return c
 end
 
 # +(number, judiVector)
 function +(a::Number,b::judiVector{avDT}) where avDT
     c = deepcopy(b)
-    c.data = b.data .+ a
+	for j=1:c.nsrc
+	    c.data[j] = b.data[j] .+ a
+	end
     return c
 end
 
 # -(judiVector, number)
 function -(a::judiVector{avDT},b::Number) where avDT
     c = deepcopy(a)
-    c.data = c.data .- b
+	for j=1:c.nsrc
+	    c.data[j] = c.data[j] .- b
+	end
     return c
 end
 
 # *(judiVector, number)
 function *(a::judiVector{avDT},b::Number) where avDT
     c = deepcopy(a)
-    c.data = c.data .* b
+	for j=1:c.nsrc
+	    c.data[j] = c.data[j] .* b
+	end
     return c
 end
 
 # *(number, judiVector)
 function *(a::Number,b::judiVector{bvDT}) where bvDT
     c = deepcopy(b)
-    c.data = a .* c.data
+	for j=1:c.nsrc
+	    c.data[j] = a .* c.data[j]
+	end
     return c
 end
 
@@ -347,7 +361,9 @@ function /(a::judiVector{avDT},b::Number) where avDT
     if iszero(b)
         error("Division by zero")
     else
-        c.data = c.data/b
+		for j=1:c.nsrc
+		    c.data[j] = c.data[j] ./ b
+		end
     end
     return c
 end

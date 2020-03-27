@@ -14,8 +14,7 @@ def wavefield(model, space_order, save=False, nt=None, fw=True, name=''):
         return TimeFunction(name=name, grid=model.grid, time_order=2,
                             space_order=space_order, save=None if not save else nt)
 
-
-def corr_fields(u, v, freq=False):
+def corr_fields(u, v, freq=False, isic=False):
     if freq:
         ufr, ufi = u
         tsave = u.grid.time_dim
@@ -27,7 +26,6 @@ def corr_fields(u, v, freq=False):
 
 def grad_expr(gradm, u, v, w=1, freq=False):
     expr = 0
-    # for wfu, wfv in zip(as_tuple(u), as_tuple(v)):
     expr = w * corr_fields(as_tuple(u)[0], as_tuple(v)[0])
     return [Eq(gradm, expr + gradm)]
 

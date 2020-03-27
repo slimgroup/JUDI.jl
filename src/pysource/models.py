@@ -57,7 +57,6 @@ def initialize_damp(damp, nbl, spacing, mask=False):
         val = -val if mask else val
         eqs += [Inc(damp.subs({d: dim_r}), val/d.spacing)]
 
-    # TODO: Figure out why yask doesn't like it with dse/dle
     Operator(eqs, name='initdamp')()
 
 
