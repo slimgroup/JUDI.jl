@@ -23,7 +23,6 @@ mutable struct Options
     isic::Bool
     t_sub::Integer
     h_sub::Integer
-    gs::Dict
     normalized
     dft_subsampling_factor::Integer
     return_array::Bool
@@ -48,7 +47,6 @@ end
 	    isic::Bool
 	    t_sub::Integer
 	    h_sub::Integer
-	    gs::Dict
 	    normalized
 	    dft_subsampling_factor::Integer
         return_array::Bool
@@ -115,7 +113,6 @@ Options(;space_order=8,
 		 checkpoints_maxmem=nothing,
 		 frequencies=[],
 		 isic=false,
-         gs=Dict(),
 		 normalized=false,
 		 t_sub=1,
 		 h_sub=1,
@@ -137,7 +134,6 @@ Options(;space_order=8,
 				 isic,
 				 t_sub,
 				 h_sub,
-				 gs,
 				 normalized,
 				 dft_subsampling_factor,
                  return_array)
