@@ -1,0 +1,32 @@
+site_name: JUDI documentation
+
+nav:
+- 'Home': index.md
+- 'JUDI Tutorials':
+  - Acoustic FWI: tutorials/full_waveform_inversion.md
+  - Acoustic RTM with NLopt: tutorials/fwi_example_NLopt.md
+  - FWI tutorial with JUDI (TLE tuto): tutorials/judi_leading_edge_tutorial.md
+
+theme: readthedocs
+
+extra_javascript:
+  - https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML
+
+markdown_extensions:
+  - mdx_math
+  - pymdownx.arithmatex
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.critic
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_generator: !!python/name:pymdownx.emoji.to_svg
+  - pymdownx.inlinehilite
+  - pymdownx.magiclink
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.superfences
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
