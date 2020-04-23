@@ -10,7 +10,9 @@ def laplacian(v, irho):
         Lap = v.laplace
     else:
         if isinstance(irho, Function):
-            Lap = grad(irho).T * grad(v) + irho * v.laplace
+            so = irho.space_order // 2
+            Lap = sum([getattr(irho * getattr(v, 'd%s'%d.name)(x0=d + d.spacing/2, fd_order=so),
+                               'd%s'% d.name)(x0=d - d.spacing/2, fd_order=so) for d in irho.dimensions])
         else:
             Lap = irho * v.laplace
 
