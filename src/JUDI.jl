@@ -1,5 +1,4 @@
-#__precompile__()
-
+__precompile__()
 module JUDI
 
 using PyCall, JOLI, SegyIO, Dierckx, Distributed, Pkg, Printf, DSP

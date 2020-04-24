@@ -19,7 +19,7 @@ def op_kwargs(model, fs=False):
 
 # Forward propagation
 def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
-            q=0, free_surface=False, return_op=False, freq_list=None):
+            q=0, free_surface=False, return_op=False, freq_list=None, dft_sub=None):
     """
     Compute forward wavefield u = A(m)^{-1}*f and related quantities (u(xrcv))
     """
@@ -33,10 +33,10 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     geom_expr, src, rcv = src_rec(model, u, src_coords=src_coords,
                                   rec_coords=rcv_coords, wavelet=wavelet)
     # On he fly fourier
-    dft, dft_modes = otf_dft(u, freq_list)
+    dft, dft_modes = otf_dft(u, freq_list, factor=dft_sub)
     # Create operator and run
     subs = model.spacing_map
-    op = Operator(pde + geom_expr, subs=subs, name="forward"+name(model))
+    op = Operator(pde + geom_expr + dft, subs=subs, name="forward"+name(model))
 
     if return_op:
         return op, u, rcv
@@ -72,7 +72,7 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0,
 
 
 def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8,
-             w=None, free_surface=False, freq=None):
+             w=None, free_surface=False, freq=None, dft_sub=None):
     """
     Compute adjoint wavefield v = adjoint(F(m))*y
     and related quantities (||v||_w, v(xsrc))
@@ -90,7 +90,7 @@ def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8,
     # Setup gradient wrt m
     gradm = Function(name="gradm", grid=model.grid)
     w = w or model.grid.time_dim.spacing * model.irho
-    g_expr = grad_expr(gradm, u, v, w=w, freq=freq)
+    g_expr = grad_expr(gradm, u, v, w=w, freq=freq, dft_sub=dft_sub)
 
     # Create operator and run
     subs = model.spacing_map

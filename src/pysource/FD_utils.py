@@ -21,12 +21,16 @@ def laplacian(v, irho):
 
 def ssa_tti(u, v, model):
     """
-    TTI finite difference kernel. The equation we solve is:
-    see ref
-    :param u: first TTI field
-    :param v: second TTI field
-    :param  model: Model structure
-    :return: RHS of PDE for each component
+    TTI finite difference kernel.
+
+    Parameters
+    ----------
+    u : TimeFunction
+        first TTI field
+    v : TimeFunction
+        second TTI field
+    model: Model
+        Model structure
     """
 
     return ssa_1(u, v, model), ssa_2(u, v, model)
@@ -75,8 +79,8 @@ def angles_to_trig(model):
 def gx(field, model):
     """
     Rotated first derivative in x
-    :param u: TTI field
-    :param  model: Model structure
+    u: TTI field
+     model: Model structure
     :return: du/dx in rotated coordinates
     """
     costheta, sintheta, cosphi, sinphi =  angles_to_trig(model)
@@ -94,8 +98,8 @@ def gx(field, model):
 def gy(field, model):
     """
     Rotated first derivative in y
-    :param u: TTI field
-    :param  model: Model structure
+    u: TTI field
+     model: Model structure
     :return: du/dy in rotated coordinates
     """
     costheta, sintheta, cosphi, sinphi =  angles_to_trig(model)
@@ -111,8 +115,8 @@ def gy(field, model):
 def gz(field, model):
     """
     Rotated first derivative in z
-    :param u: TI field
-    :param  model: Model structure
+    u: TI field
+     model: Model structure
     :return: du/dz in rotated coordinates
     """
     costheta, sintheta, cosphi, sinphi =  angles_to_trig(model)
@@ -130,8 +134,8 @@ def gz(field, model):
 def gx_T(field, model):
     """
     Rotated first derivative in x
-    :param u: TTI field
-    :param  model: Model structure
+    u: TTI field
+     model: Model structure
     :return: du/dx in rotated coordinates
     """
     if field == 0:
@@ -155,8 +159,8 @@ def gx_T(field, model):
 def gy_T(field, model):
     """
     Rotated first derivative in y
-    :param u: TTI field
-    :param  model: Model structure
+    u: TTI field
+     model: Model structure
     :return: du/dy in rotated coordinates
     """
     if field == 0:
@@ -177,8 +181,8 @@ def gy_T(field, model):
 def gz_T(field, model):
     """
     Rotated first derivative in z
-    :param u: TI field
-    :param  model: Model structure
+    u: TI field
+     model: Model structure
     :return: du/dz in rotated coordinates
     """
     if field == 0:

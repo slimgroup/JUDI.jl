@@ -218,7 +218,8 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Geometry
     grad = pycall(ac."J_adjoint", Array{Float32, length(modelPy.shape)}, modelPy,
                   src_coords, qIn, rec_coords, dIn,
                   space_order=options.space_order, checkpointing=options.optimal_checkpointing,
-                  freq_list=options.frequencies)
+                  freq_list=options.frequencies[1],
+                  dft_sub=options.dft_subsampling_factor[1])
 
     # Remove PML and return gradient as Array
     grad = remove_padding(grad, modelPy.nbl, true_adjoint=options.sum_padding)

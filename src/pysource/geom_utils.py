@@ -4,6 +4,33 @@ from sources import *
 
 
 def src_rec(model, u, src_coords=None, rec_coords=None, wavelet=None, fw=True, nt=None):
+    """
+    Generates the source injection and receiver interpolation.
+    This function is fully abstracted and does not care whether this is a forward or adjoint wave-equation.
+    The source is the source term of the equation
+    The receiver is the measurment term
+
+    Therefore, for the adjoint, this function has to be called as:
+    src_rec(model, v, src_coords=rec_coords, ...)
+    because the data is the sources
+
+    Parameters
+    ----------
+    model : Model
+        Physical model
+    u : TimeFunction or tuple
+        Wavefield to inject into and read from
+    src_coords : Array
+        Physical coordinates of the sources
+    rec_coords : Array
+        Physical coordinates of the receivers
+    wavelet: Array
+        Data for the source
+    fw=True:
+        Whether the direction is forward or backward in time 
+    nt: int
+        Number of time steps
+    """
     m, irho = model.m, model.irho
     m = m * irho
     dt = model.grid.time_dim.spacing

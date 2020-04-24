@@ -145,7 +145,7 @@ def born_rec(model, src_coords, wavelet, rec_coords,
 # Gradient wrappers
 def J_adjoint(model, src_coords, wavelet, rec_coords, recin, space_order=8,
               checkpointing=False, free_surface=False, n_checkpoints=None,
-              maxmem=None, freq_list=[]):
+              maxmem=None, freq_list=[], dft_sub=None):
     """
     Jacobian (adjoint fo born modeling operator) iperator on a shot record as a source (i.e data residual).
     Outputs the gradient.
@@ -161,7 +161,7 @@ def J_adjoint(model, src_coords, wavelet, rec_coords, recin, space_order=8,
                                        maxmem=maxmem)
     elif len(freq_list) > 0:
         grad = J_adjoint_freq(model, src_coords, wavelet, rec_coords, recin,
-                              space_order=space_order, is_residual=True,
+                              space_order=space_order, is_residual=True, dft_sub=dft_sub,
                               free_surface=free_surface, freq_list=freq_list)
     else:
         grad = J_adjoint_standard(model, src_coords, wavelet, rec_coords, recin,
@@ -173,21 +173,21 @@ def J_adjoint(model, src_coords, wavelet, rec_coords, recin, space_order=8,
 
 def J_adjoint_freq(model, src_coords, wavelet, rec_coords, recin,
                    space_order=8, free_surface=False, freq_list=[],
-                   is_residual=False, return_obj=False):
+                   is_residual=False, return_obj=False, dft_sub=None):
     """
     Gradient (appication of Jacobian to a shot record) computed with on-the-fly
     Fourier transform.
     Outputs gradient, and objective function (least-square) if requested.
     """
-    rec, u = forward(model, src_coords, rec_coords, wavelet, save=True,
-                   space_order=space_order, free_surface=free_surface,
-                   freq_list=freq_list)
+    rec, u = forward(model, src_coords, rec_coords, wavelet, save=False,
+                     space_order=space_order, free_surface=free_surface,
+                     freq_list=freq_list, dft_sub=dft_sub)
     # Residual and gradient
     if is_residual is not True:  # input data is already the residual
         recin[:] = rec.data[:] - recin[:]   # input is observed data
 
     g = gradient(model, recin, rec_coords, u, space_order=space_order,
-                 free_surface=free_surface, freq=freq_list)
+                 free_surface=free_surface, freq=freq_list, dft_sub=dft_sub)
     if return_obj:
         return .5*np.linalg.norm(recin)**2, g.data
     return g.data

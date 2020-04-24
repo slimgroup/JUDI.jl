@@ -9,7 +9,18 @@ def wave_kernel(model, u, fw=True, q=None, fs=False):
     """
     Pde kernel corresponding the the model for the input wavefield
 
-
+    Parameters
+    ----------
+    model: Model
+        Physical model
+    u : TimeFunction or tuple
+        wavefield (tuple if TTI)
+    fw : Bool
+        Whether forward or backward in time propagation
+    q : TimeFunction or Expr
+        Full time-space source
+    fs : Bool
+        Freesurface flag
     """
     if model.is_tti:
         pde = tti_kernel(model, u[0], u[1], fw=fw, q=q)
@@ -22,8 +33,18 @@ def wave_kernel(model, u, fw=True, q=None, fs=False):
 
 def acoustic_kernel(model, u, fw=True, q=None):
     """
-
     Acoustic wave equation time stepper
+
+    Parameters
+    ----------
+    model: Model
+        Physical model
+    u : TimeFunction or tuple
+        wavefield (tuple if TTI)
+    fw : Bool
+        Whether forward or backward in time propagation
+    q : TimeFunction or Expr
+        Full time-space source
     """
     u_n, u_p = (u.forward, u.backward) if fw else (u.backward, u.forward)
     q = q or 0
@@ -38,6 +59,19 @@ def acoustic_kernel(model, u, fw=True, q=None):
 def tti_kernel(model, u1, u2, fw=True, q=None):
     """
     TTI wave equation (one from my paper) time stepper
+
+    Parameters
+    ----------
+    model: Model
+        Physical model
+    u1 : TimeFunction
+        First component (pseudo-P) of the wavefield
+    u2 : TimeFunction
+        First component (pseudo-P) of the wavefield
+    fw: Bool
+        Whether forward or backward in time propagation
+    q : TimeFunction or Expr 
+        Full time-space source as a tuple (one value for each component)
     """
     m, damp, irho = model.m, model.damp, model.irho
     wmr = 1 / (irho * m)

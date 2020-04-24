@@ -1,8 +1,30 @@
-from devito import TimeFunction, Function, Inc, Dimension, DefaultDimension, Eq
+import numpy as np
+from sympy import cos, sin
+
+from devito import TimeFunction, Function, Inc, Dimension, DefaultDimension, Eq, ConditionalDimension
 from devito.tools import as_tuple
 
 
 def wavefield(model, space_order, save=False, nt=None, fw=True, name=''):
+    """
+    Create the wavefield for the wave equation
+
+    Parameters
+    ----------
+
+    model : Model
+        Physical model 
+    space_order: int
+        Spatial discretization order
+    save : Bool
+        Whether or not to save the time history
+    nt : int (optional)
+        Number of time steps if the wavefield is saved
+    fw : Bool
+        Forward or backward (for naming)
+    name: string
+        Custom name attached to default (u+name)
+    """
     name = "u"+name if fw else "v"+name
     if model.is_tti:
         u = TimeFunction(name="%s1" % name, grid=model.grid, time_order=2,
@@ -14,38 +36,107 @@ def wavefield(model, space_order, save=False, nt=None, fw=True, name=''):
         return TimeFunction(name=name, grid=model.grid, time_order=2,
                             space_order=space_order, save=None if not save else nt)
 
-def corr_fields(u, v, freq=False, isic=False):
-    if freq:
+def corr_fields(u, v, freq=None, factor=None, isic=False):
+    """
+    Cross correlation of forward and adjoint wavefield
+
+    Parameters
+    ----------
+    u: TimeFunction or Tuple
+        Forward wavefield (tuple of fields for TTI or dft)
+    v: TimeFunction or Tuple
+        Adjoint wavefield (tuple of fields for TTI)
+    freq: Array
+        Array of frequencies for on-the-fly DFT
+    factor: int
+        Subsampling factor for DFT
+    isic: Bool
+        Whether or not to use inverse scattering imaging condition (not supported yet)
+    """
+    if freq is not None:
+        # Subsampled dft time axis
+        time = as_tuple(v)[0].grid.time_dim
+        dt = time.spacing
+        tsave = sub_time(time, factor)
+        factor = factor or 1
         ufr, ufi = u
-        tsave = u.grid.time_dim
-        expr = (ufr*cos(2*np.pi*f*tsave*dtf) - ufi*sin(2*np.pi*f*tsave*dtf))*v
+        f = ufr.dimensions[0]
+        omega_t = 2*np.pi*f*tsave*factor*dt
+        expr = (ufr*cos(omega_t) - ufi*sin(omega_t))*v
     else:
         expr = - v * u.dt2
     return expr
 
 
-def grad_expr(gradm, u, v, w=1, freq=False):
+def grad_expr(gradm, u, v, w=1, freq=None, dft_sub=None, isic=False):
+    """
+    Gradient update stencil
+
+    Parameters
+    ----------
+    u: TimeFunction or Tuple
+        Forward wavefield (tuple of fields for TTI or dft)
+    v: TimeFunction or Tuple
+        Adjoint wavefield (tuple of fields for TTI)
+    w: Float or Expr (optional)
+        Weight for the gradient expression (default=1)
+    freq: Array
+        Array of frequencies for on-the-fly DFT
+    factor: int
+        Subsampling factor for DFT
+    isic: Bool
+        Whether or not to use inverse scattering imaging condition (not supported yet)
+    """
     expr = 0
-    expr = w * corr_fields(as_tuple(u)[0], as_tuple(v)[0])
+    expr = w * corr_fields(as_tuple(u)[0], as_tuple(v)[0], freq=freq, factor=dft_sub)
     return [Eq(gradm, expr + gradm)]
 
 
 def wf_as_src(v, w=1):
+    """
+    Weighted source as a time-space wavefield
+
+    Parameters
+    ----------
+    u: TimeFunction or Tuple
+        Forward wavefield (tuple of fields for TTI or dft)
+    w: Float or Expr (optional)
+        Weight for the source expression (default=1)
+    """
     if type(v) is tuple:
         return (w * v[0], 0)
     return w * v
 
-def lin_src(model, v):
+def lin_src(model, u):
+    """
+    Source for linearized modeling
+
+    Parameters
+    ----------
+    u: TimeFunction or Tuple
+        Forward wavefield (tuple of fields for TTI or dft)
+    model: Model
+        Model containing the perturbation dm
+    """
     w = - model.dm * model.irho
-    if type(v) is tuple:
-        return (w * v[0].dt2, w * v[1].dt2)
-    return w * v.dt2
+    if type(u) is tuple:
+        return (w * u[0].dt2, w * u[1].dt2)
+    return w * u.dt2
 
 
 def freesurface(field, npml, forward=True):
     """
     Generate the stencil that mirrors the field as a free surface modeling for
     the acoustic wave equation
+
+    Parameters
+    ----------
+    field: TimeFunction or Tuple
+        Field for which to add a free surface
+    npml: int
+        Number of ABC points
+    forward: Bool
+        Whether it is forward or backward propagation (in time)
     """
     size = as_tuple(field)[0].space_order // 2
     fs = DefaultDimension(name="fs", default_value=size)
@@ -59,20 +150,61 @@ def freesurface(field, npml, forward=True):
 
 
 def otf_dft(u, freq, factor=None):
+    """
+    On the fly DFT wavefield (frequency slices) and expression
+
+    Parameters
+    ----------
+    u: TimeFunction or Tuple
+        Forward wavefield
+    freq: Array
+        Array of frequencies for on-the-fly DFT
+    factor: int
+        Subsampling factor for DFT
+    """
     if freq is None:
         return [], None
     # init
     dft = []
     dft_modes = []
     freq_dim = Dimension(name='freq_dim')
+    # Subsampled dft time axis
+    time = as_tuple(u)[0].grid.time_dim
+    dt = time.spacing
+    tsave = sub_time(time, factor)
+    
+    # Frequencies
     nfreq = freq.shape[0]
     f = Function(name='f', dimensions=(freq_dim,), shape=(nfreq,))
     f.data[:] = freq[:]
+    # Pulsation
+    omega_t = 2*np.pi*f*tsave*factor*dt
     for wf in as_tuple(u):
-        tsave = wf.grid.time_dim
-        ufr = Function(name='ufr%s'%wf.name, dimensions=(freq_dim,) + wf.indices[1:], shape=(nfreq,) + model.shape_domain)
-        ufi = Function(name='ufi%s'%wf.name, dimensions=(freq_dim,) + wf.indices[1:], shape=(nfreq,) + model.shape_domain)
-        dft += [Inc(ufr, wf*cos(2*np.pi*f*tsave*factor*dt))]
-        dft += [Inc(ufi, -dwf*sin(2*np.pi*f*tsave*factor*dt))]
+        ufr = Function(name='ufr%s'%wf.name, dimensions=(freq_dim,) + wf.indices[1:], shape=(nfreq,) + wf.shape[1:])
+        ufi = Function(name='ufi%s'%wf.name, dimensions=(freq_dim,) + wf.indices[1:], shape=(nfreq,) + wf.shape[1:])
+        dft += [Inc(ufr, cos(omega_t) * wf)]
+        dft += [Inc(ufi, -sin(omega_t) * wf)]
         dft_modes += [(ufr, ufi)]
     return dft, dft_modes
+
+
+def sub_time(time, factor, dt=1):
+    """
+    Subsampled  time axis
+
+    Parameters
+    ----------
+    time: Dimension
+        time Dimension
+    factor: int
+        Subsampling factor
+    """
+    dt = time.spacing
+    if factor is None:
+        factor = int(1 / (dt*4*np.max(freq)))
+        tsave = ConditionalDimension(name='tsave', parent=time, factor=factor)
+    if factor==1:
+        tsave = time
+    else:
+        tsave = ConditionalDimension(name='tsave', parent=time, factor=factor)
+    return tsave

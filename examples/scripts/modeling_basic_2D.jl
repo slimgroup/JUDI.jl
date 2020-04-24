@@ -21,10 +21,6 @@ v0 = ones(Float32,n) .+ 0.5f0
 v[:,Int(round(end/2)):end] .= 3.5f0
 rho = (v0 .+ .5f0) ./ 2
 
-epsilon = smooth((v0[:, :] .- 1.5f0)/5.0f0, sigma=3)
-delta =  smooth((v0[:, :] .- 1.5f0)/10.0f0, sigma=3)
-theta =  smooth((v0[:, :] .- 1.5f0)/2.0, sigma=3)
-
 # Slowness squared [s^2/km^2]
 m = (1f0 ./ v).^2
 m0 = (1f0 ./ v0).^2
@@ -32,8 +28,8 @@ dm = vec(m - m0)
 
 # Setup info and model structure
 nsrc = 2	# number of sources
-model = Model_TTI(n, d, o, m; rho=rho, epsilon=epsilon, delta=delta, theta=theta)
-model0 = Model_TTI(n, d, o, m0; rho=rho, epsilon=epsilon, delta=delta, theta=theta)
+model = Model(n, d, o, m)
+model0 = Model(n, d, o, m0)
 
 ## Set up receiver geometry
 nxrec = 120
@@ -73,8 +69,7 @@ info = Info(prod(n), nsrc, ntComp)
 
 # Write shots as segy files to disk
 opt = Options(save_data_to_disk=false, file_path=pwd(), file_name="observed_shot",
-			  optimal_checkpointing=false, free_surface=true, normalized="trace",
-			  gs=Dict("maxshift" => 200.0f0, "strategy" => "shot"))
+			  optimal_checkpointing=false, free_surface=true)
 
 # Setup operators
 Pr = judiProjection(info, recGeometry)
@@ -85,22 +80,13 @@ J = judiJacobian(Pr*F0*adjoint(Ps), q)
 
 # Nonlinear modeling
 dobs = Pr*F*adjoint(Ps)*q
-# d0 = Pr*F0*adjoint(Ps)*q
-# g = adjoint(J)*(dobs - d0)
+# Adjoint
+qad = Ps*adjoint(F)*adjoint(Pr)*dobs
 
-# f, g = fwi_objective(model0, q, dobs; options=opt)
-#
-# opt = Options(save_data_to_disk=false, file_path=pwd(), file_name="observed_shot",
-# 			  optimal_checkpointing=false, free_surface=true, normalized="trace",
-# 			  gs=Dict("maxshift" => 200.0f0, "strategy" => "trace"))
-#
-# f, g = fwi_objective(model0, q, dobs; options=opt)
-# qad = Ps*adjoint(F)*adjoint(Pr)*dobs
-#
-# # Linearized modeling
-# #J.options.file_name = "linearized_shot"
-# dD = J*dm
-# rtm = adjoint(J)*dD
-#
-# # evaluate FWI objective function
-# f, g = fwi_objective(model0, q, dobs; options=opt)
+# Linearized modeling
+dD = J*dm
+# Adjoint jacobian
+rtm = adjoint(J)*dD
+
+# evaluate FWI objective function
+f, g = fwi_objective(model0, q, dobs; options=opt)
