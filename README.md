@@ -22,7 +22,7 @@ julia -e 'using Pkg; Pkg.add(PackageSpec(url="https://github.com/slimgroup/SegyI
 julia -e 'using Pkg; Pkg.add(PackageSpec(url="https://github.com/slimgroup/JOLI.jl"))'
 ```
 
-Once Devito, SegyIO and JOLI are installed, you can install JUDI with Julia's `Pkg.clone`. For Devito 3.2.0, it is also necessary to install some Devito dependencies by hand:
+Once Devito, SegyIO and JOLI are installed, you can install JUDI as follows:
 
 ```julia
 julia -e 'using Pkg; Pkg.add(PackageSpec(url="https://github.com/slimgroup/JUDI.jl"))'
