@@ -18,14 +18,14 @@ pip3 install --user git+https://github.com/devitocodes/devito.git
 For reading and writing seismic SEG-Y data, JUDI uses the [SegyIO](https://github.com/slimgroup/SegyIO.jl) package and matrix-free linear operators are based the [Julia Operator LIbrary](https://github.com/slimgroup/JOLI.jl/tree/master/src) (JOLI):
 
 ```julia
-julia -e 'using Pkg; Pkg.clone("https://github.com/slimgroup/SegyIO.jl.git")'
-julia -e 'using Pkg; Pkg.clone("https://github.com/slimgroup/JOLI.jl.git")'
+julia -e 'using Pkg; Pkg.add(PackageSpec(url="https://github.com/slimgroup/SegyIO.jl"))'
+julia -e 'using Pkg; Pkg.add(PackageSpec(url="https://github.com/slimgroup/JOLI.jl"))'
 ```
 
 Once Devito, SegyIO and JOLI are installed, you can install JUDI with Julia's `Pkg.clone`. For Devito 3.2.0, it is also necessary to install some Devito dependencies by hand:
 
 ```julia
-julia -e 'using Pkg; Pkg.clone("https://github.com/slimgroup/JUDI.jl")'
+julia -e 'using Pkg; Pkg.add(PackageSpec(url="https://github.com/slimgroup/JUDI.jl"))'
 pip install --user -r ~/.julia/dev/JUDI/docker/devito_requirements.txt
 ```
 
