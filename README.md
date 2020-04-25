@@ -26,7 +26,6 @@ Once Devito, SegyIO and JOLI are installed, you can install JUDI with Julia's `P
 
 ```julia
 julia -e 'using Pkg; Pkg.add(PackageSpec(url="https://github.com/slimgroup/JUDI.jl"))'
-pip install --user -r ~/.julia/dev/JUDI/docker/devito_requirements.txt
 ```
 
 Once you have JUDI installed, you need to point Julia's PyCall package to the Python version for which we previsouly installed Devito. To do this, copy-paste the following commands into the (bash) terminal:
