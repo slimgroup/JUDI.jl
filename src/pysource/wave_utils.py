@@ -57,14 +57,17 @@ def corr_fields(u, v, freq=None, factor=None, isic=False):
         # Subsampled dft time axis
         time = as_tuple(v)[0].grid.time_dim
         dt = time.spacing
-        tsave = sub_time(time, factor)
-        factor = factor or 1
+        tsave, factor = sub_time(time, factor)
         ufr, ufi = u
         f = ufr.dimensions[0]
         omega_t = 2*np.pi*f*tsave*factor*dt
+        # TO DO: needs multiplication with (2*np.pi*f)**2/nt
         expr = (ufr*cos(omega_t) - ufi*sin(omega_t))*v
     else:
-        expr = - v * u.dt2
+        if isic is False:
+            expr = - v * u.dt2
+        #else:
+        #    expr = - v * u.dt2
     return expr
 
 
@@ -149,7 +152,7 @@ def freesurface(field, npml, forward=True):
     return fs_eq
 
 
-def otf_dft(u, freq, factor=None):
+def otf_dft(u, freq, dt, factor=None):
     """
     On the fly DFT wavefield (frequency slices) and expression
 
@@ -164,19 +167,21 @@ def otf_dft(u, freq, factor=None):
     """
     if freq is None:
         return [], None
+
     # init
     dft = []
     dft_modes = []
     freq_dim = Dimension(name='freq_dim')
+
     # Subsampled dft time axis
     time = as_tuple(u)[0].grid.time_dim
-    dt = time.spacing
-    tsave = sub_time(time, factor)
-    
+    tsave, factor = sub_time(time, factor, dt=dt, freq=freq)
+
     # Frequencies
     nfreq = freq.shape[0]
     f = Function(name='f', dimensions=(freq_dim,), shape=(nfreq,))
     f.data[:] = freq[:]
+
     # Pulsation
     omega_t = 2*np.pi*f*tsave*factor*dt
     for wf in as_tuple(u):
@@ -188,7 +193,7 @@ def otf_dft(u, freq, factor=None):
     return dft, dft_modes
 
 
-def sub_time(time, factor, dt=1):
+def sub_time(time, factor, dt=1, freq=None):
     """
     Subsampled  time axis
 
@@ -199,12 +204,14 @@ def sub_time(time, factor, dt=1):
     factor: int
         Subsampling factor
     """
-    dt = time.spacing
     if factor is None:
-        factor = int(1 / (dt*4*np.max(freq)))
+        if freq is not None:
+            factor = int(1 / (dt*4*np.max(freq)))
+        else:
+            factor = 1
         tsave = ConditionalDimension(name='tsave', parent=time, factor=factor)
     if factor==1:
         tsave = time
     else:
         tsave = ConditionalDimension(name='tsave', parent=time, factor=factor)
-    return tsave
+    return tsave, factor

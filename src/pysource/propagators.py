@@ -18,7 +18,7 @@ def op_kwargs(model, fs=False):
 
 
 # Forward propagation
-def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
+def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False, dt_comp=None,
             q=0, free_surface=False, return_op=False, freq_list=None, dft_sub=None):
     """
     Compute forward wavefield u = A(m)^{-1}*f and related quantities (u(xrcv))
@@ -30,12 +30,16 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     pde = wave_kernel(model, u, q=q, fs=free_surface)
 
     # Setup source and receiver
-    geom_expr, src, rcv = src_rec(model, u, src_coords=src_coords,
+    geom_expr, _, rcv = src_rec(model, u, src_coords=src_coords,
                                   rec_coords=rcv_coords, wavelet=wavelet)
-    # On he fly fourier
-    dft, dft_modes = otf_dft(u, freq_list, factor=dft_sub)
+    
+    # On-the-fly Fourier
+    dft, dft_modes = otf_dft(u, freq_list, model.critical_dt, factor=dft_sub)
+    
     # Create operator and run
     subs = model.spacing_map
+    if dt_comp is not None:
+        subs[u.grid.time_dim.spacing] = dt_comp
     op = Operator(pde + geom_expr + dft, subs=subs, name="forward"+name(model))
 
     if return_op:
@@ -47,7 +51,7 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
 
 
 def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0,
-            save=False, free_surface=False):
+            save=False, free_surface=False, dt_comp=None):
     """
     Compute adjoint wavefield v = adjoint(F(m))*y
     and related quantities (||v||_w, v(xsrc))
@@ -64,6 +68,8 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0,
 
     # Create operator and run
     subs = model.spacing_map
+    if dt_comp is not None:
+        subs[v.grid.time_dim.spacing] = dt_comp
     op = Operator(pde + geom_expr, subs=subs, name="adjoint"+name(model))
     op(**op_kwargs(model, fs=free_surface))
 
@@ -72,7 +78,7 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0,
 
 
 def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8,
-             w=None, free_surface=False, freq=None, dft_sub=None):
+             w=None, free_surface=False, freq=None, dft_sub=None, dt_comp=None,):
     """
     Compute adjoint wavefield v = adjoint(F(m))*y
     and related quantities (||v||_w, v(xsrc))
@@ -94,6 +100,8 @@ def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8,
 
     # Create operator and run
     subs = model.spacing_map
+    if dt_comp is not None:
+        subs[v.grid.time_dim.spacing] = dt_comp
     op = Operator(pde + geom_expr + g_expr, subs=subs, name="gradient"+name(model))
 
     if return_op:
@@ -105,7 +113,7 @@ def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8,
 
 
 def born(model, src_coords, rcv_coords, wavelet, space_order=8,
-         save=False, free_surface=False):
+         save=False, free_surface=False, dt_comp=None):
     """
     Compute adjoint wavefield v = adjoint(F(m))*y
     and related quantities (||v||_w, v(xsrc))
@@ -113,15 +121,19 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8,
     # Setting adjoint wavefield
     u = wavefield(model, space_order, save=save, nt=wavelet.shape[0])
     ul = wavefield(model, space_order, name="l")
+    
     # Set up PDE expression and rearrange
     pde = wave_kernel(model, u, fs=free_surface)
     pdel = wave_kernel(model, ul, q=lin_src(model, u), fs=free_surface)
+    
     # Setup source and receiver
     geom_expr, _, _ = src_rec(model, u, src_coords=src_coords, wavelet=wavelet)
     geom_exprl, _, rcvl = src_rec(model, ul, rec_coords=rcv_coords, nt=wavelet.shape[0])
 
     # Create operator and run
     subs = model.spacing_map
+    if dt_comp is not None:
+        subs[v.grid.time_dim.spacing] = dt_comp
     op = Operator(pde + geom_expr + pdel + geom_exprl, subs=subs,
                   name="born"+name(model))
     op(**op_kwargs(model, fs=free_surface))
