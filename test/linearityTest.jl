@@ -3,7 +3,7 @@
 # Date: January 2017
 #
 
-using PyCall, PyPlot, JUDI.TimeModeling, Test, LinearAlgebra
+using JUDI.TimeModeling, Test, LinearAlgebra
 
 ## Set up model structure
 n = (120,100)	# (x,y,z) or (x,z)

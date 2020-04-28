@@ -3,7 +3,7 @@
 # Date: January 2017
 #
 
-using PyCall, PyPlot, JUDI.TimeModeling, Test, LinearAlgebra
+using PyPlot, JUDI.TimeModeling, Test, LinearAlgebra
 
 ## Set up model structure
 n = (160, 170)	# (x,y,z) or (x,z)
@@ -14,8 +14,8 @@ o = (0.,0.)
 v = ones(Float32,n) .* 2.0f0
 v[:,Int(round(end/3)):end] .= 4f0
 v0 = smooth10(v,n)
-rho = ones(Float32, n)
-rho[:, Int(round(end/2)):end] .= 1.5f0
+#rho = ones(Float32, n)
+#rho[:, Int(round(end/2)):end] .= 1.5f0
 
 # Slowness squared [s^2/km^2]
 m = (1f0 ./ v).^2
@@ -24,8 +24,8 @@ dm = vec(m - m0)
 
 # Setup info and model structure
 nsrc = 1
-model = Model(n,d,o,m,rho=rho)
-model0 = Model(n,d,o,m0,rho=rho)
+model = Model(n,d,o,m,)
+model0 = Model(n,d,o,m0)
 
 ## Set up receiver geometry
 nxrec = 141
@@ -35,7 +35,7 @@ zrec = range(100f0,stop=100f0,length=nxrec)
 
 # receiver sampling and recording time
 timeR = 800f0	# receiver recording time [ms]
-dtR = calculate_dt(n,d,o,v,rho)    # receiver sampling interval
+dtR = calculate_dt(n,d,o,v,1)    # receiver sampling interval
 
 # Set up receiver structure
 recGeometry = Geometry(xrec,yrec,zrec;dt=dtR,t=timeR,nsrc=nsrc)
@@ -47,7 +47,7 @@ zsrc = 50f0
 
 # source sampling and number of time steps
 timeS = 800f0
-dtS = calculate_dt(n,d,o,v,rho) # receiver sampling interval
+dtS = 1#calculate_dt(n,d,o,v,rho) # receiver sampling interval
 
 # Set up source structure
 srcGeometry = Geometry(xsrc,ysrc,zsrc;dt=dtS,t=timeS)
@@ -64,7 +64,8 @@ wave_rand = wavelet.*rand(Float32,size(wavelet))
 ###################################################################################################
 
 # Modeling operators
-opt = Options(sum_padding=true)
+opt = Options()
+
 F = judiModeling(info,model0,srcGeometry,recGeometry; options=opt)
 q = judiVector(srcGeometry,wavelet)
 
@@ -72,7 +73,7 @@ q = judiVector(srcGeometry,wavelet)
 d_hat = F*q
 
 # Generate random noise data vector with size of d_hat in the range of F
-qr = judiVector(srcGeometry,wave_rand)
+qr = judiVector(srcGeometry, wave_rand)
 d1 = F*qr
 
 # Adjoint computation

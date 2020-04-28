@@ -4,7 +4,7 @@
 # Date: January 2017
 #
 
-using PyCall, PyPlot, JUDI.TimeModeling, Test, LinearAlgebra
+using JUDI.TimeModeling, Test, LinearAlgebra, PyPlot
 
 ## Set up model structure
 n = (120,100)	# (x,y,z) or (x,z)
@@ -15,8 +15,8 @@ o = (0.,0.)
 v = ones(Float32,n) .* 2.0f0
 v[:,Int(round(end/2)):end] .= 3.0f0
 v0 = smooth10(v,n)
-rho = ones(Float32, n)
-rho[:, Int(round(end/2)):end] .= 1.5f0
+#rho = ones(Float32, n)
+#rho[:, Int(round(end/2)):end] .= 1.5f0
 
 # Slowness squared [s^2/km^2]
 m = (1f0 ./ v).^2
@@ -27,8 +27,8 @@ dm = m0 - m
 nsrc = 1	# number of sources
 ntComp = 250
 info = Info(prod(n), nsrc, ntComp)	# number of gridpoints, number of experiments, number of computational time steps
-model = Model(n,d,o,m;rho=rho)
-model0 = Model(n,d,o,m0;rho=rho)
+model = Model(n,d,o,m)
+model0 = Model(n,d,o,m0)
 
 ## Set up receiver geometry
 nxrec = 81
