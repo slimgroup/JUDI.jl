@@ -88,18 +88,22 @@ rec_t.coordinates.data[:, 1] = 50.
 # d_obs = forward_rec(model, src.coordinates.data, src.data, rec_t.coordinates.data, 
 #     space_order=8, free_surface=False, dt_comp=dt)
 
+freq_list = np.random.rand(20)/75
+dft_sub = 2
 # Propagators (Level 2)
 d_obs, _ = forward(model, src.coordinates.data, rec_t.coordinates.data, src.data, space_order=8, save=False,
     q=0, free_surface=False, return_op=False, freq_list=None)
 
-_, u0 = forward(model0, src.coordinates.data, rec_t.coordinates.data, src.data, space_order=8, save=True,
-    q=0, free_surface=False, return_op=False, freq_list=None)
+d0, u0 = forward(model0, src.coordinates.data, rec_t.coordinates.data, src.data, space_order=8, save=True,
+    q=0, free_surface=False, return_op=False, freq_list=freq_list, dft_sub=dft_sub)
 
-g = gradient(model0, d_obs, rec_t.coordinates.data, u0, return_op=False, space_order=8,
-             w=None, free_surface=False, freq=None, dft_sub=None)
+g = gradient(model0, d0 - d_obs, rec_t.coordinates.data, u0, return_op=False, space_order=8,
+             w=None, free_surface=False, freq=freq_list, dft_sub=dft_sub)
 
 # Plot
 plt.figure(); plt.imshow(d_obs, vmin=-1, vmax=1, cmap='gray', aspect='auto')
 #plt.figure(); plt.imshow(d_pred.data, vmin=-1, vmax=1, cmap='gray', aspect='auto')
-plt.figure(); plt.imshow(np.transpose(g), vmin=-1e2, vmax=1e2, cmap='gray', aspect='auto')
+plt.figure(); plt.imshow(np.transpose(g), vmin=-1e0, vmax=1e0, cmap='gray', aspect='auto')
 plt.show()
+
+from IPython import embed; embed()

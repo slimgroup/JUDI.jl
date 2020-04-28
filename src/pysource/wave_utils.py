@@ -59,15 +59,19 @@ def corr_fields(u, v, freq=None, factor=None, isic=False):
         dt = time.spacing
         tsave, factor = sub_time(time, factor)
         ufr, ufi = u
-        f = ufr.dimensions[0]
+        # Frequencies
+        nfreq = freq.shape[0]
+        f = Function(name='f', dimensions=(ufr.dimensions[0],), shape=(nfreq,))
+        f.data[:] = freq[:]
         omega_t = 2*np.pi*f*tsave*factor*dt
-        # TO DO: needs multiplication with (2*np.pi*f)**2/nt
-        expr = (ufr*cos(omega_t) - ufi*sin(omega_t))*v
+        # Gradient weighting is (2*np.pi*f)**2/nt
+        w = (2*np.pi*f)**2/time.symbolic_max
+        expr = w*(ufr*cos(omega_t) - ufi*sin(omega_t))*v
     else:
         if isic is False:
             expr = - v * u.dt2
-        #else:
-        #    expr = - v * u.dt2
+        else:
+           expr = - v * u.dt2
     return expr
 
 
@@ -91,6 +95,8 @@ def grad_expr(gradm, u, v, w=1, freq=None, dft_sub=None, isic=False):
         Whether or not to use inverse scattering imaging condition (not supported yet)
     """
     expr = 0
+    if freq is not None:
+        w = 1
     expr = w * corr_fields(as_tuple(u)[0], as_tuple(v)[0], freq=freq, factor=dft_sub)
     return [Eq(gradm, expr + gradm)]
 
