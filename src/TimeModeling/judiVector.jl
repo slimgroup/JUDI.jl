@@ -289,11 +289,46 @@ adjoint(a::judiVector{vDT}) where vDT =
 
 ##########################################################
 
+# Overload base function for SegyIO objects
+
+vec(x::SegyIO.SeisCon) = vec(x[1].data)
+norm(x::SegyIO.IBMFloat32; kwargs...) = norm(convert(Float32,x); kwargs...)
+dot(x::SegyIO.IBMFloat32, y::SegyIO.IBMFloat32) = dot(convert(Float32,x), convert(Float32,y))
+dot(x::SegyIO.IBMFloat32, y::Float32) = dot(convert(Float32,x), y)
+dot(x::Float32, y::SegyIO.IBMFloat32) = dot(x, convert(Float32,y))
+
+# binary operations return dense arrays
++(x::SegyIO.SeisCon, y::SegyIO.SeisCon) = +(x[1].data,y[1].data)
++(x::SegyIO.IBMFloat32, y::SegyIO.IBMFloat32) = +(convert(Float32,x),convert(Float32,y))
++(x::SegyIO.IBMFloat32, y::Float32) = +(convert(Float32,x),y)
++(x::Float32, y::SegyIO.IBMFloat32) = +(x,convert(Float32,y))
+
+-(x::SegyIO.SeisCon, y::SegyIO.SeisCon) = -(x[1].data,y[1].data)
+-(x::SegyIO.IBMFloat32, y::SegyIO.IBMFloat32) = -(convert(Float32,x),convert(Float32,y))
+-(x::SegyIO.IBMFloat32, y::Float32) = -(convert(Float32,x),y)
+-(x::Float32, y::SegyIO.IBMFloat32) = -(x,convert(Float32,y))
+
++(a::Number, x::SegyIO.SeisCon) = .+(a,x[1].data)
++(x::SegyIO.SeisCon, a::Number) = .+(x[1].data,a)
+
+-(a::Number, x::SegyIO.SeisCon) = -(a,x[1].data)
+-(x::SegyIO.SeisCon, a::Number) = -(x[1].data,a)
+
+*(a::Number, x::SegyIO.SeisCon) = *(a,x[1].data)
+*(x::SegyIO.SeisCon, a::Number) = *(x[1].data,a)
+
+/(a::Number, x::SegyIO.SeisCon) = /(a,x[1].data)
+/(x::SegyIO.SeisCon, a::Number) = /(x[1].data,a)
+
+
+##########################################################
+
 
 # +(judiVector, judiVector)
 function +(a::judiVector{avDT}, b::judiVector{bvDT}) where {avDT, bvDT}
     size(a) == size(b) || throw(judiVectorException("dimension mismatch"))
     compareGeometry(a.geometry, b.geometry) == 1 || throw(judiVectorException("geometry mismatch"))
+    typeof(a.data[1]) == SeisCon && throw("Addition for OOC judiVectors not supported.")
     c = deepcopy(a)
     for j=1:c.nsrc
         c.data[j] = a.data[j] + b.data[j]
@@ -305,6 +340,7 @@ end
 function -(a::judiVector{avDT}, b::judiVector{bvDT}) where {avDT, bvDT}
     size(a) == size(b) || throw(judiVectorException("dimension mismatch"))
     compareGeometry(a.geometry, b.geometry) == 1 || throw(judiVectorException("geometry mismatch"))
+    typeof(a.data[1]) == SeisCon && throw("Subtraction for OOC judiVectors not supported.")
     c = deepcopy(a)
     for j=1:c.nsrc
         c.data[j] = a.data[j] - b.data[j]
@@ -314,6 +350,7 @@ end
 
 # +(judiVector, number)
 function +(a::judiVector{avDT},b::Number) where avDT
+    typeof(a.data[1]) == SeisCon && throw("Addition for OOC judiVectors not supported.")
     c = deepcopy(a)
     for j=1:c.nsrc
         c.data[j] = c.data[j] .+ b
@@ -323,6 +360,7 @@ end
 
 # +(number, judiVector)
 function +(a::Number,b::judiVector{avDT}) where avDT
+    typeof(b.data[1]) == SeisCon && throw("Addition for OOC judiVectors not supported.")
     c = deepcopy(b)
     for j=1:c.nsrc
         c.data[j] = b.data[j] .+ a
@@ -332,6 +370,7 @@ end
 
 # -(judiVector, number)
 function -(a::judiVector{avDT},b::Number) where avDT
+    typeof(a.data[1]) == SeisCon && throw("Subtraction for OOC judiVectors not supported.")
     c = deepcopy(a)
     for j=1:c.nsrc
         c.data[j] = c.data[j] .- b
@@ -341,6 +380,7 @@ end
 
 # *(judiVector, number)
 function *(a::judiVector{avDT},b::Number) where avDT
+    typeof(a.data[1]) == SeisCon && throw("Multiplication for OOC judiVectors not supported.")
     c = deepcopy(a)
     for j=1:c.nsrc
         c.data[j] = c.data[j] .* b
@@ -350,6 +390,7 @@ end
 
 # *(number, judiVector)
 function *(a::Number,b::judiVector{bvDT}) where bvDT
+    typeof(b.data[1]) == SeisCon && throw("Multiplication for OOC judiVectors not supported.")
     c = deepcopy(b)
     for j=1:c.nsrc
         c.data[j] = a .* c.data[j]
@@ -359,6 +400,7 @@ end
 
 # /(judiVector, number)
 function /(a::judiVector{avDT},b::Number) where avDT
+    typeof(a.data[1]) == SeisCon && throw("Division for OOC judiVectors not supported.")
     c = deepcopy(a)
     if iszero(b)
         error("Division by zero")
@@ -741,35 +783,3 @@ function isapprox(x::judiVector, y::judiVector; rtol::Real=sqrt(eps()), atol::Re
     isapprox(x.data, y.data; rtol=rtol, atol=atol)
 end
 
-###########################################################################################################
-
-# Overload base function for SegyIO objects
-
-vec(x::SegyIO.SeisCon) = vec(x[1].data)
-norm(x::SegyIO.IBMFloat32; kwargs...) = norm(convert(Float32,x); kwargs...)
-dot(x::SegyIO.IBMFloat32, y::SegyIO.IBMFloat32) = dot(convert(Float32,x), convert(Float32,y))
-dot(x::SegyIO.IBMFloat32, y::Float32) = dot(convert(Float32,x), y)
-dot(x::Float32, y::SegyIO.IBMFloat32) = dot(x, convert(Float32,y))
-
-# binary operations return dense arrays
-+(x::SegyIO.SeisCon, y::SegyIO.SeisCon) = +(x[1].data,y[1].data)
-+(x::SegyIO.IBMFloat32, y::SegyIO.IBMFloat32) = +(convert(Float32,x),convert(Float32,y))
-+(x::SegyIO.IBMFloat32, y::Float32) = +(convert(Float32,x),y)
-+(x::Float32, y::SegyIO.IBMFloat32) = +(x,convert(Float32,y))
-
--(x::SegyIO.SeisCon, y::SegyIO.SeisCon) = -(x[1].data,y[1].data)
--(x::SegyIO.IBMFloat32, y::SegyIO.IBMFloat32) = -(convert(Float32,x),convert(Float32,y))
--(x::SegyIO.IBMFloat32, y::Float32) = -(convert(Float32,x),y)
--(x::Float32, y::SegyIO.IBMFloat32) = -(x,convert(Float32,y))
-
-+(a::Number, x::SegyIO.SeisCon) = .+(a,x[1].data)
-+(x::SegyIO.SeisCon, a::Number) = .+(x[1].data,a)
-
--(a::Number, x::SegyIO.SeisCon) = -(a,x[1].data)
--(x::SegyIO.SeisCon, a::Number) = -(x[1].data,a)
-
-*(a::Number, x::SegyIO.SeisCon) = *(a,x[1].data)
-*(x::SegyIO.SeisCon, a::Number) = *(x[1].data,a)
-
-/(a::Number, x::SegyIO.SeisCon) = /(a,x[1].data)
-/(x::SegyIO.SeisCon, a::Number) = /(x[1].data,a)
