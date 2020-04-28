@@ -429,7 +429,7 @@ end
 
 process_input_data(input::judiVector, geometry::Geometry, info::Info) = input.data
 
-function process_input_data(input::Array{Float32, 1}, geometry::Geometry, info::Info)
+function process_input_data(input::Array{Float32}, geometry::Geometry, info::Info)
     # Input data is pure Julia array: assume fixed no.
     # of receivers and reshape into data cube nt x nrec x nsrc
     nt = geometry.nt[1]
@@ -439,6 +439,27 @@ function process_input_data(input::Array{Float32, 1}, geometry::Geometry, info::
     dataCell = Array{Array}(undef, nsrc)
     for j=1:nsrc
         dataCell[j] = data[:,:,j]
+    end
+    return dataCell
+end
+
+process_input_data(input::judiWeights, model::Model, info::Info) = input.weights
+
+function process_input_data(input::Array{Float32}, model::Model, info::Info)
+    ndims = length(model.n)
+    dataCell = Array{Array}(undef, info.nsrc)
+    if ndims == 2
+        input = reshape(input, model.n[1], model.n[2], info.nsrc)
+        for j=1:info.nsrc
+            dataCell[j] = input[:,:,j]
+        end
+    elseif ndims == 3
+        input = reshape(input, model.n[1], model.n[2], model.n[3], info.nsrc)
+        for j=1:info.nsrc
+            dataCell[j] = input[:,:,:,j]
+        end
+    else
+        throw("Number of dimensions not supported.")
     end
     return dataCell
 end
