@@ -5,11 +5,6 @@ from argparse import ArgumentParser
 from sources import RickerSource, Receiver
 from models import Model
 
-from kernels import wave_kernel
-from geom_utils import src_rec
-from wave_utils import wavefield, grad_expr, lin_src, otf_dft
-
-from devito import Operator, Function
 from propagators import forward, adjoint, born, gradient
 from interface import forward_rec
 
@@ -94,13 +89,12 @@ N = 1000
 a = .003
 b = .030
 freq_list = np.sort(a + (b - a) * (np.random.randint(N, size=(10,)) - 1) / (N - 1.))
-freq_list = np.array([0.015])  
 dft_sub = 1
 # Propagators (Level 2)
 # d_obs, _ = forward(model, src.coordinates.data, rec_t.coordinates.data, src.data, space_order=8, save=False,
 #                    q=0, free_surface=False, return_op=False, freq_list=None)
 
-d_lin, _ = born(model0, src.coordinates.data, rec_t.coordinates.data, src.data, space_order=8)
+d_lin, _ = born(model0, src.coordinates.data, rec_t.coordinates.data, src.data, space_order=8, isic=True)
 
 
 d0, u0 = forward(model0, src.coordinates.data, rec_t.coordinates.data, src.data, space_order=8, save=False,
@@ -109,10 +103,14 @@ d0, u0 = forward(model0, src.coordinates.data, rec_t.coordinates.data, src.data,
 g = gradient(model0, d_lin, rec_t.coordinates.data, u0, return_op=False, space_order=8,
              w=None, free_surface=False, freq=freq_list, dft_sub=dft_sub)
 
+g2 = gradient(model0, d_lin, rec_t.coordinates.data, u0, return_op=False, space_order=8,
+             w=None, free_surface=False, freq=freq_list, dft_sub=dft_sub, isic=True)
 # Plot
 plt.figure(); plt.imshow(d_lin, vmin=-1, vmax=1, cmap='gray', aspect='auto')
 #plt.figure(); plt.imshow(d_pred.data, vmin=-1, vmax=1, cmap='gray', aspect='auto')
 plt.figure(); plt.imshow(g[model.nbl:-model.nbl, model.nbl:-model.nbl].T, vmin=-1e1, vmax=1e1, cmap='gray', aspect='auto')
+
+plt.figure(); plt.imshow(g2[model.nbl:-model.nbl, model.nbl:-model.nbl].T, vmin=-1e1, vmax=1e1, cmap='gray', aspect='auto')
 plt.show()
 
 from IPython import embed; embed()

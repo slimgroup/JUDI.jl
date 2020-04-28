@@ -133,19 +133,19 @@ def grad_fwi(model, recin, rec_coords, u, space_order=8, free_surface=False):
 
 # Linearized modeling
 def born_rec(model, src_coords, wavelet, rec_coords,
-             space_order=8, free_surface=False):
+             space_order=8, free_surface=False, isic=False):
     """
     Linearized (Born) modeling of a point source for a model perturbation (square slowness) dm.
     Output the linearized data.
     """
     rec, _ = born(model, src_coords, rec_coords, wavelet, save=False,
-                  space_order=space_order, free_surface=free_surface)
+                  space_order=space_order, free_surface=free_surface, isic=isic)
     return rec.data
 
 
 # Gradient wrappers
 def J_adjoint(model, src_coords, wavelet, rec_coords, recin, space_order=8, checkpointing=False, 
-    free_surface=False, n_checkpoints=None, maxmem=None, freq_list=[], dft_sub=None):
+    free_surface=False, n_checkpoints=None, maxmem=None, freq_list=[], dft_sub=None, isic=False):
     """
     Jacobian (adjoint fo born modeling operator) iperator on a shot record as a source (i.e data residual).
     Outputs the gradient.
@@ -158,21 +158,21 @@ def J_adjoint(model, src_coords, wavelet, rec_coords, recin, space_order=8, chec
         grad = J_adjoint_checkpointing(model, src_coords, wavelet, rec_coords,
                                        recin, space_order=8, free_surface=False,
                                        n_checkpoints=n_checkpoints, is_residual=True,
-                                       maxmem=maxmem)
+                                       maxmem=maxmem, isic=isic)
     elif len(freq_list) > 0:
         grad = J_adjoint_freq(model, src_coords, wavelet, rec_coords, recin,
                               space_order=space_order, is_residual=True, dft_sub=dft_sub,
-                              free_surface=free_surface, freq_list=freq_list)
+                              free_surface=free_surface, freq_list=freq_list, isic=isic)
     else:
         grad = J_adjoint_standard(model, src_coords, wavelet, rec_coords, recin,
-                                  is_residual=True, 
+                                  is_residual=True, isic=isic,
                                   space_order=space_order, free_surface=free_surface)
 
     return grad
 
 
 def J_adjoint_freq(model, src_coords, wavelet, rec_coords, recin, space_order=8, free_surface=False, 
-    freq_list=[], is_residual=False, return_obj=False, dft_sub=None):
+    freq_list=[], is_residual=False, return_obj=False, dft_sub=None, isic=False):
     """
     Gradient (appication of Jacobian to a shot record) computed with on-the-fly
     Fourier transform.
@@ -185,7 +185,7 @@ def J_adjoint_freq(model, src_coords, wavelet, rec_coords, recin, space_order=8,
     if is_residual is not True:  # input data is already the residual
         recin[:] = rec.data[:] - recin[:]   # input is observed data
 
-    g = gradient(model, recin, rec_coords, u, space_order=space_order,
+    g = gradient(model, recin, rec_coords, u, space_order=space_order, isic=isic,
                  free_surface=free_surface, freq=freq_list, dft_sub=dft_sub)
     if return_obj:
         return .5*np.linalg.norm(recin)**2, g.data
@@ -193,7 +193,7 @@ def J_adjoint_freq(model, src_coords, wavelet, rec_coords, recin, space_order=8,
 
 
 def J_adjoint_standard(model, src_coords, wavelet, rec_coords, recin, space_order=8, 
-    free_surface=False, is_residual=False, return_obj=False):
+    free_surface=False, is_residual=False, return_obj=False, isic=False):
     """
     Gradient (appication of Jacobian to a shot record) computed with the standard sum over time.
     Outputs gradient, and objective function (least-square) if requested.
@@ -205,14 +205,14 @@ def J_adjoint_standard(model, src_coords, wavelet, rec_coords, recin, space_orde
         recin[:] = rec.data[:] - recin[:]   # input is observed data
 
     g = gradient(model, recin, rec_coords, u, space_order=space_order,
-                 free_surface=free_surface)
+                 free_surface=free_surface, isic=isic)
     if return_obj:
         return .5*np.linalg.norm(recin)**2, g.data
     return g.data
 
 
 def J_adjoint_checkpointing(model, src_coords, wavelet, rec_coords, recin, space_order=8, free_surface=False, 
-    is_residual=False,n_checkpoints=None, maxmem=None, return_obj=False):
+    is_residual=False,n_checkpoints=None, maxmem=None, return_obj=False, isic=False):
     """
     Gradient (appication of Jacobian to a shot record) computed with (optimal?) checkpointing.
     Outputs gradient, and objective function (least-square) if requested.
@@ -222,7 +222,7 @@ def J_adjoint_checkpointing(model, src_coords, wavelet, rec_coords, recin, space
                            space_order=space_order, return_op=True,
                            free_surface=free_surface)
     op, g = gradient(model, rec_coords, recin, space_order=space_order,
-                     return_op=True, free_surface=free_surface)
+                     return_op=True, free_surface=free_surface, isic=isic)
     cp = DevitoCheckpoint([u])
     if maxmem is not None:
         memsize = (cp.size * u.data.itemsize)

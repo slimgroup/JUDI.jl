@@ -36,70 +36,6 @@ def wavefield(model, space_order, save=False, nt=None, fw=True, name=''):
         return TimeFunction(name=name, grid=model.grid, time_order=2,
                             space_order=space_order, save=None if not save else nt)
 
-def corr_fields(u, v, freq=None, factor=None, isic=False):
-    """
-    Cross correlation of forward and adjoint wavefield
-
-    Parameters
-    ----------
-    u: TimeFunction or Tuple
-        Forward wavefield (tuple of fields for TTI or dft)
-    v: TimeFunction or Tuple
-        Adjoint wavefield (tuple of fields for TTI)
-    freq: Array
-        Array of frequencies for on-the-fly DFT
-    factor: int
-        Subsampling factor for DFT
-    isic: Bool
-        Whether or not to use inverse scattering imaging condition (not supported yet)
-    """
-    if freq is not None:
-        # Subsampled dft time axis
-        time = as_tuple(v)[0].grid.time_dim
-        dt = time.spacing
-        tsave, factor = sub_time(time, factor)
-        ufr, ufi = u
-        # Frequencies
-        nfreq = freq.shape[0]
-        f = Function(name='f', dimensions=(ufr.dimensions[0],), shape=(nfreq,))
-        f.data[:] = freq[:]
-        omega_t = 2*np.pi*f*tsave*factor*dt
-        # Gradient weighting is (2*np.pi*f)**2/nt
-        w = (2*np.pi*f)**2/time.symbolic_max
-        expr = w*(ufr*cos(omega_t) - ufi*sin(omega_t))*v
-    else:
-        if isic is False:
-            expr = - v * u.dt2
-        else:
-           expr = - v * u.dt2
-    return expr
-
-
-def grad_expr(gradm, u, v, w=1, freq=None, dft_sub=None, isic=False):
-    """
-    Gradient update stencil
-
-    Parameters
-    ----------
-    u: TimeFunction or Tuple
-        Forward wavefield (tuple of fields for TTI or dft)
-    v: TimeFunction or Tuple
-        Adjoint wavefield (tuple of fields for TTI)
-    w: Float or Expr (optional)
-        Weight for the gradient expression (default=1)
-    freq: Array
-        Array of frequencies for on-the-fly DFT
-    factor: int
-        Subsampling factor for DFT
-    isic: Bool
-        Whether or not to use inverse scattering imaging condition (not supported yet)
-    """
-    expr = 0
-    if freq is not None:
-        w = 1
-    expr = w * corr_fields(as_tuple(u)[0], as_tuple(v)[0], freq=freq, factor=dft_sub)
-    return [Eq(gradm, expr + gradm)]
-
 
 def wf_as_src(v, w=1):
     """
@@ -115,22 +51,6 @@ def wf_as_src(v, w=1):
     if type(v) is tuple:
         return (w * v[0], 0)
     return w * v
-
-def lin_src(model, u):
-    """
-    Source for linearized modeling
-
-    Parameters
-    ----------
-    u: TimeFunction or Tuple
-        Forward wavefield (tuple of fields for TTI or dft)
-    model: Model
-        Model containing the perturbation dm
-    """
-    w = - model.dm * model.irho
-    if type(u) is tuple:
-        return (w * u[0].dt2, w * u[1].dt2)
-    return w * u.dt2
 
 
 def freesurface(field, npml, forward=True):
@@ -191,8 +111,10 @@ def otf_dft(u, freq, dt, factor=None):
     # Pulsation
     omega_t = 2*np.pi*f*tsave*factor*dt
     for wf in as_tuple(u):
-        ufr = Function(name='ufr%s'%wf.name, dimensions=(freq_dim,) + wf.indices[1:], shape=(nfreq,) + wf.shape[1:])
-        ufi = Function(name='ufi%s'%wf.name, dimensions=(freq_dim,) + wf.indices[1:], shape=(nfreq,) + wf.shape[1:])
+        ufr = Function(name='ufr%s'%wf.name, dimensions=(freq_dim,) + wf.indices[1:],
+                       grid=wf.grid, shape=(nfreq,) + wf.shape[1:])
+        ufi = Function(name='ufi%s'%wf.name, dimensions=(freq_dim,) + wf.indices[1:],
+                       grid=wf.grid,  shape=(nfreq,) + wf.shape[1:])
         dft += [Inc(ufr, factor * cos(omega_t) * wf)]
         dft += [Inc(ufi, -factor * sin(omega_t) * wf)]
         dft_modes += [(ufr, ufi)]
@@ -215,5 +137,7 @@ def sub_time(time, factor, dt=1, freq=None):
     elif freq is not None:
         factor = factor or int(1 / (dt*4*np.max(freq)))
         return ConditionalDimension(name='tsave', parent=time, factor=factor), factor
-    else:
+    elif factor is not None:
         return ConditionalDimension(name='tsave', parent=time, factor=factor), factor
+    else:
+        return time, 1

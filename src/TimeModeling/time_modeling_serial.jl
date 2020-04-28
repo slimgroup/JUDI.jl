@@ -13,7 +13,7 @@ function time_modeling(model_full::Modelall, srcGeometry, srcData, recGeometry, 
     if options.limit_m == true
         model = deepcopy(model_full)
         if op=='J' && mode==1
-            model,dm = limit_model_to_receiver_area(srcGeometry,recGeometry,model,options.buffer_size;pert=dm)
+            model, dm = limit_model_to_receiver_area(srcGeometry,recGeometry,model,options.buffer_size;pert=dm)
         else
             model = limit_model_to_receiver_area(srcGeometry,recGeometry,model,options.buffer_size)
         end

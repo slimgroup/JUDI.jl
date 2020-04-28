@@ -5,7 +5,7 @@
 
 module TimeModeling
 
-using JUDI, PyCall, JOLI, Distributed, SegyIO, Dierckx, LinearAlgebra, Base.Broadcast, FFTW, Random, Printf
+using JUDI, PyCall, JOLI, Distributed, SegyIO, Dierckx, LinearAlgebra, Base.Broadcast, FFTW
 using Caching
 
 import Base.*, Base./, Base.+, Base.-, Base.copy!, Base.sum, Base.ndims, Base.reshape

@@ -1,6 +1,7 @@
 from kernels import wave_kernel
 from geom_utils import src_rec
-from wave_utils import wavefield, grad_expr, lin_src, otf_dft
+from wave_utils import wavefield, otf_dft
+from sensitivity import grad_expr, lin_src
 
 from devito import Operator, Function
 
@@ -74,7 +75,7 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0,
 
 
 def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8,
-             w=None, free_surface=False, freq=None, dft_sub=None,):
+             w=None, free_surface=False, freq=None, dft_sub=None, isic=True):
     """
     Compute adjoint wavefield v = adjoint(F(m))*y
     and related quantities (||v||_w, v(xsrc))
@@ -91,8 +92,7 @@ def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8,
 
     # Setup gradient wrt m
     gradm = Function(name="gradm", grid=model.grid)
-    w = w or model.grid.time_dim.spacing * model.irho
-    g_expr = grad_expr(gradm, u, v, w=w, freq=freq, dft_sub=dft_sub)
+    g_expr = grad_expr(gradm, u, v, model, w=w, freq=freq, dft_sub=dft_sub, isic=isic)
 
     # Create operator and run
     subs = model.spacing_map
@@ -107,7 +107,7 @@ def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8,
 
 
 def born(model, src_coords, rcv_coords, wavelet, space_order=8,
-         save=False, free_surface=False):
+         save=False, free_surface=False, isic=False):
     """
     Compute adjoint wavefield v = adjoint(F(m))*y
     and related quantities (||v||_w, v(xsrc))
@@ -118,7 +118,7 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8,
     
     # Set up PDE expression and rearrange
     pde = wave_kernel(model, u, fs=free_surface)
-    pdel = wave_kernel(model, ul, q=lin_src(model, u), fs=free_surface)
+    pdel = wave_kernel(model, ul, q=lin_src(model, u, isic=isic), fs=free_surface)
     
     # Setup source and receiver
     geom_expr, _, _ = src_rec(model, u, src_coords=src_coords, wavelet=wavelet)
