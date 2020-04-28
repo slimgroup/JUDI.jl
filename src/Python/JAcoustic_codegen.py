@@ -125,7 +125,7 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
                 return rec.data, (usave  if return_devito_obj is True else usave.data)
         else:
             if rec_coords is None:
-                return u.data
+                return u  if return_devito_obj is True else u.data
             else:
                 return rec.data, (u  if return_devito_obj is True else u.data)
 
@@ -195,7 +195,7 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=8, nb=
         time = model.grid.time_dim
         wavelett = Function(name='wf_src', dimensions=(time,), shape=(nt,))
         wavelett.data[:] = wavelet[:]
-        expression += [Inc(w_out, v*wavelett)]
+        expression += [Eq(w_out, w_out + v*wavelett)]
 
     # Create operator and run
     set_log_level('ERROR')
@@ -213,8 +213,11 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=8, nb=
     else:
         return src.data
 
-def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, nb=40, isic=False, dt=None, free_surface=False):
+def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, nb=40, isic=False, dt=None, free_surface=False, weight=None):
     clear_cache()
+
+    if weight is not None:
+        wavelet = np.asarray(wavelet)[:,0]
 
     # Parameters
     nt = wavelet.shape[0]
@@ -245,14 +248,23 @@ def forward_born(model, src_coords, wavelet, rec_coords, space_order=8, nb=40, i
 
     stencil_u = damp * (2.0 * u - damp * u.backward + dt**2 * rho / m * ulaplace)
     stencil_du = damp * (2.0 * du - damp * du.backward + dt**2 * rho / m * (dulaplace - lin_source))
-
-    expression_u = [Eq(u.forward, stencil_u)]
     expression_du = [Eq(du.forward, stencil_du)]
 
     # Define source symbol with wavelet
-    src = PointSource(name='src', grid=model.grid, ntime=nt, coordinates=src_coords)
-    src.data[:] = wavelet[:]
-    src_term = src.inject(field=u.forward, expr=src * rho * dt**2 / m)
+    src_term = []
+    if weight is not None:
+        time = model.grid.time_dim
+        wavelett = Function(name='wf_src', dimensions=(time,), shape=(nt,))
+        wavelett.data[:] = wavelet[:]
+        source_weight = Function(name='src_weight', grid=model.grid)
+        slices = tuple([slice(model.nbpml, -model.nbpml, 1) for _ in range(model.grid.dim)])
+        source_weight.data[slices] = weight
+        stencil_u += dt**2 * rho / m * source_weight*wavelett
+    else:
+        src = PointSource(name='src', grid=model.grid, ntime=nt, coordinates=src_coords)
+        src.data[:] = wavelet[:]
+        src_term = src.inject(field=u.forward, expr=src * rho * dt**2 / m)
+    expression_u = [Eq(u.forward, stencil_u)]
 
     # Define receiver symbol
     rec = Receiver(name='rec', grid=model.grid, ntime=nt, coordinates=rec_coords)

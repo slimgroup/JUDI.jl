@@ -55,11 +55,11 @@ dobs, utrue = forward_modeling(model, None, src.data, rec_t.coordinates.data, we
 w2 = adjoint_modeling(model, None, rec_t.coordinates.data, dobs.data, wavelet=src.data)
 
 # # Linearized modeling
-# dlin = forward_born(model0, None, src.data, rec_t.coordinates.data, weight=w)
+dlin = forward_born(model0, None, src.data, rec_t.coordinates.data, weight=w)
 
-# # Adjoint modeling
-# u0 = forward_modeling(model0, None, src.data, None, weight=w, save=True)
-# g = adjoint_born(model0, rec_t.coordinates.data, dlin.data, u=u0)
+# Adjoint modeling
+u0 = forward_modeling(model0, None, src.data, None, weight=w, save=True, return_devito_obj=True)
+g = adjoint_born(model0, rec_t.coordinates.data, dlin.data, u=u0)
 
-# plt.imshow(dlin.data, aspect='auto', cmap='gray')
-# plt.figure(); plt.imshow(np.transpose(g.data), vmin=np.min(g.data), vmax=np.max(g.data), aspect='auto', cmap='gray'); plt.show()
+plt.imshow(dlin.data, aspect='auto', cmap='gray')
+plt.figure(); plt.imshow(np.transpose(g.data), vmin=np.min(g.data), vmax=np.max(g.data), aspect='auto', cmap='gray'); plt.show()
