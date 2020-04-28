@@ -191,6 +191,37 @@ function *(A::judiPDEadjoint{CDT,ARDT},B::judiProjection{BDDT,CDT}) where {ARDT,
     return adjoint(judiModeling(A.info,A.model,A.geometry,B.geometry,options=A.options,DDT=CDT,RDT=ARDT))
 end
 
+# *(judiPDE,judiLRWF)
+function *(A::judiPDE{CDT,ARDT},B::judiLRWF{BDDT,CDT}) where {ARDT,BDDT,CDT}
+    A.n == size(B,1) || throw(judiPDEexception("shape mismatch"))
+    return judiPDEextended(A.info,A.model,B.wavelet,A.geometry;options=A.options,DDT=CDT,RDT=ARDT)
+end
+
+function *(A::judiPDEadjoint{CDT,ARDT},B::judiLRWF{BDDT,CDT}) where {ARDT,BDDT,CDT}
+    A.n == size(B,1) || throw(judiPDEadjointException("shape mismatch"))
+    return adjoint(judiPDEextended(A.info,A.model,B.wavelet,A.geometry,options=A.options,DDT=CDT,RDT=ARDT))
+end
+
+# TO DO: Need to add multiplications with judiExtendedSource
+# # *(judiPDE,judiExtendedSource)
+# function *(A::judiPDE{ADDT,ARDT},B::judiExtendedSource{vDT}) where {ADDT,ARDT,vDT}
+#     A.n == size(v,1) || throw(judiPDEexception("shape mismatch"))
+#     jo_check_type_match(ADDT,vDT,join(["DDT for *(judiPDE,judiExtendedSource):",A.name,typeof(A),vDT]," / "))
+# 	args = (v.geometry,v.data,A.geometry,nothing,nothing)
+#     V = A.fop(args)
+#     jo_check_type_match(ARDT,eltype(V),join(["RDT from *(judiPDE,judiExtendedSource):",A.name,typeof(A),eltype(V)]," / "))
+#     return V
+# end
+#
+# function *(A::judiPDEadjoint{CDT,ARDT},B::judiExtendedSource{vDT}) where where {ADDT,ARDT,vDT}
+#     A.n == size(v,1) || throw(judiPDEadjointException("shape mismatch"))
+#     jo_check_type_match(ADDT,vDT,join(["DDT for *(judiPDE,judiExtendedSource):",A.name,typeof(A),vDT]," / "))
+# 	args = (A.geometry,nothing,v.geometry,v.data,nothing)
+#     V = A.fop(args)
+#     jo_check_type_match(ARDT,eltype(V),join(["RDT from *(judiPDE,judiExtendedSource):",A.name,typeof(A),eltype(V)]," / "))
+#     return V
+# end
+
 # *(num,judiPDE)
 function *(a::Number,A::judiPDE{ADDT,ARDT}) where {ADDT,ARDT}
     return judiPDE{ADDT,ARDT}("(N*"*A.name*")",A.m,A.n,A.info,A.model,A.geometry,A.options,

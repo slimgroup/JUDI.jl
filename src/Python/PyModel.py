@@ -35,8 +35,8 @@ def initialize_damp(damp, nbpml, spacing, mask=False):
     pad_widths = [(nbpml, nbpml) for i in range(damp.ndim)]
     data = np.pad(data, pad_widths, 'edge')
 
-    dampcoeff = 1.5 * np.log(1.0 / 0.001) / (40.)
-
+    dampcoeff = .15 * np.log(1.0 / 0.001) / (40.)
+    
     assert all(damp._offset_domain[0] == i for i in damp._offset_domain)
 
     for i in range(damp.ndim):
@@ -50,10 +50,10 @@ def initialize_damp(damp, nbpml, spacing, mask=False):
             all_ind = [slice(0, d) for d in data.shape]
             # Left slice for dampening for dimension i
             all_ind[i] = slice(j, j+1)
-            data[tuple(all_ind)] += val/spacing[i]
+            data[tuple(all_ind)] += val
             # right slice for dampening for dimension i
             all_ind[i] = slice(data.shape[i]-j, data.shape[i]-j+1)
-            data[tuple(all_ind)] += val/spacing[i]
+            data[tuple(all_ind)] += val
 
     initialize_function(damp, data, 0)
 
@@ -231,7 +231,7 @@ class Model(object):
         # dt <= coeff * h / (max(velocity))
         coeff = 0.38 if len(self.shape) == 3 else 0.42
         dt = self.dtype(coeff * np.min(self.spacing) / (self.scale*np.max(self.vp)))
-        return self.dtype(.001 * int(1000 * dt))
+        return self.dtype('%.3e' % dt)
 
     @property
     def vp(self):

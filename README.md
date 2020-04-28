@@ -62,7 +62,7 @@ export DEVITO_ARCH=gnu
 Devito uses shared memory OpenMP parallelism for solving PDEs. OpenMP is disabled by default, but you can enable OpenMP and define the number of threads (per PDE solve) as follows:
 
 ```
-export DEVITO_OPENMP=1  # Enable OpenMP. Set to 0 to disable again.
+export DEVITO_LANGUAGE=openmp  # Enable OpenMP. 
 export OMP_NUM_THREADS=4    # Number of OpenMP threads
 ```
 

@@ -5,7 +5,7 @@
 #
 
 using LinearAlgebra, Random
-using JUDI, JUDI.TimeModeling, SegyIO, PyCall
+using JUDI, JUDI.TimeModeling, SegyIO
 
 ## Set up model structure
 n = (120, 100)   # (x,y,z) or (x,z)

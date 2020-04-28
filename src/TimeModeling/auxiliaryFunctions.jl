@@ -209,6 +209,17 @@ function get_computational_nt(srcGeometry, recGeometry, model::Model)
     return nt
 end
 
+function get_computational_nt(geometry, model::Model)
+    # Determine number of computational time steps
+    nsrc = length(geometry.xloc)
+    nt = Array{Any}(undef, nsrc)
+    dtComp = calculate_dt(model.n, model.d, model.o, sqrt.(1f0 ./ model.m), model.rho)
+    for j=1:nsrc
+        nt[j] = Int(ceil(geometry.dt[j]*(geometry.nt[j]-1) / dtComp))
+    end
+    return nt
+end
+
 function setup_grid(geometry,n, origin)
     # 3D grid
     if length(n)==3
@@ -418,7 +429,7 @@ end
 
 process_input_data(input::judiVector, geometry::Geometry, info::Info) = input.data
 
-function process_input_data(input::Array{Float32, 1}, geometry::Geometry, info::Info)
+function process_input_data(input::Array{Float32}, geometry::Geometry, info::Info)
     # Input data is pure Julia array: assume fixed no.
     # of receivers and reshape into data cube nt x nrec x nsrc
     nt = geometry.nt[1]
@@ -428,6 +439,27 @@ function process_input_data(input::Array{Float32, 1}, geometry::Geometry, info::
     dataCell = Array{Array}(undef, nsrc)
     for j=1:nsrc
         dataCell[j] = data[:,:,j]
+    end
+    return dataCell
+end
+
+process_input_data(input::judiWeights, model::Model, info::Info) = input.weights
+
+function process_input_data(input::Array{Float32}, model::Model, info::Info)
+    ndims = length(model.n)
+    dataCell = Array{Array}(undef, info.nsrc)
+    if ndims == 2
+        input = reshape(input, model.n[1], model.n[2], info.nsrc)
+        for j=1:info.nsrc
+            dataCell[j] = input[:,:,j]
+        end
+    elseif ndims == 3
+        input = reshape(input, model.n[1], model.n[2], model.n[3], info.nsrc)
+        for j=1:info.nsrc
+            dataCell[j] = input[:,:,:,j]
+        end
+    else
+        throw("Number of dimensions not supported.")
     end
     return dataCell
 end
