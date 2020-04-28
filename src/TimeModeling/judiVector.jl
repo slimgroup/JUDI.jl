@@ -296,7 +296,7 @@ function +(a::judiVector{avDT}, b::judiVector{bvDT}) where {avDT, bvDT}
     compareGeometry(a.geometry, b.geometry) == 1 || throw(judiVectorException("geometry mismatch"))
     c = deepcopy(a)
     for j=1:c.nsrc
-        c[j].data = a[j].data + b[j].data
+        c.data[j] = a.data[j] + b.data[j]
     end
     return c
 end
@@ -307,7 +307,7 @@ function -(a::judiVector{avDT}, b::judiVector{bvDT}) where {avDT, bvDT}
     compareGeometry(a.geometry, b.geometry) == 1 || throw(judiVectorException("geometry mismatch"))
     c = deepcopy(a)
     for j=1:c.nsrc
-        c[j].data = a[j].data - b[j].data
+        c.data[j] = a.data[j] - b.data[j]
     end
     return c
 end
@@ -316,7 +316,7 @@ end
 function +(a::judiVector{avDT},b::Number) where avDT
     c = deepcopy(a)
     for j=1:c.nsrc
-        c[j].data = c[j].data .+ b
+        c.data[j] = c.data[j] .+ b
     end
     return c
 end
@@ -325,7 +325,7 @@ end
 function +(a::Number,b::judiVector{avDT}) where avDT
     c = deepcopy(b)
     for j=1:c.nsrc
-        c[j].data = b[j].data .+ a
+        c.data[j] = b.data[j] .+ a
     end
     return c
 end
@@ -334,7 +334,7 @@ end
 function -(a::judiVector{avDT},b::Number) where avDT
     c = deepcopy(a)
     for j=1:c.nsrc
-        c[j].data = c[j].data .- b
+        c.data[j] = c.data[j] .- b
     end
     return c
 end
@@ -343,7 +343,7 @@ end
 function *(a::judiVector{avDT},b::Number) where avDT
     c = deepcopy(a)
     for j=1:c.nsrc
-        c[j].data = c[j].data .* b
+        c.data[j] = c.data[j] .* b
     end
     return c
 end
@@ -352,7 +352,7 @@ end
 function *(a::Number,b::judiVector{bvDT}) where bvDT
     c = deepcopy(b)
     for j=1:c.nsrc
-        c[j].data = a .* c[j].data
+        c.data[j] = a .* c.data[j]
     end
     return c
 end
@@ -364,7 +364,7 @@ function /(a::judiVector{avDT},b::Number) where avDT
         error("Division by zero")
     else
         for j=1:c.nsrc
-            c[j].data = c[j].data/b
+            c.data[j] = c.data[j]/b
         end
     end
     return c
