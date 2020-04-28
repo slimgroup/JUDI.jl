@@ -32,8 +32,11 @@ def acoustic_laplacian(v, rho):
             Lap = 1 / rho * v.laplace
     return Lap, rho
 
-def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_order=8, nb=40, free_surface=False, op_return=False, u_return=False, dt=None, tsub_factor=1, return_devito_obj=False):
+def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_order=8, nb=40, free_surface=False, op_return=False, u_return=False, dt=None, tsub_factor=1, return_devito_obj=False, weight=None):
     clear_cache()
+
+    if weight is not None:
+        wavelet = np.asarray(wavelet)[:,0]
 
     # If wavelet is file, read it
     if isinstance(wavelet, str):
@@ -64,13 +67,21 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
     stencil = damp * ( 2.0 * u - damp * u.backward + dt**2 * rho / m * ulaplace)
 
     # Input source is wavefield
-    if src_coords is None:
+    if src_coords is None and weight is None:
         wf_src = TimeFunction(name='wf_src', grid=model.grid, time_order=2, space_order=space_order, save=nt)
         if isinstance(wavelet, TimeFunction):
             wf_src._data = wavelet._data
         else:
             wf_src.data[:] = wavelet[:]
         stencil -= wf_src
+    elif weight is not None:
+        time = model.grid.time_dim
+        wavelett = Function(name='wf_src', dimensions=(time,), shape=(nt,))
+        wavelett.data[:] = wavelet[:]
+        source_weight = Function(name='src_weight', grid=model.grid)
+        slices = tuple(slice(model.nbpml, -model.nbpml, 1) for _ in range(model.grid.dim))
+        source_weight.data[slices] = weight
+        stencil += dt**2 * rho / m * source_weight*wavelett
 
     # Rearrange expression
     expression = [Eq(u.forward, stencil)]
@@ -91,7 +102,7 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
         expression += freesurface(u, space_order//2, model.nbpml)
 
     # Source symbol with input wavelet
-    if src_coords is not None:
+    if src_coords is not None and weight is None:
         src = PointSource(name='src', grid=model.grid, ntime=nt, coordinates=src_coords)
         src.data[:] = wavelet[:]
         src_term = src.inject(field=u.forward, expr=src * rho * dt**2 / m)
@@ -123,8 +134,11 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
         return op
 
 
-def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=8, nb=40, free_surface=False, dt=None):
+def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=8, nb=40, free_surface=False, dt=None, wavelet=None):
     clear_cache()
+
+    if wavelet is not None:
+        wavelet = np.asarray(wavelet)[:,0]
 
     # If wavelet is file, read it
     if isinstance(rec_data, str):
@@ -170,10 +184,18 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=8, nb=
         expression += adj_src
 
     # Data is sampled at source locations
-    if src_coords is not None:
+    if src_coords is not None and wavelet is None:
         src = PointSource(name='src', grid=model.grid, ntime=nt, coordinates=src_coords)
         adj_rec = src.interpolate(expr=v)
         expression += adj_rec
+
+    # Data is sampled everywhere as a sum over time and weighted by wavelet
+    if wavelet is not None:
+        w_out = Function(name='src_weight', grid=model.grid)
+        time = model.grid.time_dim
+        wavelett = Function(name='wf_src', dimensions=(time,), shape=(nt,))
+        wavelett.data[:] = wavelet[:]
+        expression += [Inc(w_out, v*wavelett)]
 
     # Create operator and run
     set_log_level('ERROR')
@@ -181,6 +203,11 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=8, nb=
     subs[v.grid.time_dim.spacing] = dt
     op = Operator(expression, subs=subs, dse='advanced', dle='advanced')
     op()
+    
+    # Return arguments
+    if wavelet is not None:
+        slices = tuple([slice(model.nbpml, -model.nbpml, 1) for _ in range(model.grid.dim)])
+        return w_out.data[slices]
     if src_coords is None:
         return v.data
     else:
