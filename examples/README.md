@@ -18,6 +18,7 @@ Pkg.add("PyPlot")
 
 # Optimization
 Pkg.add("NLopt")
+Pkg.add("IterativeSolvers")
 ```
 
 ## Overview
