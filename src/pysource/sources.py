@@ -1,5 +1,7 @@
-
 import sympy
+
+from scipy import interpolate
+from cached_property import cached_property
 
 from devito import Dimension
 from devito.types import SparseTimeFunction
@@ -7,7 +9,68 @@ from devito.logger import error
 import numpy as np
 
 
-__all__ = ['PointSource', 'Receiver', 'Shot', 'RickerSource', 'GaborSource']
+__all__ = ['PointSource', 'Receiver', 'Shot', 'RickerSource', 'GaborSource', 'TimeAxis']
+
+
+class TimeAxis(object):
+    """
+    Data object to store the TimeAxis. Exactly three of the four key arguments
+    must be prescribed. Because of remainder values it is not possible to create
+    a TimeAxis that exactly adhears to the inputs therefore start, stop, step
+    and num values should be taken from the TimeAxis object rather than relying
+    upon the input values.
+    The four possible cases are:
+    start is None: start = step*(1 - num) + stop
+    step is None: step = (stop - start)/(num - 1)
+    num is None: num = ceil((stop - start + step)/step);
+                 because of remainder stop = step*(num - 1) + start
+    stop is None: stop = step*(num - 1) + start
+    Parameters
+    ----------
+    start : float, optional
+        Start of time axis.
+    step : float, optional
+        Time interval.
+    num : int, optional
+        Number of values (Note: this is the number of intervals + 1).
+        Stop value is reset to correct for remainder.
+    stop : float, optional
+        End time.
+    """
+    def __init__(self, start=None, step=None, num=None, stop=None):
+        try:
+            if start is None:
+                start = step*(1 - num) + stop
+            elif step is None:
+                step = (stop - start)/(num - 1)
+            elif num is None:
+                num = int(np.ceil((stop - start + step)/step))
+                stop = step*(num - 1) + start
+            elif stop is None:
+                stop = step*(num - 1) + start
+            else:
+                raise ValueError("Only three of start, step, num and stop may be set")
+        except:
+            raise ValueError("Three of args start, step, num and stop may be set")
+
+        if not isinstance(num, int):
+            raise TypeError("input argument must be of type int")
+
+        self.start = start
+        self.stop = stop
+        self.step = step
+        self.num = num
+
+    def __str__(self):
+        return "TimeAxis: start=%g, stop=%g, step=%g, num=%g" % \
+               (self.start, self.stop, self.step, self.num)
+
+    def _rebuild(self):
+        return TimeAxis(start=self.start, stop=self.stop, num=self.num)
+
+    @cached_property
+    def time_values(self):
+        return np.linspace(self.start, self.stop, self.num)
 
 
 class PointSource(SparseTimeFunction):
@@ -43,7 +106,7 @@ class PointSource(SparseTimeFunction):
                 raise TypeError("Need either `npoint` or `coordinates`")
             else:
                 npoint = coords.shape[0]
-        name = kwargs.get("name")
+
         grid = kwargs.get("grid")
         ntime = kwargs.get("ntime")
         if kwargs.get("data") is None:

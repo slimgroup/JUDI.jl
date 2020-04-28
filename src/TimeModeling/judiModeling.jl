@@ -16,7 +16,7 @@ struct judiModeling{DDT<:Number,RDT<:Number} <: joAbstractLinearOperator{DDT,RDT
     m::Integer
     n::Integer
     info::Info
-    model::Model
+    model::Modelall
     options::Options
 	fop::Function              # forward
 	fop_T::Function  # transpose
@@ -32,7 +32,7 @@ struct judiModelingAdjoint{DDT,RDT} <: joAbstractLinearOperator{DDT,RDT}
     m::Integer
     n::Integer
     info::Info
-    model::Model
+    model::Modelall
     options::Options
 	fop::Function              # forward
 	fop_T::Function  # transpose
@@ -66,7 +66,7 @@ Example
     dobs = F*q
 
 """
-function judiModeling(info::Info, model::Model; options=Options(), DDT::DataType=Float32, RDT::DataType=DDT)
+function judiModeling(info::Info, model::Modelall; options=Options(), DDT::DataType=Float32, RDT::DataType=DDT)
 # JOLI wrapper for nonlinear forward modeling
 	(DDT == Float32 && RDT == Float32) || throw(judiModelingException("Domain and range types not supported"))
 	m = info.n * sum(info.nt)
@@ -82,7 +82,7 @@ function judiModeling(info::Info, model::Model; options=Options(), DDT::DataType
 							  )
 end
 
-function judiModelingAdjoint(info::Info, model::Model; options=Options(), DDT::DataType=Float32, RDT::DataType=DDT)
+function judiModelingAdjoint(info::Info, model::Modelall; options=Options(), DDT::DataType=Float32, RDT::DataType=DDT)
 # JOLI wrapper for nonlinear forward modeling
 	(DDT == Float32 && RDT == Float32) || throw(judiModelingAdjointException("Domain and range types not supported"))
 	m = info.n * sum(info.nt)

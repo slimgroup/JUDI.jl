@@ -2,12 +2,57 @@
 # Author: Philipp Witte, pwitte@eos.ubc.ca
 # Date: December 2017
 #
+using DSP
 
 export marineTopmute2D, judiMarineTopmute2D
-export model_topmute, judiTopmute, find_water_bottom, depth_scaling, judiDepthScaling, laplace
+export model_topmute, judiTopmute, find_water_bottom, depth_scaling, judiDepthScaling, laplace, low_filter
 
 
 ############################################ Data space preconditioners ################################################
+
+function judiFilter(geometry, fmin, fmax)
+    nsrc = length(geometry.xloc)
+    N = 0
+    for j=1:nsrc
+        N += geometry.nt[j]*length(geometry.xloc[j])
+    end
+    D = joLinearFunctionFwdT(N,N,
+                             v -> low_filter(v,geometry.dt[1];fmin=fmin, fmax=fmax),
+                             w -> low_filter(w,geometry.dt[1];fmin=fmin, fmax=fmax),
+                             Float32,Float32,name="Data filter")
+    return D
+end
+
+function low_filter(Din::Array{Float32, 1}, dt_in; fmin=0.0, fmax=25.0)	
+    Dout = deepcopy(Din)	
+    responsetype = Bandpass(fmin, fmax; fs=1e3/dt_in)	
+    designmethod = Butterworth(5)	
+    return filt(digitalfilter(responsetype, designmethod), Float32.(Dout))	
+end	
+
+function low_filter(Din::Array{Float32, 2}, dt_in; fmin=0.0, fmax=25.0)	
+    Dout = deepcopy(Din)	
+    responsetype = Bandpass(fmin, fmax; fs=1e3/dt_in)	
+    designmethod = Butterworth(5)	
+    for i=1:size(Dout,2)	
+        Dout[:, i] = filt(digitalfilter(responsetype, designmethod), Float32.(Dout[:, i]))	
+    end	
+    return Dout	
+end	
+
+function low_filter(Din::judiVector, dt_in; fmin=0.0, fmax=25.0)	
+    Dout = deepcopy(Din)	
+    for j=1:Dout.nsrc
+		if size(Din.data[j], 2) == 1
+			Dout.data[j] = low_filter(Dout.data[j], dt_in; fmin=fmin, fmax=fmax)
+		else
+	        for i=1:size(Din.data[j], 2)	
+	            Dout.data[j][:, i] = low_filter(Dout.data[j][:, i], dt_in; fmin=fmin, fmax=fmax)
+	        end	
+		end
+    end	
+    return Dout	
+end
 
 
 function marineTopmute2D(Dobs::judiVector, muteStart::Integer; mute=Array{Any}(undef, 3), flipmask=false)
@@ -33,8 +78,8 @@ function marineTopmute2D(Dobs::judiVector, muteStart::Integer; mute=Array{Any}(u
             mute[2] = z0
             mute[3] = slope
         else#if j==1 && isassigned(mute)
-            x0 = mute[1]
-            z0 = mute[2]
+            x0 = Int64(mute[1])
+            z0 = Int64(mute[2])
             slope = mute[3]
         end
 
@@ -56,7 +101,7 @@ function marineTopmute2D(Dobs::judiVector, muteStart::Integer; mute=Array{Any}(u
             xax = Int(round(x0))
         end
         for k=1:length(zax)
-            mask[zax[k],xax[k]:end] .= 0f0
+            mask[min(zax[k], nt),xax[k]:end] .= 0f0
         end
         flipmask == true && (mask = reverse(mask, dims=2))
         Din.data[j] = Din.data[j].*mask

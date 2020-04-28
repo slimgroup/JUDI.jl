@@ -4,17 +4,22 @@
 # Date: January 2017
 #
 
-using JUDI.TimeModeling, SegyIO, LinearAlgebra
+using JUDI.TimeModeling, SegyIO, LinearAlgebra, Images
 
+###
+function smooth(v; sigma=5)
+    return Float32.(imfilter(v, Kernel.gaussian(sigma)))
+end
 ## Set up model structure
-n = (120, 100)   # (x,y,z) or (x,z)
+n = (500, 500)   # (x,y,z) or (x,z)
 d = (10., 10.)
 o = (0., 0.)
 
 # Velocity [km/s]
-v = ones(Float32,n) .+ 0.4f0
-v0 = ones(Float32,n) .+ 0.4f0
-v[:,Int(round(end/2)):end] .= 5f0
+v = ones(Float32,n) .+ 0.5f0
+v0 = ones(Float32,n) .+ 0.5f0
+v[:,Int(round(end/2)):end] .= 3.5f0
+rho = (v0 .+ .5f0) ./ 2
 
 # Slowness squared [s^2/km^2]
 m = (1f0 ./ v).^2
@@ -33,8 +38,13 @@ yrec = 0f0
 zrec = range(50f0, stop=50f0, length=nxrec)
 
 # receiver sampling and recording time
+<<<<<<< HEAD
 timeR = 1000f0   # receiver recording time [ms]
 dtR = 2f0    # receiver sampling interval [ms]
+=======
+timeR = 4000f0   # receiver recording time [ms]
+dtR = 4f0    # receiver sampling interval [ms]
+>>>>>>> Refactor python
 
 # Set up receiver structure
 recGeometry = Geometry(xrec, yrec, zrec; dt=dtR, t=timeR, nsrc=nsrc)
@@ -42,11 +52,16 @@ recGeometry = Geometry(xrec, yrec, zrec; dt=dtR, t=timeR, nsrc=nsrc)
 ## Set up source geometry (cell array with source locations for each shot)
 xsrc = convertToCell(range(400f0, stop=800f0, length=nsrc))
 ysrc = convertToCell(range(0f0, stop=0f0, length=nsrc))
-zsrc = convertToCell(range(20f0, stop=20f0, length=nsrc))
+zsrc = convertToCell(range(200f0, stop=200f0, length=nsrc))
 
 # source sampling and number of time steps
+<<<<<<< HEAD
 timeS = 1000f0  # ms
 dtS = 2f0   # ms
+=======
+timeS = 4000f0  # ms
+dtS = 4f0   # ms
+>>>>>>> Refactor python
 
 # Set up source structure
 srcGeometry = Geometry(xsrc, ysrc, zsrc; dt=dtS, t=timeS)
@@ -63,7 +78,12 @@ info = Info(prod(n), nsrc, ntComp)
 ######################## WITH DENSITY ############################################
 
 # Write shots as segy files to disk
+<<<<<<< HEAD
 opt = Options(optimal_checkpointing=false, isic=false, subsampling_factor=2, dt_comp=1.0)
+=======
+opt = Options(save_data_to_disk=false, file_path=pwd(), file_name="observed_shot",
+			  optimal_checkpointing=false, free_surface=true)
+>>>>>>> Refactor python
 
 # Setup operators
 Pr = judiProjection(info, recGeometry)
@@ -74,11 +94,12 @@ J = judiJacobian(Pr*F0*adjoint(Ps), q)
 
 # Nonlinear modeling
 dobs = Pr*F*adjoint(Ps)*q
+# Adjoint
 qad = Ps*adjoint(F)*adjoint(Pr)*dobs
 
 # Linearized modeling
-#J.options.file_name = "linearized_shot"
 dD = J*dm
+# Adjoint jacobian
 rtm = adjoint(J)*dD
 
 # evaluate FWI objective function
