@@ -217,6 +217,16 @@ class Model(GenericModel):
             self.delta = self._gen_phys_param(1 + 2 * delta, 'delta', space_order)
             self.theta = self._gen_phys_param(theta, 'theta', space_order)
             self.phi = self._gen_phys_param(phi, 'phi', space_order)
+        # User provided dt
+        self._dt = kwargs.get('dt')
+
+    @property
+    def dt(self):
+        return self._dt
+
+    @dt.setter
+    def dt(self, dt):
+        self._dt = dt
 
     @property
     def is_tti(self):
@@ -237,6 +247,11 @@ class Model(GenericModel):
         # dt <= coeff * h / (max(velocity))
         coeff = 0.38 if len(self.shape) == 3 else 0.42
         dt = self.dtype(coeff * np.min(self.spacing) / (self.scale*self._max_vp))
+        if self.dt:
+            if self.dt > dt:
+                raise ValueError("Provided dt=%s is bigger than maximum stable dt%s "
+                                 % (self.dt, dt))
+            return self.dt
         return self.dtype("%.3e" % dt)
 
     @property

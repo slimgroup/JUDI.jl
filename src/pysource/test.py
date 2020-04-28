@@ -58,13 +58,13 @@ if is_tti:
 
     model0 = Model(shape=shape, origin=origin, spacing=spacing,
                   vp=v0, epsilon=.09*(v-1.5), delta=.075*(v-1.5),
-                  rho=1, space_order=8)              
+                  rho=1, space_order=8, dt=model.critical_dt)            
 else:
     model = Model(shape=shape, origin=origin, spacing=spacing,
                   vp=v, rho=rho, space_order=8)
 
     model0 = Model(shape=shape, origin=origin, spacing=spacing,
-                   vp=v0, rho=rho0, space_order=8)
+                   vp=v0, rho=rho0, space_order=8, dt=model.critical_dt)
 
 # Time axis
 t0 = 0.
@@ -89,14 +89,14 @@ rec_t.coordinates.data[:, 1] = 50.
 #     space_order=8, free_surface=False, dt_comp=dt)
 
 # Propagators (Level 2)
-d_obs, _ = forward(model, src.coordinates.data, rec_t.coordinates.data, src.data, space_order=8, save=False, dt_comp=dt,
-    q=0, free_surface=False, return_op=False, freq_list=None, dft_sub=None)
+d_obs, _ = forward(model, src.coordinates.data, rec_t.coordinates.data, src.data, space_order=8, save=False,
+    q=0, free_surface=False, return_op=False, freq_list=None)
 
-_, u0 = forward(model0, src.coordinates.data, rec_t.coordinates.data, src.data, space_order=8, save=True, dt_comp=dt,
-    q=0, free_surface=False, return_op=False, freq_list=None, dft_sub=None)
+_, u0 = forward(model0, src.coordinates.data, rec_t.coordinates.data, src.data, space_order=8, save=True,
+    q=0, free_surface=False, return_op=False, freq_list=None)
 
 g = gradient(model0, d_obs, rec_t.coordinates.data, u0, return_op=False, space_order=8,
-             w=None, free_surface=False, freq=None, dft_sub=None, dt_comp=dt)
+             w=None, free_surface=False, freq=None, dft_sub=None)
 
 # Plot
 plt.figure(); plt.imshow(d_obs, vmin=-1, vmax=1, cmap='gray', aspect='auto')
