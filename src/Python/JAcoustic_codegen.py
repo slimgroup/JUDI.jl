@@ -112,7 +112,6 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
     set_log_level('ERROR')
     subs = model.spacing_map
     subs[u.grid.time_dim.spacing] = dt
-    print('devito dt: ', dt)
     op = Operator(expression, subs=subs, dse='advanced', dle='advanced')
 
     # Return data and wavefields
