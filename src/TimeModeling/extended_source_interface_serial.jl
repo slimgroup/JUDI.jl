@@ -54,7 +54,7 @@ function devito_interface(modelPy::PyCall.PyObject, origin, srcData::Array, recG
     ac = load_acoustic_codegen()
 
     # Interpolate input data to computational grid
-    dtComp = modelPy.critical_dt
+    isnothing(options.dt_comp) ? (dtComp = modelPy.critical_dt) : (dtComp = options.dt_comp)
     qIn = time_resample(srcData[1],recGeometry,dtComp)[1]
     ntComp = size(qIn,1)
     ntRec = Int(trunc(recGeometry.t[1]/dtComp + 1))
@@ -63,7 +63,7 @@ function devito_interface(modelPy::PyCall.PyObject, origin, srcData::Array, recG
     rec_coords = setup_grid(recGeometry, modelPy.shape, origin)
 
     # Devito call
-    dOut = get(pycall(ac."forward_modeling", PyObject, modelPy, nothing, qIn, rec_coords,
+    dOut = get(pycall(ac."forward_modeling", PyObject, modelPy, nothing, qIn, rec_coords, dt=dtComp,
                   space_order=options.space_order, nb=modelPy.nbpml, free_surface=options.free_surface, weight=weights[1]), 0)
     ntRec > ntComp && (dOut = [dOut zeros(size(dOut,1), ntRec - ntComp)])
     dOut = time_resample(dOut,dtComp,recGeometry)
@@ -81,7 +81,7 @@ function devito_interface(modelPy::PyCall.PyObject, origin, srcData::Array, recG
     ac = load_acoustic_codegen()
 
     # Interpolate input data to computational grid
-    dtComp = modelPy.critical_dt
+    isnothing(options.dt_comp) ? (dtComp = modelPy.critical_dt) : (dtComp = options.dt_comp)
     dIn = time_resample(recData[1],recGeometry,dtComp)[1]
     qIn = time_resample(srcData[1],recGeometry,dtComp)[1]
     ntComp = size(dIn,1)
@@ -91,7 +91,7 @@ function devito_interface(modelPy::PyCall.PyObject, origin, srcData::Array, recG
     rec_coords = setup_grid(recGeometry, modelPy.shape, origin)
 
     # Devito call
-    wOut = pycall(ac."adjoint_modeling", Array{Float32, length(modelPy.shape)}, modelPy, nothing, rec_coords, dIn,
+    wOut = pycall(ac."adjoint_modeling", Array{Float32, length(modelPy.shape)}, modelPy, nothing, rec_coords, dIn, dt=dtComp,
                   space_order=options.space_order, nb=modelPy.nbpml, free_surface=options.free_surface, wavelet=qIn)
     ntSrc > ntComp && (qOut = [qOut zeros(size(qOut), ntSrc - ntComp)])
 
@@ -108,7 +108,7 @@ function devito_interface(modelPy::PyCall.PyObject, origin, srcData::Array, recG
     ac = load_acoustic_codegen()
 
     # Interpolate input data to computational grid
-    dtComp = modelPy.critical_dt
+    isnothing(options.dt_comp) ? (dtComp = modelPy.critical_dt) : (dtComp = options.dt_comp)
     tmaxRec = recGeometry.t[1]
     qIn = time_resample(srcData[1],recGeometry,dtComp)[1]
     ntComp = size(qIn,1)
@@ -119,7 +119,7 @@ function devito_interface(modelPy::PyCall.PyObject, origin, srcData::Array, recG
     rec_coords = setup_grid(recGeometry, modelPy.shape, origin)
 
     # Devito call
-    dOut = pycall(ac."forward_born", Array{Float32,2}, modelPy, nothing, qIn, rec_coords,
+    dOut = pycall(ac."forward_born", Array{Float32,2}, modelPy, nothing, qIn, rec_coords, dt=dtComp,
                   space_order=options.space_order, nb=modelPy.nbpml, isic=options.isic, weight=weights[1])
     ntRec > ntComp && (dOut = [dOut zeros(size(dOut,1), ntRec - ntComp)])
     dOut = time_resample(dOut,dtComp,recGeometry)
@@ -137,7 +137,7 @@ function devito_interface(modelPy::PyCall.PyObject, origin, srcData::Array, recG
     ac = load_acoustic_codegen()
 
     # Interpolate input data to computational grid
-    dtComp = modelPy.critical_dt
+    isnothing(options.dt_comp) ? (dtComp = modelPy.critical_dt) : (dtComp = options.dt_comp)
     qIn = time_resample(srcData[1],recGeometry,dtComp)[1]
     if typeof(recData) == Array{Array, 1} || typeof(recData) == Array{Any, 1}
         dIn = time_resample(recData[1],recGeometry,dtComp)[1]
@@ -151,9 +151,9 @@ function devito_interface(modelPy::PyCall.PyObject, origin, srcData::Array, recG
     rec_coords = setup_grid(recGeometry, modelPy.shape, origin)
 
     u0 = get(pycall(ac."forward_modeling", PyObject, modelPy, nothing, qIn, rec_coords, space_order=options.space_order, nb=modelPy.nbpml, save=true, 
-        tsub_factor=options.subsampling_factor, weight=weights[1], return_devito_obj=true), 1)
+        tsub_factor=options.subsampling_factor, weight=weights[1], return_devito_obj=true, dt=dtComp), 1)
 
-    grad = pycall(ac."adjoint_born", Array{Float32, length(modelPy.shape)}, modelPy, rec_coords, dIn, u=u0, 
+    grad = pycall(ac."adjoint_born", Array{Float32, length(modelPy.shape)}, modelPy, rec_coords, dIn, u=u0, dt=dtComp,
                       space_order=options.space_order, tsub_factor=options.subsampling_factor, nb=modelPy.nbpml, isic=options.isic)
 
     # Remove PML and return gradient as Array

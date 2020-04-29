@@ -24,6 +24,7 @@ mutable struct Options
     dft_subsampling_factor::Integer
     isic::Bool
     return_array::Bool
+    dt_comp::Union{Real, Nothing}
 end
 
 """
@@ -46,6 +47,7 @@ end
         dft_subsampling_factor::Integer
         isic::Bool
         return_array::Bool
+        dt_comp::Real
 
 
 Options structure for seismic modeling.
@@ -84,6 +86,7 @@ Options structure for seismic modeling.
 
 `return_array`: return data from nonlinear/linear modeling as a plain Julia array.
 
+`dt_comp`: overwrite automatically computed computational time step with this value.
 
 Constructor
 ==========
@@ -92,13 +95,13 @@ All arguments are optional keyword arguments with the following default values:
 
     Options(; space_order, free_surface, limit_m=false, buffer_size=1e3, save_data_to_disk=false, save_wavefield_to_disk=false, file_path=pwd(), file_name="shot",
         sum_padding=false, optimal_checkpointing=false, num_checkpoints=log(nt), checkpoints_maxmem=[], frequencies=[], subsampling_factor=[], dft_subsampling_factor=[], 
-        isic=false, return_array=false)
+        isic=false, return_array=false, dt_comp=[])
 
 """
 Options(; space_order=8, free_surface=false, limit_m=false, buffer_size=1e3, save_data_to_disk=false, save_wavefield_to_disk=false, file_path="", file_name="shot", sum_padding=false,
-    optimal_checkpointing=false, num_checkpoints=nothing, checkpoints_maxmem=nothing, frequencies=[], subsampling_factor=1, dft_subsampling_factor=1, isic=false, return_array=false) =
+    optimal_checkpointing=false, num_checkpoints=nothing, checkpoints_maxmem=nothing, frequencies=[], subsampling_factor=1, dft_subsampling_factor=1, isic=false, return_array=false, dt_comp=nothing) =
     Options(space_order, free_surface, limit_m, buffer_size, save_data_to_disk, save_wavefield_to_disk, file_path, file_name,
-    sum_padding, optimal_checkpointing, num_checkpoints, checkpoints_maxmem, frequencies, subsampling_factor, dft_subsampling_factor, isic, return_array)
+    sum_padding, optimal_checkpointing, num_checkpoints, checkpoints_maxmem, frequencies, subsampling_factor, dft_subsampling_factor, isic, return_array, dt_comp)
 
 
 function subsample(options::Options, srcnum)

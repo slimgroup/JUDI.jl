@@ -112,6 +112,7 @@ def forward_modeling(model, src_coords, wavelet, rec_coords, save=False, space_o
     set_log_level('ERROR')
     subs = model.spacing_map
     subs[u.grid.time_dim.spacing] = dt
+    print('devito dt: ', dt)
     op = Operator(expression, subs=subs, dse='advanced', dle='advanced')
 
     # Return data and wavefields
@@ -315,7 +316,7 @@ def adjoint_born(model, rec_coords, rec_data, u=None, op_forward=None, is_residu
     if u is None:
         u = TimeFunction(name='u', grid=model.grid, time_order=2, space_order=space_order)
     if isic is not True:
-        gradient_update = [Inc(gradient, - dt * u.dt2 / rho * v)]
+        gradient_update = [Eq(gradient, gradient - dt * u.dt2 / rho * v)]
     else:
         # summodel0.dm = dm u.dx * v.dx fo x in dimensions.
         # space_order//2
