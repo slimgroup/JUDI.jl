@@ -9,7 +9,7 @@
   
   
   <link rel="shortcut icon" href="../img/favicon.ico">
-  <title>About - The Julia Devito Inversion framework (JUDI.jl)</title>
+  <title>Preconditioners - The Julia Devito Inversion framework (JUDI.jl)</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700" />
 
   <link rel="stylesheet" href="../css/theme.css" />
@@ -18,8 +18,8 @@
   
   <script>
     // Current page data
-    var mkdocs_page_name = "About";
-    var mkdocs_page_input_path = "about.md";
+    var mkdocs_page_name = "Preconditioners";
+    var mkdocs_page_input_path = "preconditioners.md";
     var mkdocs_page_url = null;
   </script>
   
@@ -75,14 +75,20 @@
                     <li class="toctree-l1"><a class="reference internal" href="../helper/">Helper functions</a>
                     </li>
                 </ul>
-                <ul>
-                    <li class="toctree-l1"><a class="reference internal" href="../preconditioners/">Preconditioners</a>
+                <ul class="current">
+                    <li class="toctree-l1 current"><a class="reference internal current" href="./">Preconditioners</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#model-topmute">Model topmute</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#model-depth-scaling">Model depth scaling</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#data-topmute-experimental">Data topmute (experimental)</a>
+    </li>
+    </ul>
                     </li>
                 </ul>
-                <ul class="current">
-                    <li class="toctree-l1 current"><a class="reference internal current" href="./">About</a>
-    <ul class="current">
-    </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../about/">About</a>
                     </li>
                 </ul>
       </div>
@@ -106,7 +112,7 @@
     
       
     
-    <li>About</li>
+    <li>Preconditioners</li>
     <li class="wy-breadcrumbs-aside">
       
     </li>
@@ -117,23 +123,59 @@
           <div role="main">
             <div class="section">
               
-                <h1 id="authors">Authors</h1>
-<p>This documentation was created by Philipp A. Witte (<a href="&#109;&#97;&#105;&#108;&#116;&#111;&#58;&#112;&#119;&#105;&#116;&#116;&#101;&#51;&#64;&#103;&#97;&#116;&#101;&#99;&#104;&#46;&#101;&#100;&#117;">&#112;&#119;&#105;&#116;&#116;&#101;&#51;&#64;&#103;&#97;&#116;&#101;&#99;&#104;&#46;&#101;&#100;&#117;</a>) from the Georgia Institute of Technology. People involved in the development of JUDI include:</p>
+                <h1 id="seismic-preconditioners">Seismic preconditioners</h1>
+<h2 id="model-topmute">Model topmute</h2>
+<p>Create a linear operator for a 2D model topmute, i.e. for muting the water column:</p>
+<pre><code class="julia">Mr = judiTopmute(n, mute_start, length)
+</code></pre>
+
+<p><strong>Parameters:</strong></p>
 <ul>
 <li>
-<p>Philipp A. Witte (Georgia Institute of Technology)</p>
+<p><code>n</code>: Tuple of model dimensions (e.g. from <code>model.n</code>)</p>
 </li>
 <li>
-<p>Mathias Louboutin (Georgia Institute of Technology)</p>
+<p><code>mute_start</code>: First grid point in z-direction from where on to mute the image. Can be a single integer or a vector of length <code>nx</code>, where <code>nx</code> is the number of grid points in x direction.</p>
 </li>
 <li>
-<p>Henryk Modzelewski (The Univeristy of British Columbia)</p>
-</li>
-<li>
-<p>Felix J. Herrmann (Georgia Institute of Technology)</p>
+<p><code>length</code>: The mask is created with a linear taper from 0 to 1. The width of the taper is <code>length</code>.</p>
 </li>
 </ul>
-<p>The research of this project was carried out at the Seismic Laboratory for Imaging and Modeling (SLIM) at the Georgia Institute of Technology, Atlanta, USA and at the University of British Columbia (UBC), in Vancouver, Canada.</p>
+<p><strong>Usage:</strong></p>
+<pre><code class="julia"># Forward
+m_mute = Mr*vec(m)
+
+# Adjoint
+m_mute = Mr'*vec(m)
+</code></pre>
+
+<p>As <code>Mr</code> is self adjoint, <code>Mr</code> is equal to <code>Mr'</code>.</p>
+<h2 id="model-depth-scaling">Model depth scaling</h2>
+<p>Create a 2D model depth scaling:</p>
+<pre><code class="julia">Mr = judiDepthScaling(model)
+</code></pre>
+
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>model</code>: JUDI <code>Model</code> structure.</li>
+</ul>
+<h2 id="data-topmute-experimental">Data topmute (experimental)</h2>
+<p>Create a data topmute for a 2D marine shot record (i.e. for a shot record with an end-on-spread acquisition geometry).</p>
+<pre><code class="julia">Ml = judiMarineTopmute2D(muteStart, geometry; flipmask=false)
+</code></pre>
+
+<p><strong>Parameters:</strong></p>
+<ul>
+<li>
+<p><code>muteStart</code>: Vertical index of the apex of the shot record (i.e. the earliest point from where to mute).</p>
+</li>
+<li>
+<p><code>geometry</code>: A JUDI <code>Geometry</code> object with the receiver geometry.</p>
+</li>
+<li>
+<p><code>flipmask</code>: If the source is on the left side, set to <code>false</code> (default). If the source is on the right side, set to <code>true</code>.</p>
+</li>
+</ul>
               
             </div>
           </div>
@@ -141,8 +183,10 @@
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
+        <a href="../about/" class="btn btn-neutral float-right" title="About">Next <span class="icon icon-circle-arrow-right"></span></a>
       
-        <a href="../preconditioners/" class="btn btn-neutral" title="Preconditioners"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+      
+        <a href="../helper/" class="btn btn-neutral" title="Helper functions"><span class="icon icon-circle-arrow-left"></span> Previous</a>
       
     </div>
   
@@ -168,8 +212,10 @@
     <span class="rst-current-version" data-toggle="rst-current-version">
       
       
-        <span><a href="../preconditioners/" style="color: #fcfcfc;">&laquo; Previous</a></span>
+        <span><a href="../helper/" style="color: #fcfcfc;">&laquo; Previous</a></span>
       
+      
+        <span style="margin-left: 15px"><a href="../about/" style="color: #fcfcfc">Next &raquo;</a></span>
       
     </span>
 </div>
