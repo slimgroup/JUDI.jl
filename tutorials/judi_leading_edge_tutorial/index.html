@@ -9,7 +9,7 @@
   
   
   <link rel="shortcut icon" href="../../img/favicon.ico">
-  <title>FWI tutorial with JUDI (TLE tuto) - JUDI documentation</title>
+  <title>Judi leading edge tutorial - The Julia Devito Inversion framework (JUDI.jl)</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700" />
 
   <link rel="stylesheet" href="../../css/theme.css" />
@@ -18,7 +18,7 @@
   
   <script>
     // Current page data
-    var mkdocs_page_name = "FWI tutorial with JUDI (TLE tuto)";
+    var mkdocs_page_name = "Judi leading edge tutorial";
     var mkdocs_page_input_path = "tutorials/judi_leading_edge_tutorial.md";
     var mkdocs_page_url = null;
   </script>
@@ -38,7 +38,7 @@
     <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
     <div class="wy-side-scroll">
       <div class="wy-side-nav-search">
-        <a href="../.." class="icon icon-home"> JUDI documentation</a>
+        <a href="../.." class="icon icon-home"> The Julia Devito Inversion framework (JUDI.jl)</a>
         <div role="search">
   <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" title="Type search term here" />
@@ -51,15 +51,28 @@
                     <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
                     </li>
                 </ul>
-                <p class="caption"><span class="caption-text">JUDI Tutorials</span></p>
-                <ul class="current">
-                    <li class="toctree-l1"><a class="reference internal" href="../full_waveform_inversion/">Acoustic FWI</a>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../../data_structures/">Data structures</a>
                     </li>
-                    <li class="toctree-l1"><a class="reference internal" href="../fwi_example_NLopt/">Acoustic RTM with NLopt</a>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../../abstract_vectors/">Abstract vectors</a>
                     </li>
-                    <li class="toctree-l1 current"><a class="reference internal current" href="./">FWI tutorial with JUDI (TLE tuto)</a>
-    <ul class="current">
-    </ul>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../../linear_operators/">Linear operators</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="" href="../../io.md">IO</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../../applications/">Applications</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../../about/">About</a>
                     </li>
                 </ul>
       </div>
@@ -71,7 +84,7 @@
       
       <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
         <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-        <a href="../..">JUDI documentation</a>
+        <a href="../..">The Julia Devito Inversion framework (JUDI.jl)</a>
       </nav>
 
       
@@ -82,12 +95,8 @@
     <li><a href="../..">Docs</a> &raquo;</li>
     
       
-        
-          <li>JUDI Tutorials &raquo;</li>
-        
-      
     
-    <li>FWI tutorial with JUDI (TLE tuto)</li>
+    <li>Judi leading edge tutorial</li>
     <li class="wy-breadcrumbs-aside">
       
     </li>
@@ -144,7 +153,7 @@ Pkg.checkout("JUDI","tle_tutorial_jan_2018")
 <p><sup>1</sup> Seismic Laboratory for Imaging and Modeling (SLIM), The University of British Columbia </p>
 <p><sup>2</sup> Imperial College London, London, UK</p>
 <p><sup>3</sup> now at Georgia Institute of Technology, USA </p>
-<p>Corresponding author: <a href="&#109;&#97;&#105;&#108;&#116;&#111;&#58;&#112;&#119;&#105;&#116;&#116;&#101;&#64;&#101;&#111;&#97;&#115;&#46;&#117;&#98;&#99;&#46;&#99;&#97;">&#112;&#119;&#105;&#116;&#116;&#101;&#64;&#101;&#111;&#97;&#115;&#46;&#117;&#98;&#99;&#46;&#99;&#97;</a></p>
+<p>Corresponding author: pwitte@eoas.ubc.ca</p>
 <h2 id="introduction">Introduction</h2>
 <p>This tutorial is the third part of a full-waveform inversion (FWI) tutorial series with a step-by-step walkthrough of setting up forward and adjoint wave equations and building a basic FWI inversion framework. For discretizing and solving wave equations, we use <a href="http://www.opesci.org/devito-public">Devito</a>, a Python-based domain-specific language for automated generation of finite-difference code (Lange et al., 2016). The first two parts of this tutorial (Louboutin et al., 2017, 2018) demonstrated how to solve the acoustic wave equation for modeling seismic shot records and how to compute the gradient of the FWI objective function using the adjoint-state method. With these two key ingredients, we will now build an inversion framework that can be used to minimize the FWI least-squares objective function.</p>
 <p>FWI is a computationally and mathematically challenging problem. The computational complexity comes from the fact that an already expensive solution procedure for the wave equation needs to be repeated for a large number of source positions for each iteration of the optimization algorithm. The mathematical complexity comes from the fact that the FWI objective is known to have many local minima due to cycle skipping. </p>
@@ -158,38 +167,23 @@ Pkg.checkout("JUDI","tle_tutorial_jan_2018")
 
 <p>This tutorial demonstrates how we can set up a basic FWI framework with two alternative gradient-based optimization algorithms: stochastic gradient descent, and the Gauss–Newton method (Nocedal and Wright, 2009). </p>
 <p>We implement our inversion framework with the <a href="https://github.com/slimgroup/JUDI.jl/tree/tle_tutorial_jan_2018">Julia Devito Inversion framework</a> (JUDI), a parallel software package for seismic modeling and inversion in the <a href="Bezanson et al., 2012">Julia</a> programming language. JUDI provides abstractions and function wrappers that allow the implementation of wave-equation-based inversion problems such as FWI using code that closely follows the mathematical notation, while using Devito’s automatic code generation for solving the underlying wave equations.</p>
-<p>All the code to run the algorithms and generate the figures in this paper can be found at <a href="http://github.com/SEG">http://github.com/SEG</a>. </p>
+<p>All the code to run the algorithms and generate the figures in this paper can be found at http://github.com/SEG. </p>
 <h2 id="optimizing-the-fwi-objective-function">Optimizing the FWI objective function</h2>
-<p>The goal of this tutorial series is to optimize the FWI objective function with the <span><span class="MathJax_Preview">\ell_2</span><script type="math/tex">\ell_2</script></span>-misfit:</p>
-<div>
-<div class="MathJax_Preview">
-    \mathop{\hbox{minimize}}_{\mathbf{m}} \hspace{.2cm} f(\mathbf{m})= \sum_{i=1}^{n_s} \frac{1}{2} \left\lVert \mathbf{d}^\mathrm{pred}_i (\mathbf{m}, \mathbf{q}_i) - \mathbf{d}_i^\mathrm{obs} \right\rVert_2^2,
-</div>
-<script type="math/tex; mode=display">
-    \mathop{\hbox{minimize}}_{\mathbf{m}} \hspace{.2cm} f(\mathbf{m})= \sum_{i=1}^{n_s} \frac{1}{2} \left\lVert \mathbf{d}^\mathrm{pred}_i (\mathbf{m}, \mathbf{q}_i) - \mathbf{d}_i^\mathrm{obs} \right\rVert_2^2,
-</script>
-</div>
-<p>where <span><span class="MathJax_Preview">\mathbf{d}^\mathrm{pred}_i</span><script type="math/tex">\mathbf{d}^\mathrm{pred}_i</script></span> and <span><span class="MathJax_Preview">\mathbf{d}^\mathrm{obs}_i</span><script type="math/tex">\mathbf{d}^\mathrm{obs}_i</script></span> are the predicted and observed seismic shot records of the <span><span class="MathJax_Preview">i^{\text{th}}</span><script type="math/tex">i^{\text{th}}</script></span> source location and <span><span class="MathJax_Preview">\mathbf{m}</span><script type="math/tex">\mathbf{m}</script></span> is the velocity model (expressed as squared slowness). In part one, we demonstrated how to implement a forward modeling operator to generate the predicted shot records, which we will denote as <span><span class="MathJax_Preview">\mathbf{d}^\mathrm{pred}_i = \mathbf{F}(\mathbf{m},\mathbf{q}_i)</span><script type="math/tex">\mathbf{d}^\mathrm{pred}_i = \mathbf{F}(\mathbf{m},\mathbf{q}_i)</script></span>. 
-In the second tutorial, we then showed how we can compute the gradient <span><span class="MathJax_Preview">\nabla f(\mathbf{m})</span><script type="math/tex">\nabla f(\mathbf{m})</script></span> of the objective function and update our initial model using gradient descent.</p>
+<p>The goal of this tutorial series is to optimize the FWI objective function with the $\ell_2$-misfit:</p>
+<p>$$
+    \mathop{\hbox{minimize}}<em>{\mathbf{m}} \hspace{.2cm} f(\mathbf{m})= \sum</em>{i=1}^{n_s} \frac{1}{2} \left\lVert \mathbf{d}^\mathrm{pred}_i (\mathbf{m}, \mathbf{q}_i) - \mathbf{d}_i^\mathrm{obs} \right\rVert_2^2,
+$$</p>
+<p>where $\mathbf{d}^\mathrm{pred}_i$ and $\mathbf{d}^\mathrm{obs}_i$ are the predicted and observed seismic shot records of the $i^{\text{th}}$ source location and $\mathbf{m}$ is the velocity model (expressed as squared slowness). In part one, we demonstrated how to implement a forward modeling operator to generate the predicted shot records, which we will denote as $\mathbf{d}^\mathrm{pred}_i = \mathbf{F}(\mathbf{m},\mathbf{q}_i)$. 
+In the second tutorial, we then showed how we can compute the gradient $\nabla f(\mathbf{m})$ of the objective function and update our initial model using gradient descent.</p>
 <p>There is a snag, however. This first-order optimization algorithm has a linear convergence rate at best, and typically requires many iterations to converge. Second-order optimization methods converge considerably faster. To implement them, we first approximate the objective with a second-order Taylor expansion:</p>
-<div>
-<div class="MathJax_Preview">
+<p>$$
     f(\mathbf{m}) = f(\mathbf{m}_0) + \nabla f(\mathbf{m}_0) \delta \mathbf{m} + \delta \mathbf{m}^\top \nabla^2 f(\mathbf{m}_0) \delta \mathbf{m} + \mathcal{O}(\delta \mathbf{m}^3),
-</div>
-<script type="math/tex; mode=display">
-    f(\mathbf{m}) = f(\mathbf{m}_0) + \nabla f(\mathbf{m}_0) \delta \mathbf{m} + \delta \mathbf{m}^\top \nabla^2 f(\mathbf{m}_0) \delta \mathbf{m} + \mathcal{O}(\delta \mathbf{m}^3),
-</script>
-</div>
-<p>where <span><span class="MathJax_Preview">\mathcal{O}(\delta \mathbf{m}^3)</span><script type="math/tex">\mathcal{O}(\delta \mathbf{m}^3)</script></span> represents the error term, <span><span class="MathJax_Preview">\nabla f(\mathbf{m}_0)</span><script type="math/tex">\nabla f(\mathbf{m}_0)</script></span> is the gradient as implemented in part two, and <span><span class="MathJax_Preview">\nabla^2 f(\mathbf{m}_0)</span><script type="math/tex">\nabla^2 f(\mathbf{m}_0)</script></span> is the Hessian of the objective function, which we will refer to as <span><span class="MathJax_Preview">\mathbf{H}</span><script type="math/tex">\mathbf{H}</script></span>. Rather than using the negative gradient to incrementally update our model, as in gradient descent, we directly calculate a model update <span><span class="MathJax_Preview">\delta \mathbf{m}</span><script type="math/tex">\delta \mathbf{m}</script></span> that leads us to the minimum. This is called Newton's method:</p>
-<div>
-<div class="MathJax_Preview">
+$$</p>
+<p>where $\mathcal{O}(\delta \mathbf{m}^3)$ represents the error term, $\nabla f(\mathbf{m}_0)$ is the gradient as implemented in part two, and $\nabla^2 f(\mathbf{m}_0)$ is the Hessian of the objective function, which we will refer to as $\mathbf{H}$. Rather than using the negative gradient to incrementally update our model, as in gradient descent, we directly calculate a model update $\delta \mathbf{m}$ that leads us to the minimum. This is called Newton's method:</p>
+<p>$$
     \delta \mathbf{m} = - \mathbf{H}(\mathbf{m}_0)^{-1} \nabla f(\mathbf{m}_0).
-</div>
-<script type="math/tex; mode=display">
-    \delta \mathbf{m} = - \mathbf{H}(\mathbf{m}_0)^{-1} \nabla f(\mathbf{m}_0).
-</script>
-</div>
-<p>Although the method converges to the minimum of the FWI objective function quickly, it comes at the cost of having to compute and invert the Hessian matrix (Nocedal and Wright, 2009). Fortunately, for least squares problems, such as FWI, the Hessian can be approximated by the Gauss-Newton (GN) Hessian <span><span class="MathJax_Preview">\mathbf{J}^\top \mathbf{J}</span><script type="math/tex">\mathbf{J}^\top \mathbf{J}</script></span>, where <span><span class="MathJax_Preview">\mathbf{J}</span><script type="math/tex">\mathbf{J}</script></span> is the Jacobian matrix. This is the partial derivative of the forward modeling operator <span><span class="MathJax_Preview">\mathbf{F}(\mathbf{m},\mathbf{q})</span><script type="math/tex">\mathbf{F}(\mathbf{m},\mathbf{q})</script></span> with respect to <span><span class="MathJax_Preview">\mathbf{m}</span><script type="math/tex">\mathbf{m}</script></span> — something we can easily compute. Furthermore, the Jacobian can also be used to express the gradient of the FWI objective function as <span><span class="MathJax_Preview">\nabla f(\mathbf{m}_0) = \mathbf{J}^\top (\mathbf{d}^\mathrm{pred}_i - \mathbf{d}_i^\mathrm{obs})</span><script type="math/tex">\nabla f(\mathbf{m}_0) = \mathbf{J}^\top (\mathbf{d}^\mathrm{pred}_i - \mathbf{d}_i^\mathrm{obs})</script></span>, where <span><span class="MathJax_Preview">\mathbf{J}^\top</span><script type="math/tex">\mathbf{J}^\top</script></span> is the adjoint (transposed) Jacobian. This is useful, because we now have a set of operators <span><span class="MathJax_Preview">\mathbf{F}, \mathbf{J}</span><script type="math/tex">\mathbf{F}, \mathbf{J}</script></span> and <span><span class="MathJax_Preview">\mathbf{H}_{GN}=\mathbf{J}^\top\mathbf{J}</span><script type="math/tex">\mathbf{H}_{GN}=\mathbf{J}^\top\mathbf{J}</script></span>, through which we can express both first and second order optimization algorithms for FWI.</p>
+$$</p>
+<p>Although the method converges to the minimum of the FWI objective function quickly, it comes at the cost of having to compute and invert the Hessian matrix (Nocedal and Wright, 2009). Fortunately, for least squares problems, such as FWI, the Hessian can be approximated by the Gauss-Newton (GN) Hessian $\mathbf{J}^\top \mathbf{J}$, where $\mathbf{J}$ is the Jacobian matrix. This is the partial derivative of the forward modeling operator $\mathbf{F}(\mathbf{m},\mathbf{q})$ with respect to $\mathbf{m}$ — something we can easily compute. Furthermore, the Jacobian can also be used to express the gradient of the FWI objective function as $\nabla f(\mathbf{m}<em>0) = \mathbf{J}^\top (\mathbf{d}^\mathrm{pred}_i - \mathbf{d}_i^\mathrm{obs})$, where $\mathbf{J}^\top$ is the adjoint (transposed) Jacobian. This is useful, because we now have a set of operators $\mathbf{F}, \mathbf{J}$ and $\mathbf{H}</em>{GN}=\mathbf{J}^\top\mathbf{J}$, through which we can express both first and second order optimization algorithms for FWI.</p>
 <p>Although forming these matrices explicitly is not possible, since they can become extremely large, we only need the action of these operators on vectors. This allows us to implement these operators matrix-free. In the following section we will demonstrate how to set up these operators in our JUDI software framework and to how to use them to implement FWI algorithms.</p>
 <div style="background: #eeeeee; border: 2px solid gray; border-radius:5px; padding: 6px 10px 6px 10px;">
 
@@ -203,54 +197,54 @@ In the second tutorial, we then showed how we can compute the gradient <span><sp
 
 </div>
 
-<div class="highlight"><pre><span></span><code><span class="c"># NOT FOR MANUSCRIPT</span>
-<span class="n">addprocs</span><span class="p">(</span><span class="mi">4</span><span class="p">);</span>
-</code></pre></div>
+<pre><code class="julia"># NOT FOR MANUSCRIPT
+addprocs(4);
+</code></pre>
 
-<div class="highlight"><pre><span></span><code><span class="c"># NOT FOR MANUSCRIPT</span>
-<span class="k">using</span> <span class="n">SeisIO</span>
-<span class="k">using</span> <span class="n">JUDI</span><span class="o">.</span><span class="n">TimeModeling</span><span class="p">,</span> <span class="n">JUDI</span><span class="o">.</span><span class="n">SLIM_optim</span>
-</code></pre></div>
+<pre><code class="julia"># NOT FOR MANUSCRIPT
+using SeisIO
+using JUDI.TimeModeling, JUDI.SLIM_optim
+</code></pre>
 
 <h2 id="implementing-fwi-in-judi">Implementing FWI in JUDI</h2>
 <p>We start our demonstration by reading our data set, which consists of 16 shot records and was generated with an excerpt from the SEG/EAGE Overthrust model (Aminzadeh et al. 1997). We store it as a <code>judiVector</code>:</p>
-<div class="highlight"><pre><span></span><code><span class="n">block</span> <span class="o">=</span> <span class="n">segy_read</span><span class="p">(</span><span class="s">&quot;overthrust_shot_records.segy&quot;</span><span class="p">)</span>
-<span class="n">d_obs</span> <span class="o">=</span> <span class="n">judiVector</span><span class="p">(</span><span class="n">block</span><span class="p">);</span>
-</code></pre></div>
+<pre><code class="julia">block = segy_read(&quot;overthrust_shot_records.segy&quot;)
+d_obs = judiVector(block);
+</code></pre>
 
 <pre><code>[1m[33mWARNING: [39m[22m[33mFixed length trace flag set in stream: IOBuffer(data=UInt8[...], readable=true, writable=false, seekable=true, append=false, size=7076688, maxsize=Inf, ptr=3601, mark=-1)[39m
 </code></pre>
-<div class="highlight"><pre><span></span><code><span class="c"># NOT FOR MANUSCRIPT</span>
-<span class="k">using</span> <span class="n">PyPlot</span>
+<pre><code class="julia"># NOT FOR MANUSCRIPT
+using PyPlot
 
-<span class="n">i</span> <span class="o">=</span> <span class="mi">8</span>
-<span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">15</span><span class="p">,</span><span class="mi">6</span><span class="p">))</span>
-<span class="n">imshow</span><span class="p">(</span><span class="n">d_obs</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">cmap</span><span class="o">=</span><span class="s">&quot;seismic&quot;</span><span class="p">,</span> <span class="n">extent</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="n">size</span><span class="p">(</span><span class="n">d_obs</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">],</span><span class="mi">2</span><span class="p">),</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="n">aspect</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=-</span><span class="mi">3</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
-<span class="n">ax1</span> <span class="o">=</span> <span class="n">gca</span><span class="p">();</span> <span class="n">ax1</span><span class="p">[</span><span class="o">:</span><span class="n">set_aspect</span><span class="p">](</span><span class="s">&quot;auto&quot;</span><span class="p">)</span>
-<span class="n">xlabel</span><span class="p">(</span><span class="s">&quot;Receiver number&quot;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
-<span class="n">ylabel</span><span class="p">(</span><span class="s">&quot;Time [s]&quot;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
-<span class="n">text</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mf">0.13</span><span class="p">,</span> <span class="s">&quot;Shot record </span><span class="si">$i</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">16</span><span class="p">)</span>
-<span class="n">colorbar</span><span class="p">()</span>
+i = 8
+figure(figsize=(15,6))
+imshow(d_obs.data[i], cmap=&quot;seismic&quot;, extent=[0,size(d_obs.data[i],2),2,0], aspect=0.3, vmin=-3, vmax=3)
+ax1 = gca(); ax1[:set_aspect](&quot;auto&quot;)
+xlabel(&quot;Receiver number&quot;, size=12)
+ylabel(&quot;Time [s]&quot;, size=12)
+text(3, 0.13, &quot;Shot record $i&quot;, size=16)
+colorbar()
 
-<span class="n">savefig</span><span class="p">(</span><span class="s">&quot;../Figures/Figure_1.png&quot;</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">300</span><span class="p">)</span>
-<span class="n">show</span><span class="p">()</span>
-</code></pre></div>
+savefig(&quot;../Figures/Figure_1.png&quot;, dpi=300)
+show()
+</code></pre>
 
 <p><img alt="png" src="../judi_leading_edge_tutorial_files/judi_leading_edge_tutorial_9_0.png" /></p>
 <blockquote>
 <p><strong>Figure 1</strong>: Observed shot record number 8.</p>
 </blockquote>
 <p>JUDI vectors such as <code>d_obs</code> can be used like a regular Julia vectors, so we can compute norms via <code>norm(d_obs)</code> or the inner product via <code>dot(d_obs, d_obs)</code>, but they contain the shot records in their original dimension. Shot records can be accessed via their respective shot number with <code>d_obs.data[shot_no]</code>, while the header information can be accessed with <code>d_obs.geometry</code>. We extract the source geometry from our SEG-Y file and then manually set up a source vector <code>q</code> with an 8 Hz Ricker wavelet:</p>
-<div class="highlight"><pre><span></span><code><span class="n">f</span> <span class="o">=</span> <span class="mf">0.008</span>  <span class="c"># kHz</span>
-<span class="n">src_geom</span> <span class="o">=</span> <span class="n">Geometry</span><span class="p">(</span><span class="n">block</span><span class="p">;</span> <span class="n">key</span><span class="o">=</span><span class="s">&quot;source&quot;</span><span class="p">)</span>
-<span class="n">src_data</span> <span class="o">=</span> <span class="n">ricker_wavelet</span><span class="p">(</span><span class="n">src_geom</span><span class="o">.</span><span class="n">t</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">src_geom</span><span class="o">.</span><span class="n">dt</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">f</span><span class="p">)</span>
-<span class="n">q</span> <span class="o">=</span> <span class="n">judiVector</span><span class="p">(</span><span class="n">src_geom</span><span class="p">,</span> <span class="n">src_data</span><span class="p">);</span>
-</code></pre></div>
+<pre><code class="julia">f = 0.008  # kHz
+src_geom = Geometry(block; key=&quot;source&quot;)
+src_data = ricker_wavelet(src_geom.t[1], src_geom.dt[1], f)
+q = judiVector(src_geom, src_data);
+</code></pre>
 
-<div class="highlight"><pre><span></span><code><span class="c"># NOT FOR MANUSCRIPT</span>
-<span class="n">plot</span><span class="p">(</span><span class="n">q</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
-<span class="n">show</span><span class="p">()</span>
-</code></pre></div>
+<pre><code class="julia"># NOT FOR MANUSCRIPT
+plot(q.data[1])
+show()
+</code></pre>
 
 <p><img alt="png" src="../judi_leading_edge_tutorial_files/judi_leading_edge_tutorial_13_0.png" /></p>
 <div style="background: #eeeeee; border: 2px solid gray; border-radius:5px; padding: 6px 10px 6px 10px;">
@@ -261,36 +255,33 @@ In the second tutorial, we then showed how we can compute the gradient <span><sp
 
 </div>
 
-<p>We will now set up the forward modeling operator <span><span class="MathJax_Preview">\mathbf{F}(\mathbf{m},\mathbf{q})</span><script type="math/tex">\mathbf{F}(\mathbf{m},\mathbf{q})</script></span> as a matrix-free operator for the inverse wave equation <span><span class="MathJax_Preview">\mathbf{A}(\mathbf{m})^{-1}</span><script type="math/tex">\mathbf{A}(\mathbf{m})^{-1}</script></span>, where <span><span class="MathJax_Preview">\mathbf{m}</span><script type="math/tex">\mathbf{m}</script></span> is the current model, and source/receiver injection and sampling operators <span><span class="MathJax_Preview">\mathbf{P}_\mathrm{s}</span><script type="math/tex">\mathbf{P}_\mathrm{s}</script></span> and <span><span class="MathJax_Preview">\mathbf{P}_\mathrm{r}</span><script type="math/tex">\mathbf{P}_\mathrm{r}</script></span>.</p>
+<p>We will now set up the forward modeling operator $\mathbf{F}(\mathbf{m},\mathbf{q})$ as a matrix-free operator for the inverse wave equation $\mathbf{A}(\mathbf{m})^{-1}$, where $\mathbf{m}$ is the current model, and source/receiver injection and sampling operators $\mathbf{P}<em>\mathrm{s}$ and $\mathbf{P}</em>\mathrm{r}$.</p>
 <p>Since the dimensions of the inverse wave equation operator depend on the number of computational time steps, we calculate this number using the <code>get_computational_nt</code> function and set up an <code>info</code> object that contains some dimensionality information required by all operators.</p>
 <p>Then we can define <code>Pr</code> and <code>Ps</code> as matrix-free operators implementing Devito sparse point injection and interpolation (Louboutin et al., 2017). Multiplications with <code>Ps</code> and <code>Pr</code> represent sampling the wavefield at source/receiver locations, while their adjoints <code>Ps', Pr'</code> denote injecting either source wavelets or shot records into the computational grid.</p>
 <p>These projection and modelling operators can then be set up in Julia in the following way:</p>
-<div class="highlight"><pre><span></span><code><span class="c"># NOT FOR MANUSCRIPT</span>
-<span class="k">using</span> <span class="n">HDF5</span>
+<pre><code class="julia"># NOT FOR MANUSCRIPT
+using HDF5
 
-<span class="n">m0</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">o</span> <span class="o">=</span> <span class="n">read</span><span class="p">(</span><span class="n">h5open</span><span class="p">(</span><span class="s">&quot;overthrust_model.h5&quot;</span><span class="p">,</span><span class="s">&quot;r&quot;</span><span class="p">),</span><span class="s">&quot;m0&quot;</span><span class="p">,</span><span class="s">&quot;n&quot;</span><span class="p">,</span><span class="s">&quot;d&quot;</span><span class="p">,</span><span class="s">&quot;o&quot;</span><span class="p">)</span>
-<span class="n">model0</span> <span class="o">=</span> <span class="n">Model</span><span class="p">((</span><span class="n">n</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span><span class="n">n</span><span class="p">[</span><span class="mi">2</span><span class="p">]),</span> <span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span><span class="n">d</span><span class="p">[</span><span class="mi">2</span><span class="p">]),</span> <span class="p">(</span><span class="n">o</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span><span class="n">o</span><span class="p">[</span><span class="mi">2</span><span class="p">]),</span> <span class="n">m0</span><span class="p">);</span>
-</code></pre></div>
+m0, n, d, o = read(h5open(&quot;overthrust_model.h5&quot;,&quot;r&quot;),&quot;m0&quot;,&quot;n&quot;,&quot;d&quot;,&quot;o&quot;)
+model0 = Model((n[1],n[2]), (d[1],d[2]), (o[1],o[2]), m0);
+</code></pre>
 
-<div class="highlight"><pre><span></span><code><span class="n">ntComp</span> <span class="o">=</span> <span class="n">get_computational_nt</span><span class="p">(</span><span class="n">q</span><span class="o">.</span><span class="n">geometry</span><span class="p">,</span> <span class="n">d_obs</span><span class="o">.</span><span class="n">geometry</span><span class="p">,</span> <span class="n">model0</span><span class="p">)</span>
-<span class="n">info</span> <span class="o">=</span> <span class="n">Info</span><span class="p">(</span><span class="n">prod</span><span class="p">(</span><span class="n">model0</span><span class="o">.</span><span class="n">n</span><span class="p">),</span> <span class="n">d_obs</span><span class="o">.</span><span class="n">nsrc</span><span class="p">,</span> <span class="n">ntComp</span><span class="p">)</span>
-<span class="n">Pr</span> <span class="o">=</span> <span class="n">judiProjection</span><span class="p">(</span><span class="n">info</span><span class="p">,</span> <span class="n">d_obs</span><span class="o">.</span><span class="n">geometry</span><span class="p">)</span>
-<span class="n">Ps</span> <span class="o">=</span> <span class="n">judiProjection</span><span class="p">(</span><span class="n">info</span><span class="p">,</span> <span class="n">q</span><span class="o">.</span><span class="n">geometry</span><span class="p">)</span>
-<span class="n">Ainv</span> <span class="o">=</span> <span class="n">judiModeling</span><span class="p">(</span><span class="n">info</span><span class="p">,</span> <span class="n">model0</span><span class="p">);</span>
-</code></pre></div>
+<pre><code class="julia">ntComp = get_computational_nt(q.geometry, d_obs.geometry, model0)
+info = Info(prod(model0.n), d_obs.nsrc, ntComp)
+Pr = judiProjection(info, d_obs.geometry)
+Ps = judiProjection(info, q.geometry)
+Ainv = judiModeling(info, model0);
+</code></pre>
 
 <p>The forward modeling step can be expressed mathematically as</p>
-<div>
-<div class="MathJax_Preview"> F(\mathbf{m};\mathbf{q})=\mathbf{P}_r\mathbf{A}^{-1}(\mathbf{m})\mathbf{P}_s^\top\mathbf{q} </div>
-<script type="math/tex; mode=display"> F(\mathbf{m};\mathbf{q})=\mathbf{P}_r\mathbf{A}^{-1}(\mathbf{m})\mathbf{P}_s^\top\mathbf{q} </script>
-</div>
+<p>$$ F(\mathbf{m};\mathbf{q})=\mathbf{P}_r\mathbf{A}^{-1}(\mathbf{m})\mathbf{P}_s^\top\mathbf{q} $$</p>
 <p>which is expressed in Julia as</p>
 <pre><code>d_pred = Pr * Ainv * Ps' * q
 </code></pre>
 <p>This forward models all 16 predicted shot records in parallel. Notice that, in instantiating <code>Ainv</code>, we made the wave equation solver implicitly dependent on <code>model0</code>.</p>
-<p>Finally, we set up the matrix-free Jacobian operator <code>J</code> and the Gauss–Newton Hessian <code>J' * J</code>. As mentioned in the introduction, <code>J</code> is the partial derivative of the forward modeling operator <span><span class="MathJax_Preview">\mathbf{F}(\mathbf{m}, \mathbf{q})</span><script type="math/tex">\mathbf{F}(\mathbf{m}, \mathbf{q})</script></span> with respect to the model <code>m</code> and is therefore directly constructed from our modeling operator <code>Pr * Ainv * Ps'</code> and a specified source vector <code>q</code>:</p>
-<div class="highlight"><pre><span></span><code><span class="n">J</span> <span class="o">=</span> <span class="n">judiJacobian</span><span class="p">(</span><span class="n">Pr</span> <span class="o">*</span> <span class="n">Ainv</span> <span class="o">*</span> <span class="n">Ps</span><span class="o">&#39;</span><span class="p">,</span> <span class="n">q</span><span class="p">);</span>
-</code></pre></div>
+<p>Finally, we set up the matrix-free Jacobian operator <code>J</code> and the Gauss–Newton Hessian <code>J' * J</code>. As mentioned in the introduction, <code>J</code> is the partial derivative of the forward modeling operator $\mathbf{F}(\mathbf{m}, \mathbf{q})$ with respect to the model <code>m</code> and is therefore directly constructed from our modeling operator <code>Pr * Ainv * Ps'</code> and a specified source vector <code>q</code>:</p>
+<pre><code class="julia">J = judiJacobian(Pr * Ainv * Ps', q);
+</code></pre>
 
 <div style="background: #eeeeee; border: 2px solid gray; border-radius:5px; padding: 6px 10px 6px 10px;">
 
@@ -320,77 +311,77 @@ In the second tutorial, we then showed how we can compute the gradient <span><sp
 <h2 id="fwi-via-gradient-descent">FWI via gradient descent</h2>
 <p>With expressions for modeling operators, Jacobians and gradients of the FWI objective, we can now implement different FWI algorithms in a few lines of code. We will start with a basic gradient descent example with a line search. To reduce the computational cost of full gradient descent, we will use a stochastic approach in which we only compute the gradient and function value for a randomized subset of source locations. In JUDI, this is accomplished by choosing a random vector of integers between 1 and 16 and indexing the data vectors as described earlier. Furthermore, we will apply a projection operator <code>proj(x)</code>, which prevent velocities (or squared slownesses) becoming negative or too large by clipping values outside the allowed range.</p>
 <p>A few extra variables are defined in the notebook, but the full algorithm for FWI with stochastic gradient descent and box constraints is implemented as follows:</p>
-<div class="highlight"><pre><span></span><code><span class="c"># NOT FOR MANUSCRIPT</span>
-<span class="c"># Set up bound constraints.</span>
-<span class="n">v0</span> <span class="o">=</span> <span class="n">sqrt</span><span class="o">.</span><span class="p">(</span><span class="mf">1f0</span><span class="o">./</span><span class="n">model0</span><span class="o">.</span><span class="n">m</span><span class="p">)</span>
-<span class="n">vmin</span> <span class="o">=</span> <span class="n">ones</span><span class="p">(</span><span class="kt">Float32</span><span class="p">,</span> <span class="n">model0</span><span class="o">.</span><span class="n">n</span><span class="p">)</span><span class="o">*</span><span class="mf">1.3f0</span>
-<span class="n">vmax</span> <span class="o">=</span> <span class="n">ones</span><span class="p">(</span><span class="kt">Float32</span><span class="p">,</span> <span class="n">model0</span><span class="o">.</span><span class="n">n</span><span class="p">)</span><span class="o">*</span><span class="mf">6.5f0</span>
+<pre><code class="julia"># NOT FOR MANUSCRIPT
+# Set up bound constraints.
+v0 = sqrt.(1f0./model0.m)
+vmin = ones(Float32, model0.n)*1.3f0
+vmax = ones(Float32, model0.n)*6.5f0
 
-<span class="c"># Fix water column.</span>
-<span class="n">vmin</span><span class="p">[</span><span class="o">:</span><span class="p">,</span><span class="mi">1</span><span class="o">:</span><span class="mi">21</span><span class="p">]</span> <span class="o">=</span> <span class="n">v0</span><span class="p">[</span><span class="o">:</span><span class="p">,</span><span class="mi">1</span><span class="o">:</span><span class="mi">21</span><span class="p">]</span>
-<span class="n">vmax</span><span class="p">[</span><span class="o">:</span><span class="p">,</span><span class="mi">1</span><span class="o">:</span><span class="mi">21</span><span class="p">]</span> <span class="o">=</span> <span class="n">v0</span><span class="p">[</span><span class="o">:</span><span class="p">,</span><span class="mi">1</span><span class="o">:</span><span class="mi">21</span><span class="p">]</span>
+# Fix water column.
+vmin[:,1:21] = v0[:,1:21]
+vmax[:,1:21] = v0[:,1:21]
 
-<span class="c"># Convert to squared slowness.</span>
-<span class="n">mmin</span> <span class="o">=</span> <span class="n">vec</span><span class="p">((</span><span class="mf">1f0</span><span class="o">./</span><span class="n">vmax</span><span class="p">)</span><span class="o">.^</span><span class="mi">2</span><span class="p">)</span>
-<span class="n">mmax</span> <span class="o">=</span> <span class="n">vec</span><span class="p">((</span><span class="mf">1f0</span><span class="o">./</span><span class="n">vmin</span><span class="p">)</span><span class="o">.^</span><span class="mi">2</span><span class="p">);</span>
-</code></pre></div>
+# Convert to squared slowness.
+mmin = vec((1f0./vmax).^2)
+mmax = vec((1f0./vmin).^2);
+</code></pre>
 
-<div class="highlight"><pre><span></span><code><span class="c"># NOT FOR MANUSCRIPT</span>
-<span class="n">maxiter</span> <span class="o">=</span> <span class="mi">10</span>
-<span class="n">batchsize</span> <span class="o">=</span> <span class="mi">8</span>    <span class="c"># Number of shots for each iteration.</span>
-<span class="n">proj</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">=</span> <span class="n">reshape</span><span class="p">(</span><span class="n">median</span><span class="p">([</span><span class="n">vec</span><span class="p">(</span><span class="n">mmin</span><span class="p">)</span> <span class="n">vec</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="n">vec</span><span class="p">(</span><span class="n">mmax</span><span class="p">)],</span> <span class="mi">2</span><span class="p">),</span> <span class="n">model0</span><span class="o">.</span><span class="n">n</span><span class="p">)</span>
-<span class="n">fhistory_SGD</span> <span class="o">=</span> <span class="n">zeros</span><span class="p">(</span><span class="kt">Float32</span><span class="p">,</span> <span class="n">maxiter</span><span class="p">);</span>
-</code></pre></div>
+<pre><code class="julia"># NOT FOR MANUSCRIPT
+maxiter = 10
+batchsize = 8    # Number of shots for each iteration.
+proj(x) = reshape(median([vec(mmin) vec(x) vec(mmax)], 2), model0.n)
+fhistory_SGD = zeros(Float32, maxiter);
+</code></pre>
 
-<div class="highlight"><pre><span></span><code><span class="k">for</span> <span class="n">j</span><span class="o">=</span><span class="mi">1</span><span class="o">:</span><span class="n">maxiter</span>
-    <span class="c"># FWI objective function value and gradient.</span>
-    <span class="n">i</span> <span class="o">=</span> <span class="n">randperm</span><span class="p">(</span><span class="n">d_obs</span><span class="o">.</span><span class="n">nsrc</span><span class="p">)[</span><span class="mi">1</span><span class="o">:</span><span class="n">batchsize</span><span class="p">]</span>
-    <span class="n">fval</span><span class="p">,</span> <span class="n">grad</span> <span class="o">=</span> <span class="n">fwi_objective</span><span class="p">(</span><span class="n">model0</span><span class="p">,</span> <span class="n">q</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">d_obs</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
-    <span class="n">fhistory_SGD</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">fval</span>  <span class="c"># OMIT LINE FROM MANUSCRIPT</span>
+<pre><code class="julia">for j=1:maxiter
+    # FWI objective function value and gradient.
+    i = randperm(d_obs.nsrc)[1:batchsize]
+    fval, grad = fwi_objective(model0, q[i], d_obs[i])
+    fhistory_SGD[j] = fval  # OMIT LINE FROM MANUSCRIPT
 
-    <span class="c"># Line search and update model.</span>
-    <span class="n">update</span> <span class="o">=</span> <span class="n">backtracking_linesearch</span><span class="p">(</span><span class="n">model0</span><span class="p">,</span>
-                                     <span class="n">q</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
-                                     <span class="n">d_obs</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
-                                     <span class="n">fval</span><span class="p">,</span>
-                                     <span class="n">grad</span><span class="p">,</span>
-                                     <span class="n">proj</span><span class="p">;</span>
-                                     <span class="n">alpha</span><span class="o">=</span><span class="mf">1f0</span><span class="p">)</span>
-    <span class="n">model0</span><span class="o">.</span><span class="n">m</span> <span class="o">+=</span> <span class="n">reshape</span><span class="p">(</span><span class="n">update</span><span class="p">,</span> <span class="n">model0</span><span class="o">.</span><span class="n">n</span><span class="p">)</span>
+    # Line search and update model.
+    update = backtracking_linesearch(model0,
+                                     q[i],
+                                     d_obs[i],
+                                     fval,
+                                     grad,
+                                     proj;
+                                     alpha=1f0)
+    model0.m += reshape(update, model0.n)
 
-    <span class="c"># Apply box constraints.</span>
-    <span class="n">model0</span><span class="o">.</span><span class="n">m</span> <span class="o">=</span> <span class="n">proj</span><span class="p">(</span><span class="n">model0</span><span class="o">.</span><span class="n">m</span><span class="p">)</span>
-<span class="k">end</span>
-</code></pre></div>
+    # Apply box constraints.
+    model0.m = proj(model0.m)
+end
+</code></pre>
 
-<div class="highlight"><pre><span></span><code><span class="c"># NOT FOR MANUSCRIPT</span>
-<span class="n">model_SGD</span> <span class="o">=</span> <span class="n">copy</span><span class="p">(</span><span class="n">model0</span><span class="o">.</span><span class="n">m</span><span class="p">);</span>
-</code></pre></div>
+<pre><code class="julia"># NOT FOR MANUSCRIPT
+model_SGD = copy(model0.m);
+</code></pre>
 
 <p>JUDI's <code>backtracking_linesearch</code> function performs an approximate line search and returns a model update that leads to a decrease of the objective function value (Armijo condition; Nocedal and Wright, 2009). The result after 10 iterations of SGD with box constraints is shown in Figure 2. In practice, where starting models are typically less accurate than in our example, FWI is often performed from low to high frequencies, since the objective function has less local minima for lower frequencies (Bunks et al., 1995). In this multi-scale FWI approach, a low-pass filtered version of the data is used to invert for a low resolution velocity model first and higher frequencies are added in subsequent iterations.</p>
 <h2 id="fwi-via-the-gaussnewton-method">FWI via the Gauss–Newton method</h2>
 <p>As discussed earlier, the convergence rate of GD depends on the objective function, but requires many FWI iterations necessary to reach an acceptable solution. Using our matrix-free operator for the Jacobian J, we can modify the above code to implement the Gauss–Newton method (Equation 3) to improve the convergence rate. In practice, directly inverting the Gauss–Newton Hessian <code>J'* J</code> should be avoided, because the matrix is badly conditioned and takes many iterations to invert. Instead, we perform a few iterations of a least-squares solver, <code>lsqr()</code>, to approximately solve <code>J * p = d_pred - d_obs</code> and obtain the update direction <code>p</code>. <code>lsqr</code>,  from the Julia <code>IterativeSolvers</code> package, is a conjugate-gradient type algorithm for solving least squares problems and is mathematically equivalent to inverting <code>J' * J</code>, but has better numerical properties (Paige and Saunders, 1982). We implement the Gauss-Newton method as follows:</p>
-<div class="highlight"><pre><span></span><code><span class="c"># NOT FOR MANUSCRIPT</span>
-<span class="n">model0</span><span class="o">.</span><span class="n">m</span> <span class="o">=</span> <span class="n">m0</span>    <span class="c"># Reset velocity model.</span>
-<span class="n">fhistory_GN</span> <span class="o">=</span> <span class="n">zeros</span><span class="p">(</span><span class="kt">Float32</span><span class="p">,</span><span class="n">maxiter</span><span class="p">);</span>
-</code></pre></div>
+<pre><code class="julia"># NOT FOR MANUSCRIPT
+model0.m = m0    # Reset velocity model.
+fhistory_GN = zeros(Float32,maxiter);
+</code></pre>
 
-<div class="highlight"><pre><span></span><code><span class="k">using</span> <span class="n">IterativeSolvers</span>
+<pre><code class="julia">using IterativeSolvers
 
-<span class="n">DO</span> <span class="n">NOT</span> <span class="n">RUN</span> <span class="n">BY</span> <span class="n">ACCIDENT</span>  <span class="c"># OMIT LINE FROM MANUSCRIPT</span>
+DO NOT RUN BY ACCIDENT  # OMIT LINE FROM MANUSCRIPT
 
-<span class="k">for</span> <span class="n">j</span><span class="o">=</span><span class="mi">1</span><span class="o">:</span><span class="n">maxiter</span>
-    <span class="c"># Model predicted data.</span>
-    <span class="n">d_pred</span> <span class="o">=</span> <span class="n">Pr</span> <span class="o">*</span> <span class="n">Ainv</span> <span class="o">*</span> <span class="n">Ps</span><span class="o">&#39;</span> <span class="o">*</span> <span class="n">q</span>
+for j=1:maxiter
+    # Model predicted data.
+    d_pred = Pr * Ainv * Ps' * q
 
-    <span class="c"># GN update direction.</span>
-    <span class="n">p</span> <span class="o">=</span> <span class="n">lsqr</span><span class="p">(</span><span class="n">J</span><span class="p">,</span> <span class="n">d_pred</span> <span class="o">-</span> <span class="n">d_obs</span><span class="p">;</span> <span class="n">maxiter</span><span class="o">=</span><span class="mi">6</span><span class="p">)</span>
-    <span class="n">fhistory_GN</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="o">.</span><span class="mf">5f0</span> <span class="o">*</span> <span class="n">norm</span><span class="p">(</span><span class="n">d_pred</span> <span class="o">-</span> <span class="n">d_obs</span><span class="p">)</span><span class="o">^</span><span class="mi">2</span>  <span class="c"># OMIT LINE FROM MANUSCRIPT</span>
+    # GN update direction.
+    p = lsqr(J, d_pred - d_obs; maxiter=6)
+    fhistory_GN[j] = .5f0 * norm(d_pred - d_obs)^2  # OMIT LINE FROM MANUSCRIPT
 
-    <span class="c"># update model and box constraints.</span>
-    <span class="n">model0</span><span class="o">.</span><span class="n">m</span> <span class="o">=</span> <span class="n">model0</span><span class="o">.</span><span class="n">m</span> <span class="o">-</span> <span class="n">reshape</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">model0</span><span class="o">.</span><span class="n">n</span><span class="p">)</span>
-<span class="k">end</span>
-</code></pre></div>
+    # update model and box constraints.
+    model0.m = model0.m - reshape(p, model0.n)
+end
+</code></pre>
 
 <div style="background: #eeeeee; border: 2px solid gray; border-radius:5px; padding: 6px 10px 6px 10px;">
 
@@ -401,59 +392,59 @@ In the second tutorial, we then showed how we can compute the gradient <span><sp
 </div>
 
 <p>In contrast to our SGD algorithm, we use all shot records in every iteration, since stochastic methods for second order algorithms are less well understood, making this approach considerably more expensive than our previous algorithm. However, as shown in figures 2 and 3, it achieves a superior result, with a considerably lower misfit compared to the known model. Furthermore, figure 3 shows that it achieves the improved result in relatively few iterations.</p>
-<div class="highlight"><pre><span></span><code><span class="c"># NOT FOR MANUSCRIPT</span>
-<span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">15</span><span class="p">,</span> <span class="mi">12</span><span class="p">))</span>
+<pre><code class="julia"># NOT FOR MANUSCRIPT
+figure(figsize=(15, 12))
 
-<span class="n">subplot</span><span class="p">(</span><span class="mi">311</span><span class="p">)</span>
-<span class="n">imshow</span><span class="p">(</span><span class="n">sqrt</span><span class="o">.</span><span class="p">(</span><span class="mf">1f0</span><span class="o">./</span><span class="n">m0</span><span class="p">)</span><span class="o">&#39;</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s">&quot;GnBu&quot;</span><span class="p">,</span> <span class="n">extent</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">10</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">0</span><span class="p">),</span> <span class="n">vmin</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mf">5.4</span><span class="p">)</span>
-<span class="n">text</span><span class="p">(</span><span class="mf">0.15</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="s">&quot;Starting model&quot;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">14</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s">&quot;black&quot;</span><span class="p">)</span>
-<span class="n">ylabel</span><span class="p">(</span><span class="s">&quot;Depth [km]&quot;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
-<span class="n">colorbar</span><span class="p">()</span>
-<span class="n">text</span><span class="p">(</span><span class="mf">10.35</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">,</span> <span class="s">&quot;Velocity [km/s]&quot;</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="s">&quot;center&quot;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span> <span class="n">rotation</span><span class="o">=</span><span class="mi">90</span><span class="p">)</span>
+subplot(311)
+imshow(sqrt.(1f0./m0)', cmap=&quot;GnBu&quot;, extent=(0,10,3,0), vmin=1.5, vmax=5.4)
+text(0.15, 0.3, &quot;Starting model&quot;, size=14, color=&quot;black&quot;)
+ylabel(&quot;Depth [km]&quot;, size=12)
+colorbar()
+text(10.35, 1.5, &quot;Velocity [km/s]&quot;, va=&quot;center&quot;, size=12, rotation=90)
 
-<span class="n">subplot</span><span class="p">(</span><span class="mi">312</span><span class="p">)</span>
-<span class="n">imshow</span><span class="p">(</span><span class="n">sqrt</span><span class="o">.</span><span class="p">(</span><span class="mf">1f0</span><span class="o">./</span><span class="n">model_SGD</span><span class="p">)</span><span class="o">&#39;</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s">&quot;GnBu&quot;</span><span class="p">,</span> <span class="n">extent</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">10</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">0</span><span class="p">),</span> <span class="n">vmin</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mf">5.4</span><span class="p">)</span>
-<span class="n">misfit</span> <span class="o">=</span> <span class="n">round</span><span class="p">(</span><span class="n">fhistory_SGD</span><span class="p">[</span><span class="k">end</span><span class="p">],</span> <span class="mi">3</span><span class="p">)</span>
-<span class="n">text</span><span class="p">(</span><span class="mf">0.15</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="s">&quot;Gradient descent, misfit = </span><span class="si">$misfit</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">14</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s">&quot;black&quot;</span><span class="p">)</span>
-<span class="n">ylabel</span><span class="p">(</span><span class="s">&quot;Depth [km]&quot;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
-<span class="n">colorbar</span><span class="p">()</span>
-<span class="n">text</span><span class="p">(</span><span class="mf">10.35</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">,</span> <span class="s">&quot;Velocity [km/s]&quot;</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="s">&quot;center&quot;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span> <span class="n">rotation</span><span class="o">=</span><span class="mi">90</span><span class="p">)</span>
+subplot(312)
+imshow(sqrt.(1f0./model_SGD)', cmap=&quot;GnBu&quot;, extent=(0,10,3,0), vmin=1.5, vmax=5.4)
+misfit = round(fhistory_SGD[end], 3)
+text(0.15, 0.3, &quot;Gradient descent, misfit = $misfit&quot;, size=14, color=&quot;black&quot;)
+ylabel(&quot;Depth [km]&quot;, size=12)
+colorbar()
+text(10.35, 1.5, &quot;Velocity [km/s]&quot;, va=&quot;center&quot;, size=12, rotation=90)
 
-<span class="n">subplot</span><span class="p">(</span><span class="mi">313</span><span class="p">)</span>
-<span class="n">imshow</span><span class="p">(</span><span class="n">sqrt</span><span class="o">.</span><span class="p">(</span><span class="mf">1f0</span><span class="o">./</span><span class="n">model0</span><span class="o">.</span><span class="n">m</span><span class="p">)</span><span class="o">&#39;</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s">&quot;GnBu&quot;</span><span class="p">,</span> <span class="n">extent</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">10</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">0</span><span class="p">),</span> <span class="n">vmin</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mf">5.4</span><span class="p">)</span>
-<span class="n">misfit</span> <span class="o">=</span> <span class="n">round</span><span class="p">(</span><span class="n">fhistory_GN</span><span class="p">[</span><span class="k">end</span><span class="p">],</span> <span class="mi">3</span><span class="p">)</span>
-<span class="n">text</span><span class="p">(</span><span class="mf">0.15</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="s">&quot;Gauss–Newton, misfit = </span><span class="si">$misfit</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">14</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s">&quot;black&quot;</span><span class="p">)</span>
-<span class="n">xlabel</span><span class="p">(</span><span class="s">&quot;Lateral position [km]&quot;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
-<span class="n">ylabel</span><span class="p">(</span><span class="s">&quot;Depth [km]&quot;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
-<span class="n">colorbar</span><span class="p">()</span>
-<span class="n">text</span><span class="p">(</span><span class="mf">10.35</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">,</span> <span class="s">&quot;Velocity [km/s]&quot;</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="s">&quot;center&quot;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span> <span class="n">rotation</span><span class="o">=</span><span class="mi">90</span><span class="p">)</span>
+subplot(313)
+imshow(sqrt.(1f0./model0.m)', cmap=&quot;GnBu&quot;, extent=(0,10,3,0), vmin=1.5, vmax=5.4)
+misfit = round(fhistory_GN[end], 3)
+text(0.15, 0.3, &quot;Gauss–Newton, misfit = $misfit&quot;, size=14, color=&quot;black&quot;)
+xlabel(&quot;Lateral position [km]&quot;, size=12)
+ylabel(&quot;Depth [km]&quot;, size=12)
+colorbar()
+text(10.35, 1.5, &quot;Velocity [km/s]&quot;, va=&quot;center&quot;, size=12, rotation=90)
 
-<span class="n">savefig</span><span class="p">(</span><span class="s">&quot;../Figures/Figure_2.png&quot;</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">300</span><span class="p">)</span>
-<span class="n">show</span><span class="p">()</span>
-</code></pre></div>
+savefig(&quot;../Figures/Figure_2.png&quot;, dpi=300)
+show()
+</code></pre>
 
 <p><img alt="png" src="../judi_leading_edge_tutorial_files/judi_leading_edge_tutorial_33_0.png" /></p>
 <blockquote>
-<p><strong>Figure 2</strong>: (a) Initial model. (b) Recovered velocity model after 10 iterations of stochastic gradient descent with box constraints and a batch size of 8 shots. &copy; Recovered velocity model after 10 iterations of the Gauss–Newton method, with 6 iterations of <code>LSQR</code> for the Gauss–Newton subproblem, and using all shots in every iteration. The resulting misfit is substantially lower that what was achieved with gradient descent.</p>
+<p><strong>Figure 2</strong>: (a) Initial model. (b) Recovered velocity model after 10 iterations of stochastic gradient descent with box constraints and a batch size of 8 shots. (c) Recovered velocity model after 10 iterations of the Gauss–Newton method, with 6 iterations of <code>LSQR</code> for the Gauss–Newton subproblem, and using all shots in every iteration. The resulting misfit is substantially lower that what was achieved with gradient descent.</p>
 </blockquote>
-<div class="highlight"><pre><span></span><code><span class="c"># NOT FOR MANUSCRIPT</span>
-<span class="n">fhistory_SGD</span> <span class="o">=</span> <span class="n">fhistory_SGD</span><span class="o">/</span><span class="n">norm</span><span class="p">(</span><span class="n">fhistory_SGD</span><span class="p">,</span> <span class="nb">Inf</span><span class="p">)</span>
-<span class="n">fhistory_GN</span> <span class="o">=</span> <span class="n">fhistory_GN</span><span class="o">/</span><span class="n">norm</span><span class="p">(</span><span class="n">fhistory_GN</span><span class="p">,</span> <span class="nb">Inf</span><span class="p">);</span>
-</code></pre></div>
+<pre><code class="julia"># NOT FOR MANUSCRIPT
+fhistory_SGD = fhistory_SGD/norm(fhistory_SGD, Inf)
+fhistory_GN = fhistory_GN/norm(fhistory_GN, Inf);
+</code></pre>
 
-<div class="highlight"><pre><span></span><code><span class="c"># NOT FOR MANUSCRIPT</span>
-<span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span><span class="mi">3</span><span class="p">))</span>
-<span class="n">plot</span><span class="p">(</span><span class="mi">1</span><span class="o">:</span><span class="mi">10</span><span class="p">,</span> <span class="n">fhistory_SGD</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s">&quot;Gradient descent&quot;</span><span class="p">)</span>
-<span class="n">plot</span><span class="p">(</span><span class="mi">1</span><span class="o">:</span><span class="mi">10</span><span class="p">,</span> <span class="n">fhistory_GN</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s">&quot;Gauss–Newton&quot;</span><span class="p">)</span>
-<span class="n">text</span><span class="p">(</span><span class="mf">9.8</span><span class="p">,</span> <span class="mf">0.28</span><span class="p">,</span> <span class="s">&quot;Gradient descent&quot;</span><span class="p">,</span> <span class="n">ha</span><span class="o">=</span><span class="s">&quot;right&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s">&quot;steelblue&quot;</span><span class="p">)</span>
-<span class="n">text</span><span class="p">(</span><span class="mf">9.8</span><span class="p">,</span> <span class="mf">0.09</span><span class="p">,</span> <span class="s">&quot;Gauss–Newton&quot;</span><span class="p">,</span> <span class="n">ha</span><span class="o">=</span><span class="s">&quot;right&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s">&quot;chocolate&quot;</span><span class="p">)</span>
-<span class="n">xlabel</span><span class="p">(</span><span class="s">&quot;Iteration number&quot;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
-<span class="n">ylabel</span><span class="p">(</span><span class="s">&quot;Misfit&quot;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
-<span class="n">xlim</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
+<pre><code class="julia"># NOT FOR MANUSCRIPT
+figure(figsize=(8,3))
+plot(1:10, fhistory_SGD, label=&quot;Gradient descent&quot;)
+plot(1:10, fhistory_GN, label=&quot;Gauss–Newton&quot;)
+text(9.8, 0.28, &quot;Gradient descent&quot;, ha=&quot;right&quot;, color=&quot;steelblue&quot;)
+text(9.8, 0.09, &quot;Gauss–Newton&quot;, ha=&quot;right&quot;, color=&quot;chocolate&quot;)
+xlabel(&quot;Iteration number&quot;, size=12)
+ylabel(&quot;Misfit&quot;, size=12)
+xlim(1, 10)
 
-<span class="n">savefig</span><span class="p">(</span><span class="s">&quot;../Figures/Figure_3.png&quot;</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">300</span><span class="p">)</span>
-<span class="n">show</span><span class="p">()</span>
-</code></pre></div>
+savefig(&quot;../Figures/Figure_3.png&quot;, dpi=300)
+show()
+</code></pre>
 
 <p><img alt="png" src="../judi_leading_edge_tutorial_files/judi_leading_edge_tutorial_36_0.png" /></p>
 <blockquote>
@@ -467,30 +458,23 @@ In the second tutorial, we then showed how we can compute the gradient <span><sp
 <p>This research was carried out as part of the SINBAD II project with the support of the member organizations of the SINBAD Consortium. This work was financially supported in part by EPSRC grant EP/L000407/1 and the Imperial College London Intel Parallel Computing Centre.</p>
 <h2 id="references">References</h2>
 <p>Aminzadeh, F., Brac, J., and Kunz, T., 1997. 3D Salt and Overthrust models. SEG/EAGE Modeling Series, No. 1: Distribution CD of Salt and Overthrust models, SEG Book Series Tulsa, Oklahoma.</p>
-<p>Bezanson, J., Karpinski, S., Shah, V. B., and Edelman, A., 2012, Julia: A fast dynamic language for technical computing: CoRR. Retrieved from <a href="http://arxiv.org/abs/1209.5145">http://arxiv.org/abs/1209.5145</a></p>
+<p>Bezanson, J., Karpinski, S., Shah, V. B., and Edelman, A., 2012, Julia: A fast dynamic language for technical computing: CoRR. Retrieved from http://arxiv.org/abs/1209.5145</p>
 <p>Bunks, C., Saleck, F. M., Zaleski, S., and Chavent, G., 1995, Multiscale seismic waveform inversion: GEOPHYSICS, 60, 1457–1473. doi:10.1190/1.1443880</p>
-<p>Johnson, S., 2017, Calling python functions from the julia language: GitHub repository. <a href="https://github.com/JuliaPy/PyCall.jl">https://github.com/JuliaPy/PyCall.jl</a>; GitHub.</p>
-<p>Lange, M., Kukreja, N., Louboutin, M., Luporini, F., Zacarias, F. V., Pandolfo, V., … Gorman, G., 2016, Devito: Towards a generic finite difference DSL using symbolic python: 6<sup>th</sup> workshop on python for high-performance and scientific computing. doi:10.1109/PyHPC.2016.9</p>
+<p>Johnson, S., 2017, Calling python functions from the julia language: GitHub repository. https://github.com/JuliaPy/PyCall.jl; GitHub.</p>
+<p>Lange, M., Kukreja, N., Louboutin, M., Luporini, F., Zacarias, F. V., Pandolfo, V., … Gorman, G., 2016, Devito: Towards a generic finite difference DSL using symbolic python: 6th workshop on python for high-performance and scientific computing. doi:10.1109/PyHPC.2016.9</p>
 <p>Leeuwen, T. van, Aravkin, A. Y., Calandra, H., and Herrmann, F. J., 2013, In which domain should we measure the misfit for robust full waveform inversion? EAGE annual conference proceedings. doi:10.3997/2214-4609.20130839</p>
-<p>Louboutin, M., Witte, P. A., Lange, M., Kukreja, N., Luporini, F., Gorman, G., and Herrmann, F. J., 2017, Full-waveform inversion - part 1: Forward modeling: Retrieved from <a href="https://www.slim.eos.ubc.ca/Publications/Private/Submitted/2017/louboutin2017fwi/louboutin2017fwi.html">https://www.slim.eos.ubc.ca/Publications/Private/Submitted/2017/louboutin2017fwi/louboutin2017fwi.html</a></p>
+<p>Louboutin, M., Witte, P. A., Lange, M., Kukreja, N., Luporini, F., Gorman, G., and Herrmann, F. J., 2017, Full-waveform inversion - part 1: Forward modeling: Retrieved from https://www.slim.eos.ubc.ca/Publications/Private/Submitted/2017/louboutin2017fwi/louboutin2017fwi.html</p>
 <p>Louboutin, M., Witte, P. A., Lange, M., Kukreja, N., Luporini, F., Gorman, G., and Herrmann, F. J., 2018, Full-waveform inversion - part 2: Adjoint modeling:</p>
-<p>Nocedal, J., and Wright, S., 2009, Numerical optimization: (2<sup>nd</sup> ed.). Springer.</p>
+<p>Nocedal, J., and Wright, S., 2009, Numerical optimization: (2nd ed.). Springer.</p>
 <p>Paige, C. C., and Saunders, M. A., 1982, LSQR: An algorithm for sparse linear equations and sparse least squares: ACM Trans. Math. Softw., 8, 43–71. doi:10.1145/355984.355989</p>
 <p>Peters, B., and Herrmann, F. J., 2017, Constraints versus penalties for edge-preserving full-waveform inversion: The Leading Edge, 36, 94–100. doi:10.1190/tle36010094.1</p>
 <p>Warner, M., and Guasch, L., 2014, Adaptive waveform inversion: Theory: In SEG technical program expanded abstracts 2014 (pp. 1089–1093). doi:10.1190/segam2014-0371.1</p>
-<div class="highlight"><pre><span></span><code>
-</code></pre></div>
+<pre><code class="julia">
+</code></pre>
               
             </div>
           </div>
           <footer>
-  
-    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
-      
-      
-        <a href="../fwi_example_NLopt/" class="btn btn-neutral" title="Acoustic RTM with NLopt"><span class="icon icon-circle-arrow-left"></span> Previous</a>
-      
-    </div>
   
 
   <hr/>
@@ -514,14 +498,11 @@ In the second tutorial, we then showed how we can compute the gradient <span><sp
     <span class="rst-current-version" data-toggle="rst-current-version">
       
       
-        <span><a href="../fwi_example_NLopt/" style="color: #fcfcfc;">&laquo; Previous</a></span>
-      
       
     </span>
 </div>
     <script>var base_url = '../..';</script>
     <script src="../../js/theme.js" defer></script>
-      <script src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML" defer></script>
       <script src="../../search/main.js" defer></script>
     <script defer>
         window.onload = function () {

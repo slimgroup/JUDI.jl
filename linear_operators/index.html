@@ -5,26 +5,26 @@
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="None">
   
   
-  <link rel="shortcut icon" href="img/favicon.ico">
-  <title>The Julia Devito Inversion framework (JUDI.jl)</title>
+  
+  <link rel="shortcut icon" href="../img/favicon.ico">
+  <title>Linear operators - The Julia Devito Inversion framework (JUDI.jl)</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700" />
 
-  <link rel="stylesheet" href="css/theme.css" />
-  <link rel="stylesheet" href="css/theme_extra.css" />
+  <link rel="stylesheet" href="../css/theme.css" />
+  <link rel="stylesheet" href="../css/theme_extra.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" />
   
   <script>
     // Current page data
-    var mkdocs_page_name = "Home";
-    var mkdocs_page_input_path = "index.md";
+    var mkdocs_page_name = "Linear operators";
+    var mkdocs_page_input_path = "linear_operators.md";
     var mkdocs_page_url = null;
   </script>
   
-  <script src="js/jquery-2.1.1.min.js" defer></script>
-  <script src="js/modernizr-2.8.3.min.js" defer></script>
+  <script src="../js/jquery-2.1.1.min.js" defer></script>
+  <script src="../js/modernizr-2.8.3.min.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
   <script>hljs.initHighlightingOnLoad();</script> 
   
@@ -38,49 +38,51 @@
     <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
     <div class="wy-side-scroll">
       <div class="wy-side-nav-search">
-        <a href="." class="icon icon-home"> The Julia Devito Inversion framework (JUDI.jl)</a>
+        <a href=".." class="icon icon-home"> The Julia Devito Inversion framework (JUDI.jl)</a>
         <div role="search">
-  <form id ="rtd-search-form" class="wy-form" action="./search.html" method="get">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" title="Type search term here" />
   </form>
 </div>
       </div>
 
       <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="..">Home</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../data_structures/">Data structures</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../abstract_vectors/">Abstract vectors</a>
+                    </li>
+                </ul>
                 <ul class="current">
-                    <li class="toctree-l1 current"><a class="reference internal current" href=".">Home</a>
+                    <li class="toctree-l1 current"><a class="reference internal current" href="./">Linear operators</a>
     <ul class="current">
-    <li class="toctree-l2"><a class="reference internal" href="#overview">Overview</a>
+    <li class="toctree-l2"><a class="reference internal" href="#judimodeling">judiModeling</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#installation">Installation</a>
+    <li class="toctree-l2"><a class="reference internal" href="#judijacobian">judiJacobian</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#troubleshooting">Troubleshooting</a>
+    <li class="toctree-l2"><a class="reference internal" href="#judiprojection">judiProjection</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#judilrwf">judiLRWF</a>
     </li>
     </ul>
                     </li>
                 </ul>
                 <ul>
-                    <li class="toctree-l1"><a class="reference internal" href="data_structures/">Data structures</a>
+                    <li class="toctree-l1"><a class="" href="../io.md">IO</a>
                     </li>
                 </ul>
                 <ul>
-                    <li class="toctree-l1"><a class="reference internal" href="abstract_vectors/">Abstract vectors</a>
+                    <li class="toctree-l1"><a class="reference internal" href="../applications/">Applications</a>
                     </li>
                 </ul>
                 <ul>
-                    <li class="toctree-l1"><a class="reference internal" href="linear_operators/">Linear operators</a>
-                    </li>
-                </ul>
-                <ul>
-                    <li class="toctree-l1"><a class="" href="io.md">IO</a>
-                    </li>
-                </ul>
-                <ul>
-                    <li class="toctree-l1"><a class="reference internal" href="applications/">Applications</a>
-                    </li>
-                </ul>
-                <ul>
-                    <li class="toctree-l1"><a class="reference internal" href="about/">About</a>
+                    <li class="toctree-l1"><a class="reference internal" href="../about/">About</a>
                     </li>
                 </ul>
       </div>
@@ -92,7 +94,7 @@
       
       <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
         <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-        <a href=".">The Julia Devito Inversion framework (JUDI.jl)</a>
+        <a href="..">The Julia Devito Inversion framework (JUDI.jl)</a>
       </nav>
 
       
@@ -100,11 +102,11 @@
         <div class="rst-content">
           <div role="navigation" aria-label="breadcrumbs navigation">
   <ul class="wy-breadcrumbs">
-    <li><a href=".">Docs</a> &raquo;</li>
+    <li><a href="..">Docs</a> &raquo;</li>
     
       
     
-    <li>Home</li>
+    <li>Linear operators</li>
     <li class="wy-breadcrumbs-aside">
       
     </li>
@@ -115,10 +117,11 @@
           <div role="main">
             <div class="section">
               
-                <h1 id="the-julia-devito-inversion-framework-judijl">The Julia Devito Inversion framework (JUDI.jl)</h1>
-<h2 id="overview">Overview</h2>
-<h2 id="installation">Installation</h2>
-<h2 id="troubleshooting">Troubleshooting</h2>
+                <h1 id="linear-operators">Linear Operators</h1>
+<h2 id="judimodeling">judiModeling</h2>
+<h2 id="judijacobian">judiJacobian</h2>
+<h2 id="judiprojection">judiProjection</h2>
+<h2 id="judilrwf">judiLRWF</h2>
               
             </div>
           </div>
@@ -126,8 +129,10 @@
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="data_structures/" class="btn btn-neutral float-right" title="Data structures">Next <span class="icon icon-circle-arrow-right"></span></a>
+        <a href="../applications/" class="btn btn-neutral float-right" title="Applications">Next <span class="icon icon-circle-arrow-right"></span></a>
       
+      
+        <a href="../abstract_vectors/" class="btn btn-neutral" title="Abstract vectors"><span class="icon icon-circle-arrow-left"></span> Previous</a>
       
     </div>
   
@@ -153,14 +158,16 @@
     <span class="rst-current-version" data-toggle="rst-current-version">
       
       
+        <span><a href="../abstract_vectors/" style="color: #fcfcfc;">&laquo; Previous</a></span>
       
-        <span style="margin-left: 15px"><a href="data_structures/" style="color: #fcfcfc">Next &raquo;</a></span>
+      
+        <span style="margin-left: 15px"><a href="../applications/" style="color: #fcfcfc">Next &raquo;</a></span>
       
     </span>
 </div>
-    <script>var base_url = '.';</script>
-    <script src="js/theme.js" defer></script>
-      <script src="search/main.js" defer></script>
+    <script>var base_url = '..';</script>
+    <script src="../js/theme.js" defer></script>
+      <script src="../search/main.js" defer></script>
     <script defer>
         window.onload = function () {
             SphinxRtdTheme.Navigation.enable(true);
@@ -169,8 +176,3 @@
 
 </body>
 </html>
-
-<!--
-MkDocs version : 1.1
-Build Date UTC : 2020-04-30 13:50:32
--->

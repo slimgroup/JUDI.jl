@@ -9,7 +9,7 @@
   
   
   <link rel="shortcut icon" href="../../img/favicon.ico">
-  <title>Acoustic FWI - JUDI documentation</title>
+  <title>Full waveform inversion - The Julia Devito Inversion framework (JUDI.jl)</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700" />
 
   <link rel="stylesheet" href="../../css/theme.css" />
@@ -18,7 +18,7 @@
   
   <script>
     // Current page data
-    var mkdocs_page_name = "Acoustic FWI";
+    var mkdocs_page_name = "Full waveform inversion";
     var mkdocs_page_input_path = "tutorials/full_waveform_inversion.md";
     var mkdocs_page_url = null;
   </script>
@@ -38,7 +38,7 @@
     <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
     <div class="wy-side-scroll">
       <div class="wy-side-nav-search">
-        <a href="../.." class="icon icon-home"> JUDI documentation</a>
+        <a href="../.." class="icon icon-home"> The Julia Devito Inversion framework (JUDI.jl)</a>
         <div role="search">
   <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" title="Type search term here" />
@@ -51,15 +51,28 @@
                     <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
                     </li>
                 </ul>
-                <p class="caption"><span class="caption-text">JUDI Tutorials</span></p>
-                <ul class="current">
-                    <li class="toctree-l1 current"><a class="reference internal current" href="./">Acoustic FWI</a>
-    <ul class="current">
-    </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../../data_structures/">Data structures</a>
                     </li>
-                    <li class="toctree-l1"><a class="reference internal" href="../fwi_example_NLopt/">Acoustic RTM with NLopt</a>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../../abstract_vectors/">Abstract vectors</a>
                     </li>
-                    <li class="toctree-l1"><a class="reference internal" href="../judi_leading_edge_tutorial/">FWI tutorial with JUDI (TLE tuto)</a>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../../linear_operators/">Linear operators</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="" href="../../io.md">IO</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../../applications/">Applications</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../../about/">About</a>
                     </li>
                 </ul>
       </div>
@@ -71,7 +84,7 @@
       
       <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
         <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-        <a href="../..">JUDI documentation</a>
+        <a href="../..">The Julia Devito Inversion framework (JUDI.jl)</a>
       </nav>
 
       
@@ -82,12 +95,8 @@
     <li><a href="../..">Docs</a> &raquo;</li>
     
       
-        
-          <li>JUDI Tutorials &raquo;</li>
-        
-      
     
-    <li>Acoustic FWI</li>
+    <li>Full waveform inversion</li>
     <li class="wy-breadcrumbs-aside">
       
     </li>
@@ -99,108 +108,108 @@
             <div class="section">
               
                 <h2 id="fwiwith-devito-and-judi">FWIwith Devito and JUDI</h2>
-<div class="highlight"><pre><span></span><code><span class="n">addprocs</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
-<span class="k">using</span> <span class="n">SegyIO</span><span class="p">,</span> <span class="n">HDF5</span><span class="p">,</span> <span class="n">PyPlot</span><span class="p">,</span> <span class="n">JUDI</span><span class="o">.</span><span class="n">TimeModeling</span><span class="p">,</span> <span class="n">JUDI</span><span class="o">.</span><span class="n">SLIM_optim</span>
-</code></pre></div>
+<pre><code class="julia">addprocs(4)
+using SegyIO, HDF5, PyPlot, JUDI.TimeModeling, JUDI.SLIM_optim
+</code></pre>
 
-<div class="highlight"><pre><span></span><code><span class="n">m0</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">o</span> <span class="o">=</span> <span class="n">read</span><span class="p">(</span><span class="n">h5open</span><span class="p">(</span><span class="s">&quot;overthrust_model.h5&quot;</span><span class="p">,</span><span class="s">&quot;r&quot;</span><span class="p">),</span><span class="s">&quot;m0&quot;</span><span class="p">,</span><span class="s">&quot;n&quot;</span><span class="p">,</span><span class="s">&quot;d&quot;</span><span class="p">,</span><span class="s">&quot;o&quot;</span><span class="p">);</span> <span class="n">title</span><span class="p">(</span><span class="s">&quot;Starting model&quot;</span><span class="p">)</span>
-<span class="n">model0</span> <span class="o">=</span> <span class="n">Model</span><span class="p">((</span><span class="n">n</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span><span class="n">n</span><span class="p">[</span><span class="mi">2</span><span class="p">]),</span> <span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span><span class="n">d</span><span class="p">[</span><span class="mi">2</span><span class="p">]),</span> <span class="p">(</span><span class="n">o</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span><span class="n">o</span><span class="p">[</span><span class="mi">2</span><span class="p">]),</span> <span class="n">m0</span><span class="p">);</span>
-<span class="n">imshow</span><span class="p">(</span><span class="n">sqrt</span><span class="o">.</span><span class="p">(</span><span class="mf">1f0</span><span class="o">./</span><span class="n">m0</span><span class="p">)</span><span class="o">&#39;</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s">&quot;GnBu&quot;</span><span class="p">,</span> <span class="n">extent</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">10</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">0</span><span class="p">));</span>
-<span class="n">xlabel</span><span class="p">(</span><span class="s">&quot;Lateral position [km]&quot;</span><span class="p">);</span>
-<span class="n">ylabel</span><span class="p">(</span><span class="s">&quot;Depth [km]&quot;</span><span class="p">);</span>
-</code></pre></div>
+<pre><code class="julia">m0, n, d, o = read(h5open(&quot;overthrust_model.h5&quot;,&quot;r&quot;),&quot;m0&quot;,&quot;n&quot;,&quot;d&quot;,&quot;o&quot;); title(&quot;Starting model&quot;)
+model0 = Model((n[1],n[2]), (d[1],d[2]), (o[1],o[2]), m0);
+imshow(sqrt.(1f0./m0)', cmap=&quot;GnBu&quot;, extent=(0,10,3,0));
+xlabel(&quot;Lateral position [km]&quot;);
+ylabel(&quot;Depth [km]&quot;);
+</code></pre>
 
 <p><img alt="png" src="../full_waveform_inversion_files/full_waveform_inversion_2_0.png" /></p>
-<div class="highlight"><pre><span></span><code><span class="n">block</span> <span class="o">=</span> <span class="n">segy_read</span><span class="p">(</span><span class="s">&quot;overthrust_shot_records.segy&quot;</span><span class="p">);</span>
-<span class="n">d_obs</span> <span class="o">=</span> <span class="n">judiVector</span><span class="p">(</span><span class="n">block</span><span class="p">);</span>
-</code></pre></div>
+<pre><code class="julia">block = segy_read(&quot;overthrust_shot_records.segy&quot;);
+d_obs = judiVector(block);
+</code></pre>
 
 <pre><code>[1m[33mWARNING: [39m[22m[33mFixed length trace flag set in stream: IOBuffer(data=UInt8[...], readable=true, writable=false, seekable=true, append=false, size=7076688, maxsize=Inf, ptr=3601, mark=-1)[39m
 </code></pre>
-<div class="highlight"><pre><span></span><code><span class="n">println</span><span class="p">(</span><span class="n">typeof</span><span class="p">(</span><span class="n">d_obs</span><span class="p">))</span>
-</code></pre></div>
+<pre><code class="julia">println(typeof(d_obs))
+</code></pre>
 
 <pre><code>JUDI.TimeModeling.judiVector{Float32}
 </code></pre>
-<div class="highlight"><pre><span></span><code><span class="n">imshow</span><span class="p">(</span><span class="n">d_obs</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">8</span><span class="p">],</span> <span class="n">cmap</span><span class="o">=</span><span class="s">&quot;seismic&quot;</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=-</span><span class="mi">3</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">extent</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="n">size</span><span class="p">(</span><span class="n">d_obs</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">8</span><span class="p">],</span><span class="mi">2</span><span class="p">),</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">]);</span> 
-<span class="n">ax1</span> <span class="o">=</span> <span class="n">gca</span><span class="p">();</span> <span class="n">ax1</span><span class="p">[</span><span class="o">:</span><span class="n">set_aspect</span><span class="p">](</span><span class="s">&quot;auto&quot;</span><span class="p">);</span> <span class="n">xlabel</span><span class="p">(</span><span class="s">&quot;Receiver no.&quot;</span><span class="p">);</span> <span class="n">ylabel</span><span class="p">(</span><span class="s">&quot;Time [s]&quot;</span><span class="p">)</span>
-<span class="n">colorbar</span><span class="p">();</span> <span class="n">title</span><span class="p">(</span><span class="s">&quot;Observed data&quot;</span><span class="p">)</span>
-</code></pre></div>
+<pre><code class="julia">imshow(d_obs.data[8], cmap=&quot;seismic&quot;, vmin=-3, vmax=3, extent=[0,size(d_obs.data[8],2),2,0]); 
+ax1 = gca(); ax1[:set_aspect](&quot;auto&quot;); xlabel(&quot;Receiver no.&quot;); ylabel(&quot;Time [s]&quot;)
+colorbar(); title(&quot;Observed data&quot;)
+</code></pre>
 
 <p><img alt="png" src="../full_waveform_inversion_files/full_waveform_inversion_5_0.png" /></p>
 <pre><code>PyObject &lt;matplotlib.text.Text object at 0x13bab1190&gt;
 </code></pre>
-<div class="highlight"><pre><span></span><code><span class="n">src_geometry</span> <span class="o">=</span> <span class="n">Geometry</span><span class="p">(</span><span class="n">block</span><span class="p">;</span> <span class="n">key</span><span class="o">=</span><span class="s">&quot;source&quot;</span><span class="p">);</span>
-<span class="n">src_data</span> <span class="o">=</span> <span class="n">ricker_wavelet</span><span class="p">(</span><span class="n">src_geometry</span><span class="o">.</span><span class="n">t</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">src_geometry</span><span class="o">.</span><span class="n">dt</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mf">0.008f0</span><span class="p">);</span>
-<span class="n">q</span> <span class="o">=</span> <span class="n">judiVector</span><span class="p">(</span><span class="n">src_geometry</span><span class="p">,</span> <span class="n">src_data</span><span class="p">);</span>
-<span class="n">plot</span><span class="p">(</span><span class="n">q</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">1</span><span class="p">]);</span>
-</code></pre></div>
+<pre><code class="julia">src_geometry = Geometry(block; key=&quot;source&quot;);
+src_data = ricker_wavelet(src_geometry.t[1], src_geometry.dt[1], 0.008f0);
+q = judiVector(src_geometry, src_data);
+plot(q.data[1]);
+</code></pre>
 
 <p><img alt="png" src="../full_waveform_inversion_files/full_waveform_inversion_6_0.png" /></p>
-<div class="highlight"><pre><span></span><code><span class="n">ntComp</span> <span class="o">=</span> <span class="n">get_computational_nt</span><span class="p">(</span><span class="n">q</span><span class="o">.</span><span class="n">geometry</span><span class="p">,</span> <span class="n">d_obs</span><span class="o">.</span><span class="n">geometry</span><span class="p">,</span> <span class="n">model0</span><span class="p">);</span>
-<span class="n">info</span> <span class="o">=</span> <span class="n">Info</span><span class="p">(</span><span class="n">prod</span><span class="p">(</span><span class="n">model0</span><span class="o">.</span><span class="n">n</span><span class="p">),</span> <span class="n">d_obs</span><span class="o">.</span><span class="n">nsrc</span><span class="p">,</span> <span class="n">ntComp</span><span class="p">);</span>
-</code></pre></div>
+<pre><code class="julia">ntComp = get_computational_nt(q.geometry, d_obs.geometry, model0);
+info = Info(prod(model0.n), d_obs.nsrc, ntComp);
+</code></pre>
 
-<div class="highlight"><pre><span></span><code><span class="n">Ainv</span> <span class="o">=</span> <span class="n">judiModeling</span><span class="p">(</span><span class="n">info</span><span class="p">,</span> <span class="n">model0</span><span class="p">);</span>
-<span class="n">Pr</span> <span class="o">=</span> <span class="n">judiProjection</span><span class="p">(</span><span class="n">info</span><span class="p">,</span> <span class="n">d_obs</span><span class="o">.</span><span class="n">geometry</span><span class="p">);</span>
-<span class="n">Ps</span> <span class="o">=</span> <span class="n">judiProjection</span><span class="p">(</span><span class="n">info</span><span class="p">,</span> <span class="n">q</span><span class="o">.</span><span class="n">geometry</span><span class="p">);</span>
-</code></pre></div>
+<pre><code class="julia">Ainv = judiModeling(info, model0);
+Pr = judiProjection(info, d_obs.geometry);
+Ps = judiProjection(info, q.geometry);
+</code></pre>
 
-<div class="highlight"><pre><span></span><code><span class="n">i</span> <span class="o">=</span> <span class="mi">8</span><span class="p">;</span>
-<span class="n">d_pred</span> <span class="o">=</span> <span class="n">Pr</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">*</span><span class="n">Ainv</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">*</span><span class="n">Ps</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">&#39;*</span><span class="n">q</span><span class="p">[</span><span class="n">i</span><span class="p">];</span>
-<span class="n">imshow</span><span class="p">(</span><span class="n">d_pred</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">cmap</span><span class="o">=</span><span class="s">&quot;seismic&quot;</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=-</span><span class="mi">3</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">extent</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="n">size</span><span class="p">(</span><span class="n">d_obs</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">8</span><span class="p">],</span><span class="mi">2</span><span class="p">),</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">]);</span> 
-<span class="n">ax1</span> <span class="o">=</span> <span class="n">gca</span><span class="p">();</span> <span class="n">ax1</span><span class="p">[</span><span class="o">:</span><span class="n">set_aspect</span><span class="p">](</span><span class="s">&quot;auto&quot;</span><span class="p">);</span> <span class="n">xlabel</span><span class="p">(</span><span class="s">&quot;Receiver no.&quot;</span><span class="p">);</span> <span class="n">ylabel</span><span class="p">(</span><span class="s">&quot;Time [s]&quot;</span><span class="p">)</span>
-<span class="n">colorbar</span><span class="p">();</span> <span class="n">title</span><span class="p">(</span><span class="s">&quot;Predicted data&quot;</span><span class="p">)</span>
-</code></pre></div>
+<pre><code class="julia">i = 8;
+d_pred = Pr[i]*Ainv[i]*Ps[i]'*q[i];
+imshow(d_pred.data[1], cmap=&quot;seismic&quot;, vmin=-3, vmax=3, extent=[0,size(d_obs.data[8],2),2,0]); 
+ax1 = gca(); ax1[:set_aspect](&quot;auto&quot;); xlabel(&quot;Receiver no.&quot;); ylabel(&quot;Time [s]&quot;)
+colorbar(); title(&quot;Predicted data&quot;)
+</code></pre>
 
 <p><img alt="png" src="../full_waveform_inversion_files/full_waveform_inversion_9_0.png" /></p>
 <pre><code>PyObject &lt;matplotlib.text.Text object at 0x1253df150&gt;
 </code></pre>
-<div class="highlight"><pre><span></span><code><span class="n">J</span> <span class="o">=</span> <span class="n">judiJacobian</span><span class="p">(</span><span class="n">Pr</span><span class="o">*</span><span class="n">Ainv</span><span class="o">*</span><span class="n">Ps</span><span class="o">&#39;</span><span class="p">,</span><span class="n">q</span><span class="p">);</span>
-<span class="c">#H_GN = J&#39;*J    # Gauss-Newton Hessian</span>
-<span class="n">g</span> <span class="o">=</span> <span class="n">J</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">&#39;*</span><span class="p">(</span><span class="n">d_pred</span> <span class="o">-</span> <span class="n">d_obs</span><span class="p">[</span><span class="n">i</span><span class="p">]);</span>
-<span class="n">imshow</span><span class="p">(</span><span class="n">reshape</span><span class="p">(</span><span class="n">g</span><span class="p">,</span><span class="n">model0</span><span class="o">.</span><span class="n">n</span><span class="p">)</span><span class="o">&#39;</span><span class="p">,</span><span class="n">vmin</span><span class="o">=-</span><span class="mf">2e2</span><span class="p">,</span><span class="n">vmax</span><span class="o">=</span><span class="mf">2e2</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s">&quot;GnBu&quot;</span><span class="p">);</span> <span class="n">title</span><span class="p">(</span><span class="s">&quot;Single gradient&quot;</span><span class="p">)</span>
-</code></pre></div>
+<pre><code class="julia">J = judiJacobian(Pr*Ainv*Ps',q);
+#H_GN = J'*J    # Gauss-Newton Hessian
+g = J[i]'*(d_pred - d_obs[i]);
+imshow(reshape(g,model0.n)',vmin=-2e2,vmax=2e2, cmap=&quot;GnBu&quot;); title(&quot;Single gradient&quot;)
+</code></pre>
 
 <p><img alt="png" src="../full_waveform_inversion_files/full_waveform_inversion_10_0.png" /></p>
 <pre><code>PyObject &lt;matplotlib.text.Text object at 0x125097d10&gt;
 </code></pre>
-<p>This is a markdown cell <span><span class="MathJax_Preview">\mathbf{Ax} = \mathbf{b}</span><script type="math/tex">\mathbf{Ax} = \mathbf{b}</script></span></p>
-<div class="highlight"><pre><span></span><code><span class="c"># Set up bound constrains</span>
-<span class="n">v0</span> <span class="o">=</span> <span class="n">sqrt</span><span class="o">.</span><span class="p">(</span><span class="mf">1f0</span><span class="o">./</span><span class="n">model0</span><span class="o">.</span><span class="n">m</span><span class="p">)</span>
-<span class="n">vmin</span> <span class="o">=</span> <span class="n">ones</span><span class="p">(</span><span class="kt">Float32</span><span class="p">,</span> <span class="n">model0</span><span class="o">.</span><span class="n">n</span><span class="p">)</span><span class="o">*</span><span class="mf">1.3f0</span><span class="p">;</span>
-<span class="n">vmax</span> <span class="o">=</span> <span class="n">ones</span><span class="p">(</span><span class="kt">Float32</span><span class="p">,</span> <span class="n">model0</span><span class="o">.</span><span class="n">n</span><span class="p">)</span><span class="o">*</span><span class="mf">6.5f0</span><span class="p">;</span>
+<p>This is a markdown cell $\mathbf{Ax} = \mathbf{b}$</p>
+<pre><code class="julia"># Set up bound constrains
+v0 = sqrt.(1f0./model0.m)
+vmin = ones(Float32, model0.n)*1.3f0;
+vmax = ones(Float32, model0.n)*6.5f0;
 
-<span class="c"># Fix water column</span>
-<span class="n">vmin</span><span class="p">[</span><span class="o">:</span><span class="p">,</span><span class="mi">1</span><span class="o">:</span><span class="mi">21</span><span class="p">]</span> <span class="o">=</span> <span class="n">v0</span><span class="p">[</span><span class="o">:</span><span class="p">,</span><span class="mi">1</span><span class="o">:</span><span class="mi">21</span><span class="p">];</span>
-<span class="n">vmax</span><span class="p">[</span><span class="o">:</span><span class="p">,</span><span class="mi">1</span><span class="o">:</span><span class="mi">21</span><span class="p">]</span> <span class="o">=</span> <span class="n">v0</span><span class="p">[</span><span class="o">:</span><span class="p">,</span><span class="mi">1</span><span class="o">:</span><span class="mi">21</span><span class="p">];</span>
+# Fix water column
+vmin[:,1:21] = v0[:,1:21];
+vmax[:,1:21] = v0[:,1:21];
 
-<span class="c"># Convert to squared slowness</span>
-<span class="n">mmin</span> <span class="o">=</span> <span class="n">vec</span><span class="p">((</span><span class="mf">1f0</span><span class="o">./</span><span class="n">vmax</span><span class="p">)</span><span class="o">.^</span><span class="mi">2</span><span class="p">);</span>
-<span class="n">mmax</span> <span class="o">=</span> <span class="n">vec</span><span class="p">((</span><span class="mf">1f0</span><span class="o">./</span><span class="n">vmin</span><span class="p">)</span><span class="o">.^</span><span class="mi">2</span><span class="p">);</span>
-</code></pre></div>
+# Convert to squared slowness
+mmin = vec((1f0./vmax).^2);
+mmax = vec((1f0./vmin).^2);
+</code></pre>
 
-<p>** This example requires ~200 MB of memory per gradient, i.e. 800 MB with 4 parallel workers. It runs for approximately 15 minutes. **</p>
-<div class="highlight"><pre><span></span><code><span class="n">maxiter</span> <span class="o">=</span> <span class="mi">10</span>
-<span class="n">batchsize</span> <span class="o">=</span> <span class="mi">8</span>
-<span class="n">proj</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">=</span> <span class="n">reshape</span><span class="p">(</span><span class="n">median</span><span class="p">([</span><span class="n">vec</span><span class="p">(</span><span class="n">mmin</span><span class="p">)</span> <span class="n">vec</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="n">vec</span><span class="p">(</span><span class="n">mmax</span><span class="p">)],</span><span class="mi">2</span><span class="p">),</span> <span class="n">model0</span><span class="o">.</span><span class="n">n</span><span class="p">)</span>
-<span class="n">fhistory</span> <span class="o">=</span> <span class="n">zeros</span><span class="p">(</span><span class="kt">Float32</span><span class="p">,</span><span class="n">maxiter</span><span class="p">)</span>
+<p><strong> This example requires ~200 MB of memory per gradient, i.e. 800 MB with 4 parallel workers. It runs for approximately 15 minutes. </strong></p>
+<pre><code class="julia">maxiter = 10
+batchsize = 8
+proj(x) = reshape(median([vec(mmin) vec(x) vec(mmax)],2), model0.n)
+fhistory = zeros(Float32,maxiter)
 
-<span class="c"># Main loop</span>
-<span class="k">for</span> <span class="n">j</span><span class="o">=</span><span class="mi">1</span><span class="o">:</span><span class="n">maxiter</span>
-    <span class="n">println</span><span class="p">(</span><span class="s">&quot;Iteration: &quot;</span><span class="p">,</span><span class="n">j</span><span class="p">)</span>
+# Main loop
+for j=1:maxiter
+    println(&quot;Iteration: &quot;,j)
 
-    <span class="c"># get fwi objective function value and gradient</span>
-    <span class="n">i</span> <span class="o">=</span> <span class="n">randperm</span><span class="p">(</span><span class="n">d_obs</span><span class="o">.</span><span class="n">nsrc</span><span class="p">)[</span><span class="mi">1</span><span class="o">:</span><span class="n">batchsize</span><span class="p">]</span>
-    <span class="n">fval</span><span class="p">,</span> <span class="n">gradient</span> <span class="o">=</span> <span class="n">fwi_objective</span><span class="p">(</span><span class="n">model0</span><span class="p">,</span> <span class="n">q</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">d_obs</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
-    <span class="n">fhistory</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">fval</span>
+    # get fwi objective function value and gradient
+    i = randperm(d_obs.nsrc)[1:batchsize]
+    fval, gradient = fwi_objective(model0, q[i], d_obs[i])
+    fhistory[j] = fval
 
-    <span class="c"># linesearch</span>
-    <span class="n">step</span> <span class="o">=</span> <span class="n">backtracking_linesearch</span><span class="p">(</span><span class="n">model0</span><span class="p">,</span> <span class="n">q</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">d_obs</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">fval</span><span class="p">,</span> <span class="n">gradient</span><span class="p">,</span> <span class="n">proj</span><span class="p">;</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">1f0</span><span class="p">)</span>
-    <span class="n">model0</span><span class="o">.</span><span class="n">m</span> <span class="o">=</span> <span class="n">proj</span><span class="p">(</span><span class="n">model0</span><span class="o">.</span><span class="n">m</span> <span class="o">+</span> <span class="n">reshape</span><span class="p">(</span><span class="n">step</span><span class="p">,</span> <span class="n">model0</span><span class="o">.</span><span class="n">n</span><span class="p">))</span>
+    # linesearch
+    step = backtracking_linesearch(model0, q[i], d_obs[i], fval, gradient, proj; alpha=1f0)
+    model0.m = proj(model0.m + reshape(step, model0.n))
 
-<span class="k">end</span>
-</code></pre></div>
+end
+</code></pre>
 
 <pre><code>Iteration: 1
 Iteration: 2
@@ -213,34 +222,34 @@ Iteration: 8
 Iteration: 9
 Iteration: 10
 </code></pre>
-<div class="highlight"><pre><span></span><code><span class="n">imshow</span><span class="p">(</span><span class="n">sqrt</span><span class="o">.</span><span class="p">(</span><span class="mf">1f0</span><span class="o">./</span><span class="n">model0</span><span class="o">.</span><span class="n">m</span><span class="p">)</span><span class="o">&#39;</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s">&quot;GnBu&quot;</span><span class="p">,</span> <span class="n">extent</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">10</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">0</span><span class="p">),</span> <span class="n">vmin</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mf">5.4</span><span class="p">);</span> <span class="n">title</span><span class="p">(</span><span class="s">&quot;FWI with SGD&quot;</span><span class="p">)</span>
-<span class="n">xlabel</span><span class="p">(</span><span class="s">&quot;Lateral position [km]&quot;</span><span class="p">);</span>
-<span class="n">ylabel</span><span class="p">(</span><span class="s">&quot;Depth [km]&quot;</span><span class="p">);</span>
-</code></pre></div>
+<pre><code class="julia">imshow(sqrt.(1f0./model0.m)', cmap=&quot;GnBu&quot;, extent=(0,10,3,0), vmin=1.5, vmax=5.4); title(&quot;FWI with SGD&quot;)
+xlabel(&quot;Lateral position [km]&quot;);
+ylabel(&quot;Depth [km]&quot;);
+</code></pre>
 
 <p><img alt="png" src="../full_waveform_inversion_files/full_waveform_inversion_15_0.png" /></p>
-<p>** DO NOT RUN. This example requires ~200 MB of memory per gradient, i.e. 800 MB with 4 parallel workers. It takes approximately 16 minutes per iteration and 2.5 hours for the full loop. **</p>
-<div class="highlight"><pre><span></span><code><span class="c"># Optimization parameters</span>
-<span class="k">using</span> <span class="n">IterativeSolvers</span>
-<span class="n">model0</span><span class="o">.</span><span class="n">m</span> <span class="o">=</span> <span class="n">m0</span>    <span class="c"># reset velocity model</span>
-<span class="n">maxiter_GN</span> <span class="o">=</span> <span class="mi">6</span>
-<span class="n">fhistory_GN</span> <span class="o">=</span> <span class="n">zeros</span><span class="p">(</span><span class="kt">Float32</span><span class="p">,</span><span class="n">maxiter</span><span class="p">)</span>
+<p><strong> DO NOT RUN. This example requires ~200 MB of memory per gradient, i.e. 800 MB with 4 parallel workers. It takes approximately 16 minutes per iteration and 2.5 hours for the full loop. </strong></p>
+<pre><code class="julia"># Optimization parameters
+using IterativeSolvers
+model0.m = m0    # reset velocity model
+maxiter_GN = 6
+fhistory_GN = zeros(Float32,maxiter)
 
-<span class="c"># Gauss-Newton method</span>
-<span class="k">for</span> <span class="n">j</span><span class="o">=</span><span class="mi">1</span><span class="o">:</span><span class="n">maxiter</span>
-    <span class="n">println</span><span class="p">(</span><span class="s">&quot;Iteration: &quot;</span><span class="p">,</span><span class="n">j</span><span class="p">)</span>
+# Gauss-Newton method
+for j=1:maxiter
+    println(&quot;Iteration: &quot;,j)
 
-    <span class="c"># Model predicted data for subset of sources</span>
-    <span class="n">d_pred</span> <span class="o">=</span> <span class="n">Pr</span><span class="o">*</span><span class="n">Ainv</span><span class="o">*</span><span class="n">Ps</span><span class="o">&#39;*</span><span class="n">q</span>
-    <span class="n">fhistory_GN</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="o">.</span><span class="mf">5f0</span><span class="o">*</span><span class="n">norm</span><span class="p">(</span><span class="n">d_pred</span> <span class="o">-</span> <span class="n">d_obs</span><span class="p">)</span><span class="o">^</span><span class="mi">2</span>
+    # Model predicted data for subset of sources
+    d_pred = Pr*Ainv*Ps'*q
+    fhistory_GN[j] = .5f0*norm(d_pred - d_obs)^2
 
-    <span class="c"># GN update direction</span>
-    <span class="n">p</span> <span class="o">=</span> <span class="n">lsqr</span><span class="p">(</span><span class="n">J</span><span class="p">,</span> <span class="n">d_pred</span> <span class="o">-</span> <span class="n">d_obs</span><span class="p">;</span> <span class="n">maxiter</span><span class="o">=</span><span class="n">maxiter_GN</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">false</span><span class="p">)</span>
+    # GN update direction
+    p = lsqr(J, d_pred - d_obs; maxiter=maxiter_GN, verbose=false)
 
-    <span class="c"># update model and bound constraints</span>
-    <span class="n">model0</span><span class="o">.</span><span class="n">m</span> <span class="o">=</span> <span class="n">proj</span><span class="p">(</span><span class="n">model0</span><span class="o">.</span><span class="n">m</span> <span class="o">-</span> <span class="n">reshape</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">model0</span><span class="o">.</span><span class="n">n</span><span class="p">))</span>    <span class="c"># alpha=1</span>
-<span class="k">end</span>
-</code></pre></div>
+    # update model and bound constraints
+    model0.m = proj(model0.m - reshape(p, model0.n))    # alpha=1
+end
+</code></pre>
 
 <pre><code>Iteration: 1
 Iteration: 2
@@ -253,17 +262,17 @@ Iteration: 8
 Iteration: 9
 Iteration: 10
 </code></pre>
-<div class="highlight"><pre><span></span><code><span class="n">imshow</span><span class="p">(</span><span class="n">sqrt</span><span class="o">.</span><span class="p">(</span><span class="mf">1f0</span><span class="o">./</span><span class="n">model0</span><span class="o">.</span><span class="n">m</span><span class="p">)</span><span class="o">&#39;</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s">&quot;GnBu&quot;</span><span class="p">,</span> <span class="n">extent</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">10</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">0</span><span class="p">),</span> <span class="n">vmin</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mf">5.4</span><span class="p">);</span> <span class="n">title</span><span class="p">(</span><span class="s">&quot;FWI with GN method&quot;</span><span class="p">)</span>
-<span class="n">xlabel</span><span class="p">(</span><span class="s">&quot;Lateral position [km]&quot;</span><span class="p">);</span>
-<span class="n">ylabel</span><span class="p">(</span><span class="s">&quot;Depth [km]&quot;</span><span class="p">);</span>
-</code></pre></div>
+<pre><code class="julia">imshow(sqrt.(1f0./model0.m)', cmap=&quot;GnBu&quot;, extent=(0,10,3,0), vmin=1.5, vmax=5.4); title(&quot;FWI with GN method&quot;)
+xlabel(&quot;Lateral position [km]&quot;);
+ylabel(&quot;Depth [km]&quot;);
+</code></pre>
 
 <p><img alt="png" src="../full_waveform_inversion_files/full_waveform_inversion_18_0.png" /></p>
-<div class="highlight"><pre><span></span><code><span class="n">fhistory_SG</span> <span class="o">=</span> <span class="n">fhistory</span><span class="o">/</span><span class="n">norm</span><span class="p">(</span><span class="n">fhistory</span><span class="p">,</span><span class="nb">Inf</span><span class="p">);</span>
-<span class="n">fhistory_GN</span> <span class="o">=</span> <span class="n">fhistory_GN</span><span class="o">/</span><span class="n">norm</span><span class="p">(</span><span class="n">fhistory_GN</span><span class="p">,</span><span class="nb">Inf</span><span class="p">);</span>
-<span class="n">plot</span><span class="p">(</span><span class="mi">1</span><span class="o">:</span><span class="mi">10</span><span class="p">,</span> <span class="n">fhistory_SG</span><span class="p">,</span> <span class="mi">1</span><span class="o">:</span><span class="mi">10</span><span class="p">,</span> <span class="n">fhistory_GN</span><span class="p">);</span>
-<span class="n">xlabel</span><span class="p">(</span><span class="s">&quot;Iteration no.&quot;</span><span class="p">);</span> <span class="n">ylabel</span><span class="p">(</span><span class="s">&quot;Normalized function value&quot;</span><span class="p">);</span>
-</code></pre></div>
+<pre><code class="julia">fhistory_SG = fhistory/norm(fhistory,Inf);
+fhistory_GN = fhistory_GN/norm(fhistory_GN,Inf);
+plot(1:10, fhistory_SG, 1:10, fhistory_GN);
+xlabel(&quot;Iteration no.&quot;); ylabel(&quot;Normalized function value&quot;);
+</code></pre>
 
 <p><img alt="png" src="../full_waveform_inversion_files/full_waveform_inversion_19_0.png" /></p>
 <pre><code>PyObject &lt;matplotlib.text.Text object at 0x123c19ed0&gt;
@@ -272,15 +281,6 @@ Iteration: 10
             </div>
           </div>
           <footer>
-  
-    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
-      
-        <a href="../fwi_example_NLopt/" class="btn btn-neutral float-right" title="Acoustic RTM with NLopt">Next <span class="icon icon-circle-arrow-right"></span></a>
-      
-      
-        <a href="../.." class="btn btn-neutral" title="Home"><span class="icon icon-circle-arrow-left"></span> Previous</a>
-      
-    </div>
   
 
   <hr/>
@@ -304,16 +304,11 @@ Iteration: 10
     <span class="rst-current-version" data-toggle="rst-current-version">
       
       
-        <span><a href="../.." style="color: #fcfcfc;">&laquo; Previous</a></span>
-      
-      
-        <span style="margin-left: 15px"><a href="../fwi_example_NLopt/" style="color: #fcfcfc">Next &raquo;</a></span>
       
     </span>
 </div>
     <script>var base_url = '../..';</script>
     <script src="../../js/theme.js" defer></script>
-      <script src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML" defer></script>
       <script src="../../search/main.js" defer></script>
     <script defer>
         window.onload = function () {
