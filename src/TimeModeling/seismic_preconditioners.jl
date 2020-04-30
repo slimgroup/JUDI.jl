@@ -165,30 +165,3 @@ function judiDepthScaling(model)
                              w -> depth_scaling(w,model),
                              Float32,Float32,name="Depth scaling")
 end
-
-# function laplace(model::TimeModeling.Model)
-# # 2D Laplace operator
-#
-#     # 2nd derivative in x direction
-#     d1 = ones(Float32,model.n[1]-1)*1f0/(model.d[1]^2)
-#     d2 = ones(Float32,model.n[1])*-2f0/(model.d[1]^2)
-#     d3 = d1
-#     d = (d1, d2, d3)
-#     position = (-1, 0, 1)
-#
-#     Dx = spdiagm(d,position,model.n[1],model.n[1])
-#     Ix = speye(Float32,model.n[1])
-#
-#     # 2nd derivative in z direction
-#     d1 = ones(Float32,model.n[2]-1)*1f0/(model.d[2]^2)
-#     d2 = ones(Float32,model.n[2])*-2f0/(model.d[2]^2)
-#     d3 = d1
-#     d = (d1, d2, d3)
-#     position = (-1, 0, 1)
-#
-#     Dz = spdiagm(d,position,model.n[2],model.n[2])
-#     Iz = speye(Float32,model.n[2])
-#
-#     # 2D Laplace operator
-#     D = kron(Dz,Ix) + kron(Iz,Dx)
-# end

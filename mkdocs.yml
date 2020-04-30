@@ -6,5 +6,7 @@ nav:
     - Abstract vectors: abstract_vectors.md
     - Linear operators: linear_operators.md
     - Input/Output: io.md
+    - Helper functions: helper.md
+    - Preconditioners: preconditioners.md
     - About: about.md
 theme: readthedocs
