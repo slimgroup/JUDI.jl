@@ -121,7 +121,7 @@
 <pre><code class="julia">model = Model(n, d, o, m; nb=40, rho=1f0)
 </code></pre>
 
-<p><strong> Parameters:</strong></p>
+<p><strong>Parameters:</strong></p>
 <ul>
 <li>
 <p><code>n</code>: Integer tuple with number of grid points in each dimension, e.g. <code>n = (120, 100)</code> (2D) or <code>n = (120, 100, 80)</code> (3D). <strong>The order of dimenions in all tuples is <code>(x, z)</code> for 2D and <code>(x, y, z)</code> for 3D</strong>.</p>
@@ -142,8 +142,8 @@
 <p><code>rho</code>: 2D or 3D array of the density in <code>[g / cm^3]</code></p>
 </li>
 </ul>
-<p><strong> Access fields:</strong></p>
-<pre><code># Access model
+<p><strong>Access fields:</strong></p>
+<pre><code class="julia"># Access model
 model.m
 
 # Access number of grid points
@@ -155,7 +155,7 @@ model.n
 <pre><code class="julia">geometry = Geometry(xloc, yloc, zloc; dt=[], nt=[], t=[])
 </code></pre>
 
-<p><strong> Parameters:</strong></p>
+<p><strong>Parameters:</strong></p>
 <ul>
 <li>
 <p><code>xloc</code>: Cell array, with one cell per source location. Each cell contains a 1D Julia array with the coordinates in the horizontal x direction. Coordinates are specified as distances in meters <code>[m]</code> relative to the model origin.</p>
@@ -177,9 +177,9 @@ model.n
 </li>
 </ul>
 <p>From the optional arguments, you have to pass (at least) <strong>two</strong> of <code>dt</code>, <code>nt</code> and <code>t</code>. The third value is automatically determined and set from the two other values.</p>
-<p><strong> Access fields:</strong></p>
+<p><strong>Access fields:</strong></p>
 <p>Example of how to access fields of geometry objects:</p>
-<pre><code># Access cell arrays of x coordinates:
+<pre><code class="julia"># Access cell arrays of x coordinates:
 geometry.xloc
 
 # Access x coordinates at first source location
@@ -191,7 +191,7 @@ geometry.xloc[2][1]
 
 <h2 id="info-structure">Info structure</h2>
 <p>The info structure contains some basic dimensionality information that needs to be available to any type of linear operator:</p>
-<pre><code>info = Info(n, nsrc, nt)
+<pre><code class="julia">info = Info(n, nsrc, nt)
 </code></pre>
 
 <p><strong>Parameters</strong>:</p>
@@ -207,7 +207,7 @@ geometry.xloc[2][1]
 </li>
 </ul>
 <p>You can automatically obtain the number of computational time steps as follows:</p>
-<pre><code>nt = get_computational_nt(src_geometry, rec_geometry, model)
+<pre><code class="julia">nt = get_computational_nt(src_geometry, rec_geometry, model)
 </code></pre>
 
 <p>where <code>src_geometry</code> is a <code>Geometry</code> object with the source geometry, <code>rec_geometry</code> is a <code>Geometry</code> object with the receiver geometry and <code>model</code> is a <code>Model</code> structure.</p>
