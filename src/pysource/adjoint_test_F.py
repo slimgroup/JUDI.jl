@@ -39,7 +39,6 @@ else:
     model = Model(shape=shape, origin=origin, spacing=spacing,
                   vp=v, rho=rho)
 
-
 # Time axis
 t0 = 0.
 tn = 1300.

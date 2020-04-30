@@ -3,34 +3,36 @@
 # Date: September 2016
 #
 
-export ricker_wavelet, get_computational_nt, smooth10, damp_boundary, calculate_dt, setup_grid, setup_3D_grid
+export ricker_wavelet, get_computational_nt, smooth10, calculate_dt, setup_grid, setup_3D_grid
 export convertToCell, limit_model_to_receiver_area, extend_gradient, remove_out_of_bounds_receivers
-export time_resample, remove_padding, backtracking_linesearch, subsample
+export time_resample, remove_padding, subsample
 export generate_distribution, select_frequencies, process_physical_parameter
 export load_pymodel, load_devito_jit, load_numpy, devito_model
-export misfit, adjoint_src, gs_residual
+export misfit, adjoint_src
 
 
-@cache function devito_model(model::Modelall, op, mode, options, dm)
-    return devito_model_py(model, op, mode, options, dm)
+@cache function update_dm(model::PyObject, dm, dims)
+    model.dm =  process_physical_parameter(dm, dims)
 end
 
-function devito_model_py(model::Model, op, mode, options, dm)
+@cache function devito_model(model::Modelall, options)
+    return devito_model_py(model, options)
+end
+
+function devito_model_py(model::Model, options)
     pm = load_pymodel()
     length(model.n) == 3 ? dims = [3,2,1] : dims = [2,1]   # model dimensions for Python are (z,y,x) and (z,x)
-	op=='J' && mode == 1 ? dm = process_physical_parameter(reshape(dm,model.n), dims) : dm = nothing
     # Set up Python model structure
     modelPy = pm."Model"(origin=model.o, spacing=model.d, shape=model.n,
 						 vp=process_physical_parameter(sqrt.(1f0./model.m), dims),
 						 nbpml=model.nb, rho=process_physical_parameter(model.rho, dims),
-						 dm=dm, space_order=options.space_order)
+						 space_order=options.space_order)
     return modelPy
 end
 
-function devito_model_py(model::Model_TTI, op, mode, options, dm)
+function devito_model_py(model::Model_TTI, options)
     pm = load_pymodel()
     length(model.n) == 3 ? dims = [3,2,1] : dims = [2,1]   # model dimensions for Python are (z,y,x) and (z,x)
-	op=='J' && mode == 1 ? dm = process_physical_parameter(reshape(dm,model.n), dims) : dm = nothing
     # Set up Python model structure (force origin to be zero due to current devito bug)
     modelPy = pm."Model"(origin=model.o, spacing=model.d, shape=model.n,
 						 vp=process_physical_parameter(sqrt.(1f0./model.m), dims),
@@ -39,7 +41,7 @@ function devito_model_py(model::Model_TTI, op, mode, options, dm)
 						 delta=process_physical_parameter(model.delta, dims),
 						 theta=process_physical_parameter(model.theta, dims),
 						 phi=process_physical_parameter(model.phi, dims), nbpml=model.nb,
-						 dm=dm, space_order=options.space_order)
+						 space_order=options.space_order)
     return modelPy
 end
 

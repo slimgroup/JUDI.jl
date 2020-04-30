@@ -202,11 +202,12 @@ class Model(GenericModel):
                                     subdomains)
 
         self.scale = 1
+        self._space_order = space_order
         # Create square slowness of the wave as symbol `m`
         self._vp = self._gen_phys_param(vp, 'vp', space_order)
         # density
         self.irho = self._gen_phys_param(rho, 'irho', space_order, func=lambda x: 1/x)
-        self.dm = self._gen_phys_param(dm, 'dm', space_order)
+        self._dm = self._gen_phys_param(dm, 'dm', space_order)
         # Additional parameter fields for TTI operators
         self._is_tti = any(p is not None for p in [epsilon, delta, theta, phi])
         if self._is_tti:
@@ -219,6 +220,10 @@ class Model(GenericModel):
             self.phi = self._gen_phys_param(phi, 'phi', space_order)
         # User provided dt
         self._dt = kwargs.get('dt')
+
+    @property
+    def space_order(self):
+        return self._space_order
 
     @property
     def dt(self):
@@ -253,6 +258,41 @@ class Model(GenericModel):
                                  % (self.dt, dt))
             return self.dt
         return self.dtype("%.3e" % dt)
+
+    @property
+    def dm(self):
+        """
+        Model perturbation for linearized modeling
+        """
+        return self._dm
+
+    @dm.setter
+    def dm(self, dm):
+        """
+        Set a new model perturbation.
+
+        Parameters
+        ----------
+        vp : float or array
+            New velocity in km/s.
+        """
+        # Update the square slowness according to new value
+        if isinstance(dm, np.ndarray):
+            if not isinstance(self._dm, Function) and dm.shape == self.shape:
+                self._dm = self._gen_phys_param(dm, 'dm', self.space_order)
+            elif dm.shape == self.shape:
+                initialize_function(self._dm, dm, self.nbl)
+            elif dm.shape == self.dm.shape:
+                self.dm.data[:] = dm[:]
+            else:
+                raise ValueError("Incorrect input size %s for model of size" % dm.shape +
+                                 " %s without or %s with padding" % (self.shape,
+                                                                     self.dm.shape))
+        else:
+            try:
+                self._dm.data = dm
+            except AttributeError:
+                self._dm = dm
 
     @property
     def vp(self):

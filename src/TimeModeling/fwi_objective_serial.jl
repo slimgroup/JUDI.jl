@@ -23,7 +23,8 @@ function fwi_objective(model_full::Modelall, source::judiVector, dObs::judiVecto
 
     # Set up Python model structure (force origin to be zero due to current devito bug)
     # Set up Python model structure
-    modelPy = devito_model(model, "F", 1, options, nothing)
+    modelPy = devito_model(model, options)
+
     dtComp = modelPy.critical_dt
 
     # Extrapolate input data to computational grid

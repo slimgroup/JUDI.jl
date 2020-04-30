@@ -216,10 +216,11 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Geometry
     # Set up coordinates with devito dimensions
     src_coords = setup_grid(srcGeometry, modelPy.shape)
     rec_coords = setup_grid(recGeometry, modelPy.shape)
+    length(options.frequencies) == 0 ? freqs = [] : freqs = options.frequencies[1]
     grad = pycall(ac."J_adjoint", Array{Float32, length(modelPy.shape)}, modelPy,
                   src_coords, qIn, rec_coords, dIn,
                   space_order=options.space_order, checkpointing=options.optimal_checkpointing,
-                  freq_list=options.frequencies[1], isic=options.isic,
+                  freq_list=freqs, isic=options.isic,
                   dft_sub=options.dft_subsampling_factor[1])
 
     # Remove PML and return gradient as Array

@@ -40,7 +40,7 @@ def grad_expr(gradm, u, v, model, w=1, freq=None, dft_sub=None, isic=False):
         Whether or not to use inverse scattering imaging condition (not supported yet)
     """
     ic_func = ic_dict[func_name(freq=freq, isic=isic)]
-    expr = ic_func(as_tuple(u)[0], as_tuple(v)[0], model, freq=freq, factor=dft_sub)
+    expr = ic_func(as_tuple(u)[0], as_tuple(v)[0], model, freq=freq, factor=dft_sub, w=w)
     return [Eq(gradm, expr + gradm)]
 
 
@@ -90,7 +90,7 @@ def corr_fields(u, v, model, **kwargs):
     model: Model
         Model structure
     """
-    w = kwargs.get('w', model.time_dim.spacing / model.rho)
+    w = kwargs.get('w') or model.grid.time_dim.spacing * model.irho
     return  - w * v * u.dt2
 
 
@@ -107,7 +107,7 @@ def isic_g(u, v, model, **kwargs):
     model: Model
         Model structure
     """
-    w = model.time_dim.spacing / model.rho
+    w = -model.grid.time_dim.spacing * model.irho
     return w * (u * v.dt2 * model.m + grad(u).T * grad(v))
 
 
@@ -186,7 +186,7 @@ def isic_s(model, u, **kwargs):
         Model containing the perturbation dm
     """
     m, dm, irho = model.m, model.dm, model.irho
-    so = irho.space_order//2
+    so = u.space_order//2
     du_aux = sum([getattr(getattr(u, 'd%s' % d.name)(fd_order=so) * dm * irho,
                            'd%s' % d.name)(fd_order=so)
                   for d in u.space_dimensions])

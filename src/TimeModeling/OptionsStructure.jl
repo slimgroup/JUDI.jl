@@ -23,7 +23,6 @@ mutable struct Options
     isic::Bool
     t_sub::Integer
     h_sub::Integer
-    normalized
     dft_subsampling_factor::Integer
     return_array::Bool
     dt_comp::Union{Real, Nothing}
@@ -116,7 +115,6 @@ Options(;space_order=8,
 		 checkpoints_maxmem=nothing,
 		 frequencies=[],
 		 isic=false,
-		 normalized=false,
 		 t_sub=1,
 		 h_sub=1,
 		 dft_subsampling_factor=1,
@@ -137,7 +135,6 @@ Options(;space_order=8,
 				 isic,
 				 t_sub,
 				 h_sub,
-				 normalized,
 				 dft_subsampling_factor,
                  return_array)
 

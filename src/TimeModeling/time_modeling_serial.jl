@@ -1,7 +1,7 @@
 
 export time_modeling
 
-# Setup time-domain linear or nonlinear foward and adjoint modeling and interface to OPESCI/devito
+# Setup time-domain linear or nonlinear foward and adjoint modeling and interface to devito
 function time_modeling(model_full::Modelall, srcGeometry, srcData, recGeometry, recData, dm, srcnum::Int64, op::Char, mode::Int64, options)
 
     # Load full geometry for out-of-core geometry containers
@@ -11,6 +11,7 @@ function time_modeling(model_full::Modelall, srcGeometry, srcData, recGeometry, 
 
     # limit model to area with sources/receivers
     if options.limit_m == true
+        println("hello")
         model = deepcopy(model_full)
         if op=='J' && mode==1
             model, dm = limit_model_to_receiver_area(srcGeometry,recGeometry,model,options.buffer_size;pert=dm)
@@ -22,7 +23,10 @@ function time_modeling(model_full::Modelall, srcGeometry, srcData, recGeometry, 
     end
 
     # Set up Python model structure
-    modelPy = devito_model(model, op ,mode, options, dm)
+    modelPy = devito_model(model, options)
+    if op=='J' && mode == 1
+        update_dm(modelPy, reshape(dm,model.n), dims)
+    end
 
     # Load shot record if stored on disk
     if recData != nothing
