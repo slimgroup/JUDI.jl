@@ -5,6 +5,6 @@ nav:
     - Abstract vectors: abstract_vectors.md
     - Linear operators: linear_operators.md
     - IO: io.md
-    - Applications: applications.md
+    - How to: how_to.md
     - About: about.md
 theme: readthedocs
