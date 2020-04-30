@@ -52,7 +52,7 @@
                     </li>
                 </ul>
                 <ul>
-                    <li class="toctree-l1"><a class="reference internal" href="../how_to/">Tutorials</a>
+                    <li class="toctree-l1"><a class="reference internal" href="../tutorials/">Tutorials</a>
                     </li>
                 </ul>
                 <ul>
@@ -143,8 +143,8 @@ x.data[i]
 # Extract judiVector for i-th shot
 x1 = x[i]
 
-# Access receiver locations of i-th shot
-x.geometry.xloc[i]
+# Access j-th receiver location of i-th shot
+x.geometry.xloc[i][j]
 </code></pre>
 
 <p><strong>Access fields (out-of-core data containers):</strong></p>

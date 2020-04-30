@@ -52,7 +52,7 @@
                     </li>
                 </ul>
                 <ul>
-                    <li class="toctree-l1"><a class="reference internal" href="../how_to/">Tutorials</a>
+                    <li class="toctree-l1"><a class="reference internal" href="../tutorials/">Tutorials</a>
                     </li>
                 </ul>
                 <ul>
@@ -124,7 +124,7 @@
 <ul>
 <li>Construct a modeling operator <strong>without</strong> source/receiver projections:</li>
 </ul>
-<pre><code class="julia">F = judiModeling(info, model)
+<pre><code class="julia">F = judiModeling(info, model; options=opt)
 </code></pre>
 
 <ul>
@@ -161,6 +161,9 @@
 <li>
 <p><code>rec_geometry</code>: An object of type <code>Geometry</code> containing the receiver geometry.</p>
 </li>
+<li>
+<p><code>opt</code>: An object of type <code>Options</code>, specifying additional modeling parameters.</p>
+</li>
 </ul>
 <p><strong>Accessible fields:</strong></p>
 <pre><code class="julia"># Info structure
@@ -174,6 +177,9 @@ F.srcGeometry
 
 # Receiver geometry (if available)
 F.recGeometry
+
+# Options structure
+F.options
 </code></pre>
 
 <p><strong>Usage:</strong></p>

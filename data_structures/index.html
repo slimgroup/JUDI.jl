@@ -52,7 +52,7 @@
                     </li>
                 </ul>
                 <ul>
-                    <li class="toctree-l1"><a class="reference internal" href="../how_to/">Tutorials</a>
+                    <li class="toctree-l1"><a class="reference internal" href="../tutorials/">Tutorials</a>
                     </li>
                 </ul>
                 <ul class="current">
@@ -63,6 +63,8 @@
     <li class="toctree-l2"><a class="reference internal" href="#geometry-structure">Geometry structure</a>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#info-structure">Info structure</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#options-structure">Options structure</a>
     </li>
     </ul>
                     </li>
@@ -196,6 +198,7 @@ geometry.xloc[i][j]
 
 <h2 id="info-structure">Info structure</h2>
 <p>The info structure contains some basic dimensionality information that needs to be available to any type of linear operator:</p>
+<p><strong>Construction:</strong></p>
 <pre><code class="julia">info = Info(n, nsrc, nt)
 </code></pre>
 
@@ -216,6 +219,98 @@ geometry.xloc[i][j]
 </code></pre>
 
 <p>where <code>src_geometry</code> is a <code>Geometry</code> object with the source geometry, <code>rec_geometry</code> is a <code>Geometry</code> object with the receiver geometry and <code>model</code> is a <code>Model</code> structure.</p>
+<h2 id="options-structure">Options structure</h2>
+<p>The options structure allows setting several modeling parameters.</p>
+<p><strong>Construction:</strong></p>
+<ul>
+<li>Choose all default options:</li>
+</ul>
+<pre><code class="julia">opt = Options()
+</code></pre>
+
+<ul>
+<li>List of all possible options:</li>
+</ul>
+<pre><code class="julia">opt = Options(
+space_order:: Integer
+    space_order:: Integer
+    free_surface:: Bool
+    limit_m:: Bool
+    buffer_size:: Real
+    save_data_to_disk:: Bool
+    save_wavefield_to_disk:: Bool
+    file_path:: String
+    file_name:: String
+    sum_padding:: Bool
+    optimal_checkpointing:: Bool
+    num_checkpoints:: Union{Integer, Nothing}
+    checkpoints_maxmem:: Union{Real, Nothing}
+    frequencies:: Array
+    subsampling_factor:: Integer
+    dft_subsampling_factor:: Integer
+    isic:: Bool
+    return_array:: Bool
+    dt_comp:: Union{Real, Nothing}
+)
+</code></pre>
+
+<p><strong>Parameters:</strong></p>
+<ul>
+<li>
+<p><code>space_order</code>: Finite difference space order for wave equation (default is <code>8</code>, needs to be multiple of 4).</p>
+</li>
+<li>
+<p><code>free_surface</code>: Set to <code>true</code> to enable a free surface boundary condition (default is <code>false</code>).</p>
+</li>
+<li>
+<p><code>limit_m</code>: For 3D modeling, limit modeling domain to area with receivers (default is <code>false</code>).</p>
+</li>
+<li>
+<p><code>buffer_size</code>: If <code>limit_m=true</code>, define buffer area on each side of modeling domain (in meters)</p>
+</li>
+<li>
+<p><code>save_data_to_disk</code>: If <code>true</code>, saves shot records as separate SEG-Y files (default is <code>false</code>).</p>
+</li>
+<li>
+<p><code>save_wavefield_to_disk</code>: If wavefield is return value, save wavefield to disk as pickle file (default is <code>false</code>).</p>
+</li>
+<li>
+<p><code>file_path</code>: Path to directory where data is saved.</p>
+</li>
+<li>
+<p><code>file_name</code>: Shot records will be saved as specified file name plus its source coordinates.</p>
+</li>
+<li>
+<p><code>sum_padding</code>: When removing the padding area of the gradient, sum values into the most outer rows/columns (default is <code>false</code>). Required to pass adjoint tests.</p>
+</li>
+<li>
+<p><code>optimal_checkpointing</code>: Use optimal wavefield checkpointing (default is <code>false</code>).</p>
+</li>
+<li>
+<p><code>num_checkpoints</code>: Number of checkpoints. If not supplied, is set to <code>log(num_timesteps)</code>.</p>
+</li>
+<li>
+<p><code>checkpoints_maxmem</code>: Maximum amount of memory that can be allocated for checkpoints (MB).</p>
+</li>
+<li>
+<p><code>frequencies</code>: Provide a cell array (one cell per shot location), where each cell contains an array of frequencies. In this case, the RTM/FWI gradient is computed for the given set of frequencies using on-the-fly Fourier transforms (default is <code>nothing</code>, i.e. the gradient is computed in the time domain).</p>
+</li>
+<li>
+<p><code>subsampling_factor</code>: Compute forward wavefield on a time axis that is reduced by a given factor (default is <code>1</code>).</p>
+</li>
+<li>
+<p><code>dft_subsampling_factor</code>: Compute on-the-fly DFTs on a time axis that is reduced by a given factor (default is <code>1</code>).</p>
+</li>
+<li>
+<p><code>isic</code>: Use linearized inverse scattering imaging condition for the Jacobian (default is <code>false</code>).</p>
+</li>
+<li>
+<p><code>return_array</code>: Return data from nonlinear/linear modeling as a plain Julia array instead of as a <code>judiVector</code> (default is <code>false</code>).</p>
+</li>
+<li>
+<p><code>dt_comp</code>: Overwrite automatically computed computational time step (default option) with this value.</p>
+</li>
+</ul>
               
             </div>
           </div>
@@ -226,7 +321,7 @@ geometry.xloc[i][j]
         <a href="../abstract_vectors/" class="btn btn-neutral float-right" title="Abstract vectors">Next <span class="icon icon-circle-arrow-right"></span></a>
       
       
-        <a href="../how_to/" class="btn btn-neutral" title="Tutorials"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../tutorials/" class="btn btn-neutral" title="Tutorials"><span class="icon icon-circle-arrow-left"></span> Previous</a>
       
     </div>
   
@@ -252,7 +347,7 @@ geometry.xloc[i][j]
     <span class="rst-current-version" data-toggle="rst-current-version">
       
       
-        <span><a href="../how_to/" style="color: #fcfcfc;">&laquo; Previous</a></span>
+        <span><a href="../tutorials/" style="color: #fcfcfc;">&laquo; Previous</a></span>
       
       
         <span style="margin-left: 15px"><a href="../abstract_vectors/" style="color: #fcfcfc">Next &raquo;</a></span>
