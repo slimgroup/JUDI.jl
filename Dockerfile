@@ -1,11 +1,11 @@
-FROM python:3.6
+FROM python:3.7
 
 # Install devito
 RUN pip3 install --upgrade pip
 RUN pip3 install --user git+https://github.com/devitocodes/devito.git@v4.2
 
 # Devito requirements
-RUN pip3 install --user jupyter
+RUN pip3 install --user jupyter matplotlib
 
 # Compiler and Devito environment variables
 ENV DEVITO_ARCH=gcc
@@ -15,8 +15,8 @@ ENV PYTHONPATH=/app/devito
 
 # Required packages
 RUN apt-get update && \
-	apt-get install -y gfortran && \
-	apt-get install -y hdf5-tools
+    apt-get install -y gfortran && \
+    apt-get install -y hdf5-tools
 
 # Install Julia
 WORKDIR /julia
@@ -27,10 +27,15 @@ RUN wget "https://julialang-s3.julialang.org/bin/linux/x64/1.4/julia-1.4.1-linux
 
 # Manually install unregistered packages and JUDI
 RUN julia -e 'using Pkg; Pkg.develop(PackageSpec(url="https://github.com/slimgroup/SegyIO.jl"))' && \
-	julia -e 'using Pkg; Pkg.develop(PackageSpec(url="https://github.com/slimgroup/JOLI.jl"))' && \
-	julia -e 'using Pkg; Pkg.develop(PackageSpec(url="https://github.com/slimgroup/JUDI.jl"))'
+    julia -e 'using Pkg; Pkg.develop(PackageSpec(url="https://github.com/slimgroup/JOLI.jl"))' && \
+    julia -e 'using Pkg; Pkg.develop(PackageSpec(url="https://github.com/slimgroup/JUDI.jl"))'
 
-RUN	julia -e 'using Pkg; Pkg.add("NLopt")'
+RUN julia -e 'using Pkg; Pkg.add("NLopt")' && \
+    julia -e 'using Pkg; Pkg.add("IterativeSolvers")' && \
+    julia -e 'using Pkg; Pkg.add("JLD")' && \
+    julia -e 'using Pkg; Pkg.add("HDF5")' && \
+    julia -e 'using Pkg; Pkg.add("PyPlot")' && \
+    julia -e 'using Pkg; Pkg.add("ImageFiltering")'
 
 # Install and build IJulia
 ENV JUPYTER="/root/.local/bin/jupyter"
