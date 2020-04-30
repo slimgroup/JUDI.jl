@@ -1,17 +1,16 @@
 FROM python:3.6
 
 # Install devito
-RUN pip install --upgrade pip
-RUN pip install --user git+https://github.com/opesci/devito.git@v3.2.0
+RUN pip3 install --upgrade pip
+RUN pip3 install --user git+https://github.com/devitocodes/devito.git@v4.2
 
 # Devito requirements
-ADD docker/devito_requirements.txt /app/devito_requirements.txt
-RUN pip install --user -r /app/devito_requirements.txt && \
-	pip install --user jupyter
+RUN pip3 install --user jupyter
 
 # Compiler and Devito environment variables
-ENV DEVITO_ARCH="gcc"
-ENV DEVITO_OPENMP="0"
+ENV DEVITO_ARCH=gcc
+ENV DEVITO_LANGUAGE=openmp
+ENV OMP_NUM_THREADS=2
 ENV PYTHONPATH=/app/devito
 
 # Required packages
@@ -21,15 +20,15 @@ RUN apt-get update && \
 
 # Install Julia
 WORKDIR /julia
-RUN wget "https://julialang-s3.julialang.org/bin/linux/x64/1.0/julia-1.0.2-linux-x86_64.tar.gz" && \
-	tar -xvzf julia-1.0.2-linux-x86_64.tar.gz && \
-	rm -rf julia-1.0.2-linux-x86_64.tar.gz && \
-	ln -s /julia/julia-1.0.2/bin/julia /usr/local/bin/julia
+RUN wget "https://julialang-s3.julialang.org/bin/linux/x64/1.4/julia-1.4.1-linux-x86_64.tar.gz" && \
+	tar -xvzf julia-1.4.1-linux-x86_64.tar.gz && \
+	rm -rf julia-1.4.1-linux-x86_64.tar.gz && \
+	ln -s /julia/julia-1.4.1/bin/julia /usr/local/bin/julia
 
 # Manually install unregistered packages and JUDI
-RUN julia -e 'using Pkg; Pkg.clone("https://github.com/slimgroup/SegyIO.jl")' && \
-	julia -e 'using Pkg; Pkg.clone("https://github.com/slimgroup/JOLI.jl.git")' && \
-	julia -e 'using Pkg; Pkg.clone("https://github.com/slimgroup/JUDI.jl.git")'
+RUN julia -e 'using Pkg; Pkg.develop(PackageSpec(url="https://github.com/slimgroup/SegyIO.jl"))' && \
+	julia -e 'using Pkg; Pkg.develop(PackageSpec(url="https://github.com/slimgroup/JOLI.jl"))' && \
+	julia -e 'using Pkg; Pkg.develop(PackageSpec(url="https://github.com/slimgroup/JUDI.jl"))'
 
 RUN	julia -e 'using Pkg; Pkg.add("NLopt")'
 
