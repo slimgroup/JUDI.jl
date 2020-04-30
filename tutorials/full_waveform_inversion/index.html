@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  
+  
+  <link rel="shortcut icon" href="../../img/favicon.ico">
+  <title>Full waveform inversion - The Julia Devito Inversion framework (JUDI.jl)</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700" />
+
+  <link rel="stylesheet" href="../../css/theme.css" />
+  <link rel="stylesheet" href="../../css/theme_extra.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" />
+  
+  <script>
+    // Current page data
+    var mkdocs_page_name = "Full waveform inversion";
+    var mkdocs_page_input_path = "tutorials/full_waveform_inversion.md";
+    var mkdocs_page_url = null;
+  </script>
+  
+  <script src="../../js/jquery-2.1.1.min.js" defer></script>
+  <script src="../../js/modernizr-2.8.3.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script> 
+  
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+        <a href="../.." class="icon icon-home"> The Julia Devito Inversion framework (JUDI.jl)</a>
+        <div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../../how_to/">Tutorials</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../../data_structures/">Data structures</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../../abstract_vectors/">Abstract vectors</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../../linear_operators/">Linear operators</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../../io/">Input/Output</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../../about/">About</a>
+                    </li>
+                </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../..">The Julia Devito Inversion framework (JUDI.jl)</a>
+      </nav>
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../..">Docs</a> &raquo;</li>
+    
+      
+    
+    <li>Full waveform inversion</li>
+    <li class="wy-breadcrumbs-aside">
+      
+    </li>
+  </ul>
+  
+  <hr/>
+</div>
+          <div role="main">
+            <div class="section">
+              
+                <h2 id="fwiwith-devito-and-judi">FWIwith Devito and JUDI</h2>
+<pre><code class="julia">addprocs(4)
+using SegyIO, HDF5, PyPlot, JUDI.TimeModeling, JUDI.SLIM_optim
+</code></pre>
+
+<pre><code class="julia">m0, n, d, o = read(h5open(&quot;overthrust_model.h5&quot;,&quot;r&quot;),&quot;m0&quot;,&quot;n&quot;,&quot;d&quot;,&quot;o&quot;); title(&quot;Starting model&quot;)
+model0 = Model((n[1],n[2]), (d[1],d[2]), (o[1],o[2]), m0);
+imshow(sqrt.(1f0./m0)', cmap=&quot;GnBu&quot;, extent=(0,10,3,0));
+xlabel(&quot;Lateral position [km]&quot;);
+ylabel(&quot;Depth [km]&quot;);
+</code></pre>
+
+<p><img alt="png" src="../full_waveform_inversion_files/full_waveform_inversion_2_0.png" /></p>
+<pre><code class="julia">block = segy_read(&quot;overthrust_shot_records.segy&quot;);
+d_obs = judiVector(block);
+</code></pre>
+
+<pre><code>[1m[33mWARNING: [39m[22m[33mFixed length trace flag set in stream: IOBuffer(data=UInt8[...], readable=true, writable=false, seekable=true, append=false, size=7076688, maxsize=Inf, ptr=3601, mark=-1)[39m
+</code></pre>
+<pre><code class="julia">println(typeof(d_obs))
+</code></pre>
+
+<pre><code>JUDI.TimeModeling.judiVector{Float32}
+</code></pre>
+<pre><code class="julia">imshow(d_obs.data[8], cmap=&quot;seismic&quot;, vmin=-3, vmax=3, extent=[0,size(d_obs.data[8],2),2,0]); 
+ax1 = gca(); ax1[:set_aspect](&quot;auto&quot;); xlabel(&quot;Receiver no.&quot;); ylabel(&quot;Time [s]&quot;)
+colorbar(); title(&quot;Observed data&quot;)
+</code></pre>
+
+<p><img alt="png" src="../full_waveform_inversion_files/full_waveform_inversion_5_0.png" /></p>
+<pre><code>PyObject &lt;matplotlib.text.Text object at 0x13bab1190&gt;
+</code></pre>
+<pre><code class="julia">src_geometry = Geometry(block; key=&quot;source&quot;);
+src_data = ricker_wavelet(src_geometry.t[1], src_geometry.dt[1], 0.008f0);
+q = judiVector(src_geometry, src_data);
+plot(q.data[1]);
+</code></pre>
+
+<p><img alt="png" src="../full_waveform_inversion_files/full_waveform_inversion_6_0.png" /></p>
+<pre><code class="julia">ntComp = get_computational_nt(q.geometry, d_obs.geometry, model0);
+info = Info(prod(model0.n), d_obs.nsrc, ntComp);
+</code></pre>
+
+<pre><code class="julia">Ainv = judiModeling(info, model0);
+Pr = judiProjection(info, d_obs.geometry);
+Ps = judiProjection(info, q.geometry);
+</code></pre>
+
+<pre><code class="julia">i = 8;
+d_pred = Pr[i]*Ainv[i]*Ps[i]'*q[i];
+imshow(d_pred.data[1], cmap=&quot;seismic&quot;, vmin=-3, vmax=3, extent=[0,size(d_obs.data[8],2),2,0]); 
+ax1 = gca(); ax1[:set_aspect](&quot;auto&quot;); xlabel(&quot;Receiver no.&quot;); ylabel(&quot;Time [s]&quot;)
+colorbar(); title(&quot;Predicted data&quot;)
+</code></pre>
+
+<p><img alt="png" src="../full_waveform_inversion_files/full_waveform_inversion_9_0.png" /></p>
+<pre><code>PyObject &lt;matplotlib.text.Text object at 0x1253df150&gt;
+</code></pre>
+<pre><code class="julia">J = judiJacobian(Pr*Ainv*Ps',q);
+#H_GN = J'*J    # Gauss-Newton Hessian
+g = J[i]'*(d_pred - d_obs[i]);
+imshow(reshape(g,model0.n)',vmin=-2e2,vmax=2e2, cmap=&quot;GnBu&quot;); title(&quot;Single gradient&quot;)
+</code></pre>
+
+<p><img alt="png" src="../full_waveform_inversion_files/full_waveform_inversion_10_0.png" /></p>
+<pre><code>PyObject &lt;matplotlib.text.Text object at 0x125097d10&gt;
+</code></pre>
+<p>This is a markdown cell $\mathbf{Ax} = \mathbf{b}$</p>
+<pre><code class="julia"># Set up bound constrains
+v0 = sqrt.(1f0./model0.m)
+vmin = ones(Float32, model0.n)*1.3f0;
+vmax = ones(Float32, model0.n)*6.5f0;
+
+# Fix water column
+vmin[:,1:21] = v0[:,1:21];
+vmax[:,1:21] = v0[:,1:21];
+
+# Convert to squared slowness
+mmin = vec((1f0./vmax).^2);
+mmax = vec((1f0./vmin).^2);
+</code></pre>
+
+<p><strong> This example requires ~200 MB of memory per gradient, i.e. 800 MB with 4 parallel workers. It runs for approximately 15 minutes. </strong></p>
+<pre><code class="julia">maxiter = 10
+batchsize = 8
+proj(x) = reshape(median([vec(mmin) vec(x) vec(mmax)],2), model0.n)
+fhistory = zeros(Float32,maxiter)
+
+# Main loop
+for j=1:maxiter
+    println(&quot;Iteration: &quot;,j)
+
+    # get fwi objective function value and gradient
+    i = randperm(d_obs.nsrc)[1:batchsize]
+    fval, gradient = fwi_objective(model0, q[i], d_obs[i])
+    fhistory[j] = fval
+
+    # linesearch
+    step = backtracking_linesearch(model0, q[i], d_obs[i], fval, gradient, proj; alpha=1f0)
+    model0.m = proj(model0.m + reshape(step, model0.n))
+
+end
+</code></pre>
+
+<pre><code>Iteration: 1
+Iteration: 2
+Iteration: 3
+Iteration: 4
+Iteration: 5
+Iteration: 6
+Iteration: 7
+Iteration: 8
+Iteration: 9
+Iteration: 10
+</code></pre>
+<pre><code class="julia">imshow(sqrt.(1f0./model0.m)', cmap=&quot;GnBu&quot;, extent=(0,10,3,0), vmin=1.5, vmax=5.4); title(&quot;FWI with SGD&quot;)
+xlabel(&quot;Lateral position [km]&quot;);
+ylabel(&quot;Depth [km]&quot;);
+</code></pre>
+
+<p><img alt="png" src="../full_waveform_inversion_files/full_waveform_inversion_15_0.png" /></p>
+<p><strong> DO NOT RUN. This example requires ~200 MB of memory per gradient, i.e. 800 MB with 4 parallel workers. It takes approximately 16 minutes per iteration and 2.5 hours for the full loop. </strong></p>
+<pre><code class="julia"># Optimization parameters
+using IterativeSolvers
+model0.m = m0    # reset velocity model
+maxiter_GN = 6
+fhistory_GN = zeros(Float32,maxiter)
+
+# Gauss-Newton method
+for j=1:maxiter
+    println(&quot;Iteration: &quot;,j)
+
+    # Model predicted data for subset of sources
+    d_pred = Pr*Ainv*Ps'*q
+    fhistory_GN[j] = .5f0*norm(d_pred - d_obs)^2
+
+    # GN update direction
+    p = lsqr(J, d_pred - d_obs; maxiter=maxiter_GN, verbose=false)
+
+    # update model and bound constraints
+    model0.m = proj(model0.m - reshape(p, model0.n))    # alpha=1
+end
+</code></pre>
+
+<pre><code>Iteration: 1
+Iteration: 2
+Iteration: 3
+Iteration: 4
+Iteration: 5
+Iteration: 6
+Iteration: 7
+Iteration: 8
+Iteration: 9
+Iteration: 10
+</code></pre>
+<pre><code class="julia">imshow(sqrt.(1f0./model0.m)', cmap=&quot;GnBu&quot;, extent=(0,10,3,0), vmin=1.5, vmax=5.4); title(&quot;FWI with GN method&quot;)
+xlabel(&quot;Lateral position [km]&quot;);
+ylabel(&quot;Depth [km]&quot;);
+</code></pre>
+
+<p><img alt="png" src="../full_waveform_inversion_files/full_waveform_inversion_18_0.png" /></p>
+<pre><code class="julia">fhistory_SG = fhistory/norm(fhistory,Inf);
+fhistory_GN = fhistory_GN/norm(fhistory_GN,Inf);
+plot(1:10, fhistory_SG, 1:10, fhistory_GN);
+xlabel(&quot;Iteration no.&quot;); ylabel(&quot;Normalized function value&quot;);
+</code></pre>
+
+<p><img alt="png" src="../full_waveform_inversion_files/full_waveform_inversion_19_0.png" /></p>
+<pre><code>PyObject &lt;matplotlib.text.Text object at 0x123c19ed0&gt;
+</code></pre>
+              
+            </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+    
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+      
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="versions">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      
+      
+      
+    </span>
+</div>
+    <script>var base_url = '../..';</script>
+    <script src="../../js/theme.js" defer></script>
+      <script src="../../search/main.js" defer></script>
+    <script defer>
+        window.onload = function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        };
+    </script>
+
+</body>
+</html>
