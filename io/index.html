@@ -9,7 +9,7 @@
   
   
   <link rel="shortcut icon" href="../img/favicon.ico">
-  <title>IO - The Julia Devito Inversion framework (JUDI.jl)</title>
+  <title>Input/Output - The Julia Devito Inversion framework (JUDI.jl)</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700" />
 
   <link rel="stylesheet" href="../css/theme.css" />
@@ -18,7 +18,7 @@
   
   <script>
     // Current page data
-    var mkdocs_page_name = "IO";
+    var mkdocs_page_name = "Input/Output";
     var mkdocs_page_input_path = "io.md";
     var mkdocs_page_url = null;
   </script>
@@ -52,6 +52,10 @@
                     </li>
                 </ul>
                 <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../how_to/">Tutorials</a>
+                    </li>
+                </ul>
+                <ul>
                     <li class="toctree-l1"><a class="reference internal" href="../data_structures/">Data structures</a>
                     </li>
                 </ul>
@@ -64,19 +68,17 @@
                     </li>
                 </ul>
                 <ul class="current">
-                    <li class="toctree-l1 current"><a class="reference internal current" href="./">IO</a>
+                    <li class="toctree-l1 current"><a class="reference internal current" href="./">Input/Output</a>
     <ul class="current">
     <li class="toctree-l2"><a class="reference internal" href="#reading-seg-y-files-into-memory">Reading SEG-Y files into memory</a>
     </li>
+    <li class="toctree-l2"><a class="reference internal" href="#writing-seg-y-files">Writing SEG-Y files</a>
+    </li>
     <li class="toctree-l2"><a class="reference internal" href="#reading-out-of-core-seg-y-files">Reading out-of-core SEG-Y files</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#reading-velocity-models">Reading velocity models</a>
+    <li class="toctree-l2"><a class="reference internal" href="#reading-and-writing-velocity-models">Reading and writing velocity models</a>
     </li>
     </ul>
-                    </li>
-                </ul>
-                <ul>
-                    <li class="toctree-l1"><a class="reference internal" href="../how_to/">How to</a>
                     </li>
                 </ul>
                 <ul>
@@ -104,7 +106,7 @@
     
       
     
-    <li>IO</li>
+    <li>Input/Output</li>
     <li class="wy-breadcrumbs-aside">
       
     </li>
@@ -116,9 +118,91 @@
             <div class="section">
               
                 <h1 id="inputoutput">Input/Output</h1>
+<p>For reading and writing SEG-Y data, JUDI uses the <a href="https://github.com/slimgroup/SegyIO.jl">SegyIO.jl</a> package. JUDI supports reading SEG-Y from disk into memory, as well as working with out-of-core (OOC) data containers. In the latter case, <code>judiVectors</code> contain look-up tables that allow accessing the underlying data in constant time.</p>
 <h2 id="reading-seg-y-files-into-memory">Reading SEG-Y files into memory</h2>
+<p>To read a single SEG-Y file into memory, use the <code>segy_read</code> function:</p>
+<pre><code class="julia">using SegyIO
+
+block = segy_read(&quot;data.segy&quot;)
+</code></pre>
+
+<p>From a <code>SegyIO</code> data block, you can create an in-core <code>judiVector</code>, as well as a <code>Geometry</code> object for the source:</p>
+<pre><code># judiVector for observed data
+d_obs = judiVector(block; segy_depth_key=&quot;RecGroupElevation&quot;)
+
+# Source geometry
+src_geometry = Geometry(block; key=&quot;source&quot;, segy_depth_key=&quot;SourceDepth&quot;)
+</code></pre>
+
+<p>The optional keyword <code>segy_depth_key</code> specifies which SEG-Y header stores the depth coordinate. After reading a <code>block</code>, you can check <code>block.traceheaders</code> to see which trace headers are set and where to find the depth coordinates for sources or receivers.</p>
+<p>The <code>d_obs</code> vector constains the receiver geometry in <code>d_obs.geometry</code>, so there is no need to set up a separate geometry object manually. However, in principle we can set up a receiver <code>Geometry</code> object as follows:</p>
+<pre><code>rec_geometry = Geometry(block; key=&quot;receiver&quot;, segy_depth_key=&quot;RecGroupElevation&quot;)
+</code></pre>
+
+<h2 id="writing-seg-y-files">Writing SEG-Y files</h2>
+<p>To write a <code>judiVector</code> as a SEG-Y file, we need a <code>judiVector</code> containing the receiver data and geometry, as well as a <code>judiVector</code> with the source coordinates. From the <code>judiVectors</code>, we first create a <code>SegyIO</code> block:</p>
+<pre><code class="julia">block = judiVector_to_SeisBlock(d_obs, q)
+</code></pre>
+
+<p>where <code>d_obs</code> and <code>q</code> are <code>judiVectors</code> for receiver and source data respectively. Next, we can write a SEG-Y file from a <code>SegyIO block</code>:</p>
+<pre><code class="julia">segy_write(&quot;new_file.segy&quot;, block)  # writes a SEG-Y file called new_file.segy
+</code></pre>
+
 <h2 id="reading-out-of-core-seg-y-files">Reading out-of-core SEG-Y files</h2>
-<h2 id="reading-velocity-models">Reading velocity models</h2>
+<p>For SEG-Y files that do not fit into memory, JUDI provides the possibility to work with OOC data containers. First, <code>SegyIO</code> scans also available files and then creates a lookup table, including a summary of the most important SEG-Y header values. See <code>SegyIO's</code> <a href="https://github.com/slimgroup/SegyIO.jl/wiki/Scanning">documentation</a> for more information.</p>
+<p>First we provide the path to the directory that we want to scan, as well as a string that appears in all the files we want to scan. For example, here we want to scan all files that contain the string <code>"bp_observed_data"</code>. The third argument is a list of SEG-Y headers for which we create a summary. For creating OOC <code>judiVectors</code>, <strong>always</strong> include the <code>"GroupX"</code>, <code>"GroupY"</code> and <code>"dt"</code> keyworkds, as well as the keywords that carry the source and receiver depth coordinates:</p>
+<pre><code class="julia"># Specify direcotry to scan
+path_to_data = &quot;/home/username/data_directory/&quot;
+
+# Scan files in given directory and create OOC data container
+container = segy_scan(path_to_data, &quot;bp_observed_data&quot;, [&quot;GroupX&quot;, &quot;GroupY&quot;, 
+    &quot;RecGroupElevation&quot;, &quot;SourceDepth&quot;, &quot;dt&quot;])
+</code></pre>
+
+<p>Depending of the number and size of the underlying files, this process can take multiple hours, but it only has to be executed once! Furthermore, <a href="https://github.com/slimgroup/SegyIO.jl/wiki/Scanning">parallel scanning</a> is supported as well. </p>
+<p>Once we have scanned all files in the directory, we can create an OOC <code>judiVector</code> and source <code>Geometry</code> object as follows:</p>
+<pre><code class="julia"># Create OOC judiVector
+d_obs = judiVector(container; segy_depth_key=&quot;RecGroupElevation&quot;)
+
+# Create OOC source geometry object
+src_geometry = Geometry(container; key=&quot;source&quot;, segy_depth_key=&quot;SourceDepth&quot;)
+</code></pre>
+
+<h2 id="reading-and-writing-velocity-models">Reading and writing velocity models</h2>
+<p>JUDI does not require velocity models to be read or saved in any specific format. Any file format that allows reading the velocity model as a two or three-dimensional Julia array will work.</p>
+<p>In our examples, we often use the <a href="https://github.com/JuliaIO/JLD.jl">JLD</a> or <a href="https://github.com/JuliaIO/HDF5.jl">HDF5</a> packages to read/write velocity models and the corresponing meta data (i.e. grid spacings and origins). If your model is a SEG-Y file, use the <code>segy_read</code> function from <code>SegyIO</code> as shown above.</p>
+<ul>
+<li>Create an example model to write and read:</li>
+</ul>
+<pre><code class="julia">n = (120, 100)
+d = (10.0, 10.0)
+o = (0.0, 0.0)
+v = ones(Float32, n) .* 1.5f0
+m = 1f0 ./ v.^2
+</code></pre>
+
+<ul>
+<li>Write a model as a <code>.jld</code> file:</li>
+</ul>
+<pre><code class="julia">using JLD
+
+save(&quot;my_model.jld&quot;, &quot;n&quot;, n, &quot;d&quot;, d, &quot;o&quot;, o, &quot;m&quot;, m)
+</code></pre>
+
+<ul>
+<li>Read a model from a <code>.jld</code> file:</li>
+</ul>
+<pre><code class="julia"># Returns a Julia dictionary
+M = load(&quot;my_model.jld&quot;)
+
+n = M[&quot;n&quot;]
+d = M[&quot;d&quot;]
+o = M[&quot;o&quot;]
+m = M[&quot;m&quot;]
+
+# Set up a Model object
+model = Model(n, d, o, m)
+</code></pre>
               
             </div>
           </div>
@@ -126,7 +210,7 @@
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="../how_to/" class="btn btn-neutral float-right" title="How to">Next <span class="icon icon-circle-arrow-right"></span></a>
+        <a href="../about/" class="btn btn-neutral float-right" title="About">Next <span class="icon icon-circle-arrow-right"></span></a>
       
       
         <a href="../linear_operators/" class="btn btn-neutral" title="Linear operators"><span class="icon icon-circle-arrow-left"></span> Previous</a>
@@ -158,7 +242,7 @@
         <span><a href="../linear_operators/" style="color: #fcfcfc;">&laquo; Previous</a></span>
       
       
-        <span style="margin-left: 15px"><a href="../how_to/" style="color: #fcfcfc">Next &raquo;</a></span>
+        <span style="margin-left: 15px"><a href="../about/" style="color: #fcfcfc">Next &raquo;</a></span>
       
     </span>
 </div>
