@@ -10,7 +10,7 @@ Seismic modeling operator for solving a wave equation for a given right-hand-sid
  * Construct a modeling operator **without** source/receiver projections:
 
 ```julia
-F = judiModeling(info, model)
+F = judiModeling(info, model; options=opt)
 ```
 
  * Construct a modeling operator **with** source/receiver projections:
@@ -46,6 +46,8 @@ where `Pw` is a `judiLRWF` (low-rank-wavefield) projection operator.
 
  * `rec_geometry`: An object of type `Geometry` containing the receiver geometry.
 
+ * `opt`: An object of type `Options`, specifying additional modeling parameters.
+
 
 **Accessible fields:**
 
@@ -61,6 +63,9 @@ F.srcGeometry
 
 # Receiver geometry (if available)
 F.recGeometry
+
+# Options structure
+F.options
 ```
 
 **Usage:**

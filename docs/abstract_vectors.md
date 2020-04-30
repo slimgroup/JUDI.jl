@@ -28,8 +28,8 @@ x.data[i]
 # Extract judiVector for i-th shot
 x1 = x[i]
 
-# Access receiver locations of i-th shot
-x.geometry.xloc[i]
+# Access j-th receiver location of i-th shot
+x.geometry.xloc[i][j]
 ```
 
 **Access fields (out-of-core data containers):**

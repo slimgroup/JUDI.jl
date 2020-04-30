@@ -2,9 +2,11 @@
 
 JUDI is a framework for large-scale seismic modeling and inversion and designed to enable rapid translations of algorithms to fast and efficient code that scales to industry-size 3D problems. Wave equations in JUDI are solved with [Devito](https://www.devitoproject.org/), a Python domain-specific language for automated finite-difference (FD) computations. 
 
-## Overview
+## Docs overview
 
 This documentation provides an overview over JUDI's basic data structures and abstract operators:
+
+ * **Tutorials**: Shows basic functionalities and some common applications.
 
  * **Data structures**: Explains the `Model`, `Geometry` and `Info` data structures and how to set up acquisition geometries.
 
@@ -13,9 +15,6 @@ This documentation provides an overview over JUDI's basic data structures and ab
  * **Abstract operators**: Lists and explains JUDI's abstract linear operators `judiModeling`, `judiJacobian`, `judiProjection` and `judiLRWF`.
 
  * **IO**: Read SEG-Y data and set up `judiVectors` for shot records and sources. Read velocity models.
-
- * **How to**: Answers FAQs, such as "how to set up simultaneous sources" or "how to manually set the computational time step".
-
 
 ## Installation
 

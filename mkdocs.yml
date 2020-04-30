@@ -1,7 +1,7 @@
 site_name: The Julia Devito Inversion framework (JUDI.jl)
 nav:
     - Home: index.md
-    - Tutorials: how_to.md
+    - Tutorials: tutorials.md
     - Data structures: data_structures.md
     - Abstract vectors: abstract_vectors.md
     - Linear operators: linear_operators.md
