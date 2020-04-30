@@ -2,7 +2,11 @@
 
 ## Model structure
 
-Velocity models in JUDI are defined as `Model` structures. `Model` requires the following input arguments:
+Data structure for velocity models in JUDI.
+
+**Construction:**
+
+`Model` requires the following input arguments:
 
 ```julia
 model = Model(n, d, o, m; nb=40, rho=1f0)
@@ -25,6 +29,8 @@ model = Model(n, d, o, m; nb=40, rho=1f0)
 
 **Access fields:**
 
+Accessible fields include all of the above parameters, which can be accessed as follows:
+
 ```julia
 # Access model
 model.m
@@ -35,8 +41,11 @@ model.n
 
 ## Geometry structure
 
-JUDI's geometry structure contains the information of either the source **or** the receiver geometry. Each geometry object contains 6 fields:
+JUDI's geometry structure contains the information of either the source **or** the receiver geometry. 
 
+**Construction:**
+
+Construct an (in-core) geometry object for **either** a source or receiver set up:
 
 ```julia
 geometry = Geometry(xloc, yloc, zloc; dt=[], nt=[], t=[])
@@ -67,11 +76,11 @@ Example of how to access fields of geometry objects:
 # Access cell arrays of x coordinates:
 geometry.xloc
 
-# Access x coordinates at first source location
-geometry.xloc[1]
+# Access x coordinates of the i-th source location
+geometry.xloc[i]
 
-# Access first receiver location (in x) at the second source location
-geometry.xloc[2][1]
+# Access j-th receiver location (in x) of the i-th source location
+geometry.xloc[i][j]
 ```
 
 

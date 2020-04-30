@@ -16,7 +16,7 @@ x = judiVector(geometry, data)
 
  * `geometry`: A `Geometry` object containing source or receiver geometries.
 
- * `data`: A cell array with one cell per source location, where each cell contains a 1D/2D Julia array with either the receiver data or the source wavelet.
+ * `data`: A cell array with one cell per source location, where each cell contains a 1D/2D Julia array with either the receiver data or the source wavelet. Alternatively: pass a single Julia array which will be used for all source locations.
 
 
 **Access fields (in-core data containers):**
@@ -183,7 +183,7 @@ w = judiWeights(weights)
 
 **Parameters:**
 
- * `weights`: Cell array with one cell per shot location. Each cell contains a 2D/3D Julia array with the weights for the spatially extended source.
+ * `weights`: Cell array with one cell per shot location. Each cell contains a 2D/3D Julia array with the weights for the spatially extended source. Alternatively: pass a single Julia array which will be used for all source locations.
 
 **Access fields:**
 
@@ -221,9 +221,9 @@ where `Pw` is a `judiLRWF` operator and `w` is a `judiWeights` vector.
 
  * `info`: An `Info` structure.
 
- * `wavelet`: A cell array with one cell per source location containing a 1D Julia array with the time varying source wavelet.
+ * `wavelet`: A cell array with one cell per source location containing a 1D Julia array with the time varying source wavelet **or** a single 1D Julia array, which is used for all source locations.
 
- * `weights`: A cell array with one cell per source location containing a 2D/3D Julia array with the spatially varying source weights.
+ * `weights`: A cell array with one cell per source location containing a 2D/3D Julia array with the spatially varying source weights **or** a single 1D Julia array, which is used for all source locations.
 
 **Access fields:**
 
