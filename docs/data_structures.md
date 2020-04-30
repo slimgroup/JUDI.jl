@@ -8,7 +8,7 @@ Velocity models in JUDI are defined as `Model` structures. `Model` requires the 
 model = Model(n, d, o, m; nb=40, rho=1f0)
 ```
 
-** Parameters:**
+**Parameters:**
 
  * `n`: Integer tuple with number of grid points in each dimension, e.g. `n = (120, 100)` (2D) or `n = (120, 100, 80)` (3D). **The order of dimenions in all tuples is `(x, z)` for 2D and `(x, y, z)` for 3D**.
 
@@ -23,9 +23,9 @@ model = Model(n, d, o, m; nb=40, rho=1f0)
  * `rho`: 2D or 3D array of the density in ``[g / cm^3]``
 
 
-** Access fields:**
+**Access fields:**
 
-```
+```julia
 # Access model
 model.m
 
@@ -42,7 +42,7 @@ JUDI's geometry structure contains the information of either the source **or** t
 geometry = Geometry(xloc, yloc, zloc; dt=[], nt=[], t=[])
 ```
 
-** Parameters:**
+**Parameters:**
 
  * `xloc`: Cell array, with one cell per source location. Each cell contains a 1D Julia array with the coordinates in the horizontal x direction. Coordinates are specified as distances in meters `[m]` relative to the model origin.
 
@@ -59,11 +59,11 @@ geometry = Geometry(xloc, yloc, zloc; dt=[], nt=[], t=[])
 From the optional arguments, you have to pass (at least) **two** of `dt`, `nt` and `t`. The third value is automatically determined and set from the two other values.
 
 
-** Access fields:**
+**Access fields:**
 
 Example of how to access fields of geometry objects:
 
-```
+```julia
 # Access cell arrays of x coordinates:
 geometry.xloc
 
@@ -79,7 +79,7 @@ geometry.xloc[2][1]
 
 The info structure contains some basic dimensionality information that needs to be available to any type of linear operator:
 
-```
+```julia
 info = Info(n, nsrc, nt)
 ```
 
@@ -93,7 +93,7 @@ info = Info(n, nsrc, nt)
 
 You can automatically obtain the number of computational time steps as follows:
 
-```
+```julia
 nt = get_computational_nt(src_geometry, rec_geometry, model)
 ```
 
