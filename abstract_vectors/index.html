@@ -133,7 +133,7 @@
 <p><code>geometry</code>: A <code>Geometry</code> object containing source or receiver geometries.</p>
 </li>
 <li>
-<p><code>data</code>: A cell array with one cell per source location, where each cell contains a 1D/2D Julia array with either the receiver data or the source wavelet.</p>
+<p><code>data</code>: A cell array with one cell per source location, where each cell contains a 1D/2D Julia array with either the receiver data or the source wavelet. Alternatively: pass a single Julia array which will be used for all source locations.</p>
 </li>
 </ul>
 <p><strong>Access fields (in-core data containers):</strong></p>
@@ -275,7 +275,7 @@ rhs.info
 
 <p><strong>Parameters:</strong></p>
 <ul>
-<li><code>weights</code>: Cell array with one cell per shot location. Each cell contains a 2D/3D Julia array with the weights for the spatially extended source.</li>
+<li><code>weights</code>: Cell array with one cell per shot location. Each cell contains a 2D/3D Julia array with the weights for the spatially extended source. Alternatively: pass a single Julia array which will be used for all source locations.</li>
 </ul>
 <p><strong>Access fields:</strong></p>
 <pre><code class="julia"># Access weights of i-th shot locatoin
@@ -302,10 +302,10 @@ w.weights[i]
 <p><code>info</code>: An <code>Info</code> structure.</p>
 </li>
 <li>
-<p><code>wavelet</code>: A cell array with one cell per source location containing a 1D Julia array with the time varying source wavelet.</p>
+<p><code>wavelet</code>: A cell array with one cell per source location containing a 1D Julia array with the time varying source wavelet <strong>or</strong> a single 1D Julia array, which is used for all source locations.</p>
 </li>
 <li>
-<p><code>weights</code>: A cell array with one cell per source location containing a 2D/3D Julia array with the spatially varying source weights.</p>
+<p><code>weights</code>: A cell array with one cell per source location containing a 2D/3D Julia array with the spatially varying source weights <strong>or</strong> a single 1D Julia array, which is used for all source locations.</p>
 </li>
 </ul>
 <p><strong>Access fields:</strong></p>

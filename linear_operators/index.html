@@ -119,9 +119,212 @@
               
                 <h1 id="linear-operators">Linear Operators</h1>
 <h2 id="judimodeling">judiModeling</h2>
+<p>Seismic modeling operator for solving a wave equation for a given right-hand-side.</p>
+<p><strong>Construction:</strong></p>
+<ul>
+<li>Construct a modeling operator <strong>without</strong> source/receiver projections:</li>
+</ul>
+<pre><code class="julia">F = judiModeling(info, model)
+</code></pre>
+
+<ul>
+<li>Construct a modeling operator <strong>with</strong> source/receiver projections:</li>
+</ul>
+<pre><code class="julia">F = judiModeling(info, model, src_geometry, rec_geometry)
+</code></pre>
+
+<ul>
+<li>Construct a modeling operator from an <strong>existing</strong> operator without geometries and projection operators:</li>
+</ul>
+<pre><code class="julia">F = Pr*F*Ps'
+</code></pre>
+
+<p>where <code>Ps</code> and <code>Pr</code> are source/receiver projection operators of type <code>judiProjection</code>.</p>
+<ul>
+<li>Construct a modeling operator for <strong>extended source modeling</strong>:</li>
+</ul>
+<pre><code class="julia">F = Pr*F*Pw'
+</code></pre>
+
+<p>where <code>Pw</code> is a <code>judiLRWF</code> (low-rank-wavefield) projection operator.</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li>
+<p><code>info</code>: A <code>Info</code> structure.</p>
+</li>
+<li>
+<p><code>model</code>: A <code>Model</code> structure containg the velocity model and grid specifications.</p>
+</li>
+<li>
+<p><code>src_geometry</code>: An object of type <code>Geometry</code> containing the source geometry.</p>
+</li>
+<li>
+<p><code>rec_geometry</code>: An object of type <code>Geometry</code> containing the receiver geometry.</p>
+</li>
+</ul>
+<p><strong>Accessible fields:</strong></p>
+<pre><code class="julia"># Info structure
+F.info
+
+# Model structure
+F.model
+
+# Source geometry (if available)
+F.srcGeometry
+
+# Receiver geometry (if available)
+F.recGeometry
+</code></pre>
+
+<p><strong>Usage:</strong></p>
+<pre><code class="julia"># Forward modeling (F w/ geometries)
+d_obs = F*q
+
+# Adjoint modeling (F w/ geometries)
+q_ad = F'*d_obs
+
+# Forward modeling (F w/o geometries)
+d_obs = Pr*F*Ps'*q
+
+# Adjoint modelng (F w/o geometries)
+q_ad = Ps*F'*Pr'*d_obs
+
+# Extended source modeling (F w/o geometries)
+d_obs  = Pr*F*Pw'*w
+
+# Adjoint extended source modeling (F w/o geometries)
+w_ad = Pw*F'*Pr'*d_obs
+
+# Forward modeling and return full wavefield (F w/o geometries)
+u = F*Ps'*q
+
+# Adjoint modelnig and return wavefield (F w/o geometries)
+v = F'*Pr'*d_obs
+
+# Forward modeling with full wavefield as source (F w/o geometries)
+d_obs = Pr*F*u
+
+# Adjoint modeling with full wavefield as source (F w/o geometries)
+q_ad = Ps*F*v
+</code></pre>
+
 <h2 id="judijacobian">judiJacobian</h2>
+<p>Jacobian of a non-linear forward modeling operator. Corresponds to linearized Born modeling (forward mode) and reverse-time migration (adjoint mode).</p>
+<p><strong>Construction:</strong></p>
+<ul>
+<li>A <code>judiJacobian</code> operator can be create from an exisiting forward modeling operator and a source vector:</li>
+</ul>
+<pre><code class="julia">J = judiJacobian(F, q)  # F w/ geometries
+</code></pre>
+
+<pre><code class="julia">J = judiJacobian(Pr*F*Ps', q)   # F w/o geometries
+</code></pre>
+
+<p>where <code>Ps</code> and <code>Pr</code> are source/receiver projection operators of type <code>judiProjection</code>.</p>
+<ul>
+<li>A Jacobian can also be created for an extended source modeling operator:</li>
+</ul>
+<pre><code class="julia">J = judiJacobian(Pr*F*Pw', w)
+</code></pre>
+
+<p>where <code>Pw</code> is a <code>judiLRWF</code> operator and <code>w</code> is a <code>judiWeights</code> vector (or 2D/3D Julia array).</p>
+<p><strong>Accessible fields::</strong></p>
+<pre><code class="julia"># Info structure
+J.info
+
+# Model structure
+J.model
+
+# Source geometry (if available)
+J.srcGeometry
+
+# Receiver geometry
+J.recGeometry
+
+# Source wavelet
+J.wavelet
+
+# Weights (extended source modeling only)
+J.weights
+
+# Options structure
+J.options
+</code></pre>
+
+<p><strong>Usage:</strong></p>
+<pre><code class="julia"># Linearized modeilng
+d_lin = J*dm
+
+# RTM
+rtm = J'*d_lin
+
+# Matrix-free normal operator
+H = J'*J
+</code></pre>
+
 <h2 id="judiprojection">judiProjection</h2>
+<p>Abstract linear operator for source/receiver projections. A (transposed) <code>judiProjection</code> operator symbolically injects the data with which it is multiplied during modeling. If multiplied with a forward modeling operator, it samples the wavefield at the specified source/receiver locations.</p>
+<p><strong>Construction:</strong></p>
+<pre><code class="julia">P = judiProjection(info, geometry)
+</code></pre>
+
+<p><strong>Parameters:</strong></p>
+<ul>
+<li>
+<p><code>info</code>: A JUDI <code>Info</code> structure.</p>
+</li>
+<li>
+<p><code>geometry</code>: A JUDI <code>Geometry</code> structure containing either the source or receiver acquisition set up.s</p>
+</li>
+</ul>
+<p><strong>Accessible fields:</strong></p>
+<pre><code class="julia"># Info structure
+P.info
+
+# Source/receiver geometry
+P.geometry
+</code></pre>
+
+<p><strong>Usage:</strong></p>
+<pre><code class="julia"># Multiply with judiVector to create a judiRHS
+rhs1 = Pr'*d_obs
+rhs2 = Ps'*q
+
+# Sample wavefield at source/receiver location during modeling
+d_obs = Pr*F*Ps'*q
+q_ad = Ps*F*Pr'*d_obs
+</code></pre>
+
 <h2 id="judilrwf">judiLRWF</h2>
+<p>Abstract linear operator for sampling a seismic wavefield as a sum over all time steps, weighted by a time-varying wavelet. Its transpose <em>injects</em> a time-varying wavelet at every grid point in the model.</p>
+<p><strong>Construction:</strong></p>
+<pre><code class="julia">P = judiLRWF(info, wavelet)
+</code></pre>
+
+<p><strong>Parameters:</strong></p>
+<ul>
+<li>
+<p><code>info</code>: A JUDI <code>Info</code> structure.</p>
+</li>
+<li>
+<p><code>wavelet</code>:  A cell array with one cell per source location, where each cell contains a 1D Julia array of the source wavelet <strong>or</strong> a single Julia array which will be used for all source location.</p>
+</li>
+</ul>
+<p><strong>Accessible fields:</strong></p>
+<pre><code class="julia"># Info structure
+P.info
+
+# Wavelet of i-th source location
+P.wavelet[i]
+</code></pre>
+
+<p><strong>Usage:</strong></p>
+<pre><code class="julia"># Multiply with a judiWeight vector to create a judiExtendedSource
+ex_src = Pw'*w
+
+# Sample wavefield as a sum over time, weighted by the source
+u_ex = Pw*F'*Pr'*d_obs
+</code></pre>
               
             </div>
           </div>

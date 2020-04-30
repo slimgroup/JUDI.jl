@@ -117,7 +117,9 @@
               
                 <h1 id="data-structures">Data structures</h1>
 <h2 id="model-structure">Model structure</h2>
-<p>Velocity models in JUDI are defined as <code>Model</code> structures. <code>Model</code> requires the following input arguments:</p>
+<p>Data structure for velocity models in JUDI.</p>
+<p><strong>Construction:</strong></p>
+<p><code>Model</code> requires the following input arguments:</p>
 <pre><code class="julia">model = Model(n, d, o, m; nb=40, rho=1f0)
 </code></pre>
 
@@ -143,6 +145,7 @@
 </li>
 </ul>
 <p><strong>Access fields:</strong></p>
+<p>Accessible fields include all of the above parameters, which can be accessed as follows:</p>
 <pre><code class="julia"># Access model
 model.m
 
@@ -151,7 +154,9 @@ model.n
 </code></pre>
 
 <h2 id="geometry-structure">Geometry structure</h2>
-<p>JUDI's geometry structure contains the information of either the source <strong>or</strong> the receiver geometry. Each geometry object contains 6 fields:</p>
+<p>JUDI's geometry structure contains the information of either the source <strong>or</strong> the receiver geometry. </p>
+<p><strong>Construction:</strong></p>
+<p>Construct an (in-core) geometry object for <strong>either</strong> a source or receiver set up:</p>
 <pre><code class="julia">geometry = Geometry(xloc, yloc, zloc; dt=[], nt=[], t=[])
 </code></pre>
 
@@ -182,11 +187,11 @@ model.n
 <pre><code class="julia"># Access cell arrays of x coordinates:
 geometry.xloc
 
-# Access x coordinates at first source location
-geometry.xloc[1]
+# Access x coordinates of the i-th source location
+geometry.xloc[i]
 
-# Access first receiver location (in x) at the second source location
-geometry.xloc[2][1]
+# Access j-th receiver location (in x) of the i-th source location
+geometry.xloc[i][j]
 </code></pre>
 
 <h2 id="info-structure">Info structure</h2>
