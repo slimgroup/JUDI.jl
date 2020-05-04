@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  
+  
+  <link rel="shortcut icon" href="../../img/favicon.ico">
+  <title>fwi example NLopt - The Julia Devito Inversion framework (JUDI.jl)</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700" />
+
+  <link rel="stylesheet" href="../../css/theme.css" />
+  <link rel="stylesheet" href="../../css/theme_extra.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" />
+  
+  <script>
+    // Current page data
+    var mkdocs_page_name = "fwi example NLopt";
+    var mkdocs_page_input_path = "tutorials/fwi_example_NLopt.md";
+    var mkdocs_page_url = null;
+  </script>
+  
+  <script src="../../js/jquery-2.1.1.min.js" defer></script>
+  <script src="../../js/modernizr-2.8.3.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script> 
+  
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+        <a href="../.." class="icon icon-home"> The Julia Devito Inversion framework (JUDI.jl)</a>
+        <div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../">Tutorials</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../../data_structures/">Data structures</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../../abstract_vectors/">Abstract vectors</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../../linear_operators/">Linear operators</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../../io/">Input/Output</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../../helper/">Helper functions</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../../preconditioners/">Preconditioners</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../../about/">About</a>
+                    </li>
+                </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../..">The Julia Devito Inversion framework (JUDI.jl)</a>
+      </nav>
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../..">Docs</a> &raquo;</li>
+    
+      
+    
+    <li>fwi example NLopt</li>
+    <li class="wy-breadcrumbs-aside">
+      
+    </li>
+  </ul>
+  
+  <hr/>
+</div>
+          <div role="main">
+            <div class="section">
+              
+                <h2 id="fwi-with-quasi-newton-methods-from-the-nlopt-library">FWI with Quasi-Newton methods from the NLopt library</h2>
+<p>In this notebook, we demonstrate how to interface the NLopt optimization library for full-waveform inversion with a limited-memory Quasi-Newton (L-BFGS) algorithm. Once again, we start by adding additional workers for parallel computing and by loading all necessary modules:</p>
+<pre><code class="julia">addprocs(2)
+using SegyIO, HDF5, PyPlot, JUDI.TimeModeling, NLopt
+</code></pre>
+
+<p>We load the FWI starting model from the HDF5 model file and set up the JUDI model structure:</p>
+<pre><code class="julia">m0, n, d, o = read(h5open(&quot;overthrust_model.h5&quot;,&quot;r&quot;),&quot;m0&quot;,&quot;n&quot;,&quot;d&quot;,&quot;o&quot;); title(&quot;Starting model&quot;)
+model0 = Model((n[1],n[2]), (d[1],d[2]), (o[1],o[2]), m0);
+imshow(sqrt.(1f0./m0)', cmap=&quot;GnBu&quot;, extent=(0,10,3,0));
+xlabel(&quot;Lateral position [km]&quot;);
+ylabel(&quot;Depth [km]&quot;);
+</code></pre>
+
+<p><img alt="png" src="../fwi_example_NLopt_files/fwi_example_NLopt_3_0.png" /></p>
+<p>Then we read the SEG-Y file containing our test data set. The data was generated with a 2D excerpt from the Overthrust velocity model and consists of 31 shot records with 2 seconds recording time. We load the data and set up a JUDI seismic data vector:</p>
+<pre><code class="julia">block = segy_read(&quot;overthrust_shot_records.segy&quot;);
+d_obs = judiVector(block);
+</code></pre>
+
+<p>Since the SEG-Y file contains the source coordinates, but not the wavelet itself, we create a JUDI <code>Geometry</code> structure for the source and then manually set up an 8 Hz Ricker wavelet. As for the observed data, we set up a JUDI seismic data vector <code>q</code> with the source geometry and wavelet:</p>
+<pre><code class="julia">src_geometry = Geometry(block; key=&quot;source&quot;);
+src_data = ricker_wavelet(src_geometry.t[1], src_geometry.dt[1], 0.008f0);
+q = judiVector(src_geometry, src_data);
+</code></pre>
+
+<h2 id="optimization">Optimization</h2>
+<p>Rather than implementing the L-BFGS algorithms in Julia ourselves, we interface the NLopt optimization library. This library requires objective functions with the current variable and gradient as input arguments and the function value as the only output argument. For this reason, we build a wrapper that is customized for the NLopt library around our <code>fwi_objective</code> function. The function <code>f!</code> takes a vectorized estimate of the current model as well as the (vectorized) gradient as input arguments. NLopt uses double precision for floating point variables, so the first step inside <code>f!</code> is to reshape and convert the model to single precision. Then we choose a randomized subset of sources and shot records and compute the function value <code>fval</code> and <code>gradient</code> of the FWI objective function. We then set the gradient in the water layer to zero and overwrite the input gradient <code>grad</code> with the new gradient. Furthermore, we keep track of the number of function evaluations through increasing the <code>count</code> variable, which will serve as the termination criterion for the algorithm. In Julia, we set up <code>f!</code> in the following way: </p>
+<pre><code class="julia">batchsize = 8;
+count = 0;
+
+# NLopt objective function
+println(&quot;No.  &quot;, &quot;fval         &quot;, &quot;norm(gradient)&quot;);
+function f!(x,grad)
+
+    # Update model
+    model0.m = convert(Array{Float32,2}, reshape(x,model0.n))
+
+    # Seclect batch and calculate gradient
+    i = randperm(d_obs.nsrc)[1:batchsize]
+    fval, gradient = fwi_objective(model0, q[i], d_obs[i])
+
+    # Reset gradient in water column to zero
+    gradient = reshape(gradient, model0.n); gradient[:,1:21] = 0f0
+    grad[1:end] = vec(gradient)
+
+    global count; count += 1
+    println(count, &quot;    &quot;, fval, &quot;    &quot;, norm(grad))
+    return convert(Float64,fval)
+end;
+</code></pre>
+
+<pre><code>No.  fval         norm(gradient)
+</code></pre>
+<p>As in our gradient descent and Gauss-Newton example, we define bound constraints for the squared slowness to prevent velocities from becoming negative or too large:</p>
+<pre><code class="julia"># Set up bound constrains
+v0 = sqrt.(1f0./model0.m)
+vmin = ones(Float32, model0.n)*1.3f0;
+vmax = ones(Float32, model0.n)*6.5f0;
+
+# Convert to squared slowness
+mmin = vec((1f0./vmax).^2);
+mmax = vec((1f0./vmin).^2);
+</code></pre>
+
+<p>The NLopt library offers a range of different optimization algorithms, from which we choose the L-BFGS method. We create an optimization object called <code>opt</code> by specifying the algorithm we want to use and the dimenions of the unknown model vector. We then set the upper and lower bounds of the variable, define <code>f!</code> as the objective function and set the termination criterion to be a maximum of 15 function evaluations:</p>
+<pre><code class="julia">opt = Opt(:LD_LBFGS, prod(model0.n));
+lower_bounds!(opt, mmin); upper_bounds!(opt, mmax);
+min_objective!(opt, f!);
+maxeval!(opt,15);
+</code></pre>
+
+<p>Remark: Subsampling the number of sources should in practice never be used for second order methods such as L-BFGS. Specialized stochastic second order methods exist, but differ from standard Quasi-Newton methods. We only use source subsampling to reduce the computational cost of our example. Having set up the objective function, bound constraints and termination criterion, we can now run the inversion:</p>
+<p><strong> This example requires ~200 MB of memory per gradient, i.e. 800 MB with four parallel workers. It runs for approximately 15 minutes. </strong></p>
+<pre><code class="julia">(minf, minx, ret) = optimize(opt, vec(model0.m));
+</code></pre>
+
+<pre><code>1    117860.28    130616.90869340736
+2    160411.58    311453.8448771197
+3    69925.836    89549.46655312144
+4    59138.29    139285.26673455827
+5    56818.96    136675.77349063082
+6    37720.637    109625.42544280257
+7    29491.7    82812.97361001468
+8    28428.938    66032.27074425873
+9    20023.656    56098.345552341074
+10    17170.744    50347.75187661317
+11    14758.285    54018.45093329857
+12    12197.124    49297.37586998672
+13    9908.839    36408.764355669744
+14    8806.9795    26504.501201566738
+15    7206.034    26467.189999004884
+</code></pre>
+<p>We plot the final velocity model after 15 function evaluations:</p>
+<pre><code class="julia">imshow(sqrt.(1f0./reshape(minx, model0.n))', cmap=&quot;GnBu&quot;, extent=(0,10,3,0), vmin=1.5, vmax=5.4); title(&quot;FWI with L-BFGS&quot;)
+xlabel(&quot;Lateral position [km]&quot;);
+ylabel(&quot;Depth [km]&quot;);
+</code></pre>
+
+<p><img alt="png" src="../fwi_example_NLopt_files/fwi_example_NLopt_18_0.png" /></p>
+              
+            </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+    
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+      
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="versions">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      
+      
+      
+    </span>
+</div>
+    <script>var base_url = '../..';</script>
+    <script src="../../js/theme.js" defer></script>
+      <script src="../../search/main.js" defer></script>
+    <script defer>
+        window.onload = function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        };
+    </script>
+
+</body>
+</html>
