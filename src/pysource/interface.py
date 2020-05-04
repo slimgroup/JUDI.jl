@@ -6,7 +6,7 @@ from propagators import *
 
 # Forward wrappers
 def forward_rec(model, src_coords, wavelet, rec_coords, space_order=8, 
-    free_surface=False):
+                free_surface=False):
     """
     Forward modeling of a point source.
     Outputs the shot record.
@@ -14,6 +14,18 @@ def forward_rec(model, src_coords, wavelet, rec_coords, space_order=8,
     rec, _ = forward(model, src_coords, rec_coords, wavelet, save=False,
                      space_order=space_order, free_surface=free_surface)
     return rec.data
+
+
+def forward_rec_w(model, weight, wavelet, rec_coords, space_order=8, 
+                  free_surface=False):
+    """
+    Forward modeling of a point source.
+    Outputs the shot record.
+    """
+    rec, _ = forward(model, None, rec_coords, wavelet, save=False, ws=weight,
+                     space_order=space_order, free_surface=free_surface)
+    return rec.data
+
 
 def forward_rec_wf(model, src_coords, wavelet, rec_coords,
                    space_order=8, free_surface=False):
@@ -80,6 +92,17 @@ def adjoint_rec(model, src_coords, rec_coords, data,
     return rec.data
 
 
+def adjoint_w(model, rec_coords, data, wavelet, space_order=8,
+              free_surface=False):
+    """
+    Adjoint/backward modeling of a shot record (receivers as source).
+    Outputs the adjoint wavefield sampled at the source location.
+    """
+    w = adjoint(model, data, None, rec_coords, ws=wavelet,
+                space_order=space_order, free_surface=free_surface)
+    return w.data
+
+
 def adjoint_no_rec(model, rec_coords, data, space_order=8, 
     free_surface=False):
     """
@@ -142,10 +165,20 @@ def born_rec(model, src_coords, wavelet, rec_coords,
                   space_order=space_order, free_surface=free_surface, isic=isic)
     return rec.data
 
+def born_rec_w(model, weight, wavelet, rec_coords,
+               space_order=8, free_surface=False, isic=False):
+    """
+    Linearized (Born) modeling of a point source for a model perturbation (square slowness) dm.
+    Output the linearized data.
+    """
+    rec, _ = born(model, None, rec_coords, wavelet, save=False, ws=weight,
+                  space_order=space_order, free_surface=free_surface, isic=isic)
+    return rec.data
 
 # Gradient wrappers
 def J_adjoint(model, src_coords, wavelet, rec_coords, recin, space_order=8, checkpointing=False, 
-    free_surface=False, n_checkpoints=None, maxmem=None, freq_list=[], dft_sub=None, isic=False):
+    free_surface=False, n_checkpoints=None, maxmem=None, freq_list=[], dft_sub=None, isic=False,
+    ws=None):
     """
     Jacobian (adjoint fo born modeling operator) iperator on a shot record as a source (i.e data residual).
     Outputs the gradient.
@@ -158,21 +191,21 @@ def J_adjoint(model, src_coords, wavelet, rec_coords, recin, space_order=8, chec
         grad = J_adjoint_checkpointing(model, src_coords, wavelet, rec_coords,
                                        recin, space_order=8, free_surface=False,
                                        n_checkpoints=n_checkpoints, is_residual=True,
-                                       maxmem=maxmem, isic=isic)
+                                       maxmem=maxmem, isic=isic,ws=ws)
     elif len(freq_list) > 0:
         grad = J_adjoint_freq(model, src_coords, wavelet, rec_coords, recin,
                               space_order=space_order, is_residual=True, dft_sub=dft_sub,
-                              free_surface=free_surface, freq_list=freq_list, isic=isic)
+                              free_surface=free_surface, freq_list=freq_list, isic=isic, ws=ws)
     else:
         grad = J_adjoint_standard(model, src_coords, wavelet, rec_coords, recin,
-                                  is_residual=True, isic=isic,
+                                  is_residual=True, isic=isic, ws=ws,
                                   space_order=space_order, free_surface=free_surface)
 
     return grad
 
 
 def J_adjoint_freq(model, src_coords, wavelet, rec_coords, recin, space_order=8, free_surface=False, 
-    freq_list=[], is_residual=False, return_obj=False, dft_sub=None, isic=False):
+    freq_list=[], is_residual=False, return_obj=False, dft_sub=None, isic=False, ws=None):
     """
     Gradient (appication of Jacobian to a shot record) computed with on-the-fly
     Fourier transform.
@@ -180,7 +213,7 @@ def J_adjoint_freq(model, src_coords, wavelet, rec_coords, recin, space_order=8,
     """
     rec, u = forward(model, src_coords, rec_coords, wavelet, save=False,
                      space_order=space_order, free_surface=free_surface,
-                     freq_list=freq_list, dft_sub=dft_sub)
+                     freq_list=freq_list, dft_sub=dft_sub, ws=ws)
     # Residual and gradient
     if is_residual is not True:  # input data is already the residual
         recin[:] = rec.data[:] - recin[:]   # input is observed data
@@ -193,12 +226,12 @@ def J_adjoint_freq(model, src_coords, wavelet, rec_coords, recin, space_order=8,
 
 
 def J_adjoint_standard(model, src_coords, wavelet, rec_coords, recin, space_order=8, 
-    free_surface=False, is_residual=False, return_obj=False, isic=False):
+    free_surface=False, is_residual=False, return_obj=False, isic=False, ws=None):
     """
     Gradient (appication of Jacobian to a shot record) computed with the standard sum over time.
     Outputs gradient, and objective function (least-square) if requested.
     """
-    rec, u = forward(model, src_coords, rec_coords, wavelet, save=True,
+    rec, u = forward(model, src_coords, rec_coords, wavelet, save=True, ws=ws,
                      space_order=space_order, free_surface=free_surface)
     # Residual and gradient
     if is_residual is not True:  # input data is already the residual
@@ -212,7 +245,7 @@ def J_adjoint_standard(model, src_coords, wavelet, rec_coords, recin, space_orde
 
 
 def J_adjoint_checkpointing(model, src_coords, wavelet, rec_coords, recin, space_order=8, free_surface=False, 
-    is_residual=False,n_checkpoints=None, maxmem=None, return_obj=False, isic=False):
+    is_residual=False,n_checkpoints=None, maxmem=None, return_obj=False, isic=False, ws=None):
     """
     Gradient (appication of Jacobian to a shot record) computed with (optimal?) checkpointing.
     Outputs gradient, and objective function (least-square) if requested.
@@ -220,7 +253,7 @@ def J_adjoint_checkpointing(model, src_coords, wavelet, rec_coords, recin, space
     # Optimal checkpointing
     op_f, u, rec = forward(model, src_coords, rec_coords, wavelet,
                            space_order=space_order, return_op=True,
-                           free_surface=free_surface)
+                           free_surface=free_surface, ws=ws)
     op, g = gradient(model, rec_coords, recin, space_order=space_order,
                      return_op=True, free_surface=free_surface, isic=isic)
     cp = DevitoCheckpoint([u])

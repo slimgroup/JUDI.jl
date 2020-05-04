@@ -1,6 +1,6 @@
 from kernels import wave_kernel
 from geom_utils import src_rec
-from wave_utils import wavefield, otf_dft
+from wave_utils import wavefield, otf_dft, extended_src_weights, extented_src
 from sensitivity import grad_expr, lin_src
 
 from devito import Operator, Function
@@ -20,13 +20,16 @@ def op_kwargs(model, fs=False):
 
 # Forward propagation
 def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
-            q=0, free_surface=False, return_op=False, freq_list=None, dft_sub=None):
+            q=0, free_surface=False, return_op=False, freq_list=None, dft_sub=None,
+            ws=None):
     """
     Compute forward wavefield u = A(m)^{-1}*f and related quantities (u(xrcv))
     """
     # Setting adjoint wavefield
     u = wavefield(model, space_order, save=save, nt=wavelet.shape[0])
 
+    # Add extended source
+    q += extented_src(model, ws, wavelet)
     # Set up PDE expression and rearrange
     pde = wave_kernel(model, u, q=q, fs=free_surface)
 
@@ -50,7 +53,7 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
 
 
 def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0,
-            save=False, free_surface=False):
+            save=False, free_surface=False, ws=None):
     """
     Compute adjoint wavefield v = adjoint(F(m))*y
     and related quantities (||v||_w, v(xsrc))
@@ -65,12 +68,16 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0,
     geom_expr, _, rcv = src_rec(model, v, src_coords=rcv_coords,
                                 rec_coords=src_coords, wavelet=y, fw=False)
 
+    # Extended source
+    wsrc, ws_expr = extended_src_weights(model, ws, v)
     # Create operator and run
     subs = model.spacing_map
-    op = Operator(pde + geom_expr, subs=subs, name="adjoint"+name(model))
+    op = Operator(pde + geom_expr + ws_expr, subs=subs, name="adjoint"+name(model))
     op(**op_kwargs(model, fs=free_surface))
 
     # Output
+    if wsrc:
+        return wsrc
     return getattr(rcv, 'data', None), v
 
 
@@ -107,7 +114,7 @@ def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8,
 
 
 def born(model, src_coords, rcv_coords, wavelet, space_order=8,
-         save=False, free_surface=False, isic=False):
+         save=False, free_surface=False, isic=False, ws=None):
     """
     Compute adjoint wavefield v = adjoint(F(m))*y
     and related quantities (||v||_w, v(xsrc))
@@ -115,11 +122,11 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8,
     # Setting adjoint wavefield
     u = wavefield(model, space_order, save=save, nt=wavelet.shape[0])
     ul = wavefield(model, space_order, name="l")
-    
+
     # Set up PDE expression and rearrange
-    pde = wave_kernel(model, u, fs=free_surface)
+    pde = wave_kernel(model, u, fs=free_surface, q=extented_src(model, ws, wavelet))
     pdel = wave_kernel(model, ul, q=lin_src(model, u, isic=isic), fs=free_surface)
-    
+
     # Setup source and receiver
     geom_expr, _, _ = src_rec(model, u, src_coords=src_coords, wavelet=wavelet)
     geom_exprl, _, rcvl = src_rec(model, ul, rec_coords=rcv_coords, nt=wavelet.shape[0])

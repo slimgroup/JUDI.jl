@@ -53,6 +53,61 @@ def wf_as_src(v, w=1):
     return w * v
 
 
+def extented_src(model, weight, wavelet, q=0):
+    """
+    Extended source for modelling where the source is the outer product of
+    a spatially varying weight and a time-dependent wavelet i.e.:
+    u.dt2 - u.laplace = w(x)*q(t)
+    This function returns the extended source w(x)*q(t)
+
+    Parameters
+    ----------
+    model: Model
+        Physical model structure
+    weight: Array
+        Array of weight for the spatial Function
+    wavelet: Array
+        Time-serie for the time-varying source
+    q: Symbol or Expr (optional)
+        Previously existing source to be added to (source will be q +  w(x)*q(t))
+    """
+    if weight is None:
+        return 0
+    time = model.grid.time_dim
+    nt = wavelet.shape[0]
+    wavelett = Function(name='wf_src', dimensions=(time,), shape=(nt,))
+    wavelett.data[:] = wavelet[:, 0]
+    source_weight = Function(name='src_weight', grid=model.grid)
+    slices = tuple(slice(model.nbl, -model.nbl, 1) for _ in range(model.grid.dim))
+    source_weight.data[slices] = weight
+    return time.spacing**2 /(model.m * model.irho) * source_weight*wavelett
+
+
+def extended_src_weights(model, wavelet, v):
+    """
+    Adjoint of extended source. This function returns the expression to obtain
+    the spatially varrying weights from the wavefield and time-dependent wavelet
+
+    Parameters
+    ----------
+    model: Model
+        Physical model structure
+    wavelet: Array
+        Time-serie for the time-varying source
+    v: TimeFunction
+        Wavefield to get the weights from
+    """
+    if wavelet is None:
+        return None, []
+    nt = wavelet.shape[0]
+    # Data is sampled everywhere as a sum over time and weighted by wavelet
+    w_out = Function(name='src_weight', grid=model.grid)
+    time = model.grid.time_dim
+    wavelett = Function(name='wf_src', dimensions=(time,), shape=(nt,))
+    wavelett.data[:] = wavelet[:, 0]
+    return w_out, [Eq(w_out, w_out + v*wavelett)]
+
+
 def freesurface(field, npml, forward=True):
     """
     Generate the stencil that mirrors the field as a free surface modeling for

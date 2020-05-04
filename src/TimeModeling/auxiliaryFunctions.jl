@@ -26,7 +26,7 @@ function devito_model_py(model::Model, options)
     modelPy = pm."Model"(origin=model.o, spacing=model.d, shape=model.n,
 						 vp=process_physical_parameter(sqrt.(1f0./model.m), dims),
 						 nbpml=model.nb, rho=process_physical_parameter(model.rho, dims),
-						 space_order=options.space_order)
+						 space_order=options.space_order, dt=options.dt_comp)
     return modelPy
 end
 
@@ -41,7 +41,7 @@ function devito_model_py(model::Model_TTI, options)
 						 delta=process_physical_parameter(model.delta, dims),
 						 theta=process_physical_parameter(model.theta, dims),
 						 phi=process_physical_parameter(model.phi, dims), nbpml=model.nb,
-						 space_order=options.space_order)
+						 space_order=options.space_order, dt=options.dt_comp)
     return modelPy
 end
 
@@ -323,6 +323,22 @@ function get_computational_nt(srcGeometry, recGeometry, model::Modelall)
     end
     return nt
 end
+
+function get_computational_nt(Geometry, model::Modelall)
+    # Determine number of computational time steps
+    if typeof(Geometry) == GeometryOOC
+        nsrc = length(Geometry.container)
+    else
+        nsrc = length(Geometry.xloc)
+    end
+    nt = Array{Any}(undef, nsrc)
+    dtComp = calculate_dt(model)
+    for j=1:nsrc
+        nt[j] = Int(ceil(Geometry.dt[j]*(Geometry.nt[j]-1) / dtComp))
+    end
+    return nt
+end
+
 
 function setup_grid(geometry, n)
     # 3D grid

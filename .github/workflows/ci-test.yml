@@ -16,7 +16,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       DEVITO_ARCH: gcc-7
-      DEVITO_OPENMP: 1
+      DEVITO_LANGUAGE: "openmp"
       DEVITO_BACKEND: "core"
       OMP_NUM_THREADS: 4
 
@@ -68,4 +68,6 @@ jobs:
 
       - name: Run simple example
         if: runner.os == 'linux'
-        run: julia --project examples/scripts/modeling_basic_2D.jl
+        run: |
+          julia -e 'using Pkg;Pkg.add("Images")'
+          julia --project examples/scripts/modeling_basic_2D.jl

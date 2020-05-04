@@ -38,13 +38,8 @@ yrec = 0f0
 zrec = range(50f0, stop=50f0, length=nxrec)
 
 # receiver sampling and recording time
-<<<<<<< HEAD
 timeR = 1000f0   # receiver recording time [ms]
 dtR = 2f0    # receiver sampling interval [ms]
-=======
-timeR = 4000f0   # receiver recording time [ms]
-dtR = 4f0    # receiver sampling interval [ms]
->>>>>>> Refactor python
 
 # Set up receiver structure
 recGeometry = Geometry(xrec, yrec, zrec; dt=dtR, t=timeR, nsrc=nsrc)
@@ -55,13 +50,8 @@ ysrc = convertToCell(range(0f0, stop=0f0, length=nsrc))
 zsrc = convertToCell(range(200f0, stop=200f0, length=nsrc))
 
 # source sampling and number of time steps
-<<<<<<< HEAD
 timeS = 1000f0  # ms
 dtS = 2f0   # ms
-=======
-timeS = 4000f0  # ms
-dtS = 4f0   # ms
->>>>>>> Refactor python
 
 # Set up source structure
 srcGeometry = Geometry(xsrc, ysrc, zsrc; dt=dtS, t=timeS)
@@ -78,12 +68,7 @@ info = Info(prod(n), nsrc, ntComp)
 ######################## WITH DENSITY ############################################
 
 # Write shots as segy files to disk
-<<<<<<< HEAD
 opt = Options(optimal_checkpointing=false, isic=false, subsampling_factor=2, dt_comp=1.0)
-=======
-opt = Options(save_data_to_disk=false, file_path=pwd(), file_name="observed_shot",
-			  optimal_checkpointing=false, free_surface=true)
->>>>>>> Refactor python
 
 # Setup operators
 Pr = judiProjection(info, recGeometry)

@@ -12,7 +12,6 @@ mutable struct Options
     limit_m::Bool
     buffer_size::Real
     save_data_to_disk::Bool
-    save_wavefield_to_disk::Bool
     file_path::String
     file_name::String
     sum_padding::Bool
@@ -21,8 +20,7 @@ mutable struct Options
     checkpoints_maxmem::Union{Real, Nothing}
     frequencies::Array
     isic::Bool
-    t_sub::Integer
-    h_sub::Integer
+    subsampling_factor::Integer
     dft_subsampling_factor::Integer
     return_array::Bool
     dt_comp::Union{Real, Nothing}
@@ -36,7 +34,6 @@ end
         buffer_size::Real
         save_rate::Real
         save_data_to_disk::Bool
-        save_wavefield_to_disk::Bool
         file_path::String
         file_name::String
         sum_padding::Bool
@@ -45,9 +42,7 @@ end
         checkpoints_maxmem::Real
 	    frequencies::Array
 	    isic::Bool
-	    t_sub::Integer
-	    h_sub::Integer
-	    normalized
+        subsampling_factor::Integer
 	    dft_subsampling_factor::Integer
         return_array::Bool
         dt_comp::Real
@@ -65,8 +60,6 @@ Options structure for seismic modeling.
 `buffer_size`: if `limit_m=true`, define buffer area on each side of modeling domain (in meters)
 
 `save_data_to_disk`: if `true`, saves shot records as separate SEG-Y files
-
-`save_wavefield_to_disk`: If wavefield is return value, save wavefield to disk as pickle file
 
 `file_path`: path to directory where data is saved
 
@@ -97,8 +90,15 @@ Constructor
 
 All arguments are optional keyword arguments with the following default values:
 
-    Options(;retry_n=0, limit_m=false, buffer_size=1e3, save_data_to_disk=false, file_path=pwd(),
-            file_name="shot", sum_padding=false, save_wavefield=false, optimal_checkpointing=false, frequencies=[], isic=false)
+    Options(;space_order=8, free_surface=false,
+            limit_m=false, buffer_size=1e3,
+            save_data_to_disk=false, file_path="",
+            file_name="shot", sum_padding=false,
+            optimal_checkpointing=false,
+            num_checkpoints=nothing, checkpoints_maxmem=nothing,
+            frequencies=[], isic=false,
+            subsampling_factor=1, dft_subsampling_factor=1, return_array=false,
+            dt_comp=nothing)
 
 """
 Options(;space_order=8,
@@ -109,22 +109,20 @@ Options(;space_order=8,
 		 file_path="",
 		 file_name="shot",
          sum_padding=false,
-		 save_wavefield=false,
 		 optimal_checkpointing=false,
 		 num_checkpoints=nothing,
 		 checkpoints_maxmem=nothing,
 		 frequencies=[],
 		 isic=false,
-		 t_sub=1,
-		 h_sub=1,
+		 subsampling_factor=1,
 		 dft_subsampling_factor=1,
-         return_array=false) =
+         return_array=false,
+         dt_comp=nothing) =
 		 Options(space_order,
 		 		 free_surface,
 		         limit_m,
 				 buffer_size,
 				 save_data_to_disk,
-				 save_wavefield,
 				 file_path,
 				 file_name,
 				 sum_padding,
@@ -133,10 +131,10 @@ Options(;space_order=8,
 				 checkpoints_maxmem,
 				 frequencies,
 				 isic,
-				 t_sub,
-				 h_sub,
+				 subsampling_factor,
 				 dft_subsampling_factor,
-                 return_array)
+                 return_array,
+                 dt_comp)
 
 function subsample(options::Options, srcnum)
     if isempty(options.frequencies)

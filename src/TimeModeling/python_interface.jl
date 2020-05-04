@@ -227,3 +227,114 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Geometry
     grad = remove_padding(grad, modelPy.nbl, true_adjoint=options.sum_padding)
     return vec(grad)
 end
+
+
+######################################################################################################################################################
+
+
+# d_obs = Pr*F*Pw'*w - modeling w/ extended source
+function devito_interface(modelPy::PyCall.PyObject, model, srcData::Array, recGeometry::Geometry, recData::Nothing, weights::Array, dm::Nothing, options::Options)
+    ac = load_devito_jit(model)
+
+    # Interpolate input data to computational grid
+    dtComp = modelPy.critical_dt
+    qIn = time_resample(srcData[1],recGeometry,dtComp)[1]
+    ntComp = size(qIn,1)
+    ntRec = Int(trunc(recGeometry.t[1]/dtComp + 1))
+
+    # Set up coordinates with devito dimensions
+    rec_coords = setup_grid(recGeometry, modelPy.shape)
+
+
+    # Devito call
+    dOut = pycall(ac."forward_rec_w", Array{Float32,2}, modelPy, weights[1],
+                 qIn, rec_coords, space_order=options.space_order,
+                 free_surface=options.free_surface)
+    ntRec > ntComp && (dOut = [dOut zeros(size(dOut,1), ntRec - ntComp)])
+    dOut = time_resample(dOut,dtComp,recGeometry)
+
+    # Output shot record as judiVector
+    if options.return_array == true
+        return vec(dOut)
+    else
+        return judiVector(recGeometry,dOut)
+    end
+end
+
+# dw = Pw*F'*Pr'*d_obs - adjoint modeling w/ extended source
+function devito_interface(modelPy::PyCall.PyObject, model, srcData::Array, recGeometry::Geometry, recData::Array, weights::Nothing, dm::Nothing, options::Options)
+    ac = load_devito_jit(model)
+
+    # Interpolate input data to computational grid
+    dtComp = modelPy.critical_dt
+    dIn = time_resample(recData[1],recGeometry,dtComp)[1]
+    qIn = time_resample(srcData[1],recGeometry,dtComp)[1]
+    ntComp = size(dIn,1)
+    ntSrc = Int(trunc(recGeometry.t[1]/dtComp + 1))
+
+    # Set up coordinates with devito dimensions
+    rec_coords = setup_grid(recGeometry, modelPy.shape)
+
+    # Devito call
+    wOut = pycall(ac."adjoint_w", Array{Float32, length(modelPy.shape)}, modelPy, rec_coords, dIn,
+                  qIn, space_order=options.space_order, free_surface=options.free_surface)
+    ntSrc > ntComp && (qOut = [qOut zeros(size(qOut), ntSrc - ntComp)])
+
+    # Output adjoint data as judiVector
+    if options.return_array == true
+        return vec(wOut)
+    else
+        return judiWeights(wOut)
+    end
+end
+
+# Jacobian of extended source modeling: d_lin = J*dm
+function devito_interface(modelPy::PyCall.PyObject, model, srcData::Array, recGeometry::Geometry, recData::Nothing, weights:: Array, dm::Array, options::Options)
+    ac = load_devito_jit(model)
+
+    # Interpolate input data to computational grid
+    dtComp = modelPy.critical_dt
+    tmaxRec = recGeometry.t[1]
+    qIn = time_resample(srcData[1],recGeometry,dtComp)[1]
+    ntComp = size(qIn,1)
+    ntRec = Int(trunc(tmaxRec/dtComp + 1))
+
+    # Set up coordinates with devito dimensions
+    #origin = get_origin(modelPy)
+    rec_coords = setup_grid(recGeometry, modelPy.shape)
+
+    # Devito call
+    dOut = pycall(ac."born_rec_w", Array{Float32,2}, modelPy, weights[1], qIn, rec_coords,
+                  space_order=options.space_order, isic=options.isic)
+    ntRec > ntComp && (dOut = [dOut zeros(size(dOut,1), ntRec - ntComp)])
+    dOut = time_resample(dOut,dtComp,recGeometry)
+
+    # Output linearized shot records as judiVector
+    if options.return_array == true
+        return vec(dOut)
+    else
+        return judiVector(recGeometry,dOut)
+    end
+end
+
+# Adjoint Jacobian of extended source modeling: dm = J'*d_lin
+function devito_interface(modelPy::PyCall.PyObject, model, srcData::Array, recGeometry::Geometry, recData::Array, weights:: Array, dm::Nothing, options::Options)
+    ac = load_devito_jit(model)
+
+    # Interpolate input data to computational grid
+    dtComp = modelPy.critical_dt
+    qIn = time_resample(srcData[1],recGeometry,dtComp)[1]
+    dIn = time_resample(recData[1],recGeometry,dtComp)[1]
+
+    # Set up coordinates with devito dimensions
+    rec_coords = setup_grid(recGeometry, modelPy.shape)
+    length(options.frequencies) == 0 ? freqs = [] : freqs = options.frequencies[1]
+    grad = pycall(ac."J_adjoint", Array{Float32, length(modelPy.shape)}, modelPy,
+                  nothing, qIn, rec_coords, dIn,
+                  space_order=options.space_order, checkpointing=options.optimal_checkpointing,
+                  freq_list=freqs, isic=options.isic, ws=weights[1],
+                  dft_sub=options.dft_subsampling_factor[1])
+    # Remove PML and return gradient as Array
+    grad = remove_padding(grad, modelPy.nbl, true_adjoint=options.sum_padding)
+    return vec(grad)
+end
