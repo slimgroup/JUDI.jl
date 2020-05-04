@@ -193,7 +193,7 @@ model.n
 </ul>
 <p>From the optional arguments, you have to pass (at least) <strong>two</strong> of <code>dt</code>, <code>nt</code> and <code>t</code>. The third value is automatically determined and set from the two other values.</p>
 <p><strong>Access fields:</strong></p>
-<p>Example of how to access fields of geometry objects:</p>
+<p>Accessible fields include all of the above parameters, which can be accessed as follows:</p>
 <pre><code class="julia"># Access cell arrays of x coordinates:
 geometry.xloc
 
@@ -240,7 +240,7 @@ geometry.xloc[i][j]
 <li>List of all possible options:</li>
 </ul>
 <pre><code class="julia">opt = Options(
-space_order:: Integer
+    space_order:: Integer
     space_order:: Integer
     free_surface:: Bool
     limit_m:: Bool

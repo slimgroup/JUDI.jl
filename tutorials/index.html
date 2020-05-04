@@ -54,9 +54,13 @@
                 <ul class="current">
                     <li class="toctree-l1 current"><a class="reference internal current" href="./">Tutorials</a>
     <ul class="current">
-    <li class="toctree-l2"><a class="reference internal" href="#2d-modeling-with-regular-acquisition-geometry">2D modeling with regular acquisition geometry</a>
+    <li class="toctree-l2"><a class="reference internal" href="#2d-modeling-quickstart">2D Modeling Quickstart</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#2d-modeling-with-irregular-acquisition-geometry">2D modeling with irregular acquisition geometry</a>
+    <li class="toctree-l2"><a class="reference internal" href="#3d-modeling-quickstart">3D Modeling Quickstart</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#marine-streamer-2d-acquisition">Marine streamer 2D acquisition</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#simultaneous-sources">Simultaneous sources</a>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#working-with-wavefields">Working with wavefields</a>
     </li>
@@ -64,9 +68,9 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#impedance-imaging-inverse-scattering">Impedance imaging (inverse scattering)</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#on-the-fly-fourier-transforms">On-the-fly Fourier transforms</a>
+    <li class="toctree-l2"><a class="reference internal" href="#optimal-checkpointing">Optimal checkpointing</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#simultaneous-sources">Simultaneous sources</a>
+    <li class="toctree-l2"><a class="reference internal" href="#on-the-fly-fourier-transforms">On-the-fly Fourier transforms</a>
     </li>
     </ul>
                     </li>
@@ -132,13 +136,546 @@
             <div class="section">
               
                 <h1 id="tutorials">Tutorials</h1>
-<h2 id="2d-modeling-with-regular-acquisition-geometry">2D modeling with regular acquisition geometry</h2>
-<h2 id="2d-modeling-with-irregular-acquisition-geometry">2D modeling with irregular acquisition geometry</h2>
-<h2 id="working-with-wavefields">Working with wavefields</h2>
-<h2 id="extended-source-modeling">Extended source modeling</h2>
-<h2 id="impedance-imaging-inverse-scattering">Impedance imaging (inverse scattering)</h2>
-<h2 id="on-the-fly-fourier-transforms">On-the-fly Fourier transforms</h2>
+<p>These tutorials provide instructions of how to set up various modeling or inversion scenarios with JUDI. For a list of runnable Julia scripts and reproducable research, please also check out the <a href="https://github.com/slimgroup/JUDI.jl/tree/master/examples">examples</a> directory on Github.</p>
+<h2 id="2d-modeling-quickstart">2D Modeling Quickstart</h2>
+<p>To set up a simple 2D modeling experiment with JUDI with an OBN-type acquisition (receivers everywhere), we start by loading the module and building a two layer model:</p>
+<pre><code>using JUDI.TimeModeling
+
+# Grid
+n = (120, 100)   # (x,z)
+d = (10., 10.)
+o = (0., 0.)
+
+# Velocity [km/s]
+v = ones(Float32, n) .* 1.4f0
+v[:, 50:end] .= 5f0
+
+# Squared slowness
+m = (1f0 ./ v).^2
+</code></pre>
+
+<p>For working with JUDI operators, we need to set up a model structure, which contains the grid information, as well as the slowness. Optionally, we can provide an array of the density in [g/cm^3] (by default a density of 1 is used):</p>
+<pre><code># Density (optional)
+rho = ones(Float32, n)
+
+# Model structure:
+model = Model(n, d, o, m; rho=rho)
+</code></pre>
+
+<p>Next, we define our source acquisition geometry, which needs to be defined as a <code>Geometry</code> structure. The <code>Geometry</code> function requires the x-, y- and z-coordinates of the source locations as input, as well as the modeling time and samping interval of the wavelet. In general, each parameter can be passed as a cell array, where each cell entry provides the information for the respective source location. The helper function <code>convertToCell</code> converts a Julia <code>range</code> to a cell array, which makes defining the source geometry easier:</p>
+<pre><code># Set up source geometry
+nsrc = 4    # no. of sources
+xsrc = convertToCell(range(400f0, stop=800f0, length=nsrc))
+ysrc = convertToCell(range(0f0, stop=0f0, length=nsrc))
+zsrc = convertToCell(range(20f0, stop=20f0, length=nsrc))
+
+# Modeling time and sampling interval
+time = 1000f0  # ms
+dt = 2f0   # ms
+
+# Set up source structure
+src_geometry = Geometry(xsrc, ysrc, zsrc; dt=dt, t=time)
+</code></pre>
+
+<p>Now we can define our source wavelet. The source must be defined as a <code>judiVector</code>, which takes the source geometry, as well as the source data (i.e. the wavelet) as an input argument:</p>
+<pre><code># Source wavelet
+f0 = 0.01f0     # kHz
+wavelet = ricker_wavelet(time, dt, f0)
+q = judiVector(src_geometry, wavelet)
+</code></pre>
+
+<p>In general, <code>wavelet</code> can be a cell array with a different wavelet in each cell, i.e. for every source location. Here, we want to use the same wavelet for all 4 source experiments, so we can simply pass a single vector. As we already specified in our <code>src_geometry</code> object that we want to have 4 source locations, <code>judiVector</code> will automaticallty copy the wavelet for every experiment.</p>
+<p>Next, we set up the receiver acquisition geometry. Here, we define an OBN acquisition, where the receivers are spread out over the entire domain and each source experiment uses the same set of receivers. Again, we can in principle pass the coordinates as cell arrays, with one cell per source location. Since we want to use the same geometry for every source, we can use a short cut and define the coordinates as Julia <code>ranges</code> and pass <code>nsrc=nsrc</code> as an optional argument to the <code>Geometry</code> function. This tells the function that we want to use our receiver set up for <code>nsrc</code> distinct source experiments:</p>
+<pre><code># Set up receiver geometry (for 2D, set yrec to zero)
+nxrec = 120
+xrec = range(50f0, stop=1150f0, length=nxrec)
+yrec = 0f0
+zrec = range(50f0, stop=50f0, length=nxrec)
+
+# Set up receiver structure
+rec_geometry = Geometry(xrec, yrec, zrec; dt=dt, t=time, nsrc=nsrc)
+</code></pre>
+
+<p>With our model and source and receiver geometries in place, we can proceed to defining our linear operator for seismic modeling. First, we need to define an <code>info</code> object, which contains some basic dimensionality information that needs to be shared between operators so that they can determine their size:</p>
+<pre><code># Set up info structure for linear operators
+ntComp = get_computational_nt(src_geometry, rec_geometry, model)
+info = Info(prod(n), nsrc, ntComp)
+</code></pre>
+
+<p>Next, we can define separate operators for source/receiver projections and a forward modeling operator:</p>
+<pre><code># Setup operators
+Pr = judiProjection(info, rec_geometry)
+A_inv = judiModeling(info, model)
+Ps = judiProjection(info, src_geometry)
+</code></pre>
+
+<p>We can see, that from JUDI's perspective, source and receivers are treated equally and are represented by the same operators (<code>judiProjection</code>) and vectors (<code>judiVector</code>).</p>
+<p>We also could've skipped setting up the projection operators and directly created:</p>
+<pre><code>F = judiModeling(info, model, src_geometry, rec_geometry)
+</code></pre>
+
+<p>which is equivalent to creating the combined operator:</p>
+<pre><code>F = Pr*A_inv*Ps'
+</code></pre>
+
+<p>Finally, to model our seismic data, we run:</p>
+<pre><code>d_obs = Pr*A_inv*Ps'*q
+# or
+d_obs = F*q
+</code></pre>
+
+<p>We can plot a 2D shot record by accessing the <code>.data</code> field of the <code>judiVector</code>, which contains the data in the original (non-vectorized) dimensions:</p>
+<pre><code>using PyPlot
+imshow(d_obs.data[1], vmin=-5, vmax=5, cmap=&quot;seismic&quot;, aspect=&quot;auto&quot;)
+</code></pre>
+
+<p>We can also set up a Jacobian operator for Born modeling and reverse-time migration. First we set up a (constant) migration velocity model:</p>
+<pre><code>v0 = ones(Float32, n) .* 1.4f0
+m0 = (1f0 ./ v0).^2
+dm = m - m0     # model perturbation/image
+
+# Model structure
+model0 = Model(n, d, o, m0)
+</code></pre>
+
+<p>We can create the Jacobian directly from a (non-linear) modeling operator and a source vector:</p>
+<pre><code>A0_inv = judiModeling(info, model0) # modeling operator for migration velocity
+J = judiJacobian(Pr*A0_inv*Ps', q)
+</code></pre>
+
+<p>We can use this operator to model single scattered data, as well as for migration our previous data:</p>
+<pre><code>d_lin = J*vec(dm)
+
+# RTM
+rtm = J'*d_obs
+</code></pre>
+
+<p>To plot, first reshape the image:</p>
+<pre><code>rtm = reshape(rtm, model0.n)
+imshow(rtm', cmap=&quot;gray&quot;, vmin=-1e3, vmax=1e3)
+</code></pre>
+
+<h2 id="3d-modeling-quickstart">3D Modeling Quickstart</h2>
+<p>Setting up a 3D experiment largely follows the instructions for the 2D example. Instead of a 2D model, we define our velocity model as:</p>
+<pre><code>using JUDI.TimeModeling
+
+# Grid
+n = (120, 100, 80)   # (x,y,z)
+d = (10., 10., 10.)
+o = (0., 0., 0.)
+
+# Velocity [km/s]
+v = ones(Float32, n) .* 1.4f0
+v[:, :, 40:end] .= 5f0
+
+# Squared slowness and model structure
+m = (1f0 ./ v).^2
+model = Model(n, d, o, m)
+</code></pre>
+
+<p>Our source coordinates now also need to have the y-coordinate defined:</p>
+<pre><code># Set up source geometry
+nsrc = 4    # no. of sources
+xsrc = convertToCell(range(400f0, stop=800f0, length=nsrc))
+ysrc = convertToCell(range(200f0, stop=1000f0, length=nsrc))
+zsrc = convertToCell(range(20f0, stop=20f0, length=nsrc))
+
+# Modeling time and sampling interval
+time = 1000f0  # ms
+dt = 2f0   # ms
+
+# Set up source structure
+src_geometry = Geometry(xsrc, ysrc, zsrc; dt=dt, t=time)
+</code></pre>
+
+<p>Our source wavelet, is set up as in the 2D case:</p>
+<pre><code># Source wavelet
+f0 = 0.01f0     # kHz
+wavelet = ricker_wavelet(time, dt, f0)
+q = judiVector(src_geometry, wavelet)
+</code></pre>
+
+<p>For the receivers, we generally need to define each coordinate (x, y, z) for every receiver. I.e. <code>xrec</code>, <code>yrec</code> and <code>zrec</code> each have the length of the total number of receivers. However, oftentimes we are interested in a regular receiver grid, which can be defined by two basis vectors and a constant depth value for all receivers. We can then use the <code>setup_3D_grid</code> helper function to create the full set of coordinates:</p>
+<pre><code># Receiver geometry
+nxrec = 120
+nyrec = 100
+xrec = range(50f0, stop=1150f0, length=nxrec)
+yrec = range(100f0, stop=900f0, length=nyrec)
+zrec = 50f0
+
+# Construct 3D grid from basis vectors
+(xrec, yrec, zrec) = setup_3D_grid(xrec, yrec, zrec)
+
+# Set up receiver structure
+rec_geometry = Geometry(xrec, yrec, zrec; dt=dt, t=time, nsrc=nsrc)
+</code></pre>
+
+<p>Setting up the modeling operators is done as in the previous 2D case:</p>
+<pre><code># Set up info structure for linear operators
+ntComp = get_computational_nt(src_geometry, rec_geometry, model)
+info = Info(prod(n), nsrc, ntComp)
+
+# Setup operators
+Pr = judiProjection(info, rec_geometry)
+A_inv = judiModeling(info, model)
+Ps = judiProjection(info, src_geometry)
+
+# Model data
+d_obs = Pr*A_inv*Ps'*q
+</code></pre>
+
+<p>The 3D shot records are still saved as 2D arrays of dimensions <code>time x (nxrec*nyrec)</code>:</p>
+<pre><code>using PyPlot
+imshow(d_obs.data[1], vmin=-.4, vmax=.4, cmap=&quot;seismic&quot;, aspect=&quot;auto&quot;)
+</code></pre>
+
+<h2 id="marine-streamer-2d-acquisition">Marine streamer 2D acquisition</h2>
+<p>For a marine streamer acquisition, we need to define a moving set of receivers representing a streamer that is towed behind a seismic source vessel. In JUDI, this is easily done by defining a different set of receivers for each source location. Here, we explain how to set up the <code>Geometry</code> objects for a 2D marine streamer acquisition.</p>
+<p>If we define that our streamer is to the right side of the source vessel, this has the effect that part of the streamer is outside the grid while our vessel is in the right side of the model. To circumvent this, we can say that our streamer is on the right side of the source while the vessel is in the left-hand side of the model and vice versa. This way, we get the full maximum offset coverage for every source location (assuming that the maximum offset is less or equal than half the domain size). </p>
+<p>First, we have to specify our domain size (the physical extent of our model), as well as the number of receivers and the minimum and maximum offset:</p>
+<pre><code>domain_x = (model.n[1] - 1)*model.d[1]    # horizontal extent of model
+nrec = 120     # no. of receivers
+xmin = 50f0    # leave buffer zone w/o source and receivers of this size
+xmax = domain_x - 50f0
+min_offset = 10f0      # distance between source and first receiver
+max_offset = 400f0    # distance between source and last
+xmid = domain_x / 2     # midpoint of model
+source_spacing = 25f0   # source interval [m]
+</code></pre>
+
+<p>For the JUDI <code>Geometry</code> objects, we need to create cell arrays for the source and receiver coordinates, with one cell entry per source location:</p>
+<pre><code># Source/receivers
+nsrc = 20   # number of shot locations
+
+# Receiver coordinates
+xrec = Array{Any}(undef, nsrc)
+yrec = Array{Any}(undef, nsrc)
+zrec = Array{Any}(undef, nsrc)
+
+# Source coordinates
+xsrc = Array{Any}(undef, nsrc)
+ysrc = Array{Any}(undef, nsrc)
+zsrc = Array{Any}(undef, nsrc)
+</code></pre>
+
+<p>Next, we compute the source and receiver coordinates for when the vessel moves from left to right in the right-hand side of the model:</p>
+<pre><code># Vessel goes from left to right in right-hand side of model
+nsrc_half = Int(nsrc/2)
+for j=1:nsrc_half
+    xloc = xmid + (j-1)*source_spacing
+
+    # Current receiver locations
+    xrec[j] = range(xloc - max_offset, xloc - min_offset, length=nrec)
+    yrec[j] = 0.
+    zrec[j] = range(50f0, 50f0, length=nrec)
+
+    # Current source
+    xsrc[j] = xloc
+    ysrc[j] = 0f0
+    zsrc[j] = 20f0
+end
+</code></pre>
+
+<p>Then, we repeat this for the case where the vessel goes from right to left in the left-hand model side:</p>
+<pre><code># Vessel goes from right to left in left-hand side of model
+for j=1:nsrc_half
+    xloc = xmid - (j-1)*source_spacing
+
+    # Current receiver locations
+    xrec[nsrc_half + j] = range(xloc + min_offset, xloc + max_offset, length=nrec)
+    yrec[nsrc_half + j] = 0f0
+    zrec[nsrc_half + j] = range(50f0, 50f0, length=nrec)
+
+    # Current source
+    xsrc[nsrc_half + j] = xloc
+    ysrc[nsrc_half + j] = 0f0
+    zsrc[nsrc_half + j] = 20f0
+end
+</code></pre>
+
+<p>Finally, we can set the modeling time and sampling interval and create the <code>Geometry</code> objects:</p>
+<pre><code># receiver sampling and recording time
+time = 10000f0   # receiver recording time [ms]
+dt = 4f0    # receiver sampling interval
+
+# Set geometry objects
+rec_geometry = Geometry(xrec, yrec, zrec; dt=dt, t=time)
+src_geometry = Geometry(xsrc, ysrc, zsrc; dt=dt, t=time)
+</code></pre>
+
+<p>You can find a full (reproducable) example for generating a marine streamer data set for the Sigsbee 2A model <a href="https://github.com/slimgroup/JUDI.jl/blob/master/examples/compressive_splsrtm/Sigsbee2A/generate_data_sigsbee.jl">here</a>.</p>
 <h2 id="simultaneous-sources">Simultaneous sources</h2>
+<p>To set up a simultaneous source with JUDI, we first create a cell array with <code>nsrc</code> cells, where <code>nsrc</code> is the number of separate experiments (here <code>nsrc=1</code>). For a simultaneous source, we create an array of source coordinates for each cell entry. In fact, this is exactly like setting up the receiver geometry, in which case we define multiple receivers per shot location. Here, we define a single experiment with a simultaneous source consisting of four sources:</p>
+<pre><code>nsrc = 1    # single simultaneous source
+xsrc = Array{Any}(undef, nsrc)
+ysrc = Array{Any}(undef, nsrc)
+zsrc = Array{Any}(undef, nsrc)
+
+# Set up source geometry
+xsrc[1] = [250f0, 500f0, 750f0, 1000f0]     # four simultaneous sources
+ysrc[1] = 0f0
+zsrc[1] = [50f0, 50f0, 50f0, 50f0]  
+
+# Source sampling and number of time steps
+time = 2000f0
+dt = 4f0
+
+# Set up source structure
+src_geometry = Geometry(xsrc, ysrc, zsrc; dt=dt, t=time)
+</code></pre>
+
+<p>With the simultaneous source geometry in place, we can now create our simultaneous data. As we have four sources per sim. source, we create an array of dimensions <code>4 x src_geometry.nt[1]</code> and fill it with wavelets of different time shifts:</p>
+<pre><code># Create wavelet
+f0 = 0.01   # source peak frequencies
+q = ricker_wavelet(500f0, dt, f0)  # 500 ms wavelet
+
+# Create array with different time shifts of the wavelet
+wavelet = zeros(Float32, 4, src_geometry.nt[1])
+wavelet[1, 1:1+length(q)-1] = q
+wavelet[2, 41:41+length(q)-1] = q
+wavelet[3, 121:121+length(q)-1] = q
+wavelet[4, 201:201+length(q)-1] = q
+</code></pre>
+
+<p>Finally, we create our simultaneous source as a <code>judiVector</code>:</p>
+<pre><code># Source wavelet
+q = judiVector(src_geometry, wavelet)
+</code></pre>
+
+<h2 id="working-with-wavefields">Working with wavefields</h2>
+<p>JUDI allows computing full time domain wavefields and using them as right-hand sides for wave equations solves. This tutorial shows how. We start by setting up a basic 2D experiment:</p>
+<pre><code>using JUDI.TimeModeling
+
+# Grid
+n = (120, 100)   # (x,z)
+d = (10., 10.)
+o = (0., 0.)
+
+# Velocity [km/s]
+v = ones(Float32, n) .* 1.4f0
+v[:, 50:end] .= 5f0
+
+# Squared slowness
+m = (1f0 ./ v).^2
+
+# Model structure:
+model = Model(n, d, o, m)
+</code></pre>
+
+<p>Next, we set up the source geometry for a single source experiment:</p>
+<pre><code># Set up source geometry
+nsrc = 1    # no. of sources
+xsrc = convertToCell([600f0])
+ysrc = convertToCell([0f0])
+zsrc = convertToCell([20f0])
+
+# Modeling time and sampling interval
+time = 600f0  # ms
+dt = 4f0   # ms
+
+# Set up source structure
+src_geometry = Geometry(xsrc, ysrc, zsrc; dt=dt, t=time)
+
+# Source wavelet
+f0 = 0.01f0     # kHz
+wavelet = ricker_wavelet(time, dt, f0)
+q = judiVector(src_geometry, wavelet)
+</code></pre>
+
+<p>As in the 2D quick start tutorial, we create our <code>info</code> structure, modeling operator and source projection operator:</p>
+<pre><code># Set up info structure for linear operators
+ntComp = get_computational_nt(src_geometry, model)
+info = Info(prod(n), nsrc, ntComp)
+
+# Setup operators
+A_inv = judiModeling(info, model)
+Ps = judiProjection(info, src_geometry)
+</code></pre>
+
+<p>To model a wavefield, we simply omit the receiver sampling operator:</p>
+<pre><code>u = A_inv*Ps'*q
+</code></pre>
+
+<p>This return an abstract data vector called <code>judiWavefield</code>. Similar to <code>judiVectors</code>, we can access the data for each source number <code>i</code> via <code>u.data[i]</code>. The data is a 3D array of size <code>(nt, nx, nz)</code> for 2D and a 4D array of size <code>(nt, nx, ny, nz)</code> for 3D. We can plot the wavefield of the 600th time step with:</p>
+<pre><code>using PyPlot
+imshow(u.data[1][600, :, :]', vmin=-5, vmax=5, cmap=&quot;seismic&quot;, aspect=&quot;auto&quot;)
+</code></pre>
+
+<p>We can also use the computed wavefield <code>u</code> as a right-hand side for forward and adjoint wave equation solves:</p>
+<pre><code>v = A_inv*u
+w = A_inv'*u
+</code></pre>
+
+<p>Similarly, by setting up a receiver projection operator, we can use wavefields as right-hand sides, but restrict the output to the receiver locations.</p>
+<h2 id="extended-source-modeling">Extended source modeling</h2>
+<p>JUDI supports extened source modeling, which injects a 1D wavelet <code>q</code> at every point in the subsurface weighted by a spatially varying extended source. To demonstrate extended source modeling, we first set up a runnable 2D experiment with JUDI. We start with defining the model:</p>
+<pre><code>using JUDI.TimeModeling
+
+# Grid
+n = (120, 100)   # (x,z)
+d = (10., 10.)
+o = (0., 0.)
+
+# Velocity [km/s]
+v = ones(Float32, n) .* 1.4f0
+v[:, 50:end] .= 5f0
+
+# Squared slowness
+m = (1f0 ./ v).^2
+
+# Model structure:
+model = Model(n, d, o, m)
+</code></pre>
+
+<p>Next, we set up the receiver geometry:</p>
+<pre><code># Number of experiments
+nsrc = 2
+
+# Set up receiver geometry
+nxrec = 120
+xrec = range(50f0, stop=1150f0, length=nxrec)
+yrec = 0f0
+zrec = range(50f0, stop=50f0, length=nxrec)
+
+# Modeling time and receiver sampling interval
+time = 2000
+dt = 4
+
+# Set up receiver structure
+rec_geometry = Geometry(xrec, yrec, zrec; dt=dt, t=time, nsrc=nsrc)
+</code></pre>
+
+<p>For the extended source, we do not need to set up a source geometry object, but we need to define a wavelet function:</p>
+<pre><code># Source wavelet
+f0 = 0.01f0     # MHz
+wavelet = ricker_wavelet(time, dt, f0)
+</code></pre>
+
+<p>As before, we set up an <code>info</code> structure, as well as a modeling operator and a receiver sampling operator:</p>
+<pre><code># Set up info structure for linear operators
+ntComp = get_computational_nt(rec_geometry, model)
+info = Info(prod(n), nsrc, ntComp)
+
+# Setup operators
+A_inv = judiModeling(info, model)
+Pr = judiProjection(info, rec_geometry)
+</code></pre>
+
+<p>We define our extended source as a so called <code>judiWeights</code> vector. Similar to a <code>judiVector</code>, the data of this abstract vector is stored as a cell array, where each cell corresponds to one source experiment. We create a cell array of length two and create a random array of the size of the model as our extended source:</p>
+<pre><code>weights = Array{Array}(undef, nsrc)
+for j=1:nsrc
+    weights[j] = randn(Float32, model.n)
+end
+w = judiWeights(weights)
+</code></pre>
+
+<p>To inject the extended source into the model and weight it by the wavelet, we create a special projection operator called <code>judiLRWF</code> (for JUDI low-rank wavefield). This operator needs to know the wavelet we defined earlier. We can then create our full modeling operator, by combining <code>Pw</code> with <code>A_inv</code> and the receiver sampling operator:</p>
+<pre><code># Create operator for injecting the weights, multiplied by the provided wavelet(s)
+Pw = judiLRWF(info, wavelet)
+
+# Model observed data w/ extended source
+F = Pr*A_inv*adjoint(Pw)
+</code></pre>
+
+<p>Extended source modeling supports both forward and adjoint modeling:</p>
+<pre><code># Simultaneous observed data
+d_sim = F*w
+dw = adjoint(F)*d_sim
+</code></pre>
+
+<p>As for regular modeling, we can create a Jacobian for linearized modeling and migration. First we define a migration velocity model and the corresponding modeling operator <code>A0_inv</code>:</p>
+<pre><code># Migration velocity and squared slowness
+v0 = ones(Float32, n) .* 1.4f0
+m0 = (1f0 ./ v0).^2
+
+# Model structure and modeling operator for migration velocity
+model0 = Model(n, d, o, m0)
+A0_inv = judiModeling(info, model0)
+
+# Jacobian and RTM
+J = judiJacobian(Pr*A0_inv*adjoint(Pw), w)
+rtm = adjoint(J)*d_sim
+</code></pre>
+
+<p>As before, we can plot the image after reshaping it into its original dimensions:</p>
+<pre><code>rtm = reshape(rtm, model.n)
+imshow(rtm', cmap=&quot;gray&quot;, vmin=-3e6, vmax=3e6)
+</code></pre>
+
+<p>Please also refer to the reproducable example on github for <a href="https://github.com/slimgroup/JUDI.jl/blob/master/examples/scripts/modeling_extended_source_2D.jl">2D</a> and <a href="https://github.com/slimgroup/JUDI.jl/blob/master/examples/scripts/modeling_extended_source_3D.jl">3D</a> extended modeling.</p>
+<h2 id="impedance-imaging-inverse-scattering">Impedance imaging (inverse scattering)</h2>
+<p>JUDI supports imaging (RTM) and demigration (linearized modeling) using the linearized inverse scattering imaging condition (ISIC) and its corresponding adjoint. ISIC can be enabled via the <code>Options</code> class. You can set this options when you initially create the modeling operator:</p>
+<pre><code># Options strucuture
+opt = Options(isic=true)
+
+# Set up modeling operator
+A0_inv = judiModeling(info, model0; options=opt)
+</code></pre>
+
+<p>When you create a Jacobian from a forward modeling operator, the Jacobian inherits the options from <code>A0_inv</code>:</p>
+<pre><code>J = judiJacobian(Pr*A0_inv*Ps', q)
+J.options.isic
+# -&gt; true
+</code></pre>
+
+<p>Alternatively, you can directly set the option in your Jacobian:</p>
+<pre><code>J.options.isic = true   # enable isic
+J.options.isic = false  # disable isic
+</code></pre>
+
+<h2 id="optimal-checkpointing">Optimal checkpointing</h2>
+<p>JUDI supports optimal checkpointing via Devito's interface to the Revolve library. To enable checkpointing, use the <code>Options</code> class:</p>
+<pre><code># Options strucuture
+opt = Options(optimal_checkpointing=true)
+
+# Set up modeling operator
+A0_inv = judiModeling(info, model0; options=opt)
+</code></pre>
+
+<p>When you create a Jacobian from a forward modeling operator, the Jacobian inherits the options from <code>A0_inv</code>:</p>
+<pre><code>J = judiJacobian(Pr*A0_inv*Ps', q)
+J.options.optimal_checkpointing
+# -&gt; true
+</code></pre>
+
+<p>Alternatively, you can directly set the option in your Jacobian:</p>
+<pre><code>J.options.optimal_checkpointing = true   # enable checkpointing
+J.options.optimal_checkpointing = false  # disable checkpointing
+</code></pre>
+
+<h2 id="on-the-fly-fourier-transforms">On-the-fly Fourier transforms</h2>
+<p>JUDI supports seismic imaging in the frequency domain using on-the-fly discrete Fourier transforms (DFTs). To compute an RTM image in the frequency domain for a given set of frequencies, we first create a cell array for the frequencies of each source experiment:</p>
+<pre><code>nsrc = 4    # assume 4 source experiments
+frequencies = Array{Any}(undef, nsrc)
+</code></pre>
+
+<p>Now we can define single or multiple frequencies for each shot location for which the RTM will be computed:</p>
+<pre><code># For every source location, compute RTM image for 10 and 20 Hz
+for j=1:nsrc
+    frequencies[j] = [0.001, 0.002]
+end
+</code></pre>
+
+<p>The frequencies are passed to the Jacobian via the options field. Assuming we already have a Jacobian set up, we set the frequencies via:</p>
+<pre><code>J.options.frequencies = frequencies
+</code></pre>
+
+<p>Instead of the same two frequencies for each source experiment, we could have chosen different random sets of frequencies, which creates an RTM with incoherent noise. We can also draw random frequencies using the frequency spectrum of the true source as the probability density function. To create a distribution for a given source <code>q</code> (<code>judiVector</code>) from which we can draw frequency samples, use:</p>
+<pre><code>q_dist = generate_distribution(q)
+</code></pre>
+
+<p>Then we can assigne a random set of frequencies in a specified range as follows:</p>
+<pre><code>nfreq = 10  # no. of frequencies per source location
+for j=1:nsrc
+    J.options.frequencies[j] = select_frequencies(q_dist; fmin=0.003, fmax=0.04, nf=nfreq)
+end
+</code></pre>
+
+<p>Once the <code>options.frequencies</code> field is set, on-the-fly DFTs are used for both born modeling and RTM.
+To save computational cost, we can limit the number of DFTs that are performed. Rather than computing the DFT at every time step, we can define a subsampling factor as follows:</p>
+<pre><code># Compute DFT every 4 time steps
+J.options.dft_subsampling_factor=4
+</code></pre>
               
             </div>
           </div>
