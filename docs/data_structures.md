@@ -70,7 +70,7 @@ From the optional arguments, you have to pass (at least) **two** of `dt`, `nt` a
 
 **Access fields:**
 
-Example of how to access fields of geometry objects:
+Accessible fields include all of the above parameters, which can be accessed as follows:
 
 ```julia
 # Access cell arrays of x coordinates:
@@ -127,7 +127,7 @@ opt = Options()
 
 ```julia
 opt = Options(
-space_order:: Integer
+    space_order:: Integer
     space_order:: Integer
     free_surface:: Bool
     limit_m:: Bool
