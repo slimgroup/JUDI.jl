@@ -14,7 +14,11 @@ This documentation provides an overview over JUDI's basic data structures and ab
 
  * **Abstract operators**: Lists and explains JUDI's abstract linear operators `judiModeling`, `judiJacobian`, `judiProjection` and `judiLRWF`.
 
- * **IO**: Read SEG-Y data and set up `judiVectors` for shot records and sources. Read velocity models.
+ * **Input/Output**: Read SEG-Y data and set up `judiVectors` for shot records and sources. Read velocity models.
+
+ * **Helper functions**: API of functions that make your life easier.
+
+ * **Preconditioners**: Basic preconditioners for seismic imaging.
 
 ## Installation
 

@@ -240,7 +240,7 @@ using PyPlot
 imshow(d_obs.data[1], vmin=-.4, vmax=.4, cmap="seismic", aspect="auto")
 ```
 
-## Marine streamer 2D acquisition
+## 2D Marine streamer acquisition
 
 For a marine streamer acquisition, we need to define a moving set of receivers representing a streamer that is towed behind a seismic source vessel. In JUDI, this is easily done by defining a different set of receivers for each source location. Here, we explain how to set up the `Geometry` objects for a 2D marine streamer acquisition.
 
@@ -636,7 +636,7 @@ nsrc = 4    # assume 4 source experiments
 frequencies = Array{Any}(undef, nsrc)
 ```
 
-Now we can define single or multiple frequencies for each shot location for which the RTM will be computed:
+Now we can define single or multiple frequencies for each shot location for which the RTM image will be computed:
 
 ```
 # For every source location, compute RTM image for 10 and 20 Hz
