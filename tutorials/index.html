@@ -58,7 +58,7 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#3d-modeling-quickstart">3D Modeling Quickstart</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#marine-streamer-2d-acquisition">Marine streamer 2D acquisition</a>
+    <li class="toctree-l2"><a class="reference internal" href="#2d-marine-streamer-acquisition">2D Marine streamer acquisition</a>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#simultaneous-sources">Simultaneous sources</a>
     </li>
@@ -329,7 +329,7 @@ d_obs = Pr*A_inv*Ps'*q
 imshow(d_obs.data[1], vmin=-.4, vmax=.4, cmap=&quot;seismic&quot;, aspect=&quot;auto&quot;)
 </code></pre>
 
-<h2 id="marine-streamer-2d-acquisition">Marine streamer 2D acquisition</h2>
+<h2 id="2d-marine-streamer-acquisition">2D Marine streamer acquisition</h2>
 <p>For a marine streamer acquisition, we need to define a moving set of receivers representing a streamer that is towed behind a seismic source vessel. In JUDI, this is easily done by defining a different set of receivers for each source location. Here, we explain how to set up the <code>Geometry</code> objects for a 2D marine streamer acquisition.</p>
 <p>If we define that our streamer is to the right side of the source vessel, this has the effect that part of the streamer is outside the grid while our vessel is in the right side of the model. To circumvent this, we can say that our streamer is on the right side of the source while the vessel is in the left-hand side of the model and vice versa. This way, we get the full maximum offset coverage for every source location (assuming that the maximum offset is less or equal than half the domain size). </p>
 <p>First, we have to specify our domain size (the physical extent of our model), as well as the number of receivers and the minimum and maximum offset:</p>
@@ -649,7 +649,7 @@ J.options.optimal_checkpointing = false  # disable checkpointing
 frequencies = Array{Any}(undef, nsrc)
 </code></pre>
 
-<p>Now we can define single or multiple frequencies for each shot location for which the RTM will be computed:</p>
+<p>Now we can define single or multiple frequencies for each shot location for which the RTM image will be computed:</p>
 <pre><code># For every source location, compute RTM image for 10 and 20 Hz
 for j=1:nsrc
     frequencies[j] = [0.001, 0.002]
