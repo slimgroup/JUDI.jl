@@ -5,7 +5,7 @@ from argparse import ArgumentParser
 from sources import RickerSource, Receiver
 from models import Model
 
-from propagators import forward, adjoint, born, gradient
+from propagators import *
 from interface import forward_rec
 
 parser = ArgumentParser(description="Adjoint test args")
@@ -53,8 +53,8 @@ if is_tti:
                   rho=1, space_order=8)
 
     model0 = Model(shape=shape, origin=origin, spacing=spacing,
-                  vp=v0, epsilon=.09*(v-1.5), delta=.075*(v-1.5),
-                  rho=1, space_order=8, dt=model.critical_dt)            
+                   vp=v0, epsilon=.09*(v-1.5), delta=.075*(v-1.5),
+                   rho=1, space_order=8, dt=model.critical_dt)
 else:
     model = Model(shape=shape, origin=origin, spacing=spacing,
                   vp=v, rho=rho, space_order=8)
@@ -82,8 +82,8 @@ rec_t.coordinates.data[:, 0] = np.linspace(0., (shape[0]-1)*spacing[0], num=nrec
 rec_t.coordinates.data[:, 1] = 20.
 
 # Interface (Level 1)
-# d_obs = forward_rec(model, src.coordinates.data, src.data, rec_t.coordinates.data, 
-#     space_order=8, free_surface=False, dt_comp=dt)
+d_obs = forward_rec(model, src.coordinates.data, src.data, rec_t.coordinates.data,
+                    space_order=8, free_surface=False)
 
 N = 1000
 a = .003
@@ -91,26 +91,29 @@ b = .030
 freq_list = np.sort(a + (b - a) * (np.random.randint(N, size=(10,)) - 1) / (N - 1.))
 dft_sub = 1
 # Propagators (Level 2)
-# d_obs, _ = forward(model, src.coordinates.data, rec_t.coordinates.data, src.data, space_order=8, save=False,
-#                    q=0, free_surface=False, return_op=False, freq_list=None)
+d_obs, _ = forward(model, src.coordinates.data, rec_t.coordinates.data, src.data)
 
-d_lin, _ = born(model0, src.coordinates.data, rec_t.coordinates.data, src.data, space_order=8, isic=True)
+d_lin, _ = born(model0, src.coordinates.data, rec_t.coordinates.data,
+                src.data, isic=True)
 
 
-d0, u0 = forward(model0, src.coordinates.data, rec_t.coordinates.data, src.data, space_order=8, save=False,
-                 q=0, free_surface=False, return_op=False, freq_list=freq_list, dft_sub=dft_sub)
+d0, u0 = forward(model0, src.coordinates.data, rec_t.coordinates.data, src.data,
+                 dft_sub=dft_sub, space_order=8, save=False, freq_list=freq_list)
 
 g = gradient(model0, d_lin, rec_t.coordinates.data, u0, return_op=False, space_order=8,
              w=None, free_surface=False, freq=freq_list, dft_sub=dft_sub)
 
 g2 = gradient(model0, d_lin, rec_t.coordinates.data, u0, return_op=False, space_order=8,
-             w=None, free_surface=False, freq=freq_list, dft_sub=dft_sub, isic=True)
+              w=None, free_surface=False, freq=freq_list, dft_sub=dft_sub, isic=True)
 # Plot
-plt.figure(); plt.imshow(d_lin, vmin=-1, vmax=1, cmap='gray', aspect='auto')
-#plt.figure(); plt.imshow(d_pred.data, vmin=-1, vmax=1, cmap='gray', aspect='auto')
-plt.figure(); plt.imshow(g[model.nbl:-model.nbl, model.nbl:-model.nbl].T, vmin=-1e1, vmax=1e1, cmap='gray', aspect='auto')
-
-plt.figure(); plt.imshow(g2[model.nbl:-model.nbl, model.nbl:-model.nbl].T, vmin=-1e1, vmax=1e1, cmap='gray', aspect='auto')
+plt.figure()
+plt.imshow(d_lin, vmin=-1, vmax=1, cmap='gray', aspect='auto')
+plt.figure()
+plt.imshow(d_pred.data, vmin=-1, vmax=1, cmap='gray', aspect='auto')
+plt.figure()
+plt.imshow(g[model.nbl:-model.nbl, model.nbl:-model.nbl].T,
+           vmin=-1e1, vmax=1e1, cmap='gray', aspect='auto')
+plt.figure()
+plt.imshow(g2[model.nbl:-model.nbl, model.nbl:-model.nbl].T,
+           vmin=-1e1, vmax=1e1, cmap='gray', aspect='auto')
 plt.show()
-
-from IPython import embed; embed()

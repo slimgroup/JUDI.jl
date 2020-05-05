@@ -7,12 +7,16 @@ export ricker_wavelet, get_computational_nt, smooth10, calculate_dt, setup_grid,
 export convertToCell, limit_model_to_receiver_area, extend_gradient, remove_out_of_bounds_receivers
 export time_resample, remove_padding, subsample
 export generate_distribution, select_frequencies, process_physical_parameter
-export load_pymodel, load_devito_jit, load_numpy, devito_model
+export load_pymodel, load_devito_jit, load_numpy, devito_model, update_m, update_dm
 export misfit, adjoint_src
 
 
 @cache function update_dm(model::PyObject, dm, dims)
     model.dm =  process_physical_parameter(dm, dims)
+end
+
+@cache function update_m(model::PyObject, m, dims)
+    model.vp = process_physical_parameter(sqrt.(1f0./m), dims)
 end
 
 @cache function devito_model(model::Modelall, options)
@@ -280,7 +284,10 @@ function load_devito_jit(model::Modelall)
     return pyimport("interface")
 end
 
-function calculate_dt(model::Model_TTI)
+function calculate_dt(model::Model_TTI; dt=nothing)
+    if ~isnothing(dt)
+        return dt
+    end
     if length(model.n) == 3
         coeff = 0.38
     else
@@ -290,7 +297,10 @@ function calculate_dt(model::Model_TTI)
     return coeff * minimum(model.d) / (scale*sqrt(1/minimum(model.m)))
 end
 
-function calculate_dt(model::Model)
+function calculate_dt(model::Model; dt=nothing)
+    if ~isnothing(dt)
+        return dt
+    end
     if length(model.n) == 3
         coeff = 0.38
     else
@@ -307,7 +317,7 @@ and receiver geometries of type `Geometry` and `model` is the model structure of
 `Model`.
 
 """
-function get_computational_nt(srcGeometry, recGeometry, model::Modelall)
+function get_computational_nt(srcGeometry, recGeometry, model::Modelall; dt=nothing)
     # Determine number of computational time steps
     if typeof(srcGeometry) == GeometryOOC
         nsrc = length(srcGeometry.container)
@@ -315,7 +325,7 @@ function get_computational_nt(srcGeometry, recGeometry, model::Modelall)
         nsrc = length(srcGeometry.xloc)
     end
     nt = Array{Any}(undef, nsrc)
-    dtComp = calculate_dt(model)
+    dtComp = calculate_dt(model; dt=dt)
     for j=1:nsrc
         ntRec = recGeometry.dt[j]*(recGeometry.nt[j]-1) / dtComp
         ntSrc = srcGeometry.dt[j]*(srcGeometry.nt[j]-1) / dtComp
@@ -324,7 +334,7 @@ function get_computational_nt(srcGeometry, recGeometry, model::Modelall)
     return nt
 end
 
-function get_computational_nt(Geometry, model::Modelall)
+function get_computational_nt(Geometry, model::Modelall; dt=nothing)
     # Determine number of computational time steps
     if typeof(Geometry) == GeometryOOC
         nsrc = length(Geometry.container)
@@ -332,7 +342,7 @@ function get_computational_nt(Geometry, model::Modelall)
         nsrc = length(Geometry.xloc)
     end
     nt = Array{Any}(undef, nsrc)
-    dtComp = calculate_dt(model)
+    dtComp = calculate_dt(model; dt=dt)
     for j=1:nsrc
         nt[j] = Int(ceil(Geometry.dt[j]*(Geometry.nt[j]-1) / dtComp))
     end

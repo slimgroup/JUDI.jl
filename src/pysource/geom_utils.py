@@ -6,7 +6,8 @@ from sources import *
 def src_rec(model, u, src_coords=None, rec_coords=None, wavelet=None, fw=True, nt=None):
     """
     Generates the source injection and receiver interpolation.
-    This function is fully abstracted and does not care whether this is a forward or adjoint wave-equation.
+    This function is fully abstracted and does not care whether this is a
+    forward or adjoint wave-equation.
     The source is the source term of the equation
     The receiver is the measurment term
 
@@ -27,7 +28,7 @@ def src_rec(model, u, src_coords=None, rec_coords=None, wavelet=None, fw=True, n
     wavelet: Array
         Data for the source
     fw=True:
-        Whether the direction is forward or backward in time 
+        Whether the direction is forward or backward in time
     nt: int
         Number of time steps
     """
@@ -88,69 +89,117 @@ class AcquisitionGeometry(Pickable):
         self._tn = tn
 
     def resample(self, dt):
+        """
+        Resamples in time at input `dt`
+        """
         self._dt = dt
         return self
 
     @property
     def time_axis(self):
+        """
+        Time Axis
+        """
         return TimeAxis(start=self.t0, stop=self.tn, step=self.dt)
 
     @property
     def model(self):
+        """
+        Model associated with the geometry
+        """
         return self._model
 
     @model.setter
     def model(self, model):
+        """
+        Setter method to set a new model
+        """
         self._model = model
 
     @property
     def src_type(self):
+        """
+        Type of source
+        """
         return self._src_type
 
     @property
     def grid(self):
+        """
+        Grid associated with the geometry
+        """
         return self.model.grid
 
     @property
     def f0(self):
+        """
+        Peak frequency of the source
+        """
         return self._f0
 
     @property
     def tn(self):
+        """
+        End time of the source/receiver
+        """
         return self._tn
 
     @property
     def t0(self):
+        """
+        Start time of the source/receiver
+        """
         return self._t0
 
     @property
     def dt(self):
+        """
+        Time step value
+        """
         return self._dt
 
     @property
     def nt(self):
+        """
+        Number of time sample equal to (self.tn - self.t0)/self.dt
+        """
         return self.time_axis.num
 
     @property
     def nrec(self):
+        """
+        Number ov receivers
+        """
         return self._nrec
 
     @property
     def nsrc(self):
+        """
+        Number of (simultenaous) sources
+        """
         return self._nsrc
 
     @property
     def dtype(self):
+        """
+        Data type of the array (shot record, ...)
+        """
         return self.grid.dtype
 
     @property
     def rec(self):
+        """
+        Construct a new Receiver object from the geometry informations
+        """
         return Receiver(name='rec', grid=self.grid,
                         ntime=self.time_axis.num, npoint=self.nrec,
                         coordinates=self.rec_positions)
 
     @property
     def src(self):
+        """
+        Construct a new PointSource object from the geometry informations
+        """
         if self.src_type is None:
             return PointSource(name='src', grid=self.grid,
                                time=self.time_axis.time_values, npoint=self.nsrc,

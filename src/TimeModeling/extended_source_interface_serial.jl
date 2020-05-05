@@ -13,6 +13,8 @@ function extended_source_modeling(model_full::Model, srcData, recGeometry, recDa
 
     # Set up Python model structure
     modelPy = devito_model(model, options)
+    update_m(modelPy, model.m, dims)
+
     if op=='J' && mode == 1
         update_dm(modelPy, reshape(dm,model.n), dims)
     end

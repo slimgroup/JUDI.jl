@@ -1,5 +1,5 @@
 from sympy import sqrt, cos, sin
-from devito import grad, first_derivative, centered, transpose, Function, div, left, right
+from devito import first_derivative, centered, transpose, Function, left, right
 
 
 def laplacian(v, irho):
@@ -11,8 +11,10 @@ def laplacian(v, irho):
     else:
         if isinstance(irho, Function):
             so = irho.space_order // 2
-            Lap = sum([getattr(irho * getattr(v, 'd%s'%d.name)(x0=d + d.spacing/2, fd_order=so),
-                               'd%s'% d.name)(x0=d - d.spacing/2, fd_order=so) for d in irho.dimensions])
+            Lap = sum([getattr(irho * getattr(v, 'd%s' % d.name)(x0=d + d.spacing/2,
+                                                                 fd_order=so),
+                               'd%s' % d.name)(x0=d - d.spacing/2, fd_order=so)
+                       for d in irho.dimensions])
         else:
             Lap = irho * v.laplace
 
@@ -35,6 +37,7 @@ def ssa_tti(u, v, model):
 
     return ssa_1(u, v, model), ssa_2(u, v, model)
 
+
 def ssa_1(u, v, model):
     """
     First row of
@@ -42,14 +45,14 @@ def ssa_1(u, v, model):
     """
     delta, epsilon, irho = model.delta, model.epsilon, model.irho
     a11 = irho * delta
-    a12 = irho * sqrt( (epsilon - delta) * delta)
+    a12 = irho * sqrt((epsilon - delta) * delta)
     b11 = irho
     b12 = 0
 
     g1 = gx_T(a11 * gx(u, model) + a12 * gx(v, model), model)
     if model.dim == 3:
         g1 += gy_T(a11 * gy(u, model) + a12 * gy(v, model), model)
-    g1 +=  gz_T(b11 * gz(u, model) + b12 * gz(v, model), model)
+    g1 += gz_T(b11 * gz(u, model) + b12 * gz(v, model), model)
     return g1
 
 
@@ -59,7 +62,7 @@ def ssa_2(u, v, model):
     gx_t(A * gx(P)) + gy_t( A1 * gy(P)) + gz_T( A2 * gz(P))
     """
     delta, epsilon, irho = model.delta, model.epsilon, model.irho
-    a21 = irho * sqrt( (epsilon - delta) * delta)
+    a21 = irho * sqrt((epsilon - delta) * delta)
     a22 = irho * (epsilon - delta)
     b21 = 0
     b22 = 0
@@ -72,42 +75,62 @@ def ssa_2(u, v, model):
 
 
 def angles_to_trig(model):
-
+    """
+    Tile and asymut angles trigonometric functions
+    """
     return cos(model.theta), sin(model.theta), cos(model.phi), sin(model.phi)
 
 
 def gx(field, model):
     """
     Rotated first derivative in x
-    u: TTI field
-     model: Model structure
-    :return: du/dx in rotated coordinates
+    Parameters
+    ----------
+    u: TimeFunction or Expr
+        TTI field
+    model: Model
+        Model structure
+    Returns
+    ----------
+    Expr
+        du/dx in rotated coordinates
     """
-    costheta, sintheta, cosphi, sinphi =  angles_to_trig(model)
+    costheta, sintheta, cosphi, sinphi = angles_to_trig(model)
     dims = field.dimensions[1:model.dim+1]
     order1 = field.space_order // 2
 
-    Dx = (costheta * cosphi * first_derivative(field, dim=dims[0], side=left, fd_order=order1) -
+    Dx = (costheta * cosphi * first_derivative(field, dim=dims[0],
+                                               side=left, fd_order=order1) -
           sintheta * first_derivative(field, dim=dims[-1], side=left, fd_order=order1))
 
     if len(dims) == 3:
-        Dx += costheta * sinphi * first_derivative(field, dim=dims[1], side=left, fd_order=order1)
+        Dx += costheta * sinphi * first_derivative(field, dim=dims[1],
+                                                   side=left, fd_order=order1)
     return Dx
 
 
 def gy(field, model):
     """
     Rotated first derivative in y
-    u: TTI field
-     model: Model structure
-    :return: du/dy in rotated coordinates
-    """
-    costheta, sintheta, cosphi, sinphi =  angles_to_trig(model)
-    dims = field.dimensions[1:model.dim+1]
-    order1 = field.space_order // 2
 
-    Dy = (-sinphi * first_derivative(field, dim=dims[0], side=centered, fd_order=order1) +
-          cosphi * first_derivative(field, dim=dims[1],side=centered, fd_order=order1))
+    Parameters
+    ----------
+    u: TimeFunction or Expr
+        TTI field
+    model: Model
+        Model structure
+
+    Returns
+    ----------
+    Expr
+        du/dy in rotated coordinates
+    """
+    costheta, sintheta, cosphi, sinphi = angles_to_trig(model)
+    dims = field.dimensions[1:model.dim+1]
+    o1 = field.space_order // 2
+
+    Dy = (-sinphi * first_derivative(field, dim=dims[0], side=centered, fd_order=o1) +
+          cosphi * first_derivative(field, dim=dims[1], side=centered, fd_order=o1))
 
     return Dy
 
@@ -115,40 +138,60 @@ def gy(field, model):
 def gz(field, model):
     """
     Rotated first derivative in z
-    u: TI field
-     model: Model structure
-    :return: du/dz in rotated coordinates
+
+    Parameters
+    ----------
+    u: TimeFunction or Expr
+        TTI field
+    model: Model
+        Model structure
+
+    Returns
+    ----------
+    Expr
+        du/dz in rotated coordinates
     """
-    costheta, sintheta, cosphi, sinphi =  angles_to_trig(model)
+    costheta, sintheta, cosphi, sinphi = angles_to_trig(model)
     dims = field.dimensions[1:model.dim+1]
     order1 = field.space_order // 2
 
-    Dz = (sintheta * cosphi * first_derivative(field, dim=dims[0], side=right, fd_order=order1) +
+    Dz = (sintheta * cosphi * first_derivative(field, dim=dims[0],
+                                               side=right, fd_order=order1) +
           costheta * first_derivative(field, dim=dims[-1], side=right, fd_order=order1))
 
     if len(dims) == 3:
-        Dz += sintheta * sinphi * first_derivative(field, dim=dims[1], side=right, fd_order=order1)
+        Dz += sintheta * sinphi * first_derivative(field, dim=dims[1],
+                                                   side=right, fd_order=order1)
     return Dz
 
 
 def gx_T(field, model):
     """
     Rotated first derivative in x
-    u: TTI field
-     model: Model structure
-    :return: du/dx in rotated coordinates
+
+    Parameters
+    ----------
+    u: TimeFunction or Expr
+        TTI field
+    model: Model
+        Model structure
+
+    Returns
+    ----------
+    Expr
+        du/dx.T in rotated coordinates
     """
     if field == 0:
         return 0
 
-    costheta, sintheta, cosphi, sinphi =  angles_to_trig(model)
+    costheta, sintheta, cosphi, sinphi = angles_to_trig(model)
     dims = field.dimensions[1:model.dim+1]
     order1 = field.space_order // 2
 
     Dx = -(first_derivative(costheta * cosphi * field, dim=dims[0],
-                           side=left, fd_order=order1, matvec=transpose) -
-          first_derivative(sintheta * field, dim=dims[-1],
-                           side=left, fd_order=order1, matvec=transpose))
+                            side=left, fd_order=order1, matvec=transpose) -
+           first_derivative(sintheta * field, dim=dims[-1],
+                            side=left, fd_order=order1, matvec=transpose))
 
     if len(dims) == 3:
         Dx += first_derivative(costheta * sinphi * field, dim=dims[1],
@@ -159,14 +202,23 @@ def gx_T(field, model):
 def gy_T(field, model):
     """
     Rotated first derivative in y
-    u: TTI field
-     model: Model structure
-    :return: du/dy in rotated coordinates
+
+    Parameters
+    ----------
+    u: TimeFunction or Expr
+        TTI field
+    model: Model
+        Model structure
+
+    Returns
+    ----------
+    Expr
+        du/dy.T in rotated coordinates
     """
     if field == 0:
         return 0
 
-    costheta, sintheta, cosphi, sinphi =  angles_to_trig(model)
+    costheta, sintheta, cosphi, sinphi = angles_to_trig(model)
     dims = field.dimensions[1:model.dim+1]
     order1 = field.space_order // 2
 
@@ -181,14 +233,23 @@ def gy_T(field, model):
 def gz_T(field, model):
     """
     Rotated first derivative in z
-    u: TI field
-     model: Model structure
-    :return: du/dz in rotated coordinates
+
+    Parameters
+    ----------
+    u: TimeFunction or Expr
+        TTI field
+    model: Model
+        Model structure
+
+    Returns
+    ----------
+    Expr
+        du/dz.T in rotated coordinates
     """
     if field == 0:
         return 0
 
-    costheta, sintheta, cosphi, sinphi =  angles_to_trig(model)
+    costheta, sintheta, cosphi, sinphi = angles_to_trig(model)
     dims = field.dimensions[1:model.dim+1]
     order1 = field.space_order // 2
 

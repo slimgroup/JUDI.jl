@@ -49,7 +49,7 @@ t0 = 0.
 tn = 2000.
 dt = model.critical_dt
 nt = int(1 + (tn-t0) / dt)
-time_axis = np.linspace(t0,tn,nt)
+time_axis = np.linspace(t0, tn, nt)
 
 # Source
 f1 = 0.008
@@ -63,11 +63,13 @@ rec_t.coordinates.data[:, 0] = np.linspace(0., 3000., num=301)
 rec_t.coordinates.data[:, 1] = 20.
 # Linearized data
 print("Forward J")
-dD_hat, u0l = born(model, src.coordinates.data, rec_t.coordinates.data, src.data, save=True)
+dD_hat, u0l = born(model, src.coordinates.data, rec_t.coordinates.data,
+                   src.data, save=True)
 
 # Adjoint
 print("Forward")
-_, u0 = forward(model, src.coordinates.data, rec_t.coordinates.data, src.data, save=True)
+_, u0 = forward(model, src.coordinates.data, rec_t.coordinates.data,
+                src.data, save=True)
 
 # Adjoint
 print("Adjoint J")
@@ -77,13 +79,11 @@ dm_hat = gradient(model, dD_hat, rec_t.coordinates.data, u0l)
 a = model.critical_dt * np.dot(dD_hat.flatten(), dD_hat.flatten())
 b = np.dot(dm_hat.flatten(), model.dm.data.flatten())
 if is_tti:
-    c = np.linalg.norm(u0[0].data.flatten()- u0l[0].data.flatten())
+    c = np.linalg.norm(u0[0].data.flatten() - u0l[0].data.flatten())
 else:
-    c = np.linalg.norm(u0.data.flatten()- u0l.data.flatten())
+    c = np.linalg.norm(u0.data.flatten() - u0l.data.flatten())
 print("Difference between saving with forward and born", c)
 
 print("Adjoint test J")
 print("Difference: ", a - b)
 print("Relative error: ", a/b - 1)
-
-from IPython import embed; embed()

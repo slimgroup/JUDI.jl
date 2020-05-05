@@ -11,12 +11,6 @@ n = (120,100)	# (x,y,z) or (x,z)
 d = (10.,10.)
 o = (0.,0.)
 
-# # Setup info and model structure
-nsrc = 1	# number of sources
-ntComp = 250
-info = Info(prod(n), nsrc, ntComp)	# number of gridpoints, number of experiments, number of computational time steps
-
-
 # Velocity [km/s]
 v = ones(Float32,n) .* 2.0f0
 v[:,Int(round(end/2)):end] .= 3.0f0
@@ -82,52 +76,19 @@ F = judiModeling(info,model,srcGeometry,recGeometry;options=opt)
 q = judiVector(srcGeometry,wavelet)
 d = F*q
 
-# # # FWI gradient and function value for m0
-# Jm0, grad = fwi_objective(model0,q,d;options=opt)
-#
-# for j=1:iter
-# 	# FWI gradient and function falue for m0 + h*dm
-# 	modelH.m = model0.m + h*dm
-# 	Jm, gradm = fwi_objective(modelH,q,d;options=opt)
-#
-# 	dJ = dot(grad,vec(dm))
-#
-# 	# Check convergence
-# 	error1[j] = abs(Jm - Jm0)
-# 	error2[j] = abs(Jm - (Jm0 + h*dJ))
-#
-# 	println(h, " ", error1[j], " ", error2[j])
-# 	h_all[j] = h
-# 	h = h/2f0
-# end
-#
-# # Plot errors
-# loglog(h_all, error1); loglog(h_all, 1e2*h_all)
-# loglog(h_all, error2); loglog(h_all, 1e2*h_all.^2)
-# legend([L"$\Phi(m) - \Phi(m0)$", "1st order", L"$\Phi(m) - \Phi(m0) - \nabla \Phi \delta m$", "2nd order"], loc="lower right")
-# xlabel("h")
-# ylabel(L"Error $||\cdot||^\infty$")
-# title("FWI gradient test")
-#axis((h_all[end], h_all[1], 1.0e-8,500))
-
-
 # FWI gradient and function value for m0
-F0 = judiModeling(info,model0,srcGeometry,recGeometry;options=opt)
-J = judiJacobian(F0,q)
-dD_hat = J*vec(dm)
-d0 = F0*q
+Jm0, grad = fwi_objective(model0, q, d;options=opt)
 
 for j=1:iter
 	# FWI gradient and function falue for m0 + h*dm
 	modelH.m = model0.m + h*dm
-	# FWI gradient and function value for m0
-	Fh = judiModeling(info,modelH,srcGeometry,recGeometry;options=opt)
-    dh = Fh*q
-	# dJ = dot(grad,vec(dm))
+	Jm, gradm = fwi_objective(modelH, q, d;options=opt)
+
+	dJ = dot(grad,vec(dm))
 
 	# Check convergence
-	error1[j] = norm(dh - d0)
-	error2[j] = norm(dh - d0 - h * dD_hat)
+	error1[j] = abs(Jm - Jm0)
+	error2[j] = abs(Jm - (Jm0 + h*dJ))
 
 	println(h, " ", error1[j], " ", error2[j])
 	h_all[j] = h

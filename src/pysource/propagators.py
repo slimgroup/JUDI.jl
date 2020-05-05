@@ -21,8 +21,9 @@ def op_kwargs(model, fs=False):
 # Forward propagation
 def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
             q=0, free_surface=False, return_op=False, freq_list=None, dft_sub=None,
-            ws=None):
+            ws=None, t_sub=None):
     """
+    Low level propagator, to be used through `interface.py`
     Compute forward wavefield u = A(m)^{-1}*f and related quantities (u(xrcv))
     """
     # Setting adjoint wavefield
@@ -35,11 +36,11 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
 
     # Setup source and receiver
     geom_expr, _, rcv = src_rec(model, u, src_coords=src_coords,
-                                  rec_coords=rcv_coords, wavelet=wavelet)
-    
+                                rec_coords=rcv_coords, wavelet=wavelet)
+
     # On-the-fly Fourier
     dft, dft_modes = otf_dft(u, freq_list, model.critical_dt, factor=dft_sub)
-    
+
     # Create operator and run
     subs = model.spacing_map
     op = Operator(pde + geom_expr + dft, subs=subs, name="forward"+name(model))
@@ -55,6 +56,7 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
 def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0,
             save=False, free_surface=False, ws=None):
     """
+    Low level propagator, to be used through `interface.py`
     Compute adjoint wavefield v = adjoint(F(m))*y
     and related quantities (||v||_w, v(xsrc))
     """
@@ -70,6 +72,7 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0,
 
     # Extended source
     wsrc, ws_expr = extended_src_weights(model, ws, v)
+
     # Create operator and run
     subs = model.spacing_map
     op = Operator(pde + geom_expr + ws_expr, subs=subs, name="adjoint"+name(model))
@@ -84,6 +87,7 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0,
 def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8,
              w=None, free_surface=False, freq=None, dft_sub=None, isic=True):
     """
+    Low level propagator, to be used through `interface.py`
     Compute adjoint wavefield v = adjoint(F(m))*y
     and related quantities (||v||_w, v(xsrc))
     """
@@ -94,8 +98,8 @@ def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8,
     pde = wave_kernel(model, v, fw=False, fs=free_surface)
 
     # Setup source and receiver
-    geom_expr, src, _ = src_rec(model, v, src_coords=rcv_coords,
-                                wavelet=residual, fw=False)
+    geom_expr, _, _ = src_rec(model, v, src_coords=rcv_coords,
+                              wavelet=residual, fw=False)
 
     # Setup gradient wrt m
     gradm = Function(name="gradm", grid=model.grid)
@@ -106,7 +110,7 @@ def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8,
     op = Operator(pde + geom_expr + g_expr, subs=subs, name="gradient"+name(model))
 
     if return_op:
-        return op, gradm
+        return op, gradm, v
     op(**op_kwargs(model, fs=free_surface))
 
     # Output
@@ -116,6 +120,7 @@ def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8,
 def born(model, src_coords, rcv_coords, wavelet, space_order=8,
          save=False, free_surface=False, isic=False, ws=None):
     """
+    Low level propagator, to be used through `interface.py`
     Compute adjoint wavefield v = adjoint(F(m))*y
     and related quantities (||v||_w, v(xsrc))
     """

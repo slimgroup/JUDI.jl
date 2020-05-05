@@ -26,6 +26,14 @@ jobs:
         run: for f in *.ipynb;do jupyter nbconvert --to markdown --output-dir='../../docs/tutorials' $f; done
         working-directory: examples/notebooks/
 
+      - name: Build python doc
+        run: |
+          pip install sphinx sphinx-markdown-builder sphinx-markdown-parser
+          make clean;make markdown
+          cp _build/markdown/pysource.md ../../../JUDI/docs 
+
+        working-directory: src/pydocs/
+
       - run: mkdocs build
 
       - name: Deploy

@@ -1,7 +1,8 @@
 import numpy as np
 from sympy import cos, sin
 
-from devito import TimeFunction, Function, Inc, Dimension, DefaultDimension, Eq, ConditionalDimension
+from devito import (TimeFunction, Function, Inc, DefaultDimension,
+                    Eq, ConditionalDimension)
 from devito.tools import as_tuple
 
 
@@ -13,7 +14,7 @@ def wavefield(model, space_order, save=False, nt=None, fw=True, name=''):
     ----------
 
     model : Model
-        Physical model 
+        Physical model
     space_order: int
         Spatial discretization order
     save : Bool
@@ -80,7 +81,9 @@ def extented_src(model, weight, wavelet, q=0):
     source_weight = Function(name='src_weight', grid=model.grid)
     slices = tuple(slice(model.nbl, -model.nbl, 1) for _ in range(model.grid.dim))
     source_weight.data[slices] = weight
-    return time.spacing**2 /(model.m * model.irho) * source_weight*wavelett
+    if model.is_tti:
+        return (source_weight*wavelett, source_weight*wavelett)
+    return source_weight*wavelett
 
 
 def extended_src_weights(model, wavelet, v):
@@ -105,7 +108,8 @@ def extended_src_weights(model, wavelet, v):
     time = model.grid.time_dim
     wavelett = Function(name='wf_src', dimensions=(time,), shape=(nt,))
     wavelett.data[:] = wavelet[:, 0]
-    return w_out, [Eq(w_out, w_out + v*wavelett)]
+    wf = v[0] + v[1] if model.is_tti else v
+    return w_out, [Eq(w_out, w_out + wf*wavelett)]
 
 
 def freesurface(field, npml, forward=True):
@@ -166,10 +170,10 @@ def otf_dft(u, freq, dt, factor=None):
     # Pulsation
     omega_t = 2*np.pi*f*tsave*factor*dt
     for wf in as_tuple(u):
-        ufr = Function(name='ufr%s'%wf.name, dimensions=(freq_dim,) + wf.indices[1:],
+        ufr = Function(name='ufr%s' % wf.name, dimensions=(freq_dim,) + wf.indices[1:],
                        grid=wf.grid, shape=(nfreq,) + wf.shape[1:])
-        ufi = Function(name='ufi%s'%wf.name, dimensions=(freq_dim,) + wf.indices[1:],
-                       grid=wf.grid,  shape=(nfreq,) + wf.shape[1:])
+        ufi = Function(name='ufi%s' % wf.name, dimensions=(freq_dim,) + wf.indices[1:],
+                       grid=wf.grid, shape=(nfreq,) + wf.shape[1:])
         dft += [Inc(ufr, factor * cos(omega_t) * wf)]
         dft += [Inc(ufi, -factor * sin(omega_t) * wf)]
         dft_modes += [(ufr, ufi)]

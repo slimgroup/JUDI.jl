@@ -1,6 +1,5 @@
 import sympy
 
-from scipy import interpolate
 from cached_property import cached_property
 
 from devito import Dimension
@@ -20,11 +19,12 @@ class TimeAxis(object):
     and num values should be taken from the TimeAxis object rather than relying
     upon the input values.
     The four possible cases are:
-    start is None: start = step*(1 - num) + stop
-    step is None: step = (stop - start)/(num - 1)
-    num is None: num = ceil((stop - start + step)/step);
-                 because of remainder stop = step*(num - 1) + start
-    stop is None: stop = step*(num - 1) + start
+    * start is None: start = step*(1 - num) + stop
+    * step is None: step = (stop - start)/(num - 1)
+    * num is None: num = ceil((stop - start + step)/step) and
+    because of remainder stop = step*(num - 1) + start
+    * stop is None: stop = step*(num - 1) + start
+
     Parameters
     ----------
     start : float, optional
@@ -74,15 +74,25 @@ class TimeAxis(object):
 
 
 class PointSource(SparseTimeFunction):
-    """Symbolic data object for a set of sparse point sources
-    :param name: Name of the symbol representing this source
-    :param grid: :class:`Grid` object defining the computational domain.
-    :param coordinates: Point coordinates for this source
-    :param data: (Optional) Data values to initialise point data
-    :param ntime: (Optional) Number of timesteps for which to allocate data
-    :param npoint: (Optional) Number of sparse points represented by this source
-    :param dimension: :(Optional) class:`Dimension` object for
-                       representing the number of points in this source
+    """
+    Symbolic data object for a set of sparse point sources
+
+    Parameters
+    ----------
+    name: String
+        Name of the symbol representing this source
+    grid: Grid
+        Grid object defining the computational domain.
+    coordinates: Array
+        Point coordinates for this source
+    data: (Optional) Data
+        values to initialise point data
+    ntime: Int (Optional)
+        Number of timesteps for which to allocate data
+    npoint: Int (Optional)
+    Number of sparse points represented by this source
+    dimension: Dimension (Optional)
+         object for representing the number of points in this source
     Note, either the dimensions `ntime` and `npoint` or the fully
     initialised `data` array need to be provided.
     """
@@ -136,10 +146,10 @@ class WaveletSource(PointSource):
     """
     Abstract base class for symbolic objects that encapsulate a set of
     sources with a pre-defined source signal wavelet.
-    :param name: Name for the resulting symbol
-    :param grid: :class:`Grid` object defining the computational domain.
-    :param f0: Peak frequency for Ricker wavelet in kHz
-    :param time: Discretized values of time in ms
+    name: Name for the resulting symbol
+    grid: :class:`Grid` object defining the computational domain.
+    f0: Peak frequency for Ricker wavelet in kHz
+    time: Discretized values of time in ms
     """
 
     def __new__(cls, *args, **kwargs):
@@ -168,8 +178,8 @@ class WaveletSource(PointSource):
     def wavelet(self, f0, t):
         """
         Defines a wavelet with a peak frequency f0 at time t.
-        :param f0: Peak frequency in kHz
-        :param t: Discretized values of time in ms
+        f0: Peak frequency in kHz
+        t: Discretized values of time in ms
         """
         raise NotImplementedError('Wavelet not defined')
 
@@ -179,17 +189,17 @@ class RickerSource(WaveletSource):
     Symbolic object that encapsulate a set of sources with a
     pre-defined Ricker wavelet:
     http://subsurfwiki.org/wiki/Ricker_wavelet
-    :param name: Name for the resulting symbol
-    :param grid: :class:`Grid` object defining the computational domain.
-    :param f0: Peak frequency for Ricker wavelet in kHz
-    :param time: Discretized values of time in ms
+    name: Name for the resulting symbol
+    grid: :class:`Grid` object defining the computational domain.
+    f0: Peak frequency for Ricker wavelet in kHz
+    time: Discretized values of time in ms
     """
 
     def wavelet(self, f0, t):
         """
         Defines a Ricker wavelet with a peak frequency f0 at time t.
-        :param f0: Peak frequency in kHz
-        :param t: Discretized values of time in ms
+        f0: Peak frequency in kHz
+        t: Discretized values of time in ms
         """
         r = (np.pi * f0 * (t - 1./f0))
         return (1-2.*r**2)*np.exp(-r**2)
@@ -200,17 +210,17 @@ class GaborSource(WaveletSource):
     Symbolic object that encapsulate a set of sources with a
     pre-defined Gabor wavelet:
     https://en.wikipedia.org/wiki/Gabor_wavelet
-    :param name: Name for the resulting symbol
-    :param grid: :class:`Grid` object defining the computational domain.
-    :param f0: Peak frequency for Ricker wavelet in kHz
-    :param time: Discretized values of time in ms
+    name: Name for the resulting symbol
+    grid: :class:`Grid` object defining the computational domain.
+    f0: Peak frequency for Ricker wavelet in kHz
+    time: Discretized values of time in ms
     """
 
     def wavelet(self, f0, t):
         """
         Defines a Gabor wavelet with a peak frequency f0 at time t.
-        :param f0: Peak frequency in kHz
-        :param t: Discretized values of time in ms
+        f0: Peak frequency in kHz
+        t: Discretized values of time in ms
         """
         agauss = 0.5 * f0
         tcut = 1.5 / agauss

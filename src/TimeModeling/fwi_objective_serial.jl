@@ -24,6 +24,7 @@ function fwi_objective(model_full::Modelall, source::judiVector, dObs::judiVecto
     # Set up Python model structure (force origin to be zero due to current devito bug)
     # Set up Python model structure
     modelPy = devito_model(model, options)
+    update_m(modelPy, model.m, dims)
 
     dtComp = modelPy.critical_dt
 
@@ -46,12 +47,18 @@ function fwi_objective(model_full::Modelall, source::judiVector, dObs::judiVecto
 
 
     if options.optimal_checkpointing == true
-        argout1, argout2 = pycall(ac."J_adjoint_checkpointing", PyObject, modelPy, src_coords, qIn, rec_coords, dObserved, is_residual=false, return_obj=true)
+        argout1, argout2 = pycall(ac."J_adjoint_checkpointing", PyObject, modelPy, src_coords, qIn,
+                                  rec_coords, dObserved, is_residual=false, return_obj=true,
+                                  t_sub=options.subsampling_factor)
     elseif ~isempty(options.frequencies)
         typeof(options.frequencies) == Array{Any,1} && (options.frequencies = options.frequencies[srcnum])
-        argout1, argout2 = pycall(ac."J_adjoint_freq", PyObject, modelPy, src_coords, qIn, rec_coords, dObserved, is_residual=false, return_obj=true, freq_list=options.frequencies)
+        argout1, argout2 = pycall(ac."J_adjoint_freq", PyObject, modelPy, src_coords, qIn,
+                                  rec_coords, dObserved, is_residual=false, return_obj=true,
+                                  freq_list=options.frequencies, t_sub=options.subsampling_factor)
     else
-        argout1, argout2 = pycall(ac."J_adjoint_standard", PyObject, modelPy, src_coords, qIn, rec_coords, dObserved, is_residual=false, return_obj=true)
+        argout1, argout2 = pycall(ac."J_adjoint_standard", PyObject, modelPy, src_coords, qIn,
+                                  rec_coords, dObserved, is_residual=false, return_obj=true,
+                                  t_sub=options.subsampling_factor)
     end
     argout2 = remove_padding(argout2, model.nb, true_adjoint=options.sum_padding)
     if options.limit_m==true

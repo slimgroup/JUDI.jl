@@ -1,7 +1,7 @@
 import numpy as np
 from sympy import sin, Abs
 
-from devito import (Grid, Function, Constant, SubDomain, SubDimension, Eq, Inc,
+from devito import (Grid, Function, SubDomain, SubDimension, Eq, Inc,
                     Operator, mmax, initialize_function)
 from devito.tools import as_tuple
 
@@ -18,6 +18,9 @@ class PhysicalDomain(SubDomain):
         self.nbl = nbl
 
     def define(self, dimensions):
+        """
+        Definition of the inner physical part of the domain
+        """
         return {d: ('middle', self.nbl, self.nbl) for d in dimensions}
 
 
@@ -99,12 +102,14 @@ class GenericModel(object):
 
     def _gen_phys_param(self, field, name, space_order, is_param=False,
                         default_value=0, func=lambda x: x):
+        """
+        Create symbolic object an initiliaze its data
+        """
         if field is None:
             return default_value
         if isinstance(field, np.ndarray):
             function = Function(name=name, grid=self.grid, space_order=space_order,
                                 parameter=is_param)
-            filler = func(field)
             initialize_function(function, field, self.nbl)
         else:
             return field
@@ -113,6 +118,9 @@ class GenericModel(object):
 
     @property
     def physical_parameters(self):
+        """
+        List of physical parameteres
+        """
         return as_tuple(self._physical_parameters)
 
     @property
@@ -186,14 +194,8 @@ class Model(GenericModel):
         Tilt angle in radian.
     phi : array_like or float
         Asymuth angle in radian.
-
-    The `Model` provides two symbolic data objects for the
-    creation of seismic wave propagation operators:
-
-    m : array_like or float
-        The square slowness of the wave.
-    damp : Function
-        The damping field for absorbing boundary condition.
+    dt: Float
+        User provided computational time-step
     """
     def __init__(self, origin, spacing, shape, vp, space_order=2, nbl=40,
                  dtype=np.float32, epsilon=None, delta=None, theta=None, phi=None,
@@ -211,11 +213,11 @@ class Model(GenericModel):
         # Additional parameter fields for TTI operators
         self._is_tti = any(p is not None for p in [epsilon, delta, theta, phi])
         if self._is_tti:
-            epsilon = 0 if epsilon is None else 1 + 2 * epsilon
-            delta = 0 if delta is None else 1 + 2 * delta
-            self.epsilon = self._gen_phys_param(1 + 2 * epsilon, 'epsilon', space_order)
-            self.scale = 1 if epsilon is None else np.sqrt(1 + 2 * np.max(epsilon))
-            self.delta = self._gen_phys_param(1 + 2 * delta, 'delta', space_order)
+            epsilon = 1 if epsilon is None else 1 + 2 * epsilon
+            delta = 1 if delta is None else 1 + 2 * delta
+            self.epsilon = self._gen_phys_param(epsilon, 'epsilon', space_order)
+            self.scale = np.sqrt(np.max(epsilon))
+            self.delta = self._gen_phys_param(delta, 'delta', space_order)
             self.theta = self._gen_phys_param(theta, 'theta', space_order)
             self.phi = self._gen_phys_param(phi, 'phi', space_order)
         # User provided dt
@@ -223,22 +225,37 @@ class Model(GenericModel):
 
     @property
     def space_order(self):
+        """
+        Spatial discretization order
+        """
         return self._space_order
 
     @property
     def dt(self):
+        """
+        User provided dt
+        """
         return self._dt
 
     @dt.setter
     def dt(self, dt):
+        """
+        Set user provided dt to overwrite the default CFL value.
+        """
         self._dt = dt
 
     @property
     def is_tti(self):
+        """
+        Whether the model is TTI or isotopic
+        """
         return self._is_tti
 
     @property
     def _max_vp(self):
+        """
+        Maximum velocity
+        """
         return mmax(self.vp)
 
     @property
@@ -254,9 +271,10 @@ class Model(GenericModel):
         dt = self.dtype(coeff * np.min(self.spacing) / (self.scale*self._max_vp))
         if self.dt:
             if self.dt > dt:
-                raise ValueError("Provided dt=%s is bigger than maximum stable dt%s "
+                raise ValueError("Provided dt=%s is bigger than maximum stable dt %s "
                                  % (self.dt, dt))
-            return self.dt
+            else:
+                return self.dtype("%.3e" % self.dt)
         return self.dtype("%.3e" % dt)
 
     @property
@@ -297,20 +315,14 @@ class Model(GenericModel):
     @property
     def vp(self):
         """
-        `numpy.ndarray` holding the model velocity in km/s.
-
-        Notes
-        -----
-        Updating the velocity field also updates the square slowness
-        ``self.m``. However, only ``self.m`` should be used in seismic
-        operators, since it is of type `Function`.
+        Function holding the model velocity in km/s.
         """
         return self._vp
 
     @vp.setter
     def vp(self, vp):
         """
-        Set a new velocity model and update square slowness.
+        Set a new velocity model.
 
         Parameters
         ----------
@@ -332,6 +344,10 @@ class Model(GenericModel):
 
     @property
     def m(self):
+        """
+        Symbolic representation of the squared slowness
+        m = 1/vp^2
+        """
         return 1 / (self.vp * self.vp)
 
     @property

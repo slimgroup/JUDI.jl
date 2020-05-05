@@ -69,5 +69,3 @@ b = np.dot(q0.flatten(), src1.data.flatten())
 print("Adjoint test F")
 print("Difference: ", a - b)
 print("Relative error: ", a/b - 1)
-
-from IPython import embed; embed()

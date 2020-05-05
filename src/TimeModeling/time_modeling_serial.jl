@@ -24,8 +24,9 @@ function time_modeling(model_full::Modelall, srcGeometry, srcData, recGeometry, 
 
     # Set up Python model structure
     modelPy = devito_model(model, options)
+    update_m(modelPy, model.m, dims)
     if op=='J' && mode == 1
-        update_dm(modelPy, reshape(dm,model.n), dims)
+        update_dm(modelPy, reshape(dm, model.n), dims)
     end
 
     # Load shot record if stored on disk

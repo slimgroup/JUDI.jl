@@ -1,15 +1,16 @@
 # Adjoint test for F and J
-# Author: Philipp Witte, pwitte@eos.ubc.ca
-# Date: January 2017
+# Author: Mathias Louboutin, mlouboutin3@gatech.edu
+# Date: May 2020
 #
 #
 
-using PyCall, PyPlot, JUDI.TimeModeling, Images, LinearAlgebra, Test, ArgParse
+using PyCall, PyPlot, JUDI.TimeModeling, Images, LinearAlgebra, Test, ArgParse, Printf
 
 ###
 function smooth(v; sigma=5)
     return Float32.(imfilter(v, Kernel.gaussian(sigma)))
 end
+
 ### Process command line args
 function parse_commandline()
     s = ArgParseSettings()
@@ -24,14 +25,18 @@ function parse_commandline()
     end
     return parse_args(s)
 end
+
 parsed_args = parse_commandline()
+
 ### Model
 nlayer = parsed_args["nlayer"]
+
 n = (301, 151)
 d = (10., 10.)
 o = (0., 0.)
+
 v = ones(Float32,n) .* 1.5f0
-vp_i = range(1.5f0, 4.5f0, length=nlayer)
+vp_i = range(1.5f0, 3.5f0, length=nlayer)
 for i in range(2, nlayer, step=1)
     v[:, (i-1)*Int(floor(n[2] / nlayer)) + 1:end] .= vp_i[i]  # Bottom velocity
 end
@@ -45,7 +50,6 @@ m0 = v0.^(-2f0)
 m = v.^(-2f0)
 dm = m0 .- m
 
-
 # Setup info and model structure
 nsrc = 1
 if parsed_args["tti"]
@@ -58,73 +62,110 @@ else
     model = Model(n,d,o,m,rho=rho0)
     model0 = Model(n,d,o,m0,rho=rho0)
 end
+
 ## Set up receiver geometry
 nxrec = 141
-xrec = range(100f0,stop=900f0,length=nxrec)
+xrec = range(d[1],stop=(n[1] - 2) * d[1],length=nxrec)
 yrec = 0f0
-zrec = range(50f0,stop=50f0,length=nxrec)
+zrec = range(5*d[1],stop=5*d[1],length=nxrec)
 
-# receiver sampling and recording time
-timeR = 1400f0	# receiver recording time [ms]
-dtR = calculate_dt(model)    # receiver sampling interval
+# Sampling and recording time
+time = 1400f0	# receiver recording time [ms]
+dt = 1.0
 
 # Set up receiver structure
 recGeometry = Geometry(xrec,yrec,zrec;dt=dt,t=time,nsrc=nsrc)
 
 ## Set up source geometry (cell array with source locations for each shot)
-xsrc = 500f0
+xsrc = (n[1] - 1) * d[1] / 2f0
 ysrc = 0f0
-zsrc = 50f0
-
-# source sampling and number of time steps
-timeS = 1400f0
-dtS = calculate_dt(model) # receiver sampling interval
+zsrc = 5*d[1]
 
 # Set up source structure
 srcGeometry = Geometry(xsrc,ysrc,zsrc;dt=dt,t=time)
 
 # Info structure
-ntComp = get_computational_nt(srcGeometry,recGeometry,model0)
+ntComp = get_computational_nt(srcGeometry, recGeometry, model0; dt=dt)
 info = Info(prod(n), nsrc, ntComp)
 
 # setup wavelet
 f0 = 0.015f0
-wavelet = ricker_wavelet(timeS,dtS,f0)
+wavelet = ricker_wavelet(time,dt,f0)
 wave_rand = wavelet.*rand(Float32,size(wavelet))
 
 ###################################################################################################
 # Modeling
 
 # Modeling operators
-opt = Options(sum_padding=true, isic=false, t_sub=1, h_sub=1, free_surface=false)
-F = judiModeling(info, model, srcGeometry, recGeometry; options=opt)
-F0 = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
-q = judiVector(srcGeometry, wavelet)
+opt = Options(sum_padding=true, dt_comp=dt)
+
+F = judiModeling(info,model0,srcGeometry,recGeometry; options=opt)
+q = judiVector(srcGeometry,wavelet)
 
 # Nonlinear modeling
 y = F*q
 
 # Generate random noise data vector with size of d_hat in the range of F
-qr = judiVector(srcGeometry, wave_rand)
-d1 = F*qr
+x = judiVector(srcGeometry, wave_rand)
 
-# Adjoint computation
-q_hat = adjoint(F)*d_hat
+# Forward-adjoint 
+y_hat = F*x
+x_hat = adjoint(F)*y
 
 # Result F
-a = dot(d1, d_hat)
-b = dot(qr, q_hat)
-println(a, ", ", b, " ", 1 - a/b)
-# @test isapprox(a/b - 1, 0, atol=1f-4)
+a = dot(y, y_hat)
+b = dot(x, x_hat)
+@printf(" <F x, y> : %2.2e, <x, F' y> : %2.2e, relative error : %2.2e \n", a, b, a/b - 1)
+@test isapprox(a/b - 1f0, 0, atol=1f-5)
 
 # Linearized modeling
-J = judiJacobian(F0,q)
+J = judiJacobian(F,q)
+x = vec(dm)
 
-dD_hat = J*dms
-dm_hat = adjoint(J)*dD_hat
+y_hat = J*x
+x_hat = adjoint(J)*y
 
-c = dot(dD_hat, dD_hat)
-d = dot(dm, dm_hat)
+c = dot(y, y_hat)
+d = dot(x, x_hat)
+@printf(" <J x, y> : %2.2e, <x, J' y> : %2.2e, relative error : %2.2e \n", c, d, c/d - 1)
+#@test isapprox(c/d - 1f0, 0, atol=1f-3)
 
-println(c, ", ", d, " ", 1 - c/d)
-@test isapprox(c/d - 1, 0, atol=1f-4)
+
+###################################################################################################
+# Extended source modeling
+
+opt = Options(return_array=true, sum_padding=true, dt_comp=dt)
+
+Pr = judiProjection(info, recGeometry)
+F = judiModeling(info, model0; options=opt)
+Pw = judiLRWF(info, wavelet)
+F = Pr*F*adjoint(Pw)
+
+# Extended source weights
+w = vec(randn(Float32, model0.n))
+x = vec(randn(Float32, model0.n))
+
+# Generate random noise data vector with size of d_hat in the range of F
+y = F*w
+
+# Forward-Adjoint computation
+y_hat = F*x
+x_hat = adjoint(F)*y
+
+# Result F
+a = dot(y, y_hat)
+b = dot(x, x_hat)
+@printf(" <F x, y> : %2.2e, <x, F' y> : %2.2e, relative error : %2.2e \n", a, b, a/b - 1)
+@test isapprox(a/b - 1, 0, atol=1f-5)
+
+# Linearized modeling
+J = judiJacobian(F, w)
+x = vec(dm)
+
+y_hat = J*x
+x_hat = adjoint(J)*y
+
+c = dot(y, y_hat)
+d = dot(x, x_hat)
+@printf(" <J x, y> : %2.2e, <x, J' y> : %2.2e, relative error : %2.2e \n", c, d, c/d - 1)
+@test isapprox(c/d - 1, 0, atol=1f-1)
