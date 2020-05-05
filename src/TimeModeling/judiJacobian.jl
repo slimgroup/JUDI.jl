@@ -66,12 +66,12 @@ function judiJacobian(F::judiPDEfull, source::judiVector; DDT::DataType=Float32,
     else
         srcnum = 1
     end
-    return J = judiJacobian{Float32,Float32}("linearized wave equation", m, n, F.info, F.model, F.srcGeometry, F.recGeometry, source.data, F.options,
-                                           v -> time_modeling(F.model, F.srcGeometry, source.data, F.recGeometry, nothing, v, srcnum, 'J', 1, F.options),
-                                           w -> time_modeling(F.model, F.srcGeometry, source.data, F.recGeometry, 
-                                           process_input_data(w, F.recGeometry, F.info),     # if input is not judiVector -> reshape into data cube
-                                           nothing, srcnum, 'J', -1, F.options)
-                                           )
+    return J = judiJacobian{Float32,Float32}("linearized wave equation", m, n, 
+        F.info, F.model, F.srcGeometry, F.recGeometry, source.data, F.options,
+        v -> time_modeling(F.model, F.srcGeometry, source.data, F.recGeometry, nothing, v, srcnum, 'J', 1, F.options),
+        w -> time_modeling(F.model, F.srcGeometry, source.data, F.recGeometry, process_input_data(w, F.recGeometry, F.info),
+        nothing, srcnum, 'J', -1, F.options)
+    )
 end
 
 

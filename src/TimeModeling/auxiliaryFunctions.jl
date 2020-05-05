@@ -433,7 +433,7 @@ process_input_data(input::judiVector, geometry::Geometry, info::Info) = input.da
 function process_input_data(input::Array{Float32}, geometry::Geometry, info::Info)
     # Input data is pure Julia array: assume fixed no.
     # of receivers and reshape into data cube nt x nrec x nsrc
-    nt = geometry.nt[1]
+    nt = Int(geometry.nt[1])
     nrec = length(geometry.xloc[1])
     nsrc = info.nsrc
     data = reshape(input, nt, nrec, nsrc)

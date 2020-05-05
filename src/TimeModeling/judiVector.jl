@@ -5,7 +5,7 @@
 # Authors: Philipp Witte (pwitte@eos.ubc.ca), Henryk Modzelewski (hmodzelewski@eos.ubc.ca)
 # Date: January 2017
 
-export judiVector, judiVectorException, subsample, judiVector_to_SeisBlock, time_resample, time_resample!, judiTimeInterpolation, write_shot_record, get_data
+export judiVector, judiVectorException, subsample, judiVector_to_SeisBlock, time_resample, time_resample!, judiTimeInterpolation, write_shot_record, get_data, convert_to_array
 
 ############################################################
 
@@ -776,6 +776,16 @@ function get_data(x::judiVector)
         shots[j] = convert(Array{Float32, 2}, x.data[j][1].data)
     end
     return judiVector(rec_geometry, shots)
+end
+
+function convert_to_array(x::judiVector)
+    y = vec(x.data[1])
+    if x.nsrc > 1
+        for j=2:x.nsrc
+            y = [y; vec(x.data[j])]
+        end
+    end
+    return y
 end
 
 function isapprox(x::judiVector, y::judiVector; rtol::Real=sqrt(eps()), atol::Real=0)
