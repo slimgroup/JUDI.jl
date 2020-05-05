@@ -217,22 +217,22 @@ end
 The JUDI4Flux interface allows integrating JUDI modeling operators into convolutional neural networks for deep learning. For example, the following code snippet shows how to create a shallow CNN consisting of two convolutional layers with a nonlinear forward modeling layer in-between them. JUDI4Flux enables backpropagation through Flux' automatic differentiation tool, but calls the corresponding adjoint JUDI operators under the hood. For more details, please check out the [JUDI4Flux Github](https://github.com/slimgroup/JUDI4Flux.jl) page.
 
 ```julia
-# Nonlinear JUDI modeling operator
-model = Model(n, d, o, m)
-F = judiModeling(info, model, rec_geometry, src_geometry)
+# Jacobian
+W1 = judiJacobian(F0, q)
+b1 = randn(Float32, num_samples)
 
-# Network layers
-ℱ = ForwardModel(F, q)
-conv1 = Conv((3, 3), 1=>1, pad=1, stride=1)
-conv2 = Conv((3, 3), 1=>1, pad=1, stride=1)
+# Fully connected layer
+W2 = randn(Float32, n_out, num_samples)
+b2 = randn(Float32, n_out)
 
 # Network and loss
-predict(x) = conv2(ℱ(conv1(x)))
-loss(x, y) = Flux.mse(predict(x), y)
+network(x) = W2*(W1*x .+ b1) .+ b2
+loss(x, y) = Flux.mse(network(x), y)
 
 # Compute gradient w/ Flux
-gs = Tracker.gradient(() -> loss(x, y), params(m))
-gs[m]   # evalute gradient w.r.t. m
+p = params(x, y, W1, b1, b2)
+gs = Tracker.gradient(() -> loss(x, y), p)
+gs[x]	# gradient w.r.t. to x
 ```
 
 JUDI4Flux allows implementing physics-augmented neural networks for seismic inversion, such as loop-unrolled seismic imaging algorithms. For example, the following results are a conventional RTM image, an LS-RTM image and a loop-unrolled LS-RTM image for a single simultaneous shot record.
