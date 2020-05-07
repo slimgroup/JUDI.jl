@@ -170,7 +170,7 @@ def basic_src(model, u, **kwargs):
     """
     w = - model.dm * model.irho
     if model.is_tti:
-        return (w * u[0].dt2, 0)
+        return (w * u.dt2, 0)
     return w * u.dt2
 
 
@@ -194,6 +194,7 @@ def isic_s(model, u, **kwargs):
     if model.is_tti:
         return (du, 0)
     return du
+
 
 ic_dict = {'isic_freq': isic_freq_g, 'corr_freq': corr_freq,
            'isic': isic_g, 'corr': corr_fields}
