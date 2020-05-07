@@ -17,7 +17,7 @@ struct judiPDEextended{DDT<:Number,RDT<:Number} <: joAbstractLinearOperator{DDT,
     m::Integer
     n::Integer
     info::Info
-    model::Model
+    model::Modelall
     wavelet::Array
     recGeometry::Geometry
     options::Options
@@ -33,7 +33,7 @@ end
 ############################################################
 ## Constructor
 
-function judiPDEextended(info::Info,model::Model, wavelet::Array, recGeometry::Geometry; options=Options(), DDT::DataType=Float32, RDT::DataType=DDT)
+function judiPDEextended(info::Info,model::Modelall, wavelet::Array, recGeometry::Geometry; options=Options(), DDT::DataType=Float32, RDT::DataType=DDT)
 # JOLI wrapper for nonlinear forward modeling
     (DDT == Float32 && RDT == Float32) || throw(judiPDEextendedException("Domain and range types not supported"))
 
