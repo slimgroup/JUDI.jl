@@ -633,9 +633,9 @@ function process_input_data(input::Array{Float32}, geometry::Geometry, info::Inf
     return dataCell
 end
 
-process_input_data(input::judiWeights, model::Model, info::Info) = input.weights
+process_input_data(input::judiWeights, model::Modelall, info::Info) = input.weights
 
-function process_input_data(input::Array{Float32}, model::Model, info::Info)
+function process_input_data(input::Array{Float32}, model::Modelall, info::Info)
     ndims = length(model.n)
     dataCell = Array{Array}(undef, info.nsrc)
     if ndims == 2

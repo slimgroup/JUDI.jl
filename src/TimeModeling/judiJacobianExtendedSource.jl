@@ -16,7 +16,7 @@ struct judiJacobianExQ{DDT<:Number,RDT<:Number} <: joAbstractLinearOperator{DDT,
     m::Integer
     n::Integer
     info::Info
-    model::Model
+    model::Modelall
     recGeometry::Geometry
     wavelet
     weights

@@ -53,14 +53,17 @@ dm = m0 .- m
 # Setup info and model structure
 nsrc = 1
 if parsed_args["tti"]
+    @printf("TTI adjoint test")
     epsilon = smooth((v0[:, :] .- 1.5f0)/12f0, sigma=3)
     delta =  smooth((v0[:, :] .- 1.5f0)/14f0, sigma=3)
     theta =  smooth((v0[:, :] .- 1.5f0)/4, sigma=3)
     model0 = Model_TTI(n,d,o,m0; epsilon=epsilon, delta=delta, theta=theta)
     model = Model_TTI(n,d,o,m; epsilon=epsilon, delta=delta, theta=theta)
+    jtol = 1f-2
 else
     model = Model(n,d,o,m,rho=rho0)
     model0 = Model(n,d,o,m0,rho=rho0)
+    jtol = 1f-3
 end
 
 ## Set up receiver geometry
@@ -128,7 +131,7 @@ x_hat = adjoint(J)*y
 c = dot(y, y_hat)
 d = dot(x, x_hat)
 @printf(" <J x, y> : %2.2e, <x, J' y> : %2.2e, relative error : %2.2e \n", c, d, c/d - 1)
-@test isapprox(c/d - 1f0, 0, atol=1f-3)
+@test isapprox(c/d - 1f0, 0, atol=jtol)
 
 
 ###################################################################################################
@@ -156,7 +159,7 @@ x_hat = adjoint(F)*y
 a = dot(y, y_hat)
 b = dot(x, x_hat)
 @printf(" <F x, y> : %2.2e, <x, F' y> : %2.2e, relative error : %2.2e \n", a, b, a/b - 1)
-@test isapprox(a/b - 1, 0, atol=1f-5)
+@test isapprox(a/b - 1, 0, atol=1f-4)
 
 # Linearized modeling
 J = judiJacobian(F, w)

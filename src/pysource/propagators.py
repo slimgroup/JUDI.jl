@@ -1,6 +1,6 @@
 from kernels import wave_kernel
 from geom_utils import src_rec
-from wave_utils import wavefield, otf_dft, extended_src_weights, extented_src
+from wave_utils import wf_as_src, wavefield, otf_dft, extended_src_weights, extented_src
 from sensitivity import grad_expr, lin_src
 
 from devito import Operator, Function
@@ -20,7 +20,7 @@ def op_kwargs(model, fs=False):
 
 # Forward propagation
 def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
-            q=0, free_surface=False, return_op=False, freq_list=None, dft_sub=None,
+            q=None, free_surface=False, return_op=False, freq_list=None, dft_sub=None,
             ws=None, t_sub=None):
     """
     Low level propagator, to be used through `interface.py`
@@ -30,7 +30,9 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     u = wavefield(model, space_order, save=save, nt=wavelet.shape[0])
 
     # Add extended source
-    q += extented_src(model, ws, wavelet)
+    q = q or wf_as_src(u, w=0)
+    q = extented_src(model, ws, wavelet, q=q)
+
     # Set up PDE expression and rearrange
     pde = wave_kernel(model, u, q=q, fs=free_surface)
 
@@ -118,7 +120,7 @@ def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8,
 
 
 def born(model, src_coords, rcv_coords, wavelet, space_order=8,
-         save=False, free_surface=False, isic=False, ws=None):
+         save=False, q=None, free_surface=False, isic=False, ws=None):
     """
     Low level propagator, to be used through `interface.py`
     Compute adjoint wavefield v = adjoint(F(m))*y
@@ -128,8 +130,12 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8,
     u = wavefield(model, space_order, save=save, nt=wavelet.shape[0])
     ul = wavefield(model, space_order, name="l")
 
+    # Extended source
+    q = q or wf_as_src(u, w=0)
+    q = extented_src(model, ws, wavelet, q=q)
+
     # Set up PDE expression and rearrange
-    pde = wave_kernel(model, u, fs=free_surface, q=extented_src(model, ws, wavelet))
+    pde = wave_kernel(model, u, fs=free_surface, q=q)
     pdel = wave_kernel(model, ul, q=lin_src(model, u, isic=isic), fs=free_surface)
 
     # Setup source and receiver

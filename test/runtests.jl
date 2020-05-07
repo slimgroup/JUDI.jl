@@ -18,5 +18,7 @@ if GROUP == "OP" || GROUP == "All"
         include("fwiGradientTest.jl")
         include("test_jacobian_extended.jl")
         include("test_jacobian_extended.jl")
+        push!(Base.ARGS, "--tti")
+        include("adjointTest.jl")
     end
 end

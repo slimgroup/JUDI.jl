@@ -1,4 +1,4 @@
-name: CI-tests
+name: CI-JUDI
 
 on:
   # Trigger the workflow on push to master or pull request

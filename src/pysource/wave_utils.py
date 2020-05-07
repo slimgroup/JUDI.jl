@@ -82,8 +82,8 @@ def extented_src(model, weight, wavelet, q=0):
     slices = tuple(slice(model.nbl, -model.nbl, 1) for _ in range(model.grid.dim))
     source_weight.data[slices] = weight
     if model.is_tti:
-        return (source_weight*wavelett, source_weight*wavelett)
-    return source_weight*wavelett
+        return (q[0]+source_weight*wavelett, q[1]+source_weight*wavelett)
+    return q + source_weight*wavelett
 
 
 def extended_src_weights(model, wavelet, v):
