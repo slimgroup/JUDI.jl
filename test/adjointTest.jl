@@ -128,7 +128,7 @@ x_hat = adjoint(J)*y
 c = dot(y, y_hat)
 d = dot(x, x_hat)
 @printf(" <J x, y> : %2.2e, <x, J' y> : %2.2e, relative error : %2.2e \n", c, d, c/d - 1)
-#@test isapprox(c/d - 1f0, 0, atol=1f-3)
+@test isapprox(c/d - 1f0, 0, atol=1f-3)
 
 
 ###################################################################################################

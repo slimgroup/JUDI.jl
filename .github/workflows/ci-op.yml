@@ -19,7 +19,7 @@ jobs:
       DEVITO_LANGUAGE: "openmp"
       DEVITO_BACKEND: "core"
       OMP_NUM_THREADS: 4
-      GROUP: "JUDI"
+      GROUP: "OP"
 
     strategy:
       fail-fast: false
@@ -47,9 +47,19 @@ jobs:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
 
+      - name: Set up Python 3.7
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.7
+
       - name: Instal gcc
         if: runner.os == 'macOS'
         run: brew install gcc@7
+
+      - name: Install devito
+        run: |
+          python -m pip install --upgrade pip
+          pip install devito
 
       - name: Build JUDI
         uses: julia-actions/julia-buildpkg@latest
