@@ -151,10 +151,10 @@ def adjoint_modeling(model, src_coords, rec_coords, rec_data, space_order=8, nb=
     m, rho, damp = model.m, model.rho, model.damp
 
     # Create the adjoint wavefield
-    if src_coords is not None:
-        v = TimeFunction(name="v", grid=model.grid, time_order=2, space_order=space_order)
-    else:
+    if src_coords is None and wavelet is None:
         v = TimeFunction(name="v", grid=model.grid, time_order=2, space_order=space_order, save=nt)
+    else:
+        v = TimeFunction(name="v", grid=model.grid, time_order=2, space_order=space_order)
 
     # Set up PDE and rearrange
     vlaplace, rho = acoustic_laplacian(v, rho)
