@@ -618,7 +618,7 @@ def J_adjoint_standard(model, src_coords, wavelet, rec_coords, recin, space_orde
         recin[:] = rec.data[:] - recin[:]   # input is observed data
 
     g = gradient(model, recin, rec_coords, u, space_order=space_order,
-                 free_surface=free_surface, isic=isic, w=t_sub)
+                 free_surface=free_surface, isic=isic)
     if return_obj:
         return .5*model.critical_dt*np.linalg.norm(recin)**2, g.data
     return g.data
