@@ -11,10 +11,8 @@ def laplacian(v, irho):
     else:
         if isinstance(irho, Function):
             so = irho.space_order // 2
-            Lap = sum([getattr(irho * getattr(v, 'd%s' % d.name)(x0=d + d.spacing/2,
-                                                                 fd_order=so),
-                               'd%s' % d.name)(x0=d - d.spacing/2, fd_order=so)
-                       for d in irho.dimensions])
+            Lap = sum([getattr(irho * getattr(v, 'd%s' % d.name)(x0=d + d.spacing/2, fd_order=so),
+                'd%s' % d.name)(x0=d - d.spacing/2, fd_order=so) for d in irho.dimensions])
         else:
             Lap = irho * v.laplace
 

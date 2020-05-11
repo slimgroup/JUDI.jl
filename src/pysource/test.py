@@ -6,7 +6,7 @@ from sources import RickerSource, Receiver
 from models import Model
 
 from propagators import *
-from interface import forward_rec
+from interface import *
 
 parser = ArgumentParser(description="Adjoint test args")
 
@@ -46,6 +46,7 @@ for i in range(1, args.nlayer):
     rho[..., i*int(shape[-1] / args.nlayer):] = rho_i[i]  # Bottom velocity
 
 dm = 1/v**2 - 1/v0**2
+
 # Set up model structures
 if is_tti:
     model = Model(shape=shape, origin=origin, spacing=spacing,
@@ -81,39 +82,50 @@ rec_t = Receiver(name='rec_t', grid=model.grid, npoint=nrec, ntime=nt)
 rec_t.coordinates.data[:, 0] = np.linspace(0., (shape[0]-1)*spacing[0], num=nrec)
 rec_t.coordinates.data[:, 1] = 20.
 
-# Interface (Level 1)
-d_obs = forward_rec(model, src.coordinates.data, src.data, rec_t.coordinates.data,
-                    space_order=8, free_surface=False)
 
-N = 1000
-a = .003
-b = .030
-freq_list = np.sort(a + (b - a) * (np.random.randint(N, size=(10,)) - 1) / (N - 1.))
-dft_sub = 1
-# Propagators (Level 2)
-d_obs, _ = forward(model, src.coordinates.data, rec_t.coordinates.data, src.data)
+#d_obs, u = forward_rec_wf(model, src.coordinates.data, src.data, rec_t.coordinates.data, t_sub=2)
 
-d_lin, _ = born(model0, src.coordinates.data, rec_t.coordinates.data,
-                src.data, isic=True)
+d_obs = forward_rec(model, src.coordinates.data, src.data, rec_t.coordinates.data)
 
 
-d0, u0 = forward(model0, src.coordinates.data, rec_t.coordinates.data, src.data,
-                 dft_sub=dft_sub, space_order=8, save=False, freq_list=freq_list)
+g = J_adjoint(model0, src.coordinates.data, src.data, rec_t.coordinates.data, d_obs, t_sub=4)
+print(np.max(g))
 
-g = gradient(model0, d_lin, rec_t.coordinates.data, u0, return_op=False, space_order=8,
-             w=None, free_surface=False, freq=freq_list, dft_sub=dft_sub)
+plt.imshow(np.transpose(g), vmin=-5e2, vmax=5e2, cmap='gray', aspect='auto'); plt.show()
 
-g2 = gradient(model0, d_lin, rec_t.coordinates.data, u0, return_op=False, space_order=8,
-              w=None, free_surface=False, freq=freq_list, dft_sub=dft_sub, isic=True)
-# Plot
-plt.figure()
-plt.imshow(d_lin, vmin=-1, vmax=1, cmap='gray', aspect='auto')
-plt.figure()
-plt.imshow(d_pred.data, vmin=-1, vmax=1, cmap='gray', aspect='auto')
-plt.figure()
-plt.imshow(g[model.nbl:-model.nbl, model.nbl:-model.nbl].T,
-           vmin=-1e1, vmax=1e1, cmap='gray', aspect='auto')
-plt.figure()
-plt.imshow(g2[model.nbl:-model.nbl, model.nbl:-model.nbl].T,
-           vmin=-1e1, vmax=1e1, cmap='gray', aspect='auto')
-plt.show()
+# # Interface (Level 1)
+# d_obs = forward_rec(model, src.coordinates.data, src.data, rec_t.coordinates.data,
+#                     space_order=8, free_surface=False)
+
+# N = 1000
+# a = .003
+# b = .030
+# freq_list = np.sort(a + (b - a) * (np.random.randint(N, size=(10,)) - 1) / (N - 1.))
+# dft_sub = 1
+# # Propagators (Level 2)
+# d_obs, _ = forward(model, src.coordinates.data, rec_t.coordinates.data, src.data)
+
+# d_lin, _ = born(model0, src.coordinates.data, rec_t.coordinates.data,
+#                 src.data, isic=True)
+
+
+# d0, u0 = forward(model0, src.coordinates.data, rec_t.coordinates.data, src.data,
+#                  dft_sub=dft_sub, space_order=8, save=False, freq_list=freq_list)
+
+# g = gradient(model0, d_lin, rec_t.coordinates.data, u0, return_op=False, space_order=8,
+#              w=None, free_surface=False, freq=freq_list, dft_sub=dft_sub)
+
+# g2 = gradient(model0, d_lin, rec_t.coordinates.data, u0, return_op=False, space_order=8,
+#               w=None, free_surface=False, freq=freq_list, dft_sub=dft_sub, isic=True)
+# # Plot
+# plt.figure()
+# plt.imshow(d_lin, vmin=-1, vmax=1, cmap='gray', aspect='auto')
+# plt.figure()
+# plt.imshow(d_pred.data, vmin=-1, vmax=1, cmap='gray', aspect='auto')
+# plt.figure()
+# plt.imshow(g[model.nbl:-model.nbl, model.nbl:-model.nbl].T,
+#            vmin=-1e1, vmax=1e1, cmap='gray', aspect='auto')
+# plt.figure()
+# plt.imshow(g2[model.nbl:-model.nbl, model.nbl:-model.nbl].T,
+#            vmin=-1e1, vmax=1e1, cmap='gray', aspect='auto')
+# plt.show()

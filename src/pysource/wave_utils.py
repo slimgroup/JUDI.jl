@@ -6,7 +6,7 @@ from devito import (TimeFunction, Function, Inc, DefaultDimension,
 from devito.tools import as_tuple
 
 
-def wavefield(model, space_order, save=False, nt=None, fw=True, name=''):
+def wavefield(model, space_order, save=False, nt=None, fw=True, name='', t_sub=1):
     """
     Create the wavefield for the wave equation
 
@@ -26,7 +26,10 @@ def wavefield(model, space_order, save=False, nt=None, fw=True, name=''):
     name: string
         Custom name attached to default (u+name)
     """
+
     name = "u"+name if fw else "v"+name
+    if t_sub > 1:   # for time subsampling, create separate wavefield to save
+        save = False
     if model.is_tti:
         u = TimeFunction(name="%s1" % name, grid=model.grid, time_order=2,
                          space_order=space_order, save=None if not save else nt)
@@ -36,6 +39,33 @@ def wavefield(model, space_order, save=False, nt=None, fw=True, name=''):
     else:
         return TimeFunction(name=name, grid=model.grid, time_order=2,
                             space_order=space_order, save=None if not save else nt)
+
+
+def wavefield_subsampled(model, u, nt, t_sub, space_order=8):
+    """
+    Create a subsampled wavefield
+
+    Parameters
+    ----------
+
+    model : Model
+        Physical model
+    u : TimeFunction
+        Forward wavefield for modeling
+    nt : int
+        Number of time steps on original time axis
+    t_sub : int
+        Factor for time-subsampling
+    space_order: int
+        Spatial discretization order
+    """
+    if t_sub > 1:
+        time_subsampled = ConditionalDimension(name='t_sub', parent=u.grid.time_dim, factor=t_sub)
+        nsave = (nt-1)//t_sub + 2
+        usave = TimeFunction(name='us', grid=model.grid, time_order=2, space_order=space_order, time_dim=time_subsampled, save=nsave)
+        return usave, [Eq(usave.forward, u.forward)]
+    else:
+        return None, []
 
 
 def wf_as_src(v, w=1):

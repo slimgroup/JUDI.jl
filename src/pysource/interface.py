@@ -70,7 +70,7 @@ def forward_rec_w(model, weight, wavelet, rec_coords, space_order=8,
 
 
 # Pr*F*Ps'*q
-def forward_rec_wf(model, src_coords, wavelet, rec_coords,
+def forward_rec_wf(model, src_coords, wavelet, rec_coords, t_sub=1,
                    space_order=8, free_surface=False):
     """
     Forward modeling of a point source Pr*F*Ps'*q and return wavefield.
@@ -97,13 +97,13 @@ def forward_rec_wf(model, src_coords, wavelet, rec_coords,
     TimeFunction
         Wavefield
     """
-    rec, u = forward(model, src_coords, rec_coords, wavelet, save=True,
+    rec, u = forward(model, src_coords, rec_coords, wavelet, save=True, t_sub=t_sub,
                      space_order=space_order, free_surface=free_surface)
     return rec.data, u
 
 
 # F*Ps'*q
-def forward_no_rec(model, src_coords, wavelet, space_order=8, free_surface=False):
+def forward_no_rec(model, src_coords, wavelet, space_order=8, free_surface=False, t_sub=1):
     """
     Forward modeling of a point source without receiver.
 
@@ -126,7 +126,7 @@ def forward_no_rec(model, src_coords, wavelet, space_order=8, free_surface=False
         Wavefield
     """
     _, u = forward(model, src_coords, None, wavelet, space_order=space_order,
-                   save=True, free_surface=free_surface)
+                   save=True, free_surface=free_surface, t_sub=t_sub)
     return u.data
 
 
@@ -165,7 +165,7 @@ def forward_wf_src(model, u, rec_coords, space_order=8, free_surface=False):
 
 
 # F*u
-def forward_wf_src_norec(model, u, space_order=8, free_surface=False):
+def forward_wf_src_norec(model, u, space_order=8, free_surface=False, t_sub=1):
     """
     Forward modeling of a full wavefield source without receiver F*u.
 
@@ -191,7 +191,7 @@ def forward_wf_src_norec(model, u, space_order=8, free_surface=False):
         wf_src._data = u._data
     else:
         wf_src.data[:] = u[:]
-    _, u = forward(model, None, None, None, space_order=space_order,
+    _, u = forward(model, None, None, None, space_order=space_order, t_sub=t_sub,
                    save=True, free_surface=free_surface, q=wf_src)
     return u.data
 
@@ -358,7 +358,7 @@ def adjoint_wf_src_norec(model, u, space_order=8, free_surface=False):
     return v.data
 
 
-# Linearized modeling
+# Linearized modeling ∂/∂m (Pr*F*Ps'*q)
 def born_rec(model, src_coords, wavelet, rec_coords,
              space_order=8, free_surface=False, isic=False):
     """
@@ -392,6 +392,7 @@ def born_rec(model, src_coords, wavelet, rec_coords,
     return rec.data
 
 
+# ∂/∂m (Pr*F*Pw'*w)
 def born_rec_w(model, weight, wavelet, rec_coords,
                space_order=8, free_surface=False, isic=False):
     """
@@ -458,7 +459,7 @@ def grad_fwi(model, recin, rec_coords, u, space_order=8, free_surface=False):
 def J_adjoint(model, src_coords, wavelet, rec_coords, recin, space_order=8,
               checkpointing=False, free_surface=False, n_checkpoints=None,
               maxmem=None, freq_list=[], dft_sub=None, isic=False, ws=None,
-              t_sub=None):
+              t_sub=1):
     """
     Jacobian (adjoint fo born modeling operator) operator on a shot record
     as a source (i.e data residual). Supports three modes:
@@ -522,7 +523,7 @@ def J_adjoint(model, src_coords, wavelet, rec_coords, recin, space_order=8,
 
 def J_adjoint_freq(model, src_coords, wavelet, rec_coords, recin, space_order=8,
                    free_surface=False, freq_list=[], is_residual=False, return_obj=False,
-                   dft_sub=None, isic=False, ws=None, t_sub=None):
+                   dft_sub=None, isic=False, ws=None, t_sub=1):
     """
     Jacobian (adjoint fo born modeling operator) operator on a shot record
     as a source (i.e data residual). Outputs the gradient with Frequency
@@ -576,7 +577,7 @@ def J_adjoint_freq(model, src_coords, wavelet, rec_coords, recin, space_order=8,
 
 def J_adjoint_standard(model, src_coords, wavelet, rec_coords, recin, space_order=8,
                        free_surface=False, is_residual=False, return_obj=False,
-                       isic=False, ws=None, t_sub=None):
+                       isic=False, ws=None, t_sub=1):
     """
     Adjoint Jacobian (adjoint fo born modeling operator) operator on a shot record
     as a source (i.e data residual). Outputs the gradient with standard
@@ -611,13 +612,13 @@ def J_adjoint_standard(model, src_coords, wavelet, rec_coords, recin, space_orde
         Adjoint jacobian on the input data (gradient)
     """
     rec, u = forward(model, src_coords, rec_coords, wavelet, save=True, ws=ws,
-                     space_order=space_order, free_surface=free_surface)
+                     space_order=space_order, free_surface=free_surface, t_sub=t_sub)
     # Residual and gradient
     if not is_residual:
         recin[:] = rec.data[:] - recin[:]   # input is observed data
 
     g = gradient(model, recin, rec_coords, u, space_order=space_order,
-                 free_surface=free_surface, isic=isic)
+                 free_surface=free_surface, isic=isic, w=t_sub)
     if return_obj:
         return .5*model.critical_dt*np.linalg.norm(recin)**2, g.data
     return g.data
@@ -626,7 +627,7 @@ def J_adjoint_standard(model, src_coords, wavelet, rec_coords, recin, space_orde
 def J_adjoint_checkpointing(model, src_coords, wavelet, rec_coords, recin, space_order=8,
                             free_surface=False, is_residual=False, n_checkpoints=None,
                             maxmem=None, return_obj=False, isic=False, ws=None,
-                            t_sub=None):
+                            t_sub=1):
     """
     Jacobian (adjoint fo born modeling operator) operator on a shot record
     as a source (i.e data residual). Outputs the gradient with Checkpointing.
