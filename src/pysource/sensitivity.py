@@ -43,7 +43,24 @@ def grad_expr(gradm, u, v, model, w=None, freq=None, dft_sub=None, isic=False):
     return [Eq(gradm, expr + gradm)]
 
 
-def corr_freq(u, v, model, freq=None, dft_sub=None, **kwargs):
+def crosscorr_time(u, v, model, **kwargs):
+    """
+    Cross correlation of forward and adjoint wavefield
+
+    Parameters
+    ----------
+    u: TimeFunction or Tuple
+        Forward wavefield (tuple of fields for TTI or dft)
+    v: TimeFunction or Tuple
+        Adjoint wavefield (tuple of fields for TTI)
+    model: Model
+        Model structure
+    """
+    w = kwargs.get('w') or model.grid.time_dim.spacing * model.irho
+    return - w * v * u.dt2
+
+
+def crosscorr_freq(u, v, model, freq=None, dft_sub=None, **kwargs):
     """
     Standard cross-correlation imaging condition with on-th-fly-dft
 
@@ -76,24 +93,7 @@ def corr_freq(u, v, model, freq=None, dft_sub=None, **kwargs):
     return expr
 
 
-def corr_fields(u, v, model, **kwargs):
-    """
-    Cross correlation of forward and adjoint wavefield
-
-    Parameters
-    ----------
-    u: TimeFunction or Tuple
-        Forward wavefield (tuple of fields for TTI or dft)
-    v: TimeFunction or Tuple
-        Adjoint wavefield (tuple of fields for TTI)
-    model: Model
-        Model structure
-    """
-    w = kwargs.get('w') or model.grid.time_dim.spacing * model.irho
-    return - w * v * u.dt2
-
-
-def isic_g(u, v, model, **kwargs):
+def isic_time(u, v, model, **kwargs):
     """
     Inverse scattering imaging condition
 
@@ -110,7 +110,7 @@ def isic_g(u, v, model, **kwargs):
     return w * (u * v.dt2 * model.m + grad(u).T * grad(v))
 
 
-def isic_freq_g(u, v, model, **kwargs):
+def isic_freq(u, v, model, **kwargs):
     """
     Inverse scattering imaging condition
 
@@ -174,7 +174,7 @@ def basic_src(model, u, **kwargs):
     return w * u.dt2
 
 
-def isic_s(model, u, **kwargs):
+def isic_src(model, u, **kwargs):
     """
     ISIC source for linearized modeling
 
@@ -196,6 +196,6 @@ def isic_s(model, u, **kwargs):
     return du
 
 
-ic_dict = {'isic_freq': isic_freq_g, 'corr_freq': corr_freq,
-           'isic': isic_g, 'corr': corr_fields}
-ls_dict = {'isic': isic_s, 'corr': basic_src}
+ic_dict = {'isic_freq': isic_freq, 'corr_freq': crosscorr_freq,
+           'isic': isic_time, 'corr': crosscorr_time}
+ls_dict = {'isic': isic_src, 'corr': basic_src}

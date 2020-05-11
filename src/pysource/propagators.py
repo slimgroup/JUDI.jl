@@ -1,6 +1,6 @@
 from kernels import wave_kernel
 from geom_utils import src_rec
-from wave_utils import wf_as_src, wavefield, otf_dft, extended_src_weights, extented_src
+from wave_utils import wf_as_src, wavefield, otf_dft, extended_src_weights, extented_src, wavefield_subsampled
 from sensitivity import grad_expr, lin_src
 
 from devito import Operator, Function
@@ -21,13 +21,16 @@ def op_kwargs(model, fs=False):
 # Forward propagation
 def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
             q=None, free_surface=False, return_op=False, freq_list=None, dft_sub=None,
-            ws=None, t_sub=None):
+            ws=None, t_sub=1):
     """
     Low level propagator, to be used through `interface.py`
     Compute forward wavefield u = A(m)^{-1}*f and related quantities (u(xrcv))
     """
-    # Setting adjoint wavefield
-    u = wavefield(model, space_order, save=save, nt=wavelet.shape[0])
+    # Setting forward wavefield
+    u = wavefield(model, space_order, save=save, nt=wavelet.shape[0], t_sub=t_sub)
+
+    # Expression for saving wavefield if time subsampling is used
+    u_save, eq_save = wavefield_subsampled(model, u, wavelet.shape[0], t_sub)
 
     # Add extended source
     q = q or wf_as_src(u, w=0)
@@ -45,14 +48,14 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
 
     # Create operator and run
     subs = model.spacing_map
-    op = Operator(pde + geom_expr + dft, subs=subs, name="forward"+name(model))
+    op = Operator(pde + geom_expr + dft + eq_save, subs=subs, name="forward"+name(model))
 
     if return_op:
         return op, u, rcv
     op(**op_kwargs(model, fs=free_surface))
 
     # Output
-    return getattr(rcv, 'data', None), dft_modes or u
+    return getattr(rcv, 'data', None), dft_modes or u_save if t_sub > 1 else u
 
 
 def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0,
@@ -86,7 +89,7 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0,
     return getattr(rcv, 'data', None), v
 
 
-def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8,
+def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8, t_sub=1,
              w=None, free_surface=False, freq=None, dft_sub=None, isic=True):
     """
     Low level propagator, to be used through `interface.py`
