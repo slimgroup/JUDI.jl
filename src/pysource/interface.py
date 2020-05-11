@@ -103,7 +103,7 @@ def forward_rec_wf(model, src_coords, wavelet, rec_coords, t_sub=1,
 
 
 # F*Ps'*q
-def forward_no_rec(model, src_coords, wavelet, space_order=8, free_surface=False, t_sub=1):
+def forward_no_rec(model, src_coords, wavelet, space_order=8, free_surface=False):
     """
     Forward modeling of a point source without receiver.
 
@@ -126,7 +126,7 @@ def forward_no_rec(model, src_coords, wavelet, space_order=8, free_surface=False
         Wavefield
     """
     _, u = forward(model, src_coords, None, wavelet, space_order=space_order,
-                   save=True, free_surface=free_surface, t_sub=t_sub)
+                   save=True, free_surface=free_surface)
     return u.data
 
 
@@ -165,7 +165,7 @@ def forward_wf_src(model, u, rec_coords, space_order=8, free_surface=False):
 
 
 # F*u
-def forward_wf_src_norec(model, u, space_order=8, free_surface=False, t_sub=1):
+def forward_wf_src_norec(model, u, space_order=8, free_surface=False):
     """
     Forward modeling of a full wavefield source without receiver F*u.
 
@@ -191,7 +191,7 @@ def forward_wf_src_norec(model, u, space_order=8, free_surface=False, t_sub=1):
         wf_src._data = u._data
     else:
         wf_src.data[:] = u[:]
-    _, u = forward(model, None, None, None, space_order=space_order, t_sub=t_sub,
+    _, u = forward(model, None, None, None, space_order=space_order,
                    save=True, free_surface=free_surface, q=wf_src)
     return u.data
 
