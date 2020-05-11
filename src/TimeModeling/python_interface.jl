@@ -130,7 +130,7 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Geometry
     src_coords = setup_grid(srcGeometry, modelPy.shape)
 
     # Devito call
-    qOut = pycall(ac."adjoint_wf_src", Array{Float32,2}, modelPy, src_coords, recData[1], space_order=options.space_order, free_surface=options.free_surface)
+    qOut = pycall(ac."adjoint_wf_src", Array{Float32,2}, modelPy, recData[1], src_coords, space_order=options.space_order, free_surface=options.free_surface)
     qOut = time_resample(qOut,dtComp,srcGeometry)
 
     # Output adjoint data as judiVector

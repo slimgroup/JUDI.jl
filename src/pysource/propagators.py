@@ -5,6 +5,7 @@ from wave_utils import (wf_as_src, wavefield, otf_dft, extended_src_weights,
 from sensitivity import grad_expr, lin_src
 
 from devito import Operator, Function
+from devito.tools import as_tuple
 
 
 def name(model):
@@ -27,11 +28,13 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     Low level propagator, to be used through `interface.py`
     Compute forward wavefield u = A(m)^{-1}*f and related quantities (u(xrcv))
     """
+    # Number of time steps
+    nt = as_tuple(q)[0].shape[0] if wavelet is None else wavelet.shape[0]
     # Setting forward wavefield
-    u = wavefield(model, space_order, save=save, nt=wavelet.shape[0], t_sub=t_sub)
+    u = wavefield(model, space_order, save=save, nt=nt, t_sub=t_sub)
 
     # Expression for saving wavefield if time subsampling is used
-    u_save, eq_save = wavefield_subsampled(model, u, wavelet.shape[0], t_sub)
+    u_save, eq_save = wavefield_subsampled(model, u, nt, t_sub)
 
     # Add extended source
     q = q or wf_as_src(u, w=0)
@@ -41,7 +44,7 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     pde = wave_kernel(model, u, q=q, fs=free_surface)
 
     # Setup source and receiver
-    geom_expr, _, rcv = src_rec(model, u, src_coords=src_coords,
+    geom_expr, _, rcv = src_rec(model, u, src_coords=src_coords, nt=nt,
                                 rec_coords=rcv_coords, wavelet=wavelet)
 
     # On-the-fly Fourier
@@ -66,14 +69,16 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0,
     Compute adjoint wavefield v = adjoint(F(m))*y
     and related quantities (||v||_w, v(xsrc))
     """
+    # Number of time steps
+    nt = as_tuple(q)[0].shape[0] if y is None else y.shape[0]
     # Setting adjoint wavefield
-    v = wavefield(model, space_order, save=save, nt=y.shape[0], fw=False)
+    v = wavefield(model, space_order, save=save, nt=nt, fw=False)
 
     # Set up PDE expression and rearrange
     pde = wave_kernel(model, v, q=q, fw=False, fs=free_surface)
 
     # Setup source and receiver
-    geom_expr, _, rcv = src_rec(model, v, src_coords=rcv_coords,
+    geom_expr, _, rcv = src_rec(model, v, src_coords=rcv_coords, nt=nt,
                                 rec_coords=src_coords, wavelet=y, fw=False)
 
     # Extended source
