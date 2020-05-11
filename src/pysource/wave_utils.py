@@ -28,8 +28,7 @@ def wavefield(model, space_order, save=False, nt=None, fw=True, name='', t_sub=1
     """
 
     name = "u"+name if fw else "v"+name
-    if t_sub > 1:   # for time subsampling, create separate wavefield to save
-        save = False
+    save = False if t_sub > 1 else save
     if model.is_tti:
         u = TimeFunction(name="%s1" % name, grid=model.grid, time_order=2,
                          space_order=space_order, save=None if not save else nt)
@@ -60,9 +59,12 @@ def wavefield_subsampled(model, u, nt, t_sub, space_order=8):
         Spatial discretization order
     """
     if t_sub > 1:
-        time_subsampled = ConditionalDimension(name='t_sub', parent=u.grid.time_dim, factor=t_sub)
+        time_subsampled = ConditionalDimension(name='t_sub', parent=u.grid.time_dim,
+                                               factor=t_sub)
         nsave = (nt-1)//t_sub + 2
-        usave = TimeFunction(name='us', grid=model.grid, time_order=2, space_order=space_order, time_dim=time_subsampled, save=nsave)
+        usave = TimeFunction(name='us', grid=model.grid, time_order=2,
+                             space_order=space_order, time_dim=time_subsampled,
+                             save=nsave)
         return usave, [Eq(usave.forward, u.forward)]
     else:
         return None, []

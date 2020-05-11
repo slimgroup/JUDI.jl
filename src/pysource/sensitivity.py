@@ -56,7 +56,7 @@ def crosscorr_time(u, v, model, **kwargs):
     model: Model
         Model structure
     """
-    w = kwargs.get('w') or model.grid.time_dim.spacing * model.irho
+    w = kwargs.get('w') or u.dimensions[0].spacing * model.irho
     return - w * v * u.dt2
 
 
@@ -106,7 +106,7 @@ def isic_time(u, v, model, **kwargs):
     model: Model
         Model structure
     """
-    w = -model.grid.time_dim.spacing * model.irho
+    w = - u.dimensions[0].spacing * model.irho
     return w * (u * v.dt2 * model.m + grad(u).T * grad(v))
 
 
