@@ -1,6 +1,6 @@
 import numpy as np
 from sympy import sin, Abs
-
+import warnings
 from devito import (Grid, Function, SubDomain, SubDimension, Eq, Inc,
                     Operator, mmax, initialize_function)
 from devito.tools import as_tuple
@@ -271,7 +271,7 @@ class Model(GenericModel):
         dt = self.dtype(coeff * np.min(self.spacing) / (self.scale*self._max_vp))
         if self.dt:
             if self.dt > dt:
-                raise ValueError("Provided dt=%s is bigger than maximum stable dt %s "
+                warnings.warn("Provided dt=%s is bigger than maximum stable dt %s "
                                  % (self.dt, dt))
             else:
                 return self.dtype("%.3e" % self.dt)

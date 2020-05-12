@@ -30,6 +30,7 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     """
     # Number of time steps
     nt = as_tuple(q)[0].shape[0] if wavelet is None else wavelet.shape[0]
+
     # Setting forward wavefield
     u = wavefield(model, space_order, save=save, nt=nt, t_sub=t_sub)
 
@@ -71,6 +72,7 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0,
     """
     # Number of time steps
     nt = as_tuple(q)[0].shape[0] if y is None else y.shape[0]
+
     # Setting adjoint wavefield
     v = wavefield(model, space_order, save=save, nt=nt, fw=False)
 
