@@ -670,7 +670,7 @@ def J_adjoint_checkpointing(model, src_coords, wavelet, rec_coords, recin, space
     op_f, u, rec = forward(model, src_coords, rec_coords, wavelet,
                            space_order=space_order, return_op=True,
                            free_surface=free_surface, ws=ws)
-    op, g, v = gradient(model, rec_coords, recin, u, space_order=space_order,
+    op, g, v = gradient(model, recin, rec_coords, u, space_order=space_order,
                         return_op=True, free_surface=free_surface, isic=isic)
     cp = DevitoCheckpoint([u])
     if maxmem is not None:
