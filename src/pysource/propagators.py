@@ -5,6 +5,7 @@ from wave_utils import (wf_as_src, wavefield, otf_dft, extended_src_weights,
 from sensitivity import grad_expr, lin_src
 
 from devito import Operator, Function
+from devito.tools import as_tuple
 
 
 def name(model):
@@ -28,11 +29,8 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     Compute forward wavefield u = A(m)^{-1}*f and related quantities (u(xrcv))
     """
     # Number of time steps
-    if wavelet is not None:
-        nt = wavelet.shape[0]
-    elif q is not None:
-        nt = q.shape[0]
-    
+    nt = as_tuple(q)[0].shape[0] if wavelet is None else wavelet.shape[0]
+
     # Setting forward wavefield
     u = wavefield(model, space_order, save=save, nt=nt, t_sub=t_sub)
 
@@ -72,11 +70,8 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0,
     Compute adjoint wavefield v = adjoint(F(m))*y
     and related quantities (||v||_w, v(xsrc))
     """
-    # Get number of time steps
-    if y is not None:
-        nt = y.shape[0]
-    else:
-        nt = q.shape[0]
+    # Number of time steps
+    nt = as_tuple(q)[0].shape[0] if y is None else y.shape[0]
 
     # Setting adjoint wavefield
     v = wavefield(model, space_order, save=save, nt=nt, fw=False)
