@@ -5,6 +5,7 @@ from pyrevolve import Revolver
 
 from checkpoint import CheckpointOperator, DevitoCheckpoint
 from propagators import forward, adjoint, born, gradient, op_kwargs
+from sources import Receiver
 
 
 # Forward wrappers Pr*F*Ps'*q
@@ -667,20 +668,22 @@ def J_adjoint_checkpointing(model, src_coords, wavelet, rec_coords, recin, space
         Adjoint jacobian on the input data (gradient)
     """
     # Optimal checkpointing
-    op_f, u, rec = forward(model, src_coords, rec_coords, wavelet,
-                           space_order=space_order, return_op=True,
-                           free_surface=free_surface, ws=ws)
+    op_f, u, rec_g = forward(model, src_coords, rec_coords, wavelet,
+                             space_order=space_order, return_op=True,
+                             free_surface=free_surface, ws=ws)
     op, g, v = gradient(model, recin, rec_coords, u, space_order=space_order,
                         return_op=True, free_surface=free_surface, isic=isic)
+
+    nt = wavelet.shape[0]
+    rec = Receiver(name='rec', grid=model.grid, ntime=nt, coordinates=rec_coords)
     cp = DevitoCheckpoint([u])
     if maxmem is not None:
         memsize = (cp.size * u.data.itemsize)
         n_checkpoints = int(np.floor(maxmem * 10**6 / memsize))
-    wrap_fw = CheckpointOperator(op_f, u=u, m=model.m, rec=rec)
-    wrap_rev = CheckpointOperator(op, u=u, v=v, m=model.m, src=rec)
+    wrap_fw = CheckpointOperator(op_f, u=u, vp=model.vp, rcv=rec_g)
+    wrap_rev = CheckpointOperator(op, u=u, v=v, vp=model.vp, src=rec)
 
     # Run forward
-    nt = wavelet.shape[0]
     wrp = Revolver(cp, wrap_fw, wrap_rev, n_checkpoints, nt-2)
     wrp.apply_forward(**op_kwargs(model, fs=free_surface))
 
