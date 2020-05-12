@@ -24,7 +24,7 @@ class PhysicalDomain(SubDomain):
         return {d: ('middle', self.nbl, self.nbl) for d in dimensions}
 
 
-def initialize_damp(damp, nbl, spacing, mask=False):
+def initialize_damp(damp, nbl, mask=False):
     """
     Initialise damping field with an absorbing boundary layer.
 
@@ -44,6 +44,7 @@ def initialize_damp(damp, nbl, spacing, mask=False):
     dampcoeff = 1.5 * np.log(1.0 / 0.001) / (nbl)
 
     eqs = [Eq(damp, 1.0)] if mask else []
+    scaling = 10
     for d in damp.dimensions:
         # left
         dim_l = SubDimension.left(name='abc_%s_l' % d.name, parent=d,
@@ -51,14 +52,14 @@ def initialize_damp(damp, nbl, spacing, mask=False):
         pos = Abs((nbl - (dim_l - d.symbolic_min) + 1) / float(nbl))
         val = dampcoeff * (pos - sin(2*np.pi*pos)/(2*np.pi))
         val = -val if mask else val
-        eqs += [Inc(damp.subs({d: dim_l}), val/d.spacing)]
+        eqs += [Inc(damp.subs({d: dim_l}), val/scaling)]
         # right
         dim_r = SubDimension.right(name='abc_%s_r' % d.name, parent=d,
                                    thickness=nbl)
         pos = Abs((nbl - (d.symbolic_max - dim_r) + 1) / float(nbl))
         val = dampcoeff * (pos - sin(2*np.pi*pos)/(2*np.pi))
         val = -val if mask else val
-        eqs += [Inc(damp.subs({d: dim_r}), val/d.spacing)]
+        eqs += [Inc(damp.subs({d: dim_r}), val/scaling)]
 
     Operator(eqs, name='initdamp')()
 
@@ -87,7 +88,7 @@ class GenericModel(object):
         if self.nbl != 0:
             # Create dampening field as symbol `damp`
             self.damp = Function(name="damp", grid=self.grid)
-            initialize_damp(self.damp, self.nbl, self.spacing, mask=damp_mask)
+            initialize_damp(self.damp, self.nbl, mask=damp_mask)
             self._physical_parameters = ['damp']
         else:
             self.damp = 1 if damp_mask else 0
@@ -272,7 +273,7 @@ class Model(GenericModel):
         if self.dt:
             if self.dt > dt:
                 warnings.warn("Provided dt=%s is bigger than maximum stable dt %s "
-                                 % (self.dt, dt))
+                              % (self.dt, dt))
             else:
                 return self.dtype("%.3e" % self.dt)
         return self.dtype("%.3e" % dt)
