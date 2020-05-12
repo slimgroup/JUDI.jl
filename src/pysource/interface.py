@@ -291,7 +291,7 @@ def adjoint_no_rec(model, rec_coords, data, space_order=8,
 
 
 # Ps*F'*u
-def adjoint_wf_src(model, src_coords, u, space_order=8, free_surface=False):
+def adjoint_wf_src(model, u, src_coords, space_order=8, free_surface=False):
     """
     Adjoint/backward modeling of a full wavefield (full wavefield as adjoint source)
     Ps*F'*u.
