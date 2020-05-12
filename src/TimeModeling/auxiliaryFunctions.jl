@@ -3,18 +3,56 @@
 # Date: September 2016
 #
 
-export ricker_wavelet, get_computational_nt, smooth10, damp_boundary, calculate_dt, setup_grid, setup_3D_grid
+export ricker_wavelet, get_computational_nt, smooth10, calculate_dt, setup_grid, setup_3D_grid
 export convertToCell, limit_model_to_receiver_area, extend_gradient, remove_out_of_bounds_receivers
-export time_resample, remove_padding, backtracking_linesearch, subsample
+export time_resample, remove_padding, subsample
 export generate_distribution, select_frequencies, process_physical_parameter
-export load_pymodel, load_acoustic_codegen, load_numpy, process_input_data, reshape
+export load_pymodel, load_devito_jit, load_numpy, devito_model, update_m, update_dm
+export misfit, adjoint_src
+
+
+@cache function update_dm(model::PyObject, dm, dims)
+    model.dm =  process_physical_parameter(dm, dims)
+end
+
+@cache function update_m(model::PyObject, m, dims)
+    model.vp = process_physical_parameter(sqrt.(1f0./m), dims)
+end
+
+@cache function devito_model(model::Modelall, options)
+    return devito_model_py(model, options)
+end
+
+function devito_model_py(model::Model, options)
+    pm = load_pymodel()
+    length(model.n) == 3 ? dims = [3,2,1] : dims = [2,1]   # model dimensions for Python are (z,y,x) and (z,x)
+    # Set up Python model structure
+    modelPy = pm."Model"(origin=model.o, spacing=model.d, shape=model.n,
+						 vp=process_physical_parameter(sqrt.(1f0./model.m), dims),
+						 nbpml=model.nb, rho=process_physical_parameter(model.rho, dims),
+						 space_order=options.space_order, dt=options.dt_comp)
+    return modelPy
+end
+
+function devito_model_py(model::Model_TTI, options)
+    pm = load_pymodel()
+    length(model.n) == 3 ? dims = [3,2,1] : dims = [2,1]   # model dimensions for Python are (z,y,x) and (z,x)
+    # Set up Python model structure (force origin to be zero due to current devito bug)
+    modelPy = pm."Model"(origin=model.o, spacing=model.d, shape=model.n,
+						 vp=process_physical_parameter(sqrt.(1f0./model.m), dims),
+						 rho=process_physical_parameter(model.rho, dims),
+						 epsilon=process_physical_parameter(model.epsilon, dims),
+						 delta=process_physical_parameter(model.delta, dims),
+						 theta=process_physical_parameter(model.theta, dims),
+						 phi=process_physical_parameter(model.phi, dims), nbpml=model.nb,
+						 space_order=options.space_order, dt=options.dt_comp)
+    return modelPy
+end
 
 
 function limit_model_to_receiver_area(srcGeometry::Geometry, recGeometry::Geometry, model::Model, buffer; pert=[])
     # Restrict full velocity model to area that contains either sources and receivers
     ndim = length(model.n)
-    println("N orig: ", model.n)
-
     # scan for minimum and maximum x and y source/receiver coordinates
     min_x = minimum([vec(recGeometry.xloc[1]); vec(srcGeometry.xloc[1])])
     max_x = maximum([vec(recGeometry.xloc[1]); vec(srcGeometry.xloc[1])])
@@ -35,13 +73,13 @@ function limit_model_to_receiver_area(srcGeometry::Geometry, recGeometry::Geomet
     nx_min = Int(round(min_x/model.d[1])) + 1
     nx_max = Int(round(max_x/model.d[1])) + 1
     if ndim == 2
-        ox = (nx_min - 1)*model.d[1]
+        ox = Float32((nx_min - 1)*model.d[1])
         oz = model.o[2]
     else
         ny_min = Int(round(min_y/model.d[2])) + 1
         ny_max = Int(round(max_y/model.d[2])) + 1
-        ox = (nx_min - 1)*model.d[1]
-        oy = (ny_min - 1)*model.d[2]
+        ox = Float32((nx_min - 1)*model.d[1])
+        oy = Float32((ny_min - 1)*model.d[2])
         oz = model.o[3]
     end
 
@@ -56,6 +94,7 @@ function limit_model_to_receiver_area(srcGeometry::Geometry, recGeometry::Geomet
         typeof(model.rho) <: Array && (model.rho = model.rho[nx_min:nx_max,ny_min:ny_max,:])
         model.o = (ox,oy,oz)
     end
+    println("N old: ", model.n)
     model.n = size(model.m)
     println("N new: ", model.n)
     if isempty(pert)
@@ -70,11 +109,79 @@ function limit_model_to_receiver_area(srcGeometry::Geometry, recGeometry::Geomet
     end
 end
 
-function extend_gradient(model_full::Model,model::Model,gradient::Array)
+function limit_model_to_receiver_area(srcGeometry::Geometry,recGeometry::Geometry,model::Model_TTI,buffer;pert=[])
+    # Restrict full velocity model to area that contains either sources and receivers
+    ndim = length(model.n)
+    # println("N orig: ", model.n)
+
+    # scan for minimum and maximum x and y source/receiver coordinates
+    min_x = minimum([vec(recGeometry.xloc[1]); vec(srcGeometry.xloc[1])])
+    max_x = maximum([vec(recGeometry.xloc[1]); vec(srcGeometry.xloc[1])])
+    if ndim == 3
+        min_y = minimum([vec(recGeometry.yloc[1]); vec(srcGeometry.yloc[1])])
+        max_y = maximum([vec(recGeometry.yloc[1]); vec(srcGeometry.yloc[1])])
+    end
+
+    # add buffer zone if possible
+    min_x = max(model.o[1], min_x-buffer)
+    max_x = min(model.o[1] + model.d[1]*(model.n[1]-1), max_x+buffer)
+    if ndim == 3
+        min_y = max(model.o[2], min_y-buffer)
+        max_y = min(model.o[2] + model.d[2]*(model.n[2]-1), max_y+buffer)
+    end
+
+    # extract part of the model that contains sources/receivers
+    nx_min = Int(round((min_x - model.o[1])/model.d[1])) + 1
+    nx_max = Int(round((max_x - model.o[1])/model.d[1])) + 1
+    if ndim == 2
+        ox = Float32((nx_min - 1)*model.d[1])
+        oz = model.o[2]
+    else
+        ny_min = Int(round(min_y/model.d[2])) + 1
+        ny_max = Int(round(max_y/model.d[2])) + 1
+        ox = Float32((nx_min - 1)*model.d[1])
+        oy = Float32((ny_min - 1)*model.d[2])
+        oz = model.o[3]
+    end
+
+    # Extract relevant model part from full domain
+    n_orig = model.n
+    if ndim == 2
+        model.m = model.m[nx_min: nx_max, :]
+        typeof(model.epsilon) <: Array && (model.epsilon = model.epsilon[nx_min: nx_max, :])
+        typeof(model.delta) <: Array && (model.delta = model.delta[nx_min: nx_max, :])
+        typeof(model.theta) <: Array && (model.theta = model.theta[nx_min: nx_max, :])
+        typeof(model.rho) <: Array && (model.rho = model.rho[nx_min: nx_max, :])
+        model.o = (ox, oz)
+    else
+        model.m = model.m[nx_min:nx_max,ny_min:ny_max,:]
+        typeof(model.epsilon) <: Array && (model.epsilon = model.epsilon[nx_min:nx_max,ny_min:ny_max,:])
+        typeof(model.delta) <: Array && (model.delta = model.delta[nx_min:nx_max,ny_min:ny_max,:])
+        typeof(model.theta) <: Array && (model.theta = model.theta[nx_min:nx_max,ny_min:ny_max,:])
+        typeof(model.phi) <: Array && (model.phi = model.phi[nx_min:nx_max,ny_min:ny_max,:])
+        typeof(model.rho) <: Array && (model.rho = model.rho[nx_min: nx_max, :])
+        model.o = (ox, oy, oz)
+    end
+    println("N old: ", model.n)
+    model.n = size(model.m)
+    println("N new: ", model.n)
+    if isempty(pert)
+        return model
+    else
+        if ndim==2
+            pert = reshape(pert,n_orig)[nx_min: nx_max, :]
+        else
+            pert = reshape(pert,n_orig)[nx_min: nx_max,ny_min: ny_max, :]
+        end
+        return model,vec(pert)
+    end
+end
+
+function extend_gradient(model_full::Modelall,model::Modelall,gradient::Array)
     # Extend gradient back to full model size
     ndim = length(model.n)
     full_gradient = zeros(Float32,model_full.n)
-    nx_start = Int((model.o[1] - model_full.o[1])/model.d[1] + 1)
+    nx_start = trunc(Int, Float32(Float32(model.o[1] - model_full.o[1])/model.d[1]) + 1)
     nx_end = nx_start + model.n[1] - 1
     if ndim == 2
         full_gradient[nx_start:nx_end,:] = gradient
@@ -86,7 +193,7 @@ function extend_gradient(model_full::Model,model::Model,gradient::Array)
     return full_gradient
 end
 
-function remove_out_of_bounds_receivers(recGeometry::Geometry, model::Model)
+function remove_out_of_bounds_receivers(recGeometry::Geometry, model::Modelall)
 
     # Only keep receivers within the model
     xmin = model.o[1]
@@ -106,12 +213,12 @@ function remove_out_of_bounds_receivers(recGeometry::Geometry, model::Model)
     return recGeometry
 end
 
-function remove_out_of_bounds_receivers(recGeometry::Geometry, recData::Array, model::Model)
+function remove_out_of_bounds_receivers(recGeometry::Geometry, recData::Array, model::Modelall)
 
     # Only keep receivers within the model
     xmin = model.o[1]
     if typeof(recGeometry.xloc[1]) <: Array
-        idx_xrec = findall(x -> x > xmin, recGeometry.xloc[1])
+        idx_xrec = findall(x -> x >= xmin, recGeometry.xloc[1])
         recGeometry.xloc[1] = recGeometry.xloc[1][idx_xrec]
         recGeometry.zloc[1] = recGeometry.zloc[1][idx_xrec]
         recData[1] = recData[1][:, idx_xrec]
@@ -163,27 +270,44 @@ function ricker_wavelet(tmax, dt, f0)
 end
 
 function load_pymodel()
-    pushfirst!(PyVector(pyimport("sys")."path"), joinpath(JUDIPATH, "Python"))
-    return pyimport("PyModel")
+    pushfirst!(PyVector(pyimport("sys")."path"), joinpath(JUDIPATH, "pysource"))
+    return pyimport("models")
 end
 
 function load_numpy()
-    pushfirst!(PyVector(pyimport("sys")."path"), joinpath(JUDIPATH, "Python"))
+    pushfirst!(PyVector(pyimport("sys")."path"), joinpath(JUDIPATH, "pysource"))
     return pyimport("numpy")
 end
 
-function load_acoustic_codegen()
-    pushfirst!(PyVector(pyimport("sys")."path"), joinpath(JUDIPATH, "Python"))
-    return pyimport("JAcoustic_codegen")
+function load_devito_jit(model::Modelall)
+    pushfirst!(PyVector(pyimport("sys")."path"), joinpath(JUDIPATH, "pysource"))
+    return pyimport("interface")
 end
 
-function calculate_dt(n,d,o,v,rho; epsilon=0)
-    pm = load_pymodel()
-    length(n) == 2 ? pyDim = [n[2], n[1]] : pyDim = [n[3],n[2],n[1]]
-    modelPy = pm."Model"(o, d, pyDim, PyReverseDims(v))
-    dtComp = modelPy.critical_dt
+function calculate_dt(model::Model_TTI; dt=nothing)
+    if ~isnothing(dt)
+        return dt
+    end
+    if length(model.n) == 3
+        coeff = 0.38
+    else
+        coeff = 0.42
+    end
+    scale = sqrt(maximum(1 .+ 2 *model.epsilon))
+    return coeff * minimum(model.d) / (scale*sqrt(1/minimum(model.m)))
 end
 
+function calculate_dt(model::Model; dt=nothing)
+    if ~isnothing(dt)
+        return dt
+    end
+    if length(model.n) == 3
+        coeff = 0.38
+    else
+        coeff = 0.42
+    end
+    return coeff * minimum(model.d) / (sqrt(1/minimum(model.m)))
+end
 """
     get_computational_nt(srcGeometry, recGeoemtry, model)
 
@@ -193,7 +317,7 @@ and receiver geometries of type `Geometry` and `model` is the model structure of
 `Model`.
 
 """
-function get_computational_nt(srcGeometry, recGeometry, model::Model)
+function get_computational_nt(srcGeometry, recGeometry, model::Modelall; dt=nothing)
     # Determine number of computational time steps
     if typeof(srcGeometry) == GeometryOOC
         nsrc = length(srcGeometry.container)
@@ -201,7 +325,7 @@ function get_computational_nt(srcGeometry, recGeometry, model::Model)
         nsrc = length(srcGeometry.xloc)
     end
     nt = Array{Any}(undef, nsrc)
-    dtComp = calculate_dt(model.n, model.d, model.o, sqrt.(1f0 ./ model.m), model.rho)
+    dtComp = calculate_dt(model; dt=dt)
     for j=1:nsrc
         ntRec = recGeometry.dt[j]*(recGeometry.nt[j]-1) / dtComp
         ntSrc = srcGeometry.dt[j]*(srcGeometry.nt[j]-1) / dtComp
@@ -210,18 +334,23 @@ function get_computational_nt(srcGeometry, recGeometry, model::Model)
     return nt
 end
 
-function get_computational_nt(geometry, model::Model)
+function get_computational_nt(Geometry, model::Modelall; dt=nothing)
     # Determine number of computational time steps
-    nsrc = length(geometry.xloc)
+    if typeof(Geometry) == GeometryOOC
+        nsrc = length(Geometry.container)
+    else
+        nsrc = length(Geometry.xloc)
+    end
     nt = Array{Any}(undef, nsrc)
-    dtComp = calculate_dt(model.n, model.d, model.o, sqrt.(1f0 ./ model.m), model.rho)
+    dtComp = calculate_dt(model; dt=dt)
     for j=1:nsrc
-        nt[j] = Int(ceil(geometry.dt[j]*(geometry.nt[j]-1) / dtComp))
+        nt[j] = Int(ceil(Geometry.dt[j]*(Geometry.nt[j]-1) / dtComp))
     end
     return nt
 end
 
-function setup_grid(geometry,n, origin)
+
+function setup_grid(geometry, n)
     # 3D grid
     if length(n)==3
         if length(geometry.xloc[1]) > 1
@@ -229,7 +358,6 @@ function setup_grid(geometry,n, origin)
         else
             source_coords = Array{Float32,2}([geometry.xloc[1] geometry.yloc[1] geometry.zloc[1]])
         end
-        orig = Array{Float32}([origin[1] origin[2] origin[3]])
     else
     # 2D grid
         if length(geometry.xloc[1]) > 1
@@ -237,9 +365,8 @@ function setup_grid(geometry,n, origin)
         else
             source_coords = Array{Float32,2}([geometry.xloc[1] geometry.zloc[1]])
         end
-        orig = Array{Float32}([origin[1] origin[2]])
     end
-    return source_coords .- orig
+    return source_coords
 end
 
 function setup_3D_grid(xrec::Array{Any,1},yrec::Array{Any,1},zrec::Array{Any,1})
@@ -421,11 +548,73 @@ function select_frequencies(q_dist; fmin=0f0, fmax=Inf, nf=1)
 end
 
 function process_physical_parameter(param, dims)
-    if length(param) ==1
+    if length(param) == 1
         return param
     else
         return PyReverseDims(permutedims(param, dims))
     end
+end
+
+
+function resample_model(array, inh, modelfull)
+    # size in
+    shape = size(array)
+    ndim = length(shape)
+    if ndim > 2
+        # Axes
+        x1 = inh[1] * linspace(0, shape[1] - 1)
+        xnew = modelfull.d[1] * linspace(0, modelfull.n[1] - 1)
+        y1 = inh[2] * linspace(0, shape[2] - 1)
+        ynew = modelfull.d[2] * linspace(0, modelfull.n[2] - 1)
+        z1 = inh[3] * linspace(0, shape[3]-1)
+        znew = modelfull.d[3] * linspace(0, modelfull.n[3] - 1)
+        interpolator = interp.RegularGridInterpolator((x1, y1, z1), array)
+        gridnew = np.ix_(xnew, ynew, znew)
+    else
+        # Axes
+        x1 = inh[1] * linspace(0, shape[1] - 1)
+        xnew = modelfull.d[1] * linspace(0, modelfull.n[1] - 1)
+        z1 = inh[2] * linspace(0, shape[2]-1)
+        znew = modelfull.d[2] * linspace(0, modelfull.n[2] - 1)
+        interpolator = interp.RegularGridInterpolator((x1, z1), array)
+        gridnew = np.ix_(xnew, znew)
+    end
+    resampled = pycall(interpolator,  Array{Float32, ndim}, gridnew)
+    return resampled
+end
+
+
+function misfit(d1::Array{Float32, 2}, d2::Array{Float32, 2}, normalized)
+	obj = 0.0f0
+    if normalized == "shot"
+            obj = norm(vec(d1)) - dot(vec(d1),vec(d2))/norm(vec(d2))
+    elseif normalized == "trace"
+		for i=1:size(d2, 2)
+			norm(d2[:, i])>0 ? n2 = norm(d2[:, i]) : n2 = 1
+       		obj += norm(d1[:, i]) - dot(d1[:, i], d2[:, i])/n2
+		end
+    else
+        obj = .5f0*norm(vec(d1) - vec(d2),2)^2.f0
+    end
+
+	return obj
+end
+
+
+function adjoint_src(d1::Array{Float32, 2}, d2::Array{Float32, 2}, normalized)
+	adj_src = similar(d1)
+    if normalized == "trace"
+		for i =1:size(d1,2)
+			norm(d1[:, i])>0 ? n1 = norm(d1[:, i]) : n1 = 1
+			norm(d2[:, i])>0 ? n2 = norm(d2[:, i]) : n2 = 1
+			adj_src[:, i] = n2*(d1[:, i]/n1 - d2[:, i]/n2)
+		end
+	elseif normalized == "shot"
+        adj_src = d1/norm(vec(d1)) - d2/norm(vec(d2))
+    else
+        adj_src = d1 - d2
+    end
+	return adj_src
 end
 
 process_input_data(input::judiVector, geometry::Geometry, info::Info) = input.data
@@ -444,9 +633,9 @@ function process_input_data(input::Array{Float32}, geometry::Geometry, info::Inf
     return dataCell
 end
 
-process_input_data(input::judiWeights, model::Model, info::Info) = input.weights
+process_input_data(input::judiWeights, model::Modelall, info::Info) = input.weights
 
-function process_input_data(input::Array{Float32}, model::Model, info::Info)
+function process_input_data(input::Array{Float32}, model::Modelall, info::Info)
     ndims = length(model.n)
     dataCell = Array{Array}(undef, info.nsrc)
     if ndims == 2

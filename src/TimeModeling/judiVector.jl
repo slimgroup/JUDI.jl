@@ -270,8 +270,6 @@ function judiVector(geometry::Geometry, data::Array{SegyIO.SeisCon}; vDT::DataTy
     return judiVector{Float32}("Julia seismic data container",m,n,nsrc,geometry,dataCell)
 end
 
-
-
 ############################################################
 ## overloaded Base functions
 
@@ -511,6 +509,7 @@ function norm(a::judiVector{avDT}, p::Real=2) where avDT
     end
     return x^(1.f0/p)
 end
+
 
 # abs
 function abs(a::judiVector{avDT}) where avDT

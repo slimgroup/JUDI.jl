@@ -77,12 +77,12 @@ q = judiVector(srcGeometry,wavelet)
 d = F*q
 
 # FWI gradient and function value for m0
-Jm0, grad = fwi_objective(model0,q,d;options=opt)
+Jm0, grad = fwi_objective(model0, q, d;options=opt)
 
 for j=1:iter
 	# FWI gradient and function falue for m0 + h*dm
 	modelH.m = model0.m + h*dm
-	Jm, gradm = fwi_objective(modelH,q,d;options=opt)
+	Jm, gradm = fwi_objective(modelH, q, d;options=opt)
 
 	dJ = dot(grad,vec(dm))
 

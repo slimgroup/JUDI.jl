@@ -18,7 +18,7 @@ struct judiPDE{DDT<:Number,RDT<:Number} <: joAbstractLinearOperator{DDT,RDT}
     m::Integer
     n::Integer
     info::Info
-    model::Model
+    model::Modelall
     geometry::Geometry
     options::Options
     fop::Function              # forward
@@ -35,7 +35,7 @@ struct judiPDEadjoint{DDT<:Number,RDT<:Number} <: joAbstractLinearOperator{DDT,R
     m::Integer
     n::Integer
     info::Info
-    model::Model
+    model::Modelall
     geometry::Geometry
     options::Options
     fop::Function              # forward
@@ -51,7 +51,7 @@ end
 ############################################################
 ## outer constructors
 
-function judiPDE(name::String,info::Info,model::Model, geometry::Geometry; options=Options(), DDT::DataType=Float32, RDT::DataType=DDT)
+function judiPDE(name::String,info::Info,model::Modelall, geometry::Geometry; options=Options(), DDT::DataType=Float32, RDT::DataType=DDT)
 # JOLI wrapper for nonlinear forward modeling
     (DDT == Float32 && RDT == Float32) || throw(judiPDEexception("Domain and range types not supported"))
     if typeof(geometry) == GeometryOOC
@@ -72,7 +72,7 @@ function judiPDE(name::String,info::Info,model::Model, geometry::Geometry; optio
                               )
 end
 
-function judiPDEadjoint(name::String,info::Info,model::Model, geometry::Geometry; options=Options(), DDT::DataType=Float32, RDT::DataType=DDT)
+function judiPDEadjoint(name::String,info::Info,model::Modelall, geometry::Geometry; options=Options(), DDT::DataType=Float32, RDT::DataType=DDT)
 # JOLI wrapper for nonlinear forward modeling
     (DDT == Float32 && RDT == Float32) || throw(judiPDEadjointException("Domain and range types not supported"))
     if typeof(geometry) == GeometryOOC

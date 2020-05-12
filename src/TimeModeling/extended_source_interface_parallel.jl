@@ -1,7 +1,7 @@
-extended_source_modeling(model::Model, srcData, recGeometry, recData, weights, perturbation, srcnum::UnitRange{Int64}, op::Char, mode::Int64) =
+extended_source_modeling(model::Modelall, srcData, recGeometry, recData, weights, perturbation, srcnum::UnitRange{Int64}, op::Char, mode::Int64) =
     extended_source_modeling(model, srcData, recGeometry, recData, weights, perturbation, srcnum, op, mode, Options())
 
-function extended_source_modeling(model::Model, srcData, recGeometry, recData, weights, perturbation, srcnum::UnitRange{Int64}, op::Char, mode::Int64, options)
+function extended_source_modeling(model::Modelall, srcData, recGeometry, recData, weights, perturbation, srcnum::UnitRange{Int64}, op::Char, mode::Int64, options)
 # extended_source_modeling function for multiple sources. Depending on the operator and mode, this function distributes the sources
 # and if applicable the input data amongst the available workers.
 
@@ -23,7 +23,6 @@ function extended_source_modeling(model::Model, srcData, recGeometry, recData, w
                 recGeometryLocal = subsample(recGeometry,j)
             end
             opt_local = subsample(options,j)
-            numSources > 1 && (opt_local.save_wavefield_to_disk=true)    # don't collect wavefields on master
 
             # Parallelization
             if op=='F' && mode==1

@@ -4,17 +4,22 @@
 # Date: January 2017
 #
 
-using JUDI.TimeModeling, SegyIO, LinearAlgebra
+using JUDI.TimeModeling, SegyIO, LinearAlgebra, Images
 
+###
+function smooth(v; sigma=5)
+    return Float32.(imfilter(v, Kernel.gaussian(sigma)))
+end
 ## Set up model structure
-n = (120, 100)   # (x,y,z) or (x,z)
+n = (500, 500)   # (x,y,z) or (x,z)
 d = (10., 10.)
 o = (0., 0.)
 
 # Velocity [km/s]
-v = ones(Float32,n) .+ 0.4f0
-v0 = ones(Float32,n) .+ 0.4f0
-v[:,Int(round(end/2)):end] .= 5f0
+v = ones(Float32,n) .+ 0.5f0
+v0 = ones(Float32,n) .+ 0.5f0
+v[:,Int(round(end/2)):end] .= 3.5f0
+rho = (v0 .+ .5f0) ./ 2
 
 # Slowness squared [s^2/km^2]
 m = (1f0 ./ v).^2
@@ -42,7 +47,7 @@ recGeometry = Geometry(xrec, yrec, zrec; dt=dtR, t=timeR, nsrc=nsrc)
 ## Set up source geometry (cell array with source locations for each shot)
 xsrc = convertToCell(range(400f0, stop=800f0, length=nsrc))
 ysrc = convertToCell(range(0f0, stop=0f0, length=nsrc))
-zsrc = convertToCell(range(20f0, stop=20f0, length=nsrc))
+zsrc = convertToCell(range(200f0, stop=200f0, length=nsrc))
 
 # source sampling and number of time steps
 timeS = 1000f0  # ms
@@ -74,11 +79,12 @@ J = judiJacobian(Pr*F0*adjoint(Ps), q)
 
 # Nonlinear modeling
 dobs = Pr*F*adjoint(Ps)*q
+# Adjoint
 qad = Ps*adjoint(F)*adjoint(Pr)*dobs
 
 # Linearized modeling
-#J.options.file_name = "linearized_shot"
 dD = J*dm
+# Adjoint jacobian
 rtm = adjoint(J)*dD
 
 # evaluate FWI objective function

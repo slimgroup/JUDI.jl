@@ -5,7 +5,8 @@
 
 module TimeModeling
 
-using JUDI, PyCall, JOLI, SegyIO, Dierckx, Distributed, LinearAlgebra, Base.Broadcast, FFTW
+using JUDI, LinearAlgebra, Base.Broadcast, FFTW, Pkg, Printf, Distributed
+using PyCall, JOLI, SegyIO, Caching, DSP, Dierckx
 
 import Base.*, Base./, Base.+, Base.-, Base.copy!, Base.sum, Base.ndims, Base.reshape
 import Base.Broadcast.broadcasted, Base.BroadcastStyle, Base.Broadcast.DefaultArrayStyle
@@ -14,7 +15,6 @@ import LinearAlgebra.transpose, LinearAlgebra.conj, LinearAlgebra.vcat, LinearAl
 import LinearAlgebra.vec, LinearAlgebra.dot, LinearAlgebra.norm, LinearAlgebra.abs
 import Base.similar, Base.isapprox, Base.isequal, Base.broadcast!
 import LinearAlgebra.rmul!
-#import LinearAlgebra.A_mul_B!, LinearAlgebra.Ac_mul_B!, LinearAlgebra.BLAS.axpy!
 
 
 #############################################################################
@@ -35,6 +35,7 @@ include("auxiliaryFunctions.jl")
 
 #############################################################################
 # PDE solvers
+include("python_interface.jl")  # forward/adjoint linear/nonlinear modeling
 include("time_modeling_serial.jl")  # forward/adjoint linear/nonlinear modeling
 include("time_modeling_parallel.jl")    # parallelization for modeling
 include("extended_source_interface_serial.jl")  # forward/adjoint linear/nonlinear modeling w/ extended source

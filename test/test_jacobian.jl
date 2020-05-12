@@ -4,7 +4,7 @@
 # Date: January 2017
 #
 
-using JUDI.TimeModeling, SegyIO, LinearAlgebra, ImageFiltering, Test
+using JUDI.TimeModeling, SegyIO, LinearAlgebra, Images, Test
 
 ## Set up model structure
 n = (120, 100)   # (x,y,z) or (x,z)
@@ -13,7 +13,7 @@ o = (0., 0.)
 
 # Velocity [km/s]
 v = ones(Float32,n) .+ 0.4f0
-v[:,Int(round(end/2)):end] .= 5f0
+v[:,Int(round(end/2)):end] .= 3.5f0
 v0 = imfilter(v, Float32.(Kernel.gaussian(10)))
 
 # Slowness squared [s^2/km^2]
@@ -85,7 +85,7 @@ for j=1:maxiter
 
     err1[j] = norm(dobs - dpred)
     err2[j] = norm(dobs - dpred - h*dD)
-    print(err1[j], "    ", err2[j],"\n")
+    print(h, " ",err1[j], "    ", err2[j],"\n")
 
     global h = h/2f0
 end

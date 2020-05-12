@@ -6,7 +6,8 @@
 const IntTuple = Union{Tuple{Integer,Integer}, Tuple{Integer,Integer,Integer},Array{Int64,1},Array{Int32,1}}
 const RealTuple = Union{Tuple{Real,Real}, Tuple{Real,Real,Real},Array{Float64,1},Array{Float32,1}}
 
-export Model, get_dt
+export Model, Modelall, Model_TTI, get_dt
+
 
 # Object for velocity/slowness models
 mutable struct Model
@@ -62,11 +63,81 @@ function Model(n::IntTuple, d::RealTuple, o::RealTuple, m, rho; nb=40)
     return Model(n,d,o,nb,m,rho)
 end
 
-function get_dt(n,d,o,v,rho; epsilon=0)
-    pm = load_pymodel()
-    length(n) == 2 ? pyDim = [n[2], n[1]] : pyDim = [n[3],n[2],n[1]]
-    modelPy = pm."Model"(o, d, pyDim, PyReverseDims(v))
-    dtComp = modelPy.critical_dt
+# Object for velocity/slowness models
+mutable struct Model_TTI
+    n::IntTuple
+    d::RealTuple
+    o::RealTuple
+    nb::Integer # number of absorbing boundaries points on each side
+    m   # slowness squared
+    epsilon
+    delta
+    theta
+    phi
+    rho
 end
 
-get_dt(model::Model) = get_dt(model.n, model.d, model.o, sqrt.(1f0 ./ model.m), model.rho)
+
+"""
+    Model_TTI
+        n::IntTuple
+        d::RealTuple
+        o::RealTuple
+        nb::Integer
+        m::Array
+        epsilon::Array
+        delta::Array
+        theta::Array
+        phi::Array
+        rho::Array
+
+Model_TTI structure for seismic velocity models.
+
+`n`: number of gridpoints in (x,y,z) for 3D or (x,z) for 2D
+
+`d`: grid spacing in (x,y,z) or (x,z) (in meters)
+
+`o`: origin of coordinate system in (x,y,z) or (x,z) (in meters)
+
+`nb`: number of absorbing boundary points in each direction
+
+`m`: velocity model in slowness squared (s^2/km^2)
+
+`epsilon`: Epsilon thomsen parameter ( between -1 and 1)
+
+`delta`: Delta thomsen parameter ( between -1 and 1 and delta < epsilon)
+
+`theta`: Anisotopy dip in radian
+
+`phi`: Anisotropy asymuth in radian
+
+`rho`: density (g / m^3)
+
+Constructor
+===========
+
+The parameters `n`, `d`, `o` and `m` are mandatory, whith `nb` and `rho` being optional input arguments.
+
+    Model_TTI(n, d, o, m; nb=40, epsilon=0, delta=0, theta=0, phi=0, rho=ones(n))
+"""
+function Model_TTI(n::IntTuple, d::RealTuple, o::RealTuple, m; epsilon=[], delta=[], theta=[], phi=[], rho=[],nb=40)
+    isempty(epsilon) && (epsilon = 0)
+    isempty(delta) && (delta = 0)
+    isempty(theta) && (theta = 0)
+    isempty(phi) && (phi = 0)
+    isempty(rho) && (rho = 1)
+    return Model_TTI(n,d,o,nb,m,epsilon, delta, theta, phi, rho)
+end
+
+function Model_TTI(n::IntTuple, d::RealTuple, o::RealTuple, m, epsilon, delta, theta, phi, rho; nb=40)
+    isempty(epsilon) && (epsilon = 0)
+    isempty(delta) && (delta = 0)
+    isempty(theta) && (theta = 0)
+    isempty(phi) && (phi = 0)
+    isempty(rho) && (rho = 1)
+    return Model_TTI(n,d,o,nb,m,epsilon, delta, theta, phi, rho)
+end
+
+const Modelall = Union{Model_TTI, Model}
+
+get_dt(Model::Modelall) = calculate_dt(Model)

@@ -16,7 +16,7 @@ struct judiJacobian{DDT<:Number,RDT<:Number} <: joAbstractLinearOperator{DDT,RDT
     m::Integer
     n::Integer
     info::Info
-    model::Model
+    model::Modelall
     srcGeometry::Geometry
     recGeometry::Geometry
     source

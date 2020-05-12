@@ -12,7 +12,6 @@ mutable struct Options
     limit_m::Bool
     buffer_size::Real
     save_data_to_disk::Bool
-    save_wavefield_to_disk::Bool
     file_path::String
     file_name::String
     sum_padding::Bool
@@ -20,9 +19,9 @@ mutable struct Options
     num_checkpoints::Union{Integer, Nothing}
     checkpoints_maxmem::Union{Real, Nothing}
     frequencies::Array
+    isic::Bool
     subsampling_factor::Integer
     dft_subsampling_factor::Integer
-    isic::Bool
     return_array::Bool
     dt_comp::Union{Real, Nothing}
 end
@@ -35,19 +34,19 @@ end
         buffer_size::Real
         save_rate::Real
         save_data_to_disk::Bool
-        save_wavefield_to_disk::Bool
         file_path::String
         file_name::String
         sum_padding::Bool
         optimal_checkpointing::Bool
         num_checkpoints::Integer
         checkpoints_maxmem::Real
-        frequencies::Array
+	    frequencies::Array
+	    isic::Bool
         subsampling_factor::Integer
-        dft_subsampling_factor::Integer
-        isic::Bool
+	    dft_subsampling_factor::Integer
         return_array::Bool
         dt_comp::Real
+
 
 
 Options structure for seismic modeling.
@@ -61,8 +60,6 @@ Options structure for seismic modeling.
 `buffer_size`: if `limit_m=true`, define buffer area on each side of modeling domain (in meters)
 
 `save_data_to_disk`: if `true`, saves shot records as separate SEG-Y files
-
-`save_wavefield_to_disk`: If wavefield is return value, save wavefield to disk as pickle file
 
 `file_path`: path to directory where data is saved
 
@@ -93,16 +90,51 @@ Constructor
 
 All arguments are optional keyword arguments with the following default values:
 
-    Options(; space_order, free_surface, limit_m=false, buffer_size=1e3, save_data_to_disk=false, save_wavefield_to_disk=false, file_path=pwd(), file_name="shot",
-        sum_padding=false, optimal_checkpointing=false, num_checkpoints=log(nt), checkpoints_maxmem=[], frequencies=[], subsampling_factor=[], dft_subsampling_factor=[], 
-        isic=false, return_array=false, dt_comp=[])
+    Options(;space_order=8, free_surface=false,
+            limit_m=false, buffer_size=1e3,
+            save_data_to_disk=false, file_path="",
+            file_name="shot", sum_padding=false,
+            optimal_checkpointing=false,
+            num_checkpoints=nothing, checkpoints_maxmem=nothing,
+            frequencies=[], isic=false,
+            subsampling_factor=1, dft_subsampling_factor=1, return_array=false,
+            dt_comp=nothing)
 
 """
-Options(; space_order=8, free_surface=false, limit_m=false, buffer_size=1e3, save_data_to_disk=false, save_wavefield_to_disk=false, file_path="", file_name="shot", sum_padding=false,
-    optimal_checkpointing=false, num_checkpoints=nothing, checkpoints_maxmem=nothing, frequencies=[], subsampling_factor=1, dft_subsampling_factor=1, isic=false, return_array=false, dt_comp=nothing) =
-    Options(space_order, free_surface, limit_m, buffer_size, save_data_to_disk, save_wavefield_to_disk, file_path, file_name,
-    sum_padding, optimal_checkpointing, num_checkpoints, checkpoints_maxmem, frequencies, subsampling_factor, dft_subsampling_factor, isic, return_array, dt_comp)
-
+Options(;space_order=8,
+		 free_surface=false,
+         limit_m=false,
+		 buffer_size=1e3,
+		 save_data_to_disk=false,
+		 file_path="",
+		 file_name="shot",
+         sum_padding=false,
+		 optimal_checkpointing=false,
+		 num_checkpoints=nothing,
+		 checkpoints_maxmem=nothing,
+		 frequencies=[],
+		 isic=false,
+		 subsampling_factor=1,
+		 dft_subsampling_factor=1,
+         return_array=false,
+         dt_comp=nothing) =
+		 Options(space_order,
+		 		 free_surface,
+		         limit_m,
+				 buffer_size,
+				 save_data_to_disk,
+				 file_path,
+				 file_name,
+				 sum_padding,
+				 optimal_checkpointing,
+				 num_checkpoints,
+				 checkpoints_maxmem,
+				 frequencies,
+				 isic,
+				 subsampling_factor,
+				 dft_subsampling_factor,
+                 return_array,
+                 dt_comp)
 
 function subsample(options::Options, srcnum)
     if isempty(options.frequencies)
