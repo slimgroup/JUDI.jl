@@ -291,7 +291,7 @@ def adjoint_no_rec(model, rec_coords, data, space_order=8,
 
 
 # Ps*F'*u
-def adjoint_wf_src(model, u, src_coords, space_order=8, free_surface=False):
+def adjoint_wf_src(model, src_coords, u, space_order=8, free_surface=False):
     """
     Adjoint/backward modeling of a full wavefield (full wavefield as adjoint source)
     Ps*F'*u.
@@ -670,7 +670,7 @@ def J_adjoint_checkpointing(model, src_coords, wavelet, rec_coords, recin, space
     op_f, u, rec = forward(model, src_coords, rec_coords, wavelet,
                            space_order=space_order, return_op=True,
                            free_surface=free_surface, ws=ws)
-    op, g, v = gradient(model, rec_coords, recin, space_order=space_order,
+    op, g, v = gradient(model, rec_coords, recin, u, space_order=space_order,
                         return_op=True, free_surface=free_surface, isic=isic)
     cp = DevitoCheckpoint([u])
     if maxmem is not None:

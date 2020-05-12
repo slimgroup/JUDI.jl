@@ -72,14 +72,20 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0,
     Compute adjoint wavefield v = adjoint(F(m))*y
     and related quantities (||v||_w, v(xsrc))
     """
+    # Get number of time steps
+    if y is not None:
+        nt = y.shape[0]
+    else:
+        nt = q.shape[0]
+
     # Setting adjoint wavefield
-    v = wavefield(model, space_order, save=save, nt=y.shape[0], fw=False)
+    v = wavefield(model, space_order, save=save, nt=nt, fw=False)
 
     # Set up PDE expression and rearrange
     pde = wave_kernel(model, v, q=q, fw=False, fs=free_surface)
 
     # Setup source and receiver
-    geom_expr, _, rcv = src_rec(model, v, src_coords=rcv_coords,
+    geom_expr, _, rcv = src_rec(model, v, src_coords=rcv_coords, nt=nt,
                                 rec_coords=src_coords, wavelet=y, fw=False)
 
     # Extended source
