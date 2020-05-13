@@ -7,7 +7,7 @@
 using LinearAlgebra, Random
 using JUDI, JUDI.TimeModeling, SegyIO
 
-## Set up model structure
+# Set up model structure
 n = (120, 100)   # (x,y,z) or (x,z)
 d = (10., 10.)
 o = (0., 0.)
@@ -27,7 +27,7 @@ nsrc = 2	# number of sources
 model = Model(n, d, o, m)
 model0 = Model(n, d, o, m0)
 
-## Set up receiver geometry
+# Set up receiver geometry
 nxrec = 120
 xrec = range(50f0, stop=1150f0, length=nxrec)
 yrec = 0f0
@@ -40,7 +40,7 @@ dtR = 4f0    # receiver sampling interval [ms]
 # Set up receiver structure
 recGeometry = Geometry(xrec, yrec, zrec; dt=dtR, t=timeR, nsrc=nsrc)
 
-## Set up source geometry (cell array with source locations for each shot)
+# Set up source geometry (cell array with source locations for each shot)
 xsrc = convertToCell([400f0, 800f0])
 ysrc = convertToCell([0f0, 0f0])
 zsrc = convertToCell([20f0, 20f0])
@@ -61,7 +61,7 @@ q = judiVector(srcGeometry, wavelet)
 ntComp = get_computational_nt(srcGeometry, recGeometry, model)
 info = Info(prod(n), nsrc, ntComp)
 
-######################## WITH DENSITY ############################################
+###################################################################################################
 
 # Write shots as segy files to disk
 opt = Options()

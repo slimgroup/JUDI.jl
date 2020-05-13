@@ -4,14 +4,10 @@
 # Date: January 2017
 #
 
-using JUDI.TimeModeling, SegyIO, LinearAlgebra, Images
+using JUDI.TimeModeling, SegyIO, LinearAlgebra
 
-###
-function smooth(v; sigma=5)
-    return Float32.(imfilter(v, Kernel.gaussian(sigma)))
-end
-## Set up model structure
-n = (500, 500)   # (x,y,z) or (x,z)
+# Set up model structure
+n = (120, 100)   # (x,y,z) or (x,z)
 d = (10., 10.)
 o = (0., 0.)
 
@@ -31,7 +27,7 @@ nsrc = 2	# number of sources
 model = Model(n, d, o, m)
 model0 = Model(n, d, o, m0)
 
-## Set up receiver geometry
+# Set up receiver geometry
 nxrec = 120
 xrec = range(50f0, stop=1150f0, length=nxrec)
 yrec = 0f0
@@ -44,7 +40,7 @@ dtR = 2f0    # receiver sampling interval [ms]
 # Set up receiver structure
 recGeometry = Geometry(xrec, yrec, zrec; dt=dtR, t=timeR, nsrc=nsrc)
 
-## Set up source geometry (cell array with source locations for each shot)
+# Set up source geometry (cell array with source locations for each shot)
 xsrc = convertToCell(range(400f0, stop=800f0, length=nsrc))
 ysrc = convertToCell(range(0f0, stop=0f0, length=nsrc))
 zsrc = convertToCell(range(200f0, stop=200f0, length=nsrc))
@@ -65,7 +61,7 @@ q = judiVector(srcGeometry, wavelet)
 ntComp = get_computational_nt(srcGeometry, recGeometry, model)
 info = Info(prod(n), nsrc, ntComp)
 
-######################## WITH DENSITY ############################################
+###################################################################################################
 
 # Write shots as segy files to disk
 opt = Options(optimal_checkpointing=false, isic=false, subsampling_factor=2, dt_comp=1.0)

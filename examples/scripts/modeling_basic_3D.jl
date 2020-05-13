@@ -6,7 +6,7 @@
 
 using JUDI.TimeModeling
 
-## Set up model structure
+# Set up model structure
 n = (120, 100, 90)    # (x,y,z) or (x,z)
 d = (10., 10., 10.)
 o = (0., 0., 0.)
@@ -27,7 +27,7 @@ nsrc = 4
 model = Model(n, d, o, m)  # to include density call Model(n,d,o,m,rho)
 model0 = Model(n, d, o, m0)
 
-## Set up 3D receiver geometry by defining one receiver vector in each x and y direction
+# Set up 3D receiver geometry by defining one receiver vector in each x and y direction
 nxrec = 120
 nyrec = 100
 xrec = range(50f0, stop=1150f0, length=nxrec)
@@ -44,7 +44,7 @@ dtR = 4f0    # receiver sampling interval
 # Set up receiver structure
 recGeometry = Geometry(xrec, yrec, zrec; dt=dtR, t=timeR, nsrc=nsrc)
 
-## Set up source geometry (cell array with source locations for each shot)
+# Set up source geometry (cell array with source locations for each shot)
 xsrc = convertToCell([250f0, 500f0, 750f0, 1000f0])
 ysrc = convertToCell([200f0, 400f0, 600f0, 800f0])
 zsrc = convertToCell([50f0, 60f0, 70f0, 80f0])

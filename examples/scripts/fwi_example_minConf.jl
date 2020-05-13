@@ -3,7 +3,7 @@
 # Date: December 2017
 #
 
-using Statistics, Random, LinearAlgebra
+using Statistics, Random, LinearAlgebra, PyPlot
 using JUDI.TimeModeling, JUDI.SLIM_optim, HDF5, SegyIO
 
 # Load starting model
@@ -34,7 +34,6 @@ q = judiVector(src_geometry,wavelet)
 
 
 # Optimization parameters
-#srand(1)    # set seed of random number generator
 fevals = 16
 batchsize = 8
 
@@ -58,3 +57,8 @@ ProjBound(x) = median([mmin x mmax]; dims=2)
 # FWI with SPG
 options = spg_options(verbose=3, maxIter=fevals, memory=3)
 x, fsave, funEvals= minConf_SPG(objective_function, vec(model0.m), ProjBound, options)
+
+# Plot result
+imshow(reshape(sqrt.(1f0 ./ x), model0.n)', extent=[0, 10, 3, 0])
+xlabel("Lateral position [km]")
+ylabel("Depth [km]")

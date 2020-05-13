@@ -37,13 +37,13 @@ fhistory_SGD = zeros(Float32,niterations)
 options=PARSDMM_options()
 options.FL=Float32
 options=default_PARSDMM_options(options,options.FL)
-options.adjust_gamma           = true
-options.adjust_rho             = true
+options.adjust_gamma = true
+options.adjust_rho = true
 options.adjust_feasibility_rho = true
-options.Blas_active            = true
-options.maxit                  = 1000
-options.feas_tol= 0.001
-options.obj_tol=0.001
+options.Blas_active = true
+options.maxit = 1000
+options.feas_tol = 0.001
+options.obj_tol = 0.001
 options.evol_rel_tol = 0.00001
 
 options.rho_ini=[1.0f0]
@@ -56,40 +56,42 @@ options.feasibility_only = false
 options.zero_ini_guess=true
 
 constraint = Vector{SetIntersectionProjection.set_definitions}()
+
 #bounds:
 vmin = ones(Float32,model0.n) .* 1.3f0
 vmax = ones(Float32,model0.n) .* 6.5f0
 vmin[:,1:21] .= v0[:,1:21]   # keep water column fixed
 vmax[:,1:21] .= v0[:,1:21]
+
 # Slowness squared [s^2/km^2]
 m_min = vec((1f0 ./ vmax).^2)
 m_max = vec((1f0 ./ vmin).^2)
-set_type  = "bounds"
-TD_OP     = "identity"
-app_mode  = ("matrix","")
+set_type = "bounds"
+TD_OP = "identity"
+app_mode = ("matrix","")
 custom_TD_OP = ([],false)
 push!(constraint, set_definitions(set_type,TD_OP,m_min,m_max,app_mode,custom_TD_OP))
 
 #TV
 (TV,dummy1,dummy2,dummy3) = get_TD_operator(model0,"TV",options.FL)
-m_min     = 0.0
-m_max     = norm(TV*vec(v0),1) *2.0f0
-set_type  = "l1"
-TD_OP     = "TV"
-app_mode  = ("matrix","")
+m_min = 0.0
+m_max = norm(TV*vec(v0),1) *2.0f0
+set_type = "l1"
+TD_OP = "TV"
+app_mode = ("matrix","")
 custom_TD_OP = ([],false)
 push!(constraint, set_definitions(set_type,TD_OP,m_min,m_max,app_mode,custom_TD_OP))
 
 #set up constraints, precompute some things and define projector
 (P_sub,TD_OP,set_Prop) = setup_constraints(constraint,model0,options.FL)
-(TD_OP,AtA,l,y)        = PARSDMM_precompute_distribute(TD_OP,set_Prop,model0,options)
-options.rho_ini        = ones(length(TD_OP))*10.0
+(TD_OP,AtA,l,y) = PARSDMM_precompute_distribute(TD_OP,set_Prop,model0,options)
+options.rho_ini = ones(length(TD_OP))*10.0
 
 proj_intersection = x-> PARSDMM(x, AtA, TD_OP, set_Prop, P_sub, model0, options)  
 
 function prj(input)
-  (x,dummy1,dummy2,dymmy3) = proj_intersection(vec(input))
-  return reshape(x, model0.n)
+    (x,dummy1,dummy2,dymmy3) = proj_intersection(vec(input))
+    return reshape(x, model0.n)
 end
 
 ########## Run
@@ -103,11 +105,11 @@ for j=1:niterations
     println("FWI iteration no: ",j,"; function value: ",fval)
     fhistory_SGD[j] = fval
 
-	# linesearch
-	step = backtracking_linesearch(model0, q[i], d_obs[i], fval, gradient, prj; alpha=1f0)
+    # linesearch
+    step = backtracking_linesearch(model0, q[i], d_obs[i], fval, gradient, prj; alpha=1f0)
 
-	# Update model and bound projection
-	model0.m = prj(model0.m + reshape(step,model0.n))
+    # Update model and bound projection
+    model0.m = prj(model0.m + reshape(step,model0.n))
 end
 
-figure(); imshow(sqrt.(1f0./adjoint(model0.m))); title("FWI with SGD")
+figure(); imshow(sqrt.(1f0./adjoint(model0.m))); title("FWI with SPG")

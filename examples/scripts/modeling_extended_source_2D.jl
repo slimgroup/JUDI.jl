@@ -1,6 +1,6 @@
 using JUDI.TimeModeling, SegyIO, LinearAlgebra, PyPlot
 
-## Set up model structure
+# Set up model structure
 n = (120, 100)   # (x,y,z) or (x,z)
 d = (10., 10.)
 o = (0., 0.)
@@ -20,7 +20,7 @@ nsrc = 2	# number of sources
 model0 = Model(n, d, o, m0)
 model = Model(n, d, o, m)
 
-## Set up receiver geometry
+# Set up receiver geometry
 nxrec = 120
 xrec = range(50f0, stop=1150f0, length=nxrec)
 yrec = 0f0
@@ -41,7 +41,7 @@ wavelet = ricker_wavelet(time, dt, f0)
 ntComp = get_computational_nt(recGeometry, model)
 info = Info(prod(n), nsrc, ntComp)
 
-######################## WITH DENSITY ############################################
+###################################################################################################
 
 # Write shots as segy files to disk
 opt = Options(return_array=false, dt_comp=1.0)

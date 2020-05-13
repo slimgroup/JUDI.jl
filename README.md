@@ -40,13 +40,13 @@ julia -e 'using Pkg; Pkg.build("PyCall")'
 If you do not want to install JUDI, you can run JUDI as a docker image. The first possibility is to run the docker container as a Jupyter notebook:
 
 ```
-docker run -p 8888:8888 philippwitte/judi:v1.4
+docker run -p 8888:8888 philippwitte/judi:v1.5
 ```
 
 This command downloads the image and launches a container. You will see a link that you can copy-past to your browser to access the notebooks. Alternatively, you can run a bash session, in which you can start a regular interactive Julia session and run the example scripts. Download/start the container as a bash session with:
 
 ```
-docker run -it philippwitte/judi:v1.4 /bin/bash
+docker run -it philippwitte/judi:v1.5 /bin/bash
 ```
 
 Inside the container, all examples are located in the directory `/app/judi/examples/scripts`.

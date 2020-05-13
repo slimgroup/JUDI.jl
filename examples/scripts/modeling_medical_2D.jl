@@ -1,6 +1,6 @@
 using JUDI.TimeModeling, SegyIO, LinearAlgebra, PyPlot
 
-## Set up model structure
+# Set up model structure
 n = (121, 101)   # (x,y,z) or (x,z)
 d = (2.5f-4, 2.5f-4)
 o = (0., 0.)
@@ -54,7 +54,7 @@ q = judiVector(srcGeometry, wavelet)
 ntComp = get_computational_nt(srcGeometry, recGeometry, model)
 info = Info(prod(n), nsrc, ntComp)
 
-######################## WITH DENSITY ############################################
+###################################################################################################
 
 # Setup operators
 Pr = judiProjection(info, recGeometry)
