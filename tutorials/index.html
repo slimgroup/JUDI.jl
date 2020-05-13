@@ -58,6 +58,10 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#3d-modeling-quickstart">3D Modeling Quickstart</a>
     </li>
+    <li class="toctree-l2"><a class="reference internal" href="#vertical-and-tilted-transverse-isotropic-modeling-vti-tti">Vertical and tilted-transverse isotropic modeling (VTI, TTI)</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#modeling-with-density">Modeling with density</a>
+    </li>
     <li class="toctree-l2"><a class="reference internal" href="#2d-marine-streamer-acquisition">2D Marine streamer acquisition</a>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#simultaneous-sources">Simultaneous sources</a>
@@ -100,7 +104,7 @@
                     </li>
                 </ul>
                 <ul>
-                    <li class="toctree-l1"><a class="reference internal" href="../pysource/">Python API</a>
+                    <li class="toctree-l1"><a class="" href="../pysource.md">Python API</a>
                     </li>
                 </ul>
                 <ul>
@@ -334,6 +338,43 @@ d_obs = Pr*A_inv*Ps'*q
 <p>The 3D shot records are still saved as 2D arrays of dimensions <code>time x (nxrec*nyrec)</code>:</p>
 <pre><code>using PyPlot
 imshow(d_obs.data[1], vmin=-.4, vmax=.4, cmap=&quot;seismic&quot;, aspect=&quot;auto&quot;)
+</code></pre>
+
+<h2 id="vertical-and-tilted-transverse-isotropic-modeling-vti-tti">Vertical and tilted-transverse isotropic modeling (VTI, TTI)</h2>
+<p>JUDI supports both VTI and TTI modeling based on a coupled pseudo-acoustic wave equation. To enable VTI/TTI modeling, simply pass Thomsen parameters as well as the tilt angles to the <code>Model</code> structure as optional keyword arguments:</p>
+<pre><code># Grid and model
+n = (120, 100, 80)
+d = (10., 10., 10)
+o = (0., 0., 0.)
+
+# Velocity
+v = ones(Float32, n) .* 1.5f0
+m = 1f0 ./ v.^2
+
+# Thomsen parameters
+epsilon = ones(Float32, n) .* 0.2f0
+delta = ones(Float32, n) .* 0.1f0
+
+# Tile angles for TTI
+theta = ones(Float32, n) .* pi/2f0
+phi = ones(Float32, n) .* pi/3f0    # 3D only
+
+# Set up model structure with Thomsen parameters
+model = Model(n, d, o, m; rho=rho, epsilon=epsilon, delta=delta, theta=theta, delta=delta)
+</code></pre>
+
+<h2 id="modeling-with-density">Modeling with density</h2>
+<p>To use density, pass <code>rho</code> in the units of <code>[g/cm^3]</code> as an optional keyword argument to the Model structure. The default density is <code>rho=1f0</code> (i.e. density of water):</p>
+<pre><code># Grid and model
+n = (120, 100)
+d = (10., 10.)
+o = (0., 0.)
+v = ones(Float32, n) .* 1.5f0
+m = 1f0 ./ v.^2
+rho = ones(Float32, n) .* 1.1f0
+
+# Set up model structure with density
+model = Model(n, d, o, m; rho=rho)
 </code></pre>
 
 <h2 id="2d-marine-streamer-acquisition">2D Marine streamer acquisition</h2>

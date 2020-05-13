@@ -90,7 +90,7 @@
                     </li>
                 </ul>
                 <ul>
-                    <li class="toctree-l1"><a class="reference internal" href="../pysource/">Python API</a>
+                    <li class="toctree-l1"><a class="" href="../pysource.md">Python API</a>
                     </li>
                 </ul>
                 <ul>
@@ -137,7 +137,7 @@
 <p>Data structure for velocity models in JUDI.</p>
 <p><strong>Construction:</strong></p>
 <p><code>Model</code> requires the following input arguments:</p>
-<pre><code class="julia">model = Model(n, d, o, m; nb=40, rho=1f0)
+<pre><code class="julia">model = Model(n, d, o, m; nb=40, rho=1f0, epsilon=0f0, delta=0f0, theta=0f0, phi=0f0)
 </code></pre>
 
 <p><strong>Parameters:</strong></p>
@@ -158,7 +158,19 @@
 <p><code>nb</code>: Number of absorbing boundary points on each edge. Default is <code>nb = 40</code>.</p>
 </li>
 <li>
-<p><code>rho</code>: 2D or 3D array of the density in <code>[g / cm^3]</code></p>
+<p><code>rho</code>: 2D or 3D array of the density in <code>[g / cm^3]</code> (default is 1)</p>
+</li>
+<li>
+<p><code>epsilon</code>: Thomsen parameter epsilon for VTI/TTI modeling (default is 0)</p>
+</li>
+<li>
+<p><code>delta</code>: Thomsen parameter delta for VTI/TTI modeling (default is 0)</p>
+</li>
+<li>
+<p><code>theta</code>: Vertical tilt angle of TTI symmetry axis (default is 0) <code>[rad]</code></p>
+</li>
+<li>
+<p><code>phi</code>: Horizontal tilt angle of TTI symmetry axis (default is 0) <code>[rad]</code></p>
 </li>
 </ul>
 <p><strong>Access fields:</strong></p>
