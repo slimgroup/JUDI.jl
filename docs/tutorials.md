@@ -240,6 +240,49 @@ using PyPlot
 imshow(d_obs.data[1], vmin=-.4, vmax=.4, cmap="seismic", aspect="auto")
 ```
 
+## Vertical and tilted-transverse isotropic modeling (VTI, TTI)
+
+JUDI supports both VTI and TTI modeling based on a coupled pseudo-acoustic wave equation. To enable VTI/TTI modeling, simply pass Thomsen parameters as well as the tilt angles to the `Model` structure as optional keyword arguments:
+
+```
+# Grid and model
+n = (120, 100, 80)
+d = (10., 10., 10)
+o = (0., 0., 0.)
+
+# Velocity
+v = ones(Float32, n) .* 1.5f0
+m = 1f0 ./ v.^2
+
+# Thomsen parameters
+epsilon = ones(Float32, n) .* 0.2f0
+delta = ones(Float32, n) .* 0.1f0
+
+# Tile angles for TTI
+theta = ones(Float32, n) .* pi/2f0
+phi = ones(Float32, n) .* pi/3f0    # 3D only
+
+# Set up model structure with Thomsen parameters
+model = Model(n, d, o, m; rho=rho, epsilon=epsilon, delta=delta, theta=theta, delta=delta)
+```
+
+## Modeling with density
+
+To use density, pass `rho` in the units of `[g/cm^3]` as an optional keyword argument to the Model structure. The default density is `rho=1f0` (i.e. density of water):
+
+```
+# Grid and model
+n = (120, 100)
+d = (10., 10.)
+o = (0., 0.)
+v = ones(Float32, n) .* 1.5f0
+m = 1f0 ./ v.^2
+rho = ones(Float32, n) .* 1.1f0
+
+# Set up model structure with density
+model = Model(n, d, o, m; rho=rho)
+```
+
 ## 2D Marine streamer acquisition
 
 For a marine streamer acquisition, we need to define a moving set of receivers representing a streamer that is towed behind a seismic source vessel. In JUDI, this is easily done by defining a different set of receivers for each source location. Here, we explain how to set up the `Geometry` objects for a 2D marine streamer acquisition.

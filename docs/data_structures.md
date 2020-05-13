@@ -9,7 +9,7 @@ Data structure for velocity models in JUDI.
 `Model` requires the following input arguments:
 
 ```julia
-model = Model(n, d, o, m; nb=40, rho=1f0)
+model = Model(n, d, o, m; nb=40, rho=1f0, epsilon=0f0, delta=0f0, theta=0f0, phi=0f0)
 ```
 
 **Parameters:**
@@ -24,7 +24,15 @@ model = Model(n, d, o, m; nb=40, rho=1f0)
 
  * `nb`: Number of absorbing boundary points on each edge. Default is ``nb = 40``.
 
- * `rho`: 2D or 3D array of the density in ``[g / cm^3]``
+ * `rho`: 2D or 3D array of the density in ``[g / cm^3]`` (default is 1)
+
+ * `epsilon`: Thomsen parameter epsilon for VTI/TTI modeling (default is 0)
+
+ * `delta`: Thomsen parameter delta for VTI/TTI modeling (default is 0)
+
+ * `theta`: Vertical tilt angle of TTI symmetry axis (default is 0) ``[rad]``
+
+ * `phi`: Horizontal tilt angle of TTI symmetry axis (default is 0) ``[rad]``
 
 
 **Access fields:**
