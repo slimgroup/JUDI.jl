@@ -54,7 +54,7 @@ if is_tti:
 
     model0 = Model(shape=shape, origin=origin, spacing=spacing,
                    vp=v0, epsilon=.09*(v-1.5), delta=.075*(v-1.5),
-                   rho=1, space_order=8, dt=model.critical_dt)
+                   rho=1, space_order=8, dt=model.critical_dt, dm=dm)
 else:
     model = Model(shape=shape, origin=origin, spacing=spacing,
                   vp=v, rho=rho, space_order=8)
@@ -109,7 +109,7 @@ g2 = gradient(model0, d_lin, rec_t.coordinates.data, u0, return_op=False, space_
 plt.figure()
 plt.imshow(d_lin, vmin=-1, vmax=1, cmap='gray', aspect='auto')
 plt.figure()
-plt.imshow(d_pred.data, vmin=-1, vmax=1, cmap='gray', aspect='auto')
+plt.imshow(d0.data, vmin=-1, vmax=1, cmap='gray', aspect='auto')
 plt.figure()
 plt.imshow(g[model.nbl:-model.nbl, model.nbl:-model.nbl].T,
            vmin=-1e1, vmax=1e1, cmap='gray', aspect='auto')

@@ -57,10 +57,11 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
 
     if return_op:
         return op, u, rcv
+
     op(**op_kwargs(model, fs=free_surface))
 
     # Output
-    return getattr(rcv, 'data', None), dft_modes or u_save if t_sub > 1 else u
+    return getattr(rcv, 'data', None), dft_modes or (u_save if t_sub > 1 else u)
 
 
 def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0,
