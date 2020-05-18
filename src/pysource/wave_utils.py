@@ -58,6 +58,7 @@ def wavefield_subsampled(model, u, nt, t_sub, space_order=8):
     space_order: int
         Spatial discretization order
     """
+    u = as_tuple(u)[0]
     if t_sub > 1:
         time_subsampled = ConditionalDimension(name='t_sub', parent=u.grid.time_dim,
                                                factor=t_sub)
