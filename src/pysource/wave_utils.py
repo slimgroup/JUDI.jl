@@ -1,9 +1,10 @@
 import numpy as np
-from sympy import cos, sin
+from sympy import cos, sin, sign
 
 from devito import (TimeFunction, Function, Inc, DefaultDimension,
                     Eq, ConditionalDimension)
 from devito.tools import as_tuple
+from devito.symbolics import retrieve_functions, INT
 
 
 def wavefield(model, space_order, save=False, nt=None, fw=True, name='', t_sub=1):
@@ -145,7 +146,7 @@ def extended_src_weights(model, wavelet, v):
     return w_out, [Eq(w_out, w_out + wf*wavelett)]
 
 
-def freesurface(field, npml, forward=True):
+def freesurface(model, pde, u):
     """
     Generate the stencil that mirrors the field as a free surface modeling for
     the acoustic wave equation
@@ -159,14 +160,23 @@ def freesurface(field, npml, forward=True):
     forward: Bool
         Whether it is forward or backward propagation (in time)
     """
-    size = as_tuple(field)[0].space_order // 2
-    fs = DefaultDimension(name="fs", default_value=size)
     fs_eq = []
-    for f in as_tuple(field):
-        f_m = f.forward if forward else f.backward
-        lhs = f_m.subs({f.indices[-1]: npml - fs - 1})
-        rhs = -f_m.subs({f.indices[-1]: npml + fs + 1})
-        fs_eq += [Eq(lhs, rhs), Eq(f_m.subs({f.indices[-1]: npml}), 0)]
+    for p, wf in zip(pde, as_tuple(u)):
+        lhs = p.lhs
+        rhs = p.rhs.evaluate
+        # Add modulo replacements to to rhs
+        z = model.grid.dimensions[-1]
+        zfs = model.grid.subdomains['fsdomain'].dimensions[-1]
+
+        funcs = retrieve_functions(rhs.evaluate)
+        mapper = {}
+        for f in funcs:
+            zind = f.indices[-1]
+            if (zind - z).as_coeff_Mul()[0] < 0:
+                s = sign(zind.subs({z: zfs, z.spacing: 1}))
+                mapper.update({f: s * f.subs({zind: INT(abs(zind))})})
+        fs_eq.append(Eq(lhs, rhs.subs(mapper),
+                        subdomain=model.grid.subdomains['fsdomain']))
     return fs_eq
 
 

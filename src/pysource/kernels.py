@@ -26,7 +26,7 @@ def wave_kernel(model, u, fw=True, q=None, fs=False):
     else:
         pde = acoustic_kernel(model, u, fw, q=q)
 
-    fs_eq = freesurface(u, model.nbl, forward=fw) if fs else []
+    fs_eq = freesurface(model, pde, u) if fs else []
     return pde, fs_eq
 
 
@@ -53,7 +53,8 @@ def acoustic_kernel(model, u, fw=True, q=None):
     wmr = 1 / (model.irho * model.m)
     s = model.grid.time_dim.spacing
     stencil = model.damp * (2.0 * u - model.damp * u_p + s**2 * wmr * (ulaplace + q))
-
+    if 'nofsdomain' in model.grid.subdomains:
+        return [Eq(u_n, stencil, subdomain=model.grid.subdomains['nofsdomain'])]
     return [Eq(u_n, stencil)]
 
 
@@ -88,7 +89,11 @@ def tti_kernel(model, u1, u2, fw=True, q=None):
     stencilp = damp * (2 * u1 - damp * u1_p + s**2 * wmr * (H0 + q[0]))
     stencilr = damp * (2 * u2 - damp * u2_p + s**2 * wmr * (H1 + q[1]))
 
-    first_stencil = Eq(u1_n, stencilp)
-    second_stencil = Eq(u2_n, stencilr)
+    if 'nofsdomain' in model.grid.subdomains:
+        first_stencil = Eq(u1_n, stencilp, subdomain=model.grid.subdomains['nofsdomain'])
+        second_stencil = Eq(u2_n, stencilr, subdomain=model.grid.subdomains['nofsdomain'])
+    else:
+        first_stencil = Eq(u1_n, stencilp)
+        second_stencil = Eq(u2_n, stencilr)
 
     return [first_stencil, second_stencil]

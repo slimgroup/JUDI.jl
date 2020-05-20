@@ -30,7 +30,8 @@ function devito_model_py(model::Model, options)
     modelPy = pm."Model"(origin=model.o, spacing=model.d, shape=model.n,
 						 vp=process_physical_parameter(sqrt.(1f0./model.m), dims),
 						 nbl=model.nb, rho=process_physical_parameter(model.rho, dims),
-						 space_order=options.space_order, dt=options.dt_comp)
+                         space_order=options.space_order, dt=options.dt_comp,
+                         fs=options.free_surface)
     return modelPy
 end
 
@@ -45,7 +46,8 @@ function devito_model_py(model::Model_TTI, options)
 						 delta=process_physical_parameter(model.delta, dims),
 						 theta=process_physical_parameter(model.theta, dims),
 						 phi=process_physical_parameter(model.phi, dims), nbl=model.nb,
-						 space_order=options.space_order, dt=options.dt_comp)
+                         space_order=options.space_order, dt=options.dt_comp,
+                         fs=options.free_surface)
     return modelPy
 end
 

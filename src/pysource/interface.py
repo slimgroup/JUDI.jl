@@ -4,7 +4,7 @@ from devito import TimeFunction, norm
 from pyrevolve import Revolver
 
 from checkpoint import CheckpointOperator, DevitoCheckpoint
-from propagators import forward, adjoint, born, gradient, op_kwargs
+from propagators import forward, adjoint, born, gradient
 from sources import Receiver
 
 
@@ -685,7 +685,7 @@ def J_adjoint_checkpointing(model, src_coords, wavelet, rec_coords, recin, space
 
     # Run forward
     wrp = Revolver(cp, wrap_fw, wrap_rev, n_checkpoints, nt-2)
-    wrp.apply_forward(**op_kwargs(model, fs=free_surface))
+    wrp.apply_forward()
 
     # Residual and gradient
     if is_residual is True:  # input data is already the residual
@@ -693,7 +693,7 @@ def J_adjoint_checkpointing(model, src_coords, wavelet, rec_coords, recin, space
     else:
         rec.data[:] = rec.data[:] - recin[:]   # input is observed data
 
-    wrp.apply_reverse(**op_kwargs(model, fs=free_surface))
+    wrp.apply_reverse()
 
     if return_obj:
         return .5*model.critical_dt*norm(rec)**2, g.data

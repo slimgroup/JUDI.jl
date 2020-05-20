@@ -12,14 +12,6 @@ def name(model):
     return "tti" if model.is_tti else ""
 
 
-def op_kwargs(model, fs=False):
-    kw = {}
-    if fs:
-        z = model.grid.dimensions[-1].name
-        kw.update({'%s_m' % z: model.nbl})
-    return kw
-
-
 # Forward propagation
 def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
             q=None, free_surface=False, return_op=False, freq_list=None, dft_sub=None,
@@ -53,13 +45,13 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
 
     # Create operator and run
     subs = model.spacing_map
-    op = Operator(pde + geom_expr + dft + eq_save + fs,
+    op = Operator(fs + pde + geom_expr + dft + eq_save,
                   subs=subs, name="forward"+name(model))
 
     if return_op:
         return op, u, rcv
 
-    op(**op_kwargs(model, fs=free_surface))
+    op()
 
     # Output
     return getattr(rcv, 'data', None), dft_modes or (u_save if t_sub > 1 else u)
@@ -92,7 +84,7 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0,
     subs = model.spacing_map
     op = Operator(pde + geom_expr + ws_expr + fs,
                   subs=subs, name="adjoint"+name(model))
-    op(**op_kwargs(model, fs=free_surface))
+    op()
 
     # Output
     if wsrc:
@@ -128,7 +120,7 @@ def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8, t_s
 
     if return_op:
         return op, gradm, v
-    op(**op_kwargs(model, fs=free_surface))
+    op()
 
     # Output
     return gradm.data
@@ -159,8 +151,8 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8,
 
     # Create operator and run
     subs = model.spacing_map
-    op = Operator(pde + geom_expr + pdel + geom_exprl + fsu + fsul,
+    op = Operator(pde + fsu + geom_expr + pdel + geom_exprl + fsul,
                   subs=subs, name="born"+name(model))
-    op(**op_kwargs(model, fs=free_surface))
+    op()
     # Output
     return rcvl.data, u
