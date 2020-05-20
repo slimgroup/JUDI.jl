@@ -114,6 +114,7 @@ function *(A::judiPDEextended{ADDT,ARDT},v::AbstractVector{vDT}) where {ADDT,ARD
     return V
 end
 
+*(A::judiPDEextended{ADDT,ARDT},v::AbstractMatrix{vDT}) where {ADDT,ARDT,vDT} = *(A, vec(v))
 
 # *(num,judiPDEextended)
 function *(a::Number,A::judiPDEextended{ADDT,ARDT}) where {ADDT,ARDT}

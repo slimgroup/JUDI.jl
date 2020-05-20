@@ -104,6 +104,8 @@ function *(A::judiJacobianExQ{ADDT,ARDT},v::AbstractVector{vDT}) where {ADDT,ARD
     return V
 end
 
+*(A::judiJacobianExQ{ADDT,ARDT},v::AbstractMatrix{vDT}) where {ADDT,ARDT,vDT} = *(A, vec(v))
+
 # *(judiJacobianExQ,judiVector)
 function *(A::judiJacobianExQ{ADDT,ARDT},v::judiVector{vDT}) where {ADDT,ARDT,vDT}
     A.n == size(v,1) || throw(judiJacobianExQException("shape mismatch"))
