@@ -220,7 +220,7 @@ class Model(GenericModel):
                  dtype=np.float32, epsilon=None, delta=None, theta=None, phi=None,
                  rho=1, dm=None, subdomains=(), fs=False, **kwargs):
         super(Model, self).__init__(origin, spacing, shape, space_order, nbl, dtype,
-                                    subdomains)
+                                    subdomains, fs)
 
         self.scale = 1
         self._space_order = space_order
