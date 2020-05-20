@@ -73,6 +73,7 @@ def acoustic_kernel(model, u, fw=True, q=None):
 
     return pde
 
+
 def tti_kernel(model, u1, u2, fw=True, q=None):
     """
     TTI wave equation (one from my paper) time stepper

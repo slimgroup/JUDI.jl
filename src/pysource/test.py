@@ -61,6 +61,8 @@ if is_tti:
                    m=m0, epsilon=.09*(v-1.5), delta=.075*(v-1.5),
                    rho=1, space_order=8, dt=model.critical_dt, dm=dm, fs=args.fs)
 else:
+    modelfs = Model(shape=shape, origin=origin, spacing=spacing,
+                    vp=v, space_order=8, fs=True)
     model = Model(shape=shape, origin=origin, spacing=spacing,
                   m=m, space_order=8, fs=args.fs)
     model0 = Model(shape=shape, origin=origin, spacing=spacing, dm=dm,
