@@ -24,6 +24,24 @@ class PhysicalDomain(SubDomain):
         return {d: ('middle', self.nbl, self.nbl) for d in dimensions}
 
 
+class FSDomain(SubDomain):
+
+    name = 'fsdomain'
+
+    def __init__(self, nbl):
+        super(PhysicalDomain, self).__init__()
+        self.nbl = nbl
+
+    def define(self, dimensions):
+        """
+        Definition of the top part of the domain for wrapped indices FS
+        """
+        z = dimensions[-1]
+        map_d = {d: d for d in dimensions}
+        map_d.update({z: ('left', self.nbl)})
+        return map_d
+
+
 def initialize_damp(damp, nbl, mask=False):
     """
     Initialise damping field with an absorbing boundary layer.
@@ -200,7 +218,7 @@ class Model(GenericModel):
     """
     def __init__(self, origin, spacing, shape, vp, space_order=2, nbl=40,
                  dtype=np.float32, epsilon=None, delta=None, theta=None, phi=None,
-                 rho=1, dm=None, subdomains=(), **kwargs):
+                 rho=1, dm=None, subdomains=(), fs=False, **kwargs):
         super(Model, self).__init__(origin, spacing, shape, space_order, nbl, dtype,
                                     subdomains)
 

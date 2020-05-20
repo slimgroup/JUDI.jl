@@ -135,7 +135,7 @@ function polyinterp(points;xminBound=-Inf,xmaxBound=Inf)
 
 
     nPoints = size(points,1);
-    order = length(findin(imag(points[:,2:3]),0))-1;
+    order = length(findall(imag(points[:,2:3]) .== 0))-1;
     # Code for most common case:
     #   - cubic interpolation of 2 points
     #       w/ function and derivative values for both

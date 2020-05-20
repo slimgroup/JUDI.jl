@@ -189,7 +189,7 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Geometry
 
     # Devito call
     dOut = pycall(ac."born_rec", Array{Float32,2}, modelPy, src_coords, qIn, rec_coords,
-                  space_order=options.space_order, isic=options.isic)
+                  space_order=options.space_order, isic=options.isic, free_surface=options.free_surface)
     ntRec > ntComp && (dOut = [dOut zeros(size(dOut,1), ntRec - ntComp)])
     dOut = time_resample(dOut,dtComp,recGeometry)
 
@@ -220,7 +220,7 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Geometry
     grad = pycall(ac."J_adjoint", Array{Float32, length(modelPy.shape)}, modelPy,
                   src_coords, qIn, rec_coords, dIn, t_sub=options.subsampling_factor,
                   space_order=options.space_order, checkpointing=options.optimal_checkpointing,
-                  freq_list=freqs, isic=options.isic,
+                  freq_list=freqs, isic=options.isic, free_surface=options.free_surface,
                   dft_sub=options.dft_subsampling_factor[1])
 
     # Remove PML and return gradient as Array
@@ -305,7 +305,7 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcData::Array, recGe
 
     # Devito call
     dOut = pycall(ac."born_rec_w", Array{Float32,2}, modelPy, weights[1], qIn, rec_coords,
-                  space_order=options.space_order, isic=options.isic)
+                  space_order=options.space_order, isic=options.isic, free_surface=options.free_surface)
     ntRec > ntComp && (dOut = [dOut zeros(size(dOut,1), ntRec - ntComp)])
     dOut = time_resample(dOut,dtComp,recGeometry)
 
@@ -332,7 +332,7 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcData::Array, recGe
     grad = pycall(ac."J_adjoint", Array{Float32, length(modelPy.shape)}, modelPy,
                   nothing, qIn, rec_coords, dIn, t_sub=options.subsampling_factor,
                   space_order=options.space_order, checkpointing=options.optimal_checkpointing,
-                  freq_list=freqs, isic=options.isic, ws=weights[1],
+                  freq_list=freqs, isic=options.isic, ws=weights[1], free_surface=options.free_surface,
                   dft_sub=options.dft_subsampling_factor[1])
     # Remove PML and return gradient as Array
     grad = remove_padding(grad, modelPy.nbl, true_adjoint=options.sum_padding)

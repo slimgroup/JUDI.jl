@@ -27,7 +27,7 @@ def wave_kernel(model, u, fw=True, q=None, fs=False):
         pde = acoustic_kernel(model, u, fw, q=q)
 
     fs_eq = freesurface(u, model.nbl, forward=fw) if fs else []
-    return pde + fs_eq
+    return pde, fs_eq
 
 
 def acoustic_kernel(model, u, fw=True, q=None):
