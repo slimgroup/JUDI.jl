@@ -2,6 +2,7 @@
 
 [![](https://img.shields.io/badge/docs-stable-blue.svg)](https://slimgroup.github.io/JUDI.jl/) 
 [![Build Status ](https://github.com/slimgroup/JUDI.jl/workflows/CI-tests/badge.svg)](https://github.com/slimgroup/JUDI.jl/actions?query=workflow%3ACI-tests)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3878711.svg)](https://doi.org/10.5281/zenodo.3878711)
 
 ## Overview
 
