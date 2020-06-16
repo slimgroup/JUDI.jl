@@ -93,12 +93,19 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0, dft_sub=None,
 
     # Create operator and run
     subs = model.spacing_map
+<<<<<<< HEAD
     op = Operator(pde + ws_expr + nv_t + dft + geom_expr + nv_s,
                   subs=subs, name="adjoint"+name(model),
                   opt=opt_op(model))
     op.cfunction
     # Run operator
     summary = op()
+=======
+    op = Operator(tmp + pde + ws_expr + geom_expr,
+                  subs=subs, name="adjoint"+name(model))
+
+    op()
+>>>>>>> woohoo multi parallel
 
     # Output
     if wsrc:
@@ -229,11 +236,18 @@ def forward_grad(model, src_coords, rcv_coords, wavelet, v, space_order=8,
 
     # Create operator and run
     subs = model.spacing_map
+<<<<<<< HEAD
     op = Operator(pde + geom_expr + g_expr,
                   subs=subs, name="forward_grad"+name(model),
                   opt=opt_op(model))
 
     summary = op()
 
+=======
+    op = Operator(tmpu + tmpul + pde + geom_expr + pdel + geom_exprl,
+                  subs=subs, name="born"+name(model))
+
+    op()
+>>>>>>> woohoo multi parallel
     # Output
     return rcv, gradm, summary

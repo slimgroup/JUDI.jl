@@ -179,7 +179,6 @@ def freesurface(model, eq):
                     mapper.update({f: s * f.subs({zind: INT(abs(zind))})})
             fs_eq.append(Eq(lhs, sign(lhs.indices[-1]-z.symbolic_min) * rhs.subs(mapper),
                             subdomain=model.grid.subdomains['fsdomain']))
-
     return fs_eq
 
 
