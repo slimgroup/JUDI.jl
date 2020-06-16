@@ -36,7 +36,7 @@ def forward_rec(model, src_coords, wavelet, rec_coords, space_order=8):
     """
     rec, _, _ = forward(model, src_coords, rec_coords, wavelet, save=False,
                         space_order=space_order)
-    return rec.data
+    return rec.data, rec.coordinates.data
 
 
 #  Pr*F*Pw'*w
