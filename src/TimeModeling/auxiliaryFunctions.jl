@@ -11,11 +11,11 @@ export load_pymodel, load_devito_jit, load_numpy, devito_model, update_m, update
 export misfit, adjoint_src
 
 
-@cache function update_dm(model::PyObject, dm, dims)
+function update_dm(model::PyObject, dm, dims)
     model.dm =  process_physical_parameter(dm, dims)
 end
 
-@cache function update_m(model::PyObject, m, dims)
+function update_m(model::PyObject, m, dims)
     model.vp = process_physical_parameter(sqrt.(1f0./m), dims)
 end
 
