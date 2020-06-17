@@ -294,7 +294,7 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#sources-module">sources module</a>
         <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#class-sourcespointsourceargs-kwargs">class sources.PointSource(*args, **kwargs)</a>
+    <li class="toctree-l3"><a class="reference internal" href="#class-sourcesgaborsourceargs-kwargs">class sources.GaborSource(*args, **kwargs)</a>
         <ul>
     <li class="toctree-l4"><a class="reference internal" href="#default_assumptions-commutative-true-complex-true-extended_real-true-finite-true-hermitian-true-imaginary-false-infinite-false-real-true">default_assumptions( = {'commutative': True, 'complex': True, 'extended_real': True, 'finite': True, 'hermitian': True, 'imaginary': False, 'infinite': False, 'real': True})</a>
     </li>
@@ -314,13 +314,11 @@
     </li>
     <li class="toctree-l4"><a class="reference internal" href="#is_real-true">is_real( = True)</a>
     </li>
+    <li class="toctree-l4"><a class="reference internal" href="#waveletf0-t">wavelet(f0, t)</a>
+    </li>
         </ul>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#sourcesreceiver">sources.Receiver()</a>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#sourcesshot">sources.Shot()</a>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#class-sourcesrickersourceargs-kwargs">class sources.RickerSource(*args, **kwargs)</a>
+    <li class="toctree-l3"><a class="reference internal" href="#class-sourcespointsourceargs-kwargs">class sources.PointSource(*args, **kwargs)</a>
         <ul>
     <li class="toctree-l4"><a class="reference internal" href="#default_assumptions-commutative-true-complex-true-extended_real-true-finite-true-hermitian-true-imaginary-false-infinite-false-real-true_1">default_assumptions( = {'commutative': True, 'complex': True, 'extended_real': True, 'finite': True, 'hermitian': True, 'imaginary': False, 'infinite': False, 'real': True})</a>
     </li>
@@ -340,11 +338,11 @@
     </li>
     <li class="toctree-l4"><a class="reference internal" href="#is_real-true_1">is_real( = True)</a>
     </li>
-    <li class="toctree-l4"><a class="reference internal" href="#waveletf0-t">wavelet(f0, t)</a>
-    </li>
         </ul>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#class-sourcesgaborsourceargs-kwargs">class sources.GaborSource(*args, **kwargs)</a>
+    <li class="toctree-l3"><a class="reference internal" href="#sourcesreceiver">sources.Receiver()</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#class-sourcesrickersourceargs-kwargs">class sources.RickerSource(*args, **kwargs)</a>
         <ul>
     <li class="toctree-l4"><a class="reference internal" href="#default_assumptions-commutative-true-complex-true-extended_real-true-finite-true-hermitian-true-imaginary-false-infinite-false-real-true_2">default_assumptions( = {'commutative': True, 'complex': True, 'extended_real': True, 'finite': True, 'hermitian': True, 'imaginary': False, 'infinite': False, 'real': True})</a>
     </li>
@@ -367,6 +365,8 @@
     <li class="toctree-l4"><a class="reference internal" href="#waveletf0-t_1">wavelet(f0, t)</a>
     </li>
         </ul>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#sourcesshot">sources.Shot()</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#class-sourcestimeaxisstartnone-stepnone-numnone-stopnone">class sources.TimeAxis(start=None, step=None, num=None, stop=None)</a>
         <ul>
@@ -1735,6 +1735,27 @@ and related quantities (||v||_w, v(xsrc))</p>
 </li>
 </ul>
 <h2 id="sources-module">sources module</h2>
+<h3 id="class-sourcesgaborsourceargs-kwargs">class sources.GaborSource(*args, **kwargs)</h3>
+<p>Symbolic object that encapsulate a set of sources with a
+pre-defined Gabor wavelet:
+<a href="https://en.wikipedia.org/wiki/Gabor_wavelet">https://en.wikipedia.org/wiki/Gabor_wavelet</a>
+name: Name for the resulting symbol
+grid: <code>Grid</code> object defining the computational domain.
+f0: Peak frequency for Ricker wavelet in kHz
+time: Discretized values of time in ms</p>
+<h4 id="default_assumptions-commutative-true-complex-true-extended_real-true-finite-true-hermitian-true-imaginary-false-infinite-false-real-true">default_assumptions( = {'commutative': True, 'complex': True, 'extended_real': True, 'finite': True, 'hermitian': True, 'imaginary': False, 'infinite': False, 'real': True})</h4>
+<h4 id="is_commutative-true">is_commutative( = True)</h4>
+<h4 id="is_complex-true">is_complex( = True)</h4>
+<h4 id="is_extended_real-true">is_extended_real( = True)</h4>
+<h4 id="is_finite-true">is_finite( = True)</h4>
+<h4 id="is_hermitian-true">is_hermitian( = True)</h4>
+<h4 id="is_imaginary-false">is_imaginary( = False)</h4>
+<h4 id="is_infinite-false">is_infinite( = False)</h4>
+<h4 id="is_real-true">is_real( = True)</h4>
+<h4 id="waveletf0-t">wavelet(f0, t)</h4>
+<p>Defines a Gabor wavelet with a peak frequency f0 at time t.
+f0: Peak frequency in kHz
+t: Discretized values of time in ms</p>
 <h3 id="class-sourcespointsourceargs-kwargs">class sources.PointSource(*args, **kwargs)</h3>
 <p>Symbolic data object for a set of sparse point sources</p>
 <ul>
@@ -1774,27 +1795,6 @@ and related quantities (||v||_w, v(xsrc))</p>
 </ul>
 </li>
 </ul>
-<h4 id="default_assumptions-commutative-true-complex-true-extended_real-true-finite-true-hermitian-true-imaginary-false-infinite-false-real-true">default_assumptions( = {'commutative': True, 'complex': True, 'extended_real': True, 'finite': True, 'hermitian': True, 'imaginary': False, 'infinite': False, 'real': True})</h4>
-<h4 id="is_commutative-true">is_commutative( = True)</h4>
-<h4 id="is_complex-true">is_complex( = True)</h4>
-<h4 id="is_extended_real-true">is_extended_real( = True)</h4>
-<h4 id="is_finite-true">is_finite( = True)</h4>
-<h4 id="is_hermitian-true">is_hermitian( = True)</h4>
-<h4 id="is_imaginary-false">is_imaginary( = False)</h4>
-<h4 id="is_infinite-false">is_infinite( = False)</h4>
-<h4 id="is_real-true">is_real( = True)</h4>
-<h3 id="sourcesreceiver">sources.Receiver()</h3>
-<p>alias of <code>sources.PointSource</code></p>
-<h3 id="sourcesshot">sources.Shot()</h3>
-<p>alias of <code>sources.PointSource</code></p>
-<h3 id="class-sourcesrickersourceargs-kwargs">class sources.RickerSource(*args, **kwargs)</h3>
-<p>Symbolic object that encapsulate a set of sources with a
-pre-defined Ricker wavelet:
-<a href="http://subsurfwiki.org/wiki/Ricker_wavelet">http://subsurfwiki.org/wiki/Ricker_wavelet</a>
-name: Name for the resulting symbol
-grid: <code>Grid</code> object defining the computational domain.
-f0: Peak frequency for Ricker wavelet in kHz
-time: Discretized values of time in ms</p>
 <h4 id="default_assumptions-commutative-true-complex-true-extended_real-true-finite-true-hermitian-true-imaginary-false-infinite-false-real-true_1">default_assumptions( = {'commutative': True, 'complex': True, 'extended_real': True, 'finite': True, 'hermitian': True, 'imaginary': False, 'infinite': False, 'real': True})</h4>
 <h4 id="is_commutative-true_1">is_commutative( = True)</h4>
 <h4 id="is_complex-true_1">is_complex( = True)</h4>
@@ -1804,14 +1804,12 @@ time: Discretized values of time in ms</p>
 <h4 id="is_imaginary-false_1">is_imaginary( = False)</h4>
 <h4 id="is_infinite-false_1">is_infinite( = False)</h4>
 <h4 id="is_real-true_1">is_real( = True)</h4>
-<h4 id="waveletf0-t">wavelet(f0, t)</h4>
-<p>Defines a Ricker wavelet with a peak frequency f0 at time t.
-f0: Peak frequency in kHz
-t: Discretized values of time in ms</p>
-<h3 id="class-sourcesgaborsourceargs-kwargs">class sources.GaborSource(*args, **kwargs)</h3>
+<h3 id="sourcesreceiver">sources.Receiver()</h3>
+<p>alias of <code>sources.PointSource</code></p>
+<h3 id="class-sourcesrickersourceargs-kwargs">class sources.RickerSource(*args, **kwargs)</h3>
 <p>Symbolic object that encapsulate a set of sources with a
-pre-defined Gabor wavelet:
-<a href="https://en.wikipedia.org/wiki/Gabor_wavelet">https://en.wikipedia.org/wiki/Gabor_wavelet</a>
+pre-defined Ricker wavelet:
+<a href="http://subsurfwiki.org/wiki/Ricker_wavelet">http://subsurfwiki.org/wiki/Ricker_wavelet</a>
 name: Name for the resulting symbol
 grid: <code>Grid</code> object defining the computational domain.
 f0: Peak frequency for Ricker wavelet in kHz
@@ -1826,9 +1824,11 @@ time: Discretized values of time in ms</p>
 <h4 id="is_infinite-false_2">is_infinite( = False)</h4>
 <h4 id="is_real-true_2">is_real( = True)</h4>
 <h4 id="waveletf0-t_1">wavelet(f0, t)</h4>
-<p>Defines a Gabor wavelet with a peak frequency f0 at time t.
+<p>Defines a Ricker wavelet with a peak frequency f0 at time t.
 f0: Peak frequency in kHz
 t: Discretized values of time in ms</p>
+<h3 id="sourcesshot">sources.Shot()</h3>
+<p>alias of <code>sources.PointSource</code></p>
 <h3 id="class-sourcestimeaxisstartnone-stepnone-numnone-stopnone">class sources.TimeAxis(start=None, step=None, num=None, stop=None)</h3>
 <p>Data object to store the TimeAxis. Exactly three of the four key arguments
 must be prescribed. Because of remainder values it is not possible to create
