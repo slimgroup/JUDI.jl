@@ -203,7 +203,7 @@ function *(A::judiPDEadjoint{CDT,ARDT},B::judiLRWF{BDDT,CDT}) where {ARDT,BDDT,C
 end
 
 # TO DO: Need to add multiplications with judiExtendedSource
-# # *(judiPDE,judiExtendedSource)
+# *(judiPDE,judiExtendedSource)
 # function *(A::judiPDE{ADDT,ARDT},B::judiExtendedSource{vDT}) where {ADDT,ARDT,vDT}
 #     A.n == size(v,1) || throw(judiPDEexception("shape mismatch"))
 #     jo_check_type_match(ADDT,vDT,join(["DDT for *(judiPDE,judiExtendedSource):",A.name,typeof(A),vDT]," / "))
@@ -212,7 +212,7 @@ end
 #     jo_check_type_match(ARDT,eltype(V),join(["RDT from *(judiPDE,judiExtendedSource):",A.name,typeof(A),eltype(V)]," / "))
 #     return V
 # end
-#
+
 # function *(A::judiPDEadjoint{CDT,ARDT},B::judiExtendedSource{vDT}) where where {ADDT,ARDT,vDT}
 #     A.n == size(v,1) || throw(judiPDEadjointException("shape mismatch"))
 #     jo_check_type_match(ADDT,vDT,join(["DDT for *(judiPDE,judiExtendedSource):",A.name,typeof(A),vDT]," / "))
@@ -225,15 +225,15 @@ end
 # *(num,judiPDE)
 function *(a::Number,A::judiPDE{ADDT,ARDT}) where {ADDT,ARDT}
     return judiPDE{ADDT,ARDT}("(N*"*A.name*")",A.m,A.n,A.info,A.model,A.geometry,A.options,
-        v1 -> jo_convert(ARDT,a*A.fop(v1),false),
-        v2 -> jo_convert(ADDT,a*A.fop_T(v2),false)
+        v1 -> jo_convert(ARDT,a, false)*A.fop(v1),
+        v2 -> jjo_convert(ARDT,a, false)*A.fop_T(v2)
         )
 end
 
 function *(a::Number,A::judiPDEadjoint{ADDT,ARDT}) where {ADDT,ARDT}
     return judiPDEadjoint{ADDT,ARDT}("(N*"*A.name*")",A.m,A.n,A.info,A.model,A.geometry,A.options,
-        v1 -> jo_convert(ARDT,a*A.fop(v1),false),
-        v2 -> jo_convert(ADDT,a*A.fop_T(v2),false)
+        v1 -> jo_convert(ARDT,a, false)*A.fop(v1),
+        v2 -> jo_convert(ADDT,a, false)*A.fop_T(v2)
         )
 end
 

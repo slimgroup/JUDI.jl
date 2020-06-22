@@ -114,7 +114,6 @@ end
 function limit_model_to_receiver_area(srcGeometry::Geometry,recGeometry::Geometry,model::Model_TTI,buffer;pert=[])
     # Restrict full velocity model to area that contains either sources and receivers
     ndim = length(model.n)
-    # println("N orig: ", model.n)
 
     # scan for minimum and maximum x and y source/receiver coordinates
     min_x = minimum([vec(recGeometry.xloc[1]); vec(srcGeometry.xloc[1])])
@@ -261,10 +260,11 @@ Create seismic Ricker wavelet of length `tmax` (in milliseconds) with sampling i
 and central frequency `f0` (in kHz).
 
 """
-function ricker_wavelet(tmax, dt, f0)
-    t0 = 0.
-    nt = Int(trunc((tmax - t0)/dt + 1))
-    t = range(t0,stop=tmax,length=nt)
+function ricker_wavelet(tmax, dt, f0; t0=nothing)
+    R = typeof(dt)
+    isnothing(t0) ? t0 = R(0) : tmax = R(tmax - t0)
+    nt = Int(trunc(tmax/dt + 1))
+    t = range(t0, stop=tmax, length=nt)
     r = (pi * f0 * (t .- 1 / f0))
     q = zeros(Float32,nt,1)
     q[:,1] = (1f0 .- 2f0 .* r.^2f0) .* exp.(-r.^2f0)

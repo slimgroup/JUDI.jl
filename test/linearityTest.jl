@@ -3,7 +3,7 @@
 # Date: January 2017
 #
 
-using JUDI.TimeModeling, Test, LinearAlgebra
+using JUDI.TimeModeling, Test, LinearAlgebra, Printf
 
 ## Set up model structure
 n = (120,100)	# (x,y,z) or (x,z)
@@ -89,5 +89,50 @@ lind =  J * dm
 lind2 = J * (2f0 * dm)
 dm = adjoint(J) * d1
 dm2 = adjoint(J) * (2f0 * d1)
+@test isapprox(2f0 * lind, lind2, rtol=1e-5)
+@test isapprox(2f0 * dm, dm2, rtol=1e-5)
+
+###################################################################################################
+
+opt = Options(free_surface=true)
+
+# Modeling operators
+Pr = judiProjection(info,recGeometry)
+Ps1 = judiProjection(info,srcGeometry1)
+Ps2 = judiProjection(info,srcGeometry2)
+F = judiModeling(info,model; options=opt)
+q1 = judiVector(srcGeometry1,wavelet)
+q2 = judiVector(srcGeometry2,wavelet)
+
+J = judiJacobian(Pr*F*adjoint(Ps1), q1)
+
+d1 = Pr*F*adjoint(Ps1)*q1
+d2 = Pr*F*adjoint(Ps2)*q2
+d3 = Pr*F*(adjoint(Ps1)*q1 + adjoint(Ps2)*q2)
+d4 = Pr*F*(adjoint(Ps1)*q1 - adjoint(Ps2)*q2)
+d5 = Pr * F *adjoint(Ps1) * (2f0 * q1)
+
+q3 = Ps1 * adjoint(F) * adjoint(Pr) * d1
+q4 = Ps1 * adjoint(F) * adjoint(Pr) * (2f0 * d1)
+
+@test isapprox(norm(d3), norm(d1 + d2))
+@test isapprox(norm(d4), norm(d1 - d2))
+
+@test isapprox(2f0 * d1, d5, rtol=1e-5)
+@test isapprox(2f0 * q3, q4, rtol=1e-5)
+
+lind =  J * dm
+lind2 = J * (2f0 * dm)
+dm = adjoint(J) * d1
+dm2 = adjoint(J) * (2f0 * d1)
+
+c1 = norm(2f0 * lind - lind2)
+d1 = norm(lind2)
+c2 = norm(2f0 * dm - dm2)
+d2 = norm(dm2)
+
+@printf(" a J x - J a x: %2.2e, J a x : %2.2e, relative error : %2.2e \n", c1, d1, c1/d1)
+@printf(" a J' x - J' a x: %2.2e, J' a x : %2.2e, relative error : %2.2e \n", c2, d2, c2/d2)
+
 @test isapprox(2f0 * lind, lind2, rtol=1e-5)
 @test isapprox(2f0 * dm, dm2, rtol=1e-5)

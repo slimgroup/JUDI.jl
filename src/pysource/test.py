@@ -17,6 +17,9 @@ parser.add_argument('-nlayer', dest='nlayer', default=2, type=int,
 parser.add_argument("--ssa", default=False, action='store_true',
                     help="Test tti or ssa tti")
 
+parser.add_argument("--fs", default=False, action='store_true',
+                    help="Free surface")
+
 args = parser.parse_args()
 is_tti = args.tti
 
@@ -48,18 +51,16 @@ dm = 1/v**2 - 1/v0**2
 if is_tti:
     model = Model(shape=shape, origin=origin, spacing=spacing,
                   vp=v, epsilon=.09*(v-1.5), delta=.075*(v-1.5),
-                  rho=1, space_order=8)
+                  rho=1, space_order=8, fs=args.fs)
 
     model0 = Model(shape=shape, origin=origin, spacing=spacing,
                    vp=v0, epsilon=.09*(v-1.5), delta=.075*(v-1.5),
-                   rho=1, space_order=8, dt=model.critical_dt, dm=dm)
+                   rho=1, space_order=8, dt=model.critical_dt, dm=dm, fs=args.fs)
 else:
-    modelfs = Model(shape=shape, origin=origin, spacing=spacing,
-                    vp=v, space_order=8, fs=True)
     model = Model(shape=shape, origin=origin, spacing=spacing,
-                  vp=v, space_order=8)
+                  vp=v, space_order=8, fs=args.fs)
     model0 = Model(shape=shape, origin=origin, spacing=spacing, dm=dm,
-                   vp=v0, space_order=8, dt=model.critical_dt)
+                   vp=v0, space_order=8, dt=model.critical_dt, fs=args.fs)
 
 # Time axis
 t0 = 0.
@@ -81,8 +82,8 @@ rec_t.coordinates.data[:, 0] = np.linspace(0., (shape[0]-1)*spacing[0], num=nrec
 rec_t.coordinates.data[:, 1] = 14.
 
 # Interface (Level 1)
-# d_obs = forward_rec(model, src.coordinates.data, src.data, rec_t.coordinates.data,
-#                     space_order=8, free_surface=True)
+d_obs = forward_rec(model, src.coordinates.data, src.data, rec_t.coordinates.data,
+                    space_order=8)
 
 N = 1000
 a = .003
@@ -90,32 +91,30 @@ b = .030
 freq_list = np.sort(a + (b - a) * (np.random.randint(N, size=(10,)) - 1) / (N - 1.))
 dft_sub = 1
 # Propagators (Level 2)
-d_obs, _ = forward(modelfs, src.coordinates.data, rec_t.coordinates.data, src.data,
-                   free_surface=True)
-d_obs, _ = forward(model, src.coordinates.data, rec_t.coordinates.data, src.data,
-                   free_surface=False)
+d_obs, _ = forward(modelfs, src.coordinates.data, rec_t.coordinates.data, src.data)
+d_obs, _ = forward(model, src.coordinates.data, rec_t.coordinates.data, src.data)
 
-# d_lin, _ = born(model0, src.coordinates.data, rec_t.coordinates.data,
-#                 src.data, isic=True)
+d_lin, _ = born(model0, src.coordinates.data, rec_t.coordinates.data,
+                src.data, isic=True)
 
 
-# d0, u0 = forward(model0, src.coordinates.data, rec_t.coordinates.data, src.data,
-#                  dft_sub=dft_sub, space_order=8, save=False, freq_list=freq_list)
+d0, u0 = forward(model0, src.coordinates.data, rec_t.coordinates.data, src.data,
+                 dft_sub=dft_sub, space_order=8, save=False, freq_list=freq_list)
 
-# g = gradient(model0, d_lin, rec_t.coordinates.data, u0, return_op=False, space_order=8,
-#              w=None, free_surface=False, freq=freq_list, dft_sub=dft_sub)
+g = gradient(model0, d_lin, rec_t.coordinates.data, u0, return_op=False, space_order=8,
+             w=None, freq=freq_list, dft_sub=dft_sub)
 
-# g2 = gradient(model0, d_lin, rec_t.coordinates.data, u0, return_op=False, space_order=8,
-#               w=None, free_surface=False, freq=freq_list, dft_sub=dft_sub, isic=True)
-# # Plot
-# plt.figure()
-# plt.imshow(d_lin, vmin=-1, vmax=1, cmap='gray', aspect='auto')
-# plt.figure()
-# plt.imshow(d0.data, vmin=-1, vmax=1, cmap='gray', aspect='auto')
-# plt.figure()
-# plt.imshow(g[model.nbl:-model.nbl, model.nbl:-model.nbl].T,
-#            vmin=-1e1, vmax=1e1, cmap='gray', aspect='auto')
-# plt.figure()
-# plt.imshow(g2[model.nbl:-model.nbl, model.nbl:-model.nbl].T,
-#            vmin=-1e1, vmax=1e1, cmap='gray', aspect='auto')
-# plt.show()
+g2 = gradient(model0, d_lin, rec_t.coordinates.data, u0, return_op=False, space_order=8,
+              w=None, freq=freq_list, dft_sub=dft_sub, isic=True)
+# Plot
+plt.figure()
+plt.imshow(d_lin, vmin=-1, vmax=1, cmap='gray', aspect='auto')
+plt.figure()
+plt.imshow(d0.data, vmin=-1, vmax=1, cmap='gray', aspect='auto')
+plt.figure()
+plt.imshow(g[model.nbl:-model.nbl, model.nbl:-model.nbl].T,
+           vmin=-1e1, vmax=1e1, cmap='gray', aspect='auto')
+plt.figure()
+plt.imshow(g2[model.nbl:-model.nbl, model.nbl:-model.nbl].T,
+           vmin=-1e1, vmax=1e1, cmap='gray', aspect='auto')
+plt.show()

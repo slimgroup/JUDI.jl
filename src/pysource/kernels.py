@@ -4,7 +4,7 @@ from wave_utils import freesurface
 from FD_utils import laplacian, ssa_tti
 
 
-def wave_kernel(model, u, fw=True, q=None, fs=False):
+def wave_kernel(model, u, fw=True, q=None):
     """
     Pde kernel corresponding the the model for the input wavefield
 
@@ -18,15 +18,13 @@ def wave_kernel(model, u, fw=True, q=None, fs=False):
         Whether forward or backward in time propagation
     q : TimeFunction or Expr
         Full time-space source
-    fs : Bool
-        Freesurface flag
     """
     if model.is_tti:
         pde = tti_kernel(model, u[0], u[1], fw=fw, q=q)
     else:
         pde = acoustic_kernel(model, u, fw, q=q)
 
-    fs_eq = freesurface(model, pde, u) if fs else []
+    fs_eq = freesurface(model, pde, u) if model.fs else []
     return pde, fs_eq
 
 

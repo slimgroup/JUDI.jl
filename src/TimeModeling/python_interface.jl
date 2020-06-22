@@ -15,7 +15,7 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Geometry
     rec_coords = setup_grid(recGeometry, modelPy.shape)
 
     # Devito call
-    dOut = pycall(ac."forward_rec", Array{Float32,2}, modelPy, src_coords, qIn, rec_coords, space_order=options.space_order, free_surface=options.free_surface)
+    dOut = pycall(ac."forward_rec", Array{Float32,2}, modelPy, src_coords, qIn, rec_coords, space_order=options.space_order)
     ntRec > ntComp && (dOut = [dOut zeros(size(dOut,1), ntRec - ntComp)])
     dOut = time_resample(dOut,dtComp,recGeometry)
 
@@ -45,7 +45,7 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Geometry
     rec_coords = setup_grid(recGeometry, modelPy.shape)
 
     # Devito call
-    qOut = pycall(ac."adjoint_rec", Array{Float32,2}, modelPy, src_coords, rec_coords, dIn, space_order=options.space_order, free_surface=options.free_surface)
+    qOut = pycall(ac."adjoint_rec", Array{Float32,2}, modelPy, src_coords, rec_coords, dIn, space_order=options.space_order)
     ntSrc > ntComp && (qOut = [qOut zeros(size(qOut), ntSrc - ntComp)])
     qOut = time_resample(qOut,dtComp,srcGeometry)
 
@@ -70,7 +70,7 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Geometry
     src_coords = setup_grid(srcGeometry, modelPy.shape)
 
     # Devito call
-    u = pycall(ac."forward_no_rec", Array{Float32,3}, modelPy, src_coords, qIn, space_order=options.space_order, free_surface=options.free_surface)
+    u = pycall(ac."forward_no_rec", Array{Float32,3}, modelPy, src_coords, qIn, space_order=options.space_order)
 
     # Output forward wavefield as judiWavefield
     return judiWavefield(Info(prod(modelPy.shape), 1, ntComp), dtComp, u)
@@ -89,7 +89,7 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Nothing,
     rec_coords = setup_grid(recGeometry, modelPy.shape)
 
     # Devito call
-    v = pycall(ac."adjoint_no_rec", Array{Float32,3}, modelPy, rec_coords, dIn, space_order=options.space_order, free_surface=options.free_surface)
+    v = pycall(ac."adjoint_no_rec", Array{Float32,3}, modelPy, rec_coords, dIn, space_order=options.space_order)
 
     # Output adjoint wavefield as judiWavefield
     return judiWavefield(Info(prod(modelPy.shape), 1, ntComp), dtComp, v)
@@ -107,7 +107,7 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Nothing,
     rec_coords = setup_grid(recGeometry, modelPy.shape)
 
     # Devito call
-    dOut = pycall(ac."forward_wf_src", Array{Float32,2}, modelPy, srcData[1], rec_coords, space_order=options.space_order,free_surface=options.free_surface)
+    dOut = pycall(ac."forward_wf_src", Array{Float32,2}, modelPy, srcData[1], rec_coords, space_order=options.space_order)
     #ntRec > ntComp && (dOut = [dOut zeros(size(dOut,1), ntRec - ntComp)])
     dOut = time_resample(dOut,dtComp,recGeometry)
 
@@ -130,7 +130,7 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Geometry
     src_coords = setup_grid(srcGeometry, modelPy.shape)
 
     # Devito call
-    qOut = pycall(ac."adjoint_wf_src", Array{Float32,2}, modelPy, recData[1], src_coords, space_order=options.space_order, free_surface=options.free_surface)
+    qOut = pycall(ac."adjoint_wf_src", Array{Float32,2}, modelPy, recData[1], src_coords, space_order=options.space_order)
     qOut = time_resample(qOut,dtComp,srcGeometry)
 
     # Output adjoint data as judiVector
@@ -150,7 +150,7 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Nothing,
     ntComp = size(srcData[1], 1)#.shape[1]
 
     # Devito call
-    u = pycall(ac."forward_wf_src_norec", Array{Float32,3}, modelPy, srcData[1], space_order=options.space_order, free_surface=options.free_surface)
+    u = pycall(ac."forward_wf_src_norec", Array{Float32,3}, modelPy, srcData[1], space_order=options.space_order)
 
     # Output forward wavefield as judiWavefield
     return judiWavefield(Info(prod(modelPy.shape), 1, ntComp), dtComp, u)
@@ -165,7 +165,7 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Nothing,
     ntComp = size(recData[1], 1)
 
     # Devito call
-    v = pycall(ac."adjoint_wf_src_norec", Array{Float32,3}, modelPy, recData[1], space_order=options.space_order, free_surface=options.free_surface)
+    v = pycall(ac."adjoint_wf_src_norec", Array{Float32,3}, modelPy, recData[1], space_order=options.space_order)
 
     # Output adjoint wavefield as judiWavefield
     return judiWavefield(Info(prod(modelPy.shape), 1, ntComp), dtComp, v)
@@ -189,7 +189,7 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Geometry
 
     # Devito call
     dOut = pycall(ac."born_rec", Array{Float32,2}, modelPy, src_coords, qIn, rec_coords,
-                  space_order=options.space_order, isic=options.isic, free_surface=options.free_surface)
+                  space_order=options.space_order, isic=options.isic)
     ntRec > ntComp && (dOut = [dOut zeros(size(dOut,1), ntRec - ntComp)])
     dOut = time_resample(dOut,dtComp,recGeometry)
 
@@ -220,7 +220,7 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Geometry
     grad = pycall(ac."J_adjoint", Array{Float32, length(modelPy.shape)}, modelPy,
                   src_coords, qIn, rec_coords, dIn, t_sub=options.subsampling_factor,
                   space_order=options.space_order, checkpointing=options.optimal_checkpointing,
-                  freq_list=freqs, isic=options.isic, free_surface=options.free_surface,
+                  freq_list=freqs, isic=options.isic,
                   dft_sub=options.dft_subsampling_factor[1])
 
     # Remove PML and return gradient as Array
@@ -248,8 +248,7 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcData::Array, recGe
 
     # Devito call
     dOut = pycall(ac."forward_rec_w", Array{Float32,2}, modelPy, weights[1],
-                 qIn, rec_coords, space_order=options.space_order,
-                 free_surface=options.free_surface)
+                 qIn, rec_coords, space_order=options.space_order)
     ntRec > ntComp && (dOut = [dOut zeros(size(dOut,1), ntRec - ntComp)])
     dOut = time_resample(dOut,dtComp,recGeometry)
 
@@ -277,7 +276,7 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcData::Array, recGe
 
     # Devito call
     wOut = pycall(ac."adjoint_w", Array{Float32, length(modelPy.shape)}, modelPy, rec_coords, dIn,
-                  qIn, space_order=options.space_order, free_surface=options.free_surface)
+                  qIn, space_order=options.space_order)
     ntSrc > ntComp && (qOut = [qOut zeros(size(qOut), ntSrc - ntComp)])
 
     # Output adjoint data as judiVector
@@ -305,7 +304,7 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcData::Array, recGe
 
     # Devito call
     dOut = pycall(ac."born_rec_w", Array{Float32,2}, modelPy, weights[1], qIn, rec_coords,
-                  space_order=options.space_order, isic=options.isic, free_surface=options.free_surface)
+                  space_order=options.space_order, isic=options.isic)
     ntRec > ntComp && (dOut = [dOut zeros(size(dOut,1), ntRec - ntComp)])
     dOut = time_resample(dOut,dtComp,recGeometry)
 
@@ -331,7 +330,7 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcData::Array, recGe
     grad = pycall(ac."J_adjoint", Array{Float32, length(modelPy.shape)}, modelPy,
                   nothing, qIn, rec_coords, dIn, t_sub=options.subsampling_factor,
                   space_order=options.space_order, checkpointing=options.optimal_checkpointing,
-                  freq_list=freqs, isic=options.isic, ws=weights[1], free_surface=options.free_surface,
+                  freq_list=freqs, isic=options.isic, ws=weights[1],
                   dft_sub=options.dft_subsampling_factor[1])
     # Remove PML and return gradient as Array
     grad = remove_padding(grad, modelPy.nbl, true_adjoint=options.sum_padding)

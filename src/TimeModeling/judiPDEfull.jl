@@ -116,8 +116,8 @@ end
 # *(num,judiPDEfull)
 function *(a::Number,A::judiPDEfull{ADDT,ARDT}) where {ADDT,ARDT}
     return judiPDEfull{ADDT,ARDT}("(N*"*A.name*")",A.m,A.n,A.info,A.model,A.srcGeometry,A.recGeometry,A.options,
-        v1 -> jo_convert(ARDT,a*A.fop(v1),false),
-        v2 -> jo_convert(ADDT,a*A.fop_T(v2),false)
+        v1 -> jo_convert(ARDT,a, false)*A.fop(v1),
+        v2 -> jo_convert(ADDT,a, false)*A.fop_T(v2)
         )
 end
 
