@@ -325,7 +325,6 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcData::Array, recGe
     dtComp = modelPy.critical_dt
     qIn = time_resample(srcData[1],recGeometry,dtComp)[1]
     dIn = time_resample(recData[1],recGeometry,dtComp)[1]
-    println("Bonjour", options)
     # Set up coordinates with devito dimensions
     rec_coords = setup_grid(recGeometry, modelPy.shape)
     length(options.frequencies) == 0 ? freqs = [] : freqs = options.frequencies[1]

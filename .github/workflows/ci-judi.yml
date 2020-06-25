@@ -26,6 +26,8 @@ jobs:
 
       matrix:
         version:
+          - '1.1'
+          - '1.2'
           - '1.3'
           - '1.4'
           - 'nightly'
@@ -44,6 +46,10 @@ jobs:
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
+
+      - name: Add SLIM registery
+        run: |
+           julia --color=yes --check-bounds=yes -e 'using Pkg;Pkg.update();Pkg.Registry.add(RegistrySpec(url="https://github.com/slimgroup/SLIMregistryJL.git"))'
 
       - name: Instal gcc
         if: runner.os == 'macOS'

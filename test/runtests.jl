@@ -16,7 +16,7 @@ if GROUP == "OP" || GROUP == "All"
         include("linearityTest.jl")
         include("adjointTest.jl")
         include("fwiGradientTest.jl")
-        include("test_jacobian_extended.jl")
+        include("test_jacobian.jl")
         include("test_jacobian_extended.jl")
         push!(Base.ARGS, "--tti")
         include("adjointTest.jl")
