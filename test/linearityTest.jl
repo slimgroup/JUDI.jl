@@ -16,6 +16,7 @@ v[:,Int(round(end/2)):end] .= 4f0
 
 # Slowness squared [s^2/km^2]
 m = (1f0 ./ v).^2
+dm = m .- 1.4f0
 
 # Setup info and model structure
 nsrc = 1
@@ -67,10 +68,26 @@ F = judiModeling(info,model)
 q1 = judiVector(srcGeometry1,wavelet)
 q2 = judiVector(srcGeometry2,wavelet)
 
+J = judiJacobian(Pr*F*adjoint(Ps1), q1)
+
 d1 = Pr*F*adjoint(Ps1)*q1
 d2 = Pr*F*adjoint(Ps2)*q2
 d3 = Pr*F*(adjoint(Ps1)*q1 + adjoint(Ps2)*q2)
 d4 = Pr*F*(adjoint(Ps1)*q1 - adjoint(Ps2)*q2)
+d5 = Pr * F *adjoint(Ps1) * (2f0 * q1)
+
+q3 = Ps1 * adjoint(F) * adjoint(Pr) * d1
+q4 = Ps1 * adjoint(F) * adjoint(Pr) * (2f0 * d1)
 
 @test isapprox(norm(d3), norm(d1 + d2))
 @test isapprox(norm(d4), norm(d1 - d2))
+
+@test isapprox(2f0 * d1, d5, rtol=1e-5)
+@test isapprox(2f0 * q3, q4, rtol=1e-5)
+
+lind =  J * dm
+lind2 = J * (2f0 * dm)
+dm = adjoint(J) * d1
+dm2 = adjoint(J) * (2f0 * d1)
+@test isapprox(2f0 * lind, lind2, rtol=1e-5)
+@test isapprox(2f0 * dm, dm2, rtol=1e-5)

@@ -101,8 +101,6 @@ function *(A::judiPDEfull{ADDT,ARDT},v::AbstractVector{vDT}) where {ADDT,ARDT,vD
     return V
 end
 
-*(A::judiPDEfull{ADDT,ARDT},v::AbstractVector{vDT}) where {ADDT,ARDT,vDT} = *(A, vec(v))
-
 # *(judiPDEfull,judiVector)
 function *(A::judiPDEfull{ADDT,ARDT},v::judiVector{vDT}) where {ADDT,ARDT,vDT}
     A.n == size(v,1) || throw(judiPDEfullException("shape mismatch"))
