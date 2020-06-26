@@ -4,19 +4,46 @@
 # Date: January 2017
 #
 
-using JUDI.TimeModeling, Test, LinearAlgebra, PyPlot
+using JUDI.TimeModeling, Test, LinearAlgebra, PyPlot, Printf, ArgParse
 
+
+### Process command line args
+function parse_commandline()
+    s = ArgParseSettings()
+	@add_arg_table! s begin
+		"--tti"
+			help = "TTI, default False"
+			action = :store_true
+        "--fs"
+            help = "Free surface, default False"
+            action = :store_true
+    end
+    return parse_args(s)
+end
+
+parsed_args = parse_commandline()
+
+println("Gradient test with tti: ", parsed_args["tti"], " and freesurface: ", parsed_args["fs"] )
 ## Set up model structure
 n = (120,100)	# (x,y,z) or (x,z)
 d = (10.,10.)
 o = (0.,0.)
 
+function moving_average(vs, n) 
+	avg = deepcopy(v)
+	for i=1:size(vs, 2)
+		first = max(i - n÷2, 1)
+		last = min(size(vs, 2), i + n÷2)
+		nn = last - first + 1
+		avg[:, i] = sum(vs[:, first:last], dims=2)/nn
+	end
+	return avg
+end
 # Velocity [km/s]
 v = ones(Float32,n) .* 2.0f0
 v[:,Int(round(end/2)):end] .= 3.0f0
-v0 = smooth10(v,n)
-#rho = ones(Float32, n)
-#rho[:, Int(round(end/2)):end] .= 1.5f0
+v0 = moving_average(v, 10)
+
 
 # Slowness squared [s^2/km^2]
 m = (1f0 ./ v).^2
@@ -71,7 +98,7 @@ srcnum = 1:nsrc
 modelH = deepcopy(model0)
 
 # Observed data
-opt = Options(sum_padding=true)
+opt = Options(sum_padding=true, free_surface=parsed_args["fs"])
 F = judiModeling(info,model,srcGeometry,recGeometry;options=opt)
 q = judiVector(srcGeometry,wavelet)
 d = F*q
@@ -89,8 +116,9 @@ for j=1:iter
 	# Check convergence
 	error1[j] = abs(Jm - Jm0)
 	error2[j] = abs(Jm - (Jm0 + h*dJ))
-
-	println(h, " ", error1[j], " ", error2[j])
+	j == 1 ? prev = 1 : prev = j - 1
+	@printf("h = %2.2e, e1 = %2.2e, rate = %2.2e", h, error1[j], error1[prev]/error1[j])
+	@printf(", e2  = %2.2e, rate = %2.2e \n", error2[j], error2[prev]/error2[j])
 	h_all[j] = h
 	global h = h/2f0
 end

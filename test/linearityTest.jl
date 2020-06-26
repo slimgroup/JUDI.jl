@@ -16,13 +16,13 @@ v[:,Int(round(end/2)):end] .= 4f0
 
 # Slowness squared [s^2/km^2]
 m = (1f0 ./ v).^2
-dm = m .- 1.4f0
+dm = m .- 1.4f0^-2f0
 
 # Setup info and model structure
 nsrc = 1
 ntComp = 250
 info = Info(prod(n), nsrc, ntComp)	# number of gridpoints, number of experiments, number of computational time steps
-model = Model(n,d,o,m)
+model = Model(n, d, o, m)
 
 ## Set up receiver geometry
 nxrec = 120
@@ -122,17 +122,17 @@ q4 = Ps1 * adjoint(F) * adjoint(Pr) * (2f0 * d1)
 @test isapprox(2f0 * q3, q4, rtol=1e-5)
 
 lind =  J * dm
-lind2 = J * (2f0 * dm)
-dm = adjoint(J) * d1
+lind2 = J * (2f0 .* dm)
+dm1 = adjoint(J) * d1
 dm2 = adjoint(J) * (2f0 * d1)
 
-c1 = norm(2f0 * lind - lind2)
-d1 = norm(lind2)
-c2 = norm(2f0 * dm - dm2)
-d2 = norm(dm2)
+nd1 = norm(2f0 * lind - lind2)
+nd2 = norm(lind2)
+nm1 = norm(2f0 * dm1 - dm2)
+nm2 = norm(dm2)
 
-@printf(" a J x - J a x: %2.2e, J a x : %2.2e, relative error : %2.2e \n", c1, d1, c1/d1)
-@printf(" a J' x - J' a x: %2.2e, J' a x : %2.2e, relative error : %2.2e \n", c2, d2, c2/d2)
+@printf(" a J x - J a x: %2.2e, J a x : %2.2e, relative error : %2.2e \n", nd1, nd2, nd1/nd2)
+@printf(" a J' x - J' a x: %2.2e, J' a x : %2.2e, relative error : %2.2e \n", nm1, nm2, nm1/nm2)
 
 @test isapprox(2f0 * lind, lind2, rtol=1e-5)
-@test isapprox(2f0 * dm, dm2, rtol=1e-5)
+@test isapprox(2f0 * dm1, dm2, rtol=1e-5)

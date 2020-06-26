@@ -11,14 +11,28 @@ if GROUP == "JUDI" || GROUP == "All"
     end
 end
 
-if GROUP == "OP" || GROUP == "All"
-    @testset "JUDI operators tests" begin
+if GROUP == "ISO_OP" || GROUP == "All"
+    @testset "JUDI iso-acoustic operators tests" begin
         include("linearityTest.jl")
-        include("adjointTest.jl")
-        include("fwiGradientTest.jl")
         include("test_jacobian.jl")
         include("test_jacobian_extended.jl")
+        # Iso-acoustic adjoint tests
+        include("adjointTest.jl")
+        include("fwiGradientTest.jl")
+        push!(Base.ARGS, "--fs")
+        include("adjointTest.jl")
+        include("fwiGradientTest.jl")
+    end
+end
+
+if GROUP == "TTI_OP" || GROUP == "All"
+    @testset "JUDI TTI operators tests" begin
+        # TTI adjoint tests
         push!(Base.ARGS, "--tti")
         include("adjointTest.jl")
+        include("fwiGradientTest.jl")
+        push!(Base.ARGS, "--fs")
+        include("adjointTest.jl")
+        include("fwiGradientTest.jl")
     end
 end

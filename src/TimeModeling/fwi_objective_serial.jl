@@ -24,8 +24,6 @@ function fwi_objective(model_full::Modelall, source::judiVector, dObs::judiVecto
     # Set up Python model structure (force origin to be zero due to current devito bug)
     # Set up Python model structure
     modelPy = devito_model(model, options)
-    update_m(modelPy, model.m, dims)
-
     dtComp = modelPy.critical_dt
 
     # Extrapolate input data to computational grid
@@ -60,7 +58,7 @@ function fwi_objective(model_full::Modelall, source::judiVector, dObs::judiVecto
                                   rec_coords, dObserved, is_residual=false, return_obj=true,
                                   t_sub=options.subsampling_factor)
     end
-    argout2 = remove_padding(argout2, model.nb, true_adjoint=options.sum_padding)
+    argout2 = remove_padding(argout2, modelPy.padsizes, true_adjoint=options.sum_padding)
     if options.limit_m==true
         argout2 = extend_gradient(model_full, model, argout2)
     end

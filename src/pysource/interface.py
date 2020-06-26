@@ -238,8 +238,7 @@ def adjoint_w(model, rec_coords, data, wavelet, space_order=8):
     """
     w = adjoint(model, data, None, rec_coords, ws=wavelet,
                 space_order=space_order)
-    slices = [slice(model.nbl, -model.nbl) for _ in range(model.dim)]
-    return w.data[slices]
+    return w.data
 
 
 # F'*Pr'*d_obs

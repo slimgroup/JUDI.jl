@@ -600,7 +600,9 @@ end
 function write_shot_record(srcGeometry,srcData,recGeometry,recData,options)
     q = judiVector(srcGeometry,srcData)
     d = judiVector(recGeometry,recData)
-    file = join([string(options.file_name),"_",string(srcGeometry.xloc[1][1]),"_",string(srcGeometry.yloc[1][1]),".segy"])
+    pos = [srcGeometry.xloc[1][1], srcGeometry.yloc[1][1],  srcGeometry.zloc[1][1]]
+    pos = join(["_"*string(trunc(p; digits=2)) for p in pos])
+    file = join([string(options.file_name), pos,".segy"])
     block_out = judiVector_to_SeisBlock(d,q)
     segy_write(join([options.file_path,"/",file]), block_out)
     container = scan_file(join([options.file_path,"/",file]),["GroupX","GroupY","dt","SourceSurfaceElevation","RecGroupElevation"])

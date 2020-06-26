@@ -82,7 +82,7 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0,
 
     # Create operator and run
     subs = model.spacing_map
-    op = Operator(pde + geom_expr + ws_expr + fs,
+    op = Operator(fs + pde + geom_expr + ws_expr,
                   subs=subs, name="adjoint"+name(model))
     op()
 
@@ -115,7 +115,7 @@ def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8, t_s
 
     # Create operator and run
     subs = model.spacing_map
-    op = Operator(pde + geom_expr + g_expr + fs,
+    op = Operator(g_expr + fs + pde + geom_expr,
                   subs=subs, name="gradient"+name(model))
 
     if return_op:

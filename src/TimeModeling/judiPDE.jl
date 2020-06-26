@@ -226,7 +226,7 @@ end
 function *(a::Number,A::judiPDE{ADDT,ARDT}) where {ADDT,ARDT}
     return judiPDE{ADDT,ARDT}("(N*"*A.name*")",A.m,A.n,A.info,A.model,A.geometry,A.options,
         v1 -> jo_convert(ARDT,a, false)*A.fop(v1),
-        v2 -> jjo_convert(ARDT,a, false)*A.fop_T(v2)
+        v2 -> jo_convert(ARDT,a, false)*A.fop_T(v2)
         )
 end
 

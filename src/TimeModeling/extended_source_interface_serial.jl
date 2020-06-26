@@ -6,18 +6,16 @@ function extended_source_modeling(model_full::Modelall, srcData, recGeometry, re
 
     # Load full geometry for out-of-core geometry containers
     typeof(recGeometry) == GeometryOOC && (recGeometry = Geometry(recGeometry))
-    length(model_full.n) == 3 ? dims = [3,2,1] : dims = [2,1]   # model dimensions for Python are (z,y,x) and (z,x)
 
     # TO DO: limit model to area with sources/receivers
     model = model_full
 
     # Set up Python model structure
     modelPy = devito_model(model, options)
-    update_m(modelPy, model.m, dims)
-
     if op=='J' && mode == 1
-        update_dm(modelPy, reshape(dm,model.n), dims)
+        update_dm(modelPy, reshape(dm, model.n))
     end
+
     # Load shot record if stored on disk
     if recData != nothing
         if typeof(recData[1]) == SegyIO.SeisCon
@@ -27,7 +25,12 @@ function extended_source_modeling(model_full::Modelall, srcData, recGeometry, re
         end
     end
 
-    # To DO: Remove receivers outside the modeling domain
+    # Remove receivers outside the modeling domain (otherwise leads to segmentation faults)
+    if mode==1 && recGeometry != nothing
+        recGeometry = remove_out_of_bounds_receivers(recGeometry, model)
+    elseif mode==-1 && recGeometry != nothing
+        recGeometry, recData = remove_out_of_bounds_receivers(recGeometry, recData, model)
+    end
 
     # Devito interface
     argout = devito_interface(modelPy, model, srcData, recGeometry, recData, weights, dm, options)

@@ -49,6 +49,7 @@ info = Info(prod(n), nsrc, ntComp)
 
 ###################################################################################
 
+println("Extented source Jacobian test")
 # Write shots as segy files to disk
 opt = Options(sum_padding=true, dt_comp=dt, return_array=true)
 
@@ -83,7 +84,57 @@ for j=1:maxiter
 
     err1[j] = norm(dobs - dpred)
     err2[j] = norm(dobs - dpred - h*dD)
-    print(h, " ", err1[j], "    ", err2[j],"\n")
+    j == 1 ? prev = 1 : prev = j - 1
+	@printf("h = %2.2e, e1 = %2.2e, rate = %2.2e", h, err1[j], err1[prev]/err1[j])
+	@printf(", e2 = %2.2e, rate = %2.2e \n", err2[j], err2[prev]/err2[j])
+
+    global h = h/2f0
+end
+
+@test isapprox(err1[end] / (err1[1]/2^(maxiter-1)), 1f0; atol=1f1)
+@test isapprox(err2[end] / (err2[1]/4^(maxiter-1)), 1f0; atol=1f1)
+
+
+###################################################################################
+
+println("Extented source Jacobian test with free surface")
+# Write shots as segy files to disk
+opt = Options(sum_padding=true, dt_comp=dt, return_array=true, free_surface=true)
+
+# Setup operators
+Pr = judiProjection(info, recGeometry)
+F = judiModeling(info, model; options=opt)
+F0 = judiModeling(info, model0; options=opt)
+Pw = judiLRWF(info, wavelet)
+
+# Combined operators
+A = Pr*F*adjoint(Pw)
+A0 = Pr*F0*adjoint(Pw)
+
+# Extended source weights
+w = judiWeights(randn(Float32, model0.n))
+J = judiJacobian(Pr*F0*Pw', w)
+
+# Nonlinear modeling
+dpred = A0*w
+dD = J*dm
+
+# Jacobian test
+maxiter = 6
+h = 1f0
+err1 = zeros(Float32, maxiter)
+err2 = zeros(Float32, maxiter)
+
+for j=1:maxiter
+
+    A.model.m = m0 + h*reshape(dm, model0.n)
+    dobs = A*w
+
+    err1[j] = norm(dobs - dpred)
+    err2[j] = norm(dobs - dpred - h*dD)
+    j == 1 ? prev = 1 : prev = j - 1
+	@printf("h = %2.2e, e1 = %2.2e, rate = %2.2e", h, err1[j], err1[prev]/err1[j])
+	@printf(", e2 = %2.2e, rate = %2.2e \n", err2[j], err2[prev]/err2[j])
 
     global h = h/2f0
 end

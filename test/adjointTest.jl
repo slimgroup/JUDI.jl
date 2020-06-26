@@ -18,6 +18,9 @@ function parse_commandline()
         "--tti"
             help = "TTI, default False"
             action = :store_true
+        "--fs"
+            help = "Free surface, default False"
+            action = :store_true
         "--nlayer", "-n"
             help = "Number of layers"
             arg_type = Int
@@ -28,6 +31,9 @@ end
 
 parsed_args = parse_commandline()
 
+
+println("Adjoint test with ", parsed_args["nlayer"], " layers and tti: ",
+        parsed_args["tti"], " and freesurface: ", parsed_args["fs"] )
 ### Model
 nlayer = parsed_args["nlayer"]
 
@@ -100,7 +106,7 @@ wave_rand = wavelet.*rand(Float32,size(wavelet))
 # Modeling
 
 # Modeling operators
-opt = Options(sum_padding=true, dt_comp=dt)
+opt = Options(sum_padding=true, dt_comp=dt, free_surface=parsed_args["fs"])
 
 F = judiModeling(info,model0,srcGeometry,recGeometry; options=opt)
 q = judiVector(srcGeometry,wavelet)
@@ -137,7 +143,10 @@ d = dot(x, x_hat)
 ###################################################################################################
 # Extended source modeling
 
-opt = Options(return_array=true, sum_padding=true, dt_comp=dt)
+println("Extended source adjoint test with ", parsed_args["nlayer"], " layers and tti: ",
+        parsed_args["tti"], " and freesurface: ", parsed_args["fs"] )
+
+opt = Options(return_array=true, sum_padding=true, dt_comp=dt, free_surface=parsed_args["fs"])
 
 Pr = judiProjection(info, recGeometry)
 F = judiModeling(info, model0; options=opt)

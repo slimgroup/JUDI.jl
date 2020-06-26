@@ -113,7 +113,7 @@ def extented_src(model, weight, wavelet, q=0):
     wavelett = Function(name='wf_src', dimensions=(time,), shape=(nt,))
     wavelett.data[:] = wavelet[:, 0]
     source_weight = Function(name='src_weight', grid=model.grid)
-    slices = tuple(slice(model.nbl, -model.nbl, 1) for _ in range(model.grid.dim))
+    slices = tuple(slice(nbl, -nbr) for (nbl, nbr) in model.padsizes)
     source_weight.data[slices] = weight
     if model.is_tti:
         return (q[0]+source_weight*wavelett, q[1]+source_weight*wavelett)
@@ -137,36 +137,35 @@ def extended_src_weights(model, wavelet, v):
     if wavelet is None:
         return None, []
     nt = wavelet.shape[0]
+    dt = model.grid.time_dim.spacing
     # Data is sampled everywhere as a sum over time and weighted by wavelet
     w_out = Function(name='src_weight', grid=model.grid)
     time = model.grid.time_dim
     wavelett = Function(name='wf_src', dimensions=(time,), shape=(nt,))
     wavelett.data[:] = wavelet[:, 0]
     wf = v[0] + v[1] if model.is_tti else v
-    return w_out, [Eq(w_out, w_out + wf*wavelett)]
+    return w_out, [Eq(w_out, w_out + dt*wf*wavelett)]
 
 
-def freesurface(model, pde, u):
+def freesurface(model, pde):
     """
     Generate the stencil that mirrors the field as a free surface modeling for
     the acoustic wave equation
 
     Parameters
     ----------
-    field: TimeFunction or Tuple
-        Field for which to add a free surface
-    npml: int
-        Number of ABC points
-    forward: Bool
-        Whether it is forward or backward propagation (in time)
+    model: Model
+        Physical model
+    pde: Eq or List of Eq
+        PDEs to mirror
     """
     fs_eq = []
-    for p, wf in zip(pde, as_tuple(u)):
+    for p in pde:
         lhs = p.lhs
         rhs = p.rhs.evaluate
         # Add modulo replacements to to rhs
-        z = model.grid.dimensions[-1]
         zfs = model.grid.subdomains['fsdomain'].dimensions[-1]
+        z = zfs.parent
 
         funcs = retrieve_functions(rhs.evaluate)
         mapper = {}
