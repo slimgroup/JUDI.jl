@@ -39,7 +39,7 @@ def grad_expr(gradm, u, v, model, w=None, freq=None, dft_sub=None, isic=False):
         Whether or not to use inverse scattering imaging condition (not supported yet)
     """
     ic_func = ic_dict[func_name(freq=freq, isic=isic)]
-    expr = ic_func(as_tuple(u)[0], as_tuple(v)[0], model, freq=freq, factor=dft_sub, w=w)
+    expr = ic_func(as_tuple(u), as_tuple(v), model, freq=freq, factor=dft_sub, w=w)
     return [Eq(gradm, expr + gradm)]
 
 
@@ -56,8 +56,8 @@ def crosscorr_time(u, v, model, **kwargs):
     model: Model
         Model structure
     """
-    w = kwargs.get('w') or u.dimensions[0].spacing * model.irho
-    return - w * v * u.dt2
+    w = kwargs.get('w') or model.grid.time_dim.spacing * model.irho
+    return - w * sum(vv * uu.dt2 for uu, vv in zip(u, v))
 
 
 def crosscorr_freq(u, v, model, freq=None, dft_sub=None, **kwargs):
@@ -81,15 +81,17 @@ def crosscorr_freq(u, v, model, freq=None, dft_sub=None, **kwargs):
     time = model.grid.time_dim
     dt = time.spacing
     tsave, factor = sub_time(time, dft_sub)
-    ufr, ufi = u
-    # Frequencies
-    nfreq = freq.shape[0]
-    f = Function(name='f', dimensions=(ufr.dimensions[0],), shape=(nfreq,))
-    f.data[:] = freq[:]
-    omega_t = 2*np.pi*f*tsave*factor*dt
-    # Gradient weighting is (2*np.pi*f)**2/nt
-    w = (2*np.pi*f)**2/time.symbolic_max
-    expr = w*(ufr*cos(omega_t) - ufi*sin(omega_t))*v
+    expr = 0
+    for uu, vv in zip(u, v):
+        ufr, ufi = uu
+        # Frequencies
+        nfreq = freq.shape[0]
+        f = Function(name='f', dimensions=(ufr.dimensions[0],), shape=(nfreq,))
+        f.data[:] = freq[:]
+        omega_t = 2*np.pi*f*tsave*factor*dt
+        # Gradient weighting is (2*np.pi*f)**2/nt
+        w = (2*np.pi*f)**2/time.symbolic_max
+        expr += w*(ufr*cos(omega_t) - ufi*sin(omega_t))*vv
     return expr
 
 
@@ -106,8 +108,9 @@ def isic_time(u, v, model, **kwargs):
     model: Model
         Model structure
     """
-    w = - u.dimensions[0].spacing * model.irho
-    return w * (u * v.dt2 * model.m + grad(u).T * grad(v))
+    w = - model.grid.time_dim.spacing * model.irho
+    return w * sum(uu * vv.dt2 * model.m + grad(uu).T * grad(vv)
+                   for uu, vv in zip(u, v))
 
 
 def isic_freq(u, v, model, **kwargs):
@@ -128,17 +131,19 @@ def isic_freq(u, v, model, **kwargs):
     time = model.grid.time_dim
     dt = time.spacing
     tsave, factor = sub_time(time, kwargs.get('factor'))
-    ufr, ufi = u
-    # Frequencies
-    nfreq = freq.shape[0]
-    f = Function(name='f', dimensions=(ufr.dimensions[0],), shape=(nfreq,))
-    f.data[:] = freq[:]
-    omega_t = 2*np.pi*f*tsave*factor*dt
-    # Gradient weighting is (2*np.pi*f)**2/nt
-    w = (2*np.pi*f)**2/time.symbolic_max
-    expr = (w * (ufr * cos(omega_t) - ufi * sin(omega_t)) * v * model.m -
-            factor / time.symbolic_max * (grad(ufr * cos(omega_t) -
-                                               ufi * sin(omega_t)).T * grad(v)))
+    expr = 0
+    for uu, vv in zip(u, v):
+        ufr, ufi = uu
+        # Frequencies
+        nfreq = freq.shape[0]
+        f = Function(name='f', dimensions=(ufr.dimensions[0],), shape=(nfreq,))
+        f.data[:] = freq[:]
+        omega_t = 2*np.pi*f*tsave*factor*dt
+        # Gradient weighting is (2*np.pi*f)**2/nt
+        w = (2*np.pi*f)**2/time.symbolic_max
+        expr += (w * (ufr * cos(omega_t) - ufi * sin(omega_t)) * vv * model.m -
+                 factor / time.symbolic_max * (grad(ufr * cos(omega_t) -
+                                                    ufi * sin(omega_t)).T * grad(vv)))
     return expr
 
 
@@ -154,7 +159,7 @@ def lin_src(model, u, isic=False):
         Model containing the perturbation dm
     """
     ls_func = ls_dict[func_name(isic=isic)]
-    return ls_func(model, as_tuple(u)[0])
+    return ls_func(model, as_tuple(u))
 
 
 def basic_src(model, u, **kwargs):
@@ -170,8 +175,8 @@ def basic_src(model, u, **kwargs):
     """
     w = - model.dm * model.irho
     if model.is_tti:
-        return (w * u.dt2, 0)
-    return w * u.dt2
+        return (w * u[0].dt2, w * u[1].dt2)
+    return w * u[0].dt2
 
 
 def isic_src(model, u, **kwargs):
@@ -186,14 +191,16 @@ def isic_src(model, u, **kwargs):
         Model containing the perturbation dm
     """
     m, dm, irho = model.m, model.dm, model.irho
-    so = u.space_order//2
-    du_aux = sum([getattr(getattr(u, 'd%s' % d.name)(fd_order=so) * dm * irho,
-                          'd%s' % d.name)(fd_order=so)
-                  for d in u.space_dimensions])
-    du = dm * irho * u.dt2 * m - du_aux
+    dus = []
+    for uu in u:
+        so = uu.space_order//2
+        du_aux = sum([getattr(getattr(uu, 'd%s' % d.name)(fd_order=so) * dm * irho,
+                              'd%s' % d.name)(fd_order=so)
+                      for d in uu.space_dimensions])
+        dus.append(dm * irho * uu.dt2 * m - du_aux)
     if model.is_tti:
-        return (du, 0)
-    return du
+        return (dus[0], dus[1])
+    return dus[0]
 
 
 ic_dict = {'isic_freq': isic_freq, 'corr_freq': crosscorr_freq,

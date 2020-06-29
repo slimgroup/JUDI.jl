@@ -217,14 +217,14 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Geometry
     src_coords = setup_grid(srcGeometry, modelPy.shape)
     rec_coords = setup_grid(recGeometry, modelPy.shape)
     length(options.frequencies) == 0 ? freqs = [] : freqs = options.frequencies[1]
-    grad = pycall(ac."J_adjoint", Array{Float32, length(modelPy.shape)}, modelPy,
+    grad = pycall(ac."J_adjoint", Array{Float32, modelPy.dim}, modelPy,
                   src_coords, qIn, rec_coords, dIn, t_sub=options.subsampling_factor,
                   space_order=options.space_order, checkpointing=options.optimal_checkpointing,
                   freq_list=freqs, isic=options.isic,
                   dft_sub=options.dft_subsampling_factor[1])
 
     # Remove PML and return gradient as Array
-    grad = remove_padding(grad, modelPy.padsizes, true_adjoint=options.sum_padding)
+    grad = remove_padding(grad, modelPy.padsizes; true_adjoint=options.sum_padding)
     return vec(grad)
 end
 
@@ -275,12 +275,11 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcData::Array, recGe
     rec_coords = setup_grid(recGeometry, modelPy.shape)
 
     # Devito call
-    wOut = pycall(ac."adjoint_w", Array{Float32, length(modelPy.shape)}, modelPy, rec_coords, dIn,
+    wOut = pycall(ac."adjoint_w", Array{Float32, modelPy.dim}, modelPy, rec_coords, dIn,
                   qIn, space_order=options.space_order)
-    ntSrc > ntComp && (qOut = [qOut zeros(size(qOut), ntSrc - ntComp)])
 
     # Output adjoint data as judiVector
-    wOut = remove_padding(wOut, modelPy.padsizes, true_adjoint=false)
+    wOut = remove_padding(wOut, modelPy.padsizes; true_adjoint=false)
     if options.return_array == true
         return vec(wOut)
     else
@@ -289,7 +288,7 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcData::Array, recGe
 end
 
 # Jacobian of extended source modeling: d_lin = J*dm
-function devito_interface(modelPy::PyCall.PyObject, model, srcData::Array, recGeometry::Geometry, recData::Nothing, weights:: Array, dm::Array, options::Options)
+function devito_interface(modelPy::PyCall.PyObject, model, srcData::Array, recGeometry::Geometry, recData::Nothing, weights::Array, dm::Array, options::Options)
     ac = load_devito_jit(model)
 
     # Interpolate input data to computational grid
@@ -328,12 +327,12 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcData::Array, recGe
     # Set up coordinates with devito dimensions
     rec_coords = setup_grid(recGeometry, modelPy.shape)
     length(options.frequencies) == 0 ? freqs = [] : freqs = options.frequencies[1]
-    grad = pycall(ac."J_adjoint", Array{Float32, length(modelPy.shape)}, modelPy,
+    grad = pycall(ac."J_adjoint", Array{Float32, modelPy.dim}, modelPy,
                   nothing, qIn, rec_coords, dIn, t_sub=options.subsampling_factor,
                   space_order=options.space_order, checkpointing=options.optimal_checkpointing,
                   freq_list=freqs, isic=options.isic, ws=weights[1],
                   dft_sub=options.dft_subsampling_factor[1])
     # Remove PML and return gradient as Array
-    grad = remove_padding(grad, modelPy.padsizes, true_adjoint=options.sum_padding)
+    grad = remove_padding(grad, modelPy.padsizes; true_adjoint=options.sum_padding)
     return vec(grad)
 end

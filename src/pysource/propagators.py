@@ -84,6 +84,7 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0,
     subs = model.spacing_map
     op = Operator(fs + pde + geom_expr + ws_expr,
                   subs=subs, name="adjoint"+name(model))
+
     op()
 
     # Output
@@ -115,7 +116,7 @@ def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8, t_s
 
     # Create operator and run
     subs = model.spacing_map
-    op = Operator(g_expr + fs + pde + geom_expr,
+    op = Operator(fs + pde + geom_expr + g_expr,
                   subs=subs, name="gradient"+name(model))
 
     if return_op:
@@ -153,6 +154,7 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8,
     subs = model.spacing_map
     op = Operator(fsu + pde + geom_expr + fsul + pdel + geom_exprl,
                   subs=subs, name="born"+name(model))
+
     op()
     # Output
     return rcvl.data, u

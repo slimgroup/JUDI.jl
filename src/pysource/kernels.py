@@ -1,7 +1,21 @@
+from sympy.solvers.solveset import linear_coeffs
+
 from devito import Eq
+from devito.finite_differences.differentiable import diffify
 
 from wave_utils import freesurface
 from FD_utils import laplacian, ssa_tti
+
+
+def fallback_solve(eq, target, **kwargs):
+    """
+    To be remved at next Devito release
+    """
+    if isinstance(eq, Eq):
+        eq = eq.lhs - eq.rhs if eq.rhs != 0 else eq.lhs
+    # Try first linear solver
+    cc = linear_coeffs(eq.evaluate, target)
+    return diffify(-cc[1]/cc[0])
 
 
 def wave_kernel(model, u, fw=True, q=None):
@@ -43,14 +57,15 @@ def acoustic_kernel(model, u, fw=True, q=None):
     q : TimeFunction or Expr
         Full time-space source
     """
-    u_n, u_p = (u.forward, u.backward) if fw else (u.backward, u.forward)
+    u_n = u.forward if fw else u.backward
+    udt = u.dt if fw else u.dt.T
     q = q or 0
 
     # Set up PDE expression and rearrange
     ulaplace = laplacian(u, model.irho)
-    wmr = 1 / (model.irho * model.m)
-    s = model.grid.time_dim.spacing
-    stencil = model.damp * (2.0 * u - model.damp * u_p + s**2 * wmr * (ulaplace + q))
+    wmr = model.irho * model.m
+    stencil = fallback_solve(wmr * u.dt2 - ulaplace - q + model.damp * udt, u_n)
+
     if 'nofsdomain' in model.grid.subdomains:
         return [Eq(u_n, stencil, subdomain=model.grid.subdomains['nofsdomain'])]
     return [Eq(u_n, stencil)]
@@ -74,18 +89,17 @@ def tti_kernel(model, u1, u2, fw=True, q=None):
         Full time-space source as a tuple (one value for each component)
     """
     m, damp, irho = model.m, model.damp, model.irho
-    wmr = 1 / (irho * m)
+    wmr = (irho * m)
     q = q or (0, 0)
 
     # Tilt and azymuth setup
-    u1_n, u1_p = (u1.forward, u1.backward) if fw else (u1.backward, u1.forward)
-    u2_n, u2_p = (u2.forward, u2.backward) if fw else (u2.backward, u2.forward)
-    H0, H1 = ssa_tti(u1, u2, model)
+    u1_n, u2_n = (u1.forward, u2.forward) if fw else (u1.backward, u2.backward)
+    (udt1, udt2) = (u1.dt, u2.dt) if fw else (u1.dt.T, u2.dt.T)
+    H0, H1, factp, factm = ssa_tti(u1, u2, model)
 
     # Stencils
-    s = model.grid.stepping_dim.spacing
-    stencilp = damp * (2 * u1 - damp * u1_p + s**2 * wmr * (H0 + q[0]))
-    stencilr = damp * (2 * u2 - damp * u2_p + s**2 * wmr * (H1 + q[1]))
+    stencilp = fallback_solve(wmr * u1.dt2 - H0 - q[0] + damp * udt1, u1_n)
+    stencilr = fallback_solve(wmr * u2.dt2 - H1 - q[1] + damp * udt2, u2_n)
 
     if 'nofsdomain' in model.grid.subdomains:
         first_stencil = Eq(u1_n, stencilp, subdomain=model.grid.subdomains['nofsdomain'])
@@ -94,4 +108,4 @@ def tti_kernel(model, u1, u2, fw=True, q=None):
         first_stencil = Eq(u1_n, stencilp)
         second_stencil = Eq(u2_n, stencilr)
 
-    return [first_stencil, second_stencil]
+    return [factp, factm, first_stencil, second_stencil]

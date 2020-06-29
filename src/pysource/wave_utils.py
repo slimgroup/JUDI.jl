@@ -34,7 +34,7 @@ def wavefield(model, space_order, save=False, nt=None, fw=True, name='', t_sub=1
         u = TimeFunction(name="%s1" % name, grid=model.grid, time_order=2,
                          space_order=space_order, save=None if not save else nt)
         v = TimeFunction(name="%s2" % name, grid=model.grid, time_order=2,
-                         space_order=space_order, save=None)
+                         space_order=space_order, save=None if not save else nt)
         return (u, v)
     else:
         return TimeFunction(name=name, grid=model.grid, time_order=2,
@@ -59,17 +59,19 @@ def wavefield_subsampled(model, u, nt, t_sub, space_order=8):
     space_order: int
         Spatial discretization order
     """
-    u = as_tuple(u)[0]
-    if t_sub > 1:
-        time_subsampled = ConditionalDimension(name='t_sub', parent=u.grid.time_dim,
-                                               factor=t_sub)
-        nsave = (nt-1)//t_sub + 2
-        usave = TimeFunction(name='us', grid=model.grid, time_order=2,
-                             space_order=space_order, time_dim=time_subsampled,
-                             save=nsave)
-        return usave, [Eq(usave.forward, u.forward)]
-    else:
-        return None, []
+    wf_s = []
+    eq_save = []
+    for wf in as_tuple(u):
+        if t_sub > 1:
+            time_subsampled = ConditionalDimension(name='t_sub', parent=wf.grid.time_dim,
+                                                   factor=t_sub)
+            nsave = (nt-1)//t_sub + 2
+            usave = TimeFunction(name='us_%s' % wf.name, grid=model.grid, time_order=2,
+                                 space_order=space_order, time_dim=time_subsampled,
+                                 save=nsave)
+            wf_s.append(usave)
+            eq_save.append(Eq(usave.forward, u.forward))
+    return None if len(wf_s) == 0 else wf_s, eq_save
 
 
 def wf_as_src(v, w=1):
@@ -84,7 +86,7 @@ def wf_as_src(v, w=1):
         Weight for the source expression (default=1)
     """
     if type(v) is tuple:
-        return (w * v[0], 0)
+        return (w * v[0], w * v[1])
     return w * v
 
 
@@ -112,7 +114,7 @@ def extented_src(model, weight, wavelet, q=0):
     nt = wavelet.shape[0]
     wavelett = Function(name='wf_src', dimensions=(time,), shape=(nt,))
     wavelett.data[:] = wavelet[:, 0]
-    source_weight = Function(name='src_weight', grid=model.grid)
+    source_weight = Function(name='src_weight', grid=model.grid, space_order=0)
     slices = tuple(slice(nbl, -nbr) for (nbl, nbr) in model.padsizes)
     source_weight.data[slices] = weight
     if model.is_tti:
@@ -137,14 +139,14 @@ def extended_src_weights(model, wavelet, v):
     if wavelet is None:
         return None, []
     nt = wavelet.shape[0]
-    dt = model.grid.time_dim.spacing
+
     # Data is sampled everywhere as a sum over time and weighted by wavelet
-    w_out = Function(name='src_weight', grid=model.grid)
+    w_out = Function(name='src_weight', grid=model.grid, space_order=0)
     time = model.grid.time_dim
     wavelett = Function(name='wf_src', dimensions=(time,), shape=(nt,))
     wavelett.data[:] = wavelet[:, 0]
     wf = v[0] + v[1] if model.is_tti else v
-    return w_out, [Eq(w_out, w_out + dt*wf*wavelett)]
+    return w_out, [Eq(w_out, w_out + wf*wavelett)]
 
 
 def freesurface(model, pde):
@@ -160,22 +162,22 @@ def freesurface(model, pde):
         PDEs to mirror
     """
     fs_eq = []
-    for p in pde:
-        lhs = p.lhs
-        rhs = p.rhs.evaluate
-        # Add modulo replacements to to rhs
-        zfs = model.grid.subdomains['fsdomain'].dimensions[-1]
-        z = zfs.parent
+    for pde_i in pde:
+        for p in pde_i._flatten:
+            lhs, rhs = p.evaluate.args
+            # Add modulo replacements to to rhs
+            zfs = model.grid.subdomains['fsdomain'].dimensions[-1]
+            z = zfs.parent
 
-        funcs = retrieve_functions(rhs.evaluate)
-        mapper = {}
-        for f in funcs:
-            zind = f.indices[-1]
-            if (zind - z).as_coeff_Mul()[0] < 0:
-                s = sign(zind.subs({z: zfs, z.spacing: 1}))
-                mapper.update({f: s * f.subs({zind: INT(abs(zind))})})
-        fs_eq.append(Eq(lhs, rhs.subs(mapper),
-                        subdomain=model.grid.subdomains['fsdomain']))
+            funcs = retrieve_functions(rhs.evaluate)
+            mapper = {}
+            for f in funcs:
+                zind = f.indices[-1]
+                if (zind - z).as_coeff_Mul()[0] < 0:
+                    s = sign(zind.subs({z: zfs, z.spacing: 1}))
+                    mapper.update({f: s * f.subs({zind: INT(abs(zind))})})
+            fs_eq.append(Eq(lhs, rhs.subs(mapper),
+                            subdomain=model.grid.subdomains['fsdomain']))
     return fs_eq
 
 

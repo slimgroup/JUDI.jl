@@ -7,22 +7,36 @@ export ricker_wavelet, get_computational_nt, calculate_dt, setup_grid, setup_3D_
 export convertToCell, limit_model_to_receiver_area, extend_gradient, remove_out_of_bounds_receivers
 export time_resample, remove_padding, subsample
 export generate_distribution, select_frequencies
-export load_pymodel, load_devito_jit, load_numpy, devito_model, update_m, update_dm
+export load_pymodel, load_devito_jit, load_numpy, devito_model
+export update_dm, pad_sizes, pad_array
 
-
-function update_dm(model::PyObject, dm)
-    model.dm =  dm
+function update_dm(model::PyObject, dm, options)
+    model.dm = pad_array(dm, pad_sizes(model, options))
 end
 
 function devito_model(model::Modelall, options)
     return devito_model_py(model, options)
 end
 
+function pad_sizes(model, options)
+    try
+        return model.padsizes
+    catch e
+        padsizes = [(model.nb, model.nb) for i=1:length(model.n)]
+        if options.free_surface
+            padsizes[end] = (0, model.nb)
+        end
+        return padsizes
+    end
+end
+
 function devito_model_py(model::Model, options)
     pm = load_pymodel()
     # Set up Python model structure
+    vp = pad_array(sqrt.(1f0./model.m), pad_sizes(model, options))
+    rho = pad_array(model.rho, pad_sizes(model, options))
     modelPy = pm."Model"(origin=model.o, spacing=model.d, shape=model.n,
-						 vp=sqrt.(1f0./model.m), nbl=model.nb, rho=model.rho,
+						 vp=vp, nbl=model.nb, rho=rho,
                          space_order=options.space_order, dt=options.dt_comp,
                          fs=options.free_surface)
     return modelPy
@@ -31,9 +45,15 @@ end
 function devito_model_py(model::Model_TTI, options)
     pm = load_pymodel()
     # Set up Python model structure (force origin to be zero due to current devito bug)
+    vp = pad_array(sqrt.(1f0./model.m), pad_sizes(model, options))
+    rho = pad_array(model.rho, pad_sizes(model, options))
+    epsilon = pad_array(model.epsilon, pad_sizes(model, options))
+    delta = pad_array(model.delta, pad_sizes(model, options))
+    theta = pad_array(model.theta, pad_sizes(model, options))
+    phi = pad_array(model.phi, pad_sizes(model, options))
+
     modelPy = pm."Model"(origin=model.o, spacing=model.d, shape=model.n,
-						 vp=sqrt.(1f0./model.m), rho=model.rho,
-                         epsilon=model.epsilon, delta=model.delta, theta=model.theta, phi=model.phi,
+						 vp=vp, rho=rho, epsilon=epsilon, delta=delta, theta=theta, phi=phi,
                          nbl=model.nb, space_order=options.space_order, dt=options.dt_comp,
                          fs=options.free_surface)
     return modelPy
@@ -407,19 +427,39 @@ function setup_3D_grid(xrec,yrec,zrec)
     return xloc, yloc, zloc
 end
 
-function remove_padding(gradient::Array, nb::Array{Tuple{Int64,Int64},1}; true_adjoint::Bool=false)
-    for i=1:length(nb)
+pad_array(m::Number, nb::Array{Tuple{Int64,Int64},1}) = m
+
+function pad_array(m::Array{Float32}, nb::Array{Tuple{Int64,Int64},1})
+    n = size(m)
+    new_size = Tuple([n[i] + sum(nb[i]) for i=1:length(nb)])
+    Ei = []
+    for i=length(nb):-1:1
         left, right = nb[i]
-        last = size(gradient, i)
-        if true_adjoint
-            if left > 1
-                selectdim(gradient, i, left+1) .= dropdims(sum(selectdim(gradient, i, 1:left), dims=i); dims=i)
-            end
-            selectdim(gradient, i, last-right) .= dropdims(sum(selectdim(gradient, i, 1:left), dims=i); dims=i)
-        end
-        gradient = copy(selectdim(gradient, i, left+1:last-right))
+        push!(Ei, joExtend(n[i], :border;pad_upper=right, pad_lower=left, RDT=Float32, DDT=Float32))
     end
-    return gradient
+    padded = joKron(Ei...) * vec(m)
+    return reshape(padded, new_size)
+end
+
+function remove_padding(gradient::Array{Float32}, nb::Array{Tuple{Int64,Int64},1}; true_adjoint::Bool=false)
+    # Pad is applied x then y then z, so sum must be done in reverse order x then y then x
+    if true_adjoint
+        n = size(gradient)
+        new_size = Tuple([n[i] - sum(nb[i]) for i=1:length(nb)])
+        Ei = []
+        for i=length(nb):-1:1
+            left, right = nb[i]
+            push!(Ei, joExtend(new_size[i], :border;pad_upper=right, pad_lower=left, RDT=Float32, DDT=Float32))
+        end
+        gradient = reshape(joKron(Ei...)' * vec(gradient), new_size)
+    else
+        for i=1:length(nb)
+            left, right = nb[i]
+            last = size(gradient, i)
+            gradient = selectdim(gradient, i, left+1:last-right)
+        end
+    end
+    return collect(Float32, gradient)
 end
 
 # Vectorization of single variable (not defined in Julia)

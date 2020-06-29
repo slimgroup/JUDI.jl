@@ -13,7 +13,7 @@ function extended_source_modeling(model_full::Modelall, srcData, recGeometry, re
     # Set up Python model structure
     modelPy = devito_model(model, options)
     if op=='J' && mode == 1
-        update_dm(modelPy, reshape(dm, model.n))
+        update_dm(modelPy, reshape(dm, model.n), options)
     end
 
     # Load shot record if stored on disk

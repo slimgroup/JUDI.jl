@@ -1,6 +1,7 @@
 import numpy as np
 
 from devito import TimeFunction, norm
+from devito.tools import as_tuple
 from pyrevolve import Revolver
 
 from checkpoint import CheckpointOperator, DevitoCheckpoint
@@ -634,12 +635,14 @@ def J_adjoint_checkpointing(model, src_coords, wavelet, rec_coords, recin, space
 
     nt = wavelet.shape[0]
     rec = Receiver(name='rec', grid=model.grid, ntime=nt, coordinates=rec_coords)
-    cp = DevitoCheckpoint([u])
+    cp = DevitoCheckpoint([uu for uu in as_tuple(u)])
     if maxmem is not None:
         memsize = (cp.size * u.data.itemsize)
         n_checkpoints = int(np.floor(maxmem * 10**6 / memsize))
-    wrap_fw = CheckpointOperator(op_f, u=u, vp=model.vp, rcv=rec_g)
-    wrap_rev = CheckpointOperator(op, u=u, v=v, vp=model.vp, src=rec)
+    uk = {uu.name: uu for uu in as_tuple(u)}
+    vk = {**uk, **{vv.name: vv for vv in as_tuple(v)}}
+    wrap_fw = CheckpointOperator(op_f, vp=model.vp, rcv=rec_g, **uk)
+    wrap_rev = CheckpointOperator(op, vp=model.vp, src=rec, **vk)
 
     # Run forward
     wrp = Revolver(cp, wrap_fw, wrap_rev, n_checkpoints, nt-2)

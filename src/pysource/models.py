@@ -1,7 +1,7 @@
 import numpy as np
 from sympy import sin, Abs
 import warnings
-from devito import (Grid, Function, SubDomain, SubDimension, Eq, Inc,
+from devito import (Grid, Function, SubDomain, SubDimension, Inc,
                     Operator, mmax, initialize_function)
 from devito.tools import as_tuple
 
@@ -62,22 +62,22 @@ def initialize_damp(damp, nbl, fs=False):
     """
     dampcoeff = 1.5 * np.log(1.0 / 0.001) / (nbl)
 
-    eqs = [Eq(damp, 1.0)]
     scaling = 10
     z = damp.dimensions[-1]
+    eqs = []
     for d in damp.dimensions:
         if not fs or d is not z:
             # left
             dim_l = SubDimension.left(name='abc_%s_l' % d.name, parent=d,
                                       thickness=nbl)
             pos = Abs((nbl - (dim_l - d.symbolic_min) + 1) / float(nbl))
-            val = -dampcoeff * (pos - sin(2*np.pi*pos)/(2*np.pi))
+            val = dampcoeff * (pos - sin(2*np.pi*pos)/(2*np.pi))
             eqs += [Inc(damp.subs({d: dim_l}), val/scaling)]
         # right
         dim_r = SubDimension.right(name='abc_%s_r' % d.name, parent=d,
                                    thickness=nbl)
         pos = Abs((nbl - (d.symbolic_max - dim_r) + 1) / float(nbl))
-        val = -dampcoeff * (pos - sin(2*np.pi*pos)/(2*np.pi))
+        val = dampcoeff * (pos - sin(2*np.pi*pos)/(2*np.pi))
         eqs += [Inc(damp.subs({d: dim_r}), val/scaling)]
 
     Operator(eqs, name='initdamp')()
@@ -142,7 +142,7 @@ class GenericModel(object):
         if isinstance(field, np.ndarray):
             function = Function(name=name, grid=self.grid, space_order=space_order,
                                 parameter=is_param)
-            initialize_function(function, field, self.padsizes)
+            function.data[:] = func(field)
         else:
             return field
         self._physical_parameters.append(name)
@@ -240,7 +240,7 @@ class Model(GenericModel):
         # Create square slowness of the wave as symbol `m`
         self._vp = self._gen_phys_param(vp, 'vp', space_order)
         # density
-        self.irho = self._gen_phys_param(rho, 'irho', space_order, func=lambda x: 1/x)
+        self._init_density(rho, space_order)
         self._dm = self._gen_phys_param(dm, 'dm', space_order)
         # Additional parameter fields for TTI operators
         self._is_tti = any(p is not None for p in [epsilon, delta, theta, phi])
@@ -254,6 +254,16 @@ class Model(GenericModel):
             self.phi = self._gen_phys_param(phi, 'phi', space_order)
         # User provided dt
         self._dt = kwargs.get('dt')
+
+    def _init_density(self, rho, so):
+        """
+        Initialize density parameter. Depending on variance in density
+        either density or inverse density is setup.
+        """
+        if np.max(rho)/np.min(rho) > 10:
+            self.rho = self._gen_phys_param(rho, 'rho', so)
+            self.irho = 1 / self.rho
+        self.irho = self._gen_phys_param(rho, 'irho', so, lambda x: 1/x)
 
     @property
     def space_order(self):
@@ -328,7 +338,7 @@ class Model(GenericModel):
         """
         # Update the square slowness according to new value
         if isinstance(dm, np.ndarray):
-            if not isinstance(self._dm, Function) and dm.shape == self.shape:
+            if not isinstance(self._dm, Function) and dm.shape == self.grid.shape:
                 self._dm = self._gen_phys_param(dm, 'dm', self.space_order)
             elif dm.shape == self.shape:
                 initialize_function(self._dm, dm, self.nbl)
