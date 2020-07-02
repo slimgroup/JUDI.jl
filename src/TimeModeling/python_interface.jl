@@ -2,7 +2,7 @@ export devito_interface
 
 # d_obs = Pr*F*Ps'*q
 function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Geometry, srcData::Array, recGeometry::Geometry, recData::Nothing, dm::Nothing, options::Options)
-    ac = load_devito_jit(model)
+    ac = load_devito_jit()
 
     # Interpolate input data to computational grid
     dtComp = modelPy.critical_dt
@@ -32,7 +32,7 @@ end
 
 # q_ad = Ps*F'*Pr'*d_obs
 function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Geometry, srcData::Nothing, recGeometry::Geometry, recData::Array, dm::Nothing, options::Options)
-    ac = load_devito_jit(model)
+    ac = load_devito_jit()
 
     # Interpolate input data to computational grid
     dtComp = modelPy.critical_dt
@@ -59,7 +59,7 @@ end
 
 # u = F*Ps'*q
 function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Geometry, srcData::Array, recGeometry::Nothing, recData::Nothing, dm::Nothing, options::Options)
-    ac = load_devito_jit(model)
+    ac = load_devito_jit()
 
     # Interpolate input data to computational grid
     dtComp = modelPy.critical_dt
@@ -78,7 +78,7 @@ end
 
 # v = F'*Pr'*d_obs
 function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Nothing, srcData::Nothing, recGeometry::Geometry, recData::Array, dm::Nothing, options::Options)
-    ac = load_devito_jit(model)
+    ac = load_devito_jit()
 
     # Interpolate input data to computational grid
     dtComp = modelPy.critical_dt
@@ -97,7 +97,7 @@ end
 
 # d_obs = Pr*F*u
 function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Nothing, srcData::Array, recGeometry::Geometry, recData::Nothing, dm::Nothing, options::Options)
-    ac = load_devito_jit(model)
+    ac = load_devito_jit()
 
     # Interpolate input data to computational grid
     dtComp = modelPy.critical_dt
@@ -120,7 +120,7 @@ end
 
 # q_ad = Ps*F'*v
 function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Geometry, srcData::Nothing, recGeometry::Nothing, recData::Array, dm::Nothing, options::Options)
-    ac = load_devito_jit(model)
+    ac = load_devito_jit()
 
     # Interpolate input data to computational grid
     dtComp = modelPy.critical_dt
@@ -143,7 +143,7 @@ end
 
 # u_out = F*u_in
 function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Nothing, srcData::Array, recGeometry::Nothing, recData::Nothing, dm::Nothing, options::Options)
-    ac = load_devito_jit(model)
+    ac = load_devito_jit()
 
     # Interpolate input data to computational grid
     dtComp = modelPy.critical_dt
@@ -158,7 +158,7 @@ end
 
 # v_out = F'*v_in
 function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Nothing, srcData::Nothing, recGeometry::Nothing, recData::Array, dm::Nothing, options::Options)
-    ac = load_devito_jit(model)
+    ac = load_devito_jit()
 
     # Interpolate input data to computational grid
     dtComp = modelPy.critical_dt
@@ -173,7 +173,7 @@ end
 
 # d_lin = J*dm
 function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Geometry, srcData::Array, recGeometry::Geometry, recData::Nothing, dm::Array, options::Options)
-    ac = load_devito_jit(model)
+    ac = load_devito_jit()
 
     # Interpolate input data to computational grid
     dtComp = modelPy.critical_dt
@@ -206,7 +206,7 @@ end
 
 # dm = J'*d_lin
 function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Geometry, srcData::Array, recGeometry::Geometry, recData::Array, dm::Nothing, options::Options)
-    ac = load_devito_jit(model)
+    ac = load_devito_jit()
 
     # Interpolate input data to computational grid
     dtComp = modelPy.critical_dt
@@ -234,7 +234,7 @@ end
 
 # d_obs = Pr*F*Pw'*w - modeling w/ extended source
 function devito_interface(modelPy::PyCall.PyObject, model, srcData::Array, recGeometry::Geometry, recData::Nothing, weights::Array, dm::Nothing, options::Options)
-    ac = load_devito_jit(model)
+    ac = load_devito_jit()
 
     # Interpolate input data to computational grid
     dtComp = modelPy.critical_dt
@@ -247,7 +247,7 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcData::Array, recGe
 
 
     # Devito call
-    dOut = pycall(ac."forward_rec_w", Array{Float32,2}, modelPy, weights[1],
+    dOut = pycall(ac."forward_rec_w", Array{Float32,2}, modelPy, weights,
                  qIn, rec_coords, space_order=options.space_order)
     ntRec > ntComp && (dOut = [dOut zeros(size(dOut,1), ntRec - ntComp)])
     dOut = time_resample(dOut,dtComp,recGeometry)
@@ -262,7 +262,7 @@ end
 
 # dw = Pw*F'*Pr'*d_obs - adjoint modeling w/ extended source
 function devito_interface(modelPy::PyCall.PyObject, model, srcData::Array, recGeometry::Geometry, recData::Array, weights::Nothing, dm::Nothing, options::Options)
-    ac = load_devito_jit(model)
+    ac = load_devito_jit()
 
     # Interpolate input data to computational grid
     dtComp = modelPy.critical_dt
@@ -289,7 +289,7 @@ end
 
 # Jacobian of extended source modeling: d_lin = J*dm
 function devito_interface(modelPy::PyCall.PyObject, model, srcData::Array, recGeometry::Geometry, recData::Nothing, weights::Array, dm::Array, options::Options)
-    ac = load_devito_jit(model)
+    ac = load_devito_jit()
 
     # Interpolate input data to computational grid
     dtComp = modelPy.critical_dt
@@ -303,7 +303,7 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcData::Array, recGe
     rec_coords = setup_grid(recGeometry, modelPy.shape)
 
     # Devito call
-    dOut = pycall(ac."born_rec_w", Array{Float32,2}, modelPy, weights[1], qIn, rec_coords,
+    dOut = pycall(ac."born_rec_w", Array{Float32,2}, modelPy, weights, qIn, rec_coords,
                   space_order=options.space_order, isic=options.isic)
     ntRec > ntComp && (dOut = [dOut zeros(size(dOut,1), ntRec - ntComp)])
     dOut = time_resample(dOut,dtComp,recGeometry)
@@ -318,7 +318,7 @@ end
 
 # Adjoint Jacobian of extended source modeling: dm = J'*d_lin
 function devito_interface(modelPy::PyCall.PyObject, model, srcData::Array, recGeometry::Geometry, recData::Array, weights:: Array, dm::Nothing, options::Options)
-    ac = load_devito_jit(model)
+    ac = load_devito_jit()
 
     # Interpolate input data to computational grid
     dtComp = modelPy.critical_dt
@@ -330,7 +330,7 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcData::Array, recGe
     grad = pycall(ac."J_adjoint", Array{Float32, modelPy.dim}, modelPy,
                   nothing, qIn, rec_coords, dIn, t_sub=options.subsampling_factor,
                   space_order=options.space_order, checkpointing=options.optimal_checkpointing,
-                  freq_list=freqs, isic=options.isic, ws=weights[1],
+                  freq_list=freqs, isic=options.isic, ws=weights,
                   dft_sub=options.dft_subsampling_factor[1])
     # Remove PML and return gradient as Array
     grad = remove_padding(grad, modelPy.padsizes; true_adjoint=options.sum_padding)

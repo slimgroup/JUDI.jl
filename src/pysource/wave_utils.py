@@ -61,17 +61,19 @@ def wavefield_subsampled(model, u, nt, t_sub, space_order=8):
     """
     wf_s = []
     eq_save = []
+    if t_sub > 1:
+        time_subsampled = ConditionalDimension(name='t_sub', parent=model.grid.time_dim,
+                                               factor=t_sub)
+        nsave = (nt-1)//t_sub + 2
+    else:
+        return None, []
     for wf in as_tuple(u):
-        if t_sub > 1:
-            time_subsampled = ConditionalDimension(name='t_sub', parent=wf.grid.time_dim,
-                                                   factor=t_sub)
-            nsave = (nt-1)//t_sub + 2
-            usave = TimeFunction(name='us_%s' % wf.name, grid=model.grid, time_order=2,
-                                 space_order=space_order, time_dim=time_subsampled,
-                                 save=nsave)
-            wf_s.append(usave)
-            eq_save.append(Eq(usave.forward, u.forward))
-    return None if len(wf_s) == 0 else wf_s, eq_save
+        usave = TimeFunction(name='us_%s' % wf.name, grid=model.grid, time_order=2,
+                             space_order=space_order, time_dim=time_subsampled,
+                             save=nsave)
+        wf_s.append(usave)
+        eq_save.append(Eq(usave, wf))
+    return wf_s, eq_save
 
 
 def wf_as_src(v, w=1):
@@ -115,10 +117,9 @@ def extented_src(model, weight, wavelet, q=0):
     wavelett = Function(name='wf_src', dimensions=(time,), shape=(nt,))
     wavelett.data[:] = wavelet[:, 0]
     source_weight = Function(name='src_weight', grid=model.grid, space_order=0)
-    slices = tuple(slice(nbl, -nbr) for (nbl, nbr) in model.padsizes)
-    source_weight.data[slices] = weight
+    source_weight.data[:] = weight
     if model.is_tti:
-        return (q[0]+source_weight*wavelett, q[1]+source_weight*wavelett)
+        return (q[0] + source_weight * wavelett, q[1] + source_weight * wavelett)
     return q + source_weight*wavelett
 
 
@@ -139,17 +140,16 @@ def extended_src_weights(model, wavelet, v):
     if wavelet is None:
         return None, []
     nt = wavelet.shape[0]
-
     # Data is sampled everywhere as a sum over time and weighted by wavelet
     w_out = Function(name='src_weight', grid=model.grid, space_order=0)
     time = model.grid.time_dim
     wavelett = Function(name='wf_src', dimensions=(time,), shape=(nt,))
     wavelett.data[:] = wavelet[:, 0]
     wf = v[0] + v[1] if model.is_tti else v
-    return w_out, [Eq(w_out, w_out + wf*wavelett)]
+    return w_out, [Eq(w_out, w_out + wf * wavelett)]
 
 
-def freesurface(model, pde):
+def freesurface(model, eq):
     """
     Generate the stencil that mirrors the field as a free surface modeling for
     the acoustic wave equation
@@ -158,12 +158,12 @@ def freesurface(model, pde):
     ----------
     model: Model
         Physical model
-    pde: Eq or List of Eq
-        PDEs to mirror
+    eq: Eq or List of Eq
+        Equation to apply mirror to
     """
     fs_eq = []
-    for pde_i in pde:
-        for p in pde_i._flatten:
+    for eq_i in eq:
+        for p in eq_i._flatten:
             lhs, rhs = p.evaluate.args
             # Add modulo replacements to to rhs
             zfs = model.grid.subdomains['fsdomain'].dimensions[-1]

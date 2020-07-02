@@ -22,9 +22,6 @@ function setup_model(tti=false, nlayer=2)
         v[:, (i-1)*Int(floor(n[2] / nlayer)) + 1:end] .= vp_i[i]  # Bottom velocity	
     end
 
-    # Velocity [km/s]
-    v = ones(Float32,n) .+ 0.5f0
-    v[:,Int(round(end/2)):end] .= 3.5f0
     v0 = smooth(v, 10)
     rho0 = (v .+ .5f0) ./ 2
     # Slowness squared [s^2/km^2]
@@ -38,8 +35,8 @@ function setup_model(tti=false, nlayer=2)
         epsilon = smooth((v0[:, :] .- 1.5f0)/12f0, 3)
         delta =  smooth((v0[:, :] .- 1.5f0)/14f0, 3)
         theta =  smooth((v0[:, :] .- 1.5f0)/4, 3)
-        model0 = Model_TTI(n,d,o,m0; epsilon=epsilon, delta=delta, theta=theta)
-        model = Model_TTI(n,d,o,m; epsilon=epsilon, delta=delta, theta=theta)
+        model0 = Model_TTI(n, d, o, m0; epsilon=epsilon, delta=delta, theta=theta)
+        model = Model_TTI(n, d, o, m; epsilon=epsilon, delta=delta, theta=theta)
     else
         model = Model(n,d,o,m,rho=rho0)
         model0 = Model(n,d,o,m0,rho=rho0)
@@ -95,7 +92,7 @@ function parse_commandline()
         "--nlayer", "-n"
             help = "Number of layers"
             arg_type = Int
-            default = 3
+            default = 2
     end
     return parse_args(s)
 end

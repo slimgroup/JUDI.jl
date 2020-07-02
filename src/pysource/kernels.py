@@ -34,12 +34,13 @@ def wave_kernel(model, u, fw=True, q=None):
         Full time-space source
     """
     if model.is_tti:
-        pde = tti_kernel(model, u[0], u[1], fw=fw, q=q)
+        pde, fact = tti_kernel(model, u[0], u[1], fw=fw, q=q)
     else:
         pde = acoustic_kernel(model, u, fw, q=q)
+        fact = []
 
-    fs_eq = freesurface(model, pde) if model.fs else []
-    return pde, fs_eq
+    pde += freesurface(model, pde) if model.fs else []
+    return pde, fact
 
 
 def acoustic_kernel(model, u, fw=True, q=None):
@@ -108,4 +109,4 @@ def tti_kernel(model, u1, u2, fw=True, q=None):
         first_stencil = Eq(u1_n, stencilp)
         second_stencil = Eq(u2_n, stencilr)
 
-    return [factp, factm, first_stencil, second_stencil]
+    return [first_stencil, second_stencil], [factp, factm]

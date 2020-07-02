@@ -17,8 +17,8 @@ dt = srcGeometry.dt[1]
 ###################################################################################################
 
 # Gradient test
-h = .1f0
-iter = 6
+h = .25f0
+iter = 5
 error1 = zeros(iter)
 error2 = zeros(iter)
 h_all = zeros(iter)
@@ -27,18 +27,18 @@ modelH = deepcopy(model0)
 
 # Observed data
 opt = Options(sum_padding=true, free_surface=parsed_args["fs"])
-F = judiModeling(info,model,srcGeometry,recGeometry; options=opt)
+F = judiModeling(info, model, srcGeometry, recGeometry; options=opt)
 d = F*q
 
 # FWI gradient and function value for m0
 Jm0, grad = fwi_objective(model0, q, d;options=opt)
 
+dJ = dot(grad, vec(dm))
+
 for j=1:iter
 	# FWI gradient and function falue for m0 + h*dm
 	modelH.m = model0.m + h*reshape(dm, model.n)
 	Jm, gradm = fwi_objective(modelH, q, d;options=opt)
-
-	dJ = dot(grad,vec(dm))
 
 	# Check convergence
 	error1[j] = abs(Jm - Jm0)

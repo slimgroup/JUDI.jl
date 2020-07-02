@@ -4,7 +4,7 @@ from sympy import cos, sin
 from devito import Function, grad, Eq
 from devito.tools import as_tuple
 
-from wave_utils import sub_time
+from wave_utils import sub_time, freesurface
 
 
 def func_name(freq=None, isic=False):
@@ -40,7 +40,12 @@ def grad_expr(gradm, u, v, model, w=None, freq=None, dft_sub=None, isic=False):
     """
     ic_func = ic_dict[func_name(freq=freq, isic=isic)]
     expr = ic_func(as_tuple(u), as_tuple(v), model, freq=freq, factor=dft_sub, w=w)
-    return [Eq(gradm, expr + gradm)]
+    if model.fs:
+        eq_g = [Eq(gradm, expr + gradm, subdomain=model.grid.subdomains['nofsdomain'])]
+        eq_g += freesurface(model, eq_g)
+    else:
+        eq_g = [Eq(gradm, expr + gradm)]
+    return eq_g
 
 
 def crosscorr_time(u, v, model, **kwargs):
@@ -56,8 +61,8 @@ def crosscorr_time(u, v, model, **kwargs):
     model: Model
         Model structure
     """
-    w = kwargs.get('w') or model.grid.time_dim.spacing * model.irho
-    return - w * sum(vv * uu.dt2 for uu, vv in zip(u, v))
+    w = kwargs.get('w') or u[0].indices[0].spacing * model.irho
+    return - w * sum(vv.dt2 * uu for uu, vv in zip(u, v))
 
 
 def crosscorr_freq(u, v, model, freq=None, dft_sub=None, **kwargs):
@@ -108,7 +113,7 @@ def isic_time(u, v, model, **kwargs):
     model: Model
         Model structure
     """
-    w = - model.grid.time_dim.spacing * model.irho
+    w = - u[0].indices[0].spacing * model.irho
     return w * sum(uu * vv.dt2 * model.m + grad(uu).T * grad(vv)
                    for uu, vv in zip(u, v))
 
@@ -199,8 +204,8 @@ def isic_src(model, u, **kwargs):
                       for d in uu.space_dimensions])
         dus.append(dm * irho * uu.dt2 * m - du_aux)
     if model.is_tti:
-        return (dus[0], dus[1])
-    return dus[0]
+        return (-dus[0], -dus[1])
+    return -dus[0]
 
 
 ic_dict = {'isic_freq': isic_freq, 'corr_freq': crosscorr_freq,

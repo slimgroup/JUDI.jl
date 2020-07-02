@@ -15,7 +15,7 @@ model, model0, dm = setup_model(parsed_args["tti"], parsed_args["nlayer"])
 q, srcGeometry, recGeometry, info = setup_geom(model)
 dt = srcGeometry.dt[1]
 
-tol = 1f-4
+tol = 5f-4
 ###################################################################################################
 # Modeling operators
 
@@ -66,8 +66,10 @@ Pw = judiLRWF(info, q.data[1])
 F = Pr*F*adjoint(Pw)
 
 # Extended source weights
-w = vec(randn(Float32, model0.n))
-x = vec(randn(Float32, model0.n))
+w = Float32.(imfilter(randn(Float32, model0.n), Kernel.gaussian(5)))
+x = Float32.(imfilter(randn(Float32, model0.n), Kernel.gaussian(5)))
+w[:, 1] .= 0f0; w = vec(w)
+x[:, 1] .= 0f0; x = vec(x)
 
 # Generate random noise data vector with size of d_hat in the range of F
 y = F*w
@@ -92,4 +94,4 @@ x_hat = adjoint(J)*y
 c = dot(y, y_hat)
 d = dot(x, x_hat)
 @printf(" <J x, y> : %2.5e, <x, J' y> : %2.5e, relative error : %2.5e \n", c, d, c/d - 1)
-@test isapprox(a, b, rtol=tol)
+@test isapprox(c, d, rtol=tol)

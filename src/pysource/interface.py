@@ -525,9 +525,8 @@ def J_adjoint_freq(model, src_coords, wavelet, rec_coords, recin, space_order=8,
     Array
         Adjoint jacobian on the input data (gradient)
     """
-    rec, u = forward(model, src_coords, rec_coords, wavelet, save=False,
-                     space_order=space_order,
-                     freq_list=freq_list, dft_sub=dft_sub, ws=ws)
+    rec, u = forward(model, src_coords, rec_coords, wavelet, save=False, ws=ws,
+                     space_order=space_order, freq_list=freq_list, dft_sub=dft_sub)
     # Residual and gradient
     if not is_residual:
         recin[:] = rec.data[:] - recin[:]   # input is observed data

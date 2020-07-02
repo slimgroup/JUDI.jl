@@ -32,6 +32,7 @@ function extended_source_modeling(model_full::Modelall, srcData, recGeometry, re
         recGeometry, recData = remove_out_of_bounds_receivers(recGeometry, recData, model)
     end
 
+    isnothing(weights) ? nothing : weights = pad_array(weights[1], pad_sizes(model, options); mode=:zeros)
     # Devito interface
     argout = devito_interface(modelPy, model, srcData, recGeometry, recData, weights, dm, options)
 

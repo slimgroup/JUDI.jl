@@ -18,7 +18,7 @@ srcGeometry2.zloc[:] .= .9*srcGeometry2.zloc[:]
 dt = srcGeometry1.dt[1]
 
 opt = Options(free_surface=parsed_args["fs"])
-
+ftol = 5f-5
 ###################################################################################################
 
 # Modeling operators
@@ -63,8 +63,8 @@ nd2 = norm(d1 - d2)
 nd3 = norm(d4 - d1 + d2)/norm(d4)
 @printf(" F * (a - b): %2.5e, F * a - F * b : %2.5e, relative error : %2.5e \n", nd1, nd2, nd3)
 
-@test isapprox(d3, d1 + d2, rtol=1e-5)
-@test isapprox(d4, d1 - d2, rtol=1e-5)
+@test isapprox(d3, d1 + d2, rtol=ftol)
+@test isapprox(d4, d1 - d2, rtol=ftol)
 
 # Test linearity F a x == a F x
 
@@ -77,8 +77,8 @@ nm2 = norm(q4)
 nm3 = norm(2f0 * q3 - q4)/norm(q4)
 @printf(" a F x: %2.5e, F a x : %2.5e, relative error : %2.5e \n", nd1, nd2, nd3)
 @printf(" a F' x: %2.5e, F' a x : %2.5e, relative error : %2.5e \n", nm1, nm2, nm3)
-@test isapprox(2f0 * d1, d5, rtol=1e-5)
-@test isapprox(2f0 * q3, q4, rtol=1e-5)
+@test isapprox(2f0 * d1, d5, rtol=ftol)
+@test isapprox(2f0 * q3, q4, rtol=ftol)
 
 # Test linearity J * (a + b) == J * a + J * b
 
@@ -92,8 +92,8 @@ nd2 = norm(lind - lind3)
 nd3 = norm(lind5 - lind + lind3)/norm(lind5)
 @printf(" J * (a - b): %2.5e, J * a - J * b : %2.5e, relative error : %2.5e \n", nd1, nd2, nd3)
 
-@test isapprox(lind4, lind + lind3, rtol=1e-5)
-@test isapprox(lind5, lind - lind3, rtol=1e-5)
+@test isapprox(lind4, lind + lind3, rtol=ftol)
+@test isapprox(lind5, lind - lind3, rtol=ftol)
 
 # Test linearity J a x == a J x
 println("Test linearity of J: J * (a * b) == a * J * b")
@@ -107,5 +107,5 @@ nm3 = norm(2f0*dma - dmb)/norm(dmb)
 @printf(" a J x: %2.5e, J a x : %2.5e, relative error : %2.5e \n", nd1, nd2, nd3)
 @printf(" a J' x: %2.5e, J' a x : %2.5e, relative error : %2.5e \n", nm1, nm2, nm3)
 
-@test isapprox(2f0 * lind, lind2, rtol=1e-5)
-@test isapprox(2f0 * dma, dmb, rtol=1e-5)
+@test isapprox(2f0 * lind, lind2, rtol=ftol)
+@test isapprox(2f0 * dma, dmb, rtol=ftol)

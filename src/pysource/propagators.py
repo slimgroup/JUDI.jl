@@ -34,7 +34,7 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     q = extented_src(model, ws, wavelet, q=q)
 
     # Set up PDE expression and rearrange
-    pde, fs = wave_kernel(model, u, q=q)
+    pde, tmp = wave_kernel(model, u, q=q)
 
     # Setup source and receiver
     geom_expr, _, rcv = src_rec(model, u, src_coords=src_coords, nt=nt,
@@ -45,7 +45,7 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
 
     # Create operator and run
     subs = model.spacing_map
-    op = Operator(fs + pde + geom_expr + dft + eq_save,
+    op = Operator(tmp + pde + geom_expr + dft + eq_save,
                   subs=subs, name="forward"+name(model))
 
     if return_op:
@@ -71,7 +71,7 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0,
     v = wavefield(model, space_order, save=save, nt=nt, fw=False)
 
     # Set up PDE expression and rearrange
-    pde, fs = wave_kernel(model, v, q=q, fw=False)
+    pde, tmp = wave_kernel(model, v, q=q, fw=False)
 
     # Setup source and receiver
     geom_expr, _, rcv = src_rec(model, v, src_coords=rcv_coords, nt=nt,
@@ -82,7 +82,7 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0,
 
     # Create operator and run
     subs = model.spacing_map
-    op = Operator(fs + pde + geom_expr + ws_expr,
+    op = Operator(tmp + pde + ws_expr + geom_expr,
                   subs=subs, name="adjoint"+name(model))
 
     op()
@@ -104,7 +104,7 @@ def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8, t_s
     v = wavefield(model, space_order, fw=False)
 
     # Set up PDE expression and rearrange
-    pde, fs = wave_kernel(model, v, fw=False)
+    pde, tmp = wave_kernel(model, v, fw=False)
 
     # Setup source and receiver
     geom_expr, _, _ = src_rec(model, v, src_coords=rcv_coords,
@@ -116,7 +116,7 @@ def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8, t_s
 
     # Create operator and run
     subs = model.spacing_map
-    op = Operator(fs + pde + geom_expr + g_expr,
+    op = Operator(tmp + pde + geom_expr + g_expr,
                   subs=subs, name="gradient"+name(model))
 
     if return_op:
@@ -143,8 +143,8 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8,
     q = extented_src(model, ws, wavelet, q=q)
 
     # Set up PDE expression and rearrange
-    pde, fsu = wave_kernel(model, u, q=q)
-    pdel, fsul = wave_kernel(model, ul, q=lin_src(model, u, isic=isic))
+    pde, tmpu = wave_kernel(model, u, q=q)
+    pdel, tmpul = wave_kernel(model, ul, q=lin_src(model, u, isic=isic))
 
     # Setup source and receiver
     geom_expr, _, _ = src_rec(model, u, src_coords=src_coords, wavelet=wavelet)
@@ -152,7 +152,7 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8,
 
     # Create operator and run
     subs = model.spacing_map
-    op = Operator(fsu + pde + geom_expr + fsul + pdel + geom_exprl,
+    op = Operator(tmpu + tmpul + pde + geom_expr + pdel + geom_exprl,
                   subs=subs, name="born"+name(model))
 
     op()

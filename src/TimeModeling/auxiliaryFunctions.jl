@@ -289,7 +289,7 @@ function load_numpy()
     return pyimport("numpy")
 end
 
-function load_devito_jit(model::Modelall)
+function load_devito_jit()
     pushfirst!(PyVector(pyimport("sys")."path"), joinpath(JUDIPATH, "pysource"))
     return pyimport("interface")
 end
@@ -429,13 +429,13 @@ end
 
 pad_array(m::Number, nb::Array{Tuple{Int64,Int64},1}) = m
 
-function pad_array(m::Array{Float32}, nb::Array{Tuple{Int64,Int64},1})
+function pad_array(m::Array{Float32}, nb::Array{Tuple{Int64,Int64},1}; mode::Symbol=:border)
     n = size(m)
     new_size = Tuple([n[i] + sum(nb[i]) for i=1:length(nb)])
     Ei = []
     for i=length(nb):-1:1
         left, right = nb[i]
-        push!(Ei, joExtend(n[i], :border;pad_upper=right, pad_lower=left, RDT=Float32, DDT=Float32))
+        push!(Ei, joExtend(n[i], mode;pad_upper=right, pad_lower=left, RDT=Float32, DDT=Float32))
     end
     padded = joKron(Ei...) * vec(m)
     return reshape(padded, new_size)
@@ -443,22 +443,15 @@ end
 
 function remove_padding(gradient::Array{Float32}, nb::Array{Tuple{Int64,Int64},1}; true_adjoint::Bool=false)
     # Pad is applied x then y then z, so sum must be done in reverse order x then y then x
-    if true_adjoint
-        n = size(gradient)
-        new_size = Tuple([n[i] - sum(nb[i]) for i=1:length(nb)])
-        Ei = []
-        for i=length(nb):-1:1
-            left, right = nb[i]
-            push!(Ei, joExtend(new_size[i], :border;pad_upper=right, pad_lower=left, RDT=Float32, DDT=Float32))
-        end
-        gradient = reshape(joKron(Ei...)' * vec(gradient), new_size)
-    else
-        for i=1:length(nb)
-            left, right = nb[i]
-            last = size(gradient, i)
-            gradient = selectdim(gradient, i, left+1:last-right)
-        end
+    true_adjoint ? mode = :border : mode = :zeros
+    n = size(gradient)
+    new_size = Tuple([n[i] - sum(nb[i]) for i=1:length(nb)])
+    Ei = []
+    for i=length(nb):-1:1
+        left, right = nb[i]
+        push!(Ei, joExtend(new_size[i], mode;pad_upper=right, pad_lower=left, RDT=Float32, DDT=Float32))
     end
+    gradient = reshape(joKron(Ei...)' * vec(gradient), new_size)
     return collect(Float32, gradient)
 end
 

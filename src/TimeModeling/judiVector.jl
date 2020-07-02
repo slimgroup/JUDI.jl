@@ -574,9 +574,9 @@ function judiVector_to_SeisBlock(d::judiVector{avDT}, q::judiVector{avDT}; sourc
             set_header!(blocks[j], "GroupY", convert(Array{Integer,1},round.(d.geometry.yloc[j]*1f3)))
         end
         set_header!(blocks[j], receiver_depth_key, convert(Array{Integer,1},round.(d.geometry.zloc[j]*1f3)))
-        set_header!(blocks[j], "SourceX", Int(round.(q.geometry.xloc[j]*1f3)))
-        set_header!(blocks[j], "SourceY", Int(round.(q.geometry.yloc[j]*1f3)))
-        set_header!(blocks[j], source_depth_key, Int(round.(q.geometry.zloc[j]*1f3)))
+        set_header!(blocks[j], "SourceX", Int(round.(q.geometry.xloc[j][1]*1f3)))
+        set_header!(blocks[j], "SourceY", Int(round.(q.geometry.yloc[j][1]*1f3)))
+        set_header!(blocks[j], source_depth_key, Int(round.(q.geometry.zloc[j][1]*1f3)))
 
         set_header!(blocks[j], "dt", Int(d.geometry.dt[j]*1f3))
         set_header!(blocks[j], "FieldRecord",j)
