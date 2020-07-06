@@ -228,7 +228,7 @@ class Model(GenericModel):
         self._vp = self._gen_phys_param(vp, 'vp', space_order)
         # density
         self.rho = self._gen_phys_param(rho, 'rho', space_order)
-        self.irho = 1 / self.rho 
+        self.irho = 1 / self.rho
 
         self._dm = self._gen_phys_param(dm, 'dm', space_order)
         # Additional parameter fields for TTI operators
