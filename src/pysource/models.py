@@ -227,7 +227,9 @@ class Model(GenericModel):
         # Create square slowness of the wave as symbol `m`
         self._vp = self._gen_phys_param(vp, 'vp', space_order)
         # density
-        self.irho = self._gen_phys_param(rho, 'irho', space_order, func=lambda x: 1/x)
+        self.rho = self._gen_phys_param(rho, 'rho', space_order)
+        self.irho = 1 / self.rho 
+
         self._dm = self._gen_phys_param(dm, 'dm', space_order)
         # Additional parameter fields for TTI operators
         self._is_tti = any(p is not None for p in [epsilon, delta, theta, phi])
