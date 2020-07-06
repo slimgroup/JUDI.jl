@@ -60,3 +60,7 @@ jobs:
 
       - name: Run tests
         uses: julia-actions/julia-runtest@latest
+
+      - uses: julia-actions/julia-uploadcodecov@latest
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
