@@ -1,22 +1,23 @@
 using JUDI.TimeModeling, PyCall, LinearAlgebra, PyPlot, Test
 
-model= Model((51, 51), (10., 10.), (0., 0.), rand(Float32, 51, 51);nb=10)
-modelPy = devito_model(model, Options())
 
-v0 = sqrt.(1f0 ./model.m)
-cut = remove_padding(deepcopy(modelPy.vp.data[:, :]), modelPy.padsizes; true_adjoint=true)
-vpdata = deepcopy(modelPy.vp.data)
+# Test padding and its adjoint
+function test_padding(ndim)
+    n = Tuple(51 for i=1:ndim)
+    o = Tuple(0. for i=1:ndim)
+    d = Tuple(10. for i=1:ndim)
 
-@show dot(v0, cut)/dot(vpdata, vpdata)
-@test isapprox(dot(v0, cut), dot(vpdata, vpdata))
+    model= Model(n, d, o, rand(Float32, n...); nb=10)
+    modelPy = devito_model(model, Options())
 
+    v0 = sqrt.(1f0 ./model.m)
+    cut = remove_padding(deepcopy(modelPy.vp.data), modelPy.padsizes; true_adjoint=true)
+    vpdata = deepcopy(modelPy.vp.data)
 
-model= Model((51, 51, 51), (10., 10., 10.), (0., 0., 0.), rand(Float32, 51, 51, 51);nb=10)
-modelPy = devito_model(model, Options())
+    @show dot(v0, cut)/dot(vpdata, vpdata)
+    @test isapprox(dot(v0, cut), dot(vpdata, vpdata))
+end
 
-v0 = sqrt.(1f0 ./model.m)
-cut = remove_padding(deepcopy(modelPy.vp.data[:, :, :]), modelPy.padsizes; true_adjoint=true)
-vpdata = deepcopy(modelPy.vp.data)
-
-@show dot(v0, cut)/dot(vpdata, vpdata)
-@test isapprox(dot(v0, cut), dot(vpdata, vpdata))
+for ndim = 2:3
+    test_padding(ndim)
+end

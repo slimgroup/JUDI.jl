@@ -35,8 +35,8 @@ function setup_model(tti=false, nlayer=2)
         epsilon = smooth((v0[:, :] .- 1.5f0)/12f0, 3)
         delta =  smooth((v0[:, :] .- 1.5f0)/14f0, 3)
         theta =  smooth((v0[:, :] .- 1.5f0)/4, 3)
-        model0 = Model_TTI(n, d, o, m0; epsilon=epsilon, delta=delta, theta=theta)
-        model = Model_TTI(n, d, o, m; epsilon=epsilon, delta=delta, theta=theta)
+        model0 = Model(n, d, o, m0; epsilon=epsilon, delta=delta, theta=theta)
+        model = Model(n, d, o, m; epsilon=epsilon, delta=delta, theta=theta)
     else
         model = Model(n,d,o,m,rho=rho0)
         model0 = Model(n,d,o,m0,rho=rho0)
@@ -45,9 +45,8 @@ function setup_model(tti=false, nlayer=2)
     return model, model0, dm
 end
 
-function setup_geom(model)
+function setup_geom(model; nsrc=1)
     ## Set up receiver geometry
-    nsrc = 1
     nxrec = model.n[1] - 2
     xrec = range(model.d[1], stop=(model.n[1]-2)*model.d[1], length=nxrec)
     yrec = 0f0
@@ -61,9 +60,11 @@ function setup_geom(model)
     recGeometry = Geometry(xrec, yrec, zrec; dt=dt, t=time, nsrc=nsrc)
 
     ## Set up source geometry (cell array with source locations for each shot)
-    xsrc = convertToCell([.5f0*(model.n[1]-1)*model.d[1]])
-    ysrc = convertToCell([0f0])
-    zsrc = convertToCell([2*model.d[2]])
+    ex =  (model.n[1] - 1) * model.d[1]
+    nsrc > 1 ? xsrc = range(.25f0 * ex, stop=.75f0 * ex, length=nsrc) : xsrc = .5f0 * ex
+    xsrc = convertToCell(xsrc)
+    ysrc = convertToCell(range(0f0, stop=0f0, length=nsrc))
+    zsrc = convertToCell(range(2*model.d[2], stop=2*model.d[2], length=nsrc))
 
     # Set up source structure
     srcGeometry = Geometry(xsrc, ysrc, zsrc; dt=dt, t=time)
@@ -93,6 +94,10 @@ function parse_commandline()
             help = "Number of layers"
             arg_type = Int
             default = 2
+        "--parallel", "-p"
+            help = "Number of workers"
+            arg_type = Int
+            default = 1
     end
     return parse_args(s)
 end

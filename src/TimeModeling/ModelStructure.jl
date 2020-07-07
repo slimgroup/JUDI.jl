@@ -144,26 +144,6 @@ function Model(n::IntTuple, d::RealTuple, o::RealTuple, m, rho; nb=40)
     return Model(n,d,o,nb,m,rho)
 end
 
-function Model_TTI(n::IntTuple, d::RealTuple, o::RealTuple, m; 
-    epsilon=nothing, delta=nothing, theta=nothing, phi=nothing, rho=nothing, nb=40)
-    
-    isnothing(epsilon) && (epsilon = 0)
-    isnothing(delta) && (delta = 0)
-    isnothing(theta) && (theta = 0)
-    isnothing(phi) && (phi = 0)
-    isnothing(rho) && (rho = 1)
-    return Model_TTI(n,d,o,nb,m,epsilon, delta, theta, phi, rho)
-end
-
-function Model_TTI(n::IntTuple, d::RealTuple, o::RealTuple, m, epsilon, delta, theta, phi, rho; nb=40)
-    isnothing(epsilon) && (epsilon = 0)
-    isnothing(delta) && (delta = 0)
-    isnothing(theta) && (theta = 0)
-    isnothing(phi) && (phi = 0)
-    isnothing(rho) && (rho = 1)
-    return Model_TTI(n,d,o,nb,m,epsilon, delta, theta, phi, rho)
-end
-
 const Modelall = Union{Model_TTI, Model}
 
 get_dt(Model::Modelall) = calculate_dt(Model)

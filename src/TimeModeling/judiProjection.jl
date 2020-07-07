@@ -102,8 +102,8 @@ function *(A::judiProjection{ADDT,ARDT},v::AbstractVector{vDT}) where {ADDT,ARDT
     return V
 end
 
-# *(judiProjection,judiModeling)
-function *(A::judiProjection{CDT,ARDT},B::judiModeling{BDDT,CDT}) where {ARDT,BDDT,CDT}
+# *(judiProjection, judiModeling)
+function *(A::judiProjection{CDT,ARDT}, B::judiModeling{BDDT,CDT}) where {ARDT,BDDT,CDT}
     A.n == size(B,1) || throw(judiProjectionException("shape mismatch"))
     compareInfo(A.info, B.info) == true || throw(judiProjectionException("info mismatch"))
     if typeof(A.geometry) == GeometryOOC

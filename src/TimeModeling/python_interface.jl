@@ -280,6 +280,9 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcData::Array, recGe
 
     # Output adjoint data as judiVector
     wOut = remove_padding(wOut, modelPy.padsizes; true_adjoint=false)
+    if options.free_surface
+        selectdim(wOut, modelPy.dim, 1) .= 0f0
+    end
     if options.return_array == true
         return vec(wOut)
     else

@@ -13,7 +13,8 @@ end
 
 if GROUP == "ISO_OP" || GROUP == "All"
     include("test_utils.jl")
-    @testset "JUDI iso-acoustic operators tests" begin
+    @testset "JUDI iso-acoustic operators tests (parallel)" begin
+        push!(Base.ARGS, "-p 2")
         # Basic utility test
         include("basic_tests.jl")
         # Iso-acoustic adjoint tests

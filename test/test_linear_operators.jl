@@ -171,7 +171,6 @@ end
     wavelet = randn(Float32, src_geometry.nt[1])
     q = judiVector(src_geometry, wavelet)
 
-
     Pr = judiProjection(info, rec_geometry)
     Ps = judiProjection(info, src_geometry)
 

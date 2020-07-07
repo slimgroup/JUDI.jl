@@ -129,8 +129,8 @@ adjoint(A::judiModelingAdjoint{DDT,RDT}) where {DDT,RDT} =
 ############################################################
 ## Additional overloaded functions
 
-# *(judiModelig,judiWavefield)
-function *(A::judiModeling{ADDT,ARDT},v::judiWavefield{vDT}) where {ADDT,ARDT,vDT}
+# *(judiModeling,judiWavefield)
+function *(A::judiModeling{ADDT,ARDT}, v::judiWavefield{vDT}) where {ADDT,ARDT,vDT}
 	A.n == size(v,1) || throw(judiModelingException("shape mismatch"))
 	jo_check_type_match(ADDT,vDT,join(["DDT for *(judiModeling,judiWavefield):",A.name,typeof(A),vDT]," / "))
 	args = (nothing,v.data,nothing,nothing,nothing)
@@ -139,8 +139,8 @@ function *(A::judiModeling{ADDT,ARDT},v::judiWavefield{vDT}) where {ADDT,ARDT,vD
 	return V
 end
 
-# *(judiModeligAdjoint,judiWavefield)
-function *(A::judiModelingAdjoint{ADDT,ARDT},v::judiWavefield{vDT}) where {ADDT,ARDT,vDT}
+# *(judiModelingAdjoint,judiWavefield)
+function *(A::judiModelingAdjoint{ADDT,ARDT}, v::judiWavefield{vDT}) where {ADDT,ARDT,vDT}
 	A.n == size(v,1) || throw(judiModelingAdjointException("shape mismatch"))
 	jo_check_type_match(ADDT,vDT,join(["DDT for *(judiModeling,judiWavefield):",A.name,typeof(A),vDT]," / "))
 	args = (nothing,nothing,nothing,v.data,nothing)
@@ -149,8 +149,8 @@ function *(A::judiModelingAdjoint{ADDT,ARDT},v::judiWavefield{vDT}) where {ADDT,
 	return V
 end
 
-# *(judiModelig,judiRHS)
-function *(A::judiModeling{ADDT,ARDT},v::judiRHS{vDT}) where {ADDT,ARDT,vDT}
+# *(judiModeling,judiRHS)
+function *(A::judiModeling{ADDT,ARDT}, v::judiRHS{vDT}) where {ADDT,ARDT,vDT}
 	A.n == size(v,1) || throw(judiModelingException("shape mismatch"))
 	jo_check_type_match(ADDT,vDT,join(["DDT for *(judiModeling,judiRHS):",A.name,typeof(A),vDT]," / "))
 	args = (v.geometry,v.data,nothing,nothing,nothing)
@@ -158,17 +158,6 @@ function *(A::judiModeling{ADDT,ARDT},v::judiRHS{vDT}) where {ADDT,ARDT,vDT}
 	jo_check_type_match(ARDT,eltype(V),join(["RDT from *(judiModeling,judiRHS):",A.name,typeof(A),eltype(V)]," / "))
 	return V
 end
-
-# *(judiModeligAdjoint,judiRHS)
-function *(A::judiModelingAdjoint{ADDT,ARDT},v::judiRHS{vDT}) where {ADDT,ARDT,vDT}
-	A.n == size(v,1) || throw(judiModelingAdjointException("shape mismatch"))
-	jo_check_type_match(ADDT,vDT,join(["DDT for *(judiModeling,judiRHS):",A.name,typeof(A),vDT]," / "))
-	args = (nothing,nothing,v.geometry,v.data,nothing)
-	V = A.fop(args)
-	jo_check_type_match(ARDT,eltype(V),join(["RDT from *(judiModeling,judiRHS):",A.name,typeof(A),eltype(V)]," / "))
-	return V
-end
-
 
 ############################################################
 ## Additional overloaded functions
