@@ -3,10 +3,13 @@ codecov:
   notify:
     wait_for_ci: yes
 
+ignore:
+  - "src/Optimization"
+
 coverage:
   precision: 2
   round: down
-  range: 10...50
+  range: 25...75
 
   status:
     # Learn more at http://docs.codecov.io/docs/codecov-yaml
