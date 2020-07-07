@@ -3,6 +3,8 @@
 # Author: Philipp Witte, pwitte@eos.ubc.ca
 # Date: January 2017
 #
+# Mathias Louboutin, mlouboutin3@gatech.edu
+# Updated July 2020
 
 using JUDI.TimeModeling, Test, LinearAlgebra, PyPlot, Printf
 

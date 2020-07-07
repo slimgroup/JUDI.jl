@@ -50,7 +50,7 @@ Examples
     J = judiJacobian(F,q)
 
 """
-function judiJacobian(F::judiPDEfull, source::judiVector; DDT::DataType=Float32, RDT::DataType=DDT)
+function judiJacobian(F::judiPDEfull, source::judiVector; DDT::DataType=Float32, RDT::DataType=DDT, options=nothing)
 # JOLI wrapper for nonlinear forward modeling
     compareGeometry(F.srcGeometry, source.geometry) == true || judiJacobianException("Source geometry mismatch")
     (DDT == Float32 && RDT == Float32) || throw(judiJacobianException("Domain and range types not supported"))
@@ -66,11 +66,12 @@ function judiJacobian(F::judiPDEfull, source::judiVector; DDT::DataType=Float32,
     else
         srcnum = 1
     end
+    isnothing(options) && (options = F.options)
     return J = judiJacobian{Float32,Float32}("linearized wave equation", m, n, 
-        F.info, F.model, F.srcGeometry, F.recGeometry, source.data, F.options,
-        v -> time_modeling(F.model, F.srcGeometry, source.data, F.recGeometry, nothing, v, srcnum, 'J', 1, F.options),
+        F.info, F.model, F.srcGeometry, F.recGeometry, source.data, options,
+        v -> time_modeling(F.model, F.srcGeometry, source.data, F.recGeometry, nothing, v, srcnum, 'J', 1, options),
         w -> time_modeling(F.model, F.srcGeometry, source.data, F.recGeometry, process_input_data(w, F.recGeometry, F.info),
-        nothing, srcnum, 'J', -1, F.options)
+        nothing, srcnum, 'J', -1, options)
     )
 end
 

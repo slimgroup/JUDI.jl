@@ -21,7 +21,7 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Geometry
 
     # Output shot record as judiVector
     if options.save_data_to_disk
-        container = write_shot_record(srcGeometry,srcData,recGeometry,dOut,options)
+        container = write_shot_record(srcGeometry, srcData, recGeometry, dOut, options)
         return judiVector(container)
     elseif options.return_array == true
         return vec(dOut)

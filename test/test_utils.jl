@@ -1,3 +1,6 @@
+# Author: Mathias Louboutin, mlouboutin3@gatech.edu
+# Date: July 2020
+
 using JUDI.TimeModeling, ArgParse, Images
 
 export setup_model, parse_commandline, setup_geom
@@ -10,10 +13,8 @@ function smooth(v, sigma=3)
     return Float32.(imfilter(v,  Kernel.gaussian(sigma)))
 end
 
-function setup_model(tti=false, nlayer=2)
-    ## Set up model structure
-    n = (301, 151)   # (x,y,z) or (x,z)
-    d = (10., 10.)	
+function setup_model(tti=false, nlayer=2; n=(301, 151), d=(10., 10.))
+    ## Set up model structure	
     o = (0., 0.)	
     
     v = ones(Float32,n) .* 1.5f0	
@@ -45,19 +46,19 @@ function setup_model(tti=false, nlayer=2)
     return model, model0, dm
 end
 
-function setup_geom(model; nsrc=1)
+function setup_geom(model; nsrc=1, tn=1500f0)
     ## Set up receiver geometry
     nxrec = model.n[1] - 2
-    xrec = range(model.d[1], stop=(model.n[1]-2)*model.d[1], length=nxrec)
-    yrec = 0f0
-    zrec = range(50f0, stop=50f0, length=nxrec)
+    xrec = collect(range(model.d[1], stop=(model.n[1]-2)*model.d[1], length=nxrec))
+    yrec = collect(range(0f0, stop=0f0, length=nxrec))
+    zrec = collect(range(50f0, stop=50f0, length=nxrec))
 
     # receiver sampling and recording time
-    time = 1500f0   # receiver recording time [ms]
+    T = tn   # receiver recording time [ms]
     dt = 1f0    # receiver sampling interval [ms]
 
     # Set up receiver structure
-    recGeometry = Geometry(xrec, yrec, zrec; dt=dt, t=time, nsrc=nsrc)
+    recGeometry = Geometry(xrec, yrec, zrec; dt=dt, t=T, nsrc=nsrc)
 
     ## Set up source geometry (cell array with source locations for each shot)
     ex =  (model.n[1] - 1) * model.d[1]
@@ -67,11 +68,11 @@ function setup_geom(model; nsrc=1)
     zsrc = convertToCell(range(2*model.d[2], stop=2*model.d[2], length=nsrc))
 
     # Set up source structure
-    srcGeometry = Geometry(xsrc, ysrc, zsrc; dt=dt, t=time)
+    srcGeometry = Geometry(xsrc, ysrc, zsrc; dt=dt, t=T)
 
     # setup wavelet
     f0 = 0.015f0     # MHz
-    wavelet = ricker_wavelet(time, dt, f0)
+    wavelet = ricker_wavelet(T, dt, f0)
     q = judiVector(srcGeometry, wavelet)
 
     ntComp = get_computational_nt(srcGeometry, recGeometry, model)	

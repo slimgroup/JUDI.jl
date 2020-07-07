@@ -159,6 +159,16 @@ function *(A::judiModeling{ADDT,ARDT}, v::judiRHS{vDT}) where {ADDT,ARDT,vDT}
 	return V
 end
 
+# *(judiModelingAdjoint,judiRHS)
+function *(A::judiModelingAdjoint{ADDT,ARDT}, v::judiRHS{vDT}) where {ADDT,ARDT,vDT}
+	A.n == size(v,1) || throw(judiModelingException("shape mismatch"))
+	jo_check_type_match(ADDT,vDT,join(["DDT for *(judiModeling,judiRHS):",A.name,typeof(A),vDT]," / "))
+	args = (nothing, nothing, v.geometry,v.data,nothing)
+	V = A.fop(args)
+	jo_check_type_match(ARDT,eltype(V),join(["RDT from *(judiModeling,judiRHS):",A.name,typeof(A),eltype(V)]," / "))
+	return V
+end
+
 ############################################################
 ## Additional overloaded functions
 

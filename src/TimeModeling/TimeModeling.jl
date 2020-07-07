@@ -2,7 +2,7 @@
 # Author: Philipp Witte, pwitte@eos.ubc.ca
 # Date: January, 2017
 #
-
+#__precompile__()
 module TimeModeling
 
 using JUDI, LinearAlgebra, Base.Broadcast, FFTW, Pkg, Printf, Distributed

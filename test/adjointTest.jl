@@ -2,17 +2,18 @@
 # Author: Mathias Louboutin, mlouboutin3@gatech.edu
 # Date: May 2020
 #
-#
 
-using PyCall, PyPlot, JUDI.TimeModeling, Images, LinearAlgebra, Test, ArgParse, Printf, Distributed
+using Distributed
 
 parsed_args = parse_commandline()
 
 # Set parallel if specified
 nw = parsed_args["parallel"]
-if nworkers() > 1
-    addprocs(nw; exeflags=`--check-bounds=yes`)
+if nw > 1 && nworkers() < nw
+    addprocs(nw-nworkers() + 1; exeflags=`--check-bounds=yes`)
 end
+
+@everywhere using JUDI.TimeModeling, LinearAlgebra, Test, Distributed
 
 ### Model
 model, model0, dm = setup_model(parsed_args["tti"], parsed_args["nlayer"])

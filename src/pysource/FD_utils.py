@@ -4,6 +4,10 @@ from devito import TensorFunction, VectorFunction, Eq, Function
 
 
 def grads(func):
+    """
+    Gradient shifted by half a grid point, only to be used in combination
+    with divs.
+    """
     comps = [getattr(func, 'd%s' % d.name)(x0=d + d.spacing/2)
              for d in func.dimensions if d.is_Space]
     st = tuple([None]*func.grid.dim)
@@ -12,6 +16,10 @@ def grads(func):
 
 
 def divs(func):
+    """
+    GrDivergenceadient shifted by half a grid point, only to be used in combination
+    with grads.
+    """
     return sum([getattr(func[i], 'd%s' % d.name)(x0=d - d.spacing/2)
                 for i, d in enumerate(func.space_dimensions)])
 

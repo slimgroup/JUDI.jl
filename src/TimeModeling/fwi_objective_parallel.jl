@@ -18,11 +18,12 @@ Example
 function fwi_objective(model::Modelall, source::judiVector, dObs::judiVector; options=Options())
 # fwi_objective function for multiple sources. The function distributes the sources and the input data amongst the available workers.
 
-    # p = default_worker_pool()
-    # fwi_objective_par = remote(TimeModeling.fwi_objective)
-    # fwi_objective = retry(fwi_objective_par)
+    p = default_worker_pool()
+    fwi_objective_par = remote(TimeModeling.fwi_objective)
+    fwi_objective = retry(fwi_objective_par)
 
     results = Array{Any}(undef, dObs.nsrc)
+
     @sync begin
         for j=1:dObs.nsrc
             opt_local = subsample(options,j)

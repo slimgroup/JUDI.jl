@@ -1,3 +1,11 @@
+# Test 2D modeling
+# The receiver positions and the source wavelets are the same for each of the four experiments.
+# Author: Philipp Witte, pwitte@eos.ubc.ca
+# Date: January 2017
+#
+# Mathias Louboutin, mlouboutin3@gatech.edu
+# Updated July 2020
+
 using Test
 
 const GROUP = get(ENV, "GROUP", "JUDI")
@@ -17,7 +25,8 @@ if GROUP == "ISO_OP" || GROUP == "All"
         push!(Base.ARGS, "-p 2")
         # Basic utility test
         include("basic_tests.jl")
-        # Iso-acoustic adjoint tests
+        # Iso-acoustic tests
+        include("modelingTest.jl")
         include("linearityTest.jl")
         include("test_jacobian.jl")
         include("test_jacobian_extended.jl")
@@ -42,7 +51,7 @@ end
 if GROUP == "TTI_OP" || GROUP == "All"
     include("test_utils.jl")
     @testset "JUDI TTI operators tests" begin
-        # TTI adjoint tests
+        # TTI tests
         push!(Base.ARGS, "--tti")
         include("linearityTest.jl")
         include("test_jacobian.jl")

@@ -1,3 +1,7 @@
+# Author: Mathias Louboutin, mlouboutin3@gatech.edu
+# Date: May 2020
+#
+
 using JUDI.TimeModeling, PyCall, LinearAlgebra, PyPlot, Test
 
 

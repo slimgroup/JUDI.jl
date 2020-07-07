@@ -96,13 +96,6 @@ jobs:
       - name: Build JUDI
         uses: julia-actions/julia-buildpkg@latest
 
-      - name: Install extras julia packages
-        run: |
-          julia --color=yes --check-bounds=yes --project -e 'using Pkg;Pkg.add("Images")'
-          julia --color=yes --check-bounds=yes --project -e 'using Pkg;Pkg.add("ArgParse")'
-          julia --color=yes --check-bounds=yes --project -e 'using Pkg;Pkg.add("Printf")'
-          julia --color=yes --check-bounds=yes --project -e 'using Pkg;Pkg.add("PyPlot")'
-
       - name: Rebuild PyCall with system python
         run: |
           export PYTHON=$(which python)

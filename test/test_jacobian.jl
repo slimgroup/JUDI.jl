@@ -3,6 +3,8 @@
 # Author: Philipp Witte, pwitte@eos.ubc.ca
 # Date: January 2017
 #
+# Author: Mathias Louboutin, mlouboutin3@gatech.edu
+# Update Date: July 2020
 
 using JUDI.TimeModeling, SegyIO, LinearAlgebra, Test
 
