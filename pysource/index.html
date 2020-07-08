@@ -86,27 +86,21 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#fd_utils-module">FD_utils module</a>
         <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#fd_utilsangles_to_trigmodel">FD_utils.angles_to_trig(model)</a>
+    <li class="toctree-l3"><a class="reference internal" href="#fd_utilsp_mmodel-u-v">FD_utils.P_M(model, u, v)</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#fd_utilsgxfield-model">FD_utils.gx(field, model)</a>
+    <li class="toctree-l3"><a class="reference internal" href="#fd_utilsr_matmodel">FD_utils.R_mat(model)</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#fd_utilsgx_tfield-model">FD_utils.gx_T(field, model)</a>
+    <li class="toctree-l3"><a class="reference internal" href="#fd_utilsdivsfunc">FD_utils.divs(func)</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#fd_utilsgyfield-model">FD_utils.gy(field, model)</a>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#fd_utilsgy_tfield-model">FD_utils.gy_T(field, model)</a>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#fd_utilsgzfield-model">FD_utils.gz(field, model)</a>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#fd_utilsgz_tfield-model">FD_utils.gz_T(field, model)</a>
+    <li class="toctree-l3"><a class="reference internal" href="#fd_utilsgradsfunc">FD_utils.grads(func)</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#fd_utilslaplacianv-irho">FD_utils.laplacian(v, irho)</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#fd_utilsssa_1u-v-model">FD_utils.ssa_1(u, v, model)</a>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#fd_utilsssa_2u-v-model">FD_utils.ssa_2(u, v, model)</a>
-    </li>
     <li class="toctree-l3"><a class="reference internal" href="#fd_utilsssa_ttiu-v-model">FD_utils.ssa_tti(u, v, model)</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#fd_utilstensor_factu-v-model">FD_utils.tensor_fact(u, v, model)</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#fd_utilsthomsen_matmodel">FD_utils.thomsen_mat(model)</a>
     </li>
         </ul>
     </li>
@@ -182,41 +176,41 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#interface-module">interface module</a>
         <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#interfacej_adjointmodel-src_coords-wavelet-rec_coords-recin-space_order8-checkpointingfalse-free_surfacefalse-n_checkpointsnone-maxmemnone-freq_list-dft_subnone-isicfalse-wsnone-t_sub1">interface.J_adjoint(model, src_coords, wavelet, rec_coords, recin, space_order=8, checkpointing=False, free_surface=False, n_checkpoints=None, maxmem=None, freq_list=[], dft_sub=None, isic=False, ws=None, t_sub=1)</a>
+    <li class="toctree-l3"><a class="reference internal" href="#interfacej_adjointmodel-src_coords-wavelet-rec_coords-recin-space_order8-checkpointingfalse-n_checkpointsnone-maxmemnone-freq_list-dft_subnone-isicfalse-wsnone-t_sub1">interface.J_adjoint(model, src_coords, wavelet, rec_coords, recin, space_order=8, checkpointing=False, n_checkpoints=None, maxmem=None, freq_list=[], dft_sub=None, isic=False, ws=None, t_sub=1)</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#interfacej_adjoint_checkpointingmodel-src_coords-wavelet-rec_coords-recin-space_order8-free_surfacefalse-is_residualfalse-n_checkpointsnone-maxmemnone-return_objfalse-isicfalse-wsnone-t_sub1">interface.J_adjoint_checkpointing(model, src_coords, wavelet, rec_coords, recin, space_order=8, free_surface=False, is_residual=False, n_checkpoints=None, maxmem=None, return_obj=False, isic=False, ws=None, t_sub=1)</a>
+    <li class="toctree-l3"><a class="reference internal" href="#interfacej_adjoint_checkpointingmodel-src_coords-wavelet-rec_coords-recin-space_order8-is_residualfalse-n_checkpointsnone-maxmemnone-return_objfalse-isicfalse-wsnone-t_sub1">interface.J_adjoint_checkpointing(model, src_coords, wavelet, rec_coords, recin, space_order=8, is_residual=False, n_checkpoints=None, maxmem=None, return_obj=False, isic=False, ws=None, t_sub=1)</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#interfacej_adjoint_freqmodel-src_coords-wavelet-rec_coords-recin-space_order8-free_surfacefalse-freq_list-is_residualfalse-return_objfalse-dft_subnone-isicfalse-wsnone-t_sub1">interface.J_adjoint_freq(model, src_coords, wavelet, rec_coords, recin, space_order=8, free_surface=False, freq_list=[], is_residual=False, return_obj=False, dft_sub=None, isic=False, ws=None, t_sub=1)</a>
+    <li class="toctree-l3"><a class="reference internal" href="#interfacej_adjoint_freqmodel-src_coords-wavelet-rec_coords-recin-space_order8-freq_list-is_residualfalse-return_objfalse-dft_subnone-isicfalse-wsnone-t_sub1">interface.J_adjoint_freq(model, src_coords, wavelet, rec_coords, recin, space_order=8, freq_list=[], is_residual=False, return_obj=False, dft_sub=None, isic=False, ws=None, t_sub=1)</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#interfacej_adjoint_standardmodel-src_coords-wavelet-rec_coords-recin-space_order8-free_surfacefalse-is_residualfalse-return_objfalse-isicfalse-wsnone-t_sub1">interface.J_adjoint_standard(model, src_coords, wavelet, rec_coords, recin, space_order=8, free_surface=False, is_residual=False, return_obj=False, isic=False, ws=None, t_sub=1)</a>
+    <li class="toctree-l3"><a class="reference internal" href="#interfacej_adjoint_standardmodel-src_coords-wavelet-rec_coords-recin-space_order8-is_residualfalse-return_objfalse-isicfalse-wsnone-t_sub1">interface.J_adjoint_standard(model, src_coords, wavelet, rec_coords, recin, space_order=8, is_residual=False, return_obj=False, isic=False, ws=None, t_sub=1)</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#interfaceadjoint_no_recmodel-rec_coords-data-space_order8-free_surfacefalse">interface.adjoint_no_rec(model, rec_coords, data, space_order=8, free_surface=False)</a>
+    <li class="toctree-l3"><a class="reference internal" href="#interfaceadjoint_no_recmodel-rec_coords-data-space_order8">interface.adjoint_no_rec(model, rec_coords, data, space_order=8)</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#interfaceadjoint_recmodel-src_coords-rec_coords-data-space_order8-free_surfacefalse">interface.adjoint_rec(model, src_coords, rec_coords, data, space_order=8, free_surface=False)</a>
+    <li class="toctree-l3"><a class="reference internal" href="#interfaceadjoint_recmodel-src_coords-rec_coords-data-space_order8">interface.adjoint_rec(model, src_coords, rec_coords, data, space_order=8)</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#interfaceadjoint_wmodel-rec_coords-data-wavelet-space_order8-free_surfacefalse">interface.adjoint_w(model, rec_coords, data, wavelet, space_order=8, free_surface=False)</a>
+    <li class="toctree-l3"><a class="reference internal" href="#interfaceadjoint_wmodel-rec_coords-data-wavelet-space_order8">interface.adjoint_w(model, rec_coords, data, wavelet, space_order=8)</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#interfaceadjoint_wf_srcmodel-u-src_coords-space_order8-free_surfacefalse">interface.adjoint_wf_src(model, u, src_coords, space_order=8, free_surface=False)</a>
+    <li class="toctree-l3"><a class="reference internal" href="#interfaceadjoint_wf_srcmodel-u-src_coords-space_order8">interface.adjoint_wf_src(model, u, src_coords, space_order=8)</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#interfaceadjoint_wf_src_norecmodel-u-space_order8-free_surfacefalse">interface.adjoint_wf_src_norec(model, u, space_order=8, free_surface=False)</a>
+    <li class="toctree-l3"><a class="reference internal" href="#interfaceadjoint_wf_src_norecmodel-u-space_order8">interface.adjoint_wf_src_norec(model, u, space_order=8)</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#interfaceborn_recmodel-src_coords-wavelet-rec_coords-space_order8-free_surfacefalse-isicfalse">interface.born_rec(model, src_coords, wavelet, rec_coords, space_order=8, free_surface=False, isic=False)</a>
+    <li class="toctree-l3"><a class="reference internal" href="#interfaceborn_recmodel-src_coords-wavelet-rec_coords-space_order8-isicfalse">interface.born_rec(model, src_coords, wavelet, rec_coords, space_order=8, isic=False)</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#interfaceborn_rec_wmodel-weight-wavelet-rec_coords-space_order8-free_surfacefalse-isicfalse">interface.born_rec_w(model, weight, wavelet, rec_coords, space_order=8, free_surface=False, isic=False)</a>
+    <li class="toctree-l3"><a class="reference internal" href="#interfaceborn_rec_wmodel-weight-wavelet-rec_coords-space_order8-isicfalse">interface.born_rec_w(model, weight, wavelet, rec_coords, space_order=8, isic=False)</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#interfaceforward_no_recmodel-src_coords-wavelet-space_order8-free_surfacefalse">interface.forward_no_rec(model, src_coords, wavelet, space_order=8, free_surface=False)</a>
+    <li class="toctree-l3"><a class="reference internal" href="#interfaceforward_no_recmodel-src_coords-wavelet-space_order8">interface.forward_no_rec(model, src_coords, wavelet, space_order=8)</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#interfaceforward_recmodel-src_coords-wavelet-rec_coords-space_order8-free_surfacefalse">interface.forward_rec(model, src_coords, wavelet, rec_coords, space_order=8, free_surface=False)</a>
+    <li class="toctree-l3"><a class="reference internal" href="#interfaceforward_recmodel-src_coords-wavelet-rec_coords-space_order8">interface.forward_rec(model, src_coords, wavelet, rec_coords, space_order=8)</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#interfaceforward_rec_wmodel-weight-wavelet-rec_coords-space_order8-free_surfacefalse">interface.forward_rec_w(model, weight, wavelet, rec_coords, space_order=8, free_surface=False)</a>
+    <li class="toctree-l3"><a class="reference internal" href="#interfaceforward_rec_wmodel-weight-wavelet-rec_coords-space_order8">interface.forward_rec_w(model, weight, wavelet, rec_coords, space_order=8)</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#interfaceforward_rec_wfmodel-src_coords-wavelet-rec_coords-t_sub1-space_order8-free_surfacefalse">interface.forward_rec_wf(model, src_coords, wavelet, rec_coords, t_sub=1, space_order=8, free_surface=False)</a>
+    <li class="toctree-l3"><a class="reference internal" href="#interfaceforward_rec_wfmodel-src_coords-wavelet-rec_coords-t_sub1-space_order8">interface.forward_rec_wf(model, src_coords, wavelet, rec_coords, t_sub=1, space_order=8)</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#interfaceforward_wf_srcmodel-u-rec_coords-space_order8-free_surfacefalse">interface.forward_wf_src(model, u, rec_coords, space_order=8, free_surface=False)</a>
+    <li class="toctree-l3"><a class="reference internal" href="#interfaceforward_wf_srcmodel-u-rec_coords-space_order8">interface.forward_wf_src(model, u, rec_coords, space_order=8)</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#interfaceforward_wf_src_norecmodel-u-space_order8-free_surfacefalse">interface.forward_wf_src_norec(model, u, space_order=8, free_surface=False)</a>
+    <li class="toctree-l3"><a class="reference internal" href="#interfaceforward_wf_src_norecmodel-u-space_order8">interface.forward_wf_src_norec(model, u, space_order=8)</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#interfacegrad_fwimodel-recin-rec_coords-u-space_order8-free_surfacefalse">interface.grad_fwi(model, recin, rec_coords, u, space_order=8, free_surface=False)</a>
+    <li class="toctree-l3"><a class="reference internal" href="#interfacegrad_fwimodel-recin-rec_coords-u-space_order8">interface.grad_fwi(model, recin, rec_coords, u, space_order=8)</a>
     </li>
         </ul>
     </li>
@@ -224,15 +218,17 @@
         <ul>
     <li class="toctree-l3"><a class="reference internal" href="#kernelsacoustic_kernelmodel-u-fwtrue-qnone">kernels.acoustic_kernel(model, u, fw=True, q=None)</a>
     </li>
+    <li class="toctree-l3"><a class="reference internal" href="#kernelsfallback_solveeq-target-kwargs">kernels.fallback_solve(eq, target, **kwargs)</a>
+    </li>
     <li class="toctree-l3"><a class="reference internal" href="#kernelstti_kernelmodel-u1-u2-fwtrue-qnone">kernels.tti_kernel(model, u1, u2, fw=True, q=None)</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#kernelswave_kernelmodel-u-fwtrue-qnone-fsfalse">kernels.wave_kernel(model, u, fw=True, q=None, fs=False)</a>
+    <li class="toctree-l3"><a class="reference internal" href="#kernelswave_kernelmodel-u-fwtrue-qnone">kernels.wave_kernel(model, u, fw=True, q=None)</a>
     </li>
         </ul>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#models-module">models module</a>
         <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#class-modelsmodelorigin-spacing-shape-vp-space_order2-nbl40-dtype-epsilonnone-deltanone-thetanone-phinone-rho1-dmnone-subdomains-fsfalse-kwargs">class models.Model(origin, spacing, shape, vp, space_order=2, nbl=40, dtype=, epsilon=None, delta=None, theta=None, phi=None, rho=1, dm=None, subdomains=(), fs=False, **kwargs)</a>
+    <li class="toctree-l3"><a class="reference internal" href="#class-modelsmodelorigin-spacing-shape-vp-space_order2-nbl40-dtype-epsilonnone-deltanone-thetanone-phinone-rho1-dmnone-fsfalse-kwargs">class models.Model(origin, spacing, shape, vp, space_order=2, nbl=40, dtype=, epsilon=None, delta=None, theta=None, phi=None, rho=1, dm=None, fs=False, **kwargs)</a>
         <ul>
     <li class="toctree-l4"><a class="reference internal" href="#property-critical_dt">property critical_dt()</a>
     </li>
@@ -256,17 +252,15 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#propagators-module">propagators module</a>
         <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#propagatorsadjointmodel-y-src_coords-rcv_coords-space_order8-q0-savefalse-free_surfacefalse-wsnone">propagators.adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0, save=False, free_surface=False, ws=None)</a>
+    <li class="toctree-l3"><a class="reference internal" href="#propagatorsadjointmodel-y-src_coords-rcv_coords-space_order8-q0-savefalse-wsnone">propagators.adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0, save=False, ws=None)</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#propagatorsbornmodel-src_coords-rcv_coords-wavelet-space_order8-savefalse-qnone-free_surfacefalse-isicfalse-wsnone">propagators.born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False, q=None, free_surface=False, isic=False, ws=None)</a>
+    <li class="toctree-l3"><a class="reference internal" href="#propagatorsbornmodel-src_coords-rcv_coords-wavelet-space_order8-savefalse-qnone-isicfalse-wsnone">propagators.born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False, q=None, isic=False, ws=None)</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#propagatorsforwardmodel-src_coords-rcv_coords-wavelet-space_order8-savefalse-qnone-free_surfacefalse-return_opfalse-freq_listnone-dft_subnone-wsnone-t_sub1">propagators.forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False, q=None, free_surface=False, return_op=False, freq_list=None, dft_sub=None, ws=None, t_sub=1)</a>
+    <li class="toctree-l3"><a class="reference internal" href="#propagatorsforwardmodel-src_coords-rcv_coords-wavelet-space_order8-savefalse-qnone-return_opfalse-freq_listnone-dft_subnone-wsnone-t_sub1">propagators.forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False, q=None, return_op=False, freq_list=None, dft_sub=None, ws=None, t_sub=1)</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#propagatorsgradientmodel-residual-rcv_coords-u-return_opfalse-space_order8-t_sub1-wnone-free_surfacefalse-freqnone-dft_subnone-isictrue">propagators.gradient(model, residual, rcv_coords, u, return_op=False, space_order=8, t_sub=1, w=None, free_surface=False, freq=None, dft_sub=None, isic=True)</a>
+    <li class="toctree-l3"><a class="reference internal" href="#propagatorsgradientmodel-residual-rcv_coords-u-return_opfalse-space_order8-t_sub1-wnone-freqnone-dft_subnone-isictrue">propagators.gradient(model, residual, rcv_coords, u, return_op=False, space_order=8, t_sub=1, w=None, freq=None, dft_sub=None, isic=True)</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#propagatorsnamemodel">propagators.name(model)</a>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#propagatorsop_kwargsmodel-fsfalse">propagators.op_kwargs(model, fs=False)</a>
     </li>
         </ul>
     </li>
@@ -378,11 +372,19 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#wave_utils-module">wave_utils module</a>
         <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#class-wave_utilsintargs-options">class wave_utils.INT(*args, **options)</a>
+        <ul>
+    <li class="toctree-l4"><a class="reference internal" href="#default_assumptions">default_assumptions( = {})</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#name-int">name( = 'INT')</a>
+    </li>
+        </ul>
+    </li>
     <li class="toctree-l3"><a class="reference internal" href="#wave_utilsextended_src_weightsmodel-wavelet-v">wave_utils.extended_src_weights(model, wavelet, v)</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#wave_utilsextented_srcmodel-weight-wavelet-q0">wave_utils.extented_src(model, weight, wavelet, q=0)</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#wave_utilsfreesurfacefield-npml-forwardtrue">wave_utils.freesurface(field, npml, forward=True)</a>
+    <li class="toctree-l3"><a class="reference internal" href="#wave_utilsfreesurfacemodel-eq">wave_utils.freesurface(model, eq)</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#wave_utilsotf_dftu-freq-dt-factornone">wave_utils.otf_dft(u, freq, dt, factor=None)</a>
     </li>
@@ -443,147 +445,37 @@
                 <h1 id="pysource-package">pysource package</h1>
 <h2 id="submodules">Submodules</h2>
 <h2 id="fd_utils-module">FD_utils module</h2>
-<h3 id="fd_utilsangles_to_trigmodel">FD_utils.angles_to_trig(model)</h3>
-<p>Tile and asymut angles trigonometric functions</p>
-<h3 id="fd_utilsgxfield-model">FD_utils.gx(field, model)</h3>
-<p>Rotated first derivative in x
-:param u: TTI field
-:type u: TimeFunction or Expr
-:param model: Model structure
-:type model: Model</p>
-<ul>
-<li>
-<p><strong>Returns</strong></p>
-<p>du/dx in rotated coordinates</p>
-</li>
-<li>
-<p><strong>Return type</strong></p>
-<p>Expr</p>
-</li>
-</ul>
-<h3 id="fd_utilsgx_tfield-model">FD_utils.gx_T(field, model)</h3>
-<p>Rotated first derivative in x</p>
+<h3 id="fd_utilsp_mmodel-u-v">FD_utils.P_M(model, u, v)</h3>
+<p>Vectorial temporaries for TTI.</p>
 <ul>
 <li>
 <p><strong>Parameters</strong></p>
 <ul>
 <li>
-<p><strong>u</strong> (<em>TimeFunction</em><em> or </em><em>Expr</em>) – TTI field</p>
-</li>
-<li>
 <p><strong>model</strong> (<em>Model</em>) – Model structure</p>
 </li>
+<li>
+<p><strong>so</strong> (<em>Int</em>) – Space order for discretization</p>
+</li>
 </ul>
 </li>
-<li>
-<p><strong>Returns</strong></p>
-<p>du/dx.T in rotated coordinates</p>
-</li>
-<li>
-<p><strong>Return type</strong></p>
-<p>Expr</p>
-</li>
 </ul>
-<h3 id="fd_utilsgyfield-model">FD_utils.gy(field, model)</h3>
-<p>Rotated first derivative in y</p>
+<h3 id="fd_utilsr_matmodel">FD_utils.R_mat(model)</h3>
+<p>Rotation matrix according to tilt and asymut.</p>
 <ul>
 <li>
 <p><strong>Parameters</strong></p>
-<ul>
-<li>
-<p><strong>u</strong> (<em>TimeFunction</em><em> or </em><em>Expr</em>) – TTI field</p>
-</li>
-<li>
 <p><strong>model</strong> (<em>Model</em>) – Model structure</p>
 </li>
 </ul>
-</li>
-<li>
-<p><strong>Returns</strong></p>
-<p>du/dy in rotated coordinates</p>
-</li>
-<li>
-<p><strong>Return type</strong></p>
-<p>Expr</p>
-</li>
-</ul>
-<h3 id="fd_utilsgy_tfield-model">FD_utils.gy_T(field, model)</h3>
-<p>Rotated first derivative in y</p>
-<ul>
-<li>
-<p><strong>Parameters</strong></p>
-<ul>
-<li>
-<p><strong>u</strong> (<em>TimeFunction</em><em> or </em><em>Expr</em>) – TTI field</p>
-</li>
-<li>
-<p><strong>model</strong> (<em>Model</em>) – Model structure</p>
-</li>
-</ul>
-</li>
-<li>
-<p><strong>Returns</strong></p>
-<p>du/dy.T in rotated coordinates</p>
-</li>
-<li>
-<p><strong>Return type</strong></p>
-<p>Expr</p>
-</li>
-</ul>
-<h3 id="fd_utilsgzfield-model">FD_utils.gz(field, model)</h3>
-<p>Rotated first derivative in z</p>
-<ul>
-<li>
-<p><strong>Parameters</strong></p>
-<ul>
-<li>
-<p><strong>u</strong> (<em>TimeFunction</em><em> or </em><em>Expr</em>) – TTI field</p>
-</li>
-<li>
-<p><strong>model</strong> (<em>Model</em>) – Model structure</p>
-</li>
-</ul>
-</li>
-<li>
-<p><strong>Returns</strong></p>
-<p>du/dz in rotated coordinates</p>
-</li>
-<li>
-<p><strong>Return type</strong></p>
-<p>Expr</p>
-</li>
-</ul>
-<h3 id="fd_utilsgz_tfield-model">FD_utils.gz_T(field, model)</h3>
-<p>Rotated first derivative in z</p>
-<ul>
-<li>
-<p><strong>Parameters</strong></p>
-<ul>
-<li>
-<p><strong>u</strong> (<em>TimeFunction</em><em> or </em><em>Expr</em>) – TTI field</p>
-</li>
-<li>
-<p><strong>model</strong> (<em>Model</em>) – Model structure</p>
-</li>
-</ul>
-</li>
-<li>
-<p><strong>Returns</strong></p>
-<p>du/dz.T in rotated coordinates</p>
-</li>
-<li>
-<p><strong>Return type</strong></p>
-<p>Expr</p>
-</li>
-</ul>
+<h3 id="fd_utilsdivsfunc">FD_utils.divs(func)</h3>
+<p>GrDivergenceadient shifted by half a grid point, only to be used in combination
+with grads.</p>
+<h3 id="fd_utilsgradsfunc">FD_utils.grads(func)</h3>
+<p>Gradient shifted by half a grid point, only to be used in combination
+with divs.</p>
 <h3 id="fd_utilslaplacianv-irho">FD_utils.laplacian(v, irho)</h3>
 <p>Laplacian with density div( 1/rho grad) (u)</p>
-<h3 id="fd_utilsssa_1u-v-model">FD_utils.ssa_1(u, v, model)</h3>
-<p>First row of
-gx_t(A * gx(P)) + gy_t( A1 * gy(P)) + gz_T( A2 * gz(P))</p>
-<h3 id="fd_utilsssa_2u-v-model">FD_utils.ssa_2(u, v, model)</h3>
-<p>Second row of
-gx_t(A * gx(P)) + gy_t( A1 * gy(P)) + gz_T( A2 * gz(P))</p>
 <h3 id="fd_utilsssa_ttiu-v-model">FD_utils.ssa_tti(u, v, model)</h3>
 <p>TTI finite difference kernel.</p>
 <ul>
@@ -600,6 +492,33 @@ gx_t(A * gx(P)) + gy_t( A1 * gy(P)) + gz_T( A2 * gz(P))</p>
 <p><strong>model</strong> (<em>Model</em>) – Model structure</p>
 </li>
 </ul>
+</li>
+</ul>
+<h3 id="fd_utilstensor_factu-v-model">FD_utils.tensor_fact(u, v, model)</h3>
+<p>Tensor factorized SSA TTI wave equation spatial derivatives.</p>
+<ul>
+<li>
+<p><strong>Parameters</strong></p>
+<ul>
+<li>
+<p><strong>u</strong> (<em>TimeFunction</em>) – first TTI field</p>
+</li>
+<li>
+<p><strong>v</strong> (<em>TimeFunction</em>) – second TTI field</p>
+</li>
+<li>
+<p><strong>model</strong> (<em>Model</em>) – Model structure</p>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="fd_utilsthomsen_matmodel">FD_utils.thomsen_mat(model)</h3>
+<p>Diagonal Matrices with Thomsen parameters for vectorial temporaries
+computation.</p>
+<ul>
+<li>
+<p><strong>Parameters</strong></p>
+<p><strong>model</strong> (<em>Model</em>) – Model structure</p>
 </li>
 </ul>
 <h2 id="checkpoint-module">checkpoint module</h2>
@@ -722,7 +641,7 @@ because the data is the sources</p>
 </li>
 </ul>
 <h2 id="interface-module">interface module</h2>
-<h3 id="interfacej_adjointmodel-src_coords-wavelet-rec_coords-recin-space_order8-checkpointingfalse-free_surfacefalse-n_checkpointsnone-maxmemnone-freq_list-dft_subnone-isicfalse-wsnone-t_sub1">interface.J_adjoint(model, src_coords, wavelet, rec_coords, recin, space_order=8, checkpointing=False, free_surface=False, n_checkpoints=None, maxmem=None, freq_list=[], dft_sub=None, isic=False, ws=None, t_sub=1)</h3>
+<h3 id="interfacej_adjointmodel-src_coords-wavelet-rec_coords-recin-space_order8-checkpointingfalse-n_checkpointsnone-maxmemnone-freq_list-dft_subnone-isicfalse-wsnone-t_sub1">interface.J_adjoint(model, src_coords, wavelet, rec_coords, recin, space_order=8, checkpointing=False, n_checkpoints=None, maxmem=None, freq_list=[], dft_sub=None, isic=False, ws=None, t_sub=1)</h3>
 <p>Jacobian (adjoint fo born modeling operator) operator on a shot record
 as a source (i.e data residual). Supports three modes:
 * Checkpinting
@@ -751,9 +670,6 @@ as a source (i.e data residual). Supports three modes:
 <p><strong>space_order</strong> (<em>Int</em><em> (</em><em>optional</em><em>)</em>) – Spatial discretization order, defaults to 8</p>
 </li>
 <li>
-<p><strong>free_surface</strong> (<em>Bool</em><em> (</em><em>optional</em><em>)</em>) – Whether or not to use a free surface</p>
-</li>
-<li>
 <p><strong>checkpointing</strong> (<em>Bool</em>) – Whether or not to use checkpointing</p>
 </li>
 <li>
@@ -785,7 +701,7 @@ as a source (i.e data residual). Supports three modes:
 <p>Array</p>
 </li>
 </ul>
-<h3 id="interfacej_adjoint_checkpointingmodel-src_coords-wavelet-rec_coords-recin-space_order8-free_surfacefalse-is_residualfalse-n_checkpointsnone-maxmemnone-return_objfalse-isicfalse-wsnone-t_sub1">interface.J_adjoint_checkpointing(model, src_coords, wavelet, rec_coords, recin, space_order=8, free_surface=False, is_residual=False, n_checkpoints=None, maxmem=None, return_obj=False, isic=False, ws=None, t_sub=1)</h3>
+<h3 id="interfacej_adjoint_checkpointingmodel-src_coords-wavelet-rec_coords-recin-space_order8-is_residualfalse-n_checkpointsnone-maxmemnone-return_objfalse-isicfalse-wsnone-t_sub1">interface.J_adjoint_checkpointing(model, src_coords, wavelet, rec_coords, recin, space_order=8, is_residual=False, n_checkpoints=None, maxmem=None, return_obj=False, isic=False, ws=None, t_sub=1)</h3>
 <p>Jacobian (adjoint fo born modeling operator) operator on a shot record
 as a source (i.e data residual). Outputs the gradient with Checkpointing.</p>
 <ul>
@@ -809,9 +725,6 @@ as a source (i.e data residual). Outputs the gradient with Checkpointing.</p>
 </li>
 <li>
 <p><strong>space_order</strong> (<em>Int</em><em> (</em><em>optional</em><em>)</em>) – Spatial discretization order, defaults to 8</p>
-</li>
-<li>
-<p><strong>free_surface</strong> (<em>Bool</em><em> (</em><em>optional</em><em>)</em>) – Whether or not to use a free surface</p>
 </li>
 <li>
 <p><strong>checkpointing</strong> (<em>Bool</em>) – Whether or not to use checkpointing</p>
@@ -842,7 +755,7 @@ as a source (i.e data residual). Outputs the gradient with Checkpointing.</p>
 <p>Array</p>
 </li>
 </ul>
-<h3 id="interfacej_adjoint_freqmodel-src_coords-wavelet-rec_coords-recin-space_order8-free_surfacefalse-freq_list-is_residualfalse-return_objfalse-dft_subnone-isicfalse-wsnone-t_sub1">interface.J_adjoint_freq(model, src_coords, wavelet, rec_coords, recin, space_order=8, free_surface=False, freq_list=[], is_residual=False, return_obj=False, dft_sub=None, isic=False, ws=None, t_sub=1)</h3>
+<h3 id="interfacej_adjoint_freqmodel-src_coords-wavelet-rec_coords-recin-space_order8-freq_list-is_residualfalse-return_objfalse-dft_subnone-isicfalse-wsnone-t_sub1">interface.J_adjoint_freq(model, src_coords, wavelet, rec_coords, recin, space_order=8, freq_list=[], is_residual=False, return_obj=False, dft_sub=None, isic=False, ws=None, t_sub=1)</h3>
 <p>Jacobian (adjoint fo born modeling operator) operator on a shot record
 as a source (i.e data residual). Outputs the gradient with Frequency
 compression (on-the-fly DFT).</p>
@@ -869,9 +782,6 @@ compression (on-the-fly DFT).</p>
 <p><strong>space_order</strong> (<em>Int</em><em> (</em><em>optional</em><em>)</em>) – Spatial discretization order, defaults to 8</p>
 </li>
 <li>
-<p><strong>free_surface</strong> (<em>Bool</em><em> (</em><em>optional</em><em>)</em>) – Whether or not to use a free surface</p>
-</li>
-<li>
 <p><strong>freq_list</strong> (<em>List</em>) – List of frequencies for on-the-fly DFT</p>
 </li>
 <li>
@@ -897,7 +807,7 @@ compression (on-the-fly DFT).</p>
 <p>Array</p>
 </li>
 </ul>
-<h3 id="interfacej_adjoint_standardmodel-src_coords-wavelet-rec_coords-recin-space_order8-free_surfacefalse-is_residualfalse-return_objfalse-isicfalse-wsnone-t_sub1">interface.J_adjoint_standard(model, src_coords, wavelet, rec_coords, recin, space_order=8, free_surface=False, is_residual=False, return_obj=False, isic=False, ws=None, t_sub=1)</h3>
+<h3 id="interfacej_adjoint_standardmodel-src_coords-wavelet-rec_coords-recin-space_order8-is_residualfalse-return_objfalse-isicfalse-wsnone-t_sub1">interface.J_adjoint_standard(model, src_coords, wavelet, rec_coords, recin, space_order=8, is_residual=False, return_obj=False, isic=False, ws=None, t_sub=1)</h3>
 <p>Adjoint Jacobian (adjoint fo born modeling operator) operator on a shot record
 as a source (i.e data residual). Outputs the gradient with standard
 zero lag cross correlation over time.</p>
@@ -924,9 +834,6 @@ zero lag cross correlation over time.</p>
 <p><strong>space_order</strong> (<em>Int</em><em> (</em><em>optional</em><em>)</em>) – Spatial discretization order, defaults to 8</p>
 </li>
 <li>
-<p><strong>free_surface</strong> (<em>Bool</em><em> (</em><em>optional</em><em>)</em>) – Whether or not to use a free surface</p>
-</li>
-<li>
 <p><strong>isic</strong> (<em>Bool</em>) – Whether or not to use ISIC imaging condition</p>
 </li>
 <li>
@@ -946,7 +853,7 @@ zero lag cross correlation over time.</p>
 <p>Array</p>
 </li>
 </ul>
-<h3 id="interfaceadjoint_no_recmodel-rec_coords-data-space_order8-free_surfacefalse">interface.adjoint_no_rec(model, rec_coords, data, space_order=8, free_surface=False)</h3>
+<h3 id="interfaceadjoint_no_recmodel-rec_coords-data-space_order8">interface.adjoint_no_rec(model, rec_coords, data, space_order=8)</h3>
 <p>Adjoint/backward modeling of a shot record (receivers as source)
 without source sampling F^T*Pr^T*d_obs.</p>
 <ul>
@@ -965,9 +872,6 @@ without source sampling F^T*Pr^T*d_obs.</p>
 <li>
 <p><strong>space_order</strong> (<em>Int</em><em> (</em><em>optional</em><em>)</em>) – Spatial discretization order, defaults to 8</p>
 </li>
-<li>
-<p><strong>free_surface</strong> (<em>Bool</em><em> (</em><em>optional</em><em>)</em>) – Whether or not to use a free surface</p>
-</li>
 </ul>
 </li>
 <li>
@@ -979,7 +883,7 @@ without source sampling F^T*Pr^T*d_obs.</p>
 <p>Array</p>
 </li>
 </ul>
-<h3 id="interfaceadjoint_recmodel-src_coords-rec_coords-data-space_order8-free_surfacefalse">interface.adjoint_rec(model, src_coords, rec_coords, data, space_order=8, free_surface=False)</h3>
+<h3 id="interfaceadjoint_recmodel-src_coords-rec_coords-data-space_order8">interface.adjoint_rec(model, src_coords, rec_coords, data, space_order=8)</h3>
 <p>Adjoint/backward modeling of a shot record (receivers as source) Ps*F^T*Pr^T*d.</p>
 <ul>
 <li>
@@ -1000,9 +904,6 @@ without source sampling F^T*Pr^T*d_obs.</p>
 <li>
 <p><strong>space_order</strong> (<em>Int</em><em> (</em><em>optional</em><em>)</em>) – Spatial discretization order, defaults to 8</p>
 </li>
-<li>
-<p><strong>free_surface</strong> (<em>Bool</em><em> (</em><em>optional</em><em>)</em>) – Whether or not to use a free surface</p>
-</li>
 </ul>
 </li>
 <li>
@@ -1014,7 +915,7 @@ without source sampling F^T*Pr^T*d_obs.</p>
 <p>Array</p>
 </li>
 </ul>
-<h3 id="interfaceadjoint_wmodel-rec_coords-data-wavelet-space_order8-free_surfacefalse">interface.adjoint_w(model, rec_coords, data, wavelet, space_order=8, free_surface=False)</h3>
+<h3 id="interfaceadjoint_wmodel-rec_coords-data-wavelet-space_order8">interface.adjoint_w(model, rec_coords, data, wavelet, space_order=8)</h3>
 <p>Adjoint/backward modeling of a shot record (receivers as source) for an
 extended source setup Pw*F^T*Pr^T*d_obs.</p>
 <ul>
@@ -1036,9 +937,6 @@ extended source setup Pw*F^T*Pr^T*d_obs.</p>
 <li>
 <p><strong>space_order</strong> (<em>Int</em><em> (</em><em>optional</em><em>)</em>) – Spatial discretization order, defaults to 8</p>
 </li>
-<li>
-<p><strong>free_surface</strong> (<em>Bool</em><em> (</em><em>optional</em><em>)</em>) – Whether or not to use a free surface</p>
-</li>
 </ul>
 </li>
 <li>
@@ -1050,7 +948,7 @@ extended source setup Pw*F^T*Pr^T*d_obs.</p>
 <p>Array</p>
 </li>
 </ul>
-<h3 id="interfaceadjoint_wf_srcmodel-u-src_coords-space_order8-free_surfacefalse">interface.adjoint_wf_src(model, u, src_coords, space_order=8, free_surface=False)</h3>
+<h3 id="interfaceadjoint_wf_srcmodel-u-src_coords-space_order8">interface.adjoint_wf_src(model, u, src_coords, space_order=8)</h3>
 <p>Adjoint/backward modeling of a full wavefield (full wavefield as adjoint source)
 Ps*F^T*u.</p>
 <ul>
@@ -1069,9 +967,6 @@ Ps*F^T*u.</p>
 <li>
 <p><strong>space_order</strong> (<em>Int</em><em> (</em><em>optional</em><em>)</em>) – Spatial discretization order, defaults to 8</p>
 </li>
-<li>
-<p><strong>free_surface</strong> (<em>Bool</em><em> (</em><em>optional</em><em>)</em>) – Whether or not to use a free surface</p>
-</li>
 </ul>
 </li>
 <li>
@@ -1083,7 +978,7 @@ Ps*F^T*u.</p>
 <p>Array</p>
 </li>
 </ul>
-<h3 id="interfaceadjoint_wf_src_norecmodel-u-space_order8-free_surfacefalse">interface.adjoint_wf_src_norec(model, u, space_order=8, free_surface=False)</h3>
+<h3 id="interfaceadjoint_wf_src_norecmodel-u-space_order8">interface.adjoint_wf_src_norec(model, u, space_order=8)</h3>
 <p>Adjoint/backward modeling of a full wavefield (full wavefield as adjoint source)
 F^T*u.</p>
 <ul>
@@ -1099,9 +994,6 @@ F^T*u.</p>
 <li>
 <p><strong>space_order</strong> (<em>Int</em><em> (</em><em>optional</em><em>)</em>) – Spatial discretization order, defaults to 8</p>
 </li>
-<li>
-<p><strong>free_surface</strong> (<em>Bool</em><em> (</em><em>optional</em><em>)</em>) – Whether or not to use a free surface</p>
-</li>
 </ul>
 </li>
 <li>
@@ -1113,7 +1005,7 @@ F^T*u.</p>
 <p>Array</p>
 </li>
 </ul>
-<h3 id="interfaceborn_recmodel-src_coords-wavelet-rec_coords-space_order8-free_surfacefalse-isicfalse">interface.born_rec(model, src_coords, wavelet, rec_coords, space_order=8, free_surface=False, isic=False)</h3>
+<h3 id="interfaceborn_recmodel-src_coords-wavelet-rec_coords-space_order8-isicfalse">interface.born_rec(model, src_coords, wavelet, rec_coords, space_order=8, isic=False)</h3>
 <p>Linearized (Born) modeling of a point source for a model perturbation
 (square slowness) dm.</p>
 <ul>
@@ -1136,9 +1028,6 @@ F^T*u.</p>
 <p><strong>space_order</strong> (<em>Int</em><em> (</em><em>optional</em><em>)</em>) – Spatial discretization order, defaults to 8</p>
 </li>
 <li>
-<p><strong>free_surface</strong> (<em>Bool</em><em> (</em><em>optional</em><em>)</em>) – Whether or not to use a free surface</p>
-</li>
-<li>
 <p><strong>isic</strong> (<em>Bool</em>) – Whether or not to use ISIC imaging condition</p>
 </li>
 </ul>
@@ -1152,7 +1041,7 @@ F^T*u.</p>
 <p>Array</p>
 </li>
 </ul>
-<h3 id="interfaceborn_rec_wmodel-weight-wavelet-rec_coords-space_order8-free_surfacefalse-isicfalse">interface.born_rec_w(model, weight, wavelet, rec_coords, space_order=8, free_surface=False, isic=False)</h3>
+<h3 id="interfaceborn_rec_wmodel-weight-wavelet-rec_coords-space_order8-isicfalse">interface.born_rec_w(model, weight, wavelet, rec_coords, space_order=8, isic=False)</h3>
 <p>Linearized (Born) modeling of a point source for a model
 perturbation (square slowness) dm with an extended source</p>
 <ul>
@@ -1175,9 +1064,6 @@ perturbation (square slowness) dm with an extended source</p>
 <p><strong>space_order</strong> (<em>Int</em><em> (</em><em>optional</em><em>)</em>) – Spatial discretization order, defaults to 8</p>
 </li>
 <li>
-<p><strong>free_surface</strong> (<em>Bool</em><em> (</em><em>optional</em><em>)</em>) – Whether or not to use a free surface</p>
-</li>
-<li>
 <p><strong>isic</strong> (<em>Bool</em>) – Whether or not to use ISIC imaging condition</p>
 </li>
 </ul>
@@ -1191,7 +1077,7 @@ perturbation (square slowness) dm with an extended source</p>
 <p>Array</p>
 </li>
 </ul>
-<h3 id="interfaceforward_no_recmodel-src_coords-wavelet-space_order8-free_surfacefalse">interface.forward_no_rec(model, src_coords, wavelet, space_order=8, free_surface=False)</h3>
+<h3 id="interfaceforward_no_recmodel-src_coords-wavelet-space_order8">interface.forward_no_rec(model, src_coords, wavelet, space_order=8)</h3>
 <p>Forward modeling of a point source without receiver.</p>
 <ul>
 <li>
@@ -1209,9 +1095,6 @@ perturbation (square slowness) dm with an extended source</p>
 <li>
 <p><strong>space_order</strong> (<em>Int</em><em> (</em><em>optional</em><em>)</em>) – Spatial discretization order, defaults to 8</p>
 </li>
-<li>
-<p><strong>free_surface</strong> (<em>Bool</em><em> (</em><em>optional</em><em>)</em>) – Whether or not to use a free surface</p>
-</li>
 </ul>
 </li>
 <li>
@@ -1223,7 +1106,7 @@ perturbation (square slowness) dm with an extended source</p>
 <p>Array</p>
 </li>
 </ul>
-<h3 id="interfaceforward_recmodel-src_coords-wavelet-rec_coords-space_order8-free_surfacefalse">interface.forward_rec(model, src_coords, wavelet, rec_coords, space_order=8, free_surface=False)</h3>
+<h3 id="interfaceforward_recmodel-src_coords-wavelet-rec_coords-space_order8">interface.forward_rec(model, src_coords, wavelet, rec_coords, space_order=8)</h3>
 <p>Forward modeling of a point source with receivers Pr*F*Ps^T*q.</p>
 <ul>
 <li>
@@ -1244,9 +1127,6 @@ perturbation (square slowness) dm with an extended source</p>
 <li>
 <p><strong>space_order</strong> (<em>Int</em><em> (</em><em>optional</em><em>)</em>) – Spatial discretization order, defaults to 8</p>
 </li>
-<li>
-<p><strong>free_surface</strong> (<em>Bool</em><em> (</em><em>optional</em><em>)</em>) – Whether or not to use a free surface</p>
-</li>
 </ul>
 </li>
 <li>
@@ -1258,7 +1138,7 @@ perturbation (square slowness) dm with an extended source</p>
 <p>Array</p>
 </li>
 </ul>
-<h3 id="interfaceforward_rec_wmodel-weight-wavelet-rec_coords-space_order8-free_surfacefalse">interface.forward_rec_w(model, weight, wavelet, rec_coords, space_order=8, free_surface=False)</h3>
+<h3 id="interfaceforward_rec_wmodel-weight-wavelet-rec_coords-space_order8">interface.forward_rec_w(model, weight, wavelet, rec_coords, space_order=8)</h3>
 <p>Forward modeling of an extended source with receivers  Pr*F*Pw^T*w</p>
 <ul>
 <li>
@@ -1279,9 +1159,6 @@ perturbation (square slowness) dm with an extended source</p>
 <li>
 <p><strong>space_order</strong> (<em>Int</em><em> (</em><em>optional</em><em>)</em>) – Spatial discretization order, defaults to 8</p>
 </li>
-<li>
-<p><strong>free_surface</strong> (<em>Bool</em><em> (</em><em>optional</em><em>)</em>) – Whether or not to use a free surface</p>
-</li>
 </ul>
 </li>
 <li>
@@ -1293,7 +1170,7 @@ perturbation (square slowness) dm with an extended source</p>
 <p>Array</p>
 </li>
 </ul>
-<h3 id="interfaceforward_rec_wfmodel-src_coords-wavelet-rec_coords-t_sub1-space_order8-free_surfacefalse">interface.forward_rec_wf(model, src_coords, wavelet, rec_coords, t_sub=1, space_order=8, free_surface=False)</h3>
+<h3 id="interfaceforward_rec_wfmodel-src_coords-wavelet-rec_coords-t_sub1-space_order8">interface.forward_rec_wf(model, src_coords, wavelet, rec_coords, t_sub=1, space_order=8)</h3>
 <p>Forward modeling of a point source Pr*F*Ps^T*q and return wavefield.</p>
 <ul>
 <li>
@@ -1314,9 +1191,6 @@ perturbation (square slowness) dm with an extended source</p>
 <li>
 <p><strong>space_order</strong> (<em>Int</em><em> (</em><em>optional</em><em>)</em>) – Spatial discretization order, defaults to 8</p>
 </li>
-<li>
-<p><strong>free_surface</strong> (<em>Bool</em><em> (</em><em>optional</em><em>)</em>) – Whether or not to use a free surface</p>
-</li>
 </ul>
 </li>
 <li>
@@ -1331,7 +1205,7 @@ perturbation (square slowness) dm with an extended source</p>
 </ul>
 </li>
 </ul>
-<h3 id="interfaceforward_wf_srcmodel-u-rec_coords-space_order8-free_surfacefalse">interface.forward_wf_src(model, u, rec_coords, space_order=8, free_surface=False)</h3>
+<h3 id="interfaceforward_wf_srcmodel-u-rec_coords-space_order8">interface.forward_wf_src(model, u, rec_coords, space_order=8)</h3>
 <p>Forward modeling of a full wavefield source Pr*F*u.</p>
 <ul>
 <li>
@@ -1349,9 +1223,6 @@ perturbation (square slowness) dm with an extended source</p>
 <li>
 <p><strong>space_order</strong> (<em>Int</em><em> (</em><em>optional</em><em>)</em>) – Spatial discretization order, defaults to 8</p>
 </li>
-<li>
-<p><strong>free_surface</strong> (<em>Bool</em><em> (</em><em>optional</em><em>)</em>) – Whether or not to use a free surface</p>
-</li>
 </ul>
 </li>
 <li>
@@ -1363,7 +1234,7 @@ perturbation (square slowness) dm with an extended source</p>
 <p>Array</p>
 </li>
 </ul>
-<h3 id="interfaceforward_wf_src_norecmodel-u-space_order8-free_surfacefalse">interface.forward_wf_src_norec(model, u, space_order=8, free_surface=False)</h3>
+<h3 id="interfaceforward_wf_src_norecmodel-u-space_order8">interface.forward_wf_src_norec(model, u, space_order=8)</h3>
 <p>Forward modeling of a full wavefield source without receiver F*u.</p>
 <ul>
 <li>
@@ -1378,9 +1249,6 @@ perturbation (square slowness) dm with an extended source</p>
 <li>
 <p><strong>space_order</strong> (<em>Int</em><em> (</em><em>optional</em><em>)</em>) – Spatial discretization order, defaults to 8</p>
 </li>
-<li>
-<p><strong>free_surface</strong> (<em>Bool</em><em> (</em><em>optional</em><em>)</em>) – Whether or not to use a free surface</p>
-</li>
 </ul>
 </li>
 <li>
@@ -1392,7 +1260,7 @@ perturbation (square slowness) dm with an extended source</p>
 <p>Array</p>
 </li>
 </ul>
-<h3 id="interfacegrad_fwimodel-recin-rec_coords-u-space_order8-free_surfacefalse">interface.grad_fwi(model, recin, rec_coords, u, space_order=8, free_surface=False)</h3>
+<h3 id="interfacegrad_fwimodel-recin-rec_coords-u-space_order8">interface.grad_fwi(model, recin, rec_coords, u, space_order=8)</h3>
 <p>FWI gradient, i.e adjoint Jacobian on a data residual.</p>
 <ul>
 <li>
@@ -1412,9 +1280,6 @@ perturbation (square slowness) dm with an extended source</p>
 </li>
 <li>
 <p><strong>space_order</strong> (<em>Int</em><em> (</em><em>optional</em><em>)</em>) – Spatial discretization order, defaults to 8</p>
-</li>
-<li>
-<p><strong>free_surface</strong> (<em>Bool</em><em> (</em><em>optional</em><em>)</em>) – Whether or not to use a free surface</p>
 </li>
 </ul>
 </li>
@@ -1449,6 +1314,8 @@ perturbation (square slowness) dm with an extended source</p>
 </ul>
 </li>
 </ul>
+<h3 id="kernelsfallback_solveeq-target-kwargs">kernels.fallback_solve(eq, target, **kwargs)</h3>
+<p>To be remved at next Devito release</p>
 <h3 id="kernelstti_kernelmodel-u1-u2-fwtrue-qnone">kernels.tti_kernel(model, u1, u2, fw=True, q=None)</h3>
 <p>TTI wave equation (one from my paper) time stepper</p>
 <ul>
@@ -1473,7 +1340,7 @@ perturbation (square slowness) dm with an extended source</p>
 </ul>
 </li>
 </ul>
-<h3 id="kernelswave_kernelmodel-u-fwtrue-qnone-fsfalse">kernels.wave_kernel(model, u, fw=True, q=None, fs=False)</h3>
+<h3 id="kernelswave_kernelmodel-u-fwtrue-qnone">kernels.wave_kernel(model, u, fw=True, q=None)</h3>
 <p>Pde kernel corresponding the the model for the input wavefield</p>
 <ul>
 <li>
@@ -1491,14 +1358,11 @@ perturbation (square slowness) dm with an extended source</p>
 <li>
 <p><strong>q</strong> (<em>TimeFunction</em><em> or </em><em>Expr</em>) – Full time-space source</p>
 </li>
-<li>
-<p><strong>fs</strong> (<em>Bool</em>) – Freesurface flag</p>
-</li>
 </ul>
 </li>
 </ul>
 <h2 id="models-module">models module</h2>
-<h3 id="class-modelsmodelorigin-spacing-shape-vp-space_order2-nbl40-dtype-epsilonnone-deltanone-thetanone-phinone-rho1-dmnone-subdomains-fsfalse-kwargs">class models.Model(origin, spacing, shape, vp, space_order=2, nbl=40, dtype=<class 'numpy.float32'>, epsilon=None, delta=None, theta=None, phi=None, rho=1, dm=None, subdomains=(), fs=False, **kwargs)</h3>
+<h3 id="class-modelsmodelorigin-spacing-shape-vp-space_order2-nbl40-dtype-epsilonnone-deltanone-thetanone-phinone-rho1-dmnone-fsfalse-kwargs">class models.Model(origin, spacing, shape, vp, space_order=2, nbl=40, dtype=<class 'numpy.float32'>, epsilon=None, delta=None, theta=None, phi=None, rho=1, dm=None, fs=False, **kwargs)</h3>
 <p>The physical model used in seismic inversion processes.</p>
 <ul>
 <li>
@@ -1561,23 +1425,22 @@ m = 1/vp^2</p>
 <h4 id="property-vp">property vp()</h4>
 <p>Function holding the model velocity in km/s.</p>
 <h2 id="propagators-module">propagators module</h2>
-<h3 id="propagatorsadjointmodel-y-src_coords-rcv_coords-space_order8-q0-savefalse-free_surfacefalse-wsnone">propagators.adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0, save=False, free_surface=False, ws=None)</h3>
+<h3 id="propagatorsadjointmodel-y-src_coords-rcv_coords-space_order8-q0-savefalse-wsnone">propagators.adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0, save=False, ws=None)</h3>
 <p>Low level propagator, to be used through interface.py
 Compute adjoint wavefield v = adjoint(F(m))*y
 and related quantities (||v||_w, v(xsrc))</p>
-<h3 id="propagatorsbornmodel-src_coords-rcv_coords-wavelet-space_order8-savefalse-qnone-free_surfacefalse-isicfalse-wsnone">propagators.born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False, q=None, free_surface=False, isic=False, ws=None)</h3>
+<h3 id="propagatorsbornmodel-src_coords-rcv_coords-wavelet-space_order8-savefalse-qnone-isicfalse-wsnone">propagators.born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False, q=None, isic=False, ws=None)</h3>
 <p>Low level propagator, to be used through interface.py
 Compute adjoint wavefield v = adjoint(F(m))*y
 and related quantities (||v||_w, v(xsrc))</p>
-<h3 id="propagatorsforwardmodel-src_coords-rcv_coords-wavelet-space_order8-savefalse-qnone-free_surfacefalse-return_opfalse-freq_listnone-dft_subnone-wsnone-t_sub1">propagators.forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False, q=None, free_surface=False, return_op=False, freq_list=None, dft_sub=None, ws=None, t_sub=1)</h3>
+<h3 id="propagatorsforwardmodel-src_coords-rcv_coords-wavelet-space_order8-savefalse-qnone-return_opfalse-freq_listnone-dft_subnone-wsnone-t_sub1">propagators.forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False, q=None, return_op=False, freq_list=None, dft_sub=None, ws=None, t_sub=1)</h3>
 <p>Low level propagator, to be used through interface.py
 Compute forward wavefield u = A(m)^{-1}*f and related quantities (u(xrcv))</p>
-<h3 id="propagatorsgradientmodel-residual-rcv_coords-u-return_opfalse-space_order8-t_sub1-wnone-free_surfacefalse-freqnone-dft_subnone-isictrue">propagators.gradient(model, residual, rcv_coords, u, return_op=False, space_order=8, t_sub=1, w=None, free_surface=False, freq=None, dft_sub=None, isic=True)</h3>
+<h3 id="propagatorsgradientmodel-residual-rcv_coords-u-return_opfalse-space_order8-t_sub1-wnone-freqnone-dft_subnone-isictrue">propagators.gradient(model, residual, rcv_coords, u, return_op=False, space_order=8, t_sub=1, w=None, freq=None, dft_sub=None, isic=True)</h3>
 <p>Low level propagator, to be used through interface.py
 Compute adjoint wavefield v = adjoint(F(m))*y
 and related quantities (||v||_w, v(xsrc))</p>
 <h3 id="propagatorsnamemodel">propagators.name(model)</h3>
-<h3 id="propagatorsop_kwargsmodel-fsfalse">propagators.op_kwargs(model, fs=False)</h3>
 <h2 id="sensitivity-module">sensitivity module</h2>
 <h3 id="sensitivitybasic_srcmodel-u-kwargs">sensitivity.basic_src(model, u, **kwargs)</h3>
 <p>Basic source for linearized modeling</p>
@@ -1863,6 +1726,9 @@ Stop value is reset to correct for remainder.</p>
 </ul>
 <h4 id="time_values">time_values()</h4>
 <h2 id="wave_utils-module">wave_utils module</h2>
+<h3 id="class-wave_utilsintargs-options">class wave_utils.INT(*args, **options)</h3>
+<h4 id="default_assumptions">default_assumptions( = {})</h4>
+<h4 id="name-int">name( = 'INT')</h4>
 <h3 id="wave_utilsextended_src_weightsmodel-wavelet-v">wave_utils.extended_src_weights(model, wavelet, v)</h3>
 <p>Adjoint of extended source. This function returns the expression to obtain
 the spatially varrying weights from the wavefield and time-dependent wavelet</p>
@@ -1906,7 +1772,7 @@ This function returns the extended source w(x)*q(t)</p>
 </ul>
 </li>
 </ul>
-<h3 id="wave_utilsfreesurfacefield-npml-forwardtrue">wave_utils.freesurface(field, npml, forward=True)</h3>
+<h3 id="wave_utilsfreesurfacemodel-eq">wave_utils.freesurface(model, eq)</h3>
 <p>Generate the stencil that mirrors the field as a free surface modeling for
 the acoustic wave equation</p>
 <ul>
@@ -1914,13 +1780,10 @@ the acoustic wave equation</p>
 <p><strong>Parameters</strong></p>
 <ul>
 <li>
-<p><strong>field</strong> (<em>TimeFunction</em><em> or </em><em>Tuple</em>) – Field for which to add a free surface</p>
+<p><strong>model</strong> (<em>Model</em>) – Physical model</p>
 </li>
 <li>
-<p><strong>npml</strong> (<em>int</em>) – Number of ABC points</p>
-</li>
-<li>
-<p><strong>forward</strong> (<em>Bool</em>) – Whether it is forward or backward propagation (in time)</p>
+<p><strong>eq</strong> (<em>Eq</em><em> or </em><em>List of Eq</em>) – Equation to apply mirror to</p>
 </li>
 </ul>
 </li>
