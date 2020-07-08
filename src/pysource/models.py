@@ -263,7 +263,8 @@ class Model(GenericModel):
         if np.max(rho)/np.min(rho) > 10:
             self.rho = self._gen_phys_param(rho, 'rho', so)
             self.irho = 1 / self.rho
-        self.irho = self._gen_phys_param(rho, 'irho', so, lambda x: 1/x)
+        else:
+            self.irho = self._gen_phys_param(rho, 'irho', so, lambda x: 1/x)
 
     @property
     def space_order(self):
