@@ -111,7 +111,7 @@ def extented_src(model, weight, wavelet, q=0):
         Previously existing source to be added to (source will be q +  w(x)*q(t))
     """
     if weight is None:
-        return 0
+        return q
     time = model.grid.time_dim
     nt = wavelet.shape[0]
     wavelett = Function(name='wf_src', dimensions=(time,), shape=(nt,))

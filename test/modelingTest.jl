@@ -12,9 +12,9 @@ parsed_args = parse_commandline()
 
 # Set parallel if specified
 nw = parsed_args["parallel"]
-if nw > 1 && nworkers() < nw
-    addprocs(nw-nworkers() + 1; exeflags=`--check-bounds=yes`)
-end
+#if nw > 1 && nworkers() < nw
+#    addprocs(nw-nworkers() + 1; exeflags=`--check-bounds=yes`)
+#end
 
 @everywhere using JOLI
 @everywhere using JUDI.TimeModeling, LinearAlgebra, Test, Distributed, Printf
@@ -27,6 +27,7 @@ dt = srcGeometry.dt[1]
 # Modeling operators
 println("Generic modeling and misc test with ", parsed_args["nlayer"], " layers and tti: ", parsed_args["tti"])
 
+ftol = 1f-5
 ######################## WITH DENSITY ############################################
 @everywhere function to_data(judiVec)
     try
@@ -65,11 +66,11 @@ for limit_m=[true, false]
 		# Nonlinear modeling
 		d1 = Pr*F*adjoint(Ps)*q	# equivalent to d = Ffull*q
 		dfull = Ffull*q
-		@test isapprox(to_data(d1), dfull)
+		@test isapprox(to_data(d1), dfull, rtol=ftol)
 
 		qad = Ps*adjoint(F)*adjoint(Pr)*d1
 		qfull = adjoint(Ffull)*d1
-		@test isapprox(qad, qfull)
+		@test isapprox(qad, qfull, rtol=ftol)
 
 		# fwi objective function
 		f, g = fwi_objective(model0, q, d1; options=opt)
@@ -86,9 +87,9 @@ for limit_m=[true, false]
 		    Prsub = subsample(Pr, inds)
 		    ds1 = Ffullsub*qsub 
 		    ds2 = Prsub * Fsub * adjoint(Pssub) *qsub 
-		    @test isapprox(ds1, to_data(ds2))
-		    @test isapprox(ds1, dsub)
-		    @test isapprox(to_data(ds2), dsub)
+		    @test isapprox(ds1, to_data(ds2), rtol=ftol)
+		    @test isapprox(ds1, dsub, rtol=ftol)
+		    @test isapprox(to_data(ds2), dsub, rtol=ftol)
 		end
 
 		# vcat, norms, dot
@@ -113,9 +114,8 @@ v = adjoint(F)*(adjoint(Pr)*dobs)
 u2 = F*u
 v2 = adjoint(F)*v
 
-a = dot(u2.data, v.data)
-b = dot(v2.data, u.data)
+a = dot(u2, v)
+b = dot(v2, u)
 @printf(" <F x, y> : %2.5e, <x, F' y> : %2.5e, relative error : %2.5e \n", a, b, a/b - 1)
-# Fix why is u2 zero
-#@test isapprox(a, b, rtol=1f-4)
+@test isapprox(a, b, rtol=1f-4)
 
