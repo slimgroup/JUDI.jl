@@ -119,8 +119,8 @@ end
 # *(num,judiJacobianExQ)
 function *(a::Number,A::judiJacobianExQ{ADDT,ARDT}) where {ADDT,ARDT}
     return judiJacobianExQ{ADDT,ARDT}("(N*"*A.name*")",A.m,A.n,A.info,A.model,A.recGeometry,A.wavelet,A.weights,A.options,
-                                v1 -> jo_convert(ARDT,a*A.fop(v1),false),
-                                v2 -> jo_convert(ADDT,a*A.fop_T(v2),false)
+                                v1 -> jo_convert(ARDT,a, false)*A.fop(v1),
+                                v2 -> jo_convert(ADDT,a, false)*A.fop_T(v2)
                                 )
 end
 

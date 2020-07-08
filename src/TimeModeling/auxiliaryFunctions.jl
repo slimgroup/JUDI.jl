@@ -3,49 +3,59 @@
 # Date: September 2016
 #
 
-export ricker_wavelet, get_computational_nt, smooth10, calculate_dt, setup_grid, setup_3D_grid
+export ricker_wavelet, get_computational_nt, calculate_dt, setup_grid, setup_3D_grid
 export convertToCell, limit_model_to_receiver_area, extend_gradient, remove_out_of_bounds_receivers
 export time_resample, remove_padding, subsample
-export generate_distribution, select_frequencies, process_physical_parameter
-export load_pymodel, load_devito_jit, load_numpy, devito_model, update_m, update_dm
-export misfit, adjoint_src
+export generate_distribution, select_frequencies
+export load_pymodel, load_devito_jit, load_numpy, devito_model
+export update_dm, pad_sizes, pad_array
 
-
-function update_dm(model::PyObject, dm, dims)
-    model.dm =  process_physical_parameter(dm, dims)
+function update_dm(model::PyObject, dm, options)
+    model.dm = pad_array(dm, pad_sizes(model, options))
 end
 
-function update_m(model::PyObject, m, dims)
-    model.vp = process_physical_parameter(sqrt.(1f0./m), dims)
-end
-
-@cache function devito_model(model::Modelall, options)
+function devito_model(model::Modelall, options)
     return devito_model_py(model, options)
+end
+
+function pad_sizes(model, options)
+    try
+        return model.padsizes
+    catch e
+        padsizes = [(model.nb, model.nb) for i=1:length(model.n)]
+        if options.free_surface
+            padsizes[end] = (0, model.nb)
+        end
+        return padsizes
+    end
 end
 
 function devito_model_py(model::Model, options)
     pm = load_pymodel()
-    length(model.n) == 3 ? dims = [3,2,1] : dims = [2,1]   # model dimensions for Python are (z,y,x) and (z,x)
     # Set up Python model structure
+    vp = pad_array(sqrt.(1f0./model.m), pad_sizes(model, options))
+    rho = pad_array(model.rho, pad_sizes(model, options))
     modelPy = pm."Model"(origin=model.o, spacing=model.d, shape=model.n,
-						 vp=process_physical_parameter(sqrt.(1f0./model.m), dims),
-						 nbl=model.nb, rho=process_physical_parameter(model.rho, dims),
-						 space_order=options.space_order, dt=options.dt_comp)
+						 vp=vp, nbl=model.nb, rho=rho,
+                         space_order=options.space_order, dt=options.dt_comp,
+                         fs=options.free_surface)
     return modelPy
 end
 
 function devito_model_py(model::Model_TTI, options)
     pm = load_pymodel()
-    length(model.n) == 3 ? dims = [3,2,1] : dims = [2,1]   # model dimensions for Python are (z,y,x) and (z,x)
     # Set up Python model structure (force origin to be zero due to current devito bug)
+    vp = pad_array(sqrt.(1f0./model.m), pad_sizes(model, options))
+    rho = pad_array(model.rho, pad_sizes(model, options))
+    epsilon = pad_array(model.epsilon, pad_sizes(model, options))
+    delta = pad_array(model.delta, pad_sizes(model, options))
+    theta = pad_array(model.theta, pad_sizes(model, options))
+    phi = pad_array(model.phi, pad_sizes(model, options))
+
     modelPy = pm."Model"(origin=model.o, spacing=model.d, shape=model.n,
-						 vp=process_physical_parameter(sqrt.(1f0./model.m), dims),
-						 rho=process_physical_parameter(model.rho, dims),
-						 epsilon=process_physical_parameter(model.epsilon, dims),
-						 delta=process_physical_parameter(model.delta, dims),
-						 theta=process_physical_parameter(model.theta, dims),
-						 phi=process_physical_parameter(model.phi, dims), nbl=model.nb,
-						 space_order=options.space_order, dt=options.dt_comp)
+						 vp=vp, rho=rho, epsilon=epsilon, delta=delta, theta=theta, phi=phi,
+                         nbl=model.nb, space_order=options.space_order, dt=options.dt_comp,
+                         fs=options.free_surface)
     return modelPy
 end
 
@@ -112,7 +122,6 @@ end
 function limit_model_to_receiver_area(srcGeometry::Geometry,recGeometry::Geometry,model::Model_TTI,buffer;pert=[])
     # Restrict full velocity model to area that contains either sources and receivers
     ndim = length(model.n)
-    # println("N orig: ", model.n)
 
     # scan for minimum and maximum x and y source/receiver coordinates
     min_x = minimum([vec(recGeometry.xloc[1]); vec(srcGeometry.xloc[1])])
@@ -259,10 +268,11 @@ Create seismic Ricker wavelet of length `tmax` (in milliseconds) with sampling i
 and central frequency `f0` (in kHz).
 
 """
-function ricker_wavelet(tmax, dt, f0)
-    t0 = 0.
-    nt = Int(trunc((tmax - t0)/dt + 1))
-    t = range(t0,stop=tmax,length=nt)
+function ricker_wavelet(tmax, dt, f0; t0=nothing)
+    R = typeof(dt)
+    isnothing(t0) ? t0 = R(0) : tmax = R(tmax - t0)
+    nt = Int(trunc(tmax/dt + 1))
+    t = range(t0, stop=tmax, length=nt)
     r = (pi * f0 * (t .- 1 / f0))
     q = zeros(Float32,nt,1)
     q[:,1] = (1f0 .- 2f0 .* r.^2f0) .* exp.(-r.^2f0)
@@ -279,7 +289,7 @@ function load_numpy()
     return pyimport("numpy")
 end
 
-function load_devito_jit(model::Modelall)
+function load_devito_jit()
     pushfirst!(PyVector(pyimport("sys")."path"), joinpath(JUDIPATH, "pysource"))
     return pyimport("interface")
 end
@@ -417,46 +427,32 @@ function setup_3D_grid(xrec,yrec,zrec)
     return xloc, yloc, zloc
 end
 
-function smooth10(velocity,shape)
-    # 10 point smoothing function
-    out = ones(Float32,shape)
-    nz = shape[end]
-    if length(shape)==3
-        out[:,:,:] = velocity[:,:,:]
-        for a=5:nz-6
-            out[:,:,a] = sum(velocity[:,:,a-4:a+5], dims=3) / 10
-        end
-    else
-        out[:,:] = velocity[:,:]
-        for a=5:nz-6
-            out[:,a] = sum(velocity[:,a-4:a+5], dims=2) / 10
-        end
+pad_array(m::Number, nb::Array{Tuple{Int64,Int64},1}) = m
+
+function pad_array(m::Array{Float32}, nb::Array{Tuple{Int64,Int64},1}; mode::Symbol=:border)
+    n = size(m)
+    new_size = Tuple([n[i] + sum(nb[i]) for i=1:length(nb)])
+    Ei = []
+    for i=length(nb):-1:1
+        left, right = nb[i]
+        push!(Ei, joExtend(n[i], mode;pad_upper=right, pad_lower=left, RDT=Float32, DDT=Float32))
     end
-    return out
+    padded = joKron(Ei...) * vec(m)
+    return reshape(padded, new_size)
 end
 
-function remove_padding(gradient::Array, nb::Integer; true_adjoint::Bool=false)
-    if ndims(gradient) == 2
-        if true_adjoint
-            gradient[nb+1,:] = sum(gradient[1:nb,:], dims=1)
-            gradient[end-nb,:] = sum(gradient[end-nb+1:end,:], dims=1)
-            gradient[:,nb+1] = sum(gradient[:,1:nb], dims=2)
-            gradient[:,end-nb] = sum(gradient[:,end-nb+1:end], dims=2)
-        end
-        return gradient[nb+1:end-nb,nb+1:end-nb]
-    elseif ndims(gradient)==3
-        if true_adjoint
-            gradient[nb+1,:,:] = sum(gradient[1:nb,:,:], dims=1)
-            gradient[end-nb,:,:] = sum(gradient[end-nb+1:end,:,:], dims=1)
-            gradient[:,nb+1,:] = sum(gradient[:,1:nb,:], dims=2)
-            gradient[:,end-nb,:] = sum(gradient[:,end-nb+1:end,:], dims=2)
-            gradient[:,:,nb+1] = sum(gradient[:,:,1:nb], dims=3)
-            gradient[:,:,end-nb] = sum(gradient[:,:,end-nb+1:end], dims=3)
-        end
-        return gradient[nb+1:end-nb,nb+1:end-nb,nb+1:end-nb]
-    else
-        error("Gradient must have 2 or 3 dimensions")
+function remove_padding(gradient::Array{Float32}, nb::Array{Tuple{Int64,Int64},1}; true_adjoint::Bool=false)
+    # Pad is applied x then y then z, so sum must be done in reverse order x then y then x
+    true_adjoint ? mode = :border : mode = :zeros
+    n = size(gradient)
+    new_size = Tuple([n[i] - sum(nb[i]) for i=1:length(nb)])
+    Ei = []
+    for i=length(nb):-1:1
+        left, right = nb[i]
+        push!(Ei, joExtend(new_size[i], mode;pad_upper=right, pad_lower=left, RDT=Float32, DDT=Float32))
     end
+    gradient = reshape(joKron(Ei...)' * vec(gradient), new_size)
+    return collect(Float32, gradient)
 end
 
 # Vectorization of single variable (not defined in Julia)
@@ -545,76 +541,6 @@ function select_frequencies(q_dist; fmin=0f0, fmax=Inf, nf=1)
 		end
 	end
 	return freq
-end
-
-function process_physical_parameter(param, dims)
-    if length(param) == 1
-        return param
-    else
-        return PyReverseDims(permutedims(param, dims))
-    end
-end
-
-
-function resample_model(array, inh, modelfull)
-    # size in
-    shape = size(array)
-    ndim = length(shape)
-    if ndim > 2
-        # Axes
-        x1 = inh[1] * linspace(0, shape[1] - 1)
-        xnew = modelfull.d[1] * linspace(0, modelfull.n[1] - 1)
-        y1 = inh[2] * linspace(0, shape[2] - 1)
-        ynew = modelfull.d[2] * linspace(0, modelfull.n[2] - 1)
-        z1 = inh[3] * linspace(0, shape[3]-1)
-        znew = modelfull.d[3] * linspace(0, modelfull.n[3] - 1)
-        interpolator = interp.RegularGridInterpolator((x1, y1, z1), array)
-        gridnew = np.ix_(xnew, ynew, znew)
-    else
-        # Axes
-        x1 = inh[1] * linspace(0, shape[1] - 1)
-        xnew = modelfull.d[1] * linspace(0, modelfull.n[1] - 1)
-        z1 = inh[2] * linspace(0, shape[2]-1)
-        znew = modelfull.d[2] * linspace(0, modelfull.n[2] - 1)
-        interpolator = interp.RegularGridInterpolator((x1, z1), array)
-        gridnew = np.ix_(xnew, znew)
-    end
-    resampled = pycall(interpolator,  Array{Float32, ndim}, gridnew)
-    return resampled
-end
-
-
-function misfit(d1::Array{Float32, 2}, d2::Array{Float32, 2}, normalized)
-	obj = 0.0f0
-    if normalized == "shot"
-            obj = norm(vec(d1)) - dot(vec(d1),vec(d2))/norm(vec(d2))
-    elseif normalized == "trace"
-		for i=1:size(d2, 2)
-			norm(d2[:, i])>0 ? n2 = norm(d2[:, i]) : n2 = 1
-       		obj += norm(d1[:, i]) - dot(d1[:, i], d2[:, i])/n2
-		end
-    else
-        obj = .5f0*norm(vec(d1) - vec(d2),2)^2.f0
-    end
-
-	return obj
-end
-
-
-function adjoint_src(d1::Array{Float32, 2}, d2::Array{Float32, 2}, normalized)
-	adj_src = similar(d1)
-    if normalized == "trace"
-		for i =1:size(d1,2)
-			norm(d1[:, i])>0 ? n1 = norm(d1[:, i]) : n1 = 1
-			norm(d2[:, i])>0 ? n2 = norm(d2[:, i]) : n2 = 1
-			adj_src[:, i] = n2*(d1[:, i]/n1 - d2[:, i]/n2)
-		end
-	elseif normalized == "shot"
-        adj_src = d1/norm(vec(d1)) - d2/norm(vec(d2))
-    else
-        adj_src = d1 - d2
-    end
-	return adj_src
 end
 
 process_input_data(input::judiVector, geometry::Geometry, info::Info) = input.data

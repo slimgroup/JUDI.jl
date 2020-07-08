@@ -2,11 +2,11 @@
 # Author: Philipp Witte, pwitte@eos.ubc.ca
 # Date: January, 2017
 #
-
+#__precompile__()
 module TimeModeling
 
 using JUDI, LinearAlgebra, Base.Broadcast, FFTW, Pkg, Printf, Distributed
-using PyCall, JOLI, SegyIO, Caching, DSP, Dierckx
+using PyCall, JOLI, SegyIO, DSP, Dierckx
 
 import Base.*, Base./, Base.+, Base.-, Base.copy!, Base.sum, Base.ndims, Base.reshape
 import Base.Broadcast.broadcasted, Base.BroadcastStyle, Base.Broadcast.DefaultArrayStyle

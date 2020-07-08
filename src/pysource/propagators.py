@@ -12,17 +12,9 @@ def name(model):
     return "tti" if model.is_tti else ""
 
 
-def op_kwargs(model, fs=False):
-    kw = {}
-    if fs:
-        z = model.grid.dimensions[-1].name
-        kw.update({'%s_m' % z: model.nbl})
-    return kw
-
-
 # Forward propagation
 def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
-            q=None, free_surface=False, return_op=False, freq_list=None, dft_sub=None,
+            q=None, return_op=False, freq_list=None, dft_sub=None,
             ws=None, t_sub=1):
     """
     Low level propagator, to be used through `interface.py`
@@ -42,7 +34,7 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     q = extented_src(model, ws, wavelet, q=q)
 
     # Set up PDE expression and rearrange
-    pde, fs = wave_kernel(model, u, q=q, fs=free_surface)
+    pde, tmp = wave_kernel(model, u, q=q)
 
     # Setup source and receiver
     geom_expr, _, rcv = src_rec(model, u, src_coords=src_coords, nt=nt,
@@ -53,20 +45,20 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
 
     # Create operator and run
     subs = model.spacing_map
-    op = Operator(pde + geom_expr + dft + eq_save + fs,
+    op = Operator(tmp + pde + geom_expr + dft + eq_save,
                   subs=subs, name="forward"+name(model))
 
     if return_op:
         return op, u, rcv
 
-    op(**op_kwargs(model, fs=free_surface))
+    op()
 
     # Output
     return getattr(rcv, 'data', None), dft_modes or (u_save if t_sub > 1 else u)
 
 
 def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0,
-            save=False, free_surface=False, ws=None):
+            save=False, ws=None):
     """
     Low level propagator, to be used through `interface.py`
     Compute adjoint wavefield v = adjoint(F(m))*y
@@ -79,7 +71,7 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0,
     v = wavefield(model, space_order, save=save, nt=nt, fw=False)
 
     # Set up PDE expression and rearrange
-    pde, fs = wave_kernel(model, v, q=q, fw=False, fs=free_surface)
+    pde, tmp = wave_kernel(model, v, q=q, fw=False)
 
     # Setup source and receiver
     geom_expr, _, rcv = src_rec(model, v, src_coords=rcv_coords, nt=nt,
@@ -90,9 +82,10 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0,
 
     # Create operator and run
     subs = model.spacing_map
-    op = Operator(pde + geom_expr + ws_expr + fs,
+    op = Operator(tmp + pde + ws_expr + geom_expr,
                   subs=subs, name="adjoint"+name(model))
-    op(**op_kwargs(model, fs=free_surface))
+
+    op()
 
     # Output
     if wsrc:
@@ -101,7 +94,7 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0,
 
 
 def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8, t_sub=1,
-             w=None, free_surface=False, freq=None, dft_sub=None, isic=True):
+             w=None, freq=None, dft_sub=None, isic=True):
     """
     Low level propagator, to be used through `interface.py`
     Compute adjoint wavefield v = adjoint(F(m))*y
@@ -111,7 +104,7 @@ def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8, t_s
     v = wavefield(model, space_order, fw=False)
 
     # Set up PDE expression and rearrange
-    pde, fs = wave_kernel(model, v, fw=False, fs=free_surface)
+    pde, tmp = wave_kernel(model, v, fw=False)
 
     # Setup source and receiver
     geom_expr, _, _ = src_rec(model, v, src_coords=rcv_coords,
@@ -123,19 +116,19 @@ def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8, t_s
 
     # Create operator and run
     subs = model.spacing_map
-    op = Operator(pde + geom_expr + g_expr + fs,
+    op = Operator(tmp + pde + geom_expr + g_expr,
                   subs=subs, name="gradient"+name(model))
 
     if return_op:
         return op, gradm, v
-    op(**op_kwargs(model, fs=free_surface))
+    op()
 
     # Output
     return gradm.data
 
 
 def born(model, src_coords, rcv_coords, wavelet, space_order=8,
-         save=False, q=None, free_surface=False, isic=False, ws=None):
+         save=False, q=None, isic=False, ws=None):
     """
     Low level propagator, to be used through `interface.py`
     Compute adjoint wavefield v = adjoint(F(m))*y
@@ -150,8 +143,8 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8,
     q = extented_src(model, ws, wavelet, q=q)
 
     # Set up PDE expression and rearrange
-    pde, fsu = wave_kernel(model, u, fs=free_surface, q=q)
-    pdel, fsul = wave_kernel(model, ul, q=lin_src(model, u, isic=isic), fs=free_surface)
+    pde, tmpu = wave_kernel(model, u, q=q)
+    pdel, tmpul = wave_kernel(model, ul, q=lin_src(model, u, isic=isic))
 
     # Setup source and receiver
     geom_expr, _, _ = src_rec(model, u, src_coords=src_coords, wavelet=wavelet)
@@ -159,8 +152,9 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8,
 
     # Create operator and run
     subs = model.spacing_map
-    op = Operator(pde + geom_expr + pdel + geom_exprl + fsu + fsul,
+    op = Operator(tmpu + tmpul + pde + geom_expr + pdel + geom_exprl,
                   subs=subs, name="born"+name(model))
-    op(**op_kwargs(model, fs=free_surface))
+
+    op()
     # Output
     return rcvl.data, u

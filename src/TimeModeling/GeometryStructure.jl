@@ -138,7 +138,7 @@ function Geometry(xloc::Array{Any,1},yloc::Array{Any,1},zloc::Array{Any,1};dt=[]
 end
 
 # Constructor if coordinates are not passed as a cell arrays
-function Geometry(xloc,yloc,zloc;dt=[],t=[],nsrc::Integer=1)
+function Geometry(xloc, yloc, zloc; dt=[], t=[], nsrc::Integer=1)
     xlocCell = Array{Any}(undef, nsrc)
     ylocCell = Array{Any}(undef, nsrc)
     zlocCell = Array{Any}(undef, nsrc)

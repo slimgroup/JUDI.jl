@@ -3,60 +3,31 @@
 # Author: Philipp Witte, pwitte@eos.ubc.ca
 # Date: January 2017
 #
+# Author: Mathias Louboutin, mlouboutin3@gatech.edu
+# Update Date: July 2020
 
-using JUDI.TimeModeling, SegyIO, LinearAlgebra, Images, Test
+using JUDI.TimeModeling, SegyIO, LinearAlgebra, Test
 
-## Set up model structure
-n = (120, 100)   # (x,y,z) or (x,z)
-d = (10., 10.)
-o = (0., 0.)
+parsed_args = parse_commandline()
 
-# Velocity [km/s]
-v = ones(Float32,n) .+ 0.4f0
-v[:,Int(round(end/2)):end] .= 3.5f0
-v0 = imfilter(v, Float32.(Kernel.gaussian(10)))
-
-# Slowness squared [s^2/km^2]
-m = (1f0 ./ v).^2
-m0 = (1f0 ./ v0).^2
-dm = vec(m - m0)
-
-# Setup info and model structure
-nsrc = 1	# number of sources
-model = Model(n, d, o, m)
-model0 = Model(n, d, o, m0)
-
-## Set up receiver geometry
-nxrec = 120
-xrec = range(50f0, stop=1150f0, length=nxrec)
-yrec = 0f0
-zrec = range(50f0, stop=50f0, length=nxrec)
-
-# receiver sampling and recording time
-time = 500f0   # receiver recording time [ms]
-dt = 1f0    # receiver sampling interval [ms]
-
-# Set up receiver structure
-recGeometry = Geometry(xrec, yrec, zrec; dt=dt, t=time, nsrc=nsrc)
-
-# setup wavelet
-f0 = 0.01f0     # MHz
-wavelet = ricker_wavelet(time, dt, f0)
-
-# Set up info structure for linear operators
-ntComp = get_computational_nt(recGeometry, model)
-info = Info(prod(n), nsrc, ntComp)
+println("Extended Jacobian test with ", parsed_args["nlayer"], " layers and tti: ",
+        parsed_args["tti"], " and freesurface: ", parsed_args["fs"] )
+### Model
+model, model0, dm = setup_model(parsed_args["tti"], parsed_args["nlayer"])
+q, srcGeometry, recGeometry, info = setup_geom(model)
+dt = srcGeometry.dt[1]
+m0 = model0.m
 
 ###################################################################################
 
 # Write shots as segy files to disk
-opt = Options(sum_padding=true, dt_comp=dt, return_array=true)
+opt = Options(sum_padding=true, dt_comp=dt, return_array=true, free_surface=parsed_args["fs"])
 
 # Setup operators
 Pr = judiProjection(info, recGeometry)
 F = judiModeling(info, model; options=opt)
 F0 = judiModeling(info, model0; options=opt)
-Pw = judiLRWF(info, wavelet)
+Pw = judiLRWF(info, q.data[1])
 
 # Combined operators
 A = Pr*F*adjoint(Pw)
@@ -83,7 +54,9 @@ for j=1:maxiter
 
     err1[j] = norm(dobs - dpred)
     err2[j] = norm(dobs - dpred - h*dD)
-    print(h, " ", err1[j], "    ", err2[j],"\n")
+    j == 1 ? prev = 1 : prev = j - 1
+	@printf("h = %2.2e, e1 = %2.2e, rate = %2.2e", h, err1[j], err1[prev]/err1[j])
+	@printf(", e2 = %2.2e, rate = %2.2e \n", err2[j], err2[prev]/err2[j])
 
     global h = h/2f0
 end

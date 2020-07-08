@@ -1,7 +1,7 @@
 __precompile__()
 module JUDI
 
-using PyCall, JOLI, SegyIO, Dierckx, Distributed, Pkg, Printf, Caching, DSP
+using PyCall, JOLI, SegyIO, Dierckx, Distributed, Pkg, Printf, DSP
 
 export JUDIPATH
 JUDIPATH = dirname(pathof(JUDI))

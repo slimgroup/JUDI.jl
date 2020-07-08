@@ -100,7 +100,7 @@ class PointSource(SparseTimeFunction):
     def __new__(cls, *args, **kwargs):
         options = kwargs.get('options', {})
 
-        key = cls._cache_key(*args, **kwargs)
+        key = cls
         obj = cls._cache_get(key)
 
         if obj is not None:
@@ -155,7 +155,7 @@ class WaveletSource(PointSource):
     def __new__(cls, *args, **kwargs):
         options = kwargs.get('options', {})
 
-        key = cls._cache_key(*args, **kwargs)
+        key = cls
         obj = cls._cache_get(key)
 
         if obj is not None:

@@ -574,9 +574,9 @@ function judiVector_to_SeisBlock(d::judiVector{avDT}, q::judiVector{avDT}; sourc
             set_header!(blocks[j], "GroupY", convert(Array{Integer,1},round.(d.geometry.yloc[j]*1f3)))
         end
         set_header!(blocks[j], receiver_depth_key, convert(Array{Integer,1},round.(d.geometry.zloc[j]*1f3)))
-        set_header!(blocks[j], "SourceX", Int(round.(q.geometry.xloc[j]*1f3)))
-        set_header!(blocks[j], "SourceY", Int(round.(q.geometry.yloc[j]*1f3)))
-        set_header!(blocks[j], source_depth_key, Int(round.(q.geometry.zloc[j]*1f3)))
+        set_header!(blocks[j], "SourceX", Int(round.(q.geometry.xloc[j][1]*1f3)))
+        set_header!(blocks[j], "SourceY", Int(round.(q.geometry.yloc[j][1]*1f3)))
+        set_header!(blocks[j], source_depth_key, Int(round.(q.geometry.zloc[j][1]*1f3)))
 
         set_header!(blocks[j], "dt", Int(d.geometry.dt[j]*1f3))
         set_header!(blocks[j], "FieldRecord",j)
@@ -598,12 +598,16 @@ function judiVector_to_SeisBlock(d::judiVector{avDT}, q::judiVector{avDT}; sourc
 end
 
 function write_shot_record(srcGeometry,srcData,recGeometry,recData,options)
-    q = judiVector(srcGeometry,srcData)
-    d = judiVector(recGeometry,recData)
-    file = join([string(options.file_name),"_",string(srcGeometry.xloc[1][1]),"_",string(srcGeometry.yloc[1][1]),".segy"])
-    block_out = judiVector_to_SeisBlock(d,q)
+    q = judiVector(srcGeometry, srcData)
+    d = judiVector(recGeometry, recData)
+    pos = [srcGeometry.xloc[1][1], srcGeometry.yloc[1][1],  srcGeometry.zloc[1][1]]
+    pos = join(["_"*string(trunc(p; digits=2)) for p in pos])
+    file = join([string(options.file_name), pos,".segy"])
+    block_out = judiVector_to_SeisBlock(d, q)
     segy_write(join([options.file_path,"/",file]), block_out)
-    container = scan_file(join([options.file_path,"/",file]),["GroupX","GroupY","dt","SourceSurfaceElevation","RecGroupElevation"])
+    container = scan_file(join([options.file_path,"/",file]),
+                          ["GroupX", "GroupY", "dt", "SourceSurfaceElevation", "RecGroupElevation"];
+                          chunksize=256)
     return container
 end
 

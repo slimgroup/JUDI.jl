@@ -83,19 +83,15 @@ function +(A::judiExtendedSource{avDT}, B::judiExtendedSource{bvDT}) where {avDT
     m = A.info.n * sum(A.info.nt)
     n = 1
 
-    # merge geometries, wavelet and weights
-    xloc = Array{Any}(undef, A.info.nsrc)
-    yloc = Array{Any}(undef, A.info.nsrc)
-    zloc = Array{Any}(undef, A.info.nsrc)
-    dt = Array{Any}(undef, A.info.nsrc)
-    nt = Array{Any}(undef, A.info.nsrc)
-    t = Array{Any}(undef, A.info.nsrc)
-    wavelet = Array{Any}(undef, A.info.nsrc)
-    weights = Array{Any}(undef, A.info.nsrc)
+    # wavelet and weights
+    A.wavelet == B.wavelet ? nothing : throw(judiExtendedSourceException("Can only add two extended
+                                                                          sources with same wavelet"))
+    wavelet = A.wavelet
+    weights = A.weights .+ B.weights
 
     nvDT = promote_type(avDT,bvDT)
 
-    return judiExtendedSource{nvDT}("judiRHS",m,n,A.info,wavelet,weights)
+    return judiExtendedSource{nvDT}("judiRHS",m,n,A.info, wavelet, weights)
 end
 
 # -(judiExtendedSource,judiExtendedSource)
@@ -109,19 +105,15 @@ function -(A::judiExtendedSource{avDT}, B::judiExtendedSource{bvDT}) where {avDT
         m = A.info.n * sum(A.info.nt)
         n = 1
 
-        # merge geometries, wavelet and weights
-        xloc = Array{Any}(undef, A.info.nsrc)
-        yloc = Array{Any}(undef, A.info.nsrc)
-        zloc = Array{Any}(undef, A.info.nsrc)
-        dt = Array{Any}(undef, A.info.nsrc)
-        nt = Array{Any}(undef, A.info.nsrc)
-        t = Array{Any}(undef, A.info.nsrc)
-        wavelet = Array{Any}(undef, A.info.nsrc)
-        weights = Array{Any}(undef, A.info.nsrc)
+        # wavelet and weights
+        A.wavelet == B.wavelet ? nothing : throw(judiExtendedSourceException("Can only add two extended
+                                                                            sources with same wavelet"))
+        wavelet = A.wavelet
+        weights = A.weights .- B.weights
 
         nvDT = promote_type(avDT,bvDT)
 
-        return judiExtendedSource{nvDT}("judiRHS",m,n,A.info,wavelet,weights)
+        return judiExtendedSource{nvDT}("judiRHS",m,n,A.info, wavelet, weights)
     end
 
 function subsample(a::judiExtendedSource{avDT},srcnum) where avDT

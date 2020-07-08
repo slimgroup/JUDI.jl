@@ -3,94 +3,51 @@
 # Author: Philipp Witte, pwitte@eos.ubc.ca
 # Date: January 2017
 #
+# Mathias Louboutin, mlouboutin3@gatech.edu
+# Updated July 2020
 
-using JUDI.TimeModeling, Test, LinearAlgebra, PyPlot
+using JUDI.TimeModeling, Test, LinearAlgebra, PyPlot, Printf
 
-## Set up model structure
-n = (120,100)	# (x,y,z) or (x,z)
-d = (10.,10.)
-o = (0.,0.)
+parsed_args = parse_commandline()
 
-# Velocity [km/s]
-v = ones(Float32,n) .* 2.0f0
-v[:,Int(round(end/2)):end] .= 3.0f0
-v0 = smooth10(v,n)
-#rho = ones(Float32, n)
-#rho[:, Int(round(end/2)):end] .= 1.5f0
-
-# Slowness squared [s^2/km^2]
-m = (1f0 ./ v).^2
-m0 = (1f0 ./ v0).^2
-dm = m0 - m
-
-# Setup info and model structure
-nsrc = 1	# number of sources
-ntComp = 250
-info = Info(prod(n), nsrc, ntComp)	# number of gridpoints, number of experiments, number of computational time steps
-model = Model(n,d,o,m)
-model0 = Model(n,d,o,m0)
-
-## Set up receiver geometry
-nxrec = 81
-xrec = range(200f0,stop=1000f0,length=nxrec)
-yrec = 0.
-zrec = range(100f0,stop=100f0,length=nxrec)
-
-# receiver sampling and recording time
-timeR = 1000f0	# receiver recording time [ms]
-dtR = 4f0	# receiver sampling interval
-
-# Set up receiver structure
-recGeometry = Geometry(xrec,yrec,zrec;dt=dtR,t=timeR,nsrc=nsrc)
-
-## Set up source geometry (cell array with source locations for each shot)
-xsrc = convertToCell([600f0])
-ysrc = convertToCell([0f0])
-zsrc = convertToCell([50f0])
-
-# source sampling and number of time steps
-timeS = 1000f0
-dtS = 4f0	# receiver sampling interval
-
-# Set up source structure
-srcGeometry = Geometry(xsrc,ysrc,zsrc;dt=dtS,t=timeS)
-
-# setup wavelet
-f0 = 0.01f0
-wavelet = ricker_wavelet(timeS,dtS,f0)
-
+println("FWI gradient test", parsed_args["nlayer"], " layers and tti: ",
+        parsed_args["tti"], " and freesurface: ", parsed_args["fs"] )
+### Model
+model, model0, dm = setup_model(parsed_args["tti"], parsed_args["nlayer"])
+q, srcGeometry, recGeometry, info = setup_geom(model)
+dt = srcGeometry.dt[1]
 ###################################################################################################
 
 # Gradient test
-h = 1f0
-iter = 8
+h = .25f0
+iter = 5
 error1 = zeros(iter)
 error2 = zeros(iter)
 h_all = zeros(iter)
-srcnum = 1:nsrc
+srcnum = 1:1
 modelH = deepcopy(model0)
 
 # Observed data
-opt = Options(sum_padding=true)
-F = judiModeling(info,model,srcGeometry,recGeometry;options=opt)
-q = judiVector(srcGeometry,wavelet)
+opt = Options(sum_padding=true, free_surface=parsed_args["fs"])
+F = judiModeling(info, model, srcGeometry, recGeometry; options=opt)
 d = F*q
 
 # FWI gradient and function value for m0
 Jm0, grad = fwi_objective(model0, q, d;options=opt)
 
+dJ = dot(grad, vec(dm))
+
 for j=1:iter
 	# FWI gradient and function falue for m0 + h*dm
-	modelH.m = model0.m + h*dm
+	modelH.m = model0.m + h*reshape(dm, model.n)
 	Jm, gradm = fwi_objective(modelH, q, d;options=opt)
-
-	dJ = dot(grad,vec(dm))
 
 	# Check convergence
 	error1[j] = abs(Jm - Jm0)
 	error2[j] = abs(Jm - (Jm0 + h*dJ))
-
-	println(h, " ", error1[j], " ", error2[j])
+	j == 1 ? prev = 1 : prev = j - 1
+	@printf("h = %2.2e, e1 = %2.2e, rate = %2.2e", h, error1[j], error1[prev]/error1[j])
+	@printf(", e2  = %2.2e, rate = %2.2e \n", error2[j], error2[prev]/error2[j])
 	h_all[j] = h
 	global h = h/2f0
 end

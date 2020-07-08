@@ -44,7 +44,7 @@ info = Info(prod(n), nsrc, ntComp)
 ###################################################################################################
 
 # Write shots as segy files to disk
-opt = Options(return_array=false, dt_comp=1.0)
+opt = Options(return_array=false, dt_comp=1.0, free_surface=true)
 
 # Setup operators
 Pr = judiProjection(info, recGeometry)

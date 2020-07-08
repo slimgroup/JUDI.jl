@@ -2,71 +2,34 @@
 # Author: Philipp Witte, pwitte@eos.ubc.ca
 # Date: January 2017
 #
+# Mathias Louboutin, mlouboutin3@gatech.edu
+# Updated July 2020
 
-using JUDI.TimeModeling, Test, LinearAlgebra
+using JUDI.TimeModeling, Test, LinearAlgebra, Printf
 
-## Set up model structure
-n = (120,100)	# (x,y,z) or (x,z)
-d = (10.,10.)
-o = (0.,0.)
+parsed_args = parse_commandline()
 
-# Velocity [km/s]
-v = ones(Float32,n) .+ 0.4f0
-v[:,Int(round(end/2)):end] .= 4f0
+println("Adjoint test with ", parsed_args["nlayer"], " layers and tti: ",
+        parsed_args["tti"], " and freesurface: ", parsed_args["fs"] )
+### Model
+model, model0, dm = setup_model(parsed_args["tti"], parsed_args["nlayer"])
+q1, srcGeometry1, recGeometry, info = setup_geom(model)
+srcGeometry2 = deepcopy(srcGeometry1)
+srcGeometry2.xloc[:] .= .9*srcGeometry2.xloc[:] 
+srcGeometry2.zloc[:] .= .9*srcGeometry2.zloc[:]
+dt = srcGeometry1.dt[1]
 
-# Slowness squared [s^2/km^2]
-m = (1f0 ./ v).^2
-dm = m .- 1.4f0
+opt = Options(free_surface=parsed_args["fs"])
+ftol = 5f-5
 
-# Setup info and model structure
-nsrc = 1
-ntComp = 250
-info = Info(prod(n), nsrc, ntComp)	# number of gridpoints, number of experiments, number of computational time steps
-model = Model(n,d,o,m)
-
-## Set up receiver geometry
-nxrec = 120
-xrec = range(50f0,stop=1150f0,length=nxrec)
-yrec = 0f0
-zrec = range(50f0,stop=50f0,length=nxrec)
-
-# receiver sampling and recording time
-timeR = 1000f0	# receiver recording time [ms]
-dtR = 4f0	# receiver sampling interval
-
-# Set up receiver structure
-recGeometry = Geometry(xrec,yrec,zrec;dt=dtR,t=timeR,nsrc=nsrc)
-
-## Set up source geometries (cell array with source locations for each shot)
-xsrc1 = 300f0
-ysrc1 = 0f0
-zsrc1 = 20f0
-
-xsrc2 = 600f0
-ysrc2 = 0f0
-zsrc2 = 20f0
-
-# source sampling and number of time steps
-timeS = 1000f0
-dtS = 4f0	# receiver sampling interval
-
-# Set up source structure
-srcGeometry1 = Geometry(xsrc1,ysrc1,zsrc1;dt=dtS,t=timeS)
-srcGeometry2 = Geometry(xsrc2,ysrc2,zsrc2;dt=dtS,t=timeS)
-
-# setup wavelet
-f0 = 0.01f0
-wavelet = ricker_wavelet(timeS,dtS,f0)
-
-###################################################################################################
+####################### Modeling operators ##########################################
 
 # Modeling operators
 Pr = judiProjection(info,recGeometry)
 Ps1 = judiProjection(info,srcGeometry1)
 Ps2 = judiProjection(info,srcGeometry2)
-F = judiModeling(info,model)
-q1 = judiVector(srcGeometry1,wavelet)
-q2 = judiVector(srcGeometry2,wavelet)
+F = judiModeling(info,model; options=opt)
+q2 = judiVector(srcGeometry2,q1.data[1])
 
 J = judiJacobian(Pr*F*adjoint(Ps1), q1)
 
@@ -79,15 +42,172 @@ d5 = Pr * F *adjoint(Ps1) * (2f0 * q1)
 q3 = Ps1 * adjoint(F) * adjoint(Pr) * d1
 q4 = Ps1 * adjoint(F) * adjoint(Pr) * (2f0 * d1)
 
-@test isapprox(norm(d3), norm(d1 + d2))
-@test isapprox(norm(d4), norm(d1 - d2))
-
-@test isapprox(2f0 * d1, d5, rtol=1e-5)
-@test isapprox(2f0 * q3, q4, rtol=1e-5)
-
+dm2 = .5f0 .* vec(circshift(reshape(dm, model.n), (0, 20)))
 lind =  J * dm
-lind2 = J * (2f0 * dm)
-dm = adjoint(J) * d1
-dm2 = adjoint(J) * (2f0 * d1)
-@test isapprox(2f0 * lind, lind2, rtol=1e-5)
-@test isapprox(2f0 * dm, dm2, rtol=1e-5)
+lind2 = J * (2f0 .* dm)
+lind3 = J * dm2
+lind4 = J * (dm + dm2)
+lind5 = J * (dm - dm2)
+
+dma = adjoint(J) * d1
+dmb = adjoint(J) * (2f0 * d1)
+dmc = adjoint(J) * d2
+dmd = adjoint(J) * (d1 + d2)
+
+# Test linearity F * (a + b) == F * a + F * b
+
+println("Test linearity of F: F * (a + b) == F * a + F * b")
+nd1 = norm(d3)
+nd2 = norm(d1 + d2)
+nd3 = norm(d3 - d1 - d2)/norm(d3)
+@printf(" F * (a + b): %2.5e, F * a + F * b : %2.5e, relative error : %2.5e \n", nd1, nd2, nd3)
+nd1 = norm(d4)
+nd2 = norm(d1 - d2)
+nd3 = norm(d4 - d1 + d2)/norm(d4)
+@printf(" F * (a - b): %2.5e, F * a - F * b : %2.5e, relative error : %2.5e \n", nd1, nd2, nd3)
+
+@test isapprox(d3, d1 + d2, rtol=ftol)
+@test isapprox(d4, d1 - d2, rtol=ftol)
+
+# Test linearity F a x == a F x
+
+println("Test linearity of F: F * (a * b) == a * F * b")
+nd1 = norm(2f0 * d1)
+nd2 = norm(d5)
+nd3 = norm(2f0 * d1 - d5)/norm(d5)
+nm1 = norm(2f0 * q3)
+nm2 = norm(q4)
+nm3 = norm(2f0 * q3 - q4)/norm(q4)
+@printf(" a F x: %2.5e, F a x : %2.5e, relative error : %2.5e \n", nd1, nd2, nd3)
+@printf(" a F' x: %2.5e, F' a x : %2.5e, relative error : %2.5e \n", nm1, nm2, nm3)
+@test isapprox(2f0 * d1, d5, rtol=ftol)
+@test isapprox(2f0 * q3, q4, rtol=ftol)
+
+# Test linearity J * (a + b) == J * a + J * b
+
+println("Test linearity of J: J * (a + b) == J * a + J * b")
+nd1 = norm(lind4)
+nd2 = norm(lind + lind3)
+nd3 = norm(lind4 - lind - lind3)/norm(lind4)
+@printf(" J * (a + b): %2.5e, J * a + J * b : %2.5e, relative error : %2.5e \n", nd1, nd2, nd3)
+nd1 = norm(lind5)
+nd2 = norm(lind - lind3)
+nd3 = norm(lind5 - lind + lind3)/norm(lind5)
+@printf(" J * (a - b): %2.5e, J * a - J * b : %2.5e, relative error : %2.5e \n", nd1, nd2, nd3)
+
+@test isapprox(lind4, lind + lind3, rtol=ftol)
+@test isapprox(lind5, lind - lind3, rtol=ftol)
+
+# Test linearity J a x == a J x
+println("Test linearity of J: J * (a * b) == a * J * b")
+nd1 = norm(2f0 * lind)
+nd2 = norm(lind2)
+nd3 = norm(2f0 * lind - lind2)/norm(lind2)
+nm1 = norm(2f0 * dma)
+nm2 = norm(dmb)
+nm3 = norm(2f0*dma - dmb)/norm(dmb)
+
+@printf(" a J x: %2.5e, J a x : %2.5e, relative error : %2.5e \n", nd1, nd2, nd3)
+@printf(" a J' x: %2.5e, J' a x : %2.5e, relative error : %2.5e \n", nm1, nm2, nm3)
+
+@test isapprox(2f0 * lind, lind2, rtol=ftol)
+@test isapprox(2f0 * dma, dmb, rtol=ftol)
+
+
+####################### Extended source operators ##########################################
+
+if parsed_args["tti"]
+    ftol = 5f-4
+end
+# Modeling operators
+Pr = judiProjection(info, recGeometry)
+F = judiModeling(info, model; options=opt)
+Pw = judiLRWF(info, q1.data[1])
+
+# Extended source weights
+w = Float32.(imfilter(randn(Float32, model0.n), Kernel.gaussian(5)))
+x = Float32.(imfilter(randn(Float32, model0.n), Kernel.gaussian(5)))
+w[:, 1] .= 0f0; w = vec(w)
+x[:, 1] .= 0f0; x = vec(x)
+
+J = judiJacobian(Pr*F*adjoint(Pw), w)
+
+d1 = Pr*F*adjoint(Pw)*w
+d2 = Pr*F*adjoint(Pw)*x
+d3 = Pr*F*(adjoint(Pw)*w + adjoint(Pw)*x)
+d4 = Pr*F*(adjoint(Pw)*w - adjoint(Pw)*x)
+d5 = Pr*F*adjoint(Pw)*(2f0 * w)
+
+q3 = adjoint(Pr * F * adjoint(Pw)) * d1
+q4 = adjoint(Pr * F * adjoint(Pw)) * (2f0 * d1)
+
+dm2 = .5f0 .* vec(circshift(reshape(dm, model.n), (0, 20)))
+lind =  J * dm
+lind2 = J * (2f0 .* dm)
+lind3 = J * dm2
+lind4 = J * (dm + dm2)
+lind5 = J * (dm - dm2)
+
+dma = adjoint(J) * d1
+dmb = adjoint(J) * (2f0 * d1)
+dmc = adjoint(J) * d2
+dmd = adjoint(J) * (d1 + d2)
+
+# Test linearity F * (a + b) == F * a + F * b
+
+println("Test linearity of extended F: F * (a + b) == F * a + F * b")
+nd1 = norm(d3)
+nd2 = norm(d1 + d2)
+nd3 = norm(d3 - d1 - d2)/norm(d3)
+@printf(" F * (a + b): %2.5e, F * a + F * b : %2.5e, relative error : %2.5e \n", nd1, nd2, nd3)
+nd1 = norm(d4)
+nd2 = norm(d1 - d2)
+nd3 = norm(d4 - d1 + d2)/norm(d4)
+@printf(" F * (a - b): %2.5e, F * a - F * b : %2.5e, relative error : %2.5e \n", nd1, nd2, nd3)
+
+@test isapprox(d3, d1 + d2, rtol=ftol)
+@test isapprox(d4, d1 - d2, rtol=ftol)
+
+# Test linearity F a x == a F x
+
+println("Test linearity of extended F: F * (a * b) == a * F * b")
+nd1 = norm(2f0 * d1)
+nd2 = norm(d5)
+nd3 = norm(2f0 * d1 - d5)/norm(d5)
+nm1 = norm(2f0 * q3)
+nm2 = norm(q4)
+nm3 = norm(2f0 * q3 - q4)/norm(q4)
+@printf(" a F x: %2.5e, F a x : %2.5e, relative error : %2.5e \n", nd1, nd2, nd3)
+@printf(" a F' x: %2.5e, F' a x : %2.5e, relative error : %2.5e \n", nm1, nm2, nm3)
+@test isapprox(2f0 * d1, d5, rtol=ftol)
+@test isapprox(2f0 * q3, q4, rtol=ftol)
+
+# Test linearity J * (a + b) == J * a + J * b
+
+println("Test linearity of extended J: J * (a + b) == J * a + J * b")
+nd1 = norm(lind4)
+nd2 = norm(lind + lind3)
+nd3 = norm(lind4 - lind - lind3)/norm(lind4)
+@printf(" J * (a + b): %2.5e, J * a + J * b : %2.5e, relative error : %2.5e \n", nd1, nd2, nd3)
+nd1 = norm(lind5)
+nd2 = norm(lind - lind3)
+nd3 = norm(lind5 - lind + lind3)/norm(lind5)
+@printf(" J * (a - b): %2.5e, J * a - J * b : %2.5e, relative error : %2.5e \n", nd1, nd2, nd3)
+
+@test isapprox(lind4, lind + lind3, rtol=ftol)
+@test isapprox(lind5, lind - lind3, rtol=ftol)
+
+# Test linearity J a x == a J x
+println("Test linearity of extended J: J * (a * b) == a * J * b")
+nd1 = norm(2f0 * lind)
+nd2 = norm(lind2)
+nd3 = norm(2f0 * lind - lind2)/norm(lind2)
+nm1 = norm(2f0 * dma)
+nm2 = norm(dmb)
+nm3 = norm(2f0*dma - dmb)/norm(dmb)
+
+@printf(" a J x: %2.5e, J a x : %2.5e, relative error : %2.5e \n", nd1, nd2, nd3)
+@printf(" a J' x: %2.5e, J' a x : %2.5e, relative error : %2.5e \n", nm1, nm2, nm3)
+
+@test isapprox(2f0 * lind, lind2, rtol=ftol)
+@test isapprox(2f0 * dma, dmb, rtol=ftol)

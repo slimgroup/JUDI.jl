@@ -7,7 +7,6 @@ function time_modeling(model_full::Modelall, srcGeometry, srcData, recGeometry, 
     # Load full geometry for out-of-core geometry containers
     typeof(recGeometry) == GeometryOOC && (recGeometry = Geometry(recGeometry))
     typeof(srcGeometry) == GeometryOOC && (srcGeometry = Geometry(srcGeometry))
-    length(model_full.n) == 3 ? dims = [3,2,1] : dims = [2,1]   # model dimensions for Python are (z,y,x) and (z,x)
 
     # limit model to area with sources/receivers
     if options.limit_m == true
@@ -23,9 +22,8 @@ function time_modeling(model_full::Modelall, srcGeometry, srcData, recGeometry, 
 
     # Set up Python model structure
     modelPy = devito_model(model, options)
-    update_m(modelPy, model.m, dims)
     if op=='J' && mode == 1
-        update_dm(modelPy, reshape(dm, model.n), dims)
+        update_dm(modelPy, reshape(dm, model.n), options)
     end
 
     # Load shot record if stored on disk

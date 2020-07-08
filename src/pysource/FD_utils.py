@@ -1,5 +1,27 @@
-from sympy import sqrt, cos, sin
-from devito import first_derivative, centered, transpose, Function, left, right
+from sympy import sqrt, rot_axis2, rot_axis3
+
+from devito import TensorFunction, VectorFunction, Eq, Function
+
+
+def grads(func):
+    """
+    Gradient shifted by half a grid point, only to be used in combination
+    with divs.
+    """
+    comps = [getattr(func, 'd%s' % d.name)(x0=d + d.spacing/2)
+             for d in func.dimensions if d.is_Space]
+    st = tuple([None]*func.grid.dim)
+    return VectorFunction(name='grad_%s' % func.name, space_order=func.space_order,
+                          components=comps, grid=func.grid, staggered=st)
+
+
+def divs(func):
+    """
+    GrDivergenceadient shifted by half a grid point, only to be used in combination
+    with grads.
+    """
+    return sum([getattr(func[i], 'd%s' % d.name)(x0=d - d.spacing/2)
+                for i, d in enumerate(func.space_dimensions)])
 
 
 def laplacian(v, irho):
@@ -35,230 +57,101 @@ def ssa_tti(u, v, model):
         Model structure
     """
 
-    return ssa_1(u, v, model), ssa_2(u, v, model)
+    return tensor_fact(u, v, model)
 
 
-def ssa_1(u, v, model):
+def R_mat(model):
     """
-    First row of
-    gx_t(A * gx(P)) + gy_t( A1 * gy(P)) + gz_T( A2 * gz(P))
-    """
-    delta, epsilon, irho = model.delta, model.epsilon, model.irho
-    a11 = irho * delta
-    a12 = irho * sqrt((epsilon - delta) * delta)
-    b11 = irho
-    b12 = 0
+    Rotation matrix according to tilt and asymut.
 
-    g1 = gx_T(a11 * gx(u, model) + a12 * gx(v, model), model)
+    Parameters
+    ----------
+    model: Model
+        Model structure
+    """
+    # Rotation matrix
+    Rt = rot_axis2(model.theta)
     if model.dim == 3:
-        g1 += gy_T(a11 * gy(u, model) + a12 * gy(v, model), model)
-    g1 += gz_T(b11 * gz(u, model) + b12 * gz(v, model), model)
-    return g1
+        Rt *= rot_axis3(model.phi)
+    else:
+        Rt = Rt[[0, 2], [0, 2]]
+    return TensorFunction(name="R", grid=model.grid, components=Rt, symmetric=False)
 
 
-def ssa_2(u, v, model):
+def P_M(model, u, v):
     """
-    Second row of
-    gx_t(A * gx(P)) + gy_t( A1 * gy(P)) + gz_T( A2 * gz(P))
-    """
-    delta, epsilon, irho = model.delta, model.epsilon, model.irho
-    a21 = irho * sqrt((epsilon - delta) * delta)
-    a22 = irho * (epsilon - delta)
-    b21 = 0
-    b22 = 0
-
-    g2 = gx_T(a21 * gx(u, model) + a22 * gx(v, model), model)
-    if model.dim == 3:
-        g2 += gy_T(a21 * gy(u, model) + a22 * gy(v, model), model)
-    g2 += gz_T(b21 * gz(u, model) + b22 * gz(v, model), model)
-    return g2
-
-
-def angles_to_trig(model):
-    """
-    Tile and asymut angles trigonometric functions
-    """
-    return cos(model.theta), sin(model.theta), cos(model.phi), sin(model.phi)
-
-
-def gx(field, model):
-    """
-    Rotated first derivative in x
-    Parameters
-    ----------
-    u: TimeFunction or Expr
-        TTI field
-    model: Model
-        Model structure
-    Returns
-    ----------
-    Expr
-        du/dx in rotated coordinates
-    """
-    costheta, sintheta, cosphi, sinphi = angles_to_trig(model)
-    dims = field.dimensions[1:model.dim+1]
-    order1 = field.space_order // 2
-
-    Dx = (costheta * cosphi * first_derivative(field, dim=dims[0],
-                                               side=left, fd_order=order1) -
-          sintheta * first_derivative(field, dim=dims[-1], side=left, fd_order=order1))
-
-    if len(dims) == 3:
-        Dx += costheta * sinphi * first_derivative(field, dim=dims[1],
-                                                   side=left, fd_order=order1)
-    return Dx
-
-
-def gy(field, model):
-    """
-    Rotated first derivative in y
+    Vectorial temporaries for TTI.
 
     Parameters
     ----------
-    u: TimeFunction or Expr
-        TTI field
     model: Model
         Model structure
-
-    Returns
-    ----------
-    Expr
-        du/dy in rotated coordinates
+    so: Int
+        Space order for discretization
     """
-    costheta, sintheta, cosphi, sinphi = angles_to_trig(model)
-    dims = field.dimensions[1:model.dim+1]
-    o1 = field.space_order // 2
+    # Vector for gradients
+    st = tuple([None]*model.dim)
+    P_I = VectorFunction(name="P_I%s" % u.name, grid=model.grid,
+                         space_order=u.space_order, staggered=st)
+    M_I = VectorFunction(name="M_I%s" % v.name, grid=model.grid,
+                         space_order=v.space_order, staggered=st)
+    return P_I, M_I
 
-    Dy = (-sinphi * first_derivative(field, dim=dims[0], side=centered, fd_order=o1) +
-          cosphi * first_derivative(field, dim=dims[1], side=centered, fd_order=o1))
 
-    return Dy
-
-
-def gz(field, model):
+def thomsen_mat(model):
     """
-    Rotated first derivative in z
+    Diagonal Matrices with Thomsen parameters for vectorial temporaries
+    computation.
 
     Parameters
     ----------
-    u: TimeFunction or Expr
-        TTI field
     model: Model
         Model structure
-
-    Returns
-    ----------
-    Expr
-        du/dz in rotated coordinates
     """
-    costheta, sintheta, cosphi, sinphi = angles_to_trig(model)
-    dims = field.dimensions[1:model.dim+1]
-    order1 = field.space_order // 2
+    # Diagonal matrices
+    b = model.irho
+    eps, delt = model.epsilon, model.delta
+    a_ii = [[b * delt, 0, 0],
+            [0, b * delt, 0],
+            [0, 0, b]]
+    b_ii = [[b * sqrt((eps - delt) * delt), 0, 0],
+            [0, b * sqrt((eps - delt) * delt), 0],
+            [0, 0, 0]]
+    c_ii = [[b * (eps - delt), 0, 0],
+            [0, b * (eps - delt), 0],
+            [0, 0, 0]]
 
-    Dz = (sintheta * cosphi * first_derivative(field, dim=dims[0],
-                                               side=right, fd_order=order1) +
-          costheta * first_derivative(field, dim=dims[-1], side=right, fd_order=order1))
+    if model.dim == 2:
+        s = slice(0, 3, 2)
+        a_ii = [a_ii[i][s] for i in range(0, 3, 2)]
+        b_ii = [b_ii[i][s] for i in range(0, 3, 2)]
+        c_ii = [c_ii[i][s] for i in range(0, 3, 2)]
+    A = TensorFunction(name="A", grid=model.grid, components=a_ii, diagonal=True)
+    B = TensorFunction(name="B", grid=model.grid, components=b_ii, diagonal=True)
+    C = TensorFunction(name="C", grid=model.grid, components=c_ii, diagonal=True)
+    return A, B, C
 
-    if len(dims) == 3:
-        Dz += sintheta * sinphi * first_derivative(field, dim=dims[1],
-                                                   side=right, fd_order=order1)
-    return Dz
 
-
-def gx_T(field, model):
+def tensor_fact(u, v, model):
     """
-    Rotated first derivative in x
+    Tensor factorized SSA TTI wave equation spatial derivatives.
 
     Parameters
     ----------
-    u: TimeFunction or Expr
-        TTI field
+    u : TimeFunction
+        first TTI field
+    v : TimeFunction
+        second TTI field
     model: Model
         Model structure
-
-    Returns
-    ----------
-    Expr
-        du/dx.T in rotated coordinates
     """
-    if field == 0:
-        return 0
+    # MAtrix of Thomsen params
+    A, B, C = thomsen_mat(model)
+    # Rotation Matrix
+    R = R_mat(model)
+    # Tensor temps
+    P_I, M_I = P_M(model, u, v)
+    eq_PI = Eq(P_I, R.T * (A * R * grads(u) + B * R * grads(v)))
+    eq_MI = Eq(M_I, R.T * (B * R * grads(u) + C * R * grads(v)))
 
-    costheta, sintheta, cosphi, sinphi = angles_to_trig(model)
-    dims = field.dimensions[1:model.dim+1]
-    order1 = field.space_order // 2
-
-    Dx = -(first_derivative(costheta * cosphi * field, dim=dims[0],
-                            side=left, fd_order=order1, matvec=transpose) -
-           first_derivative(sintheta * field, dim=dims[-1],
-                            side=left, fd_order=order1, matvec=transpose))
-
-    if len(dims) == 3:
-        Dx += first_derivative(costheta * sinphi * field, dim=dims[1],
-                               side=left, fd_order=order1, matvec=transpose)
-    return Dx
-
-
-def gy_T(field, model):
-    """
-    Rotated first derivative in y
-
-    Parameters
-    ----------
-    u: TimeFunction or Expr
-        TTI field
-    model: Model
-        Model structure
-
-    Returns
-    ----------
-    Expr
-        du/dy.T in rotated coordinates
-    """
-    if field == 0:
-        return 0
-
-    costheta, sintheta, cosphi, sinphi = angles_to_trig(model)
-    dims = field.dimensions[1:model.dim+1]
-    order1 = field.space_order // 2
-
-    Dy = (first_derivative(-sinphi * field, dim=dims[0], matvec=transpose,
-                           side=centered, fd_order=order1) +
-          first_derivative(cosphi * field, dim=dims[1], matvec=transpose,
-                           side=centered, fd_order=order1))
-
-    return Dy
-
-
-def gz_T(field, model):
-    """
-    Rotated first derivative in z
-
-    Parameters
-    ----------
-    u: TimeFunction or Expr
-        TTI field
-    model: Model
-        Model structure
-
-    Returns
-    ----------
-    Expr
-        du/dz.T in rotated coordinates
-    """
-    if field == 0:
-        return 0
-
-    costheta, sintheta, cosphi, sinphi = angles_to_trig(model)
-    dims = field.dimensions[1:model.dim+1]
-    order1 = field.space_order // 2
-
-    Dz = -(first_derivative(sintheta * cosphi * field, dim=dims[0],
-                            side=right, fd_order=order1, matvec=transpose) +
-           first_derivative(costheta * field, dim=dims[-1],
-                            side=right, fd_order=order1, matvec=transpose))
-
-    if len(dims) == 3:
-        Dz += first_derivative(sintheta * sinphi * field, dim=dims[1],
-                               side=right, fd_order=order1, matvec=transpose)
-    return Dz
+    return divs(P_I), divs(M_I), eq_PI, eq_MI
