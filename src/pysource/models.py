@@ -62,7 +62,6 @@ def initialize_damp(damp, nbl, fs=False):
     """
     dampcoeff = 1.5 * np.log(1.0 / 0.001) / (nbl)
 
-    scaling = 10
     z = damp.dimensions[-1]
     eqs = []
     for d in damp.dimensions:
@@ -72,13 +71,13 @@ def initialize_damp(damp, nbl, fs=False):
                                       thickness=nbl)
             pos = Abs((nbl - (dim_l - d.symbolic_min) + 1) / float(nbl))
             val = dampcoeff * (pos - sin(2*np.pi*pos)/(2*np.pi))
-            eqs += [Inc(damp.subs({d: dim_l}), val/scaling)]
+            eqs += [Inc(damp.subs({d: dim_l}), val/d.spacing)]
         # right
         dim_r = SubDimension.right(name='abc_%s_r' % d.name, parent=d,
                                    thickness=nbl)
         pos = Abs((nbl - (d.symbolic_max - dim_r) + 1) / float(nbl))
         val = dampcoeff * (pos - sin(2*np.pi*pos)/(2*np.pi))
-        eqs += [Inc(damp.subs({d: dim_r}), val/scaling)]
+        eqs += [Inc(damp.subs({d: dim_r}), val/d.spacing)]
 
     Operator(eqs, name='initdamp')()
 
@@ -142,6 +141,7 @@ class GenericModel(object):
         if isinstance(field, np.ndarray):
             function = Function(name=name, grid=self.grid, space_order=space_order,
                                 parameter=is_param)
+            function._data_with_outhalo[:] = np.min(func(field))
             function.data[:] = func(field)
         else:
             return field

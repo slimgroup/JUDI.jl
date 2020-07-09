@@ -1,6 +1,6 @@
 from sympy import sqrt, rot_axis2, rot_axis3
 
-from devito import TensorFunction, VectorFunction, Eq, Function
+from devito import TensorFunction, VectorFunction, Eq, Differentiable
 
 
 def grads(func):
@@ -31,10 +31,11 @@ def laplacian(v, irho):
     if irho is None or irho == 1:
         Lap = v.laplace
     else:
-        if isinstance(irho, Function):
+        if isinstance(irho, Differentiable):
             so = irho.space_order // 2
-            Lap = sum([getattr(irho * getattr(v, 'd%s' % d.name)(x0=d + d.spacing/2,
-                                                                 fd_order=so),
+            Lap = sum([getattr(irho._subs(d, d + d.spacing/2) *
+                               getattr(v, 'd%s' % d.name)(x0=d + d.spacing/2,
+                                                          fd_order=so),
                                'd%s' % d.name)(x0=d - d.spacing/2, fd_order=so)
                        for d in irho.dimensions])
         else:
