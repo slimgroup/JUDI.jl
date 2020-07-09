@@ -429,19 +429,19 @@ end
 
 pad_array(m::Number, nb::Array{Tuple{Int64,Int64},1}) = m
 
-function pad_array(m::Array{Float32}, nb::Array{Tuple{Int64,Int64},1}; mode::Symbol=:border)
+function pad_array(m::Array{DT}, nb::Array{Tuple{Int64,Int64},1}; mode::Symbol=:border) where {DT}
     n = size(m)
     new_size = Tuple([n[i] + sum(nb[i]) for i=1:length(nb)])
     Ei = []
     for i=length(nb):-1:1
         left, right = nb[i]
-        push!(Ei, joExtend(n[i], mode;pad_upper=right, pad_lower=left, RDT=Float32, DDT=Float32))
+        push!(Ei, joExtend(n[i], mode;pad_upper=right, pad_lower=left, RDT=DT, DDT=DT))
     end
     padded = joKron(Ei...) * vec(m)
     return reshape(padded, new_size)
 end
 
-function remove_padding(gradient::Array{Float32}, nb::Array{Tuple{Int64,Int64},1}; true_adjoint::Bool=false)
+function remove_padding(gradient::Array{DT}, nb::Array{Tuple{Int64,Int64},1}; true_adjoint::Bool=false) where {DT}
     # Pad is applied x then y then z, so sum must be done in reverse order x then y then x
     true_adjoint ? mode = :border : mode = :zeros
     n = size(gradient)
@@ -449,7 +449,7 @@ function remove_padding(gradient::Array{Float32}, nb::Array{Tuple{Int64,Int64},1
     Ei = []
     for i=length(nb):-1:1
         left, right = nb[i]
-        push!(Ei, joExtend(new_size[i], mode;pad_upper=right, pad_lower=left, RDT=Float32, DDT=Float32))
+        push!(Ei, joExtend(new_size[i], mode;pad_upper=right, pad_lower=left, RDT=DT, DDT=DT))
     end
     gradient = reshape(joKron(Ei...)' * vec(gradient), new_size)
     return collect(Float32, gradient)
