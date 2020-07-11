@@ -1,43 +1,43 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url>
      <loc>https://slimgroup.github.io/JUDI.jl/</loc>
-     <lastmod>2020-07-08</lastmod>
+     <lastmod>2020-07-11</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://slimgroup.github.io/JUDI.jl/tutorials/</loc>
-     <lastmod>2020-07-08</lastmod>
+     <lastmod>2020-07-11</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://slimgroup.github.io/JUDI.jl/data_structures/</loc>
-     <lastmod>2020-07-08</lastmod>
+     <lastmod>2020-07-11</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://slimgroup.github.io/JUDI.jl/abstract_vectors/</loc>
-     <lastmod>2020-07-08</lastmod>
+     <lastmod>2020-07-11</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://slimgroup.github.io/JUDI.jl/linear_operators/</loc>
-     <lastmod>2020-07-08</lastmod>
+     <lastmod>2020-07-11</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://slimgroup.github.io/JUDI.jl/io/</loc>
-     <lastmod>2020-07-08</lastmod>
+     <lastmod>2020-07-11</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://slimgroup.github.io/JUDI.jl/helper/</loc>
-     <lastmod>2020-07-08</lastmod>
+     <lastmod>2020-07-11</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://slimgroup.github.io/JUDI.jl/preconditioners/</loc>
-     <lastmod>2020-07-08</lastmod>
+     <lastmod>2020-07-11</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://slimgroup.github.io/JUDI.jl/pysource/</loc>
-     <lastmod>2020-07-08</lastmod>
+     <lastmod>2020-07-11</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://slimgroup.github.io/JUDI.jl/about/</loc>
-     <lastmod>2020-07-08</lastmod>
+     <lastmod>2020-07-11</lastmod>
      <changefreq>daily</changefreq>
     </url>
 </urlset>
