@@ -135,13 +135,13 @@ function Model(n::IntTuple, d::RealTuple, o::RealTuple, m;
 
         return Model_TTI(n, d, o, nb, m, epsilon, delta, theta, phi, rho)
     else
-        return Model(n,d,o,nb,m,rho)
+        return Model(n, d, o, nb, m, rho)
     end
 end
 
 function Model(n::IntTuple, d::RealTuple, o::RealTuple, m, rho; nb=40)
     isnothing(rho) && (rho = 1)
-    return Model(n,d,o,nb,m,rho)
+    return Model(n, d, o, nb, m, rho)
 end
 
 const Modelall = Union{Model_TTI, Model}
