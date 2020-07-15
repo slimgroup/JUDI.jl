@@ -11,31 +11,7 @@ JUDI is a framework for large-scale seismic modeling and inversion and designed 
 
 ## Installation and prerequisites
 
-First, install Devito using `pip`, or see the [Devito's GitHub page](https://github.com/devitocodes/devito) for installation with Conda and further information. The current release of JUDI requires Python 3 and the current Devito version. Run all of the following commands from the (bash) terminal command line (not in the Julia REPL):
-
-```julia
-pip3 install --user git+https://github.com/devitocodes/devito.git
-```
-
-For reading and writing seismic SEG-Y data, JUDI uses the [SegyIO](https://github.com/slimgroup/SegyIO.jl) package and matrix-free linear operators are based the [Julia Operator LIbrary](https://github.com/slimgroup/JOLI.jl/tree/master/src) (JOLI):
-
-```julia
-julia -e 'using Pkg; Pkg.develop(PackageSpec(url="https://github.com/slimgroup/SegyIO.jl"))'
-julia -e 'using Pkg; Pkg.develop(PackageSpec(url="https://github.com/slimgroup/JOLI.jl"))'
-```
-
-Once Devito, SegyIO and JOLI are installed, you can install JUDI as follows:
-
-```julia
-julia -e 'using Pkg; Pkg.develop(PackageSpec(url="https://github.com/slimgroup/JUDI.jl"))'
-```
-
-Once you have JUDI installed, you need to point Julia's PyCall package to the Python version for which we previsouly installed Devito. To do this, copy-paste the following commands into the (bash) terminal:
-
-```julia
-export PYTHON=$(which python3)
-julia -e 'using Pkg; Pkg.build("PyCall")'
-```
+You can find installation instruction in our Wiki at [Installation](https://github.com/slimgroup/JUDI.jl/wiki/Installation)
 
 ## Running with Docker
 
