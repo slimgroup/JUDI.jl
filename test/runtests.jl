@@ -10,6 +10,7 @@ using Test
 
 const GROUP = get(ENV, "GROUP", "JUDI")
 
+# Basic JUDI objects tests, no Devito
 if GROUP == "JUDI" || GROUP == "All"
     @testset "JUDI Unit tests" begin
         include("test_abstract_vectors.jl")
@@ -19,6 +20,7 @@ if GROUP == "JUDI" || GROUP == "All"
     end
 end
 
+# Isotropic Acoustic tests
 if GROUP == "ISO_OP" || GROUP == "All"
     include("test_utils.jl")
     @testset "JUDI iso-acoustic operators tests (parallel)" begin
@@ -36,6 +38,7 @@ if GROUP == "ISO_OP" || GROUP == "All"
     end
 end
 
+# Isotropic Acoustic tests with a free surface
 if GROUP == "ISO_OP_FS" || GROUP == "All"
     include("test_utils.jl")
     @testset "JUDI iso-acoustic operators with free surface tests" begin
@@ -48,6 +51,7 @@ if GROUP == "ISO_OP_FS" || GROUP == "All"
     end
 end
 
+# Anisotropic Acoustic tests
 if GROUP == "TTI_OP" || GROUP == "All"
     include("test_utils.jl")
     @testset "JUDI TTI operators tests" begin
@@ -62,6 +66,7 @@ if GROUP == "TTI_OP" || GROUP == "All"
     end
 end
 
+# Anisotropic Acoustic tests with free surface
 if GROUP == "TTI_OP_FS" || GROUP == "All"
     include("test_utils.jl")
     @testset "JUDI TTI operators with free surfacetests" begin
