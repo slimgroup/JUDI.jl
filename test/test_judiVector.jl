@@ -6,6 +6,8 @@
 using JUDI.TimeModeling, SegyIO, Test, LinearAlgebra
 import LinearAlgebra.BLAS.axpy!
 
+datapath = joinpath(dirname(pathof(JUDI)))*"/../data/"
+
 function example_rec_geometry(; nsrc=2, nrec=120)
     xrec = range(50f0, stop=1150f0, length=nrec)
     yrec = 0f0
@@ -48,7 +50,7 @@ ns = 251
     @test isequal(size(d_obs), dsize)
 
     # contructor for in-core data container
-    block = segy_read("../data/unit_test_shot_records.segy")
+    block = segy_read(datapath*"unit_test_shot_records.segy")
     d_block = judiVector(block; segy_depth_key="RecGroupElevation")
     dsize = (prod(size(block.data)), 1)
 
@@ -68,7 +70,7 @@ ns = 251
     @test isequal(size(d_block), dsize)
 
     # contructor for out-of-core data container from single container
-    container = segy_scan("../data/", "unit_test_shot_records", ["GroupX", "GroupY", "RecGroupElevation", "SourceSurfaceElevation", "dt"])
+    container = segy_scan(datapath, "unit_test_shot_records", ["GroupX", "GroupY", "RecGroupElevation", "SourceSurfaceElevation", "dt"])
     d_cont = judiVector(container; segy_depth_key="RecGroupElevation")
 
     @test isequal(d_cont.nsrc, nsrc)
