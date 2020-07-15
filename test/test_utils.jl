@@ -5,6 +5,7 @@ using JUDI.TimeModeling, ArgParse, Images
 
 export setup_model, parse_commandline, setup_geom
 
+
 """
 Simple 2D model setup used for the tests.
 """
@@ -13,6 +14,9 @@ function smooth(v, sigma=3)
     return Float32.(imfilter(v,  Kernel.gaussian(sigma)))
 end
 
+"""
+Sets up a simple 2D layered model for the wave equation operators tests
+"""
 function setup_model(tti=false, nlayer=2; n=(301, 151), d=(10., 10.))
     ## Set up model structure	
     o = (0., 0.)	
@@ -45,6 +49,11 @@ function setup_model(tti=false, nlayer=2; n=(301, 151), d=(10., 10.))
 
     return model, model0, dm
 end
+
+
+"""
+Sets up a simple 2D acquisition for the wave equation operators tests
+"""
 
 function setup_geom(model; nsrc=1, tn=1500f0)
     ## Set up receiver geometry
@@ -80,6 +89,7 @@ function setup_geom(model; nsrc=1, tn=1500f0)
 
     return q, srcGeometry, recGeometry, info
 end
+
 
 ### Process command line args
 function parse_commandline()
