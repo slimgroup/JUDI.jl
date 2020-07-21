@@ -1,7 +1,7 @@
 import numpy as np
-from sympy import Abs
+from sympy import Abs, Min, exp
 import warnings
-from devito import (Grid, Function, SubDomain, SubDimension, Inc,
+from devito import (Grid, Function, SubDomain, SubDimension, Eq,
                     Operator, mmax, initialize_function)
 from devito.tools import as_tuple
 
@@ -43,10 +43,11 @@ class FSDomain(SubDomain):
         return map_d
 
 
-def initialize_damp(damp, nbl, fs=False):
+def initialize_damp(damp, padsizes, spacing, fs=False):
     """
     Initialise damping field with an absorbing boundary layer.
-    https://academic.oup.com/jge/article/15/2/495/5078497
+    Includes basic constant Q setup (not interfaced yet) and assumes that
+    the peak frequency is 1/(10 * spacing).
 
     Parameters
     ----------
@@ -61,27 +62,27 @@ def initialize_damp(damp, nbl, fs=False):
         mask => 1 inside the domain and decreases in the layer
         not mask => 0 inside the domain and increase in the layer
     """
-    dampcoeff = 3 * np.log(1.0 / 0.001) / (2 * nbl)
+    lqmin = np.log(.1)
+    lqmax = np.log(100)
+    w0 = 1/(10 * np.mean(spacing))
 
     z = damp.dimensions[-1]
-    eqs = []
-    for d in damp.dimensions:
+    eqs = [Eq(damp, 1)]
+
+    for (nbl, nbr), d in zip(padsizes, damp.dimensions):
         if not fs or d is not z:
             # left
             dim_l = SubDimension.left(name='abc_%s_l' % d.name, parent=d,
-                                      thickness=nbl)
-            pos = 1 - Abs(dim_l - d.symbolic_min) / float(nbl)
-            val = dampcoeff*pos**2
-            # val = dampcoeff * (pos - sin(2*np.pi*pos)/(2*np.pi))
-            eqs += [Inc(damp.subs({d: dim_l}), val/d.spacing)]
+                                      thickness=nbl-10)
+            pos = Abs(dim_l - d.symbolic_min) / float(nbl-10)
+            eqs.append(Eq(damp.subs({d: dim_l}), Min(damp.subs({d: dim_l}), pos)))
         # right
         dim_r = SubDimension.right(name='abc_%s_r' % d.name, parent=d,
-                                   thickness=nbl)
-        pos = 1 - Abs(d.symbolic_max - dim_r) / float(nbl)
-        # val = dampcoeff * (pos - sin(2*np.pi*pos)/(2*np.pi))
-        val = dampcoeff * pos**2
-        eqs += [Inc(damp.subs({d: dim_r}), val/d.spacing)]
+                                   thickness=nbr)
+        pos = Abs(d.symbolic_max - dim_r) / float(nbr)
+        eqs.append(Eq(damp.subs({d: dim_r}), Min(damp.subs({d: dim_r}), pos)))
 
+    eqs.append(Eq(damp, w0 / exp(lqmin + damp * (lqmax - lqmin))))
     Operator(eqs, name='initdamp')()
 
 
@@ -115,7 +116,7 @@ class GenericModel(object):
         if self.nbl != 0:
             # Create dampening field as symbol `damp`
             self.damp = Function(name="damp", grid=self.grid)
-            initialize_damp(self.damp, self.nbl, fs=fs)
+            initialize_damp(self.damp, self.padsizes, spacing, fs=fs)
             self._physical_parameters = ['damp']
         else:
             self.damp = 1
@@ -144,8 +145,7 @@ class GenericModel(object):
         if isinstance(field, np.ndarray):
             function = Function(name=name, grid=self.grid, space_order=space_order,
                                 parameter=is_param)
-            function._data_with_outhalo[:] = func(np.min(field))
-            function.data[:] = func(field)
+            function._data_with_outhalo[:] = func(field)
         else:
             return field
         self._physical_parameters.append(name)
@@ -313,7 +313,7 @@ class Model(GenericModel):
         #
         # The CFL condtion is then given by
         # dt <= coeff * h / (max(velocity))
-        coeff = 0.38 if len(self.shape) == 3 else 0.42
+        coeff = .9*0.38 if len(self.shape) == 3 else .9*0.42
         dt = self.dtype(coeff * np.min(self.spacing) / (self.scale*self._max_vp))
         if self.dt:
             if self.dt > dt:
@@ -342,7 +342,7 @@ class Model(GenericModel):
         """
         # Update the square slowness according to new value
         if isinstance(dm, np.ndarray):
-            if not isinstance(self._dm, Function) and dm.shape == self.grid.shape:
+            if not isinstance(self._dm, Function):
                 self._dm = self._gen_phys_param(dm, 'dm', self.space_order)
             elif dm.shape == self.shape:
                 initialize_function(self._dm, dm, self.nbl)
