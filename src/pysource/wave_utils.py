@@ -120,7 +120,7 @@ def extented_src(model, weight, wavelet, q=0):
     source_weight.data[:] = weight
     if model.is_tti:
         return (q[0] + source_weight * wavelett, q[1] + source_weight * wavelett)
-    return q + source_weight*wavelett
+    return q + source_weight * wavelett
 
 
 def extended_src_weights(model, wavelet, v):
