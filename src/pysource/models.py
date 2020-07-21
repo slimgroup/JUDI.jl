@@ -1,5 +1,5 @@
 import numpy as np
-from sympy import sin, Abs
+from sympy import Abs
 import warnings
 from devito import (Grid, Function, SubDomain, SubDimension, Inc,
                     Operator, mmax, initialize_function)
@@ -46,6 +46,7 @@ class FSDomain(SubDomain):
 def initialize_damp(damp, nbl, fs=False):
     """
     Initialise damping field with an absorbing boundary layer.
+    https://academic.oup.com/jge/article/15/2/495/5078497
 
     Parameters
     ----------
@@ -60,7 +61,7 @@ def initialize_damp(damp, nbl, fs=False):
         mask => 1 inside the domain and decreases in the layer
         not mask => 0 inside the domain and increase in the layer
     """
-    dampcoeff = np.log(1.0 / 0.001) / (nbl)
+    dampcoeff = 3 * np.log(1.0 / 0.001) / (2 * nbl)
 
     z = damp.dimensions[-1]
     eqs = []
@@ -69,14 +70,16 @@ def initialize_damp(damp, nbl, fs=False):
             # left
             dim_l = SubDimension.left(name='abc_%s_l' % d.name, parent=d,
                                       thickness=nbl)
-            pos = Abs((nbl - (dim_l - d.symbolic_min) + 1) / float(nbl))
-            val = dampcoeff * (pos - sin(2*np.pi*pos)/(2*np.pi))
+            pos = 1 - Abs(dim_l - d.symbolic_min) / float(nbl)
+            val = dampcoeff*pos**2
+            # val = dampcoeff * (pos - sin(2*np.pi*pos)/(2*np.pi))
             eqs += [Inc(damp.subs({d: dim_l}), val/d.spacing)]
         # right
         dim_r = SubDimension.right(name='abc_%s_r' % d.name, parent=d,
                                    thickness=nbl)
-        pos = Abs((nbl - (d.symbolic_max - dim_r) + 1) / float(nbl))
-        val = dampcoeff * (pos - sin(2*np.pi*pos)/(2*np.pi))
+        pos = 1 - Abs(d.symbolic_max - dim_r) / float(nbl)
+        # val = dampcoeff * (pos - sin(2*np.pi*pos)/(2*np.pi))
+        val = dampcoeff * pos**2
         eqs += [Inc(damp.subs({d: dim_r}), val/d.spacing)]
 
     Operator(eqs, name='initdamp')()
@@ -141,7 +144,7 @@ class GenericModel(object):
         if isinstance(field, np.ndarray):
             function = Function(name=name, grid=self.grid, space_order=space_order,
                                 parameter=is_param)
-            function._data_with_outhalo[:] = np.min(func(field))
+            function._data_with_outhalo[:] = func(np.min(field))
             function.data[:] = func(field)
         else:
             return field

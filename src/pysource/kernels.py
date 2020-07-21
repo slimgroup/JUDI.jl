@@ -7,7 +7,7 @@ from wave_utils import freesurface
 from FD_utils import laplacian, ssa_tti
 
 
-def fallback_solve(eq, target, **kwargs):
+def _solve(eq, target, **kwargs):
     """
     To be remved at next Devito release
     """
@@ -59,14 +59,14 @@ def acoustic_kernel(model, u, fw=True, q=None):
         Full time-space source
     """
     u_n = u.forward if fw else u.backward
-    udt = u.dt if fw else u.dt.T
+    udt = u.dtc if fw else u.dtc.T
     q = q or 0
 
     # Set up PDE expression and rearrange
     ulaplace = laplacian(u, model.irho)
     wmr = model.irho * model.m
     vpd = model.vp * model.damp
-    stencil = fallback_solve(wmr * u.dt2 - ulaplace - q + vpd * udt, u_n)
+    stencil = _solve(wmr * u.dt2 - ulaplace - q + 2 * vpd * udt + vpd**2 * u, u_n)
 
     if 'nofsdomain' in model.grid.subdomains:
         return [Eq(u_n, stencil, subdomain=model.grid.subdomains['nofsdomain'])]
@@ -96,13 +96,13 @@ def tti_kernel(model, u1, u2, fw=True, q=None):
 
     # Tilt and azymuth setup
     u1_n, u2_n = (u1.forward, u2.forward) if fw else (u1.backward, u2.backward)
-    (udt1, udt2) = (u1.dt, u2.dt) if fw else (u1.dt.T, u2.dt.T)
+    (udt1, udt2) = (u1.dtc, u2.dtc) if fw else (u1.dtc.T, u2.dtc.T)
     H0, H1, factp, factm = ssa_tti(u1, u2, model)
 
     # Stencils
     vpd = model.vp * damp
-    stencilp = fallback_solve(wmr * u1.dt2 - H0 - q[0] + vpd * udt1, u1_n)
-    stencilr = fallback_solve(wmr * u2.dt2 - H1 - q[1] + vpd * udt2, u2_n)
+    stencilp = _solve(wmr * u1.dt2 - H0 - q[0] + 2 * vpd * udt1 + vpd**2 * u1, u1_n)
+    stencilr = _solve(wmr * u2.dt2 - H1 - q[1] + 2 * vpd * udt2 + vpd**2 * u2, u2_n)
 
     if 'nofsdomain' in model.grid.subdomains:
         first_stencil = Eq(u1_n, stencilp, subdomain=model.grid.subdomains['nofsdomain'])

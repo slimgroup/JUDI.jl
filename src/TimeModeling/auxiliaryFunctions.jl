@@ -587,3 +587,29 @@ function reshape(x::Array{Float32, 1}, geometry::Geometry)
     nsrc = Int(length(x) / nt / nrec)
     return reshape(x, nt, nrec, nsrc)
 end
+
+
+"""
+Create the JUDI soure for a circular transducer
+"""
+
+function transducer_source(srcGeom::Geometry, r, theta, wavelet, d)
+    length(theta) == length(srcGeom.xloc) && throw("Need one angle per source position")
+    nsrc_loc = 11
+    nsrc = length(srcGeom.xloc)
+    x_base = collect(range(-r, r, nsrc_loc))
+    y_base = zeros(nsrc_loc)
+    y_base_b = zeros(nsrc_loc) - d
+
+    xloc = Array{Any}(undef, nsrc)
+    yloc = Array{Any}(undef, nsrc)
+    zloc = Array{Any}(undef, nsrc)
+
+    for i=1:srcGeom
+        R = [cos(theta[i] - pi/2) sin(theta - pi/2);-sin(theta - pi/2) cos(theta - pi/2)]
+        r_loc = srcGeom.xloc[i] .+ R * [x_base;y_base]
+        r_loc_b = srcGeom.xloc[i] .+ R * [x_base;y_base_b]
+        xi = r_loc[1, :]
+        yi = r_loc[1, :]
+    end
+end

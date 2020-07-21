@@ -46,11 +46,12 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     # Create operator and run
     subs = model.spacing_map
     op = Operator(tmp + pde + geom_expr + dft + eq_save,
-                  subs=subs, name="forward"+name(model))
+                  subs=subs, name="forward"+name(model),
+                  opt=('advanced', {'min-storage': True}))
 
     if return_op:
         return op, u, rcv
-    from IPython import embed; embed()
+
     op()
 
     # Output
@@ -83,7 +84,8 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0,
     # Create operator and run
     subs = model.spacing_map
     op = Operator(tmp + pde + ws_expr + geom_expr,
-                  subs=subs, name="adjoint"+name(model))
+                  subs=subs, name="adjoint"+name(model),
+                  opt=('advanced', {'min-storage': True}))
 
     op()
 
@@ -117,7 +119,8 @@ def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8, t_s
     # Create operator and run
     subs = model.spacing_map
     op = Operator(tmp + pde + geom_expr + g_expr,
-                  subs=subs, name="gradient"+name(model))
+                  subs=subs, name="gradient"+name(model),
+                  opt=('advanced', {'min-storage': True}))
 
     if return_op:
         return op, gradm, v
@@ -153,7 +156,8 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8,
     # Create operator and run
     subs = model.spacing_map
     op = Operator(tmpu + tmpul + pde + geom_expr + pdel + geom_exprl,
-                  subs=subs, name="born"+name(model))
+                  subs=subs, name="born"+name(model),
+                  opt=('advanced', {'min-storage': True}))
 
     op()
     # Output
