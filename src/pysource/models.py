@@ -60,7 +60,7 @@ def initialize_damp(damp, nbl, fs=False):
         mask => 1 inside the domain and decreases in the layer
         not mask => 0 inside the domain and increase in the layer
     """
-    dampcoeff = 1.5 * np.log(1.0 / 0.001) / (nbl)
+    dampcoeff = np.log(1.0 / 0.001) / (nbl)
 
     z = damp.dimensions[-1]
     eqs = []
@@ -264,7 +264,7 @@ class Model(GenericModel):
             self.rho = self._gen_phys_param(rho, 'rho', so)
             self.irho = 1 / self.rho
         else:
-            self.irho = self._gen_phys_param(rho, 'irho', so, lambda x: 1/x)
+            self.irho = self._gen_phys_param(rho, 'irho', so, func=lambda x: 1/x)
 
     @property
     def space_order(self):

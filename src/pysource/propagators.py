@@ -50,7 +50,7 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
 
     if return_op:
         return op, u, rcv
-
+    from IPython import embed; embed()
     op()
 
     # Output

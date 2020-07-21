@@ -65,7 +65,8 @@ def acoustic_kernel(model, u, fw=True, q=None):
     # Set up PDE expression and rearrange
     ulaplace = laplacian(u, model.irho)
     wmr = model.irho * model.m
-    stencil = fallback_solve(wmr * u.dt2 - ulaplace - q + model.damp * udt, u_n)
+    vpd = model.vp * model.damp
+    stencil = fallback_solve(wmr * u.dt2 - ulaplace - q + vpd * udt, u_n)
 
     if 'nofsdomain' in model.grid.subdomains:
         return [Eq(u_n, stencil, subdomain=model.grid.subdomains['nofsdomain'])]
@@ -99,8 +100,9 @@ def tti_kernel(model, u1, u2, fw=True, q=None):
     H0, H1, factp, factm = ssa_tti(u1, u2, model)
 
     # Stencils
-    stencilp = fallback_solve(wmr * u1.dt2 - H0 - q[0] + damp * udt1, u1_n)
-    stencilr = fallback_solve(wmr * u2.dt2 - H1 - q[1] + damp * udt2, u2_n)
+    vpd = model.vp * damp
+    stencilp = fallback_solve(wmr * u1.dt2 - H0 - q[0] + vpd * udt1, u1_n)
+    stencilr = fallback_solve(wmr * u2.dt2 - H1 - q[1] + vpd * udt2, u2_n)
 
     if 'nofsdomain' in model.grid.subdomains:
         first_stencil = Eq(u1_n, stencilp, subdomain=model.grid.subdomains['nofsdomain'])
