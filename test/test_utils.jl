@@ -64,7 +64,7 @@ function setup_geom(model; nsrc=1, tn=1500f0)
 
     # receiver sampling and recording time
     T = tn   # receiver recording time [ms]
-    dt = 1f0    # receiver sampling interval [ms]
+    dt = .75f0    # receiver sampling interval [ms]
 
     # Set up receiver structure
     recGeometry = Geometry(xrec, yrec, zrec; dt=dt, t=T, nsrc=nsrc)

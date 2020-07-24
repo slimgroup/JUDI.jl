@@ -4,14 +4,14 @@
 #
 
 using Statistics, Random, LinearAlgebra
-using JUDI.TimeModeling, JUDI.SLIM_optim, HDF5, SeisIO, PyPlot, IterativeSolvers
+using JUDI.TimeModeling, JUDI.SLIM_optim, HDF5, SegyIO, PyPlot, IterativeSolvers
 
 # Load starting model
 n,d,o,m0 = read(h5open("../../data/overthrust_model.h5","r"), "n", "d", "o", "m0")
 model0 = Model((n[1],n[2]), (d[1],d[2]), (o[1],o[2]), m0)
 
 # Bound constraints
-v0 = sqrt.(1./model0.m)
+v0 = sqrt.(1 ./ model0.m)
 vmin = ones(Float32,model0.n) .* 1.3f0
 vmax = ones(Float32,model0.n) .* 6.5f0
 vmin[:,1:21] .= v0[:,1:21]   # keep water column fixed
@@ -50,12 +50,12 @@ proj(x) = reshape(median([vec(mmin) vec(x) vec(mmax)],2),model0.n)
 for j=1:maxiter
     println("Iteration: ",j)
 
-    # Model predicted data for subset of sources
-    d_pred = Pr*F*Ps'*q
-    fhistory_GN[j] = .5f0*norm(d_pred - d_obs)^2
+    # # Model predicted data for subset of sources
+    # d_pred = Pr*F*Ps'*q
+    # fhistory_GN[j] = .5f0*norm(d_pred - d_obs)^2
 
     # GN update direction
-    p = lsqr(J, d_pred - d_obs; maxiter=maxiter_GN, verbose=true)
+    p = lsqr(J[1], d_obs[1]; maxiter=maxiter_GN, verbose=true)
 
     # update model and bound constraints
     model0.m = model0.m - reshape(p, model0.n)    # alpha=1

@@ -5,7 +5,7 @@
 # Authors: Philipp Witte (pwitte@eos.ubc.ca), Henryk Modzelewski (hmodzelewski@eos.ubc.ca)
 # Date: January 2017
 
-export judiJacobian, judiJacobianException, subsample
+export judiJacobian, judiJacobianException, subsample, zerox
 
 ############################################################
 
@@ -104,19 +104,18 @@ adjoint(A::judiJacobian{DDT,RDT}) where {DDT,RDT} =
 ## overloaded Base *(...judiJacobian...)
 
 # *(judiJacobian,vec)
-function *(A::judiJacobian{ADDT,ARDT},v::AbstractVector{vDT}) where {ADDT,ARDT,vDT}
+function *(A::judiJacobian{ADDT,ARDT},v::AbstractVector{Float32}) where {ADDT,ARDT}
     A.n == size(v,1) || throw(judiJacobianException("shape mismatch"))
-    jo_check_type_match(ADDT,vDT,join(["DDT for *(judiJacobian,vec):",A.name,typeof(A),vDT]," / "))
     V = A.fop(v)
     jo_check_type_match(ARDT,eltype(V),join(["RDT from *(judiJacobian,vec):",A.name,typeof(A),eltype(V)]," / "))
     return V
 end
 
 *(A::judiJacobian{ADDT,ARDT},v::AbstractMatrix{vDT}) where {ADDT,ARDT,vDT} = *(A, vec(v))
-
+*(A::judiJacobian{ADDT,ARDT},v::AbstractVector{Float64}) where {ADDT,ARDT} = *(A, jo_convert(Float32, v, false))
 
 # *(judiJacobian,judiVector)
-function *(A::judiJacobian{ADDT,ARDT},v::judiVector{vDT}) where {ADDT,ARDT,vDT}
+function *(A::judiJacobian{ADDT,ARDT}, v::judiVector{vDT}) where {ADDT,ARDT,vDT}
     A.n == size(v,1) || throw(judiJacobianException("shape mismatch"))
     jo_check_type_match(ADDT,vDT,join(["DDT for *(judiJacobian,judiVector):",A.name,typeof(A),vDT]," / "))
     compareGeometry(A.recGeometry,v.geometry) == true || throw(judiJacobianException("Geometry mismatch"))
@@ -133,14 +132,24 @@ function *(a::Number,A::judiJacobian{ADDT,ARDT}) where {ADDT,ARDT}
                                 )
 end
 
-function A_mul_B!(x::judiVector,J::judiJacobian,y::Array)
-    z = J*y
-    x.data = z.data
+function A_mul_B!(x::judiVector, J::judiJacobian, y::Array)
+    # check if already adjoint(i.e lsqr)
+    J.m == size(y, 1) ? z = adjoint(J)*y : z = J*y
+    for j=1:length(x.data)
+        x.data[j] .= z.data[j]
+    end
 end
 
-function Ac_mul_B!(x::Array,J::judiJacobian,y::judiVector)
-    x[:] = adjoint(J)*y
+function A_mul_B!(x::Array, J::judiJacobian, y::judiVector)
+    # check if already adjoint(i.e lsqr)
+    J.m == size(y, 1) ? x[:] = adjoint(J)*y : x[:] = J*y
 end
+
+mul!(x::Array, J::judiJacobian, y::judiVector) = A_mul_B!(x, J, y)
+mul!(x::judiVector, J::judiJacobian, y::Array) = A_mul_B!(x, J, y)
+
+# Needed by lsqr
+zerox(J::judiJacobian, y::judiVector) = zeros(Float32, size(J, 2))
 
 ############################################################
 ## overloaded Bases +(...judiJacobian...), -(...judiJacobian...)

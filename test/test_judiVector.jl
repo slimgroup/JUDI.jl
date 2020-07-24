@@ -248,7 +248,15 @@ ns = 251
     v = judiVector(rec_geometry, randn(Float32, ns, nrec))
     u_scale = deepcopy(u)
     v_scale = deepcopy(v)
-    a = randn(1)[1]
+    
+    u_scale .*= 2f0
+    @test isapprox(u_scale, 2f0 * u)
+    v_scale .+= 2f0
+    @test isapprox(v_scale, 2f0 + v)
+    u_scale ./= 2f0
+    @test isapprox(u_scale, u)
+    u_scale .= 2f0 .* u_scale .+ v_scale
+    @test isapprox(u_scale, 2f0 * u + 2f0 + v)
 
     # broadcast identity
     u = judiVector(rec_geometry, randn(Float32, ns, nrec))

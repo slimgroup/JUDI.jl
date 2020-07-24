@@ -135,3 +135,21 @@ function subsample(F::judiPDEextended{ADDT,ARDT}, srcnum) where {ADDT,ARDT}
 end
 
 getindex(F::judiPDEextended,a) = subsample(F,a)
+
+
+############################################################
+
+function A_mul_B!(x::judiWeights, F::judiPDEextended, y::judiVector)
+    F.m == size(y, 1) ? z = adjoint(F)*y : z = F*y
+    x.weights = z.weights
+end
+
+function A_mul_B!(x::judiVector, F::judiPDEextended, y::judiWeights)
+    F.m == size(y, 1) ? z = adjoint(F)*y : z = F*y
+    for j=1:length(x.data)
+        x.data[j] .= z.data[j]
+    end
+end
+
+mul!(x::judiWeights, F::judiPDEextended, y::judiVector) = A_mul_B!(x, F, y)
+mul!(x::judiVector, F::judiPDEextended, y::judiWeights) = A_mul_B!(x, F, y)
