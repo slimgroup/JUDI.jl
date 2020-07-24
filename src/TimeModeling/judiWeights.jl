@@ -82,6 +82,13 @@ adjoint(a::judiWeights{vDT}) where vDT =
 ##########################################################
 
 
+# -(judiWeights)
+function -(a::judiWeights{avDT}) where {avDT}
+    c = deepcopy(a)
+    c.weights = - c.weights
+    return c
+end
+
 # +(judiWeights, judiWeights)
 function +(a::judiWeights{avDT}, b::judiWeights{bvDT}) where {avDT, bvDT}
     size(a) == size(b) || throw(judiWeightsException("dimension mismatch"))
@@ -283,4 +290,14 @@ end
 
 function isapprox(x::judiWeights, y::judiWeights; rtol::Real=sqrt(eps()), atol::Real=0)
     isapprox(x.weights, y.weights; rtol=rtol, atol=atol)
+end
+
+function Base.iterate(x::judiWeights, state=(x.weights[1][1], 1))
+   element, count = state
+
+   if count > x.m
+       return nothing
+   end
+
+   return (element, (x.weights[count ÷ (Int(x.m/x.nsrc)+1) + 1][count % Int(x.m/x.nsrc) + 1], count + 1))
 end
