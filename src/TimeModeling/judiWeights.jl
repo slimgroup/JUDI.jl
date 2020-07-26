@@ -48,7 +48,7 @@ function judiWeights(weights::Array; nsrc=1, vDT::DataType=Float32)
     m = prod(size(weights))*nsrc
     weightsCell = Array{Array}(undef, nsrc)
     for j=1:nsrc
-        weightsCell[j] = weights
+        weightsCell[j] = deepcopy(weights)
     end
     return judiWeights{Float32}("Extended source weights",m,n,nsrc,weightsCell)
 end
@@ -81,6 +81,14 @@ adjoint(a::judiWeights{vDT}) where vDT =
 
 ##########################################################
 
+# minus
+function -(a::judiWeights{avDT}) where {avDT}
+    c = deepcopy(a)
+    for j=1:a.nsrc
+        c.weights[j] = -c.weights[j]
+    end
+    return c
+end
 
 # +(judiWeights, judiWeights)
 function +(a::judiWeights{avDT}, b::judiWeights{bvDT}) where {avDT, bvDT}
@@ -312,44 +320,85 @@ similar(x::judiWeights, element_type::DataType, dims::Union{AbstractUnitRange, I
 
 isfinite(x::judiWeights) = all(all(isfinite.(x.weights[i])) for i=1:length(x.weights))
 
+iterate(S::judiWeights, state::Integer=1) = state > length(S.weights) ? nothing : (S.weights[state], state+1)
+
 ####################################################################################################
 
 BroadcastStyle(::Type{judiWeights}) = Base.Broadcast.DefaultArrayStyle{1}()
 
-broadcasted(::typeof(+), x::judiWeights, y::judiWeights) = x + y
+ndims(::Type{judiWeights{Float32}}) = 1
 
+### +/- ####
+broadcasted(::typeof(+), x::judiWeights, y::judiWeights) = x + y
 broadcasted(::typeof(-), x::judiWeights, y::judiWeights) = x - y
 
+broadcasted(::typeof(+), x::judiWeights, y::Number) = x + y
+broadcasted(::typeof(-), x::judiWeights, y::Number) = x - y
 
-function broadcast!(identity, x::judiWeights, y::judiWeights)
-    copy!(x,y)
-end
+broadcasted(::typeof(+), x::Number, y::judiWeights) = x + y
+broadcasted(::typeof(-), x::Number, y::judiWeights) = x - y
 
-function broadcast!(identity, x::judiWeights, a::Number, y::judiWeights, z::judiWeights)
-    scale!(y,a)
-    copy!(x, y + z)
-end
-
-function copy!(x::judiWeights, y::judiWeights)
-    for j=1:x.nsrc
-        x.weights[j] = y.weights[j]
-    end
-end
-
+### * ####
 function broadcasted(::typeof(*), x::judiWeights, y::judiWeights)
+    size(x) == size(y) || throw(judiWeightsException("dimension mismatch"))
+    z = deepcopy(x)
     for j=1:length(x.weights)
-        x.weights[j] = x.weights[j] .* y.weights[j]
+        z.data[j] = x.weights[j] .* y.weights[j]
     end
-    return x
+    return z
 end
 
-function isapprox(x::judiWeights, y::judiWeights; rtol::Real=sqrt(eps()), atol::Real=0)
-    isapprox(x.weights, y.weights; rtol=rtol, atol=atol)
+function broadcasted(::typeof(*), x::judiWeights, y::Number)
+    z = deepcopy(x)
+    for j=1:length(x.weights)
+        z.weights[j] .*= y
+    end
+    return z
 end
 
+broadcasted(::typeof(*), x::Number, y::judiWeights) = broadcasted(*, y, x)
+
+### / ####
+function broadcasted(::typeof(/), x::judiWeights, y::judiWeights)
+    size(x) == size(y) || throw(judiWeightsException("dimension mismatch"))
+    z = deepcopy(x)
+    for j=1:length(x.weights)
+        z.data[j] = x.weights[j] ./ y.weights[j]
+    end
+    return z
+end
+
+broadcasted(::typeof(/), x::judiWeights, y::Number) = broadcasted(*, x, 1/y)
+
+# Materialize for broadcasting
 function materialize!(x::judiWeights, y::judiWeights)
     for j=1:length(x.weights)
         x.weights[j] .= y.weights[j]
     end
     return x
 end
+
+function broadcast!(identity, x::judiWeights, y::judiWeights)
+    size(x) == size(y) || throw(judiWeightsException("dimension mismatch"))
+    copy!(x,y)
+end
+
+function broadcast!(identity, x::judiWeights, a::Number, y::judiWeights, z::judiWeights)
+    size(x) == size(y) || throw(judiWeightsException("dimension mismatch"))
+    size(x) == size(z) || throw(judiWeightsException("dimension mismatch"))
+    scale!(y,a)
+    copy!(x, y + z)
+end
+
+
+function copy!(x::judiWeights, y::judiWeights)
+    size(x) == size(y) || throw(judiWeightsException("dimension mismatch"))
+    for j=1:x.nsrc
+        x.weights[j] = y.weights[j]
+    end
+end
+
+function isapprox(x::judiWeights, y::judiWeights; rtol::Real=sqrt(eps()), atol::Real=0)
+    isapprox(x.weights, y.weights; rtol=rtol, atol=atol)
+end
+

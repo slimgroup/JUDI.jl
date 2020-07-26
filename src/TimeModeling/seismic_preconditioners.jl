@@ -191,7 +191,7 @@ function find_water_bottom(m)
     return idx
 end
 
-function depth_scaling(m,model)
+function depth_scaling(m, model)
 # Linear depth scaling function for seismic images
     m = reshape(m,model.n)
     filter = sqrt.(0f0:model.d[2]:model.d[2]*(model.n[2]-1))

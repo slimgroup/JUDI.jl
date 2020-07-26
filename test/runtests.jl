@@ -16,6 +16,7 @@ if GROUP == "JUDI" || GROUP == "All"
         include("test_abstract_vectors.jl")
         include("test_geometry.jl")
         include("test_judiVector.jl")
+        include("test_composite.jl")
         include("test_linear_operators.jl")
     end
 end

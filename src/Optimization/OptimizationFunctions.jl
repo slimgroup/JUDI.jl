@@ -2,28 +2,29 @@
 export isLegal, lbfgsUpdate, lbfgsHvFunc2, ssbin, solveSubProblem, subHv, polyval, polyinterp
 
 function isLegal(v)
-    return sum(isnan.(v))==0 & sum(isinf.(v))==0
+    nv = norm(v)
+    return !isnan(nv) && !isinf(nv)
 end
 
-function lbfgsUpdate(y,s,corrections,debug,old_dirs,old_stps,Hdiag)
-    ys = dot(y,s);
+function lbfgsUpdate(y, s, corrections, debug, old_dirs, old_stps, Hdiag)
+    ys = dot(y,s)
     if ys > 1e-10 || size(old_dirs,2)==0
-        numCorrections = size(old_dirs,2);
+        numCorrections = size(old_dirs, 2)
         if numCorrections < corrections
             # Full Update
-            old_dirs = [old_dirs s];
-            old_stps = [old_stps y];
+            old_dirs = [old_dirs s]
+            old_stps = [old_stps y]
         else
             # Limited-Memory Update
-            old_dirs = [old_dirs[:,2:corrections] s];
-            old_stps = [old_stps[:,2:corrections] y];
+            old_dirs = [old_dirs[:, 2:corrections] s] 
+            old_stps = [old_stps[:, 2:corrections] y]
         end
 
         # Update scale of initial Hessian approximation
-        Hdiag = ys/dot(y,y);
+        Hdiag = ys/dot(y, y)
     else
         if debug==3
-            @printf("Skipping Update\n");
+            @printf("Skipping Update\n")
         end
     end
     return old_dirs, old_stps, Hdiag
@@ -63,8 +64,8 @@ function ssbin(A,nmv)
     dp = d
     for k = 1:nmv
       # Approximate matrix-vector product
-      u = randn(Float32,n,1)
-      s = u./sqrt.(dp)
+      u = randn(Float32, n, 1)
+      s = u ./ sqrt.(dp)
       y = A*s
       # omega^k
       alpha = (k - 1)/nmv
@@ -92,16 +93,16 @@ function solveSubProblem(x,g,H,funProj,optTol,progTol,maxIter,testOpt,feasibleIn
                           maxIter = maxIter,
                           testOpt = testOpt,
                           feasibleInit = feasibleInit)
-    funObj(p) = subHv(p,x,g,H);
-    p, f, funEvals, subProjects, hist = minConf_SPG(funObj,x_init,funProj,options);
+    funObj(p) = subHv(p,x,g,H)
+    p, f, funEvals, subProjects, hist = minConf_SPG(funObj,x_init,funProj,options)
     return p, subProjects 
 end
 
 function subHv(p,x,g,HvFunc)
-    d = p-x;
-    Hd = HvFunc(d);
-    f = dot(g,d) + (1f0/2f0)*dot(d,Hd);
-    g = g + Hd;
+    d = p - x
+    Hd = HvFunc(d)
+    f = dot(g,d) + (1f0/2f0)*dot(d,Hd)
+    g = g + Hd
     return f, g
 end
 
@@ -116,7 +117,7 @@ function polyval(p,x)
 end
 
 function polyinterp(points;xminBound=-Inf,xmaxBound=Inf)
-# function [minPos] = polyinterp(points,doPlot,xminBound,xmaxBound)
+# function minPos = polyinterp(points,doPlot,xminBound,xmaxBound)
 #
 #   Minimum of interpolating polynomial based on function and derivative
 #   values
@@ -134,93 +135,93 @@ function polyinterp(points;xminBound=-Inf,xmaxBound=Inf)
 #   the order of the polynomial is the number of known f and g values minus 1
 
 
-    nPoints = size(points,1);
-    order = length(findall(imag(points[:,2:3]) .== 0))-1;
+    nPoints = size(points,1)
+    order = length(findall(imag(points[:,2:3]) .== 0))-1
     # Code for most common case:
     #   - cubic interpolation of 2 points
     #       w/ function and derivative values for both
     #   - no xminBound/xmaxBound
 
-    if nPoints == 2 && order ==3 && isinf.(xmaxBound)
+    if nPoints == 2 && order ==3 && isinf(xmaxBound)
         # Solution in this case (where x2 is the farthest point):
         #    d1 = g1 + g2 - 3*(f1-f2)/(x1-x2);
         #    d2 = sqrt(d1^2 - g1*g2);
         #    minPos = x2 - (x2 - x1)*((g2 + d2 - d1)/(g2 - g1 + 2*d2));
         #    t_new = min(max(minPos,x1),x2);
-        minVal, minPos = findmin(points[:,1]);
-        notMinPos = -minPos+3;
-        d1 = points[minPos,3] + points[notMinPos,3] - 3*(points[minPos,2]-points[notMinPos,2])/(points[minPos,1]-points[notMinPos,1]);
-        d2 = sqrt.(d1^2 - points[minPos,3]*points[notMinPos,3]);
+        minVal, minPos = findmin(points[:,1])
+        notMinPos = -minPos+3
+        d1 = points[minPos, 3] + points[notMinPos, 3] - 3*(points[minPos,2]-points[notMinPos,2])/(points[minPos,1]-points[notMinPos,1]);
+        d2 = sqrt.(d1^2 - points[minPos,3]*points[notMinPos,3])
         if isreal(d2)
-            t = points[notMinPos,1] - (points[notMinPos,1] - points[minPos,1])*((points[notMinPos,3] + d2 - d1)/(points[notMinPos,3] - points[minPos,3] + 2*d2));
-            minPos = min(max(t,points[minPos,1]),points[notMinPos,1]);
+            t = points[notMinPos,1] - (points[notMinPos,1] - points[minPos,1])*((points[notMinPos,3] + d2 - d1)/(points[notMinPos,3] - points[minPos,3] + 2*d2))
+            minPos = min(max(t,points[minPos,1]),points[notMinPos,1])
         else
-            minPos = mean(points[:,1]);
+            minPos = mean(points[:,1])
         end
         return minPos
     end
 
-    xmin = minimum(points[:,1]);
-    xmax = maximum(points[:,1]);
+    xmin = minimum(points[:,1])
+    xmax = maximum(points[:,1])
 
     # Compute Bounds of Interpolation Area
-    if isinf.(xminBound)
-        xminBound = xmin;
+    if isinf(xminBound)
+        xminBound = xmin
     end
-    if isinf.(xmaxBound)
-        xmaxBound = xmax;
+    if isinf(xmaxBound)
+        xmaxBound = xmax
     end
 
     # Constraints Based on available Function Values
-    A = zeros(Float32,0,order+1);
-    b = zeros(Float32,0);
+    A = zeros(Float32,0,order + 1)
+    b = zeros(Float32,0)
     for i = 1:nPoints
         if imag(points[i,2])==0
-            constraint = zeros(Float32,1,order+1);
+            constraint = zeros(Float32,1,order+1)
             for j = order:-1:0
-                constraint[order-j+1] = points[i,1]^j;
+                constraint[order-j+1] = points[i,1]^j
             end
-            A = [A;constraint];
-            b = [b;points[i,2]];
+            A = [A; constraint]
+            b = [b; points[i,2]]
         end
     end
 
     # Constraints based on available Derivatives
     for i = 1:nPoints
         if isreal(points[i,3])
-            constraint = zeros(Float32,1,order+1);
+            constraint = zeros(Float32,1,order+1)
             for j = 1:order
-                constraint[j] = (order-j+1)*points[i,1]^(order-j);
+                constraint[j] = (order-j+1)*points[i,1]^(order-j)
             end
-            A = [A;constraint];
-            b = [b;points[i,3]];
+            A = [A;constraint]
+            b = [b;points[i,3]]
         end
     end
 
     # Find interpolating polynomial
-    params = A\b;
+    params = A\b
 
     # Compute Critical Points
-    dParams = zeros(Float32,order);
+    dParams = zeros(Float32,order)
     for i = 1:length(params)-1
-        dParams[i] = params[i]*(order-i+1);
+        dParams[i] = params[i]*(order-i+1)
     end
 
     if sum(isinf.(dParams)) >0
-        cp = copy(transpose([xminBound;xmaxBound;points[:,1]]));
+        cp = copy(transpose([xminBound;xmaxBound;points[:,1]]))
     else
-        cp = copy(transpose([xminBound;xmaxBound;points[:,1];-roots(dParams)]));
+        cp = copy(transpose([xminBound;xmaxBound;points[:,1];-roots(dParams)]))
     end
 
     # Test Critical Points
-    fmin = inf;
-    minPos = (xminBound+xmaxBound)/2; # Default to Bisection if no critical points valid
+    fmin = inf
+    minPos = (xminBound+xmaxBound)/2 # Default to Bisection if no critical points valid
     for xCP = cp
         if imag(xCP)==0 && xCP >= xminBound && xCP <= xmaxBound
-            fCP = polyval(params,xCP);
+            fCP = polyval(params,xCP)
             if imag(fCP)==0 && fCP < fmin
-                minPos = real(xCP);
-                fmin = real(fCP);
+                minPos = real(xCP)
+                fmin = real(fCP)
             end
         end
     end

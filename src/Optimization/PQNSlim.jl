@@ -58,178 +58,178 @@ function  minConf_PQN(funObj,x,funProj,options)
 #       SPGoptTol: optimality tolerance for SPG direction finding (default: 1e-6)
 #       SPGiters: maximum number of iterations for SPG direction finding (default:10)
 
-    fsave = 0;
-    nVars = length(x);
+    fsave = 0
+    nVars = length(x)
     #iter_save = zeros(nVars,1);
 
     # Output Parameter Settings
     if options.verbose >= 3
        @printf("Running PQN...\n");
-       @printf("Number of L-BFGS Corrections to store: %d\n",options.corrections);
-       @printf("Spectral initialization of SPG: %d\n",options.bbInit);
-       @printf("Maximum number of SPG iterations: %d\n",options.SPGiters);
-       @printf("SPG optimality tolerance: %.2e\n",options.SPGoptTol);
-       @printf("SPG progress tolerance: %.2e\n",options.SPGprogTol);
-       @printf("PQN optimality tolerance: %.2e\n",options.optTol);
-       @printf("PQN progress tolerance: %.2e\n",options.progTol);
-       @printf("Quadratic initialization of line search: %d\n",options.adjustStep);
-       @printf("Maximum number of function evaluations: %d\n",options.maxIter);
-       @printf("Maximum number of projections: %d\n",options.maxProject);
+       @printf("Number of L-BFGS Corrections to store: %d\n",options.corrections)
+       @printf("Spectral initialization of SPG: %d\n",options.bbInit)
+       @printf("Maximum number of SPG iterations: %d\n",options.SPGiters)
+       @printf("SPG optimality tolerance: %.2e\n",options.SPGoptTol)
+       @printf("SPG progress tolerance: %.2e\n",options.SPGprogTol)
+       @printf("PQN optimality tolerance: %.2e\n",options.optTol)
+       @printf("PQN progress tolerance: %.2e\n",options.progTol)
+       @printf("Quadratic initialization of line search: %d\n",options.adjustStep)
+       @printf("Maximum number of function evaluations: %d\n",options.maxIter)
+       @printf("Maximum number of projections: %d\n",options.maxProject)
     end
 
     # Output Log
     if options.verbose >= 2
-            @printf("%10s %10s %10s %15s %15s %15s\n","Iteration","FunEvals","Projections","Step Length","Function Val","Opt Cond");
+            @printf("%10s %10s %10s %15s %15s %15s\n","Iteration","FunEvals","Projections","Step Length","Function Val","Opt Cond")
     end
 
     # Make objective function (if using numerical derivatives)
-    funEvalMultiplier = 1;
+    funEvalMultiplier = 1
 
     # Project initial parameter vector
-    x = funProj(x);
-    projects = 1;
+    x = funProj(x)
+    projects = 1
 
     # Evaluate initial parameters
-    f, g = funObj(x);
-    funEvals = 1;
+    f, g = funObj(x)
+    funEvals = 1
 
     # Check Optimality of Initial Point
-    projects = projects+1;
+    projects = projects+1
     if maximum(abs.(funProj(x-g)-x)) < options.optTol
         if options.verbose >= 1
             @printf("First-Order Optimality Conditions Below optTol at Initial Point\n");
         end
-        fsave = f;
-        return;
+        fsave = f
+        return x, fsave, funEvals
     end
 
-    i = 1;
+    i = 1
     while funEvals <= options.maxIter
 
         # Compute Step Direction
         if i == 1
 
-            p = funProj(x-g);
+            p = funProj(x-g)
 
-            projects = projects+1;
-            S = zeros(Float32, nVars,0);
-            Y = zeros(Float32, nVars,0);
-            Hdiag = 1;
+            projects = projects+1
+            S = zeros(Float32, nVars,0)
+            Y = zeros(Float32, nVars,0)
+            Hdiag = 1
         else
-            y = g-g_old;
-            s = x-x_old;
-            S, Y, Hdiag = lbfgsUpdate(y,s,options.corrections,options.verbose,S,Y,Hdiag);
+            y = g-g_old
+            s = x-x_old
+            S, Y, Hdiag = lbfgsUpdate(y,s,options.corrections,options.verbose,S,Y,Hdiag)
 
             # Make Compact Representation
-            k = size(Y,2);
-            L = zeros(Float32, k, k);
+            k = size(Y,2)
+            L = zeros(Float32, k, k)
             for j = 1:k
-                L[j+1:k,j] = transpose(S[:,j+1:k])*Y[:,j];
+                L[j+1:k,j] = transpose(S[:,j+1:k])*Y[:,j]
             end
             N = [S/Hdiag Y];
-            M = [transpose(S)*S/Hdiag L;transpose(L) -diagm(diag(transpose(S)*Y))];
-            HvFunc(v) = lbfgsHvFunc2(v,Hdiag,N,M);
+            M = [transpose(S)*S/Hdiag L;transpose(L) -diagm(diag(transpose(S)*Y))]
+            HvFunc(v) = lbfgsHvFunc2(v,Hdiag,N,M)
 
             if options.bbInit
                 # Use Barzilai-Borwein step to initialize sub-problem
                 alpha = dot(s,s)/dot(s,y);
                 if alpha <= 1e-10 || alpha > 1e10
-                    alpha = min(1,1/sum(abs.(g)));
+                    alpha = min(1,1/sum(abs.(g)))
                 end
 
                 # Solve Sub-problem
-                xSubInit = x-alpha*g;
-                feasibleInit = false;
+                xSubInit = x-alpha*g
+                feasibleInit = false
             else
-                xSubInit = x;
-                feasibleInit = true;
+                xSubInit = x
+                feasibleInit = true
             end
             # Solve Sub-problem
-            p, subProjects = solveSubProblem(x,g,HvFunc,funProj,options.SPGoptTol,options.SPGprogTol,options.SPGiters,options.SPGtestOpt,feasibleInit,xSubInit);
-            projects = projects+subProjects;
+            p, subProjects = solveSubProblem(x,g,HvFunc,funProj,options.SPGoptTol,options.SPGprogTol,options.SPGiters,options.SPGtestOpt,feasibleInit,xSubInit)
+            projects = projects+subProjects
         end
-        global d = p-x;
-        global g_old = g;
-        global x_old = x;
+        global d = p-x
+        global g_old = g
+        global x_old = x
 
         # Check that Progress can be made along the direction
-        gtd = dot(g,d);
+        gtd = dot(g,d)
         if gtd > -options.progTol && i>(options.corrections/2)
             if options.verbose >= 1
-                @printf("Directional Derivative below progTol\n");
+                @printf("Directional Derivative below progTol\n")
             end
-            break;
+            break
         end
 
         # Select Initial Guess to step length
         if i == 1 || options.adjustStep == 0
-           t = 1;
+           t = 1
         else
-            t = min(1,2*(f-f_old)/gtd);
+            t = min(1,2*(f-f_old)/gtd)
         end
 
         # Bound Step length on first iteration
         if i == 1
-            t = min(1,1/sum(abs.(d)));
+            t = min(1,1/sum(abs.(d)))
         end
 
         # Evaluate the Objective and Gradient at the Initial Step
         if t == 1
-            x_new = p;
+            x_new = p
         else
-            x_new = x + Float32(t)*d;
+            x_new = x + Float32(t)*d
         end
-        f_new, g_new = funObj(x_new);
-        funEvals = funEvals+1;
+        f_new, g_new = funObj(x_new)
+        funEvals = funEvals+1
 
         # Backtracking Line Search
-        f_old = f;
+        f_old = f
         while f_new > f + options.suffDec*dot(g,(x_new-x)) || ~isLegal(f_new) || ~isLegal(g_new)
-            temp = t;
+            temp = t
 
             # Backtrack to next trial value
             if ~isLegal(f_new) || ~isLegal(g_new)
                 if options.verbose == 3
-                    @printf("Halving Step Size\n");
+                    @printf("Halving Step Size\n")
                 end
-                t = t/2;
+                t = t/2
             else
                 if options.verbose == 3
-                    @printf("Cubic Backtracking\n");
+                    @printf("Cubic Backtracking\n")
                 end
-                t = polyinterp([0 f gtd; t f_new transpose(g_new)*d]);
+                t = polyinterp([0 f gtd; t f_new transpose(g_new)*d])
             end
 
             # Adjust if change is too small/large
             if t < temp*1e-3
                 if options.verbose == 3
-                    @printf("Interpolated value too small, Adjusting\n");
+                    @printf("Interpolated value too small, Adjusting\n")
                 end
                 t = temp*1e-3;
             elseif t > temp*0.6
                 if options.verbose == 3
-                    @printf("Interpolated value too large, Adjusting\n");
+                    @printf("Interpolated value too large, Adjusting\n")
                 end
-                t = temp*0.6;
+                t = temp*0.6
             end
 
             # Check whether step has become too small
             if sum(abs.(t*d)) < options.progTol || t == 0
                 if options.verbose == 3
-                    @printf("Line Search failed\n");
+                    @printf("Line Search failed\n")
                 end
                 t = 0;
-                f_new = f;
-                g_new = g;
-                break;
+                f_new = f
+                g_new = g
+                break
             end
 
             # Evaluate New Point
-            f_prev = f_new;
-            t_prev = temp;
-            x_new = x + Float32(t)*d;
-            f_new, g_new = funObj(x_new);
-            funEvals = funEvals+1;
+            f_prev = f_new
+            t_prev = temp
+            x_new = x + Float32(t)*d
+            f_new, g_new = funObj(x_new)
+            funEvals = funEvals+1
 
             if funEvals > options.maxIter
                 break
@@ -238,55 +238,55 @@ function  minConf_PQN(funObj,x,funProj,options)
         end
 
         # Take Step
-        x = x_new;
-        f = f_new;
-        fsave = [fsave ; f];
+        x = x_new
+        f = f_new
+        fsave = [fsave ; f]
         # iter_save = [iter_save x];
-        g = g_new;
+        g = g_new
 
-        optCond = maximum(abs.(funProj(x-g)-x));
-        projects = projects+1;
+        optCond = maximum(abs.(funProj(x-g)-x))
+        projects = projects+1
 
         # Output Log
         if options.verbose >= 2
-                @printf("%10d %10d %10d %15.5e %15.5e %15.5e\n",i,funEvals*funEvalMultiplier,projects,t,f,optCond);
+            @printf("%10d %10d %10d %15.5e %15.5e %15.5e\n",i,funEvals*funEvalMultiplier,projects,t,f,optCond)
         end
 
         # Check optimality
-            if optCond < options.optTol && (options.verbose >= 1)
-                @printf("First-Order Optimality Conditions Below optTol\n");
-                break;
-            end
+        if optCond < options.optTol && (options.verbose >= 1)
+            @printf("First-Order Optimality Conditions Below optTol\n")
+            break
+        end
 
         if (maximum(abs.(t*d)) < options.progTol) && (funEvals*funEvalMultiplier > options.maxIter/2)
             if options.verbose >= 1
-                @printf("Step size below progTol\n");
+                @printf("Step size below progTol\n")
             end
-            break;
+            break
         end
 
         if abs.(f-f_old) < options.progTol
             if options.verbose >= 1
-                @printf("Function value changing by less than progTol\n");
+                @printf("Function value changing by less than progTol\n")
             end
-            break;
+            break
         end
 
         if funEvals*funEvalMultiplier > options.maxIter
             if options.verbose >= 1
-                @printf("Function Evaluations exceeds maxIter\n");
+                @printf("Function Evaluations exceeds maxIter\n")
             end
-            break;
+            break
         end
 
         if projects > options.maxProject
             if options.verbose >= 1
-                @printf("Number of projections exceeds maxProject\n");
+                @printf("Number of projections exceeds maxProject\n")
             end
-            break;
+            break
         end
 
-        i = i + 1;
+        i = i + 1
     #    pause
     end
 

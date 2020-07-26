@@ -36,13 +36,28 @@ function vcat(x::judiVStack, y::Union{judiWeights, judiVector})
     return judiVStack{Float32}(m, n, components)
 end
 
-function vcat(x::y::Union{judiWeights, judiVector}, y::judiVStack)
-    components = Array{Any}(undef, length(x.components) + 1)
+function vcat(x::Union{judiWeights, judiVector}, y::judiVStack)
+    components = Array{Any}(undef, length(y.components) + 1)
     components[1] = x
-    for i=2:length(x.components)+1
-        components[i] = y.components[i]
+    for i=2:length(y.components)+1
+        components[i] = y.components[i-1]
     end
     m = y.m + length(x)
+    n = 1
+    return judiVStack{Float32}(m, n, components)
+end
+
+function vcat(x::judiVStack, y::judiVStack)
+    nx = length(x.components)
+    ny = length(y.components)
+    components = Array{Any}(undef, nx+ny)
+    for i=1:nx
+        components[i] = x.components[i]
+    end
+    for i=nx+1:nx+ny
+        components[i] = y.components[i-nx]
+    end
+    m = x.m + y.m
     n = 1
     return judiVStack{Float32}(m, n, components)
 end
@@ -56,15 +71,15 @@ end
 
 # conj(jo)
 conj(a::judiVStack{vDT}) where vDT =
-    judiVStack{vDT}(a.m,a.n,a.weights)
+    judiVStack{vDT}(a.m,a.n,a.components)
 
 # transpose(jo)
 transpose(a::judiVStack{vDT}) where vDT =
-    judiVStack{vDT}(a.n,a.m,a.weights)
+    judiVStack{vDT}(a.n,a.m,a.components)
 
 # adjoint(jo)
 adjoint(a::judiVStack{vDT}) where vDT =
-    judiVStack{vDT}(a.n,a.m,a.weights)
+    judiVStack{vDT}(a.n,a.m,a.components)
 
 ##########################################################
 # Utilities
@@ -75,8 +90,6 @@ size(x::judiVStack, ind::Integer) = (x.m, x.n)[ind]
 length(x::judiVStack) = x.m
 
 eltype(v::judiVStack{vDT}) where {vDT} = vDT
-
-norm(x::judiVStack, order::Integer=2) = sum(norm(c, order)^order for c=x.components)^(1/order)
 
 similar(x::judiVStack) = judiVStack{Float32}(x.m, x.n, 0f0 .* x.components)
 
@@ -90,12 +103,24 @@ lastindex(x::judiVStack) = length(x.components)
 
 dot(x::judiVStack, y::judiVStack) = sum(v[i]*y[i] for i=1:length(v.components))
 
+norm(x::judiVStack, order::Integer=2) = sum(norm(x[i], order)^order for i=1:length(x.components))^(1/order)
+
 iterate(S::judiVStack, state::Integer=1) = state > length(S.components) ? nothing : (S.components[state], state+1)
 
 ##########################################################
 
 
+# minus
+function -(a::judiVStack{avDT}) where {avDT}
+    c = deepcopy(a)
+    for j=1:length(a.components)
+        c.components[j] = -c.components[j]
+    end
+    return c
+end
+
 function +(a::judiVStack, b::judiVStack)
+    size(a) == size(b) || throw(judiWeightsException("dimension mismatch"))
     components = Array{Any}(undef, length(a.components))
     for i=1:length(a.components)
         components[i] = a.components[i] + b.components[i]
@@ -111,6 +136,31 @@ function +(a::judiVStack, b::Number)
     return judiVStack{Float32}(a.m, a.n,components)
 end
 
+function -(a::judiVStack, b::judiVStack)
+    size(a) == size(b) || throw(judiWeightsException("dimension mismatch"))
+    components = Array{Any}(undef, length(a.components))
+    for i=1:length(a.components)
+        components[i] = a.components[i] - b.components[i]
+    end
+    return judiVStack{Float32}(a.m, a.n,components)
+end
+
+function -(a::judiVStack, b::Number)
+    components = Array{Any}(undef, length(a.components))
+    for i=1:length(a.components)
+        components[i] = a.components[i] .- b
+    end
+    return judiVStack{Float32}(a.m, a.n,components)
+end
+
+function -(a::Number, b::judiVStack)
+    components = Array{Any}(undef, length(a.components))
+    for i=1:length(a.components)
+        components[i] = b .- a.components[i]
+    end
+    return judiVStack{Float32}(a.m, a.n,components)
+end
+
 function *(a::judiVStack, b::Number)
     components = Array{Any}(undef, length(a.components))
     for i=1:length(a.components)
@@ -120,10 +170,7 @@ function *(a::judiVStack, b::Number)
 end
 
 *(a::Number, b::judiVStack) = b * a
-+(a::Number, b::judiVStack) = b * a
--(a::judiVStack, b::judiVStack) = a + (-1f0 * b)
--(a::Number, b::judiVStack) = -1f0 * (b - a)
--(a::judiVStack, b::Number) = a + (-1f0 * b)
++(a::Number, b::judiVStack) = b + a
 
 /(a::judiVStack, b::Number) = judiVStack{Float32}(a.m, a.n, a.components ./ b)
 
@@ -139,6 +186,7 @@ broadcasted(::typeof(+), y::Number, x::judiVStack) = x + y
 broadcasted(::typeof(-), y::Number, x::judiVStack) = x - y
 
 function broadcasted(::typeof(*), x::judiVStack, y::judiVStack)
+    size(x) == size(y) || throw(judiWeightsException("dimension mismatch"))
     z = deepcopy(x)
     for j=1:length(x.components)
         z.components[j] = x.components[j] .* y.components[j]
@@ -147,13 +195,16 @@ function broadcasted(::typeof(*), x::judiVStack, y::judiVStack)
 end
 
 function broadcasted!(::typeof(*), x::judiVStack, y::judiVStack)
+    size(x) == size(y) || throw(judiWeightsException("dimension mismatch"))
+    z = deepcopy(x)
     for j=1:length(x.components)
-        x.components[j] = x.components[j] .* y.components[j]
+        z.components[j] = x.components[j] .* y.components[j]
     end
-    return x
+    return z
 end
 
 function broadcasted(::typeof(/), x::judiVStack, y::judiVStack)
+    size(x) == size(y) || throw(judiWeightsException("dimension mismatch"))
     z = deepcopy(x)
     for j=1:length(x.components)
         z.components[j] = x.components[j] ./ y.components[j]
@@ -162,29 +213,34 @@ function broadcasted(::typeof(/), x::judiVStack, y::judiVStack)
 end
 
 function broadcasted!(::typeof(/), x::judiVStack, y::judiVStack)
+    size(x) == size(y) || throw(judiWeightsException("dimension mismatch"))
+    z = deepcopy(x)
     for j=1:length(x.components)
-        x.components[j] = x.components[j] .* y.components[j]
+        z.components[j] = x.components[j] .* y.components[j]
     end
-    return x
+    return z
 end
 
 function broadcasted(::typeof(*), x::judiVStack, y::Number)
+    z = deepcopy(x)
     for j=1:length(x.components)
-        x.components[j] .*= y
+        z.components[j] .*= y
     end
-    return x
+    return z
 end
 
 broadcasted(::typeof(*), y::Number, x::judiVStack) = x .* y
 
 function broadcasted(::typeof(/), x::judiVStack, y::Number)
+    z = deepcopy(x)
     for j=1:length(x.components)
-        x.components[j] ./= y
+        z.components[j] ./= y
     end
-    return x
+    return z
 end
 
 function materialize!(x::judiVStack, y::judiVStack)
+    size(x) == size(y) || throw(judiWeightsException("dimension mismatch"))
     for j=1:length(x.components)
         try
             x.components[j].data .= y.components[j].data
@@ -196,15 +252,19 @@ function materialize!(x::judiVStack, y::judiVStack)
 end
 
 function broadcast!(identity, x::judiVStack, y::judiVStack)
+    size(x) == size(y) || throw(judiWeightsException("dimension mismatch"))
     copy!(x,y)
 end
 
 function broadcast!(identity, x::judiVStack, a::Number, y::judiVStack, z::judiVStack)
+    size(x) == size(y) || throw(judiWeightsException("dimension mismatch"))
+    size(x) == size(z) || throw(judiWeightsException("dimension mismatch"))
     scale!(y,a)
     copy!(x, y + z)
 end
 
 function copy!(x::judiVStack, y::judiVStack)
+    size(x) == size(y) || throw(judiWeightsException("dimension mismatch"))
     for j=1:length(x.components)
         try
             x.components[j].data .= y.components[j].data
@@ -212,6 +272,11 @@ function copy!(x::judiVStack, y::judiVStack)
             x.components[j].weights .= y.components[j].weights
         end
     end
+end
+
+function isapprox(x::judiVStack, y::judiVStack; rtol::Real=sqrt(eps()), atol::Real=0)
+    x.m == y.m || throw("Shape error")
+    all(isapprox(xx, yy; rtol=rtol, atol=atol) for (xx, yy)=zip(x.components, y.components))
 end
 
 ############################################################
