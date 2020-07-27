@@ -84,7 +84,7 @@ function setup_geom(model; nsrc=1, tn=1500f0)
     wavelet = ricker_wavelet(T, dt, f0)
     q = judiVector(srcGeometry, wavelet)
 
-    ntComp = get_computational_nt(srcGeometry, recGeometry, model)	
+    ntComp = get_computational_nt(srcGeometry, recGeometry, model; dt=dt)
     info = Info(prod(model.n), nsrc, ntComp)
 
     return q, srcGeometry, recGeometry, info
