@@ -15,7 +15,9 @@ def name(model):
 def opt_op(fs, born_ws=False):
     if fs or born_ws:
         return ('advanced', {})
-    return ('advanced', {'min-storage': True})
+    return ('advanced', {})
+    # TODO: switch to this better one after new devito release
+    # return ('advanced', {'min-storage': True})
 
 
 # Forward propagation
@@ -161,7 +163,7 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8,
 
     # Create operator and run
     subs = model.spacing_map
-    op = Operator(tmpu + tmpul + pde + geom_expr + pdel + geom_exprl,
+    op = Operator(tmpu + tmpul + pde + geom_expr + geom_exprl + pdel,
                   subs=subs, name="born"+name(model),
                   opt=opt_op(model.fs, born_ws=ws is not None))
 

@@ -622,7 +622,6 @@ Theta=pi/2 points right:
 
 """
 function transducer(q::judiVector, d::Tuple, r::Number, theta)
-    println(length(theta), ", ", length(q.geometry.xloc) )
     length(theta) != length(q.geometry.xloc) && throw("Need one angle per source position")
     size(q.data[1], 2) > 1 && throw("Only point sources can be converted to transducer source")
     # Array of source

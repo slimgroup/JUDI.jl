@@ -5,16 +5,20 @@
 #__precompile__()
 module TimeModeling
 
-using JUDI, LinearAlgebra, Base.Broadcast, FFTW, Pkg, Printf, Distributed
+using JUDI, LinearAlgebra, Base.Broadcast, FFTW, Pkg, Printf, Distributed, IterativeSolvers
 using PyCall, JOLI, SegyIO, DSP, Dierckx
 
-import Base.*, Base./, Base.+, Base.-, Base.copy!, Base.sum, Base.ndims, Base.reshape
+import Base.*, Base./, Base.+, Base.-, Base.copy!, Base.copy, Base.sum, Base.ndims, Base.reshape, Base.fill!
 import Base.Broadcast.broadcasted, Base.BroadcastStyle, Base.Broadcast.DefaultArrayStyle
 import Base.getindex, Base.setindex!, Base.firstindex, Base.lastindex, Base.axes, Base.ndims
+import Base.similar, Base.isapprox, Base.isequal, Base.broadcast!, Base.materialize!
+import Base.eltype, Base.length, Base.size, Base.iterate
+
 import LinearAlgebra.transpose, LinearAlgebra.conj, LinearAlgebra.vcat, LinearAlgebra.adjoint
 import LinearAlgebra.vec, LinearAlgebra.dot, LinearAlgebra.norm, LinearAlgebra.abs
-import Base.similar, Base.isapprox, Base.isequal, Base.broadcast!
-import LinearAlgebra.rmul!
+import LinearAlgebra.rmul!, LinearAlgebra.mul!, Base.isfinite
+
+import IterativeSolvers.zerox
 
 
 #############################################################################
@@ -31,6 +35,7 @@ include("judiRHS.jl")   # sparse RHS (point source(s))
 include("judiExtendedSource.jl")   # sparse RHS (point source(s))
 include("judiVector.jl")    # Julia data container
 include("judiWeights.jl")    # Extended source weight vector
+include("judiComposites.jl")    # A composite type to work with hcat/vcat of judi types
 include("auxiliaryFunctions.jl")
 
 #############################################################################
