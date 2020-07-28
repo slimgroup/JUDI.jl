@@ -58,6 +58,12 @@ ftol = 1f-6
     @test isapprox(norm(w), sqrt(dot(w, w)))
     @test isapprox(abs.(w.weights[1]), abs(w).weights[1]) 
 
+    # Test the norm
+    d_ones = judiWeights(2f0 .* ones(Float32, weight_size_x, weight_size_y))
+    @test isapprox(norm(d_ones, 2), sqrt(weight_size_x*weight_size_y*4))
+    @test isapprox(norm(d_ones, 1), weight_size_x*weight_size_y*2)
+    @test isapprox(norm(d_ones, Inf), 2)
+
     # vector space axioms
     u = judiWeights(randn(Float32, weight_size_x, weight_size_y); nsrc=nsrc)
     v = judiWeights(randn(Float32, weight_size_x, weight_size_y); nsrc=nsrc)

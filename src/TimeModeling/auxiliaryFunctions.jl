@@ -9,7 +9,7 @@ export time_resample, remove_padding, subsample
 export generate_distribution, select_frequencies
 export load_pymodel, load_devito_jit, load_numpy, devito_model
 export update_dm, pad_sizes, pad_array
-export transducer_source
+export transducer
 
 
 function update_dm(model::PyObject, dm, options)
