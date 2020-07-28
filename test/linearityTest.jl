@@ -9,7 +9,7 @@ using JUDI.TimeModeling, Test, LinearAlgebra, Printf
 
 parsed_args = parse_commandline()
 
-println("Adjoint test with ", parsed_args["nlayer"], " layers and tti: ",
+println("Linearity test with ", parsed_args["nlayer"], " layers and tti: ",
         parsed_args["tti"], " and freesurface: ", parsed_args["fs"] )
 ### Model
 model, model0, dm = setup_model(parsed_args["tti"], parsed_args["nlayer"])

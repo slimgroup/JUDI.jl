@@ -9,6 +9,8 @@ export time_resample, remove_padding, subsample
 export generate_distribution, select_frequencies
 export load_pymodel, load_devito_jit, load_numpy, devito_model
 export update_dm, pad_sizes, pad_array
+export transducer_source
+
 
 function update_dm(model::PyObject, dm, options)
     model.dm = pad_array(dm, pad_sizes(model, options))
@@ -18,13 +20,14 @@ function devito_model(model::Modelall, options)
     return devito_model_py(model, options)
 end
 
-function pad_sizes(model, options)
+function pad_sizes(model, options; so=nothing)
+    isnothing(so) && (so = options.space_order)
     try
-        return model.padsizes
+        return [(nbl + so, nbr + so) for (nbl, nbr)=model.padsizes]
     catch e
-        padsizes = [(model.nb, model.nb) for i=1:length(model.n)]
+        padsizes = [(model.nb + so, model.nb + so) for i=1:length(model.n)]
         if options.free_surface
-            padsizes[end] = (0, model.nb)
+            padsizes[end] = (so, model.nb + so)
         end
         return padsizes
     end
@@ -304,7 +307,7 @@ function calculate_dt(model::Model_TTI; dt=nothing)
         coeff = 0.42
     end
     scale = sqrt(maximum(1 .+ 2 *model.epsilon))
-    return coeff * minimum(model.d) / (scale*sqrt(1/minimum(model.m)))
+    return .9*coeff * minimum(model.d) / (scale*sqrt(1/minimum(model.m)))
 end
 
 function calculate_dt(model::Model; dt=nothing)
@@ -316,10 +319,10 @@ function calculate_dt(model::Model; dt=nothing)
     else
         coeff = 0.42
     end
-    return coeff * minimum(model.d) / (sqrt(1/minimum(model.m)))
+    return .9*coeff * minimum(model.d) / (sqrt(1/minimum(model.m)))
 end
 """
-    get_computational_nt(srcGeometry, recGeoemtry, model)
+    get_computational_nt(srcGeometry, recGeoemtry, model; dt=nothing)
 
 Estimate the number of computational time steps. Required for calculating the dimensions\\
 of the matrix-free linear modeling operators. `srcGeometry` and `recGeometry` are source\\
@@ -337,8 +340,8 @@ function get_computational_nt(srcGeometry, recGeometry, model::Modelall; dt=noth
     nt = Array{Any}(undef, nsrc)
     dtComp = calculate_dt(model; dt=dt)
     for j=1:nsrc
-        ntRec = recGeometry.dt[j]*(recGeometry.nt[j]-1) / dtComp
-        ntSrc = srcGeometry.dt[j]*(srcGeometry.nt[j]-1) / dtComp
+        ntRec = recGeometry.dt[j]*(recGeometry.nt[j]-1) / dtComp + 1
+        ntSrc = srcGeometry.dt[j]*(srcGeometry.nt[j]-1) / dtComp + 1
         nt[j] = max(Int(ceil(ntRec)), Int(ceil(ntSrc)))
     end
     return nt
@@ -354,7 +357,7 @@ function get_computational_nt(Geometry, model::Modelall; dt=nothing)
     nt = Array{Any}(undef, nsrc)
     dtComp = calculate_dt(model; dt=dt)
     for j=1:nsrc
-        nt[j] = Int(ceil(Geometry.dt[j]*(Geometry.nt[j]-1) / dtComp))
+        nt[j] = Int(ceil(Geometry.dt[j]*(Geometry.nt[j]-1) / dtComp)) + 1
     end
     return nt
 end
@@ -586,4 +589,69 @@ function reshape(x::Array{Float32, 1}, geometry::Geometry)
     nrec = length(geometry.xloc[1])
     nsrc = Int(length(x) / nt / nrec)
     return reshape(x, nt, nrec, nsrc)
+end
+
+
+"""
+    transducer_source(q, d, r, theta)
+
+Create the JUDI soure for a circular transducer
+Theta=0 points downward:
+
+. . . . - - - . . . . . .
+
+. . . . + + + . . . . . .
+
+. . . . . . . . . . . . .
+
+. . . . . . . . . . . . .
+
+
+Theta=pi/2 points right:
+
+. . . . - + . . . . . . .
+
+. . . . - + . . . . . . .
+
+. . . . - + . . . . . . .
+
+. . . . . . . . . . . . .
+
+
+2D only, to extend to 3D
+
+"""
+function transducer(q::judiVector, d::Tuple, r::Number, theta)
+    length(theta) != length(q.geometry.xloc) && throw("Need one angle per source position")
+    size(q.data[1], 2) > 1 && throw("Only point sources can be converted to transducer source")
+    # Array of source
+    nsrc_loc = 11
+    nsrc = length(q.geometry.xloc)
+    x_base = collect(range(-r, r, length=nsrc_loc))
+    y_base = zeros(nsrc_loc)
+    y_base_b = zeros(nsrc_loc) .- d[end]
+
+    # New coords and data
+    xloc = Array{Any}(undef, nsrc)
+    yloc = Array{Any}(undef, nsrc)
+    zloc = Array{Any}(undef, nsrc)
+    data = Array{Any}(undef, nsrc)
+    t = q.geometry.t[1]
+    dt = q.geometry.dt[1]
+
+    for i=1:nsrc
+        # Build the rotated array of dipole
+        R = [cos(theta[i] - pi/2) sin(theta[i] - pi/2);-sin(theta[i] - pi/2) cos(theta[i] - pi/2)]
+        # +1 coords
+        r_loc = q.geometry.xloc[i] .+ R * [x_base';y_base']
+        # -1 coords
+        r_loc_b = q.geometry.xloc[i] .+ R * [x_base';y_base_b']
+        xloc[i] = vec(vcat(r_loc[1, :], r_loc_b[1, :]))
+        zloc[i] = vec(vcat(r_loc[2, :], r_loc_b[2, :]))
+        yloc[i] = zeros(2*nsrc_loc)
+        data[i] = zeros(length(q.data[i]), 2*nsrc_loc)
+        data[i][:, 1:nsrc_loc] .= q.data[i]/nsrc_loc
+        data[i][:, nsrc_loc+1:end] .= -q.data[i]/nsrc_loc
+    end
+    return judiVector(Geometry(xloc, yloc, zloc; t=t, dt=dt), data)
 end

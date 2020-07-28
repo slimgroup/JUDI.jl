@@ -76,7 +76,9 @@ Pw = judiLRWF(info, q.data[1])
 Fw = Pr*Fw*adjoint(Pw)
 
 # Extended source weights
-w = adjoint(Fw) * d_hat
+w = randn(model0.n)
+parsed_args["fs"] ? w[:, 1:2] .= 0f0 : nothing
+w = judiWeights(w; nsrc=nw)
 
 # Forward-Adjoint computation
 dw_hat = Fw*w

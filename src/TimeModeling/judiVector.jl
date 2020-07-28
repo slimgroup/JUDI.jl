@@ -5,7 +5,9 @@
 # Authors: Philipp Witte (pwitte@eos.ubc.ca), Henryk Modzelewski (hmodzelewski@eos.ubc.ca)
 # Date: January 2017
 
-export judiVector, judiVectorException, subsample, judiVector_to_SeisBlock, time_resample, time_resample!, judiTimeInterpolation, write_shot_record, get_data, convert_to_array
+export judiVector, judiVectorException, subsample, judiVector_to_SeisBlock
+export time_resample, time_resample!, judiTimeInterpolation
+export write_shot_record, get_data, convert_to_array
 
 ############################################################
 
@@ -98,7 +100,7 @@ function judiVector(geometry::Geometry,data::Array; vDT::DataType=Float32)
     end
     dataCell = Array{Array}(undef, nsrc)
     for j=1:nsrc
-        dataCell[j] = data
+        dataCell[j] = deepcopy(data)
     end
     return judiVector{Float32}("Seismic data vector",m,n,nsrc,geometry,dataCell)
 end
@@ -321,6 +323,15 @@ dot(x::Float32, y::SegyIO.IBMFloat32) = dot(x, convert(Float32,y))
 
 ##########################################################
 
+# minus
+function -(a::judiVector{avDT}) where {avDT}
+    c = deepcopy(a)
+    for j=1:a.nsrc
+        c.data[j] = -c.data[j]
+    end
+    return c
+end
+
 
 # +(judiVector, judiVector)
 function +(a::judiVector{avDT}, b::judiVector{bvDT}) where {avDT, bvDT}
@@ -347,7 +358,7 @@ function -(a::judiVector{avDT}, b::judiVector{bvDT}) where {avDT, bvDT}
 end
 
 # +(judiVector, number)
-function +(a::judiVector{avDT},b::Number) where avDT
+function +(a::judiVector{avDT}, b::Number) where avDT
     typeof(a.data[1]) == SeisCon && throw("Addition for OOC judiVectors not supported.")
     c = deepcopy(a)
     for j=1:c.nsrc
@@ -356,18 +367,11 @@ function +(a::judiVector{avDT},b::Number) where avDT
     return c
 end
 
-# +(number, judiVector)
-function +(a::Number,b::judiVector{avDT}) where avDT
-    typeof(b.data[1]) == SeisCon && throw("Addition for OOC judiVectors not supported.")
-    c = deepcopy(b)
-    for j=1:c.nsrc
-        c.data[j] = b.data[j] .+ a
-    end
-    return c
-end
++(a::Number, b::judiVector{avDT}) where avDT = b + a
+
 
 # -(judiVector, number)
-function -(a::judiVector{avDT},b::Number) where avDT
+function -(a::judiVector{avDT}, b::Number) where avDT
     typeof(a.data[1]) == SeisCon && throw("Subtraction for OOC judiVectors not supported.")
     c = deepcopy(a)
     for j=1:c.nsrc
@@ -376,8 +380,10 @@ function -(a::judiVector{avDT},b::Number) where avDT
     return c
 end
 
+-(a::Number, b::judiVector{avDT}) where avDT = -1f0 * (b  - a)
+
 # *(judiVector, number)
-function *(a::judiVector{avDT},b::Number) where avDT
+function *(a::judiVector{avDT}, b::Number) where avDT
     typeof(a.data[1]) == SeisCon && throw("Multiplication for OOC judiVectors not supported.")
     c = deepcopy(a)
     for j=1:c.nsrc
@@ -386,15 +392,8 @@ function *(a::judiVector{avDT},b::Number) where avDT
     return c
 end
 
-# *(number, judiVector)
-function *(a::Number,b::judiVector{bvDT}) where bvDT
-    typeof(b.data[1]) == SeisCon && throw("Multiplication for OOC judiVectors not supported.")
-    c = deepcopy(b)
-    for j=1:c.nsrc
-        c.data[j] = a .* c.data[j]
-    end
-    return c
-end
+*(a::Number, b::judiVector{avDT}) where avDT = b * a
+
 
 # /(judiVector, number)
 function /(a::judiVector{avDT},b::Number) where avDT
@@ -669,20 +668,6 @@ function judiTimeInterpolation(geometry::Geometry,dt_coarse,dt_fine)
 end
 
 ####################################################################################################
-
-#function scale!(a::Number,x::judiVector)
-#    for j=1:x.nsrc
-#        x.data[j] *= a
-#    end
-#end
-
-#function scale!(x::judiVector,a::Number)
-#    for j=1:x.nsrc
-#        x.data[j] *= a
-#    end
-#end
-
-####################################################################################################
 # Indexing
 
 #getindex(x::judiVector, i) = x.data[i]
@@ -699,6 +684,12 @@ ndims(x::judiVector) = length(size(x))
 
 similar(x::judiVector, element_type::DataType, dims::Union{AbstractUnitRange, Integer}...) = judiVector(x.geometry, x.data)*0f0
 
+function fill!(x::judiVector{vDT}, val) where {vDT}
+    for j=1:length(x.data)
+        fill!(x.data[j], val)
+    end
+end
+
 function sum(x::judiVector)
     s = 0f0
     for j=1:length(x.data)
@@ -713,11 +704,22 @@ BroadcastStyle(::Type{judiVector}) = Base.Broadcast.DefaultArrayStyle{1}()
 
 ndims(::Type{judiVector{Float32}}) = 1
 
+### +/- ####
 broadcasted(::typeof(+), x::judiVector, y::judiVector) = x + y
-
 broadcasted(::typeof(-), x::judiVector, y::judiVector) = x - y
 
+broadcasted(::typeof(+), x::judiVector, y::Number) = x + y
+broadcasted(::typeof(-), x::judiVector, y::Number) = x - y
+
+broadcasted(::typeof(+), x::Number, y::judiVector) = x + y
+broadcasted(::typeof(-), x::Number, y::judiVector) = x - y
+
+### * ####
 function broadcasted(::typeof(*), x::judiVector, y::judiVector)
+    size(x) == size(y) || throw(judiVectorException("dimension mismatch"))
+    compareGeometry(x.geometry, y.geometry) == 1 || throw(judiVectorException("geometry mismatch"))
+    typeof(x.data[1]) == SeisCon && throw("Addition for OOC judiVectors not supported.")
+    typeof(y.data[1]) == SeisCon && throw("Addition for OOC judiVectors not supported.")
     z = deepcopy(x)
     for j=1:length(x.data)
         z.data[j] = x.data[j] .* y.data[j]
@@ -725,14 +727,22 @@ function broadcasted(::typeof(*), x::judiVector, y::judiVector)
     return z
 end
 
-function broadcasted!(::typeof(*), x::judiVector, y::judiVector)
+function broadcasted(::typeof(*), x::judiVector, y::Number)
+    z = deepcopy(x)
     for j=1:length(x.data)
-        x.data[j] = x.data[j] .* y.data[j]
+        z.data[j] .*= y
     end
-    return x
+    return z
 end
 
+broadcasted(::typeof(*), x::Number, y::judiVector) = broadcasted(*, y, x)
+
+### / ####
 function broadcasted(::typeof(/), x::judiVector, y::judiVector)
+    size(x) == size(y) || throw(judiVectorException("dimension mismatch"))
+    compareGeometry(x.geometry, y.geometry) == 1 || throw(judiVectorException("geometry mismatch"))
+    typeof(x.data[1]) == SeisCon && throw("Addition for OOC judiVectors not supported.")
+    typeof(y.data[1]) == SeisCon && throw("Addition for OOC judiVectors not supported.")
     z = deepcopy(x)
     for j=1:length(x.data)
         z.data[j] = x.data[j] ./ y.data[j]
@@ -740,14 +750,15 @@ function broadcasted(::typeof(/), x::judiVector, y::judiVector)
     return z
 end
 
-function broadcasted!(::typeof(/), x::judiVector, y::judiVector)
+broadcasted(::typeof(/), x::judiVector, y::Number) = broadcasted(*, x, 1/y)
+
+# Materialize for broadcasting
+function materialize!(x::judiVector, y::judiVector)
     for j=1:length(x.data)
-        x.data[j] = x.data[j] .* y.data[j]
+        x.data[j] .= y.data[j]
     end
     return x
 end
-
-broadcast!(.*, x::judiVector, y::judiVector, a::Number) = scale!(y, a)
 
 function broadcast!(identity, x::judiVector, y::judiVector)
     copy!(x,y)
@@ -758,7 +769,7 @@ function broadcast!(identity, x::judiVector, a::Number, y::judiVector, z::judiVe
     copy!(x, y + z)
 end
 
-function copy!(x::judiVector,y::judiVector)
+function copy!(x::judiVector, y::judiVector)
     for j=1:x.nsrc
         x.data[j] = y.data[j]
     end

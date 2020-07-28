@@ -12,6 +12,14 @@ def name(model):
     return "tti" if model.is_tti else ""
 
 
+def opt_op(fs, born_ws=False):
+    if fs or born_ws:
+        return ('advanced', {})
+    return ('advanced', {})
+    # TODO: switch to this better one after new devito release
+    # return ('advanced', {'min-storage': True})
+
+
 # Forward propagation
 def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
             q=None, return_op=False, freq_list=None, dft_sub=None,
@@ -46,7 +54,8 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     # Create operator and run
     subs = model.spacing_map
     op = Operator(tmp + pde + geom_expr + dft + eq_save,
-                  subs=subs, name="forward"+name(model))
+                  subs=subs, name="forward"+name(model),
+                  opt=opt_op(model.fs))
 
     if return_op:
         return op, u, rcv
@@ -83,7 +92,8 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0,
     # Create operator and run
     subs = model.spacing_map
     op = Operator(tmp + pde + ws_expr + geom_expr,
-                  subs=subs, name="adjoint"+name(model))
+                  subs=subs, name="adjoint"+name(model),
+                  opt=opt_op(model.fs))
 
     op()
 
@@ -117,7 +127,8 @@ def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8, t_s
     # Create operator and run
     subs = model.spacing_map
     op = Operator(tmp + pde + geom_expr + g_expr,
-                  subs=subs, name="gradient"+name(model))
+                  subs=subs, name="gradient"+name(model),
+                  opt=opt_op(model.fs))
 
     if return_op:
         return op, gradm, v
@@ -152,9 +163,11 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8,
 
     # Create operator and run
     subs = model.spacing_map
-    op = Operator(tmpu + tmpul + pde + geom_expr + pdel + geom_exprl,
-                  subs=subs, name="born"+name(model))
+    op = Operator(tmpu + tmpul + pde + geom_expr + geom_exprl + pdel,
+                  subs=subs, name="born"+name(model),
+                  opt=opt_op(model.fs, born_ws=ws is not None))
 
     op()
+
     # Output
     return rcvl.data, u

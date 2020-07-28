@@ -101,7 +101,8 @@ end
 
 
 ############################# Full wavefield ############################################
-F = judiModeling(info,model)
+opt = Options(dt_comp=dt)
+F = judiModeling(info, model; options=opt)
 Ps = judiProjection(info, srcGeometry)
 Pr = judiProjection(info, recGeometry)
 

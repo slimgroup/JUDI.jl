@@ -3,7 +3,9 @@
 # May 2018
 #
 
-using JUDI.TimeModeling, SegyIO, Test, LinearAlgebra
+using JUDI, JUDI.TimeModeling, SegyIO, Test, LinearAlgebra
+
+datapath = joinpath(dirname(pathof(JUDI)))*"/../data/"
 
 @testset "Geometry Unit Test" begin
 
@@ -39,7 +41,7 @@ using JUDI.TimeModeling, SegyIO, Test, LinearAlgebra
     @test isequal(typeof(geometry.t), Array{Any, 1})
 
     # Set up source geometry object from in-core data container
-    block = segy_read("../data/unit_test_shot_records.segy")
+    block = segy_read(datapath*"unit_test_shot_records.segy")
     src_geometry = Geometry(block; key="source", segy_depth_key="SourceSurfaceElevation")
     rec_geometry = Geometry(block; key="receiver", segy_depth_key="RecGroupElevation")
 
@@ -51,7 +53,7 @@ using JUDI.TimeModeling, SegyIO, Test, LinearAlgebra
     @test isequal(get_header(block, "GroupX")[1], rec_geometry.xloc[1][1])
 
     # Set up geometry summary from out-of-core data container
-    container = segy_scan("../data/", "unit_test_shot_records", ["GroupX", "GroupY", "RecGroupElevation", "SourceSurfaceElevation", "dt"])
+    container = segy_scan(datapath, "unit_test_shot_records", ["GroupX", "GroupY", "RecGroupElevation", "SourceSurfaceElevation", "dt"])
     src_geometry = Geometry(container; key="source", segy_depth_key="SourceSurfaceElevation")
     rec_geometry = Geometry(container; key="receiver", segy_depth_key="RecGroupElevation")
 

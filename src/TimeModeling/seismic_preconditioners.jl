@@ -176,7 +176,7 @@ end
 function find_water_bottom(m)
     #return the indices of the water bottom of a seismic image
     n = size(m)
-    idx = zeros(Integer,n[1])
+    idx = zeros(Integer, n[1])
     eps = 1e-4
     for j=1:n[1]
         k=1
@@ -191,7 +191,7 @@ function find_water_bottom(m)
     return idx
 end
 
-function depth_scaling(m,model)
+function depth_scaling(m, model)
 # Linear depth scaling function for seismic images
     m = reshape(m,model.n)
     filter = sqrt.(0f0:model.d[2]:model.d[2]*(model.n[2]-1))

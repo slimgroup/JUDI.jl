@@ -46,14 +46,14 @@ info = Info(prod(n), nsrc, ntComp)
 ###################################################################################################
 
 # Write shots as segy files to disk
-opt = Options(return_array = true)
+opt = Options()
 
 # Setup operators
 Pr = judiProjection(info, recGeometry)
 F = judiModeling(info, model; options=opt)
 
 # Random weights (size of the model)
-w = randn(Float32, model.n)
+w = judiWeights(randn(Float32, model.n))
 
 # Create operator for injecting the weights, multiplied by the provided wavelet(s)
 Pw = judiLRWF(info, wavelet)
@@ -65,28 +65,35 @@ F = Pr*F*adjoint(Pw)
 F̄ = [F; lambda*I]
 
 # Simultaneous observed data
-d_sim = F*vec(w)
+d_sim = F*w
 
-# Adjoint operation
+# # Adjoint operation
 w_adj = adjoint(F)*d_sim
 
-# LSQR
-w_inv = zeros(Float32, info.n)
-lsqr!(w_inv, F̄, [d_sim; vec(w)]; maxiter=20, verbose=true, damp=1e2)
+# # LSQR
+w_inv = 0f0 .* w
+w_inv_no_damp = 0f0 .* w
+lsqr!(w_inv, F̄, [d_sim; w]; maxiter=2, verbose=true, damp=1e2)
+lsqr!(w_inv_no_damp, F, d_sim; maxiter=2, verbose=true, damp=1e2)
 
 d_pred = F*vec(w_inv);
+d_pred_no_damp = F*vec(w_inv_no_damp);
 
 # Plot results
 figure()
-subplot(1,2,1)
-imshow(reshape(d_sim, recGeometry.nt[1], nxrec), vmin=-5e2, vmax=5e2, cmap="gray"); title("Observed data")
-subplot(1,2,2)
-imshow(reshape(d_pred, recGeometry.nt[1], nxrec), vmin=-2e2, vmax=2e2, cmap="gray"); title("Predicted data")
+subplot(1,3,1)
+imshow(d_sim.data[1], vmin=-5e2, vmax=5e2, cmap="gray"); title("Observed data")
+subplot(1,3,2)
+imshow(d_pred.data[1], vmin=-2e2, vmax=2e2, cmap="gray"); title("Predicted data")
+subplot(1,3,4)
+imshow(d_pred_no_damp.data[1], vmin=-2e2, vmax=2e2, cmap="gray"); title("Predicted data no damp")
 
 figure()
-subplot(1,3,1)
-imshow(adjoint(reshape(w, model.n)), vmin=-3, vmax=3, cmap="gray"); title("Weights")
-subplot(1,3,2)
-imshow(adjoint(reshape(w_adj, model.n)), vmin=minimum(w_adj), vmax=maximum(w_adj), cmap="gray"); title("Adjoint")
-subplot(1,3,3)
-imshow(adjoint(reshape(w_inv, model.n)), vmin=minimum(w_inv), vmax=maximum(w_inv), cmap="gray"); title("LSQR")
+subplot(2,2,1)
+imshow(w.weights[1], vmin=-3, vmax=3, cmap="gray"); title("Weights")
+subplot(2,2,2)
+imshow(w_adj.weights[1], vmin=minimum(w_adj), vmax=maximum(w_adj), cmap="gray"); title("Adjoint")
+subplot(2,2,3)
+imshow(w_inv.weights[1], vmin=minimum(w_inv), vmax=maximum(w_inv), cmap="gray"); title("D-LSQR")
+subplot(2,2,4)
+imshow(w_inv_no_damp.weights[1], vmin=minimum(w_inv), vmax=maximum(w_inv), cmap="gray"); title("LSQR")

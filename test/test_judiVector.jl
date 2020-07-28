@@ -3,8 +3,10 @@
 # May 2018
 #
 
-using JUDI.TimeModeling, SegyIO, Test, LinearAlgebra
+using JUDI.TimeModeling, JUDI, SegyIO, Test, LinearAlgebra
 import LinearAlgebra.BLAS.axpy!
+
+datapath = joinpath(dirname(pathof(JUDI)))*"/../data/"
 
 function example_rec_geometry(; nsrc=2, nrec=120)
     xrec = range(50f0, stop=1150f0, length=nrec)
@@ -17,6 +19,7 @@ end
 nsrc = 2
 nrec = 120
 ns = 251
+ftol = 1e-6
 
 ################################################# test constructors ####################################################
 
@@ -48,7 +51,7 @@ ns = 251
     @test isequal(size(d_obs), dsize)
 
     # contructor for in-core data container
-    block = segy_read("../data/unit_test_shot_records.segy")
+    block = segy_read(datapath*"unit_test_shot_records.segy")
     d_block = judiVector(block; segy_depth_key="RecGroupElevation")
     dsize = (prod(size(block.data)), 1)
 
@@ -68,7 +71,7 @@ ns = 251
     @test isequal(size(d_block), dsize)
 
     # contructor for out-of-core data container from single container
-    container = segy_scan("../data/", "unit_test_shot_records", ["GroupX", "GroupY", "RecGroupElevation", "SourceSurfaceElevation", "dt"])
+    container = segy_scan(datapath, "unit_test_shot_records", ["GroupX", "GroupY", "RecGroupElevation", "SourceSurfaceElevation", "dt"])
     d_cont = judiVector(container; segy_depth_key="RecGroupElevation")
 
     @test isequal(d_cont.nsrc, nsrc)
@@ -148,17 +151,18 @@ ns = 251
     u = judiVector(rec_geometry, randn(Float32, ns, nrec))
     v = judiVector(rec_geometry, randn(Float32, ns, nrec))
     w = judiVector(rec_geometry, randn(Float32, ns, nrec))
-    a = randn(1)[1]
-    b = randn(1)[1]
+    a = randn(Float32, 1)[1]
+    b = randn(Float32, 1)[1]
 
-    @test isapprox(u + (v + w), (u + v) + w; rtol=eps(1f0))
-    @test isapprox(u + v, v + u; rtol=eps(1f0))
-    #@test isapprox(u, u + 0; rtol=eps(1f0))
+    @test isapprox(u + (v + w), (u + v) + w; rtol=ftol)
+    @test isapprox(u + v, v + u; rtol=ftol)
+    @test isapprox(-u, -1f0 * u; rtol=ftol)
+    #@test isapprox(u, u + 0; rtol=ftol)
     @test iszero(norm(u + u*(-1)))
-    @test isapprox(a .* (b .* u), (a * b) .* u; rtol=eps(1f0))
-    @test isapprox(u, u .* 1; rtol=eps(1f0))
-    @test isapprox(a .* (u + v), a .* u + a .* v; rtol=eps(1f0))
-    @test isapprox((a + b) .* v, a .* v + b.* v; rtol=eps(1f0))
+    @test isapprox(a .* (b .* u), (a * b) .* u; rtol=ftol)
+    @test isapprox(u, u .* 1; rtol=ftol)
+    @test isapprox(a .* (u + v), a .* u + a .* v; rtol=ftol)
+    @test isapprox((a + b) .* v, a .* v + b .* v; rtol=ftol)
 
     # subsamling
     d_block_sub = d_block[1]
@@ -246,7 +250,15 @@ ns = 251
     v = judiVector(rec_geometry, randn(Float32, ns, nrec))
     u_scale = deepcopy(u)
     v_scale = deepcopy(v)
-    a = randn(1)[1]
+    
+    u_scale .*= 2f0
+    @test isapprox(u_scale, 2f0 * u; rtol=ftol)
+    v_scale .+= 2f0
+    @test isapprox(v_scale, 2f0 + v; rtol=ftol)
+    u_scale ./= 2f0
+    @test isapprox(u_scale, u; rtol=ftol)
+    u_scale .= 2f0 .* u_scale .+ v_scale
+    @test isapprox(u_scale, 2f0 * u + 2f0 + v; rtol=ftol)
 
     # broadcast identity
     u = judiVector(rec_geometry, randn(Float32, ns, nrec))
@@ -265,7 +277,7 @@ ns = 251
     u_add = deepcopy(u)
     v_add = deepcopy(v)
     w_add = deepcopy(w)
-    a = randn(1)[1]
+    a = randn(Float32, 1)[1]
 
     # in-place overwrite
     u = judiVector(rec_geometry, randn(Float32, ns, nrec))
