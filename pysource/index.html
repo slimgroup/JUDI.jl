@@ -218,8 +218,6 @@
         <ul>
     <li class="toctree-l3"><a class="reference internal" href="#kernelsacoustic_kernelmodel-u-fwtrue-qnone">kernels.acoustic_kernel(model, u, fw=True, q=None)</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#kernelsfallback_solveeq-target-kwargs">kernels.fallback_solve(eq, target, **kwargs)</a>
-    </li>
     <li class="toctree-l3"><a class="reference internal" href="#kernelstti_kernelmodel-u1-u2-fwtrue-qnone">kernels.tti_kernel(model, u1, u2, fw=True, q=None)</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#kernelswave_kernelmodel-u-fwtrue-qnone">kernels.wave_kernel(model, u, fw=True, q=None)</a>
@@ -261,6 +259,8 @@
     <li class="toctree-l3"><a class="reference internal" href="#propagatorsgradientmodel-residual-rcv_coords-u-return_opfalse-space_order8-t_sub1-wnone-freqnone-dft_subnone-isictrue">propagators.gradient(model, residual, rcv_coords, u, return_op=False, space_order=8, t_sub=1, w=None, freq=None, dft_sub=None, isic=True)</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#propagatorsnamemodel">propagators.name(model)</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#propagatorsopt_opfs-born_wsfalse">propagators.opt_op(fs, born_ws=False)</a>
     </li>
         </ul>
     </li>
@@ -1314,8 +1314,6 @@ perturbation (square slowness) dm with an extended source</p>
 </ul>
 </li>
 </ul>
-<h3 id="kernelsfallback_solveeq-target-kwargs">kernels.fallback_solve(eq, target, **kwargs)</h3>
-<p>To be remved at next Devito release</p>
 <h3 id="kernelstti_kernelmodel-u1-u2-fwtrue-qnone">kernels.tti_kernel(model, u1, u2, fw=True, q=None)</h3>
 <p>TTI wave equation (one from my paper) time stepper</p>
 <ul>
@@ -1441,6 +1439,7 @@ Compute forward wavefield u = A(m)^{-1}*f and related quantities (u(xrcv))</p>
 Compute adjoint wavefield v = adjoint(F(m))*y
 and related quantities (||v||_w, v(xsrc))</p>
 <h3 id="propagatorsnamemodel">propagators.name(model)</h3>
+<h3 id="propagatorsopt_opfs-born_wsfalse">propagators.opt_op(fs, born_ws=False)</h3>
 <h2 id="sensitivity-module">sensitivity module</h2>
 <h3 id="sensitivitybasic_srcmodel-u-kwargs">sensitivity.basic_src(model, u, **kwargs)</h3>
 <p>Basic source for linearized modeling</p>
