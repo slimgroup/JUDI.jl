@@ -103,7 +103,12 @@ lastindex(x::judiVStack) = length(x.components)
 
 dot(x::judiVStack, y::judiVStack) = sum(v[i]*y[i] for i=1:length(v.components))
 
-norm(x::judiVStack, order::Integer=2) = sum(norm(x[i], order)^order for i=1:length(x.components))^(1/order)
+function norm(x::judiVStack, order::Real=2)
+    if order == Inf
+        return max([norm(x[i], Inf) for i=1:length(x.components)]...)
+    end
+    sum(norm(x[i], order)^order for i=1:length(x.components))^(1/order)
+end
 
 iterate(S::judiVStack, state::Integer=1) = state > length(S.components) ? nothing : (S.components[state], state+1)
 

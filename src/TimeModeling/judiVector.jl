@@ -502,6 +502,9 @@ end
 
 # norm
 function norm(a::judiVector{avDT}, p::Real=2) where avDT
+    if p == Inf
+        return max([maximum(abs.(a.data[i])) for i=1:a.nsrc]...)
+    end
     x = 0.f0
     for j=1:a.nsrc
         x += a.geometry.dt[j] * sum(abs.(vec(a.data[j])).^p)

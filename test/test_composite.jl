@@ -87,7 +87,12 @@ ftol = 1f-6
     @test isapprox(a .* (u + v), a .* u + a .* v; rtol=ftol)
     @test isapprox((a + b) .* v, a .* v + b .* v; rtol=ftol)
 
-    # Test broadcasting
+    # Test the norm
+    u_scale = deepcopy(u)
+    @test isapprox(norm(u_scale, 2), sqrt(norm(d_obs, 2)^2 + norm(w0, 2)^2))
+    @test isapprox(norm(u_scale, 1), norm(d_obs, 1) + norm(w0, 1))
+    @test isapprox(norm(u_scale, Inf), max(norm(d_obs, Inf), norm(w0, Inf)))
+# Test broadcasting
     u_scale = deepcopy(u)
     v_scale = deepcopy(v)
 

@@ -255,6 +255,9 @@ end
 
 # norm
 function norm(a::judiWeights{avDT}, p::Real=2) where avDT
+    if p == Inf
+        return max([maximum(abs.(a.weights[i])) for i=1:a.nsrc]...)
+    end
     x = 0.f0
     for j=1:a.nsrc
         x += sum(abs.(vec(a.weights[j])).^p)
