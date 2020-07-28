@@ -46,7 +46,8 @@ function f!(x,grad)
     fval, gradient = fwi_objective(model0, q[i], d_obs[i])
 
     # Reset gradient in water column to zero
-    gradient = reshape(gradient, model0.n); gradient[:, 1:21] .= 0f0
+    gradient = reshape(gradient, model0.n)
+    gradient[:, 1:21] .= 0f0
     grad[1:end] = vec(gradient)
 
     global count; count += 1
