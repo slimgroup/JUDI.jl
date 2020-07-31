@@ -85,7 +85,6 @@ wavelets or a single wavelet as an array):
 """
 function judiVector(geometry::Geometry,data::Array; vDT::DataType=Float32)
     vDT == Float32 || throw(judiVectorException("Domain type not supported"))
-
     # length of vector
     n = 1
     if typeof(geometry) == GeometryOOC
@@ -100,13 +99,13 @@ function judiVector(geometry::Geometry,data::Array; vDT::DataType=Float32)
     end
     dataCell = Array{Array}(undef, nsrc)
     for j=1:nsrc
-        dataCell[j] = deepcopy(data)
+        dataCell[j] = data
     end
-    return judiVector{Float32}("Seismic data vector",m,n,nsrc,geometry,dataCell)
+    return judiVector{Float32}("Seismic data vector", m, n, nsrc, geometry, dataCell)
 end
 
 # constructor if data is passed as a cell array
-function judiVector(geometry::Geometry,data::Union{Array{Any,1},Array{Array,1}}; vDT::DataType=Float32)
+function judiVector(geometry::Geometry,data::Union{Array{Any,1}, Array{Array,1}}; vDT::DataType=Float32)
     vDT == Float32 || throw(judiVectorException("Domain and range types not supported"))
 
     # length of vector
@@ -486,6 +485,39 @@ function vcat(a::judiVector{avDT},b::judiVector{bvDT}) where {avDT, bvDT}
     end
     nvDT = promote_type(avDT,bvDT)
     return judiVector{nvDT}(a.name,m,n,nsrc,geometry,data)
+end
+
+
+"""
+    vcat(array)
+
+Turn an array of judiVector into a single smultenous judiVector, for example
+
+sim_source = vcat([q[i] for i=1:nsrc])
+
+will make the nsrc simultaneous source from multiple point sources `q`
+"""
+function vcat(a::Array{judiVector{avDT}, 1}) where {avDT}
+    out = a[1]
+    for i=2:length(a)
+        out = [out; a[i]]
+    end
+    return out
+end
+
+
+"""
+    vcat(judiVector)
+
+Turn a judiVector of multiple sources into a single
+
+sim_source = vcat(q)
+
+will make the simultaneous source made of all the point sources in q
+"""
+
+function vcat(a::judiVector{avDT}) where {avDT}
+    return vcat([a[i] for i=1:a.nsrc])
 end
 
 # dot product
