@@ -53,6 +53,10 @@ include("judiJacobianExtendedSource.jl")  # Jacobian of extended source modeling
 include("seismic_preconditioners.jl")
 
 #############################################################################
+# Preconditioners and optimization
+include("mpi.jl")
+
+#############################################################################
 # Utility types
 const SourceTypes = Union{judiVector, Tuple{judiWeights, judiLRWF}}
 # PDE types are callable w.r.t non-linear parameters, i.e F(model) or F(;m=m, epsilon=new_epsilon)

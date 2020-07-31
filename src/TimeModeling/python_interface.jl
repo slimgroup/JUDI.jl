@@ -19,7 +19,6 @@ end
 # d_obs = Pr*F*Ps'*q
 function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Geometry, srcData::Array, recGeometry::Geometry, recData::Nothing, dm::Nothing, options::Options)
     ac = load_devito_jit()
-
     # Interpolate input data to computational grid
     dtComp = modelPy.critical_dt
     qIn = time_resample(srcData[1],srcGeometry,dtComp)[1]
@@ -31,7 +30,7 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Geometry
     rec_coords = setup_grid(recGeometry, modelPy.shape)
 
     # Devito call
-    res = pycall(ac."forward_rec", PyObject, modelPy, src_coords, qIn, rec_coords, space_order=options.space_order, free_surface=options.free_surface)
+    res = pycall(ac."forward_rec", PyObject, modelPy, src_coords, qIn, rec_coords, space_order=options.space_order)
     dOut = get(res, 0)
     coords = get(res, 1)
     xrec = coords[:, 1]

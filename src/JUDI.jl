@@ -11,6 +11,7 @@ JUDIPATH = dirname(pathof(JUDI))
 
 # Dependencies
 using PyCall, JOLI, SegyIO, DSP, Distributed, Pkg, Printf, LinearAlgebra, FFTW, Dierckx
+using MPIClusterManagers, MPI
 
 # Import Base functions to dispatch on JUDI types
 import Base.*, Base./, Base.+, Base.-

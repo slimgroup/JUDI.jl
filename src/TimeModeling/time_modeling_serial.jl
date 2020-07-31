@@ -48,7 +48,7 @@ function time_modeling(model_full::Model, srcGeometry, srcData, recGeometry, rec
     end
 
     # Devito interface
-    argout = devito_interface(modelPy, model, srcGeometry, srcData, recGeometry, recData, dm, options)
+    argout = devito_interface(model, op, srcGeometry, srcData, recGeometry, recData, dm, options)
 
     # Extend gradient back to original model size
     if op=='J' && mode==-1 && options.limit_m==true

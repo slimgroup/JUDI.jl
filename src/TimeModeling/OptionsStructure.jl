@@ -24,6 +24,7 @@ mutable struct Options
     dft_subsampling_factor::Integer
     return_array::Bool
     dt_comp::Union{Real, Nothing}
+    mpi::Integer
 end
 
 """
@@ -117,7 +118,8 @@ Options(;space_order=8,
 		 subsampling_factor=1,
 		 dft_subsampling_factor=1,
          return_array=false,
-         dt_comp=nothing) =
+         dt_comp=nothing,
+         mpi=0) =
 		 Options(space_order,
 		 		 free_surface,
 		         limit_m,
@@ -134,7 +136,8 @@ Options(;space_order=8,
 				 subsampling_factor,
 				 dft_subsampling_factor,
                  return_array,
-                 dt_comp)
+                 dt_comp,
+                 mpi)
 
 function subsample(options::Options, srcnum)
     if isempty(options.frequencies)

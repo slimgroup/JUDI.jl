@@ -1,12 +1,6 @@
-# to import MPIManager
-using MPIClusterManagers
-
-# need to also import Distributed to use addprocs()
-using Distributed
-
 export mpi_devito_interface
 
-function mympi_do(mgr::MPIManager, expr)
+function mpicallfetch(mgr::MPIManager, expr)
     !mgr.initialized && wait(mgr.cond_initialized)
     jpids = keys(mgr.j2mpi)
     refs = Array{Any}(undef, length(jpids))
@@ -33,11 +27,11 @@ function mympi_do(mgr::MPIManager, expr)
     return out[1]
 end
 
-macro mympi_do(mgr, expr)
+macro mpicallfetch(mgr, expr)
     quote
-        # Evaluate expression in Main module
+        # Evaluate expression in JUDI module
         thunk = () -> (Core.eval(Main, $(Expr(:quote, expr))))
-        mympi_do($(esc(mgr)), thunk)
+        mpicallfetch($(esc(mgr)), thunk)
     end
 end
 
@@ -46,17 +40,19 @@ function mpi_devito_interface(model, op, args...)
 
     manager = MPIManager(np=options.mpi)
     workers = addprocs(manager)
-    # import back JUDI (yeah that's wierd but needed)
-    eval(macroexpand(Distributed, quote @everywhere using JUDI, JUDI.TimeModeling end))
+    # import back JUDI (yeah that's weird but needed)
+    eval(macroexpand(Distributed, quote @everywhere using JUDI end))
     length(model.n) == 3 ? dims = [3,2,1] : dims = [2,1]
 
-    argout = @mympi_do manager begin
+    argout = @mpicallfetch manager begin
+        using MPI, PyCall
         # Init MPI
-        using MPI
         comm = MPI.COMM_WORLD
+        dv = pyimport("devito")
+        PyDict(dv."configuration")["mpi"] = true
         # Set up Python model structure
         modelPy = devito_model($model, $options)
-        update_m(modelPy, $model.m, $dims)
+        #update_m(modelPy, $model.m, $dims)
         # Run devito interface
         argout = devito_interface(modelPy, $model, $(args...))
         # Wait for it to finish
