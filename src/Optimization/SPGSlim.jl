@@ -210,7 +210,7 @@ function minConf_SPG(funObj, x, funProj, options)
             end
 
             # Check whether step has become too small
-            if maximum(abs.(t*d)) < options.progTol || t == 0
+            if norm(t*d, Inf) < options.progTol || t == 0
                 if options.verbose == 3
                     @printf("Line Search failed\n")
                 end
@@ -287,7 +287,7 @@ function minConf_SPG(funObj, x, funProj, options)
             end
         end
 
-        if maximum(abs.(t*d)) < options.progTol && i>1
+        if norm(t*d, Inf) < options.progTol && i>1
             if options.verbose >= 1
                 @printf("Step size below progTol\n")
             end

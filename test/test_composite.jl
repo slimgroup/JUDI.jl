@@ -16,6 +16,8 @@ nsrc = 2
 nrec = 120
 ns = 251
 
+ftol = 1f-6
+
 @testset "judiVStack Unit Tests" begin
 
     # set up judiVector fr,om array
@@ -74,18 +76,23 @@ ns = 251
     a = randn(Float32, 1)[1]
     b = randn(Float32, 1)[1]
 
-    @test isapprox(u + (v + w), (u + v) + w; rtol=eps(1f0))
-    @test isapprox(2f0*u, 2f0.*u; rtol=eps(1f0))
-    @test isapprox(u + v, v + u; rtol=eps(1f0))
-    @test isapprox(u, u + 0; rtol=eps(1f0))
+    @test isapprox(u + (v + w), (u + v) + w; rtol=ftol)
+    @test isapprox(2f0*u, 2f0.*u; rtol=ftol)
+    @test isapprox(u + v, v + u; rtol=ftol)
+    @test isapprox(u, u + 0; rtol=ftol)
     @test iszero(norm(u + u*(-1)))
-    @test isapprox(-u, -1f0 * u; rtol=eps(1f0))
-    @test isapprox(a .* (b .* u), (a * b) .* u; rtol=eps(1f0))
-    @test isapprox(u, u .* 1; rtol=eps(1f0))
-    @test isapprox(a .* (u + v), a .* u + a .* v; rtol=eps(1f0))
-    @test isapprox((a + b) .* v, a .* v + b.* v; rtol=eps(1f0))
+    @test isapprox(-u, -1f0 * u; rtol=ftol)
+    @test isapprox(a .* (b .* u), (a * b) .* u; rtol=ftol)
+    @test isapprox(u, u .* 1; rtol=ftol)
+    @test isapprox(a .* (u + v), a .* u + a .* v; rtol=ftol)
+    @test isapprox((a + b) .* v, a .* v + b .* v; rtol=ftol)
 
-    # Test broadcasting
+    # Test the norm
+    u_scale = deepcopy(u)
+    @test isapprox(norm(u_scale, 2), sqrt(norm(d_obs, 2)^2 + norm(w0, 2)^2))
+    @test isapprox(norm(u_scale, 1), norm(d_obs, 1) + norm(w0, 1))
+    @test isapprox(norm(u_scale, Inf), max(norm(d_obs, Inf), norm(w0, Inf)))
+# Test broadcasting
     u_scale = deepcopy(u)
     v_scale = deepcopy(v)
 

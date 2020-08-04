@@ -9,7 +9,7 @@ export time_resample, remove_padding, subsample
 export generate_distribution, select_frequencies
 export load_pymodel, load_devito_jit, load_numpy, devito_model
 export update_dm, pad_sizes, pad_array
-export transducer_source
+export transducer
 
 
 function update_dm(model::PyObject, dm, options)
@@ -329,7 +329,7 @@ function calculate_dt(model::Model; dt=nothing)
     return .9*coeff * minimum(model.d) / (sqrt(1/minimum(model.m)))
 end
 """
-    get_computational_nt(srcGeometry, recGeoemtry, model)
+    get_computational_nt(srcGeometry, recGeoemtry, model; dt=nothing)
 
 Estimate the number of computational time steps. Required for calculating the dimensions\\
 of the matrix-free linear modeling operators. `srcGeometry` and `recGeometry` are source\\
@@ -347,8 +347,8 @@ function get_computational_nt(srcGeometry, recGeometry, model::Modelall; dt=noth
     nt = Array{Any}(undef, nsrc)
     dtComp = calculate_dt(model; dt=dt)
     for j=1:nsrc
-        ntRec = recGeometry.dt[j]*(recGeometry.nt[j]-1) / dtComp
-        ntSrc = srcGeometry.dt[j]*(srcGeometry.nt[j]-1) / dtComp
+        ntRec = recGeometry.dt[j]*(recGeometry.nt[j]-1) / dtComp + 1
+        ntSrc = srcGeometry.dt[j]*(srcGeometry.nt[j]-1) / dtComp + 1
         nt[j] = max(Int(ceil(ntRec)), Int(ceil(ntSrc)))
     end
     return nt
@@ -364,7 +364,7 @@ function get_computational_nt(Geometry, model::Modelall; dt=nothing)
     nt = Array{Any}(undef, nsrc)
     dtComp = calculate_dt(model; dt=dt)
     for j=1:nsrc
-        nt[j] = Int(ceil(Geometry.dt[j]*(Geometry.nt[j]-1) / dtComp))
+        nt[j] = Int(ceil(Geometry.dt[j]*(Geometry.nt[j]-1) / dtComp)) + 1
     end
     return nt
 end

@@ -147,6 +147,7 @@ ftol = 1e-6
     @test isapprox(norm(d_cont), sqrt(dot(d_cont, d_cont)))
     @test isapprox(abs.(d_block.data[1]), abs(d_block).data[1]) # need to add iterate for JUDI vector
 
+
     # vector space axioms
     u = judiVector(rec_geometry, randn(Float32, ns, nrec))
     v = judiVector(rec_geometry, randn(Float32, ns, nrec))
@@ -244,6 +245,12 @@ ftol = 1e-6
     # scale
     a = randn(Float32, 1)[1]
     d_scale = deepcopy(d_block)
+
+    # Tes norms
+    d_ones = judiVector(rec_geometry, 2f0 .* ones(Float32, ns, nrec))
+    @test isapprox(norm(d_ones, 2), sqrt(rec_geometry.dt[1]*nsrc*ns*nrec*4))
+    @test isapprox(norm(d_ones, 1), rec_geometry.dt[1]*nsrc*ns*nrec*2)
+    @test isapprox(norm(d_ones, Inf), 2)
 
     # broadcast multiplication
     u = judiVector(rec_geometry, randn(Float32, ns, nrec))
