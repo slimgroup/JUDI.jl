@@ -65,7 +65,7 @@ def initialize_damp(damp, Q_function, f0, padsizes, spacing, fs=False):
     lqmin = np.log(.1)
     lqmax = Q_function
 
-    # Angular frequency 
+    # Angular frequency
     if(f0 is None):
         w0 = 1/(10 * np.mean(spacing))
     else:
@@ -130,7 +130,8 @@ class GenericModel(object):
         if self.nbl != 0:
             # Create dampening field as symbol `damp`
             self.damp = Function(name="damp", grid=self.grid)
-            initialize_damp(self.damp, self._Q_function, f0, self.padsizes, spacing, fs=fs)
+            initialize_damp(self.damp, self._Q_function, f0, self.padsizes, spacing,
+                             fs=fs)
             self._physical_parameters.append('damp')
         else:
             self.damp = 1
@@ -231,7 +232,7 @@ class Model(GenericModel):
     vp : array_like or float
         Velocity in km/s.
     space_order : int, optional
-        space order 
+        space order
     nbl : int, optional
         The number of absorbin layers for boundary damping.
     dtype : np.float32 or np.float64
@@ -253,9 +254,9 @@ class Model(GenericModel):
     """
     def __init__(self, origin, spacing, shape, vp, space_order=2, nbl=40,
                  dtype=np.float32, epsilon=None, delta=None, theta=None, phi=None,
-                 rho=1, Q=None, f0=None,dm=None, fs=False, **kwargs):
+                 rho=1, Q=None, f0=None, dm=None, fs=False, **kwargs):
         super(Model, self).__init__(origin, spacing, shape, space_order, nbl, dtype,
-                                    fs=fs,Q=Q,f0=f0)
+                                    fs=fs, Q=Q, f0=f0)
 
         self.scale = 1
         self._space_order = space_order
@@ -264,8 +265,7 @@ class Model(GenericModel):
         # density
         self._init_density(rho, space_order)
         self._dm = self._gen_phys_param(dm, 'dm', space_order)
-
-
+        
         # Additional parameter fields for TTI operators
         self._is_tti = any(p is not None for p in [epsilon, delta, theta, phi])
         if self._is_tti:
