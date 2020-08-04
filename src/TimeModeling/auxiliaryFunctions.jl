@@ -36,10 +36,17 @@ end
 function devito_model_py(model::Model, options)
     pm = load_pymodel()
     # Set up Python model structure
-    vp = pad_array(sqrt.(1f0./model.m), pad_sizes(model, options))
+    vp  = pad_array(sqrt.(1f0./model.m), pad_sizes(model, options))
     rho = pad_array(model.rho, pad_sizes(model, options))
+    
+    if isnothing(model.Q)
+        Q = nothing
+    else
+        Q = pad_array(model.Q, pad_sizes(model, options))
+    end
+
     modelPy = pm."Model"(origin=model.o, spacing=model.d, shape=model.n,
-						 vp=vp, nbl=model.nb, rho=rho,
+						 vp=vp, nbl=model.nb, rho=rho, Q=Q, f0=model.f0,
                          space_order=options.space_order, dt=options.dt_comp,
                          fs=options.free_surface)
     return modelPy

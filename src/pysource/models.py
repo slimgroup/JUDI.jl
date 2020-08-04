@@ -43,7 +43,7 @@ class FSDomain(SubDomain):
         return map_d
 
 
-def initialize_damp(damp, padsizes, spacing, fs=False):
+def initialize_damp(damp, Q_function, f0, padsizes, spacing, fs=False):
     """
     Initialise damping field with an absorbing boundary layer.
     Includes basic constant Q setup (not interfaced yet) and assumes that
@@ -63,8 +63,13 @@ def initialize_damp(damp, padsizes, spacing, fs=False):
         not mask => 0 inside the domain and increase in the layer
     """
     lqmin = np.log(.1)
-    lqmax = np.log(100)
-    w0 = 1/(10 * np.mean(spacing))
+    lqmax = Q_function
+
+    # Angular frequency 
+    if(f0 is None):
+        w0 = 1/(10 * np.mean(spacing))
+    else:
+        w0 = 2. * np.pi * f0
 
     z = damp.dimensions[-1]
     eqs = [Eq(damp, 1)]
@@ -92,11 +97,12 @@ class GenericModel(object):
     General model class with common properties
     """
     def __init__(self, origin, spacing, shape, space_order, nbl=20,
-                 dtype=np.float32, fs=False):
+                 dtype=np.float32, fs=False, Q=None, f0=None):
         self.shape = shape
         self.nbl = int(nbl)
         self.origin = tuple([dtype(o) for o in origin])
         self.fs = fs
+
         # Origin of the computational domain with boundary to inject/interpolate
         # at the correct index
         origin_pml = [dtype(o - s*nbl) for o, s in zip(origin, spacing)]
@@ -114,14 +120,20 @@ class GenericModel(object):
         self.grid = Grid(extent=extent, shape=shape_pml, origin=tuple(origin_pml),
                          dtype=dtype, subdomains=subdomains)
 
+        self._physical_parameters = []
+        # Q factor needed for damping initialization
+        if(Q is None):
+            self._Q_function = np.log(100)
+        else:
+            self._Q_function = self._gen_phys_param(Q, 'Q', space_order)
+
         if self.nbl != 0:
             # Create dampening field as symbol `damp`
             self.damp = Function(name="damp", grid=self.grid)
-            initialize_damp(self.damp, self.padsizes, spacing, fs=fs)
-            self._physical_parameters = ['damp']
+            initialize_damp(self.damp, self._Q_function, f0, self.padsizes, spacing, fs=fs)
+            self._physical_parameters.append('damp')
         else:
             self.damp = 1
-            self._physical_parameters = []
 
     @property
     def padsizes(self):
@@ -218,6 +230,8 @@ class Model(GenericModel):
         Order of the spatial stencil discretisation.
     vp : array_like or float
         Velocity in km/s.
+    space_order : int, optional
+        space order 
     nbl : int, optional
         The number of absorbin layers for boundary damping.
     dtype : np.float32 or np.float64
@@ -230,14 +244,18 @@ class Model(GenericModel):
         Tilt angle in radian.
     phi : array_like or float
         Asymuth angle in radian.
-    dt: Float
-        User provided computational time-step
+    rho : array_like or float
+        density in g/cm^3.
+    Q : array_like or float
+        quality factor is dimensionless.
+    f0 : float
+        reference frequency for Q implementation
     """
     def __init__(self, origin, spacing, shape, vp, space_order=2, nbl=40,
                  dtype=np.float32, epsilon=None, delta=None, theta=None, phi=None,
-                 rho=1, dm=None, fs=False, **kwargs):
+                 rho=1, Q=None, f0=None,dm=None, fs=False, **kwargs):
         super(Model, self).__init__(origin, spacing, shape, space_order, nbl, dtype,
-                                    fs=fs)
+                                    fs=fs,Q=Q,f0=f0)
 
         self.scale = 1
         self._space_order = space_order
@@ -246,6 +264,8 @@ class Model(GenericModel):
         # density
         self._init_density(rho, space_order)
         self._dm = self._gen_phys_param(dm, 'dm', space_order)
+
+
         # Additional parameter fields for TTI operators
         self._is_tti = any(p is not None for p in [epsilon, delta, theta, phi])
         if self._is_tti:

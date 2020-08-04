@@ -51,6 +51,8 @@ mutable struct Model
     nb::Integer # number of absorbing boundaries points on each side
     m   # slowness squared
     rho # density in g / m^3 (1 for water)
+    Q   # quality factor 
+    f0  # reference frequency for quality factor 
 end
 
 
@@ -119,10 +121,15 @@ end
 
 
 function Model(n::IntTuple, d::RealTuple, o::RealTuple, m;
-    epsilon=nothing, delta=nothing, theta=nothing, phi=nothing, rho=nothing, nb=40)
+    epsilon=nothing, delta=nothing, theta=nothing, phi=nothing, rho=nothing, Q=nothing, f0=nothing, nb=40)
 
     # Default density
     isnothing(rho) && (rho = 1)
+
+    # raise error if we are trying to do Q without reference frequency
+    if !isnothing(Q) && isnothing(f0)
+        error("Need to give reference frequency f0 to use current Q implementation")
+    end
 
     # VTI/TTI or pure isotropic?
     if ~isnothing(epsilon) || ~isnothing(delta) || ~isnothing(theta) || ~isnothing(phi)
@@ -135,13 +142,20 @@ function Model(n::IntTuple, d::RealTuple, o::RealTuple, m;
 
         return Model_TTI(n, d, o, nb, m, epsilon, delta, theta, phi, rho)
     else
-        return Model(n, d, o, nb, m, rho)
+        return Model(n, d, o, nb, m, rho, Q, f0)
     end
 end
 
-function Model(n::IntTuple, d::RealTuple, o::RealTuple, m, rho; nb=40)
+function Model(n::IntTuple, d::RealTuple, o::RealTuple, m, rho, Q, f0; nb=40)
+    # Default density
     isnothing(rho) && (rho = 1)
-    return Model(n, d, o, nb, m, rho)
+
+    # raise error if we are trying to do Q without reference frequency
+    if !isnothing(Q) && isnothing(f0)
+        error("Need to give reference frequency f0 to use current Q implementation")
+    end
+
+    return Model(n, d, o, nb, m, rho, Q, f0)
 end
 
 const Modelall = Union{Model_TTI, Model}
