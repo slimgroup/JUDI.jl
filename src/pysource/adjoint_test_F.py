@@ -18,10 +18,11 @@ is_tti = args.tti
 
 # Model
 shape = (301, 301)
+shape_f = (381+16, 381+16)
 spacing = (10., 10.)
 origin = (0., 0.)
-v = np.empty(shape, dtype=np.float32)
-rho = np.empty(shape, dtype=np.float32)
+v = np.empty(shape_f, dtype=np.float32)
+rho = np.empty(shape_f, dtype=np.float32)
 v[:] = 1.5  # Top velocity (background)
 rho[:] = 1.0
 vp_i = np.linspace(1.5, 4.5, args.nlayer)
@@ -34,7 +35,7 @@ for i in range(1, args.nlayer):
 if is_tti:
     model = Model(shape=shape, origin=origin, spacing=spacing,
                   vp=v, epsilon=.09*(v-1.5), delta=.075*(v-1.5),
-                  rho=1, space_order=8)
+                  theta=.1*(v-1.5), rho=1, space_order=8)
 else:
     model = Model(shape=shape, origin=origin, spacing=spacing,
                   vp=v, rho=rho)

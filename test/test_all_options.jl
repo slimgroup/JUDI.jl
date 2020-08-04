@@ -70,6 +70,25 @@ d = dot(x, x_hat3)
 @test !isnan(norm(y_hat))
 @test !isnan(norm(x_hat3))
 
+################################## DFT time subsampled#########################################
+println("Testing subsampled in time DFT")
+
+opt = Options(sum_padding=true, dt_comp=dt, free_surface=parsed_args["fs"], frequencies=[[2.5, 4.5]],
+              dft_subsampling_factor=4)
+F = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
+
+# Linearized modeling
+J = judiJacobian(F, q)
+
+y_hat = J*x
+x_hat3 = adjoint(J)*y0
+
+c = dot(y0, y_hat)
+d = dot(x, x_hat3)
+@printf(" <J x, y> : %2.5e, <x, J' y> : %2.5e, relative error : %2.5e \n", c, d, c/d - 1)
+@test !isnan(norm(y_hat))
+@test !isnan(norm(x_hat3))
+
 ##################################subsampling#################################################
 println("Testing subsampling")
 opt = Options(sum_padding=true, dt_comp=dt, free_surface=parsed_args["fs"], subsampling_factor=4)

@@ -65,6 +65,7 @@ if parsed_args["tti"] &&  parsed_args["fs"]
     # FS + tti leads to slightly worst (still fairly ok) accuracy
     tol = 5f-3
 end
+
 println("Extended source adjoint test with ", parsed_args["nlayer"], " layers and tti: ",
         parsed_args["tti"], " and freesurface: ", parsed_args["fs"] )
 

@@ -124,19 +124,6 @@ function *(a::Number,A::judiJacobianExQ{ADDT,ARDT}) where {ADDT,ARDT}
                                 )
 end
 
-function A_mul_B!(x::judiVector, J::judiJacobianExQ, y::Array)
-    J.m == size(y, 1) ? z = adjoint(J)*y : z = J*y
-    for j=1:length(x.data)
-        x.data[j] .= z.data[j]
-    end
-end
-
-function A_mul_B!(x::Array, J::judiJacobianExQ, y::judiVector)
-    J.m == size(y, 1) ? x[:] = adjoint(J)*y : x[:] = J*y
-end
-
-mul!(x::Array, J::judiJacobianExQ, y::judiVector) = A_mul_B!(x, J, y)
-mul!(x::judiVector, J::judiJacobianExQ, y::Array) = A_mul_B!(x, J, y)
 
 ############################################################
 ## overloaded Bases +(...judiJacobianExQ...), -(...judiJacobianExQ...)

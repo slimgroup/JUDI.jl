@@ -43,7 +43,7 @@ dD = J*dm
 
 # Jacobian test
 maxiter = 6
-h = .1f0
+h = 5f-2
 err1 = zeros(Float32, maxiter)
 err2 = zeros(Float32, maxiter)
 
@@ -58,8 +58,11 @@ for j=1:maxiter
 	@printf("h = %2.2e, e1 = %2.2e, rate = %2.2e", h, err1[j], err1[prev]/err1[j])
 	@printf(", e2 = %2.2e, rate = %2.2e \n", err2[j], err2[prev]/err2[j])
 
-    global h = h/2f0
+    global h = h * .8f0
 end
 
-@test isapprox(err1[end] / (err1[1]/2^(maxiter-1)), 1f0; atol=1f1)
-@test isapprox(err2[end] / (err2[1]/4^(maxiter-1)), 1f0; atol=1f1)
+rate_1 = sum(err1[1:end-1]./err1[2:end])/(maxiter - 1)
+rate_2 = sum(err2[1:end-1]./err2[2:end])/(maxiter - 1)
+
+@test isapprox(rate_1, 1.25f0; rtol=1f-2)
+@test isapprox(rate_2, 1.5625f0; rtol=1f-2)

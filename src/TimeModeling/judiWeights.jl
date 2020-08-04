@@ -184,10 +184,17 @@ function *(A::joLinearOperator{ADDT,ARDT}, v::judiWeights{avDT}) where {ADDT, AR
     jo_check_type_match(ADDT,avDT,join(["DDT for *(joLinearFunction,judiWeights):",A.name,typeof(A),avDT]," / "))
     # Evaluate as mat-mat over the weights
     n = size(v.weights[1])
-    V = A.fop(hcat([vec(v.weights[i]) for i=1:v.nsrc]...))
-    jo_check_type_match(ARDT,eltype(V),join(["RDT from *(joLinearFunction,judiWeights):",A.name,typeof(A),eltype(V)]," / "))
-    m = length(V)
-    return judiWeights{avDT}("Extended source weights", m, 1, v.nsrc, [reshape(V[:, i], n) for i=1:v.nsrc])
+    try
+        # Mul may be defined for judiWeights
+        V = A.fop(v)
+        jo_check_type_match(ARDT,eltype(V),join(["RDT from *(joLinearFunction,judiWeights):",A.name,typeof(A),eltype(V)]," / "))
+        return V
+    catch e
+        V = A.fop(hcat([vec(v.weights[i]) for i=1:v.nsrc]...))
+        jo_check_type_match(ARDT,eltype(V),join(["RDT from *(joLinearFunction,judiWeights):",A.name,typeof(A),eltype(V)]," / "))
+        m = length(V)
+        return judiWeights{avDT}("Extended source weights", m, 1, v.nsrc, [reshape(V[:, i], n) for i=1:v.nsrc])
+    end
 end
 
 # *(joCoreBlock, judiWeights)
@@ -405,3 +412,26 @@ function isapprox(x::judiWeights, y::judiWeights; rtol::Real=sqrt(eps()), atol::
     isapprox(x.weights, y.weights; rtol=rtol, atol=atol)
 end
 
+############################################################
+
+function A_mul_B!(x::judiWeights, F::Union{joAbstractLinearOperator, joLinearFunction}, y::judiWeights)
+    F.m == size(y, 1) ? z = adjoint(F)*y : z = F*y
+    for j=1:length(x.weights)
+        x.weights[j] .= z.weights[j]
+    end
+end
+
+function A_mul_B!(x::judiWeights, F::Union{joAbstractLinearOperator, joLinearFunction}, y::Array)
+    F.m == size(y, 1) ? z = adjoint(F)*y : z = F*y
+    for j=1:length(x.weights)
+        x.weights[j] .= z.weights[j]
+    end
+end
+
+function A_mul_B!(x::Array, F::Union{joAbstractLinearOperator, joLinearFunction}, y::judiWeights)
+    F.m == size(y, 1) ? x[:] .= adjoint(F)*y : x[:] .= F*y
+end
+
+mul!(x::judiWeights, F::Union{joAbstractLinearOperator, joLinearFunction}, y::judiWeights) = A_mul_B!(x, F, y)
+mul!(x::judiWeights, F::Union{joAbstractLinearOperator, joLinearFunction}, y::Array) = A_mul_B!(x, F, y)
+mul!(x::Array, F::Union{joAbstractLinearOperator, joLinearFunction}, y::judiWeights) = A_mul_B!(x, F, y)

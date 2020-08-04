@@ -29,6 +29,7 @@ if GROUP == "ISO_OP" || GROUP == "All"
         push!(Base.ARGS, "-p 2")
         # Basic utility test
         include("basic_tests.jl")
+        include("test_linear_algebra.jl")
         # Iso-acoustic tests
         include("modelingTest.jl")
         include("linearityTest.jl")

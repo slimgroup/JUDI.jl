@@ -99,7 +99,7 @@ function judiVector(geometry::Geometry,data::Array; vDT::DataType=Float32)
     end
     dataCell = Array{Array}(undef, nsrc)
     for j=1:nsrc
-        dataCell[j] = data
+        dataCell[j] = deepcopy(data)
     end
     return judiVector{Float32}("Seismic data vector", m, n, nsrc, geometry, dataCell)
 end
@@ -733,6 +733,8 @@ function sum(x::judiVector)
     return s
 end
 
+isfinite(v::judiVector) = all(all(isfinite.(v.data[i])) for i=1:nsrc)
+
 ####################################################################################################
 
 BroadcastStyle(::Type{judiVector}) = Base.Broadcast.DefaultArrayStyle{1}()
@@ -842,3 +844,44 @@ function isapprox(x::judiVector, y::judiVector; rtol::Real=sqrt(eps()), atol::Re
     isapprox(x.data, y.data; rtol=rtol, atol=atol)
 end
 
+
+
+############################################################
+
+function A_mul_B!(x::judiWeights, F::Union{joAbstractLinearOperator, joLinearFunction}, y::judiVector)
+    F.m == size(y, 1) ? z = adjoint(F)*y : z = F*y
+    for j=1:length(x.weights)
+        x.weights[j] .= z.weights[j]
+    end
+end
+
+function A_mul_B!(x::judiVector, F::Union{joAbstractLinearOperator, joLinearFunction}, y::Array)
+    F.m == size(y, 1) ? z = adjoint(F)*y : z = F*y
+    for j=1:length(x.data)
+        x.data[j] .= z.data[j]
+    end
+end
+
+function A_mul_B!(x::Array, F::Union{joAbstractLinearOperator, joLinearFunction}, y::judiVector)
+    F.m == size(y, 1) ? x[:] .= adjoint(F)*y : x[:] .= F*y
+end
+
+function A_mul_B!(x::judiVector, F::Union{joAbstractLinearOperator, joLinearFunction}, y::judiWeights)
+    F.m == size(y, 1) ? z = adjoint(F)*y : z = F*y
+    for j=1:length(x.data)
+        x.data[j] .= z.data[j]
+    end
+end
+
+function A_mul_B!(x::judiVector, F::Union{joAbstractLinearOperator, joLinearFunction}, y::judiVector)
+    F.m == size(y, 1) ? z = adjoint(F)*y : z = F*y
+    for j=1:length(x.data)
+        x.data[j] .= z.data[j]
+    end
+end
+
+mul!(x::judiWeights, F::Union{joAbstractLinearOperator, joLinearFunction}, y::judiVector) = A_mul_B!(x, F, y)
+mul!(x::judiVector, F::Union{joAbstractLinearOperator, joLinearFunction}, y::judiWeights) = A_mul_B!(x, F, y)
+mul!(x::judiVector, F::Union{joAbstractLinearOperator, joLinearFunction}, y::judiVector) = A_mul_B!(x, F, y)
+mul!(x::Array, J::Union{joAbstractLinearOperator, joLinearFunction}, y::judiVector) = A_mul_B!(x, J, y)
+mul!(x::judiVector, J::Union{joAbstractLinearOperator, joLinearFunction}, y::Array) = A_mul_B!(x, J, y)

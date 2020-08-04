@@ -132,22 +132,6 @@ function *(a::Number,A::judiJacobian{ADDT,ARDT}) where {ADDT,ARDT}
                                 )
 end
 
-function A_mul_B!(x::judiVector, J::judiJacobian, y::Array)
-    # check if already adjoint(i.e lsqr)
-    J.m == size(y, 1) ? z = adjoint(J)*y : z = J*y
-    for j=1:length(x.data)
-        x.data[j] .= z.data[j]
-    end
-end
-
-function A_mul_B!(x::Array, J::judiJacobian, y::judiVector)
-    # check if already adjoint(i.e lsqr)
-    J.m == size(y, 1) ? x[:] = adjoint(J)*y : x[:] = J*y
-end
-
-mul!(x::Array, J::judiJacobian, y::judiVector) = A_mul_B!(x, J, y)
-mul!(x::judiVector, J::judiJacobian, y::Array) = A_mul_B!(x, J, y)
-
 # Needed by lsqr
 zerox(J::judiJacobian, y::judiVector) = zeros(Float32, size(J, 2))
 

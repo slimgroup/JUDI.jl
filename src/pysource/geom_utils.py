@@ -39,8 +39,12 @@ def src_rec(model, u, src_coords=None, rec_coords=None, wavelet=None, fw=True, n
     src = None
     nt = nt or wavelet.shape[0]
     if src_coords is not None:
-        src = PointSource(name="src", grid=model.grid, ntime=nt, coordinates=src_coords)
-        src.data[:] = wavelet[:] if wavelet is not None else 0.
+        if isinstance(wavelet, PointSource):
+            src = wavelet
+        else:
+            src = PointSource(name="src", grid=model.grid, ntime=nt,
+                              coordinates=src_coords)
+            src.data[:] = wavelet[:] if wavelet is not None else 0.
         if model.is_tti:
             u_n = (u[0].forward, u[1].forward) if fw else (u[0].backward, u[1].backward)
             geom_expr += src.inject(field=u_n[0], expr=src*dt**2/m)

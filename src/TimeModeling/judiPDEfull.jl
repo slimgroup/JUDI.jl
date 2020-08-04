@@ -121,16 +121,6 @@ function *(a::Number,A::judiPDEfull{ADDT,ARDT}) where {ADDT,ARDT}
         )
 end
 
-function A_mul_B!(x::judiVector,A::judiPDEfull,y::judiVector)
-    z = A*y
-    x.data = z.data
-end
-
-function Ac_mul_B!(x::judiVector,A::judiPDEfull,y::judiVector)
-    z = adjoint(A)*y
-    x.data = z.data
-end
-
 ############################################################
 ## overloaded Bases +(...judiPDEfull...), -(...judiPDEfull...)
 
@@ -172,20 +162,3 @@ function subsample(F::judiPDEfull{ADDT,ARDT}, srcnum) where {ADDT,ARDT}
 end
 
 getindex(F::judiPDEfull,a) = subsample(F,a)
-
-############################################################
-
-function A_mul_B!(x::judiWeights, F::judiPDEfull, y::judiVector)
-    F.m == size(y, 1) ? z = adjoint(F)*y : z = F*y
-    x.weights = z.weights
-end
-
-function A_mul_B!(x::judiVector, F::judiPDEfull, y::judiWeights)
-    F.m == size(y, 1) ? z = adjoint(F)*y : z = F*y
-    for j=1:length(x.data)
-        x.data[j] .= z.data[j]
-    end
-end
-
-mul!(x::judiWeights, J::judiPDEfull, y::judiVector) = A_mul_B!(x, J, y)
-mul!(x::judiVector, J::judiPDEfull, y::judiWeights) = A_mul_B!(x, J, y)

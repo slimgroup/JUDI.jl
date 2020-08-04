@@ -27,7 +27,7 @@ function setup_model(tti=false, nlayer=2; n=(301, 151), d=(10., 10.))
         v[:, (i-1)*Int(floor(n[2] / nlayer)) + 1:end] .= vp_i[i]  # Bottom velocity	
     end
 
-    v0 = smooth(v, 10)
+    v0 = smooth(v, 7)
     rho0 = (v .+ .5f0) ./ 2
     # Slowness squared [s^2/km^2]
     m = (1f0 ./ v).^2
@@ -104,7 +104,7 @@ function parse_commandline()
         "--nlayer", "-n"
             help = "Number of layers"
             arg_type = Int
-            default = 2
+            default = 3
         "--parallel", "-p"
             help = "Number of workers"
             arg_type = Int
