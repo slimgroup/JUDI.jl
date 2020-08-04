@@ -9,33 +9,13 @@
 
 JUDI is a framework for large-scale seismic modeling and inversion and designed to enable rapid translations of algorithms to fast and efficient code that scales to industry-size 3D problems. The focus of the package lies on seismic modeling as well as PDE-constrained optimization such as full-waveform inversion (FWI) and imaging (LS-RTM). Wave equations in JUDI are solved with [Devito](https://www.devitoproject.org), a Python domain-specific language for automated finite-difference (FD) computations. JUDI's modeling operators can also be used as layers in (convolutional) neural networks to implement physics-augmented deep learning algorithms. For this, check out JUDI's deep learning extension [JUDI4Flux](https://github.com/slimgroup/JUDI4Flux.jl).
 
+## FAQ
+
+You can find an FAQ with answers to issues at [FAQ](https://github.com/slimgroup/JUDI.jl/wiki/FAQ)
+
 ## Installation and prerequisites
 
-First, install Devito using `pip`, or see the [Devito's GitHub page](https://github.com/devitocodes/devito) for installation with Conda and further information. The current release of JUDI requires Python 3 and the current Devito version. Run all of the following commands from the (bash) terminal command line (not in the Julia REPL):
-
-```julia
-pip3 install --user git+https://github.com/devitocodes/devito.git
-```
-
-For reading and writing seismic SEG-Y data, JUDI uses the [SegyIO](https://github.com/slimgroup/SegyIO.jl) package and matrix-free linear operators are based the [Julia Operator LIbrary](https://github.com/slimgroup/JOLI.jl/tree/master/src) (JOLI):
-
-```julia
-julia -e 'using Pkg; Pkg.develop(PackageSpec(url="https://github.com/slimgroup/SegyIO.jl"))'
-julia -e 'using Pkg; Pkg.develop(PackageSpec(url="https://github.com/slimgroup/JOLI.jl"))'
-```
-
-Once Devito, SegyIO and JOLI are installed, you can install JUDI as follows:
-
-```julia
-julia -e 'using Pkg; Pkg.develop(PackageSpec(url="https://github.com/slimgroup/JUDI.jl"))'
-```
-
-Once you have JUDI installed, you need to point Julia's PyCall package to the Python version for which we previsouly installed Devito. To do this, copy-paste the following commands into the (bash) terminal:
-
-```julia
-export PYTHON=$(which python3)
-julia -e 'using Pkg; Pkg.build("PyCall")'
-```
+You can find installation instruction in our Wiki at [Installation](https://github.com/slimgroup/JUDI.jl/wiki/Installation)
 
 ## Running with Docker
 
@@ -49,24 +29,6 @@ This command downloads the image and launches a container. You will see a link t
 
 ```
 docker run -it philippwitte/judi:v1.5 /bin/bash
-```
-
-Inside the container, all examples are located in the directory `/app/judi/examples/scripts`.
-
-## Configure compiler and OpenMP
-
-## Running with Docker
-
-If you do not want to install JUDI, you can run JUDI as a docker image. The first possibility is to run the docker container as a Jupyter notebook:
-
-```
-docker run -p 8888:8888 philippwitte/judi:master
-```
-
-This command downloads the image and launches a container. You will see a link that you can copy-past to your browser to access the notebooks. Alternatively, you can run a bash session, in which you can start a regular interactive Julia session and run the example scripts. Download/start the container as a bash session with:
-
-```
-docker run -it philippwitte/judi:master /bin/bash
 ```
 
 Inside the container, all examples are located in the directory `/app/judi/examples/scripts`.
