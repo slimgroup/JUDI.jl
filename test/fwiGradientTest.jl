@@ -8,8 +8,6 @@
 
 using JUDI.TimeModeling, Test, LinearAlgebra, PyPlot, Printf
 
-include("test_utils.jl")
-
 parsed_args = parse_commandline()
 
 println("FWI gradient test", parsed_args["nlayer"], " layers and tti: ",

@@ -36,6 +36,7 @@ if GROUP == "ISO_OP" || GROUP == "All"
         include("test_jacobian_extended.jl")
         include("adjointTest.jl")
         include("fwiGradientTest.jl")
+        include("GradientTestLS_F.jl")
         include("test_all_options.jl")
     end
 end
@@ -49,6 +50,7 @@ if GROUP == "ISO_OP_FS" || GROUP == "All"
         include("test_jacobian.jl")
         include("test_jacobian_extended.jl")
         include("adjointTest.jl")
+        include("GradientTestLS_F.jl")
         include("test_all_options.jl")
     end
 end
@@ -64,6 +66,7 @@ if GROUP == "TTI_OP" || GROUP == "All"
         include("test_jacobian_extended.jl")
         include("adjointTest.jl")
         include("fwiGradientTest.jl")
+        include("GradientTestLS_F.jl")
         include("test_all_options.jl")
     end
 end
@@ -78,6 +81,7 @@ if GROUP == "TTI_OP_FS" || GROUP == "All"
         include("test_jacobian.jl")
         include("test_jacobian_extended.jl")
         include("adjointTest.jl")
+        include("GradientTestLS_F.jl")
         include("test_all_options.jl")
     end
 end

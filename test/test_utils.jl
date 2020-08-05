@@ -101,9 +101,6 @@ function parse_commandline()
         "--fs"
             help = "Free surface, default False"
             action = :store_true
-        "--isic"
-            help = "Inverse scattering imaging condition, default False"
-            action = :store_true
         "--nlayer", "-n"
             help = "Number of layers"
             arg_type = Int

@@ -5,15 +5,12 @@
 
 using JUDI.TimeModeling, Test, LinearAlgebra, PyPlot, Printf
 
-include("test_utils.jl")
-
 parsed_args = parse_commandline()
 
 println("Gradient test for system 0.5*||Fq-d||_2^2")
 
 println(parsed_args["nlayer"], " layers and tti: ",
-		parsed_args["tti"], " and freesurface: ", parsed_args["fs"],
-		" and isic: ", parsed_args["isic"] )
+		parsed_args["tti"], " and freesurface: ", parsed_args["fs"])
 ### Model
 model, _, _ = setup_model(parsed_args["tti"], parsed_args["nlayer"])
 _, _, recGeometry, info = setup_geom(model)
@@ -23,8 +20,8 @@ wavelet = ricker_wavelet(tn, dt, 0.015f0)
 ###################################################################################################
 
 # Gradient test
-h1 = 2f-2
-h2 = 2f-2
+h1 = 2f-3
+h2 = 2f-3
 iter = 5
 error11 = zeros(iter)
 error12 = zeros(iter)
@@ -34,8 +31,8 @@ h_all1 = zeros(iter)
 h_all2 = zeros(iter)
 
 # Observed data
-opt1 = Options(return_array=true,free_surface=parsed_args["fs"],isic=parsed_args["isic"])
-opt2 = Options(return_array=false,free_surface=parsed_args["fs"],isic=parsed_args["isic"])
+opt1 = Options(return_array=true,free_surface=parsed_args["fs"])
+opt2 = Options(return_array=false,free_surface=parsed_args["fs"])
 
 Pr  = judiProjection(info, recGeometry)
 F1  = judiModeling(info, model; options=opt1)
@@ -93,8 +90,8 @@ end
 
 # Check error decay
 
-@test isapprox(error11[end] / error11[1] * rate_0th_order,1,atol = 20f0)
-@test isapprox(error12[end] / error12[1] * rate_1st_order,1,atol = 10f0)
+@test isapprox(error11[end] / error11[1] * rate_0th_order,1,atol = 2f1)
+@test isapprox(error12[end] / error12[1] * rate_1st_order,1,atol = 2f1)
 
 println("Test for judiVector")
 
@@ -115,6 +112,18 @@ end
 
 # Check error decay
 
-@test isapprox(error21[end] / error21[1] * rate_0th_order,1,atol = 20f0)
-@test isapprox(error22[end] / error22[1] * rate_1st_order,1,atol = 10f0)
+@test isapprox(error21[end] / error21[1] * rate_0th_order,1,atol = 2f1)
+@test isapprox(error22[end] / error22[1] * rate_1st_order,1,atol = 2f1)
 
+# Check if the value of gradients are the same
+
+println("Test if the gradients from Array or judiVector/judiWeights are the same")
+q_array = randn(Float32,info.n)
+d_array = F1*randn(Float32,info.n)
+grad_array = F1'*(F1*q_array-d_array)
+
+q_judi = judiWeights(reshape(q_array,model.n))
+d_judi = judiVector(recGeometry,reshape(d_array,recGeometry.nt[1],length(recGeometry.xloc[1])))
+grad_judi = F2'*(F2*q_judi-d_judi)
+
+@test isapprox(norm(grad_array-vec(grad_judi.weights[1]))/norm(grad_array),0,atol=1f-3)
