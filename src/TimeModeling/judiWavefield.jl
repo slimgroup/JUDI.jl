@@ -48,20 +48,22 @@ time step dt:
 
 
 """
-function judiWavefield(info,dt::Real,data::Union{Array, PyCall.PyObject, String}; vDT::DataType=Float32)
+function judiWavefield(info,dt::Real,data::Union{Array, PyCall.PyObject, String};  vDT::DataType=Float32)
 
 	# length of vector
 	m = info.n * sum(info.nt)
 	n = 1
 	dataCell = Array{Any}(undef, info.nsrc)
 	for j=1:info.nsrc
-		dataCell[j] = data
+		dataCell[j] = deepcopy(data)
 	end
 	return judiWavefield{vDT}("judiWavefield",m,n,info, Float32(dt),dataCell)
 end
 
-function judiWavefield(info,dt::Real,data::Array{Any,1};vDT::DataType=Float32)
+function judiWavefield(info, dt::Real, data::Union{Array{Any,1},Array{Array,1}};vDT::DataType=Float32)
 	# length of vector
+	nsrc = length(data)
+	nsrc != info.nsrc && throw("Different number of sources in info ($(info.nsrc)) and data array ($nsrc)")
 	m = info.n * sum(info.nt)
 	n = 1
 	return judiWavefield{vDT}("judiWavefield",m,n,info, Float32(dt),data)
@@ -79,6 +81,9 @@ conj(A::judiWavefield{vDT}) where vDT =
 transpose(A::judiWavefield{vDT}) where vDT =
 	judiWavefield{vDT}(""*A.name*".'",A.n,A.m,A.info,A.dt,A.data)
 
+# adjoint(jo)
+adjoint(A::judiWavefield{vDT}) where vDT = conj(transpose(A))
+
 # ctranspose(jo)
 ctranspose(A::judiWavefield{vDT}) where vDT =
 	judiWavefield{vDT}(""*A.name*"'",A.n,A.m,A.info,A.dt,A.data)
@@ -88,8 +93,10 @@ ctranspose(A::judiWavefield{vDT}) where vDT =
 # +(judiWavefield, judiWavefield)
 function +(a::judiWavefield{avDT}, b::judiWavefield{bvDT}) where {avDT, bvDT}
     size(a) == size(b) || throw(judiWavefieldException("dimension mismatch"))
-    c = deepcopy(a)
-    c.data = a.data + b.data
+	c = deepcopy(a)
+	for i=1:a.info.nsrc
+		c.data[i] = a.data[i] .+ b.data[i]
+	end
     return c
 end
 
@@ -97,42 +104,54 @@ end
 function -(a::judiWavefield{avDT}, b::judiWavefield{bvDT}) where {avDT, bvDT}
     size(a) == size(b) || throw(judiWavefieldException("dimension mismatch"))
     c = deepcopy(a)
-    c.data = a.data - b.data
+	for i=1:a.info.nsrc
+		c.data[i] = a.data[i] .- b.data[i]
+	end
     return c
 end
 
 # +(judiWavefield, number)
 function +(a::judiWavefield{avDT},b::Number) where avDT
     c = deepcopy(a)
-    c.data = c.data .+ b
+	for i=1:a.info.nsrc
+		c.data[i] = a.data[i] .+ b
+	end
     return c
 end
 
 # +(number, judiWavefield)
 function +(a::Number,b::judiWavefield{avDT}) where avDT
     c = deepcopy(b)
-    c.data = b.data .+ a
+	for i=1:b.info.nsrc
+		c.data[i] = a .+ b.data[i]
+	end
     return c
 end
 
 # -(judiWavefield, number)
 function -(a::judiWavefield{avDT},b::Number) where avDT
     c = deepcopy(a)
-    c.data = c.data .- b
+	for i=1:a.info.nsrc
+		c.data[i] = a.data[i] .- b
+	end
     return c
 end
 
 # *(judiWavefield, number)
 function *(a::judiWavefield{avDT},b::Number) where avDT
     c = deepcopy(a)
-    c.data = c.data .* b
+	for i=1:a.info.nsrc
+		c.data[i] = a.data[i] .* b
+	end
     return c
 end
 
 # *(number, judiWavefield)
 function *(a::Number,b::judiWavefield{bvDT}) where bvDT
     c = deepcopy(b)
-    c.data = a .* c.data
+	for i=1:b.info.nsrc
+		c.data[i] = a .* b.data[i]
+	end
     return c
 end
 
@@ -142,10 +161,22 @@ function /(a::judiWavefield{avDT},b::Number) where avDT
     if iszero(b)
         error("Division by zero")
     else
-        c.data = c.data/b
+		for i=1:a.info.nsrc
+			c.data[i] = a.data[i] ./ b
+		end
     end
     return c
 end
+
+# minus
+function -(a::judiWavefield{avDT}) where {avDT}
+    c = deepcopy(a)
+    for j=1:a.info.nsrc
+        c.data[j] = -c.data[j]
+    end
+    return c
+end
+
 
 
 function vcat(a::judiWavefield{avDT},b::judiWavefield{bvDT}) where {avDT, bvDT}
@@ -162,8 +193,8 @@ function vcat(a::judiWavefield{avDT},b::judiWavefield{bvDT}) where {avDT, bvDT}
 		data[j] = b.data[j-a.info.nsrc]
 		nt[j] = b.info.nt[j-a.info.nsrc]
 	end
-	info = Info(a.info.n,nsrc,nt)
-	return judiWavefield(info,a.dt,data)
+	info = Info(a.info.n, nsrc, nt)
+	return judiWavefield(info, a.dt, data)
 end
 
 # add and subtract, mulitply and divide, norms, dot ...
@@ -216,9 +247,12 @@ end
 
 # norm
 function norm(a::judiWavefield{avDT}, p::Real=2) where avDT
+    if p == Inf
+        return max([maximum(abs.(a.data[i])) for i=1:a.info.nsrc]...)
+    end
     x = 0.f0
     for j=1:a.info.nsrc
-            x += Float32(a.dt) * sum(abs.(vec(a.data[j])).^p)
+        x += Float32(a.dt) * sum(abs.(vec(a.data[j])).^p)
     end
     return x^(1.f0/p)
 end
@@ -241,4 +275,9 @@ function abs(a::judiWavefield{avDT}) where avDT
 		b.data[j] = abs.(a.data[j])
 	end
 	return b
+end
+
+function isapprox(x::judiWavefield, y::judiWavefield; rtol::Real=sqrt(eps()), atol::Real=0)
+    x.info.nsrc == y.info.nsrc || throw(judiVectorException("Incompatible number of sources"))
+    isapprox(x.data, y.data; rtol=rtol, atol=atol)
 end

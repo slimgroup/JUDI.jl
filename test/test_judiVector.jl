@@ -16,14 +16,13 @@ function example_rec_geometry(; nsrc=2, nrec=120)
 end
 
 # number of sources/receivers
-nsrc = 2
 nrec = 120
 ns = 251
 ftol = 1e-6
 
 ################################################# test constructors ####################################################
 
-@testset "judiVector Unit Tests" begin
+@testset "judiVector Unit Tests with $(nsrc) sources" for nsrc=[1, 2]
 
     # set up judiVector fr,om array
     dsize = (nsrc*nrec*ns, 1)
@@ -34,7 +33,7 @@ ftol = 1e-6
     @test isequal(d_obs.nsrc, nsrc)
     @test isequal(typeof(d_obs.data), Array{Array, 1})
     @test isequal(typeof(d_obs.geometry), GeometryIC)
-    @test iszero(norm(d_obs.data[1] - d_obs.data[2]))
+    @test iszero(norm(d_obs.data[1] - d_obs.data[end]))
     @test isequal(size(d_obs), dsize)
 
     # set up judiVector from cell array
@@ -51,7 +50,7 @@ ftol = 1e-6
     @test isequal(size(d_obs), dsize)
 
     # contructor for in-core data container
-    block = segy_read(datapath*"unit_test_shot_records.segy")
+    block = segy_read(datapath*"unit_test_shot_records_$(nsrc).segy"; warn_user=false)
     d_block = judiVector(block; segy_depth_key="RecGroupElevation")
     dsize = (prod(size(block.data)), 1)
 
@@ -71,7 +70,7 @@ ftol = 1e-6
     @test isequal(size(d_block), dsize)
 
     # contructor for out-of-core data container from single container
-    container = segy_scan(datapath, "unit_test_shot_records", ["GroupX", "GroupY", "RecGroupElevation", "SourceSurfaceElevation", "dt"])
+    container = segy_scan(datapath, "unit_test_shot_records_$(nsrc)", ["GroupX", "GroupY", "RecGroupElevation", "SourceSurfaceElevation", "dt"])
     d_cont = judiVector(container; segy_depth_key="RecGroupElevation")
 
     @test isequal(d_cont.nsrc, nsrc)
@@ -162,8 +161,8 @@ ftol = 1e-6
     @test iszero(norm(u + u*(-1)))
     @test isapprox(a .* (b .* u), (a * b) .* u; rtol=ftol)
     @test isapprox(u, u .* 1; rtol=ftol)
-    @test isapprox(a .* (u + v), a .* u + a .* v; rtol=ftol)
-    @test isapprox((a + b) .* v, a .* v + b .* v; rtol=ftol)
+    @test isapprox(a .* (u + v), a .* u + a .* v; rtol=1f-5)
+    @test isapprox((a + b) .* v, a .* v + b .* v; rtol=1f-5)
 
     # subsamling
     d_block_sub = d_block[1]
@@ -171,8 +170,9 @@ ftol = 1e-6
     @test isequal(typeof(d_block_sub.geometry), GeometryIC)
     @test isequal(typeof(d_block_sub.data), Array{Array, 1})
 
-    d_block_sub = d_block[1:2]
-    @test isequal(d_block_sub.nsrc, 2)
+    inds = nsrc > 1 ? (1:nsrc) : 1
+    d_block_sub = d_block[inds]
+    @test isequal(d_block_sub.nsrc, nsrc)
     @test isequal(typeof(d_block_sub.geometry), GeometryIC)
     @test isequal(typeof(d_block_sub.data), Array{Array, 1})
 
@@ -182,8 +182,8 @@ ftol = 1e-6
     @test isequal(typeof(d_cont_sub.geometry), GeometryOOC)
     @test isequal(typeof(d_cont_sub.data), Array{SegyIO.SeisCon, 1})
 
-    d_cont_sub = d_cont[1:2]
-    @test isequal(d_cont_sub.nsrc, 2)
+    d_cont_sub = d_cont[inds]
+    @test isequal(d_cont_sub.nsrc, nsrc)
     @test isequal(typeof(d_cont_sub.geometry), GeometryOOC)
     @test isequal(typeof(d_cont_sub.data), Array{SegyIO.SeisCon, 1})
 
@@ -266,6 +266,14 @@ ftol = 1e-6
     @test isapprox(u_scale, u; rtol=ftol)
     u_scale .= 2f0 .* u_scale .+ v_scale
     @test isapprox(u_scale, 2f0 * u + 2f0 + v; rtol=ftol)
+    u_scale .= u .+ v
+    @test isapprox(u_scale, u + v)
+    u_scale .= u .- v
+    @test isapprox(u_scale, u - v)
+    u_scale .= u .* v
+    @test isapprox(u_scale.data[1], u.data[1].*v.data[1])
+    u_scale .= u ./ v
+    @test isapprox(u_scale.data[1], u.data[1]./v.data[1])
 
     # broadcast identity
     u = judiVector(rec_geometry, randn(Float32, ns, nrec))

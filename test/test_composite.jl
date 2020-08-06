@@ -18,7 +18,7 @@ ns = 251
 
 ftol = 1f-6
 
-@testset "judiVStack Unit Tests" begin
+@testset "judiVStack Unit Tests with $(nsrc) sources" for nsrc=[1, 2]
 
     # set up judiVector fr,om array
     dsize = (nsrc*nrec*ns, 1)
@@ -30,9 +30,14 @@ ftol = 1f-6
     # Composite objs
     c1 = [d_obs; w0]
     c1_b = deepcopy(c1)
+    c1_z = similar(c1)
     c2 = [w0; d_obs]
     c2_b = deepcopy(c2)
 
+    @test isapprox(length(c1), length(d_obs) + length(w0))
+    @test eltype(c1) == Float32
+
+    @test isapprox(c1[1], c1.components[1])
     @test isapprox(c1.components[1], d_obs)
     @test isapprox(c2.components[2], d_obs)
     @test isapprox(c2.components[1], w0)
@@ -90,6 +95,7 @@ ftol = 1f-6
     # Test the norm
     u_scale = deepcopy(u)
     @test isapprox(norm(u_scale, 2), sqrt(norm(d_obs, 2)^2 + norm(w0, 2)^2))
+    @test isapprox(norm(u_scale, 2), sqrt(dot(u_scale, u_scale)); rtol=1f-6)
     @test isapprox(norm(u_scale, 1), norm(d_obs, 1) + norm(w0, 1))
     @test isapprox(norm(u_scale, Inf), max(norm(d_obs, Inf), norm(w0, Inf)))
 # Test broadcasting
@@ -104,6 +110,14 @@ ftol = 1f-6
     @test isapprox(u_scale, u)
     u_scale .= 2f0 .* u_scale .+ v_scale
     @test isapprox(u_scale, 2f0 * u + 2f0 + v)
+    u_scale .= u .+ v
+    @test isapprox(u_scale, u + v)
+    u_scale .= u .- v
+    @test isapprox(u_scale, u - v)
+    u_scale .= u .* v
+    @test isapprox(u_scale[1], u[1].*v[1])
+    u_scale .= u ./ v
+    @test isapprox(u_scale[1], u[1]./v[1])
 
     # Test multi-vstack
     u1 = [u; 2f0*d_obs]

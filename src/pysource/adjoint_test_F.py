@@ -1,5 +1,6 @@
 import numpy as np
 from argparse import ArgumentParser
+from devito import inner
 
 from sources import RickerSource, Receiver
 from models import Model
@@ -11,18 +12,18 @@ parser.add_argument("--tti", default=False, action='store_true',
                     help="Test acoustic or tti")
 parser.add_argument('-nlayer', dest='nlayer', default=3, type=int,
                     help="Number of layers in model")
-parser.add_argument("--ssa", default=False, action='store_true',
-                    help="Test tti or ssa tti")
+parser.add_argument('-so', dest='space_order', default=8, type=int,
+                    help="Spatial discretization order")
 args = parser.parse_args()
 is_tti = args.tti
+so = args.space_order
 
 # Model
 shape = (301, 301)
-shape_f = (381+16, 381+16)
 spacing = (10., 10.)
 origin = (0., 0.)
-v = np.empty(shape_f, dtype=np.float32)
-rho = np.empty(shape_f, dtype=np.float32)
+v = np.empty(shape, dtype=np.float32)
+rho = np.empty(shape, dtype=np.float32)
 v[:] = 1.5  # Top velocity (background)
 rho[:] = 1.0
 vp_i = np.linspace(1.5, 4.5, args.nlayer)
@@ -35,10 +36,10 @@ for i in range(1, args.nlayer):
 if is_tti:
     model = Model(shape=shape, origin=origin, spacing=spacing,
                   vp=v, epsilon=.09*(v-1.5), delta=.075*(v-1.5),
-                  theta=.1*(v-1.5), rho=1, space_order=8)
+                  theta=.1*(v-1.5), rho=1, space_order=so)
 else:
     model = Model(shape=shape, origin=origin, spacing=spacing,
-                  vp=v, rho=rho)
+                  vp=v, rho=rho, space_order=so)
 
 # Time axis
 t0 = 0.
@@ -59,14 +60,14 @@ rec_t.coordinates.data[:, 0] = np.linspace(0., 3000., num=301)
 rec_t.coordinates.data[:, 1] = 20.
 
 # Test data and source
-d_hat, u1 = forward(model, src1.coordinates.data, rec_t.coordinates.data, src1.data)
+d_hat, u1, _ = forward(model, src1.coordinates.data, rec_t.coordinates.data, src1.data)
 
 # Adjoint
-q0, _ = adjoint(model, d_hat, src1.coordinates.data, rec_t.coordinates.data)
+q0, _, _ = adjoint(model, d_hat, src1.coordinates.data, rec_t.coordinates.data)
 
 # Adjoint test
-a = np.dot(d_hat.flatten(), d_hat.flatten())
-b = np.dot(q0.flatten(), src1.data.flatten())
+a = inner(d_hat, d_hat)
+b = inner(q0, src1)
 print("Adjoint test F")
-print("Difference: ", a - b)
-print("Relative error: ", a/b - 1)
+print("a = %2.2e, b = %2.2e, diff = %2.2e: " % (a, b, a - b))
+print("Relative error: ", a / b - 1)

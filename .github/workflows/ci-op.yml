@@ -15,11 +15,11 @@ jobs:
     name: ${{ matrix.op }} on Julia ${{ matrix.version }} - ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     env:
-      DEVITO_ARCH: gcc-7
+      DEVITO_ARCH: gcc-9
       DEVITO_LANGUAGE: "openmp"
       DEVITO_BACKEND: "core"
       DEVITO_LOGGING: "ERROR"
-      OMP_NUM_THREADS: 4
+      OMP_NUM_THREADS: 2
       GROUP: ${{ matrix.op }}
 
     strategy:
@@ -68,6 +68,12 @@ jobs:
       - name: Checkout JUDI
         uses: actions/checkout@v2
 
+      - name: Install GCC 9
+        if : runner.os == 'macOS'
+        run : |
+          brew install gcc@9
+          gcc --version
+
       - name: Setup julia
         uses: julia-actions/setup-julia@v1
         with:
@@ -82,10 +88,6 @@ jobs:
       - name: Add SLIM registery
         run: |
            julia --color=yes --check-bounds=yes -e 'using Pkg;Pkg.update();Pkg.Registry.add(RegistrySpec(url="https://github.com/slimgroup/SLIMregistryJL.git"))'
-
-      - name: Instal gcc
-        if: runner.os == 'macOS'
-        run: brew install gcc@7
 
       - name: Install devito
         run: |

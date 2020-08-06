@@ -12,8 +12,8 @@ def name(model):
     return "tti" if model.is_tti else ""
 
 
-def opt_op(fs, born_ws=False):
-    if fs or born_ws:
+def opt_op(model, no_ms=False):
+    if model.fs or no_ms:
         return ('advanced', {})
     return ('advanced', {'min-storage': True})
 
@@ -53,15 +53,15 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     subs = model.spacing_map
     op = Operator(tmp + pde + geom_expr + dft + eq_save,
                   subs=subs, name="forward"+name(model),
-                  opt=opt_op(model.fs))
+                  opt=opt_op(model))
 
     if return_op:
         return op, u, rcv
 
-    op()
+    summary = op()
 
     # Output
-    return rcv, dft_modes or (u_save if t_sub > 1 else u)
+    return rcv, dft_modes or (u_save if t_sub > 1 else u), summary
 
 
 def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0,
@@ -91,18 +91,18 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0,
     subs = model.spacing_map
     op = Operator(tmp + pde + ws_expr + geom_expr,
                   subs=subs, name="adjoint"+name(model),
-                  opt=opt_op(model.fs))
+                  opt=opt_op(model))
 
-    op()
+    summary = op()
 
     # Output
     if wsrc:
-        return wsrc
-    return rcv, v
+        return wsrc, summary
+    return rcv, v, summary
 
 
 def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8,
-             w=None, freq=None, dft_sub=None, isic=True):
+             w=None, freq=None, dft_sub=None, isic=False):
     """
     Low level propagator, to be used through `interface.py`
     Compute adjoint wavefield v = adjoint(F(m))*y
@@ -126,14 +126,14 @@ def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8,
     subs = model.spacing_map
     op = Operator(tmp + pde + geom_expr + g_expr,
                   subs=subs, name="gradient"+name(model),
-                  opt=opt_op(model.fs))
+                  opt=opt_op(model))
 
     if return_op:
         return op, gradm, v
-    op()
+    summary = op()
 
     # Output
-    return gradm
+    return gradm, summary
 
 
 def born(model, src_coords, rcv_coords, wavelet, space_order=8,
@@ -167,9 +167,9 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8,
     subs = model.spacing_map
     op = Operator(tmpu + tmpul + pde + geom_expr + geom_exprl + pdel + eq_save,
                   subs=subs, name="born"+name(model),
-                  opt=opt_op(model.fs, born_ws=ws is not None))
+                  opt=opt_op(model, no_ms=ws is not None))
 
-    op()
+    summary = op()
 
     # Output
-    return rcvl, (u_save if t_sub > 1 else u)
+    return rcvl, (u_save if t_sub > 1 else u), summary

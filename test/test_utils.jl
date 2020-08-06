@@ -4,6 +4,7 @@
 using JUDI.TimeModeling, ArgParse, Images
 
 export setup_model, parse_commandline, setup_geom
+export example_src_geometry, example_rec_geometry, example_model, example_info
 
 
 """
@@ -104,11 +105,31 @@ function parse_commandline()
         "--nlayer", "-n"
             help = "Number of layers"
             arg_type = Int
-            default = 3
+            default = 2
         "--parallel", "-p"
             help = "Number of workers"
             arg_type = Int
             default = 1
     end
     return parse_args(s)
+end
+
+
+# Example structures
+
+example_info(; n=(120,100), nsrc=2, ntComp=1000) = Info(prod(n), nsrc, ntComp)
+example_model(; n=(120,100), d=(10f0, 10f0), o=(0f0, 0f0), m=randn(Float32, n)) = Model(n, d, o, m)
+
+function example_rec_geometry(; nsrc=2, nrec=120)
+    xrec = range(50f0, stop=1150f0, length=nrec)
+    yrec = 0f0
+    zrec = range(50f0, stop=50f0, length=nrec)
+    return Geometry(xrec, yrec, zrec; dt=4f0, t=1000f0, nsrc=nsrc)
+end
+
+function example_src_geometry(; nsrc=2)
+    xrec = nsrc == 1 ? 500f0 : range(100f0, stop=1000f0, length=nsrc)
+    yrec = 0f0
+    zrec = range(50f0, stop=50f0, length=nsrc)
+    return Geometry(xrec, yrec, zrec; dt=4f0, t=1000f0, nsrc=nsrc)
 end

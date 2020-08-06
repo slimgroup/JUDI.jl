@@ -5,32 +5,11 @@
 
 using JUDI.TimeModeling, SegyIO, Test, LinearAlgebra
 
-# Example structures
-
-example_info(; n=(120,100), nsrc=2, ntComp=1000) = Info(prod(n), nsrc, ntComp)
-example_model(; n=(120,100), d=(10f0, 10f0), o=(0f0, 0f0), m=randn(Float32, n)) = Model(n, d, o, m)
-
-function example_rec_geometry(; nsrc=2, nrec=120)
-    xrec = range(50f0, stop=1150f0, length=nrec)
-    yrec = 0f0
-    zrec = range(50f0, stop=50f0, length=nrec)
-    return Geometry(xrec, yrec, zrec; dt=4f0, t=1000f0, nsrc=nsrc)
-end
-
-function example_src_geometry(; nsrc=2)
-    xrec = range(100f0, stop=1000f0, length=nsrc)
-    yrec = 0f0
-    zrec = range(50f0, stop=50f0, length=nsrc)
-    return Geometry(xrec, yrec, zrec; dt=4f0, t=1000f0, nsrc=nsrc)
-end
-
-
 ########################################################### judiRHS ####################################################
 
-@testset "judiRHS Unit test" begin
+@testset "judiRHS Unit Tests with $(nsrc) sources" for nsrc=[1, 2]
 
     # Constructor
-    nsrc = 2
     info = example_info(nsrc=nsrc)
     rec_geometry = example_rec_geometry(nsrc=nsrc)
     data = Array{Array}(undef, nsrc)
@@ -77,14 +56,13 @@ end
     @test isequal(rhs_sub.info.nsrc, 1)
     @test isequal(typeof(rhs_sub.geometry), GeometryIC)
     @test isequal(typeof(rhs.data), Array{Array, 1})
-    @test isequal(length(rhs_sub), Int(length(rhs)/2))
+    @test isequal(length(rhs_sub), Int(length(rhs)/nsrc))
 
-    rhs_sub = rhs[1:2]
-    @test isequal(rhs_sub.info.nsrc, 2)
+    inds = nsrc > 1 ? (1:nsrc) : 1
+    rhs_sub = rhs[inds]
+    @test isequal(rhs_sub.info.nsrc, nsrc)
     @test isequal(typeof(rhs_sub.geometry), GeometryIC)
     @test isequal(typeof(rhs.data), Array{Array, 1})
     @test isequal(length(rhs_sub), length(rhs))
 
 end
-
-######################################################### judiWavefield ################################################

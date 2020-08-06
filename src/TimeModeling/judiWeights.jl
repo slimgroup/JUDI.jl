@@ -353,7 +353,7 @@ function broadcasted(::typeof(*), x::judiWeights, y::judiWeights)
     size(x) == size(y) || throw(judiWeightsException("dimension mismatch"))
     z = deepcopy(x)
     for j=1:length(x.weights)
-        z.data[j] = x.weights[j] .* y.weights[j]
+        z.weights[j] = x.weights[j] .* y.weights[j]
     end
     return z
 end
@@ -373,7 +373,7 @@ function broadcasted(::typeof(/), x::judiWeights, y::judiWeights)
     size(x) == size(y) || throw(judiWeightsException("dimension mismatch"))
     z = deepcopy(x)
     for j=1:length(x.weights)
-        z.data[j] = x.weights[j] ./ y.weights[j]
+        z.weights[j] = x.weights[j] ./ y.weights[j]
     end
     return z
 end

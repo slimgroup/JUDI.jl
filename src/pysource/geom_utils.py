@@ -1,4 +1,4 @@
-from devito.tools import Pickable
+from devito.tools import Pickable, as_tuple
 
 from sources import *
 
@@ -38,11 +38,12 @@ def src_rec(model, u, src_coords=None, rec_coords=None, wavelet=None, fw=True, n
     geom_expr = []
     src = None
     nt = nt or wavelet.shape[0]
+    namef = as_tuple(u)[0].name
     if src_coords is not None:
         if isinstance(wavelet, PointSource):
             src = wavelet
         else:
-            src = PointSource(name="src", grid=model.grid, ntime=nt,
+            src = PointSource(name="src%s" % namef, grid=model.grid, ntime=nt,
                               coordinates=src_coords)
             src.data[:] = wavelet[:] if wavelet is not None else 0.
         if model.is_tti:
@@ -55,7 +56,8 @@ def src_rec(model, u, src_coords=None, rec_coords=None, wavelet=None, fw=True, n
     # Setup adjoint wavefield sampling at source locations
     rcv = None
     if rec_coords is not None:
-        rcv = Receiver(name="rcv", grid=model.grid, ntime=nt, coordinates=rec_coords)
+        rcv = Receiver(name="rcv%s" % namef, grid=model.grid, ntime=nt,
+                       coordinates=rec_coords)
         rec_expr = u[0] + u[1] if model.is_tti else u
         adj_rcv = rcv.interpolate(expr=rec_expr)
         geom_expr += adj_rcv

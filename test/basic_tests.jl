@@ -11,7 +11,7 @@ function test_padding(ndim)
     o = Tuple(0. for i=1:ndim)
     d = Tuple(10. for i=1:ndim)
 
-    model= Model(n, d, o, rand(Float32, n...); nb=10)
+    model = Model(n, d, o, rand(Float32, n...); nb=10)
     modelPy = devito_model(model, Options())
 
     v0 = sqrt.(1f0 ./model.m)
@@ -22,6 +22,11 @@ function test_padding(ndim)
     @test isapprox(dot(v0, cut), dot(vpdata, vpdata))
 end
 
-for ndim = 2:3
-    test_padding(ndim)
+@testset "Test basic utilities" begin
+    for ndim=[2, 3]
+        test_padding(ndim)
+    end
+    opt = Options(frequencies=[[2.5, 4.5], [3.5, 5.5]])
+    @test subsample(opt, 1).frequencies[1] == [2.5, 4.5]
+    @test subsample(opt, 2).frequencies[1] == [3.5, 5.5]
 end

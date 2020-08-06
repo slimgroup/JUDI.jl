@@ -147,7 +147,7 @@ class GenericModel(object):
             function = Function(name=name, grid=self.grid, space_order=space_order,
                                 parameter=is_param)
             if field.shape == self.shape:
-                initialize_function(function, field, self.padsizes)
+                initialize_function(function, func(field), self.padsizes)
             else:
                 function._data_with_outhalo[:] = func(field)
         else:
