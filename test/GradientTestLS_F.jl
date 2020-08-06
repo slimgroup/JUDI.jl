@@ -1,4 +1,4 @@
-# 2D gradient test for system 0.5*||Fq-d||_2^2
+# 2D gradient test for system 0.5*||Fq-d||_2^2 -- gradient w.r.t. q
 # Single simultaneous source w/ random weights for both Array and judiVector
 # Author: Ziyi Yin, ziyi.yin@gatech.edu
 # Date: August 2020
@@ -7,7 +7,7 @@ using JUDI.TimeModeling, Test, LinearAlgebra, PyPlot, Printf
 
 parsed_args = parse_commandline()
 
-println("Gradient test for system 0.5*||Fq-d||_2^2")
+println("Gradient test for system 0.5*||Fq-d||_2^2 w.r.t. q")
 
 println(parsed_args["nlayer"], " layers and tti: ",
 		parsed_args["tti"], " and freesurface: ", parsed_args["fs"])
@@ -22,6 +22,9 @@ wavelet = ricker_wavelet(tn, dt, 0.015f0)
 # Gradient test
 h1 = 2f-1
 h2 = 2f-1
+
+alpha = 0.5f0 # decay rate of step length h
+
 iter = 5
 error11 = zeros(iter)
 error12 = zeros(iter)
@@ -69,9 +72,6 @@ dq2 = judiWeights(randn(Float32,model.n))
 dq2.weights[1] = dq2.weights[1]/norm(dq2.weights[1])
 dobj2 = dot(grad2,dq2)
 
-rate_0th_order = 2^(iter - 1)   # error decays w/ factor 2
-rate_1st_order = 4^(iter - 1)   # error decays w/ factor 4
-
 println("Test for julia Array")
 for j=1:iter
 	q1_now = q1 + h1*dq1
@@ -84,14 +84,16 @@ for j=1:iter
 	@printf("h = %2.2e, e1 = %2.2e, rate = %2.2e", h1, error11[j], error11[prev]/error11[j])
 	@printf(", e2  = %2.2e, rate = %2.2e \n", error12[j], error12[prev]/error12[j])
 	h_all1[j] = h1
-	global h1 = h1/2f0
+	global h1 = h1*alpha
 	
 end
 
 # Check error decay
 
-@test isapprox(error11[end] / error11[1] * rate_0th_order,1,atol = 2f1)
-@test isapprox(error12[end] / error12[1] * rate_1st_order,1,atol = 2f1)
+rate_11 = sum(error11[1:end-1]./error11[2:end])/(iter - 1)
+rate_12 = sum(error12[1:end-1]./error12[2:end])/(iter - 1)
+@test isapprox(rate_11, 1/alpha; rtol=5f-1)
+@test isapprox(rate_12, 1/alpha^2; rtol=5f-1)
 
 println("Test for judiVector")
 
@@ -112,8 +114,10 @@ end
 
 # Check error decay
 
-@test isapprox(error21[end] / error21[1] * rate_0th_order,1,atol = 2f1)
-@test isapprox(error22[end] / error22[1] * rate_1st_order,1,atol = 2f1)
+rate_21 = sum(error21[1:end-1]./error21[2:end])/(iter - 1)
+rate_22 = sum(error22[1:end-1]./error22[2:end])/(iter - 1)
+@test isapprox(rate_21, 1/alpha; rtol=5f-1)
+@test isapprox(rate_22, 1/alpha^2; rtol=5f-1)
 
 # Check if the value of gradients are the same
 
