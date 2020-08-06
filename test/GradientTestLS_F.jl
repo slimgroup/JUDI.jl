@@ -20,8 +20,8 @@ wavelet = ricker_wavelet(tn, dt, 0.015f0)
 ###################################################################################################
 
 # Gradient test
-h1 = 2f-3
-h2 = 2f-3
+h1 = 2f-1
+h2 = 2f-1
 iter = 5
 error11 = zeros(iter)
 error12 = zeros(iter)
