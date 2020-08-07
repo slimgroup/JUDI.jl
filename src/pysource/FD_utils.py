@@ -3,24 +3,26 @@ from sympy import sqrt, rot_axis2, rot_axis3
 from devito import TensorFunction, VectorFunction, Eq, Differentiable
 
 
-def grads(func):
+def grads(func, so_fact=1, side=1):
     """
     Gradient shifted by half a grid point, only to be used in combination
     with divs.
     """
-    comps = [getattr(func, 'd%s' % d.name)(x0=d + d.spacing/2)
+    so = func.space_order // so_fact
+    comps = [getattr(func, 'd%s' % d.name)(x0=d + side * d.spacing/2, fd_order=so)
              for d in func.dimensions if d.is_Space]
     st = tuple([None]*func.grid.dim)
     return VectorFunction(name='grad_%s' % func.name, space_order=func.space_order,
                           components=comps, grid=func.grid, staggered=st)
 
 
-def divs(func):
+def divs(func, so_fact=1, side=-1):
     """
     GrDivergenceadient shifted by half a grid point, only to be used in combination
     with grads.
     """
-    return sum([getattr(func[i], 'd%s' % d.name)(x0=d - d.spacing/2)
+    so = func.space_order // so_fact
+    return sum([getattr(func[i], 'd%s' % d.name)(x0=d + side * d.spacing/2, fd_order=so)
                 for i, d in enumerate(func.space_dimensions)])
 
 

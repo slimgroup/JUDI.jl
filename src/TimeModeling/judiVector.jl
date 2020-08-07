@@ -735,7 +735,7 @@ function sum(x::judiVector)
     return s
 end
 
-isfinite(v::judiVector) = all(all(isfinite.(v.data[i])) for i=1:nsrc)
+isfinite(v::judiVector) = all(all(isfinite.(v.data[i])) for i=1:v.nsrc)
 
 iterate(S::judiVector, state::Integer=1) = state > length(S.nsrc) ? nothing : (S.data[state], state+1)
 

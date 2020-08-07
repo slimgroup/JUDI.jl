@@ -36,6 +36,7 @@ ftol = 1f-6
 
     @test isapprox(length(c1), length(d_obs) + length(w0))
     @test eltype(c1) == Float32
+    @test isfinite(c1)
 
     @test isapprox(c1[1], c1.components[1])
     @test isapprox(c1.components[1], d_obs)
@@ -78,8 +79,8 @@ ftol = 1f-6
     u =  [d_obs; w0]
     v =  [2f0 * d_obs; w0 + 1f0]
     w =  [d_obs + 1f0; 2f0 * w0]
-    a = randn(Float32, 1)[1]
-    b = randn(Float32, 1)[1]
+    a = .5f0 + rand(Float32)
+    b = .5f0 + rand(Float32)
 
     @test isapprox(u + (v + w), (u + v) + w; rtol=ftol)
     @test isapprox(2f0*u, 2f0.*u; rtol=ftol)

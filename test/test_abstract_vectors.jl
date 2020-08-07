@@ -2,6 +2,8 @@
 # Philipp Witte (pwitte.slim@gmail.com)
 # May 2018
 #
+# Mathias Louboutin, mlouboutin3@gatech.edu
+# Updated July 2020
 
 using JUDI.TimeModeling, SegyIO, Test, LinearAlgebra
 

@@ -112,6 +112,8 @@ end
 
 iterate(S::judiVStack, state::Integer=1) = state > length(S.components) ? nothing : (S.components[state], state+1)
 
+isfinite(S::judiVStack) = all(isfinite(c) for c in S)
+
 ##########################################################
 
 

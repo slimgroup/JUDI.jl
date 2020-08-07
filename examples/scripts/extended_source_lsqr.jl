@@ -76,8 +76,8 @@ w_inv_no_damp = 0f0 .* w
 lsqr!(w_inv, F̄, [d_sim; w]; maxiter=2, verbose=true, damp=1e2)
 lsqr!(w_inv_no_damp, F, d_sim; maxiter=2, verbose=true, damp=1e2)
 
-d_pred = F*vec(w_inv);
-d_pred_no_damp = F*vec(w_inv_no_damp);
+d_pred = F*w_inv;
+d_pred_no_damp = F*w_inv_no_damp;
 
 # Plot results
 figure()

@@ -2,6 +2,8 @@
 # Philipp Witte (pwitte.slim@gmail.com)
 # May 2018
 #
+# Mathias Louboutin, mlouboutin3@gatech.edu
+# Updated July 2020
 
 using JUDI.TimeModeling, JUDI, SegyIO, Test, LinearAlgebra
 import LinearAlgebra.BLAS.axpy!
@@ -36,6 +38,7 @@ ftol = 1e-6
     @test iszero(norm(d_obs.data[1] - d_obs.data[end]))
     @test isequal(size(d_obs), dsize)
 
+    @test isfinite(d_obs)
     # set up judiVector from cell array
     data = Array{Array}(undef, nsrc)
     for j=1:nsrc
@@ -151,8 +154,8 @@ ftol = 1e-6
     u = judiVector(rec_geometry, randn(Float32, ns, nrec))
     v = judiVector(rec_geometry, randn(Float32, ns, nrec))
     w = judiVector(rec_geometry, randn(Float32, ns, nrec))
-    a = randn(Float32, 1)[1]
-    b = randn(Float32, 1)[1]
+    a = .5f0 + rand(Float32)
+    b = .5f0 + rand(Float32)
 
     @test isapprox(u + (v + w), (u + v) + w; rtol=ftol)
     @test isapprox(u + v, v + u; rtol=ftol)
@@ -243,7 +246,7 @@ ftol = 1e-6
     @test isapprox(d_recover, d_block)
 
     # scale
-    a = randn(Float32, 1)[1]
+    a = .5f0 + rand(Float32)
     d_scale = deepcopy(d_block)
 
     # Tes norms

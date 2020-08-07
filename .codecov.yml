@@ -9,7 +9,7 @@ ignore:
 coverage:
   precision: 2
   round: down
-  range: 25...75
+  range: 60...85
 
   status:
     # Learn more at http://docs.codecov.io/docs/codecov-yaml

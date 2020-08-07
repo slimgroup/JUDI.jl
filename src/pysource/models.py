@@ -142,7 +142,7 @@ class GenericModel(object):
         Create symbolic object an initiliaze its data
         """
         if field is None:
-            return default_value
+            return func(default_value)
         if isinstance(field, np.ndarray):
             function = Function(name=name, grid=self.grid, space_order=space_order,
                                 parameter=is_param)
@@ -151,7 +151,7 @@ class GenericModel(object):
             else:
                 function._data_with_outhalo[:] = func(field)
         else:
-            return field
+            return func(field)
         self._physical_parameters.append(name)
         return function
 
@@ -271,7 +271,8 @@ class Model(GenericModel):
             self.rho = self._gen_phys_param(rho, 'rho', so)
             self.irho = 1 / self.rho
         else:
-            self.irho = self._gen_phys_param(rho, 'irho', so, func=lambda x: 1/x)
+            self.irho = self._gen_phys_param(rho, 'irho', so,
+                                             func=lambda x: np.reciprocal(x))
 
     @property
     def space_order(self):
@@ -306,7 +307,10 @@ class Model(GenericModel):
         """
         Maximum velocity
         """
-        return mmax(self.vp)
+        try:
+            return mmax(self.vp)
+        except ValueError:
+            return np.max(self.vp)
 
     @property
     def critical_dt(self):

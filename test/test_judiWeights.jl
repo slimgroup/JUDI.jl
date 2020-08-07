@@ -1,8 +1,11 @@
 # Unit tests for judiWeights
 # Rafael Orozco (rorozco@gatech.edu)
 # July 2021
+#
+# Mathias Louboutin, mlouboutin3@gatech.edu
+# Updated July 2020
 
-using JUDI.TimeModeling, Test, LinearAlgebra
+using JUDI.TimeModeling, Test, LinearAlgebra, JOLI
 import LinearAlgebra.BLAS.axpy!
 
 
@@ -29,8 +32,11 @@ ftol = 1f-6
     @test isequal(w.nsrc, nsrc)
     @test isequal(typeof(w.weights), Array{Array, 1})
     @test isequal(size(w), (weight_size_x*weight_size_y*nsrc, 1))
-
+    @test isfinite(w)
 #################################################### test operations ###################################################
+    # Indexing/reshape/...
+    @test isapprox(w[1].weights[1], w.weights[1])
+    @test isapprox(subsample(w, 1).weights[1], w.weights[1])
 
     # conj, transpose, adjoint
     @test isequal(size(w), size(conj(w)))
@@ -64,8 +70,8 @@ ftol = 1f-6
     u = judiWeights(randn(Float32, weight_size_x, weight_size_y); nsrc=nsrc)
     v = judiWeights(randn(Float32, weight_size_x, weight_size_y); nsrc=nsrc)
     w = judiWeights(randn(Float32, weight_size_x, weight_size_y); nsrc=nsrc)
-    a = randn(Float32, 1)[1]
-    b = randn(Float32, 1)[1]
+    a = .5f0 + rand(Float32)
+    b = .5f0 + rand(Float32)
 
     @test isapprox(u + (v + w), (u + v) + w; rtol=ftol)
     @test isapprox(u + v, v + u; rtol=ftol)
@@ -110,4 +116,5 @@ ftol = 1f-6
     w1 .= w
     @test w1.nsrc == w.nsrc
     @test isapprox(w1.weights, w.weights)
+
 end

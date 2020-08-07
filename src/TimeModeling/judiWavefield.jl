@@ -281,3 +281,8 @@ function isapprox(x::judiWavefield, y::judiWavefield; rtol::Real=sqrt(eps()), at
     x.info.nsrc == y.info.nsrc || throw(judiVectorException("Incompatible number of sources"))
     isapprox(x.data, y.data; rtol=rtol, atol=atol)
 end
+
+####################################################################################################
+
+isfinite(x::judiWavefield) = all(all(isfinite.(x.data[i])) for i=1:length(x.data))
+

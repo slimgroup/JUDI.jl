@@ -132,7 +132,7 @@ function Geometry(xloc::Array{Any,1},yloc::Array{Any,1},zloc::Array{Any,1};dt=[]
     # Calculate number of time steps
     ntCell = Array{Any}(undef, nsrc)
     for j=1:nsrc
-        ntCell[j] = Int(trunc(tCell[j]/dtCell[j] + 1))
+        ntCell[j] = trunc(Int64, tCell[j]/dtCell[j]) + 1
     end
     return GeometryIC(xloc,yloc,zloc,dtCell,ntCell,tCell)
 end
@@ -150,7 +150,7 @@ function Geometry(xloc, yloc, zloc; dt=[], t=[], nsrc::Integer=1)
         ylocCell[j] = yloc
         zlocCell[j] = zloc
         dtCell[j] = dt
-        ntCell[j] = Int(trunc(t/dt + 1))
+        ntCell[j] = trunc(Int64, t/dt) + 1
         tCell[j] = t
     end
     return GeometryIC(xlocCell,ylocCell,zlocCell,dtCell,ntCell,tCell)

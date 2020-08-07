@@ -1,6 +1,9 @@
 # Unit tests for judiWeights
 # Rafael Orozco (rorozco@gatech.edu)
 # July 2021
+#
+# Mathias Louboutin, mlouboutin3@gatech.edu
+# Updated July 2020
 
 using JUDI.TimeModeling, Test, LinearAlgebra
 import LinearAlgebra.BLAS.axpy!
@@ -34,8 +37,7 @@ ftol = 1f-6
     @test isequal(w.info.nsrc, nsrc)
     @test isequal(typeof(w.data), Array{Array, 1})
     @test isequal(size(w), (nx*ny*nt*nsrc, 1))
-
-
+    @test isfinite(w)
 
 #################################################### test operations ###################################################
 
@@ -73,8 +75,8 @@ ftol = 1f-6
     u = judiWavefield(info, dt, randn(Float32, nt, nx, ny))
     v = judiWavefield(info, dt, randn(Float32, nt, nx, ny))
     w = judiWavefield(info, dt, randn(Float32, nt, nx, ny))
-    a = randn(Float32, 1)[1]
-    b = randn(Float32, 1)[1]
+    a = .5f0 + rand(Float32)
+    b = .5f0 + rand(Float32)
 
     @test isapprox(u + (v + w), (u + v) + w; rtol=ftol)
     @test isapprox(u + v, v + u; rtol=ftol)

@@ -207,30 +207,6 @@ function *(A::joCoreBlock{ADDT,ARDT}, v::judiWeights{avDT}) where {ADDT, ARDT, a
     return V
 end
 
-# *(joKron, judiWeights)
-function *(A::joKron{ADDT,ARDT}, v::judiWeights{avDT}) where {ADDT, ARDT, avDT}
-    A.n == size(v,1) || throw(judiWeightsException("shape mismatch"))
-    jo_check_type_match(ADDT,avDT,join(["DDT for *(joLinearFunction,judiWeights):",A.name,typeof(A),avDT]," / "))
-    # Evaluate as mat-mat over the weights
-    n = size(v.weights[1])
-    V = A.fop(hcat([vec(v.weights[i]) for i=1:v.nsrc]...))
-    jo_check_type_match(ARDT,eltype(V),join(["RDT from *(joLinearFunction,judiWeights):",A.name,typeof(A),eltype(V)]," / "))
-    m = length(V)
-    return judiWeights{avDT}("Extended source weights", m, 1, v.nsrc, [reshape(V[:, i], n) for i=1:v.nsrc])
-end
-
-# *(joMatrix, judiWeights)
-function *(A::joMatrix{ADDT,ARDT}, v::judiWeights{avDT}) where {ADDT, ARDT, avDT}
-    A.n == size(v,1) || throw(judiWeightsException("shape mismatch"))
-    jo_check_type_match(ADDT,avDT,join(["DDT for *(joLinearFunction,judiWeights):",A.name,typeof(A),avDT]," / "))
-    # Evaluate as mat-mat over the weights
-    n = size(v.weights[1])
-    V = A.fop(hcat([vec(v.weights[i]) for i=1:v.nsrc]...))
-    jo_check_type_match(ARDT,eltype(V),join(["RDT from *(joLinearFunction,judiWeights):",A.name,typeof(A),eltype(V)]," / "))
-    m = length(V)
-    return judiWeights{avDT}("Extended source weights", m, 1, v.nsrc, [reshape(V[:, i], n) for i=1:v.nsrc])
-end
-
 # vcat
 function vcat(a::judiWeights{avDT},b::judiWeights{bvDT}) where {avDT, bvDT}
     m = a.m + b.m
@@ -302,15 +278,6 @@ function subsample(a::judiWeights{avDT},srcnum) where avDT
 end
 
 getindex(x::judiWeights, a::Integer) = subsample(x,a)
-
-function reshape(x::judiWeights, dims...)
-    prod((dims)) == prod((x.m, x.n)) || throw(judiWeightsException(join(["DimensionMismatch(\"new dimensions ", string(dims), " must be consistent with array size ", string(prod((x.m, x.n)))])))
-    length(dims) <= 2 || throw(judiWeightsException("Cannot reshape into array with dimensions > 2"))
-    x_out = deepcopy(x)
-    x_out.m = dims[1]
-    x_out.n = dims[2]
-    return x_out
-end
 
 setindex!(x::judiWeights, y, i) = x.weights[i][:] = y
 

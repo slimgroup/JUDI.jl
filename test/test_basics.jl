@@ -10,16 +10,24 @@ function test_model(ndim; tti=false)
     n = Tuple(121 for i=1:ndim)
     o = Tuple(0. for i=1:ndim)
     d = Tuple(10. for i=1:ndim)
-    m = rand(Float32, n...)
+    m = .5f0 .+ rand(Float32, n...)
     if !tti
-        return model = Model(n, d, o, m; nb=10)
+        model = Model(n, d, o, m; nb=10)
+        model2 = Model(n, d, o, m, nothing; nb=10)
+        @test model.n == model2.n
+        @test model.d == model2.d
+        @test model.o == model2.o
+        @test model.m == model2.m
+        @test model.rho == 1
+        @test model2.rho == 1
     else
         epsilon = .1f0 * m
         delta = .1f0 * m
         theta = .1f0 * m
         phi = .1f0 * m
-        return model = Model(n, d, o, m; nb=10, epsilon=epsilon, delta=delta, theta=theta, phi=phi)
+        model = Model(n, d, o, m; nb=10, epsilon=epsilon, delta=delta, theta=theta, phi=phi)
     end
+    return model
 end
 
 # Test padding and its adjoint
@@ -76,6 +84,35 @@ end
     for ndim=[2, 3]
         for tti=[true, false]
             test_limit_m(ndim, tti)
+        end
+    end
+
+    # Test model
+    for ndim=[2, 3]
+        for tti=[true, false]
+            model =  test_model(ndim; tti=tti)
+
+            # Default dt
+            modelPy = devito_model(model, Options())
+            @test get_dt(model) == calculate_dt(model)
+            @test isapprox(modelPy.critical_dt, calculate_dt(model))
+            @test isapprox(calculate_dt(model; dt=.5f0), .5f0)
+
+            # Input dt
+            modelPy = devito_model(model, Options(dt_comp=.5f0))
+            @test modelPy.critical_dt == .5f0
+
+            # Verify nt
+            srcGeometry = example_src_geometry()
+            recGeometry = example_rec_geometry(cut=true)
+            nt1 = get_computational_nt(srcGeometry, recGeometry, model)
+            nt2 = get_computational_nt(srcGeometry, model)
+            nt3 = get_computational_nt(srcGeometry, recGeometry, model; dt=1f0)
+            nt4 = get_computational_nt(srcGeometry, model::Modelall; dt=1f0)
+            @test all(nt1 .== (trunc(Int64, 1000f0 / calculate_dt(model)) + 1))
+            @test all(nt1 .== nt2)
+            @test all(nt3 .== 1001)
+            @test all(nt4 .== 1001)
         end
     end
 end

@@ -2,7 +2,7 @@ using JUDI.TimeModeling, SegyIO, LinearAlgebra, PyPlot
 
 # Set up model structure
 n = (121, 101)   # (x,y,z) or (x,z)
-d = (2.5f-4, 2.5f-4)
+d = (2.5f0, 2.5f0) # in mm
 o = (0., 0.)
 
 # Velocity [km/s]
@@ -27,8 +27,8 @@ yrec = 0f0
 zrec = range(d[1], stop=d[1], length=nxrec)
 
 # receiver sampling and recording time
-timeR = 0.05f0   # receiver recording time [ms]
-dtR = 0.0004f0    # receiver sampling interval [ms]
+timeR = 250f0   # receiver recording time [ms]
+dtR = 0.2f0    # receiver sampling interval [ms]
 
 # Set up receiver structure
 recGeometry = Geometry(xrec, yrec, zrec; dt=dtR, t=timeR, nsrc=nsrc)
@@ -39,15 +39,15 @@ ysrc = convertToCell([0f0])
 zsrc = convertToCell([d[1]])
 
 # source sampling and number of time steps
-timeS = 0.05f0  # ms
-dtS = 0.0004f0   # ms
+timeS = 250f0     # ms
+dtS =  0.2f0    # ms
 
 # Set up source structure
 srcGeometry = Geometry(xsrc, ysrc, zsrc; dt=dtS, t=timeS)
 
 # setup wavelet
-f0 = 250f0     # MHz
-wavelet = ricker_wavelet(timeS, dtS, f0)/1f-4
+f0 = .05  # MHz
+wavelet = ricker_wavelet(timeS, dtS, f0)
 q = judiVector(srcGeometry, wavelet)
 
 # Set up info structure for linear operators
@@ -64,4 +64,18 @@ Ps = judiProjection(info, srcGeometry)
 # Nonlinear modeling
 dobs = Pr*F*adjoint(Ps)*q
 
-imshow(dobs.data[1], vmin=-4e-5, vmax=4e-5)
+
+# With a transducer source pointing down so pi/2 angle and radius 5mm (1cm diameter)
+q2 = transducer(q, model.d, 5, pi/2 .* ones(q.nsrc))
+Ps2 = judiProjection(info, q2.geometry)
+
+dobs2 = Pr*F*adjoint(Ps2)*q2
+
+a = 1e-1
+figure()
+subplot(121)
+imshow(dobs.data[1], vmin=-a, vmax=a, cmap="seismic", aspect=.25)
+title("Point source")
+subplot(122)
+imshow(dobs2.data[1], vmin=-a, vmax=a, cmap="seismic", aspect=.25)
+title("Transducer source")

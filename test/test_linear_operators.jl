@@ -2,6 +2,8 @@
 # Philipp Witte (pwitte.slim@gmail.com)
 # May 2018
 #
+# Mathias Louboutin, mlouboutin3@gatech.edu
+# Updated July 2020
 
 using JUDI.TimeModeling, SegyIO, Test, LinearAlgebra
 
@@ -181,6 +183,17 @@ end
     @test isequal(J_sub.model, J.model)
     @test isapprox(J_sub.weights, J.weights[1:nsrc])
     @test isequal(size(J_sub), size(J))
+
+    # Test Pw alone
+    P1 = subsample(Pw, 1)
+    @test isapprox(P1.wavelet, Pw[1].wavelet)
+    @test isapprox(conj(Pw).wavelet, Pw.wavelet)
+    @test size(conj(Pw)) == size(Pw)
+    @test size(transpose(Pw)) == size(Pw)[end:-1:1]
+    @test isapprox(transpose(Pw).wavelet, Pw.wavelet)
+
+    P1 = adjoint(Pw) * w
+    @test isequal(typeof(P1), judiExtendedSource{Float32})
 
 end
 
