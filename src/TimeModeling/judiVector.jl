@@ -717,7 +717,9 @@ axes(x::judiVector) = Base.OneTo(x.nsrc)
 
 ndims(x::judiVector) = length(size(x))
 
-similar(x::judiVector, element_type::DataType, dims::Union{AbstractUnitRange, Integer}...) = judiVector(x.geometry, x.data)*0f0
+similar(x::judiVector) = 0f0*x
+
+similar(x::judiVector, element_type::DataType, dims::Union{AbstractUnitRange, Integer}...) = 0f0*x
 
 function fill!(x::judiVector{vDT}, val) where {vDT}
     for j=1:length(x.data)
@@ -734,6 +736,8 @@ function sum(x::judiVector)
 end
 
 isfinite(v::judiVector) = all(all(isfinite.(v.data[i])) for i=1:nsrc)
+
+iterate(S::judiVector, state::Integer=1) = state > length(S.nsrc) ? nothing : (S.data[state], state+1)
 
 ####################################################################################################
 
@@ -794,30 +798,23 @@ function materialize!(x::judiVector, y::judiVector)
     for j=1:length(x.data)
         x.data[j] .= y.data[j]
     end
-    return x
 end
 
 function broadcast!(identity, x::judiVector, y::judiVector)
     copy!(x,y)
 end
 
-function broadcast!(identity, x::judiVector, a::Number, y::judiVector, z::judiVector)
-    scale!(y,a)
-    copy!(x, y + z)
+function broadcasted(identity, x::judiVector)
+    return x
 end
+
 
 function copy!(x::judiVector, y::judiVector)
     for j=1:x.nsrc
-        x.data[j] = y.data[j]
+        x.data[j] .= y.data[j]
     end
     x.geometry = deepcopy(y.geometry)
 end
-
-#function axpy!(a::Number,X::judiVector,Y::judiVector)
-#    for j=1:Y.nsrc
-#        Y.data[j] = a*X.data[j] + Y.data[j]
-#    end
-#end
 
 function get_data(x::judiVector)
     shots = Array{Array}(undef, x.nsrc)
@@ -843,7 +840,6 @@ function isapprox(x::judiVector, y::judiVector; rtol::Real=sqrt(eps()), atol::Re
     compareGeometry(x.geometry, y.geometry) == 1 || throw(judiVectorException("geometry mismatch"))
     isapprox(x.data, y.data; rtol=rtol, atol=atol)
 end
-
 
 
 ############################################################

@@ -252,11 +252,8 @@ function broadcast!(identity, x::judiVStack, y::judiVStack)
     copy!(x,y)
 end
 
-function broadcast!(identity, x::judiVStack, a::Number, y::judiVStack, z::judiVStack)
-    size(x) == size(y) || throw(judiWeightsException("dimension mismatch"))
-    size(x) == size(z) || throw(judiWeightsException("dimension mismatch"))
-    scale!(y,a)
-    copy!(x, y + z)
+function broadcasted(identity, x::judiVStack)
+    return x
 end
 
 function copy!(x::judiVStack, y::judiVStack)

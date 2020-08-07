@@ -114,13 +114,13 @@ function *(A::judiPDEextended{ADDT,ARDT},v::AbstractVector{vDT}) where {ADDT,ARD
     return V
 end
 
-*(A::judiPDEextended{ADDT,ARDT},v::AbstractMatrix{vDT}) where {ADDT,ARDT,vDT} = *(A, vec(v))
+*(A::judiPDEextended{ADDT,ARDT}, v::AbstractMatrix{vDT}) where {ADDT,ARDT,vDT} = *(A, vec(v))
 
 # *(num,judiPDEextended)
 function *(a::Number,A::judiPDEextended{ADDT,ARDT}) where {ADDT,ARDT}
     return judiPDEextended{ADDT,ARDT}("(N*"*A.name*")",A.m,A.n,A.info,A.model,A.wavelet,A.recGeometry,A.options,
-        v1 -> jo_convert(ARDT,a, false)*A.fop(v1),
-        v2 -> jo_convert(ARDT,a, false)*A.fop_T(v2)
+        v1 -> jo_convert(ARDT,a, false) * A.fop(v1),
+        v2 -> jo_convert(ARDT,a, false) * A.fop_T(v2)
         )
 end
 

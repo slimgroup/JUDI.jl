@@ -158,13 +158,14 @@ end
 function subsample(J::judiJacobianExQ{ADDT,ARDT}, srcnum) where {ADDT,ARDT}
 
     recGeometry = subsample(J.recGeometry,srcnum)
-
     info = Info(J.info.n, length(srcnum), J.info.nt[srcnum])
-    Fsub = judiModeling(info, J.model, recGeometry; options=J.options)
-    wsub = judiWeigths(J.weights[srcnum])
-    return judiJacobianExQ(Fsub, wsub; DDT=ADDT, RDT=ARDT)
+    Fsub = judiModeling(info, J.model; options=J.options)
+    Pr = judiProjection(info, recGeometry)
+    Pw = judiLRWF(info, J.wavelet[srcnum])
+    wsub = judiWeights(J.weights[srcnum])
+    return judiJacobian(Pr*Fsub*Pw', wsub; DDT=ADDT, RDT=ARDT)
 end
 
-getindex(J::judiJacobianExQ,a) = subsample(J,a)
+getindex(J::judiJacobianExQ,a) = subsample(J, a)
 
 zerox(J::judiJacobianExQ, y::judiVector) = zeros(Float32, size(J, 2))

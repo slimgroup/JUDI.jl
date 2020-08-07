@@ -30,8 +30,6 @@ ftol = 1f-6
     @test isequal(typeof(w.weights), Array{Array, 1})
     @test isequal(size(w), (weight_size_x*weight_size_y*nsrc, 1))
 
-
-
 #################################################### test operations ###################################################
 
     # conj, transpose, adjoint
@@ -103,4 +101,13 @@ ftol = 1f-6
     u_scale .= u ./ v
     @test isapprox(u_scale.weights[1], u.weights[1]./v.weights[1])
 
+    # Test copies/similar
+    w1 = deepcopy(w)
+    @test isapprox(w1, w)
+    w1 = similar(w)
+    @test w1.nsrc == w.nsrc
+    @test isapprox(w1.weights, 0f0 .* w.weights)
+    w1 .= w
+    @test w1.nsrc == w.nsrc
+    @test isapprox(w1.weights, w.weights)
 end

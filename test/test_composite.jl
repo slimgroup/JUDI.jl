@@ -89,8 +89,8 @@ ftol = 1f-6
     @test isapprox(-u, -1f0 * u; rtol=ftol)
     @test isapprox(a .* (b .* u), (a * b) .* u; rtol=ftol)
     @test isapprox(u, u .* 1; rtol=ftol)
-    @test isapprox(a .* (u + v), a .* u + a .* v; rtol=ftol)
-    @test isapprox((a + b) .* v, a .* v + b .* v; rtol=ftol)
+    @test isapprox(a .* (u + v), a .* u + a .* v; rtol=1f-5)
+    @test isapprox((a + b) .* v, a .* v + b .* v; rtol=1f-5)
 
     # Test the norm
     u_scale = deepcopy(u)

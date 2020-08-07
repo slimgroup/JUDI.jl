@@ -45,6 +45,10 @@ fs =  parsed_args["fs"]
         q_out = 0f0 .* q
         w_out = 0f0 .* w
 
+        # zerox
+        @test isapprox(zerox(J, dobs), 0f0.*dm)
+        @test isapprox(zerox(Jw, dobs), 0f0.*dm)
+
         # mul!
         mul!(dobs_out, Pr * F * Ps', q)
         mul!(dobs_w_out, Pr * F * Pw', w)

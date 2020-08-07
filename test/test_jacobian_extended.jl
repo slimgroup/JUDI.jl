@@ -37,7 +37,7 @@ m0 = model0.m
 
     # Extended source weights
     w = judiWeights(randn(Float32, model0.n))
-    J = judiJacobian(Pr*F0*Pw', w)
+    J = judiJacobian(A0, w)
 
     # Nonlinear modeling
     dpred = A0*w

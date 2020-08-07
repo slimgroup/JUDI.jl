@@ -107,9 +107,10 @@ function limit_model_to_receiver_area(srcGeometry::Geometry, recGeometry::Geomet
         typeof(model.rho) <: Array && (model.rho = model.rho[nx_min:nx_max,ny_min:ny_max,:])
         model.o = (ox,oy,oz)
     end
-    println("N old: ", model.n)
+    
+    println("N old $(model.n)")
     model.n = size(model.m)
-    println("N new: ", model.n)
+    println("N new $(model.n)")
     if isempty(pert)
         return model
     else
@@ -163,6 +164,7 @@ function limit_model_to_receiver_area(srcGeometry::Geometry,recGeometry::Geometr
         typeof(model.epsilon) <: Array && (model.epsilon = model.epsilon[nx_min: nx_max, :])
         typeof(model.delta) <: Array && (model.delta = model.delta[nx_min: nx_max, :])
         typeof(model.theta) <: Array && (model.theta = model.theta[nx_min: nx_max, :])
+        typeof(model.phi) <: Array && (model.phi = model.phi[nx_min: nx_max, :])
         typeof(model.rho) <: Array && (model.rho = model.rho[nx_min: nx_max, :])
         model.o = (ox, oz)
     else
@@ -174,9 +176,9 @@ function limit_model_to_receiver_area(srcGeometry::Geometry,recGeometry::Geometr
         typeof(model.rho) <: Array && (model.rho = model.rho[nx_min: nx_max, :])
         model.o = (ox, oy, oz)
     end
-    println("N old: ", model.n)
+    println("N old $(model.n)")
     model.n = size(model.m)
-    println("N new: ", model.n)
+    println("N new $(model.n)")
     if isempty(pert)
         return model
     else
@@ -285,11 +287,6 @@ end
 function load_pymodel()
     pushfirst!(PyVector(pyimport("sys")."path"), joinpath(JUDIPATH, "pysource"))
     return pyimport("models")
-end
-
-function load_numpy()
-    pushfirst!(PyVector(pyimport("sys")."path"), joinpath(JUDIPATH, "pysource"))
-    return pyimport("numpy")
 end
 
 function load_devito_jit()

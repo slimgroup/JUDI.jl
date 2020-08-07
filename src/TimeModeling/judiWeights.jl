@@ -393,13 +393,9 @@ function broadcast!(identity, x::judiWeights, y::judiWeights)
     copy!(x,y)
 end
 
-function broadcast!(identity, x::judiWeights, a::Number, y::judiWeights, z::judiWeights)
-    size(x) == size(y) || throw(judiWeightsException("dimension mismatch"))
-    size(x) == size(z) || throw(judiWeightsException("dimension mismatch"))
-    scale!(y,a)
-    copy!(x, y + z)
+function broadcasted(identity, x::judiWeights)
+    return x
 end
-
 
 function copy!(x::judiWeights, y::judiWeights)
     size(x) == size(y) || throw(judiWeightsException("dimension mismatch"))

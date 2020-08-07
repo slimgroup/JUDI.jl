@@ -315,4 +315,13 @@ ftol = 1e-6
     d_get = get_data(d_cont)
     @test isapprox(d_block, d_get)
 
+    # Test copies/similar
+    w1 = deepcopy(d_obs)
+    @test isapprox(w1, d_obs)
+    w1 = similar(d_obs)
+    @test w1.nsrc == d_obs.nsrc
+    @test isapprox(w1.data, 0f0 .* d_obs.data)
+    w1 .= d_obs
+    @test w1.nsrc == d_obs.nsrc
+    @test isapprox(w1.data, d_obs.data)
 end

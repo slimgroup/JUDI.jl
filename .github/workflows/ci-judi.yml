@@ -25,7 +25,7 @@ jobs:
       fail-fast: false
 
       matrix:
-        version: ['1.1', '1.2', '1.3', '1.4', 'nightly']
+        version: ['1.1', '1.2', '1.3', '1.4', '1.5', 'nightly']
         os: [ubuntu-latest]
         include:
           - version: 1.3

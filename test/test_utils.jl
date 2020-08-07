@@ -116,19 +116,20 @@ end
 
 
 # Example structures
-
 example_info(; n=(120,100), nsrc=2, ntComp=1000) = Info(prod(n), nsrc, ntComp)
 example_model(; n=(120,100), d=(10f0, 10f0), o=(0f0, 0f0), m=randn(Float32, n)) = Model(n, d, o, m)
 
-function example_rec_geometry(; nsrc=2, nrec=120)
-    xrec = range(50f0, stop=1150f0, length=nrec)
+function example_rec_geometry(; nsrc=2, nrec=120, cut=false)
+    startr = cut ? 150f0 : 50f0
+    endr = cut ? 1050f0 : 1150f0
+    xrec = range(startr, stop=endr, length=nrec)
     yrec = 0f0
     zrec = range(50f0, stop=50f0, length=nrec)
     return Geometry(xrec, yrec, zrec; dt=4f0, t=1000f0, nsrc=nsrc)
 end
 
 function example_src_geometry(; nsrc=2)
-    xrec = nsrc == 1 ? 500f0 : range(100f0, stop=1000f0, length=nsrc)
+    xrec = nsrc == 1 ? 500f0 : range(300f0, stop=900f0, length=nsrc)
     yrec = 0f0
     zrec = range(50f0, stop=50f0, length=nsrc)
     return Geometry(xrec, yrec, zrec; dt=4f0, t=1000f0, nsrc=nsrc)

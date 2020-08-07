@@ -143,6 +143,48 @@ end
 
 end
 
+
+######################################################## judiJacobian ##################################################
+
+@testset "judiJacobianExtended Unit Test with $(nsrc) sources" for nsrc=[1, 2]
+
+    info = example_info(nsrc=nsrc)
+    model = example_model()
+    rec_geometry = example_rec_geometry(nsrc=nsrc)
+    wavelet = randn(Float32, rec_geometry.nt[1])
+    # Setup operators
+    Pr = judiProjection(info, rec_geometry)
+    F = judiModeling(info, model)
+    Pw = judiLRWF(info, wavelet)
+    w = judiWeights(randn(Float32, model.n); nsrc=nsrc)
+    J = judiJacobian(Pr*F*Pw', w)
+
+    @test isequal(typeof(J), judiJacobianExQ{Float32, Float32})
+    @test isequal(J.recGeometry, rec_geometry)
+    for i=1:nsrc
+        @test isapprox(J.wavelet[i], wavelet)
+        @test isapprox(J.weights[i], w.weights[i])
+    end
+    @test isequal(size(J)[2], prod(model.n))
+    @test test_transpose(J)
+
+    # get index
+    J_sub = J[1]
+    @test isequal(J_sub.info.nsrc, 1)
+    @test isequal(J_sub.model, J.model)
+    @test isapprox(J_sub.weights, J.weights[1:1])
+    @test isequal(size(J_sub)[1], Int(size(J)[1]/nsrc))
+
+    inds = nsrc > 1 ? (1:nsrc) : 1
+    J_sub = J[inds]
+    @test isequal(J_sub.info.nsrc, nsrc)
+    @test isequal(J_sub.model, J.model)
+    @test isapprox(J_sub.weights, J.weights[1:nsrc])
+    @test isequal(size(J_sub), size(J))
+
+end
+
+
 ####################################################### judiProjection #################################################
 
 @testset "judiProjection Unit Test with $(nsrc) sources" for nsrc=[1, 2]

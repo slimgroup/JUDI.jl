@@ -83,8 +83,7 @@ end
     Fw = Pr*Fw*adjoint(Pw)
 
     # Extended source weights
-    w = randn(model0.n)
-    w[abs.(w) .< 1f-2] .= 1f-2
+    w = .5f0 .+ rand(model0.n...)
     parsed_args["fs"] ? w[:, 1:2] .= 0f0 : nothing
     w = judiWeights(w; nsrc=nw)
 
