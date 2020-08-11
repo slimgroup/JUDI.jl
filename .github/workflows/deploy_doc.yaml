@@ -29,7 +29,8 @@ jobs:
 
       - name: Build python doc
         run: |
-          pip install sphinx sphinx-markdown-builder sphinx-markdown-parser devito
+          pip install sphinx-markdown-builder sphinx-markdown-parser devito
+          pip install "sphinx==3.1.0"
           make clean;make markdown
           mv _build/markdown/pysource.md ../../docs/pysource.md
         working-directory: src/pydocs/
