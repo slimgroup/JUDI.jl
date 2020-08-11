@@ -90,9 +90,9 @@
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#fd_utilsr_matmodel">FD_utils.R_mat(model)</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#fd_utilsdivsfunc">FD_utils.divs(func)</a>
+    <li class="toctree-l3"><a class="reference internal" href="#fd_utilsdivsfunc-so_fact1-side-1">FD_utils.divs(func, so_fact=1, side=- 1)</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#fd_utilsgradsfunc">FD_utils.grads(func)</a>
+    <li class="toctree-l3"><a class="reference internal" href="#fd_utilsgradsfunc-so_fact1-side1">FD_utils.grads(func, so_fact=1, side=1)</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#fd_utilslaplacianv-irho">FD_utils.laplacian(v, irho)</a>
     </li>
@@ -252,15 +252,15 @@
         <ul>
     <li class="toctree-l3"><a class="reference internal" href="#propagatorsadjointmodel-y-src_coords-rcv_coords-space_order8-q0-savefalse-wsnone">propagators.adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0, save=False, ws=None)</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#propagatorsbornmodel-src_coords-rcv_coords-wavelet-space_order8-savefalse-qnone-isicfalse-wsnone">propagators.born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False, q=None, isic=False, ws=None)</a>
+    <li class="toctree-l3"><a class="reference internal" href="#propagatorsbornmodel-src_coords-rcv_coords-wavelet-space_order8-savefalse-qnone-isicfalse-wsnone-t_sub1">propagators.born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False, q=None, isic=False, ws=None, t_sub=1)</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#propagatorsforwardmodel-src_coords-rcv_coords-wavelet-space_order8-savefalse-qnone-return_opfalse-freq_listnone-dft_subnone-wsnone-t_sub1">propagators.forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False, q=None, return_op=False, freq_list=None, dft_sub=None, ws=None, t_sub=1)</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#propagatorsgradientmodel-residual-rcv_coords-u-return_opfalse-space_order8-t_sub1-wnone-freqnone-dft_subnone-isictrue">propagators.gradient(model, residual, rcv_coords, u, return_op=False, space_order=8, t_sub=1, w=None, freq=None, dft_sub=None, isic=True)</a>
+    <li class="toctree-l3"><a class="reference internal" href="#propagatorsgradientmodel-residual-rcv_coords-u-return_opfalse-space_order8-wnone-freqnone-dft_subnone-isicfalse">propagators.gradient(model, residual, rcv_coords, u, return_op=False, space_order=8, w=None, freq=None, dft_sub=None, isic=False)</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#propagatorsnamemodel">propagators.name(model)</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#propagatorsopt_opfs-born_wsfalse">propagators.opt_op(fs, born_ws=False)</a>
+    <li class="toctree-l3"><a class="reference internal" href="#propagatorsopt_opmodel-no_msfalse">propagators.opt_op(model, no_ms=False)</a>
     </li>
         </ul>
     </li>
@@ -468,10 +468,10 @@
 <p><strong>model</strong> (<em>Model</em>) – Model structure</p>
 </li>
 </ul>
-<h3 id="fd_utilsdivsfunc">FD_utils.divs(func)</h3>
+<h3 id="fd_utilsdivsfunc-so_fact1-side-1">FD_utils.divs(func, so_fact=1, side=- 1)</h3>
 <p>GrDivergenceadient shifted by half a grid point, only to be used in combination
 with grads.</p>
-<h3 id="fd_utilsgradsfunc">FD_utils.grads(func)</h3>
+<h3 id="fd_utilsgradsfunc-so_fact1-side1">FD_utils.grads(func, so_fact=1, side=1)</h3>
 <p>Gradient shifted by half a grid point, only to be used in combination
 with divs.</p>
 <h3 id="fd_utilslaplacianv-irho">FD_utils.laplacian(v, irho)</h3>
@@ -1427,19 +1427,19 @@ m = 1/vp^2</p>
 <p>Low level propagator, to be used through interface.py
 Compute adjoint wavefield v = adjoint(F(m))*y
 and related quantities (||v||_w, v(xsrc))</p>
-<h3 id="propagatorsbornmodel-src_coords-rcv_coords-wavelet-space_order8-savefalse-qnone-isicfalse-wsnone">propagators.born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False, q=None, isic=False, ws=None)</h3>
+<h3 id="propagatorsbornmodel-src_coords-rcv_coords-wavelet-space_order8-savefalse-qnone-isicfalse-wsnone-t_sub1">propagators.born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False, q=None, isic=False, ws=None, t_sub=1)</h3>
 <p>Low level propagator, to be used through interface.py
 Compute adjoint wavefield v = adjoint(F(m))*y
 and related quantities (||v||_w, v(xsrc))</p>
 <h3 id="propagatorsforwardmodel-src_coords-rcv_coords-wavelet-space_order8-savefalse-qnone-return_opfalse-freq_listnone-dft_subnone-wsnone-t_sub1">propagators.forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False, q=None, return_op=False, freq_list=None, dft_sub=None, ws=None, t_sub=1)</h3>
 <p>Low level propagator, to be used through interface.py
 Compute forward wavefield u = A(m)^{-1}*f and related quantities (u(xrcv))</p>
-<h3 id="propagatorsgradientmodel-residual-rcv_coords-u-return_opfalse-space_order8-t_sub1-wnone-freqnone-dft_subnone-isictrue">propagators.gradient(model, residual, rcv_coords, u, return_op=False, space_order=8, t_sub=1, w=None, freq=None, dft_sub=None, isic=True)</h3>
+<h3 id="propagatorsgradientmodel-residual-rcv_coords-u-return_opfalse-space_order8-wnone-freqnone-dft_subnone-isicfalse">propagators.gradient(model, residual, rcv_coords, u, return_op=False, space_order=8, w=None, freq=None, dft_sub=None, isic=False)</h3>
 <p>Low level propagator, to be used through interface.py
 Compute adjoint wavefield v = adjoint(F(m))*y
 and related quantities (||v||_w, v(xsrc))</p>
 <h3 id="propagatorsnamemodel">propagators.name(model)</h3>
-<h3 id="propagatorsopt_opfs-born_wsfalse">propagators.opt_op(fs, born_ws=False)</h3>
+<h3 id="propagatorsopt_opmodel-no_msfalse">propagators.opt_op(model, no_ms=False)</h3>
 <h2 id="sensitivity-module">sensitivity module</h2>
 <h3 id="sensitivitybasic_srcmodel-u-kwargs">sensitivity.basic_src(model, u, **kwargs)</h3>
 <p>Basic source for linearized modeling</p>
