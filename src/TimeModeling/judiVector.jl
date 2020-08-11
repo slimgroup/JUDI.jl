@@ -85,7 +85,6 @@ wavelets or a single wavelet as an array):
 """
 function judiVector(geometry::Geometry,data::Array; vDT::DataType=Float32)
     vDT == Float32 || throw(judiVectorException("Domain type not supported"))
-
     # length of vector
     n = 1
     if typeof(geometry) == GeometryOOC
@@ -102,11 +101,11 @@ function judiVector(geometry::Geometry,data::Array; vDT::DataType=Float32)
     for j=1:nsrc
         dataCell[j] = deepcopy(data)
     end
-    return judiVector{Float32}("Seismic data vector",m,n,nsrc,geometry,dataCell)
+    return judiVector{Float32}("Seismic data vector", m, n, nsrc, geometry, dataCell)
 end
 
 # constructor if data is passed as a cell array
-function judiVector(geometry::Geometry,data::Union{Array{Any,1},Array{Array,1}}; vDT::DataType=Float32)
+function judiVector(geometry::Geometry,data::Union{Array{Any,1}, Array{Array,1}}; vDT::DataType=Float32)
     vDT == Float32 || throw(judiVectorException("Domain and range types not supported"))
 
     # length of vector
@@ -488,6 +487,39 @@ function vcat(a::judiVector{avDT},b::judiVector{bvDT}) where {avDT, bvDT}
     return judiVector{nvDT}(a.name,m,n,nsrc,geometry,data)
 end
 
+
+"""
+    vcat(array)
+
+Turn an array of judiVector into a single smultenous judiVector, for example
+
+sim_source = vcat([q[i] for i=1:nsrc])
+
+will make the nsrc simultaneous source from multiple point sources `q`
+"""
+function vcat(a::Array{judiVector{avDT}, 1}) where {avDT}
+    out = a[1]
+    for i=2:length(a)
+        out = [out; a[i]]
+    end
+    return out
+end
+
+
+"""
+    vcat(judiVector)
+
+Turn a judiVector of multiple sources into a single
+
+sim_source = vcat(q)
+
+will make the simultaneous source made of all the point sources in q
+"""
+
+function vcat(a::judiVector{avDT}) where {avDT}
+    return vcat([a[i] for i=1:a.nsrc])
+end
+
 # dot product
 function dot(a::judiVector{avDT}, b::judiVector{bvDT}) where {avDT, bvDT}
 # Dot product for data containers
@@ -685,7 +717,9 @@ axes(x::judiVector) = Base.OneTo(x.nsrc)
 
 ndims(x::judiVector) = length(size(x))
 
-similar(x::judiVector, element_type::DataType, dims::Union{AbstractUnitRange, Integer}...) = judiVector(x.geometry, x.data)*0f0
+similar(x::judiVector) = 0f0*x
+
+similar(x::judiVector, element_type::DataType, dims::Union{AbstractUnitRange, Integer}...) = 0f0*x
 
 function fill!(x::judiVector{vDT}, val) where {vDT}
     for j=1:length(x.data)
@@ -700,6 +734,10 @@ function sum(x::judiVector)
     end
     return s
 end
+
+isfinite(v::judiVector) = all(all(isfinite.(v.data[i])) for i=1:v.nsrc)
+
+iterate(S::judiVector, state::Integer=1) = state > length(S.nsrc) ? nothing : (S.data[state], state+1)
 
 ####################################################################################################
 
@@ -760,30 +798,23 @@ function materialize!(x::judiVector, y::judiVector)
     for j=1:length(x.data)
         x.data[j] .= y.data[j]
     end
-    return x
 end
 
 function broadcast!(identity, x::judiVector, y::judiVector)
     copy!(x,y)
 end
 
-function broadcast!(identity, x::judiVector, a::Number, y::judiVector, z::judiVector)
-    scale!(y,a)
-    copy!(x, y + z)
+function broadcasted(identity, x::judiVector)
+    return x
 end
+
 
 function copy!(x::judiVector, y::judiVector)
     for j=1:x.nsrc
-        x.data[j] = y.data[j]
+        x.data[j] .= y.data[j]
     end
     x.geometry = deepcopy(y.geometry)
 end
-
-#function axpy!(a::Number,X::judiVector,Y::judiVector)
-#    for j=1:Y.nsrc
-#        Y.data[j] = a*X.data[j] + Y.data[j]
-#    end
-#end
 
 function get_data(x::judiVector)
     shots = Array{Array}(undef, x.nsrc)
@@ -810,3 +841,43 @@ function isapprox(x::judiVector, y::judiVector; rtol::Real=sqrt(eps()), atol::Re
     isapprox(x.data, y.data; rtol=rtol, atol=atol)
 end
 
+
+############################################################
+
+function A_mul_B!(x::judiWeights, F::Union{joAbstractLinearOperator, joLinearFunction}, y::judiVector)
+    F.m == size(y, 1) ? z = adjoint(F)*y : z = F*y
+    for j=1:length(x.weights)
+        x.weights[j] .= z.weights[j]
+    end
+end
+
+function A_mul_B!(x::judiVector, F::Union{joAbstractLinearOperator, joLinearFunction}, y::Array)
+    F.m == size(y, 1) ? z = adjoint(F)*y : z = F*y
+    for j=1:length(x.data)
+        x.data[j] .= z.data[j]
+    end
+end
+
+function A_mul_B!(x::Array, F::Union{joAbstractLinearOperator, joLinearFunction}, y::judiVector)
+    F.m == size(y, 1) ? x[:] .= adjoint(F)*y : x[:] .= F*y
+end
+
+function A_mul_B!(x::judiVector, F::Union{joAbstractLinearOperator, joLinearFunction}, y::judiWeights)
+    F.m == size(y, 1) ? z = adjoint(F)*y : z = F*y
+    for j=1:length(x.data)
+        x.data[j] .= z.data[j]
+    end
+end
+
+function A_mul_B!(x::judiVector, F::Union{joAbstractLinearOperator, joLinearFunction}, y::judiVector)
+    F.m == size(y, 1) ? z = adjoint(F)*y : z = F*y
+    for j=1:length(x.data)
+        x.data[j] .= z.data[j]
+    end
+end
+
+mul!(x::judiWeights, F::Union{joAbstractLinearOperator, joLinearFunction}, y::judiVector) = A_mul_B!(x, F, y)
+mul!(x::judiVector, F::Union{joAbstractLinearOperator, joLinearFunction}, y::judiWeights) = A_mul_B!(x, F, y)
+mul!(x::judiVector, F::Union{joAbstractLinearOperator, joLinearFunction}, y::judiVector) = A_mul_B!(x, F, y)
+mul!(x::Array, J::Union{joAbstractLinearOperator, joLinearFunction}, y::judiVector) = A_mul_B!(x, J, y)
+mul!(x::judiVector, J::Union{joAbstractLinearOperator, joLinearFunction}, y::Array) = A_mul_B!(x, J, y)

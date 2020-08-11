@@ -4,6 +4,7 @@
 using JUDI.TimeModeling, ArgParse, Images
 
 export setup_model, parse_commandline, setup_geom
+export example_src_geometry, example_rec_geometry, example_model, example_info
 
 
 """
@@ -27,7 +28,7 @@ function setup_model(tti=false, nlayer=2; n=(301, 151), d=(10., 10.))
         v[:, (i-1)*Int(floor(n[2] / nlayer)) + 1:end] .= vp_i[i]  # Bottom velocity	
     end
 
-    v0 = smooth(v, 10)
+    v0 = smooth(v, 7)
     rho0 = (v .+ .5f0) ./ 2
     # Slowness squared [s^2/km^2]
     m = (1f0 ./ v).^2
@@ -111,4 +112,25 @@ function parse_commandline()
             default = 1
     end
     return parse_args(s)
+end
+
+
+# Example structures
+example_info(; n=(120,100), nsrc=2, ntComp=1000) = Info(prod(n), nsrc, ntComp)
+example_model(; n=(120,100), d=(10f0, 10f0), o=(0f0, 0f0), m=randn(Float32, n)) = Model(n, d, o, m)
+
+function example_rec_geometry(; nsrc=2, nrec=120, cut=false)
+    startr = cut ? 150f0 : 50f0
+    endr = cut ? 1050f0 : 1150f0
+    xrec = range(startr, stop=endr, length=nrec)
+    yrec = 0f0
+    zrec = range(50f0, stop=50f0, length=nrec)
+    return Geometry(xrec, yrec, zrec; dt=4f0, t=1000f0, nsrc=nsrc)
+end
+
+function example_src_geometry(; nsrc=2)
+    xrec = nsrc == 1 ? 500f0 : range(300f0, stop=900f0, length=nsrc)
+    yrec = 0f0
+    zrec = range(50f0, stop=50f0, length=nsrc)
+    return Geometry(xrec, yrec, zrec; dt=4f0, t=1000f0, nsrc=nsrc)
 end

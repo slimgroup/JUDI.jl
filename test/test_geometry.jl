@@ -2,12 +2,14 @@
 # Philipp Witte (pwitte.slim@gmail.com)
 # May 2018
 #
+# Mathias Louboutin, mlouboutin3@gatech.edu
+# Updated July 2020
 
 using JUDI, JUDI.TimeModeling, SegyIO, Test, LinearAlgebra
 
 datapath = joinpath(dirname(pathof(JUDI)))*"/../data/"
 
-@testset "Geometry Unit Test" begin
+@testset "Geometry Unit Test with $(nsrc) sources" for nsrc=[1, 2]
 
     # Number of sources
     nsrc = 2
@@ -41,7 +43,7 @@ datapath = joinpath(dirname(pathof(JUDI)))*"/../data/"
     @test isequal(typeof(geometry.t), Array{Any, 1})
 
     # Set up source geometry object from in-core data container
-    block = segy_read(datapath*"unit_test_shot_records.segy")
+    block = segy_read(datapath*"unit_test_shot_records_$(nsrc).segy"; warn_user=false)
     src_geometry = Geometry(block; key="source", segy_depth_key="SourceSurfaceElevation")
     rec_geometry = Geometry(block; key="receiver", segy_depth_key="RecGroupElevation")
 
@@ -53,7 +55,7 @@ datapath = joinpath(dirname(pathof(JUDI)))*"/../data/"
     @test isequal(get_header(block, "GroupX")[1], rec_geometry.xloc[1][1])
 
     # Set up geometry summary from out-of-core data container
-    container = segy_scan(datapath, "unit_test_shot_records", ["GroupX", "GroupY", "RecGroupElevation", "SourceSurfaceElevation", "dt"])
+    container = segy_scan(datapath, "unit_test_shot_records_$(nsrc)", ["GroupX", "GroupY", "RecGroupElevation", "SourceSurfaceElevation", "dt"])
     src_geometry = Geometry(container; key="source", segy_depth_key="SourceSurfaceElevation")
     rec_geometry = Geometry(container; key="receiver", segy_depth_key="RecGroupElevation")
 
@@ -98,9 +100,10 @@ datapath = joinpath(dirname(pathof(JUDI)))*"/../data/"
     @test isequal(typeof(src_geometry_sub), GeometryIC)
     @test isequal(length(src_geometry_sub.xloc), 1)
 
-    src_geometry_sub = subsample(src_geometry_ic, 1:2)
+    inds = nsrc > 1 ? (1:nsrc) : 1
+    src_geometry_sub = subsample(src_geometry_ic, inds)
     @test isequal(typeof(src_geometry_sub), GeometryIC)
-    @test isequal(length(src_geometry_sub.xloc), 2)
+    @test isequal(length(src_geometry_sub.xloc), nsrc)
 
     # Subsample out-of-core geometry structure
     src_geometry_sub = subsample(src_geometry, 1)
@@ -108,9 +111,9 @@ datapath = joinpath(dirname(pathof(JUDI)))*"/../data/"
     @test isequal(length(src_geometry_sub.dt), 1)
     @test isequal(src_geometry_sub.segy_depth_key, "SourceSurfaceElevation")
 
-    src_geometry_sub = subsample(src_geometry, 1:2)
+    src_geometry_sub = subsample(src_geometry, inds)
     @test isequal(typeof(src_geometry_sub), GeometryOOC)
-    @test isequal(length(src_geometry_sub.dt), 2)
+    @test isequal(length(src_geometry_sub.dt), nsrc)
     @test isequal(src_geometry_sub.segy_depth_key, "SourceSurfaceElevation")
 
     # Compare if geometries match

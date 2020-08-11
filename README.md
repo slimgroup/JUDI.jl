@@ -33,6 +33,31 @@ docker run -it philippwitte/judi:v1.5 /bin/bash
 
 Inside the container, all examples are located in the directory `/app/judi/examples/scripts`.
 
+## Testing
+
+A complete test suite is inculded with JUDI and is tested via GitHub Actions. You can also run the test locally
+via:
+
+```julia
+    julia --project -e 'using Pkg;Pkg.test(coverage=false)'
+```
+
+By default, only the JUDI base API will be tested, however the testing suite supports other modes controlled via the environemnt variable `GROUP` such as:
+
+```julia
+	GROUP=JUDI julia --project -e 'using Pkg;Pkg.test(coverage=false)'
+```
+
+The supported modes are:
+
+- JUDI : Only the base API (linear operators, vectors, ...)
+- ISO_OP : Isotropic acoustic operators
+- ISO_OP_FS : Isotropic acoustic operators with free surface
+- TTI_OP : Transverse tilted isotropic operators
+- TTI_OP_FS : Transverse tilted isotropic operators with free surface
+- filename : you can also provide just a filename (i.e `GROUP=test_judiVector.jl`) and only this one test file will be run. Single files with TTI or free surface are not currently supported as it relies on `Base.ARGS` for the setup.
+
+
 ## Configure compiler and OpenMP
 
 Devito uses just-in-time compilation for the underlying wave equation solves. The default compiler is intel, but can be changed to any other specified compiler such as `gnu`. Either run the following command from the command line or add it to your ~/.bashrc file:

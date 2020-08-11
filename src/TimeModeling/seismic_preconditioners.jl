@@ -2,10 +2,8 @@
 # Author: Philipp Witte, pwitte@eos.ubc.ca
 # Date: December 2017
 #
-using DSP
-
 export marineTopmute2D, judiMarineTopmute2D
-export model_topmute, judiTopmute, find_water_bottom, depth_scaling, judiDepthScaling, laplace, low_filter
+export model_topmute, judiTopmute, find_water_bottom, depth_scaling, judiDepthScaling, laplace, low_filter, judiFilter
 
 
 ############################################ Data space preconditioners ################################################
@@ -16,10 +14,10 @@ function judiFilter(geometry, fmin, fmax)
     for j=1:nsrc
         N += geometry.nt[j]*length(geometry.xloc[j])
     end
-    D = joLinearFunctionFwdT(N,N,
-                             v -> low_filter(v,geometry.dt[1];fmin=fmin, fmax=fmax),
-                             w -> low_filter(w,geometry.dt[1];fmin=fmin, fmax=fmax),
-                             Float32,Float32,name="Data filter")
+    D = joLinearFunctionFwd_T(N, N,
+                              v -> low_filter(v,geometry.dt[1];fmin=fmin, fmax=fmax),
+                              w -> low_filter(w,geometry.dt[1];fmin=fmin, fmax=fmax),
+                              Float32,Float32,name="Data filter")
     return D
 end
 
@@ -163,12 +161,12 @@ end
 
 model_topmute(n::Tuple{Int64,Int64}, mute_end::Array{Float32, 2}, length, x) = vec(mute_end) .* vec(x)
 
-function judiTopmute(n, mute_start, length)
+function judiTopmute(n, mute_end, length)
     # JOLI wrapper for model domain topmute
     N = prod(n)
     T = joLinearFunctionFwd_T(N,N,
-                             v -> model_topmute(n, mute_start, length, v),
-                             w -> model_topmute(n, mute_start, length, w),
+                             v -> model_topmute(n, mute_end, length, v),
+                             w -> model_topmute(n, mute_end, length, w),
                              Float32,Float32,name="Model topmute")
     return T
 end

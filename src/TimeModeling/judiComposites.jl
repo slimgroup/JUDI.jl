@@ -101,7 +101,7 @@ firstindex(x::judiVStack) = 1
 
 lastindex(x::judiVStack) = length(x.components)
 
-dot(x::judiVStack, y::judiVStack) = sum(v[i]*y[i] for i=1:length(v.components))
+dot(x::judiVStack, y::judiVStack) = sum(dot(x[i],y[i]) for i=1:length(x.components))
 
 function norm(x::judiVStack, order::Real=2)
     if order == Inf
@@ -111,6 +111,8 @@ function norm(x::judiVStack, order::Real=2)
 end
 
 iterate(S::judiVStack, state::Integer=1) = state > length(S.components) ? nothing : (S.components[state], state+1)
+
+isfinite(S::judiVStack) = all(isfinite(c) for c in S)
 
 ##########################################################
 
@@ -217,15 +219,6 @@ function broadcasted(::typeof(/), x::judiVStack, y::judiVStack)
     return z
 end
 
-function broadcasted!(::typeof(/), x::judiVStack, y::judiVStack)
-    size(x) == size(y) || throw(judiWeightsException("dimension mismatch"))
-    z = deepcopy(x)
-    for j=1:length(x.components)
-        z.components[j] = x.components[j] .* y.components[j]
-    end
-    return z
-end
-
 function broadcasted(::typeof(*), x::judiVStack, y::Number)
     z = deepcopy(x)
     for j=1:length(x.components)
@@ -261,11 +254,8 @@ function broadcast!(identity, x::judiVStack, y::judiVStack)
     copy!(x,y)
 end
 
-function broadcast!(identity, x::judiVStack, a::Number, y::judiVStack, z::judiVStack)
-    size(x) == size(y) || throw(judiWeightsException("dimension mismatch"))
-    size(x) == size(z) || throw(judiWeightsException("dimension mismatch"))
-    scale!(y,a)
-    copy!(x, y + z)
+function broadcasted(identity, x::judiVStack)
+    return x
 end
 
 function copy!(x::judiVStack, y::judiVStack)

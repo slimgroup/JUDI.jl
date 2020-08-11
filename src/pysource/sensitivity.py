@@ -1,10 +1,11 @@
 import numpy as np
 from sympy import cos, sin
 
-from devito import Function, grad, Eq
+from devito import Function, Eq
 from devito.tools import as_tuple
 
 from wave_utils import sub_time, freesurface
+from FD_utils import divs, grads
 
 
 def func_name(freq=None, isic=False):
@@ -114,7 +115,8 @@ def isic_time(u, v, model, **kwargs):
         Model structure
     """
     w = - u[0].indices[0].spacing * model.irho
-    return w * sum(uu * vv.dt2 * model.m + grad(uu).T * grad(vv)
+    return w * sum(uu * vv.dt2 * model.m +
+                   grads(uu, so_fact=2).T * grads(vv, so_fact=2)
                    for uu, vv in zip(u, v))
 
 
@@ -147,8 +149,10 @@ def isic_freq(u, v, model, **kwargs):
         # Gradient weighting is (2*np.pi*f)**2/nt
         w = (2*np.pi*f)**2/time.symbolic_max
         expr += (w * (ufr * cos(omega_t) - ufi * sin(omega_t)) * vv * model.m -
-                 factor / time.symbolic_max * (grad(ufr * cos(omega_t) -
-                                                    ufi * sin(omega_t)).T * grad(vv)))
+                 factor / time.symbolic_max * (grads(ufr * cos(omega_t) -
+                                                     ufi * sin(omega_t),
+                                                     so_fact=2).T *
+                                               grads(vv, so_fact=2)))
     return expr
 
 
@@ -198,10 +202,7 @@ def isic_src(model, u, **kwargs):
     m, dm, irho = model.m, model.dm, model.irho
     dus = []
     for uu in u:
-        so = uu.space_order//2
-        du_aux = sum([getattr(getattr(uu, 'd%s' % d.name)(fd_order=so) * dm * irho,
-                              'd%s' % d.name)(fd_order=so)
-                      for d in uu.space_dimensions])
+        du_aux = divs(dm * irho * grads(uu, so_fact=2), so_fact=2)
         dus.append(dm * irho * uu.dt2 * m - du_aux)
     if model.is_tti:
         return (-dus[0], -dus[1])

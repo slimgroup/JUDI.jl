@@ -2,6 +2,8 @@
 # Author: Philipp Witte, pwitte@eos.ubc.ca
 # Date: September 2016
 #
+# Mathias Louboutin, mlouboutin3@gatech.edu
+# Updated July 2020
 
 export ricker_wavelet, get_computational_nt, calculate_dt, setup_grid, setup_3D_grid
 export convertToCell, limit_model_to_receiver_area, extend_gradient, remove_out_of_bounds_receivers
@@ -107,9 +109,10 @@ function limit_model_to_receiver_area(srcGeometry::Geometry, recGeometry::Geomet
         typeof(model.rho) <: Array && (model.rho = model.rho[nx_min:nx_max,ny_min:ny_max,:])
         model.o = (ox,oy,oz)
     end
-    println("N old: ", model.n)
+    
+    println("N old $(model.n)")
     model.n = size(model.m)
-    println("N new: ", model.n)
+    println("N new $(model.n)")
     if isempty(pert)
         return model
     else
@@ -163,6 +166,7 @@ function limit_model_to_receiver_area(srcGeometry::Geometry,recGeometry::Geometr
         typeof(model.epsilon) <: Array && (model.epsilon = model.epsilon[nx_min: nx_max, :])
         typeof(model.delta) <: Array && (model.delta = model.delta[nx_min: nx_max, :])
         typeof(model.theta) <: Array && (model.theta = model.theta[nx_min: nx_max, :])
+        typeof(model.phi) <: Array && (model.phi = model.phi[nx_min: nx_max, :])
         typeof(model.rho) <: Array && (model.rho = model.rho[nx_min: nx_max, :])
         model.o = (ox, oz)
     else
@@ -174,9 +178,9 @@ function limit_model_to_receiver_area(srcGeometry::Geometry,recGeometry::Geometr
         typeof(model.rho) <: Array && (model.rho = model.rho[nx_min: nx_max, :])
         model.o = (ox, oy, oz)
     end
-    println("N old: ", model.n)
+    println("N old $(model.n)")
     model.n = size(model.m)
-    println("N new: ", model.n)
+    println("N new $(model.n)")
     if isempty(pert)
         return model
     else
@@ -274,7 +278,7 @@ and central frequency `f0` (in kHz).
 function ricker_wavelet(tmax, dt, f0; t0=nothing)
     R = typeof(dt)
     isnothing(t0) ? t0 = R(0) : tmax = R(tmax - t0)
-    nt = Int(trunc(tmax/dt + 1))
+    nt = trunc(Int64, tmax / dt) + 1
     t = range(t0, stop=tmax, length=nt)
     r = (pi * f0 * (t .- 1 / f0))
     q = zeros(Float32,nt,1)
@@ -287,40 +291,23 @@ function load_pymodel()
     return pyimport("models")
 end
 
-function load_numpy()
-    pushfirst!(PyVector(pyimport("sys")."path"), joinpath(JUDIPATH, "pysource"))
-    return pyimport("numpy")
-end
-
 function load_devito_jit()
     pushfirst!(PyVector(pyimport("sys")."path"), joinpath(JUDIPATH, "pysource"))
     return pyimport("interface")
 end
 
-function calculate_dt(model::Model_TTI; dt=nothing)
+function calculate_dt(model::Modelall; dt=nothing)
     if ~isnothing(dt)
         return dt
     end
-    if length(model.n) == 3
-        coeff = 0.38
-    else
-        coeff = 0.42
-    end
-    scale = sqrt(maximum(1 .+ 2 *model.epsilon))
-    return .9*coeff * minimum(model.d) / (scale*sqrt(1/minimum(model.m)))
+    pm = load_pymodel()
+    vp = maximum(model.m.^(-.5f0))
+    epsilon = typeof(model) == Model_TTI ? maximum(model.epsilon) : 0
+    modelPy = pm."Model"(origin=model.o, spacing=model.d, shape=model.n,
+                         vp=vp, epsilon=epsilon)
+    return convert(Float32, modelPy.critical_dt)
 end
 
-function calculate_dt(model::Model; dt=nothing)
-    if ~isnothing(dt)
-        return dt
-    end
-    if length(model.n) == 3
-        coeff = 0.38
-    else
-        coeff = 0.42
-    end
-    return .9*coeff * minimum(model.d) / (sqrt(1/minimum(model.m)))
-end
 """
     get_computational_nt(srcGeometry, recGeoemtry, model; dt=nothing)
 
@@ -340,9 +327,9 @@ function get_computational_nt(srcGeometry, recGeometry, model::Modelall; dt=noth
     nt = Array{Any}(undef, nsrc)
     dtComp = calculate_dt(model; dt=dt)
     for j=1:nsrc
-        ntRec = recGeometry.dt[j]*(recGeometry.nt[j]-1) / dtComp + 1
-        ntSrc = srcGeometry.dt[j]*(srcGeometry.nt[j]-1) / dtComp + 1
-        nt[j] = max(Int(ceil(ntRec)), Int(ceil(ntSrc)))
+        ntRec = trunc(Int64, recGeometry.dt[j]*(recGeometry.nt[j]-1) / dtComp) + 1
+        ntSrc = trunc(Int64, srcGeometry.dt[j]*(srcGeometry.nt[j]-1) / dtComp) + 1
+        nt[j] = max(ntRec, ntSrc)
     end
     return nt
 end
@@ -357,7 +344,7 @@ function get_computational_nt(Geometry, model::Modelall; dt=nothing)
     nt = Array{Any}(undef, nsrc)
     dtComp = calculate_dt(model; dt=dt)
     for j=1:nsrc
-        nt[j] = Int(ceil(Geometry.dt[j]*(Geometry.nt[j]-1) / dtComp)) + 1
+        nt[j] = trunc(Int64, Geometry.dt[j]*(Geometry.nt[j]-1) / dtComp) + 1
     end
     return nt
 end
@@ -465,7 +452,7 @@ vec(x::Int64) = x;
 vec(x::Int32) = x;
 
 
-function time_resample(data::Array,geometry_in::Geometry,dt_new;order=2)
+function time_resample(data::Array, geometry_in::Geometry, dt_new;order=2)
 
     if dt_new==geometry_in.dt[1]
         return data, geometry_in
@@ -486,7 +473,7 @@ function time_resample(data::Array,geometry_in::Geometry,dt_new;order=2)
     end
 end
 
-function time_resample(data::Array,dt_in, geometry_out::Geometry;order=2)
+function time_resample(data::Array, dt_in, geometry_out::Geometry;order=2)
 
     if dt_in==geometry_out.dt[1]
         return data
@@ -593,7 +580,7 @@ end
 
 
 """
-    transducer_source(q, d, r, theta)
+    transducer(q, d, r, theta)
 
 Create the JUDI soure for a circular transducer
 Theta=0 points downward:
@@ -643,11 +630,11 @@ function transducer(q::judiVector, d::Tuple, r::Number, theta)
         # Build the rotated array of dipole
         R = [cos(theta[i] - pi/2) sin(theta[i] - pi/2);-sin(theta[i] - pi/2) cos(theta[i] - pi/2)]
         # +1 coords
-        r_loc = q.geometry.xloc[i] .+ R * [x_base';y_base']
+        r_loc = R * [x_base';y_base']
         # -1 coords
-        r_loc_b = q.geometry.xloc[i] .+ R * [x_base';y_base_b']
-        xloc[i] = vec(vcat(r_loc[1, :], r_loc_b[1, :]))
-        zloc[i] = vec(vcat(r_loc[2, :], r_loc_b[2, :]))
+        r_loc_b = R * [x_base';y_base_b']
+        xloc[i] = q.geometry.xloc[i] .+ vec(vcat(r_loc[1, :], r_loc_b[1, :]))
+        zloc[i] = q.geometry.zloc[i] .+ vec(vcat(r_loc[2, :], r_loc_b[2, :]))
         yloc[i] = zeros(2*nsrc_loc)
         data[i] = zeros(length(q.data[i]), 2*nsrc_loc)
         data[i][:, 1:nsrc_loc] .= q.data[i]/nsrc_loc

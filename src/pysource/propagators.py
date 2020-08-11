@@ -12,12 +12,10 @@ def name(model):
     return "tti" if model.is_tti else ""
 
 
-def opt_op(fs, born_ws=False):
-    if fs or born_ws:
+def opt_op(model, no_ms=False):
+    if model.fs or no_ms:
         return ('advanced', {})
-    return ('advanced', {})
-    # TODO: switch to this better one after new devito release
-    # return ('advanced', {'min-storage': True})
+    return ('advanced', {'min-storage': True})
 
 
 # Forward propagation
@@ -55,15 +53,15 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     subs = model.spacing_map
     op = Operator(tmp + pde + geom_expr + dft + eq_save,
                   subs=subs, name="forward"+name(model),
-                  opt=opt_op(model.fs))
+                  opt=opt_op(model))
 
     if return_op:
         return op, u, rcv
 
-    op()
+    summary = op()
 
     # Output
-    return getattr(rcv, 'data', None), dft_modes or (u_save if t_sub > 1 else u)
+    return rcv, dft_modes or (u_save if t_sub > 1 else u), summary
 
 
 def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0,
@@ -93,18 +91,18 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0,
     subs = model.spacing_map
     op = Operator(tmp + pde + ws_expr + geom_expr,
                   subs=subs, name="adjoint"+name(model),
-                  opt=opt_op(model.fs))
+                  opt=opt_op(model))
 
-    op()
+    summary = op()
 
     # Output
     if wsrc:
-        return wsrc
-    return getattr(rcv, 'data', None), v
+        return wsrc, summary
+    return rcv, v, summary
 
 
-def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8, t_sub=1,
-             w=None, freq=None, dft_sub=None, isic=True):
+def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8,
+             w=None, freq=None, dft_sub=None, isic=False):
     """
     Low level propagator, to be used through `interface.py`
     Compute adjoint wavefield v = adjoint(F(m))*y
@@ -128,26 +126,30 @@ def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8, t_s
     subs = model.spacing_map
     op = Operator(tmp + pde + geom_expr + g_expr,
                   subs=subs, name="gradient"+name(model),
-                  opt=opt_op(model.fs))
+                  opt=opt_op(model))
 
     if return_op:
         return op, gradm, v
-    op()
+    summary = op()
 
     # Output
-    return gradm.data
+    return gradm, summary
 
 
 def born(model, src_coords, rcv_coords, wavelet, space_order=8,
-         save=False, q=None, isic=False, ws=None):
+         save=False, q=None, isic=False, ws=None, t_sub=1):
     """
     Low level propagator, to be used through `interface.py`
     Compute adjoint wavefield v = adjoint(F(m))*y
     and related quantities (||v||_w, v(xsrc))
     """
-    # Setting adjoint wavefield
-    u = wavefield(model, space_order, save=save, nt=wavelet.shape[0])
+    nt = wavelet.shape[0]
+    # Setting wavefield
+    u = wavefield(model, space_order, save=save, nt=nt, t_sub=t_sub)
     ul = wavefield(model, space_order, name="l")
+
+    # Expression for saving wavefield if time subsampling is used
+    u_save, eq_save = wavefield_subsampled(model, u, nt, t_sub)
 
     # Extended source
     q = q or wf_as_src(u, w=0)
@@ -163,11 +165,11 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8,
 
     # Create operator and run
     subs = model.spacing_map
-    op = Operator(tmpu + tmpul + pde + geom_expr + geom_exprl + pdel,
+    op = Operator(tmpu + tmpul + pde + geom_expr + geom_exprl + pdel + eq_save,
                   subs=subs, name="born"+name(model),
-                  opt=opt_op(model.fs, born_ws=ws is not None))
+                  opt=opt_op(model, no_ms=ws is not None))
 
-    op()
+    summary = op()
 
     # Output
-    return rcvl.data, u
+    return rcvl, (u_save if t_sub > 1 else u), summary

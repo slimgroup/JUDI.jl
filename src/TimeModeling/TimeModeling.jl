@@ -33,8 +33,8 @@ include("OptionsStructure.jl")
 include("judiWavefield.jl") # dense RHS (wavefield)
 include("judiRHS.jl")   # sparse RHS (point source(s))
 include("judiExtendedSource.jl")   # sparse RHS (point source(s))
-include("judiVector.jl")    # Julia data container
 include("judiWeights.jl")    # Extended source weight vector
+include("judiVector.jl")    # Julia data container
 include("judiComposites.jl")    # A composite type to work with hcat/vcat of judi types
 include("auxiliaryFunctions.jl")
 

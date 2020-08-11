@@ -124,19 +124,6 @@ function *(a::Number,A::judiJacobianExQ{ADDT,ARDT}) where {ADDT,ARDT}
                                 )
 end
 
-function A_mul_B!(x::judiVector, J::judiJacobianExQ, y::Array)
-    J.m == size(y, 1) ? z = adjoint(J)*y : z = J*y
-    for j=1:length(x.data)
-        x.data[j] .= z.data[j]
-    end
-end
-
-function A_mul_B!(x::Array, J::judiJacobianExQ, y::judiVector)
-    J.m == size(y, 1) ? x[:] = adjoint(J)*y : x[:] = J*y
-end
-
-mul!(x::Array, J::judiJacobianExQ, y::judiVector) = A_mul_B!(x, J, y)
-mul!(x::judiVector, J::judiJacobianExQ, y::Array) = A_mul_B!(x, J, y)
 
 ############################################################
 ## overloaded Bases +(...judiJacobianExQ...), -(...judiJacobianExQ...)
@@ -171,13 +158,14 @@ end
 function subsample(J::judiJacobianExQ{ADDT,ARDT}, srcnum) where {ADDT,ARDT}
 
     recGeometry = subsample(J.recGeometry,srcnum)
-
     info = Info(J.info.n, length(srcnum), J.info.nt[srcnum])
-    Fsub = judiModeling(info, J.model, recGeometry; options=J.options)
-    wsub = judiWeigths(J.weights[srcnum])
-    return judiJacobianExQ(Fsub, wsub; DDT=ADDT, RDT=ARDT)
+    Fsub = judiModeling(info, J.model; options=J.options)
+    Pr = judiProjection(info, recGeometry)
+    Pw = judiLRWF(info, J.wavelet[srcnum])
+    wsub = judiWeights(J.weights[srcnum])
+    return judiJacobian(Pr*Fsub*Pw', wsub; DDT=ADDT, RDT=ARDT)
 end
 
-getindex(J::judiJacobianExQ,a) = subsample(J,a)
+getindex(J::judiJacobianExQ,a) = subsample(J, a)
 
 zerox(J::judiJacobianExQ, y::judiVector) = zeros(Float32, size(J, 2))

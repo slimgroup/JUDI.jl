@@ -114,13 +114,13 @@ function *(A::judiPDEextended{ADDT,ARDT},v::AbstractVector{vDT}) where {ADDT,ARD
     return V
 end
 
-*(A::judiPDEextended{ADDT,ARDT},v::AbstractMatrix{vDT}) where {ADDT,ARDT,vDT} = *(A, vec(v))
+*(A::judiPDEextended{ADDT,ARDT}, v::AbstractMatrix{vDT}) where {ADDT,ARDT,vDT} = *(A, vec(v))
 
 # *(num,judiPDEextended)
 function *(a::Number,A::judiPDEextended{ADDT,ARDT}) where {ADDT,ARDT}
     return judiPDEextended{ADDT,ARDT}("(N*"*A.name*")",A.m,A.n,A.info,A.model,A.wavelet,A.recGeometry,A.options,
-        v1 -> jo_convert(ARDT,a, false)*A.fop(v1),
-        v2 -> jo_convert(ARDT,a, false)*A.fop_T(v2)
+        v1 -> jo_convert(ARDT,a, false) * A.fop(v1),
+        v2 -> jo_convert(ARDT,a, false) * A.fop_T(v2)
         )
 end
 
@@ -135,21 +135,3 @@ function subsample(F::judiPDEextended{ADDT,ARDT}, srcnum) where {ADDT,ARDT}
 end
 
 getindex(F::judiPDEextended,a) = subsample(F,a)
-
-
-############################################################
-
-function A_mul_B!(x::judiWeights, F::judiPDEextended, y::judiVector)
-    F.m == size(y, 1) ? z = adjoint(F)*y : z = F*y
-    x.weights = z.weights
-end
-
-function A_mul_B!(x::judiVector, F::judiPDEextended, y::judiWeights)
-    F.m == size(y, 1) ? z = adjoint(F)*y : z = F*y
-    for j=1:length(x.data)
-        x.data[j] .= z.data[j]
-    end
-end
-
-mul!(x::judiWeights, F::judiPDEextended, y::judiVector) = A_mul_B!(x, F, y)
-mul!(x::judiVector, F::judiPDEextended, y::judiWeights) = A_mul_B!(x, F, y)

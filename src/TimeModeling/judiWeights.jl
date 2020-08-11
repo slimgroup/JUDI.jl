@@ -184,10 +184,17 @@ function *(A::joLinearOperator{ADDT,ARDT}, v::judiWeights{avDT}) where {ADDT, AR
     jo_check_type_match(ADDT,avDT,join(["DDT for *(joLinearFunction,judiWeights):",A.name,typeof(A),avDT]," / "))
     # Evaluate as mat-mat over the weights
     n = size(v.weights[1])
-    V = A.fop(hcat([vec(v.weights[i]) for i=1:v.nsrc]...))
-    jo_check_type_match(ARDT,eltype(V),join(["RDT from *(joLinearFunction,judiWeights):",A.name,typeof(A),eltype(V)]," / "))
-    m = length(V)
-    return judiWeights{avDT}("Extended source weights", m, 1, v.nsrc, [reshape(V[:, i], n) for i=1:v.nsrc])
+    try
+        # Mul may be defined for judiWeights
+        V = A.fop(v)
+        jo_check_type_match(ARDT,eltype(V),join(["RDT from *(joLinearFunction,judiWeights):",A.name,typeof(A),eltype(V)]," / "))
+        return V
+    catch e
+        V = A.fop(hcat([vec(v.weights[i]) for i=1:v.nsrc]...))
+        jo_check_type_match(ARDT,eltype(V),join(["RDT from *(joLinearFunction,judiWeights):",A.name,typeof(A),eltype(V)]," / "))
+        m = length(V)
+        return judiWeights{avDT}("Extended source weights", m, 1, v.nsrc, [reshape(V[:, i], n) for i=1:v.nsrc])
+    end
 end
 
 # *(joCoreBlock, judiWeights)
@@ -198,30 +205,6 @@ function *(A::joCoreBlock{ADDT,ARDT}, v::judiWeights{avDT}) where {ADDT, ARDT, a
     V = vcat(collect(A.fop[i]*v for i=1:length(A.fop))...)
     jo_check_type_match(ARDT,eltype(V),join(["RDT from *(joLinearFunction,judiWeights):",A.name,typeof(A),eltype(V)]," / "))
     return V
-end
-
-# *(joKron, judiWeights)
-function *(A::joKron{ADDT,ARDT}, v::judiWeights{avDT}) where {ADDT, ARDT, avDT}
-    A.n == size(v,1) || throw(judiWeightsException("shape mismatch"))
-    jo_check_type_match(ADDT,avDT,join(["DDT for *(joLinearFunction,judiWeights):",A.name,typeof(A),avDT]," / "))
-    # Evaluate as mat-mat over the weights
-    n = size(v.weights[1])
-    V = A.fop(hcat([vec(v.weights[i]) for i=1:v.nsrc]...))
-    jo_check_type_match(ARDT,eltype(V),join(["RDT from *(joLinearFunction,judiWeights):",A.name,typeof(A),eltype(V)]," / "))
-    m = length(V)
-    return judiWeights{avDT}("Extended source weights", m, 1, v.nsrc, [reshape(V[:, i], n) for i=1:v.nsrc])
-end
-
-# *(joMatrix, judiWeights)
-function *(A::joMatrix{ADDT,ARDT}, v::judiWeights{avDT}) where {ADDT, ARDT, avDT}
-    A.n == size(v,1) || throw(judiWeightsException("shape mismatch"))
-    jo_check_type_match(ADDT,avDT,join(["DDT for *(joLinearFunction,judiWeights):",A.name,typeof(A),avDT]," / "))
-    # Evaluate as mat-mat over the weights
-    n = size(v.weights[1])
-    V = A.fop(hcat([vec(v.weights[i]) for i=1:v.nsrc]...))
-    jo_check_type_match(ARDT,eltype(V),join(["RDT from *(joLinearFunction,judiWeights):",A.name,typeof(A),eltype(V)]," / "))
-    m = length(V)
-    return judiWeights{avDT}("Extended source weights", m, 1, v.nsrc, [reshape(V[:, i], n) for i=1:v.nsrc])
 end
 
 # vcat
@@ -296,15 +279,6 @@ end
 
 getindex(x::judiWeights, a::Integer) = subsample(x,a)
 
-function reshape(x::judiWeights, dims...)
-    prod((dims)) == prod((x.m, x.n)) || throw(judiWeightsException(join(["DimensionMismatch(\"new dimensions ", string(dims), " must be consistent with array size ", string(prod((x.m, x.n)))])))
-    length(dims) <= 2 || throw(judiWeightsException("Cannot reshape into array with dimensions > 2"))
-    x_out = deepcopy(x)
-    x_out.m = dims[1]
-    x_out.n = dims[2]
-    return x_out
-end
-
 setindex!(x::judiWeights, y, i) = x.weights[i][:] = y
 
 firstindex(x::judiWeights) = 1
@@ -346,7 +320,7 @@ function broadcasted(::typeof(*), x::judiWeights, y::judiWeights)
     size(x) == size(y) || throw(judiWeightsException("dimension mismatch"))
     z = deepcopy(x)
     for j=1:length(x.weights)
-        z.data[j] = x.weights[j] .* y.weights[j]
+        z.weights[j] = x.weights[j] .* y.weights[j]
     end
     return z
 end
@@ -366,7 +340,7 @@ function broadcasted(::typeof(/), x::judiWeights, y::judiWeights)
     size(x) == size(y) || throw(judiWeightsException("dimension mismatch"))
     z = deepcopy(x)
     for j=1:length(x.weights)
-        z.data[j] = x.weights[j] ./ y.weights[j]
+        z.weights[j] = x.weights[j] ./ y.weights[j]
     end
     return z
 end
@@ -386,13 +360,9 @@ function broadcast!(identity, x::judiWeights, y::judiWeights)
     copy!(x,y)
 end
 
-function broadcast!(identity, x::judiWeights, a::Number, y::judiWeights, z::judiWeights)
-    size(x) == size(y) || throw(judiWeightsException("dimension mismatch"))
-    size(x) == size(z) || throw(judiWeightsException("dimension mismatch"))
-    scale!(y,a)
-    copy!(x, y + z)
+function broadcasted(identity, x::judiWeights)
+    return x
 end
-
 
 function copy!(x::judiWeights, y::judiWeights)
     size(x) == size(y) || throw(judiWeightsException("dimension mismatch"))
@@ -405,3 +375,26 @@ function isapprox(x::judiWeights, y::judiWeights; rtol::Real=sqrt(eps()), atol::
     isapprox(x.weights, y.weights; rtol=rtol, atol=atol)
 end
 
+############################################################
+
+function A_mul_B!(x::judiWeights, F::Union{joAbstractLinearOperator, joLinearFunction}, y::judiWeights)
+    F.m == size(y, 1) ? z = adjoint(F)*y : z = F*y
+    for j=1:length(x.weights)
+        x.weights[j] .= z.weights[j]
+    end
+end
+
+function A_mul_B!(x::judiWeights, F::Union{joAbstractLinearOperator, joLinearFunction}, y::Array)
+    F.m == size(y, 1) ? z = adjoint(F)*y : z = F*y
+    for j=1:length(x.weights)
+        x.weights[j] .= z.weights[j]
+    end
+end
+
+function A_mul_B!(x::Array, F::Union{joAbstractLinearOperator, joLinearFunction}, y::judiWeights)
+    F.m == size(y, 1) ? x[:] .= adjoint(F)*y : x[:] .= F*y
+end
+
+mul!(x::judiWeights, F::Union{joAbstractLinearOperator, joLinearFunction}, y::judiWeights) = A_mul_B!(x, F, y)
+mul!(x::judiWeights, F::Union{joAbstractLinearOperator, joLinearFunction}, y::Array) = A_mul_B!(x, F, y)
+mul!(x::Array, F::Union{joAbstractLinearOperator, joLinearFunction}, y::judiWeights) = A_mul_B!(x, F, y)

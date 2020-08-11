@@ -1,6 +1,7 @@
 import numpy as np
 from argparse import ArgumentParser
 from scipy import ndimage
+from devito import inner
 
 from sources import RickerSource, Receiver
 from models import Model
@@ -11,11 +12,14 @@ from propagators import forward, born, gradient
 parser = ArgumentParser(description="Adjoint test args")
 parser.add_argument("--tti", default=False, action='store_true',
                     help="Test acoustic or tti")
+parser.add_argument('-so', dest='space_order', default=8, type=int,
+                    help="Spatial discretization order")
 parser.add_argument('-nlayer', dest='nlayer', default=3, type=int,
                     help="Number of layers in model")
 
 args = parser.parse_args()
 is_tti = args.tti
+so = args.space_order
 
 # Model
 shape = (301, 151)
@@ -39,10 +43,10 @@ dm[:, -1] = 0.
 if is_tti:
     model = Model(shape=shape, origin=origin, spacing=spacing,
                   vp=v0, epsilon=.045*(v0-1.5), delta=.03*(v0-1.5),
-                  rho=rho0, theta=.1*(v0-1.5), dm=dm, space_order=8)
+                  rho=rho0, theta=.1*(v0-1.5), dm=dm, space_order=so)
 else:
     model = Model(shape=shape, origin=origin, spacing=spacing,
-                  vp=v0, rho=rho0, dm=dm)
+                  vp=v0, rho=rho0, dm=dm, space_order=so)
 
 # Time axis
 t0 = 0.
@@ -61,29 +65,32 @@ src.coordinates.data[0, -1] = 20.
 rec_t = Receiver(name='rec_t', grid=model.grid, npoint=301, ntime=nt)
 rec_t.coordinates.data[:, 0] = np.linspace(0., 3000., num=301)
 rec_t.coordinates.data[:, 1] = 20.
+
 # Linearized data
 print("Forward J")
-dD_hat, u0l = born(model, src.coordinates.data, rec_t.coordinates.data,
+dD_hat, u0l, _ = born(model, src.coordinates.data, rec_t.coordinates.data,
+                      src.data, save=True)
+
+# Forward
+print("Forward")
+_, u0, _ = forward(model, src.coordinates.data, rec_t.coordinates.data,
                    src.data, save=True)
 
-# Adjoint
-print("Forward")
-_, u0 = forward(model, src.coordinates.data, rec_t.coordinates.data,
-                src.data, save=True)
-
-# Adjoint
+# gradient
 print("Adjoint J")
-dm_hat = gradient(model, dD_hat, rec_t.coordinates.data, u0l)
+dm_hat, _ = gradient(model, dD_hat, rec_t.coordinates.data, u0)
 
 # Adjoint test
-a = model.critical_dt * np.dot(dD_hat.flatten(), dD_hat.flatten())
-b = np.dot(dm_hat.flatten(), model.dm.data.flatten())
+a = model.critical_dt * inner(dD_hat, dD_hat)
+b = inner(dm_hat, model.dm)
+
 if is_tti:
-    c = np.linalg.norm(u0[0].data.flatten() - u0l[0].data.flatten())
+    c = np.linalg.norm(u0[0].data.flatten() - u0l[0].data.flatten(), np.inf)
 else:
-    c = np.linalg.norm(u0.data.flatten() - u0l.data.flatten())
+    c = np.linalg.norm(u0.data.flatten() - u0l.data.flatten(), np.inf)
+
 print("Difference between saving with forward and born", c)
 
 print("Adjoint test J")
-print("Difference: ", a - b)
+print("a = %2.2e, b = %2.2e, diff = %2.2e: " % (a, b, a - b))
 print("Relative error: ", a/b - 1)
