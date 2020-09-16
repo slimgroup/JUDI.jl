@@ -143,7 +143,7 @@ class GenericModel(object):
         """
         if field is None:
             return func(default_value)
-        if isinstance(field, np.ndarray):
+        if isinstance(field, np.ndarray) and (np.min(field) != np.max(field)):
             function = Function(name=name, grid=self.grid, space_order=space_order,
                                 parameter=is_param)
             if field.shape == self.shape:
@@ -151,7 +151,7 @@ class GenericModel(object):
             else:
                 function._data_with_outhalo[:] = func(field)
         else:
-            return func(field)
+            return func(np.min(field))
         self._physical_parameters.append(name)
         return function
 

@@ -30,7 +30,7 @@ dt = srcGeometry.dt[1]
 	h_all = zeros(maxiter, 2)
 
 	# Observed data
-	opt = Options(sum_padding=false, free_surface=parsed_args["fs"])
+	opt = Options(sum_padding=true, free_surface=parsed_args["fs"])
 	F = judiModeling(info, model, srcGeometry, recGeometry; options=opt)
 	d = F*q
 
@@ -40,7 +40,7 @@ dt = srcGeometry.dt[1]
 
 	dJ = dot(grad, vec(dm))
 	dJ1 = dot(grad1, vec(dm))
-	dm_pert = randn(size(dm)) .* dm
+	dm_pert = .5f0 .* dm
 
 	for j=1:maxiter
 		# FWI gradient and function falue for m0 + h*dm
@@ -84,4 +84,11 @@ dt = srcGeometry.dt[1]
 		title("FWI gradient test")
 		
 	end
+
+	# test that with zero dm we get the same as fwi_objective for residual
+	ENV["OMP_NUM_THREADS"]=1
+	Jls, gradls = lsrtm_objective(model0, q, d, 0f0.*dm; options=opt, nlind=true)
+	Jfwi, gradfwi = fwi_objective(model0, q, d; options=opt)
+	@test isapprox(Jls, Jfwi;rtol=0, atol=0)
+	@test isapprox(gradls, gradfwi;rtol=0, atol=0)
 end

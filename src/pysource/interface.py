@@ -420,9 +420,8 @@ def grad_fwi(model, recin, rec_coords, u, space_order=8):
 
 
 def J_adjoint(model, src_coords, wavelet, rec_coords, recin, space_order=8,
-              checkpointing=False, n_checkpoints=None,
-              maxmem=None, freq_list=[], dft_sub=None, isic=False, ws=None,
-              t_sub=1):
+              checkpointing=False, n_checkpoints=None, t_sub=1,
+              maxmem=None, freq_list=[], dft_sub=None, isic=False, ws=None):
     """
     Jacobian (adjoint fo born modeling operator) operator on a shot record
     as a source (i.e data residual). Supports three modes:
@@ -514,6 +513,11 @@ def J_adjoint_freq(model, src_coords, wavelet, rec_coords, recin, space_order=8,
         Extended source spatial distribution
     is_residual: Bool
         Whether to treat the input as the residual or as the observed data
+    born_fwd: Bool
+        Whether to use the forward or linearized forward modeling operator
+    nlind: Bool
+        Whether to remove the non linear data from the input data. This option is
+        only available in combination with `born_fwd`
 
     Returns
     ----------
@@ -565,6 +569,11 @@ def J_adjoint_standard(model, src_coords, wavelet, rec_coords, recin, space_orde
         Extended source spatial distribution
     is_residual: Bool
         Whether to treat the input as the residual or as the observed data
+    born_fwd: Bool
+        Whether to use the forward or linearized forward modeling operator
+    nlind: Bool
+        Whether to remove the non linear data from the input data. This option is
+        only available in combination with `born_fwd`
 
     Returns
     ----------
@@ -621,6 +630,11 @@ def J_adjoint_checkpointing(model, src_coords, wavelet, rec_coords, recin, space
         Extended source spatial distribution
     is_residual: Bool
         Whether to treat the input as the residual or as the observed data
+    born_fwd: Bool
+        Whether to use the forward or linearized forward modeling operator
+    nlind: Bool
+        Whether to remove the non linear data from the input data. This option is
+        only available in combination with `born_fwd`
 
     Returns
     ----------

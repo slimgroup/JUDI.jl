@@ -29,8 +29,8 @@ devito = ["test_linearity.jl",
           "test_jacobian_extended.jl",
           "test_adjoint.jl",
           "test_gradient_fwi.jl",
-          "test_gradient_lsrtm.jl",
-          "test_all_options.jl"]
+          "test_all_options.jl",
+          "test_gradient_lsrtm.jl"]
 
 extras = ["test_basics.jl", "test_linear_algebra.jl"]
 

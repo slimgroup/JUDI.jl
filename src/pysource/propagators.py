@@ -105,8 +105,7 @@ def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8,
              w=None, freq=None, dft_sub=None, isic=False):
     """
     Low level propagator, to be used through `interface.py`
-    Compute adjoint wavefield v = adjoint(F(m))*y
-    and related quantities (||v||_w, v(xsrc))
+    Compute the action of the adjoint Jacobian onto a residual J'* δ d.
     """
     # Setting adjoint wavefieldgradient
     v = wavefield(model, space_order, fw=False)
@@ -141,8 +140,8 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
          ws=None, t_sub=1, nlind=False):
     """
     Low level propagator, to be used through `interface.py`
-    Compute adjoint wavefield v = adjoint(F(m))*y
-    and related quantities (||v||_w, v(xsrc))
+    Compute linearized wavefield U = J(m)* δ m
+    and related quantities.
     """
     nt = wavelet.shape[0]
     # Setting wavefield
@@ -159,6 +158,9 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     # Set up PDE expression and rearrange
     pde, tmpu = wave_kernel(model, u, q=q)
     pdel, tmpul = wave_kernel(model, ul, q=lin_src(model, u, isic=isic))
+    if model.dm == 0:
+        print("hello")
+        pdel, tmpul = [], []
 
     # Setup source and receiver
     geom_expr, _, rcvnl = src_rec(model, u, rec_coords=rcv_coords if nlind else None,
@@ -177,6 +179,7 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     outrec = (rcvl, rcvnl) if nlind else rcvl
     if return_op:
         return op, u, outrec
+
     summary = op()
 
     # Output
