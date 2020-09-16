@@ -17,8 +17,8 @@ dm = vec(m - m0)
 
 # Setup info and model structure
 nsrc = 1	# number of sources
-model = Model(n, d, o, m)
-model0 = Model(n, d, o, m0)
+model = Model(n, d, o, m, rho)
+model0 = Model(n, d, o, m0, rho)
 
 ## Set up receiver geometry
 nxrec = 120
@@ -56,10 +56,13 @@ info = Info(prod(n), nsrc, ntComp)
 
 ###################################################################################################
 
+opt = Options(isic=true)
 # Setup operators
 Pr = judiProjection(info, recGeometry)
 F = judiModeling(info, model)
+F0 = judiModeling(info, model0; options=opt)
 Ps = judiProjection(info, srcGeometry)
+J = judiJacobian(Pr*F0*adjoint(Ps), q)
 
 # Nonlinear modeling
 dobs = Pr*F*adjoint(Ps)*q
@@ -79,3 +82,5 @@ title("Point source")
 subplot(122)
 imshow(dobs2.data[1], vmin=-a, vmax=a, cmap="seismic", aspect=.25)
 title("Transducer source")
+
+dm = J'*dobs2

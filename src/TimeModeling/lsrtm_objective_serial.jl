@@ -1,9 +1,7 @@
 
-export fwi_objective
+export lsrtm_objective
 
-function fwi_objective(model_full::Modelall, source::judiVector, dObs::judiVector, srcnum::Integer; options=Options(), frequencies=[])
-# Setup time-domain linear or nonlinear foward and adjoint modeling and interface to OPESCI/devito
-
+function lsrtm_objective(model_full::Modelall, source::judiVector, dObs::judiVector, srcnum::Integer, dm; options=Options(), frequencies=[], nlind=false)
     # Load full geometry for out-of-core geometry containers
     typeof(dObs.geometry) == GeometryOOC && (dObs.geometry = Geometry(dObs.geometry))
     typeof(source.geometry) == GeometryOOC && (source.geometry = Geometry(source.geometry))
@@ -24,6 +22,7 @@ function fwi_objective(model_full::Modelall, source::judiVector, dObs::judiVecto
     # Set up Python model structure (force origin to be zero due to current devito bug)
     # Set up Python model structure
     modelPy = devito_model(model, options)
+    update_dm(modelPy, reshape(dm, model.n), options)
     dtComp = modelPy.critical_dt
 
     # Extrapolate input data to computational grid
@@ -43,26 +42,27 @@ function fwi_objective(model_full::Modelall, source::judiVector, dObs::judiVecto
 
     ac = load_devito_jit()
 
-
     if options.optimal_checkpointing == true
         argout1, argout2 = pycall(ac."J_adjoint_checkpointing", PyObject, modelPy, src_coords, qIn,
                                   rec_coords, dObserved, is_residual=false, return_obj=true,
-                                  t_sub=options.subsampling_factor, space_order=options.space_order)
+                                  t_sub=options.subsampling_factor, space_order=options.space_order,
+                                  born_fwd=true, nlind=nlind)
     elseif ~isempty(options.frequencies)
         typeof(options.frequencies) == Array{Any,1} && (options.frequencies = options.frequencies[srcnum])
         argout1, argout2 = pycall(ac."J_adjoint_freq", PyObject, modelPy, src_coords, qIn,
                                   rec_coords, dObserved, is_residual=false, return_obj=true,
                                   freq_list=options.frequencies[1], t_sub=options.subsampling_factor,
-                                  space_order=options.space_order)
+                                  space_order=options.space_order, born_fwd=true, nlind=nlind)
     else
         argout1, argout2 = pycall(ac."J_adjoint_standard", PyObject, modelPy, src_coords, qIn,
                                   rec_coords, dObserved, is_residual=false, return_obj=true,
                                   t_sub=options.subsampling_factor, space_order=options.space_order,
-                                  isic=options.isic)
+                                  isic=options.isic, born_fwd=true, nlind=nlind)
     end
     argout2 = remove_padding(argout2, modelPy.padsizes; true_adjoint=options.sum_padding)
     if options.limit_m==true
         argout2 = extend_gradient(model_full, model, argout2)
     end
+
     return [argout1; vec(argout2)]
 end

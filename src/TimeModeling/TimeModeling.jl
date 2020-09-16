@@ -47,6 +47,8 @@ include("extended_source_interface_serial.jl")  # forward/adjoint linear/nonline
 include("extended_source_interface_parallel.jl")    # parallelization for modeling w/ extended source
 include("fwi_objective_serial.jl")  # FWI objective function value and gradient
 include("fwi_objective_parallel.jl")    # parallelization for FWI gradient
+include("lsrtm_objective_serial.jl")  # LSRTM objective function value and gradient
+include("lsrtm_objective_parallel.jl")    # parallelization for LSRTM gradient
 
 #############################################################################
 # Linear operators

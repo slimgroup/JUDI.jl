@@ -79,7 +79,7 @@ function  minConf_PQN(funObj,x,funProj,options)
 
     # Output Log
     if options.verbose >= 2
-            @printf("%10s %10s %10s %15s %15s %15s\n","Iteration","FunEvals","Projections","Step Length","Function Val","Opt Cond")
+        @printf("%10s %10s %10s %15s %15s %15s\n","Iteration","FunEvals","Projections","Step Length","Function Val","Opt Cond")
     end
 
     # Make objective function (if using numerical derivatives)

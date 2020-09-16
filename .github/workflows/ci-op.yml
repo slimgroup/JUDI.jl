@@ -36,10 +36,6 @@ jobs:
             op: "ISO_OP"
 
           - os: ubuntu-latest
-            version: 'nightly'
-            op: "ISO_OP"
-
-          - os: ubuntu-latest
             version: '1.1'
             op: "ISO_OP_FS"
 
