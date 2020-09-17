@@ -75,7 +75,7 @@ J = judiJacobian(Pr*F0*adjoint(Ps), q)
 
 # Nonlinear modeling
 dobs = Pr*F*adjoint(Ps)*q
-# Adjoint
+# # Adjoint
 qad = Ps*adjoint(F)*adjoint(Pr)*dobs
 
 # Linearized modeling
@@ -87,7 +87,7 @@ rtm = adjoint(J)*dD
 f, g = fwi_objective(model0, q, dobs; options=opt)
 
 # evaluate LSRTM objective function
-fj, gj = lsrtm_objective(model0, q, dobs, dm; options=opt)
+fj, gj = lsrtm_objective(model0, q, dD, dm; options=opt)
 fjn, gjn = lsrtm_objective(model0, q, dobs, dm; nlind=true, options=opt)
 
 # By extension, lsrtm_objective is the same as fwi_objecive when `dm` is zero

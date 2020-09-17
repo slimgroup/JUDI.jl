@@ -64,7 +64,7 @@ def initialize_damp(damp, padsizes, spacing, fs=False):
     """
     lqmin = np.log(.1)
     lqmax = np.log(100)
-    w0 = 1/(10 * np.mean(spacing))
+    w0 = 1/(10 * np.max(spacing))
 
     z = damp.dimensions[-1]
     eqs = [Eq(damp, 1)]

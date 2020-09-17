@@ -33,12 +33,15 @@ function lsrtm_objective(model::Modelall, source::judiVector, dObs::judiVector, 
     end
 
     # Collect and reduce gradients
-    gradient = zeros(Float32, prod(model.n) + 1)
+    gradient = zeros(Float32, prod(model.n))
+    objective = 0f0
 
     for j=1:dObs.nsrc
-        gradient += results[j]; results[j] = []
+        gradient .+= results[j][2]
+        objective += results[j][1]
+        results[j] = []
     end
 
     # first value corresponds to function value, the rest to the gradient
-    return gradient[1], gradient[2:end]
+    return objective, gradient
 end

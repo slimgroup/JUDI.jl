@@ -12,9 +12,9 @@ parsed_args = parse_commandline()
 
 # Set parallel if specified
 nw = parsed_args["parallel"]
-#if nw > 1 && nworkers() < nw
-#    addprocs(nw-nworkers() + 1; exeflags=`--check-bounds=yes`)
-#end
+if nw > 1 && nworkers() < nw
+   addprocs(nw-nworkers() + 1; exeflags=["--code-coverage=user", "--inline=no", "--check-bounds=yes"])
+end
 
 @everywhere using JOLI
 @everywhere using JUDI.TimeModeling, LinearAlgebra, Test, Distributed, Printf
@@ -68,7 +68,7 @@ cases = [(true, true), (true, false), (false, true), (false, false)]
 	dfull = Ffull*q
 	@test isapprox(to_data(d1), dfull, rtol=ftol)
 
-	qad = Ps*adjoint(F)*adjoint(Pr)*d1
+	qad = (Ps*adjoint(F))*adjoint(Pr)*d1
 	qfull = adjoint(Ffull)*d1
 	@test isapprox(qad, qfull, rtol=ftol)
 
@@ -104,17 +104,26 @@ end
 @testset "Basic judiWavefield modeling tests" begin
 	opt = Options(dt_comp=dt)
 	F = judiModeling(info, model; options=opt)
+	Fa = judiModelingAdjoint(info, model; options=opt)
 	Ps = judiProjection(info, srcGeometry)
 	Pr = judiProjection(info, recGeometry)
 
 	# Return wavefields
-	u = F*adjoint(Ps)*q
-	dobs = Pr*F*adjoint(Ps)*q
-	v = adjoint(F)*(adjoint(Pr)*dobs)
+	u = F * adjoint(Ps) * q
+
+	# Adjoint from data
+	dobs = Pr*F*u
+	v = Fa*(adjoint(Pr)*dobs)
+
+	a = dot(v, u)
+	b = dot(dobs, dobs)
+	@printf(" <F x, y> : %2.5e, <x, F' y> : %2.5e, relative error : %2.5e \n", a, b, a/b - 1)
+	@test isapprox(a, b, rtol=1f-4)
+
 
 	# Wavefields as source + return wavefields
 	u2 = F*u
-	v2 = adjoint(F)*v
+	v2 = Fa*v
 
 	a = dot(u2, v)
 	b = dot(v2, u)

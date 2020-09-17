@@ -7,7 +7,7 @@
 
 export ricker_wavelet, get_computational_nt, calculate_dt, setup_grid, setup_3D_grid
 export convertToCell, limit_model_to_receiver_area, extend_gradient, remove_out_of_bounds_receivers
-export time_resample, remove_padding, subsample
+export time_resample, remove_padding, subsample, process_input_data
 export generate_distribution, select_frequencies
 export load_pymodel, load_devito_jit, load_numpy, devito_model
 export update_dm, pad_sizes, pad_array
@@ -196,7 +196,7 @@ end
 function extend_gradient(model_full::Modelall,model::Modelall,gradient::Array)
     # Extend gradient back to full model size
     ndim = length(model.n)
-    full_gradient = zeros(Float32,model_full.n)
+    full_gradient = zeros(Float32, model_full.n)
     nx_start = trunc(Int, Float32(Float32(model.o[1] - model_full.o[1])/model.d[1]) + 1)
     nx_end = nx_start + model.n[1] - 1
     if ndim == 2
@@ -373,7 +373,7 @@ function setup_3D_grid(xrec::Array{Any,1},yrec::Array{Any,1},zrec::Array{Any,1})
     # Take input 1d x and y coordinate vectors and generate 3d grid. Input are cell arrays
     nsrc = length(xrec)
     xloc = Array{Any}(undef, nsrc)
-    yloc = Array{Any}(unfef, nsrc)
+    yloc = Array{Any}(undef, nsrc)
     zloc = Array{Any}(undef, nsrc)
     for i=1:nsrc
         nxrec = length(xrec[i])

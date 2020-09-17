@@ -159,7 +159,6 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     pde, tmpu = wave_kernel(model, u, q=q)
     pdel, tmpul = wave_kernel(model, ul, q=lin_src(model, u, isic=isic))
     if model.dm == 0:
-        print("hello")
         pdel, tmpul = [], []
 
     # Setup source and receiver

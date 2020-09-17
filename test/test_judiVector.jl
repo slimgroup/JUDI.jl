@@ -27,10 +27,12 @@ ftol = 1e-6
 @testset "judiVector Unit Tests with $(nsrc) sources" for nsrc=[1, 2]
 
     # set up judiVector fr,om array
+    info = example_info(nsrc=nsrc)
     dsize = (nsrc*nrec*ns, 1)
     rec_geometry = example_rec_geometry(nsrc=nsrc, nrec=nrec)
     data = randn(Float32, ns, nrec)
     d_obs = judiVector(rec_geometry, data)
+    @test isequal(process_input_data(d_obs, rec_geometry, info), d_obs.data)
 
     @test isequal(d_obs.nsrc, nsrc)
     @test isequal(typeof(d_obs.data), Array{Array, 1})

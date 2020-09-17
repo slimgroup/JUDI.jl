@@ -73,7 +73,33 @@ function test_limit_m(ndim, tti)
 
 end
 
+function setup_3d()
+    xrec = Array{Any}(undef, 2)
+    yrec = Array{Any}(undef, 2)
+    zrec = Array{Any}(undef, 2)
+    for i=1:2
+        xrec[i] = i .+ collect(0:10)
+        yrec[i] = i .+ collect(0:10)
+        zrec[i] = i
+    end
+    x3d, y3d, z3d = setup_3D_grid(xrec[1],yrec[1],zrec[1])
+    for k=1:11
+        @test all(y3d[(11*(k-1))+1:(11*(k-1))+11] .== k)
+        @test all(x3d[k:11:end] .== k)
+    end
+    @test all(z3d[:] .== 1)
+    x3d, y3d, z3d = setup_3D_grid(xrec,yrec,zrec)
+    for i=1:2
+        for k=1:11
+            @test all(y3d[i][(11*(k-1))+1:(11*(k-1))+11] .== k + i -1)
+            @test all(x3d[i][k:11:end] .== k + i - 1)
+        end
+        @test all(z3d[i][:] .== i)
+    end
+end
+
 @testset "Test basic utilities" begin
+    setup_3d()
     for ndim=[2, 3]
         test_padding(ndim)
     end

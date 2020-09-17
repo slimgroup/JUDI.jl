@@ -242,36 +242,6 @@ end
 ############################################################
 ## overloaded Basees +(...judiPDE...), -(...judiPDE...)
 
-# +(judiPDE,num)
-function +(A::judiPDE{ADDT,ARDT},b::Number) where {ADDT,ARDT}
-    return judiPDE{ADDT,ARDT}("("*A.name*"+N)",A.m,A.n,A.info,A.model,A.geometry,A.options,
-        v1 -> A.fop(v1)+joConstants(A.m,A.n,b;DDT=ADDT,RDT=ARDT)*v1,
-        v2 -> A.fop_T(v2)+joConstants(A.m,A.n,b;DDT=ADDT,RDT=ARDT)*v2
-        )
-end
-
-function +(A::judiPDEadjoint{ADDT,ARDT},b::Number) where {ADDT,ARDT}
-    return judiPDEadjoint{ADDT,ARDT}("("*A.name*"+N)",A.m,A.n,A.info,A.model,A.geometry,A.options,
-        v1->A.fop(v1)+joConstants(A.m,A.n,b;DDT=ADDT,RDT=ARDT)*v1,
-        v2->A.fop_T(v2)+joConstants(A.m,A.n,b;DDT=ADDT,RDT=ARDT)*v2
-        )
-end
-
-# -(judiPDE,num)
-function -(A::judiPDE{ADDT,ARDT},b::Number) where {ADDT,ARDT}
-    return judiPDE{ADDT,ARDT}("("*A.name*"-N)",A.m,A.n,A.info,A.model,A.geometry,A.options,
-        v1 -> A.fop(v1)-joConstants(A.m,A.n,b;DDT=ADDT,RDT=ARDT)*v1,
-        v2 -> A.fop_T(v2)-joConstants(A.m,A.n,b;DDT=ADDT,RDT=ARDT)*v2
-        )
-end
-
-function -(A::judiPDEadjoint{ADDT,ARDT},b::Number) where {ADDT,ARDT}
-    return judiPDEadjoint{ADDT,ARDT}("("*A.name*"-N)",A.m,A.n,A.info,A.model,A.geometry,A.options,
-        v1->A.fop(v1)-joConstants(A.m,A.n,b;DDT=ADDT,RDT=ARDT)*v1,
-        v2->A.fop_T(v2)-joConstants(A.m,A.n,b;DDT=ADDT,RDT=ARDT)*v2
-        )
-end
-
 # -(judiPDE)
 -(A::judiPDE{DDT,RDT}) where {DDT,RDT} =
     judiPDE{DDT,RDT}("(-"*A.name*")",A.m,A.n,A.info,A.model,A.geometry,A.options,

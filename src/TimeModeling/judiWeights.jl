@@ -172,14 +172,14 @@ function *(A::joLinearFunction{ADDT,ARDT},v::judiWeights{avDT}) where {ADDT, ARD
     jo_check_type_match(ADDT,avDT,join(["DDT for *(joLinearFunction,judiWeights):",A.name,typeof(A),avDT]," / "))
     # Evaluate as mat-mat over the weights
     n = size(v.weights[1])
-    V = A.fop(hcat([vec(v.weights[i]) for i=1:v.nsrc]...))
+    V = A.fop(vcat([vec(v.weights[i]) for i=1:v.nsrc]...))
     jo_check_type_match(ARDT,eltype(V),join(["RDT from *(joLinearFunction,judiWeights):",A.name,typeof(A),eltype(V)]," / "))
     m = length(V)
     return judiWeights{avDT}("Extended source weights", m, 1, v.nsrc, [reshape(V[:, i], n) for i=1:length(v.weights)])
 end
 
 # *(joLinearOperator, judiWeights)
-function *(A::joLinearOperator{ADDT,ARDT}, v::judiWeights{avDT}) where {ADDT, ARDT, avDT}
+function *(A::joAbstractLinearOperator{ADDT,ARDT}, v::judiWeights{avDT}) where {ADDT, ARDT, avDT}
     A.n == size(v,1) || throw(judiWeightsException("shape mismatch"))
     jo_check_type_match(ADDT,avDT,join(["DDT for *(joLinearFunction,judiWeights):",A.name,typeof(A),avDT]," / "))
     # Evaluate as mat-mat over the weights
@@ -190,10 +190,9 @@ function *(A::joLinearOperator{ADDT,ARDT}, v::judiWeights{avDT}) where {ADDT, AR
         jo_check_type_match(ARDT,eltype(V),join(["RDT from *(joLinearFunction,judiWeights):",A.name,typeof(A),eltype(V)]," / "))
         return V
     catch e
-        V = A.fop(hcat([vec(v.weights[i]) for i=1:v.nsrc]...))
+        V = A.fop(vcat([vec(v.weights[i]) for i=1:v.nsrc]...))
         jo_check_type_match(ARDT,eltype(V),join(["RDT from *(joLinearFunction,judiWeights):",A.name,typeof(A),eltype(V)]," / "))
-        m = length(V)
-        return judiWeights{avDT}("Extended source weights", m, 1, v.nsrc, [reshape(V[:, i], n) for i=1:v.nsrc])
+        return V
     end
 end
 

@@ -34,6 +34,8 @@ ftol = 1f-6
     c2 = [w0; d_obs]
     c2_b = deepcopy(c2)
 
+    @test firstindex(c1) == 1
+    @test lastindex(c1) == 2
     @test isapprox(length(c1), length(d_obs) + length(w0))
     @test eltype(c1) == Float32
     @test isfinite(c1)
@@ -99,6 +101,9 @@ ftol = 1f-6
     @test isapprox(norm(u_scale, 2), sqrt(dot(u_scale, u_scale)); rtol=1f-6)
     @test isapprox(norm(u_scale, 1), norm(d_obs, 1) + norm(w0, 1))
     @test isapprox(norm(u_scale, Inf), max(norm(d_obs, Inf), norm(w0, Inf)))
+    @test isapprox(norm(u_scale - 1f0, 1), norm(u_scale .- 1f0, 1))
+    @test isapprox(norm(1f0 - u_scale, 1), norm(1f0 .- u_scale, 1))
+    @test isapprox(norm(u_scale/2f0, 1), norm(u_scale, 1)/2f0)
 # Test broadcasting
     u_scale = deepcopy(u)
     v_scale = deepcopy(v)

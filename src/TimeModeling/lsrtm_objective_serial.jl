@@ -46,13 +46,13 @@ function lsrtm_objective(model_full::Modelall, source::judiVector, dObs::judiVec
         argout1, argout2 = pycall(ac."J_adjoint_checkpointing", PyObject, modelPy, src_coords, qIn,
                                   rec_coords, dObserved, is_residual=false, return_obj=true,
                                   t_sub=options.subsampling_factor, space_order=options.space_order,
-                                  born_fwd=true, nlind=nlind)
+                                  born_fwd=true, nlind=nlind, isic=options.isic)
     elseif ~isempty(options.frequencies)
         typeof(options.frequencies) == Array{Any,1} && (options.frequencies = options.frequencies[srcnum])
         argout1, argout2 = pycall(ac."J_adjoint_freq", PyObject, modelPy, src_coords, qIn,
-                                  rec_coords, dObserved, is_residual=false, return_obj=true,
+                                  rec_coords, dObserved, is_residual=false, return_obj=true, nlind=nlind,
                                   freq_list=options.frequencies[1], t_sub=options.subsampling_factor,
-                                  space_order=options.space_order, born_fwd=true, nlind=nlind)
+                                  space_order=options.space_order, born_fwd=true, isic=options.isic)
     else
         argout1, argout2 = pycall(ac."J_adjoint_standard", PyObject, modelPy, src_coords, qIn,
                                   rec_coords, dObserved, is_residual=false, return_obj=true,
@@ -64,5 +64,5 @@ function lsrtm_objective(model_full::Modelall, source::judiVector, dObs::judiVec
         argout2 = extend_gradient(model_full, model, argout2)
     end
 
-    return [argout1; vec(argout2)]
+    return argout1, vec(argout2)
 end

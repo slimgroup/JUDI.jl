@@ -32,7 +32,7 @@ devito = ["test_linearity.jl",
           "test_all_options.jl",
           "test_gradient_lsrtm.jl"]
 
-extras = ["test_basics.jl", "test_linear_algebra.jl"]
+extras = ["test_modeling.jl", "test_basics.jl", "test_linear_algebra.jl"]
 
 # Basic JUDI objects tests, no Devito
 if GROUP == "JUDI" || GROUP == "All"

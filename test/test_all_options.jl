@@ -6,7 +6,7 @@ using PyCall, PyPlot, JUDI.TimeModeling, Images, LinearAlgebra, Test, ArgParse, 
 parsed_args = parse_commandline()
 
 nlayer = parsed_args["nlayer"]
-tti = parsed_args["fs"]
+tti = parsed_args["tti"]
 fs =  parsed_args["fs"]
 
 ### Model

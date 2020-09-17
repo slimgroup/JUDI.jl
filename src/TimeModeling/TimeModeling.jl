@@ -20,7 +20,6 @@ import LinearAlgebra.rmul!, LinearAlgebra.mul!, Base.isfinite
 
 import IterativeSolvers.zerox
 
-
 #############################################################################
 # Containers
 include("ModelStructure.jl")    # model container
