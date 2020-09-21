@@ -17,7 +17,7 @@ struct judiPDEfull{DDT<:Number,RDT<:Number} <: joAbstractLinearOperator{DDT,RDT}
     m::Integer
     n::Integer
     info::Info
-    model::Modelall
+    model::Model
     srcGeometry::Geometry
     recGeometry::Geometry
     options::Options
@@ -33,7 +33,7 @@ end
 ############################################################
 ## Constructor
 
-function judiModeling(info::Info,model::Modelall, srcGeometry::Geometry, recGeometry::Geometry; options=Options(), DDT::DataType=Float32, RDT::DataType=DDT)
+function judiModeling(info::Info,model::Model, srcGeometry::Geometry, recGeometry::Geometry; options=Options(), DDT::DataType=Float32, RDT::DataType=DDT)
 # JOLI wrapper for nonlinear forward modeling
     (DDT == Float32 && RDT == Float32) || throw(judiPDEfullException("Domain and range types not supported"))
 
@@ -59,8 +59,10 @@ function judiModeling(info::Info,model::Modelall, srcGeometry::Geometry, recGeom
     end
 
     return F = judiPDEfull{Float32,Float32}("Proj*F*Proj'", m, n, info, model, srcGeometry, recGeometry, options,
-                              src -> time_modeling(model, srcGeometry, process_input_data(src, srcGeometry, info), recGeometry, nothing, nothing, srcnum, 'F', 1, options),
-                              rec -> time_modeling(model, srcGeometry, nothing, recGeometry, process_input_data(rec, recGeometry, info), nothing, srcnum, 'F', -1, options),
+                              src -> time_modeling(model, srcGeometry, process_input_data(src, srcGeometry, info),
+                                                   recGeometry, nothing, nothing, srcnum, 'F', 1, options),
+                              rec -> time_modeling(model, srcGeometry, nothing, recGeometry,
+                                                   process_input_data(rec, recGeometry, info), nothing, srcnum, 'F', -1, options),
                               )
 end
 
@@ -102,7 +104,7 @@ function *(A::judiPDEfull{ADDT,ARDT},v::AbstractVector{vDT}) where {ADDT,ARDT,vD
 end
 
 # *(judiPDEfull,judiVector)
-function *(A::judiPDEfull{ADDT,ARDT},v::judiVector{vDT}) where {ADDT,ARDT,vDT}
+function *(A::judiPDEfull{ADDT,ARDT}, v::judiVector{vDT}) where {ADDT,ARDT,vDT}
     A.n == size(v,1) || throw(judiPDEfullException("shape mismatch"))
     if compareGeometry(A.srcGeometry,v.geometry) == false && compareGeometry(A.recGeometry,v.geometry) == false
         throw(judiPDEfullException("geometry mismatch"))

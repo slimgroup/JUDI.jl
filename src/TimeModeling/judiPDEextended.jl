@@ -17,7 +17,7 @@ struct judiPDEextended{DDT<:Number,RDT<:Number} <: joAbstractLinearOperator{DDT,
     m::Integer
     n::Integer
     info::Info
-    model::Modelall
+    model::Model
     wavelet::Array
     recGeometry::Geometry
     options::Options
@@ -33,7 +33,7 @@ end
 ############################################################
 ## Constructor
 
-function judiPDEextended(info::Info,model::Modelall, wavelet::Array, recGeometry::Geometry; options=Options(), DDT::DataType=Float32, RDT::DataType=DDT)
+function judiPDEextended(info::Info,model::Model, wavelet::Array, recGeometry::Geometry; options=Options(), DDT::DataType=Float32, RDT::DataType=DDT)
 # JOLI wrapper for nonlinear forward modeling
     (DDT == Float32 && RDT == Float32) || throw(judiPDEextendedException("Domain and range types not supported"))
 
@@ -54,8 +54,10 @@ function judiPDEextended(info::Info,model::Modelall, wavelet::Array, recGeometry
     end
 
     return F = judiPDEextended{Float32,Float32}("Proj*F*Proj'", m, n, info, model, wavelet, recGeometry, options,
-        w -> extended_source_modeling(model, wavelet, recGeometry, nothing, process_input_data(w, model,info), nothing, srcnum, 'F', 1, options),
-        rec -> extended_source_modeling(model, wavelet, recGeometry, process_input_data(rec,recGeometry,info), nothing, nothing, srcnum, 'F', -1, options),
+        w -> extended_source_modeling(model, wavelet, recGeometry, nothing, process_input_data(w, model,info),
+                                      nothing, srcnum, 'F', 1, options),
+        rec -> extended_source_modeling(model, wavelet, recGeometry, process_input_data(rec,recGeometry,info),
+                                        nothing, nothing, srcnum, 'F', -1, options),
         )
 end
 

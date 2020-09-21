@@ -2,7 +2,7 @@
 # Date: May 2020
 #
 
-using JUDI.TimeModeling, PyCall, LinearAlgebra, PyPlot, Test
+using JUDI.TimeModeling, PyCall, LinearAlgebra, Test
 
 ftol = 1f-6
 
@@ -18,14 +18,15 @@ function test_model(ndim; tti=false)
         @test model.d == model2.d
         @test model.o == model2.o
         @test model.m == model2.m
-        @test model.rho == 1
-        @test model2.rho == 1
+        @test [keys(model.params)...] == [:m]
+        @test [keys(model2.params)...] == [:m]
     else
         epsilon = .1f0 * m
         delta = .1f0 * m
         theta = .1f0 * m
         phi = .1f0 * m
         model = Model(n, d, o, m; nb=10, epsilon=epsilon, delta=delta, theta=theta, phi=phi)
+        @test all(k in keys(model.params) for k in [:m, :epsilon, :delta, :theta, :phi])
     end
     return model
 end
@@ -36,12 +37,12 @@ function test_padding(ndim)
     model = test_model(ndim; tti=false)
     modelPy = devito_model(model, Options())
 
-    v0 = sqrt.(1f0 ./model.m)
-    cut = remove_padding(deepcopy(modelPy.vp.data), modelPy.padsizes; true_adjoint=true)
-    vpdata = deepcopy(modelPy.vp.data)
+    m0 = model.m
+    mcut = remove_padding(deepcopy(modelPy.m.data), modelPy.padsizes; true_adjoint=true)
+    mdata = deepcopy(modelPy.m.data)
 
-    @show dot(v0, cut)/dot(vpdata, vpdata)
-    @test isapprox(dot(v0, cut), dot(vpdata, vpdata))
+    @show dot(m0, mcut)/dot(mdata, mdata)
+    @test isapprox(dot(m0, mcut), dot(mdata, mdata))
 end
 
 function test_limit_m(ndim, tti)
@@ -134,7 +135,7 @@ end
             nt1 = get_computational_nt(srcGeometry, recGeometry, model)
             nt2 = get_computational_nt(srcGeometry, model)
             nt3 = get_computational_nt(srcGeometry, recGeometry, model; dt=1f0)
-            nt4 = get_computational_nt(srcGeometry, model::Modelall; dt=1f0)
+            nt4 = get_computational_nt(srcGeometry, model; dt=1f0)
             @test all(nt1 .== (trunc(Int64, 1000f0 / calculate_dt(model)) + 1))
             @test all(nt1 .== nt2)
             @test all(nt3 .== 1001)

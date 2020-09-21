@@ -33,7 +33,6 @@ function setup_model(tti=false, nlayer=2; n=(301, 151), d=(10., 10.))
     # Slowness squared [s^2/km^2]
     m = (1f0 ./ v).^2
     m0 = (1f0 ./ v0).^2
-    dm = vec(m - m0)
 
     # Setup model structure
     if tti
@@ -47,7 +46,7 @@ function setup_model(tti=false, nlayer=2; n=(301, 151), d=(10., 10.))
         model = Model(n,d,o,m,rho=rho0)
         model0 = Model(n,d,o,m0,rho=rho0)
     end
-
+    dm = model.m - model0.m
     return model, model0, dm
 end
 

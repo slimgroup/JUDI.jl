@@ -16,7 +16,7 @@ Example
     function_value, gradient = lsrtm_objective(model, source, dobs, dm)
 
 """
-function lsrtm_objective(model::Modelall, source::judiVector, dObs::judiVector, dm; options=Options(), nlind=false)
+function lsrtm_objective(model::Model, source::judiVector, dObs::judiVector, dm; options=Options(), nlind=false)
 # lsrtm_objective function for multiple sources. The function distributes the sources and the input data amongst the available workers.
 
     p = default_worker_pool()
@@ -33,10 +33,10 @@ function lsrtm_objective(model::Modelall, source::judiVector, dObs::judiVector, 
     end
 
     # Collect and reduce gradients
-    gradient = zeros(Float32, prod(model.n))
-    objective = 0f0
+    objective =results[1][1]
+    gradient = results[1][2]
 
-    for j=1:dObs.nsrc
+    for j=2:dObs.nsrc
         gradient .+= results[j][2]
         objective += results[j][1]
         results[j] = []

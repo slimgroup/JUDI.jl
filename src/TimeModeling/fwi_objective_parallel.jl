@@ -15,7 +15,7 @@ Example
     function_value, gradient = fwi_objective(model, source, dobs)
 
 """
-function fwi_objective(model::Modelall, source::judiVector, dObs::judiVector; options=Options())
+function fwi_objective(model::Model, source::judiVector, dObs::judiVector; options=Options())
 # fwi_objective function for multiple sources. The function distributes the sources and the input data amongst the available workers.
 
     p = default_worker_pool()
@@ -32,10 +32,10 @@ function fwi_objective(model::Modelall, source::judiVector, dObs::judiVector; op
     end
 
     # Collect and reduce gradients
-    gradient = zeros(Float32, prod(model.n))
-    objective = 0f0
+    objective =results[1][1]
+    gradient = results[1][2]
 
-    for j=1:dObs.nsrc
+    for j=2:dObs.nsrc
         gradient .+= results[j][2]
         objective += results[j][1]
         results[j] = []

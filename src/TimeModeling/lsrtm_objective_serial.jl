@@ -1,7 +1,7 @@
 
 export lsrtm_objective
 
-function lsrtm_objective(model_full::Modelall, source::judiVector, dObs::judiVector, srcnum::Integer, dm; options=Options(), frequencies=[], nlind=false)
+function lsrtm_objective(model_full::Model, source::judiVector, dObs::judiVector, srcnum::Integer, dm; options=Options(), frequencies=[], nlind=false)
     # Load full geometry for out-of-core geometry containers
     typeof(dObs.geometry) == GeometryOOC && (dObs.geometry = Geometry(dObs.geometry))
     typeof(source.geometry) == GeometryOOC && (source.geometry = Geometry(source.geometry))
@@ -64,5 +64,5 @@ function lsrtm_objective(model_full::Modelall, source::judiVector, dObs::judiVec
         argout2 = extend_gradient(model_full, model, argout2)
     end
 
-    return argout1, vec(argout2)
+    return argout1, PhysicalParameter(argout2, model.d, model.o)
 end

@@ -25,28 +25,29 @@ so = args.space_order
 shape = (301, 151)
 spacing = (10., 10.)
 origin = (0., 0.)
-v = np.empty(shape, dtype=np.float32)
+m = np.empty(shape, dtype=np.float32)
 rho = np.empty(shape, dtype=np.float32)
-v[:] = 1.5  # Top velocity (background)
+m[:] = 1/1.5**2  # Top velocity (background)
 rho[:] = 1.0
-vp_i = np.linspace(1.5, 4.5, args.nlayer)
+m_i = np.linspace(1/1.5**2, 1/4.5**2, args.nlayer)
 for i in range(1, args.nlayer):
-    v[..., i*int(shape[-1] / args.nlayer):] = vp_i[i]  # Bottom velocity
+    m[..., i*int(shape[-1] / args.nlayer):] = m_i[i]  # Bottom velocity
 
-v0 = ndimage.gaussian_filter(v, sigma=10)
-v0[v < 1.51] = v[v < 1.51]
-v0 = ndimage.gaussian_filter(v0, sigma=3)
-rho0 = (v0+.5)/2
-dm = v0**(-2) - v**(-2)
+m0 = ndimage.gaussian_filter(m, sigma=10)
+m0[m > 1/1.51**2] = m[m > 1/1.51**2]
+m0 = ndimage.gaussian_filter(m0, sigma=3)
+rho0 = (m0**(-.5)+.5)/2
+dm = m0 - m
 dm[:, -1] = 0.
 # Set up model structures
+v0 = m0**(-.5)
 if is_tti:
     model = Model(shape=shape, origin=origin, spacing=spacing,
-                  vp=v0, epsilon=.045*(v0-1.5), delta=.03*(v0-1.5),
+                  m=m0, epsilon=.045*(v0-1.5), delta=.03*(v0-1.5),
                   rho=rho0, theta=.1*(v0-1.5), dm=dm, space_order=so)
 else:
     model = Model(shape=shape, origin=origin, spacing=spacing,
-                  vp=v0, rho=rho0, dm=dm, space_order=so)
+                  m=m0, rho=rho0, dm=dm, space_order=so)
 
 # Time axis
 t0 = 0.
