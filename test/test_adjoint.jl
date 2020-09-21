@@ -52,7 +52,6 @@ tol = 5f-4
 
     # Linearized modeling
     J = judiJacobian(F, q)
-    global dm = vec(dm)
 
     ld_hat = J*dm
     dm_hat = adjoint(J)*y
@@ -99,7 +98,6 @@ end
 
     # Linearized modeling
     Jw = judiJacobian(Fw, w)
-    global dm = vec(dm)
 
     ddw_hat = Jw*dm
     dmw_hat = adjoint(Jw)*y
