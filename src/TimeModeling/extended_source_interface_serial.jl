@@ -1,7 +1,7 @@
 export extended_source_modeling
 
 # Setup time-domain linear or nonlinear foward and adjoint modeling and interface to OPESCI/devito
-function extended_source_modeling(model_full::Modelall, srcData, recGeometry, recData, weights, dm, srcnum::Int64, op::Char, mode::Int64, options)
+function extended_source_modeling(model_full::Model, srcData, recGeometry, recData, weights, dm, srcnum::Int64, op::Char, mode::Int64, options)
     pm = load_pymodel()
 
     # Load full geometry for out-of-core geometry containers
@@ -45,5 +45,5 @@ function extended_source_modeling(model_full::Modelall, srcData, recGeometry, re
 end
 
 # Function instance without options
-extended_source_modeling(model::Modelall, srcData, recGeometry, recData,  weights, perturbation, srcnum::Int64, op::Char, mode::Int64) =
+extended_source_modeling(model::Model, srcData, recGeometry, recData,  weights, perturbation, srcnum::Int64, op::Char, mode::Int64) =
     extended_source_modeling(model, srcData, recGeometry, recData, weights, perturbation, srcnum, op, mode, Options())

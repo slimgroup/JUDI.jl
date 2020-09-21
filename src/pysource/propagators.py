@@ -96,7 +96,7 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0,
                   subs=subs, name="adjoint"+name(model),
                   opt=opt_op(model))
 
-    summary = op(time_M=nt-1)
+    summary = op()
     if src_coords is not None:
         # Read last time step in rec
         Operator(ws_expr + geom_expr[-1])(time_m=0, time_M=0)
@@ -136,7 +136,7 @@ def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8,
 
     if return_op:
         return op, gradm, v
-    summary = op(time_M=nt-1)
+    summary = op()
 
     # Output
     return gradm, summary

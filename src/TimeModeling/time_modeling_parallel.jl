@@ -1,8 +1,8 @@
 
-time_modeling(model::Modelall, srcGeometry, srcData, recGeometry, recData, perturbation, srcnum::UnitRange{Int64}, op::Char, mode::Int64) =
+time_modeling(model::Model, srcGeometry, srcData, recGeometry, recData, perturbation, srcnum::UnitRange{Int64}, op::Char, mode::Int64) =
     time_modeling(model, srcGeometry, srcData, recGeometry, recData, perturbation, srcnum, op, mode, Options())
 
-function time_modeling(model::Modelall, srcGeometry, srcData, recGeometry, recData, perturbation, srcnum::UnitRange{Int64}, op::Char, mode::Int64, options)
+function time_modeling(model::Model, srcGeometry, srcData, recGeometry, recData, perturbation, srcnum::UnitRange{Int64}, op::Char, mode::Int64, options)
 # time_modeling function for multiple sources. Depending on the operator and mode, this function distributes the sources
 # and if applicable the input data amongst the available workers.
 

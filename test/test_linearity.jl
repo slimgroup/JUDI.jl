@@ -50,7 +50,8 @@ ftol = 5f-5
     q4 = adjoint(A1) * (2f0 * d1)
     q5 = (2f0 * adjoint(A1)) * d1
 
-    dm2 = .5f0 .* vec(circshift(reshape(dm, model.n), (0, 20)))
+    dm2 = deepcopy(dm)
+    dm2.data .= .5f0 .* circshift(dm2.data, (0, 20))
     lind =  J * dm
     lind2 = J * (2f0 .* dm)
     lind3 = J * dm2

@@ -12,13 +12,15 @@ import Base.*, Base./, Base.+, Base.-, Base.copy!, Base.copy, Base.sum, Base.ndi
 import Base.Broadcast.broadcasted, Base.BroadcastStyle, Base.Broadcast.DefaultArrayStyle
 import Base.getindex, Base.setindex!, Base.firstindex, Base.lastindex, Base.axes, Base.ndims
 import Base.similar, Base.isapprox, Base.isequal, Base.broadcast!, Base.materialize!
-import Base.eltype, Base.length, Base.size, Base.iterate
+import Base.eltype, Base.length, Base.size, Base.iterate, Base.show, Base.display
 
 import LinearAlgebra.transpose, LinearAlgebra.conj, LinearAlgebra.vcat, LinearAlgebra.adjoint
 import LinearAlgebra.vec, LinearAlgebra.dot, LinearAlgebra.norm, LinearAlgebra.abs
 import LinearAlgebra.rmul!, LinearAlgebra.mul!, Base.isfinite
 
 import IterativeSolvers.zerox
+
+import PyCall.array2py
 
 #############################################################################
 # Containers
@@ -63,5 +65,9 @@ include("judiJacobianExtendedSource.jl")  # Jacobian of extended source modeling
 #############################################################################
 # Preconditioners and optimization
 include("seismic_preconditioners.jl")
+
+#############################################################################
+# Utility types
+const SourceTypes = Union{judiVector, Tuple{judiWeights, judiLRWF}}
 
 end

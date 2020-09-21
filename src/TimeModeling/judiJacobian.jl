@@ -16,7 +16,7 @@ struct judiJacobian{DDT<:Number,RDT<:Number} <: joAbstractLinearOperator{DDT,RDT
     m::Integer
     n::Integer
     info::Info
-    model::Modelall
+    model::Model
     srcGeometry::Geometry
     recGeometry::Geometry
     source
@@ -70,11 +70,10 @@ function judiJacobian(F::judiPDEfull, source::judiVector; DDT::DataType=Float32,
     return J = judiJacobian{Float32,Float32}("linearized wave equation", m, n, 
         F.info, F.model, F.srcGeometry, F.recGeometry, source.data, options,
         v -> time_modeling(F.model, F.srcGeometry, source.data, F.recGeometry, nothing, v, srcnum, 'J', 1, options),
-        w -> time_modeling(F.model, F.srcGeometry, source.data, F.recGeometry, process_input_data(w, F.recGeometry, F.info),
-        nothing, srcnum, 'J', -1, options)
+        w -> time_modeling(F.model, F.srcGeometry, source.data, F.recGeometry,
+                           process_input_data(w, F.recGeometry, F.info), nothing, srcnum, 'J', -1, options)
     )
 end
-
 
 ############################################################
 ## overloaded Base functions
@@ -104,15 +103,15 @@ adjoint(A::judiJacobian{DDT,RDT}) where {DDT,RDT} =
 ## overloaded Base *(...judiJacobian...)
 
 # *(judiJacobian,vec)
-function *(A::judiJacobian{ADDT,ARDT},v::AbstractVector{Float32}) where {ADDT,ARDT}
+function *(A::judiJacobian{ADDT,ARDT}, v::AbstractVector{Float32}) where {ADDT,ARDT}
     A.n == size(v,1) || throw(judiJacobianException("shape mismatch"))
     V = A.fop(v)
     jo_check_type_match(ARDT,eltype(V),join(["RDT from *(judiJacobian,vec):",A.name,typeof(A),eltype(V)]," / "))
     return V
 end
 
-*(A::judiJacobian{ADDT,ARDT},v::AbstractMatrix{vDT}) where {ADDT,ARDT,vDT} = *(A, vec(v))
-*(A::judiJacobian{ADDT,ARDT},v::AbstractVector{Float64}) where {ADDT,ARDT} = *(A, jo_convert(Float32, v, false))
+*(A::judiJacobian{ADDT,ARDT}, v::AbstractMatrix{vDT}) where {ADDT,ARDT,vDT} = *(A, vec(v))
+*(A::judiJacobian{ADDT,ARDT}, v::AbstractVector{Float64}) where {ADDT,ARDT} = *(A, jo_convert(Float32, v, false))
 
 # *(judiJacobian,judiVector)
 function *(A::judiJacobian{ADDT,ARDT}, v::judiVector{vDT}) where {ADDT,ARDT,vDT}
