@@ -21,7 +21,7 @@ def opt_op(model, no_ms=False):
 # Forward propagation
 def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
             q=None, return_op=False, freq_list=None, dft_sub=None,
-            ws=None, t_sub=1):
+            ws=None, t_sub=1, **kwargs):
     """
     Low level propagator, to be used through `interface.py`
     Compute forward wavefield u = A(m)^{-1}*f and related quantities (u(xrcv))
@@ -105,8 +105,7 @@ def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8,
              w=None, freq=None, dft_sub=None, isic=False):
     """
     Low level propagator, to be used through `interface.py`
-    Compute adjoint wavefield v = adjoint(F(m))*y
-    and related quantities (||v||_w, v(xsrc))
+    Compute the action of the adjoint Jacobian onto a residual J'* δ d.
     """
     # Setting adjoint wavefieldgradient
     v = wavefield(model, space_order, fw=False)
@@ -136,12 +135,13 @@ def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8,
     return gradm, summary
 
 
-def born(model, src_coords, rcv_coords, wavelet, space_order=8,
-         save=False, q=None, isic=False, ws=None, t_sub=1):
+def born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
+         q=None, return_op=False, isic=False, freq_list=None, dft_sub=None,
+         ws=None, t_sub=1, nlind=False):
     """
     Low level propagator, to be used through `interface.py`
-    Compute adjoint wavefield v = adjoint(F(m))*y
-    and related quantities (||v||_w, v(xsrc))
+    Compute linearized wavefield U = J(m)* δ m
+    and related quantities.
     """
     nt = wavelet.shape[0]
     # Setting wavefield
@@ -158,18 +158,28 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8,
     # Set up PDE expression and rearrange
     pde, tmpu = wave_kernel(model, u, q=q)
     pdel, tmpul = wave_kernel(model, ul, q=lin_src(model, u, isic=isic))
+    if model.dm == 0:
+        pdel, tmpul = [], []
 
     # Setup source and receiver
-    geom_expr, _, _ = src_rec(model, u, src_coords=src_coords, wavelet=wavelet)
+    geom_expr, _, rcvnl = src_rec(model, u, rec_coords=rcv_coords if nlind else None,
+                                  src_coords=src_coords, wavelet=wavelet)
     geom_exprl, _, rcvl = src_rec(model, ul, rec_coords=rcv_coords, nt=wavelet.shape[0])
+
+    # On-the-fly Fourier
+    dft, dft_modes = otf_dft(u, freq_list, model.critical_dt, factor=dft_sub)
 
     # Create operator and run
     subs = model.spacing_map
-    op = Operator(tmpu + tmpul + pde + geom_expr + geom_exprl + pdel + eq_save,
+    op = Operator(tmpu + tmpul + pde + geom_expr + geom_exprl + pdel + dft + eq_save,
                   subs=subs, name="born"+name(model),
                   opt=opt_op(model, no_ms=ws is not None))
+
+    outrec = (rcvl, rcvnl) if nlind else rcvl
+    if return_op:
+        return op, u, outrec
 
     summary = op()
 
     # Output
-    return rcvl, (u_save if t_sub > 1 else u), summary
+    return outrec, dft_modes or (u_save if t_sub > 1 else u), summary

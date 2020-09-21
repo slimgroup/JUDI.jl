@@ -6,7 +6,7 @@ using JUDI.TimeModeling, Test, LinearAlgebra, Printf
 parsed_args = parse_commandline()
 
 nlayer = parsed_args["nlayer"]
-tti = parsed_args["fs"]
+tti = parsed_args["tti"]
 fs =  parsed_args["fs"]
 
 @testset "Arithmetic test with $(nlayer) layers and tti $(tti) and freesurface $(fs)" begin

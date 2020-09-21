@@ -16,45 +16,51 @@ if endswith(GROUP, ".jl")
     include(GROUP)
 end
 
+base = ["test_abstract_vectors.jl",
+        "test_geometry.jl",
+        "test_judiVector.jl",
+        "test_composite.jl",
+        "test_judiWeights.jl",
+        "test_judiWavefield.jl",
+        "test_linear_operators.jl"]
+
+devito = ["test_linearity.jl",
+          "test_jacobian.jl",
+          "test_jacobian_extended.jl",
+          "test_adjoint.jl",
+          "test_gradient_fwi.jl",
+          "test_all_options.jl",
+          "test_gradient_lsrtm.jl"]
+
+extras = ["test_modeling.jl", "test_basics.jl", "test_linear_algebra.jl"]
+
 # Basic JUDI objects tests, no Devito
 if GROUP == "JUDI" || GROUP == "All"
-    include("test_abstract_vectors.jl")
-    include("test_geometry.jl")
-    include("test_judiVector.jl")
-    include("test_composite.jl")
-    include("test_judiWeights.jl")
-    include("test_judiWavefield.jl")
-    include("test_linear_operators.jl")
+    for t=base
+        include(t)
+    end
 end
 
 # Isotropic Acoustic tests
 if GROUP == "ISO_OP" || GROUP == "All"
     println("JUDI iso-acoustic operators tests (parallel)")
-    # Basic utility test
-    include("test_basics.jl")
+    for t=extras
+        include(t)
+    end
     # Basic test of LA/CG/LSQR needs
     push!(Base.ARGS, "-p 2")
-    include("test_linear_algebra.jl")
-    # Iso-acoustic tests
-    include("test_modeling.jl")
-    include("test_linearity.jl")
-    include("test_jacobian.jl")
-    include("test_jacobian_extended.jl")
-    include("test_adjoint.jl")
-    include("test_gradient_fwi.jl")
-    include("test_all_options.jl")
+    for t=devito
+        include(t)
+    end
 end
 
 # Isotropic Acoustic tests with a free surface
 if GROUP == "ISO_OP_FS" || GROUP == "All"
     println("JUDI iso-acoustic operators with free surface tests")
     push!(Base.ARGS, "--fs")
-    include("test_linearity.jl")
-    include("test_jacobian.jl")
-    include("test_jacobian_extended.jl")
-    include("test_adjoint.jl")
-    include("test_gradient_fwi.jl")
-    include("test_all_options.jl")
+    for t=devito
+        include(t)
+    end
 end
 
 # Anisotropic Acoustic tests
@@ -62,12 +68,9 @@ if GROUP == "TTI_OP" || GROUP == "All"
     println("JUDI TTI operators tests")
     # TTI tests
     push!(Base.ARGS, "--tti")
-    include("test_linearity.jl")
-    include("test_jacobian.jl")
-    include("test_jacobian_extended.jl")
-    include("test_adjoint.jl")
-    include("test_gradient_fwi.jl")
-    include("test_all_options.jl")
+    for t=devito
+        include(t)
+    end
 end
 
 # Anisotropic Acoustic tests with free surface
@@ -75,10 +78,7 @@ if GROUP == "TTI_OP_FS" || GROUP == "All"
     println("JUDI TTI operators with free surfacetests")
     push!(Base.ARGS, "--tti")
     push!(Base.ARGS, "--fs")
-    include("test_linearity.jl")
-    include("test_jacobian.jl")
-    include("test_jacobian_extended.jl")
-    include("test_adjoint.jl")
-    include("test_gradient_fwi.jl")
-    include("test_all_options.jl")
+    for t=devito
+        include(t)
+    end
 end

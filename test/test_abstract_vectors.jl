@@ -18,10 +18,20 @@ using JUDI.TimeModeling, SegyIO, Test, LinearAlgebra
     for j=1:nsrc
         data[j] = randn(Float32, rec_geometry.nt[j], length(rec_geometry.xloc[j]))
     end
+    datacell = process_input_data(vec(hcat(data...)), rec_geometry, info)
+    @test isequal(datacell, data)
+
     rhs = judiRHS(info, rec_geometry, data)
+    Pr = judiProjection(info, rec_geometry)
 
     @test isequal(typeof(rhs), judiRHS{Float32})
     @test isequal(rhs.geometry, rec_geometry)
+
+    rhs2 = Pr'*vec(hcat(data...))
+    @test isequal(typeof(rhs2), judiRHS{Float32})
+    @test isequal(rhs2.geometry, rec_geometry)
+    @test isequal(rhs2.geometry, rhs.geometry)
+    @test isequal(rhs2.data, rhs.data)
 
     # conj, transpose, adjoint
     @test isequal(size(rhs), size(conj(rhs)))

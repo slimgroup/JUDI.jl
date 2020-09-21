@@ -64,7 +64,7 @@ def initialize_damp(damp, padsizes, spacing, fs=False):
     """
     lqmin = np.log(.1)
     lqmax = np.log(100)
-    w0 = 1/(10 * np.mean(spacing))
+    w0 = 1/(10 * np.max(spacing))
 
     z = damp.dimensions[-1]
     eqs = [Eq(damp, 1)]
@@ -143,7 +143,7 @@ class GenericModel(object):
         """
         if field is None:
             return func(default_value)
-        if isinstance(field, np.ndarray):
+        if isinstance(field, np.ndarray) and (np.min(field) != np.max(field)):
             function = Function(name=name, grid=self.grid, space_order=space_order,
                                 parameter=is_param)
             if field.shape == self.shape:
@@ -151,7 +151,7 @@ class GenericModel(object):
             else:
                 function._data_with_outhalo[:] = func(field)
         else:
-            return func(field)
+            return func(np.min(field))
         self._physical_parameters.append(name)
         return function
 

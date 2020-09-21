@@ -123,23 +123,6 @@ end
 
 ############################################################
 ## overloaded Bases +(...judiPDEfull...), -(...judiPDEfull...)
-
-# +(judiPDEfull,num)
-function +(A::judiPDEfull{ADDT,ARDT},b::Number) where {ADDT,ARDT}
-    return judiPDE{ADDT,ARDT}("("*A.name*"+N)",A.m,A.n,A.info,A.model,A.srcGeometry,A.recGeometry,A.options,
-        v1 -> A.fop(v1)+joConstants(A.m,A.n,b;DDT=ADDT,RDT=ARDT)*v1,
-        v2 -> A.fop_T(v2)+joConstants(A.m,A.n,b;DDT=ADDT,RDT=ARDT)*v2
-        )
-end
-
-# -(judiPDEfull,num)
-function -(A::judiPDEfull{ADDT,ARDT},b::Number) where {ADDT,ARDT}
-    return judiPDE{ADDT,ARDT}("("*A.name*"-N)",A.m,A.n,A.info,A.model,A.srcGeometry,A.recGeometry,A.options,
-        v1 -> A.fop(v1)-joConstants(A.m,A.n,b;DDT=ADDT,RDT=ARDT)*v1,
-        v2 -> A.fop_T(v2)-joConstants(A.m,A.n,b;DDT=ADDT,RDT=ARDT)*v2
-        )
-end
-
 # -(judiPDEfull)
 -(A::judiPDEfull{DDT,RDT}) where {DDT,RDT} =
     judiPDEfull{DDT,RDT}("(-"*A.name*")",A.m,A.n,A.info,A.model,A.srcGeometry,A.recGeometry,A.options,

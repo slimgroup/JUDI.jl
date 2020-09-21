@@ -420,9 +420,8 @@ def grad_fwi(model, recin, rec_coords, u, space_order=8):
 
 
 def J_adjoint(model, src_coords, wavelet, rec_coords, recin, space_order=8,
-              checkpointing=False, n_checkpoints=None,
-              maxmem=None, freq_list=[], dft_sub=None, isic=False, ws=None,
-              t_sub=1):
+              checkpointing=False, n_checkpoints=None, t_sub=1,
+              maxmem=None, freq_list=[], dft_sub=None, isic=False, ws=None):
     """
     Jacobian (adjoint fo born modeling operator) operator on a shot record
     as a source (i.e data residual). Supports three modes:
@@ -483,8 +482,8 @@ def J_adjoint(model, src_coords, wavelet, rec_coords, recin, space_order=8,
 
 
 def J_adjoint_freq(model, src_coords, wavelet, rec_coords, recin, space_order=8,
-                   freq_list=[], is_residual=False, return_obj=False,
-                   dft_sub=None, isic=False, ws=None, t_sub=1):
+                   freq_list=[], is_residual=False, return_obj=False, nlind=False,
+                   dft_sub=None, isic=False, ws=None, t_sub=1, born_fwd=False):
     """
     Jacobian (adjoint fo born modeling operator) operator on a shot record
     as a source (i.e data residual). Outputs the gradient with Frequency
@@ -514,17 +513,26 @@ def J_adjoint_freq(model, src_coords, wavelet, rec_coords, recin, space_order=8,
         Extended source spatial distribution
     is_residual: Bool
         Whether to treat the input as the residual or as the observed data
+    born_fwd: Bool
+        Whether to use the forward or linearized forward modeling operator
+    nlind: Bool
+        Whether to remove the non linear data from the input data. This option is
+        only available in combination with `born_fwd`
 
     Returns
     ----------
     Array
         Adjoint jacobian on the input data (gradient)
     """
-    rec, u, _ = forward(model, src_coords, rec_coords, wavelet, save=False, ws=ws,
-                        space_order=space_order, freq_list=freq_list, dft_sub=dft_sub)
+    rec, u, _ = op_fwd_J[born_fwd](model, src_coords, rec_coords, wavelet, save=False,
+                                   space_order=space_order, freq_list=freq_list,
+                                   ws=ws, dft_sub=dft_sub, nlind=nlind)
     # Residual and gradient
     if not is_residual:
-        recin[:] = rec.data[:] - recin[:]   # input is observed data
+        if nlind:
+            recin[:] = rec[0].data[:] - (recin[:] - rec[1].data)  # input is observed data
+        else:
+            recin[:] = rec.data[:] - recin[:]   # input is observed data
 
     g, _ = gradient(model, recin, rec_coords, u, space_order=space_order, isic=isic,
                     freq=freq_list, dft_sub=dft_sub)
@@ -534,8 +542,8 @@ def J_adjoint_freq(model, src_coords, wavelet, rec_coords, recin, space_order=8,
 
 
 def J_adjoint_standard(model, src_coords, wavelet, rec_coords, recin, space_order=8,
-                       is_residual=False, return_obj=False,
-                       isic=False, ws=None, t_sub=1):
+                       is_residual=False, return_obj=False, born_fwd=False,
+                       isic=False, ws=None, t_sub=1, nlind=False):
     """
     Adjoint Jacobian (adjoint fo born modeling operator) operator on a shot record
     as a source (i.e data residual). Outputs the gradient with standard
@@ -561,17 +569,26 @@ def J_adjoint_standard(model, src_coords, wavelet, rec_coords, recin, space_orde
         Extended source spatial distribution
     is_residual: Bool
         Whether to treat the input as the residual or as the observed data
+    born_fwd: Bool
+        Whether to use the forward or linearized forward modeling operator
+    nlind: Bool
+        Whether to remove the non linear data from the input data. This option is
+        only available in combination with `born_fwd`
 
     Returns
     ----------
     Array
         Adjoint jacobian on the input data (gradient)
     """
-    rec, u, _ = forward(model, src_coords, rec_coords, wavelet, save=True, ws=ws,
-                        space_order=space_order, t_sub=t_sub)
+    rec, u, _ = op_fwd_J[born_fwd](model, src_coords, rec_coords, wavelet, save=True,
+                                   ws=ws, space_order=space_order,
+                                   t_sub=t_sub, nlind=nlind)
     # Residual and gradient
     if not is_residual:
-        recin[:] = rec.data[:] - recin[:]   # input is observed data
+        if nlind:
+            recin[:] = rec[0].data[:] - (recin[:] - rec[1].data)  # input is observed data
+        else:
+            recin[:] = rec.data[:] - recin[:]   # input is observed data
 
     g, _ = gradient(model, recin, rec_coords, u, space_order=space_order, isic=isic)
     if return_obj:
@@ -580,9 +597,9 @@ def J_adjoint_standard(model, src_coords, wavelet, rec_coords, recin, space_orde
 
 
 def J_adjoint_checkpointing(model, src_coords, wavelet, rec_coords, recin, space_order=8,
-                            is_residual=False, n_checkpoints=None,
+                            is_residual=False, n_checkpoints=None, born_fwd=False,
                             maxmem=None, return_obj=False, isic=False, ws=None,
-                            t_sub=1):
+                            t_sub=1, nlind=False):
     """
     Jacobian (adjoint fo born modeling operator) operator on a shot record
     as a source (i.e data residual). Outputs the gradient with Checkpointing.
@@ -613,6 +630,11 @@ def J_adjoint_checkpointing(model, src_coords, wavelet, rec_coords, recin, space
         Extended source spatial distribution
     is_residual: Bool
         Whether to treat the input as the residual or as the observed data
+    born_fwd: Bool
+        Whether to use the forward or linearized forward modeling operator
+    nlind: Bool
+        Whether to remove the non linear data from the input data. This option is
+        only available in combination with `born_fwd`
 
     Returns
     ----------
@@ -620,8 +642,9 @@ def J_adjoint_checkpointing(model, src_coords, wavelet, rec_coords, recin, space
         Adjoint jacobian on the input data (gradient)
     """
     # Optimal checkpointing
-    op_f, u, rec_g = forward(model, src_coords, rec_coords, wavelet,
-                             space_order=space_order, return_op=True, ws=ws)
+    op_f, u, rec_g = op_fwd_J[born_fwd](model, src_coords, rec_coords, wavelet,
+                                        space_order=space_order, return_op=True,
+                                        nlind=nlind, ws=ws)
     op, g, v = gradient(model, recin, rec_coords, u, space_order=space_order,
                         return_op=True, isic=isic)
 
@@ -634,7 +657,7 @@ def J_adjoint_checkpointing(model, src_coords, wavelet, rec_coords, recin, space
     # Op arguments
     uk = {uu.name: uu for uu in as_tuple(u)}
     vk = {**uk, **{vv.name: vv for vv in as_tuple(v)}}
-    uk.update({'rcv%s' % as_tuple(u)[0].name: rec_g})
+    uk.update({'rcv%s' % as_tuple(u)[0].name: as_tuple(rec_g)[0]})
     vk.update({'src%s' % as_tuple(v)[0].name: rec})
     # Wrapped ops
     wrap_fw = CheckpointOperator(op_f, vp=model.vp, **uk)
@@ -648,10 +671,17 @@ def J_adjoint_checkpointing(model, src_coords, wavelet, rec_coords, recin, space
     if is_residual is True:  # input data is already the residual
         rec.data[:] = recin[:]
     else:
-        rec.data[:] = rec.data[:] - recin[:]   # input is observed data
+        # This won't work with MPI
+        if nlind:
+            rec.data[:] = rec_g[0].data[:] - (recin[:] - rec_g[1].data)
+        else:
+            rec.data[:] = rec_g.data[:] - recin[:]
 
     wrp.apply_reverse()
 
     if return_obj:
         return .5*model.critical_dt*norm(rec)**2, g.data
     return g.data
+
+
+op_fwd_J = {False: forward, True: born}

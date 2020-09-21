@@ -38,7 +38,6 @@ def wave_kernel(model, u, fw=True, q=None):
     else:
         pde = acoustic_kernel(model, u, fw, q=q)
         fact = []
-
     pde += freesurface(model, pde) if model.fs else []
     return pde, fact
 

@@ -75,7 +75,7 @@ J = judiJacobian(Pr*F0*adjoint(Ps), q)
 
 # Nonlinear modeling
 dobs = Pr*F*adjoint(Ps)*q
-# Adjoint
+# # Adjoint
 qad = Ps*adjoint(F)*adjoint(Pr)*dobs
 
 # Linearized modeling
@@ -85,3 +85,14 @@ rtm = adjoint(J)*dD
 
 # evaluate FWI objective function
 f, g = fwi_objective(model0, q, dobs; options=opt)
+
+# evaluate LSRTM objective function
+fj, gj = lsrtm_objective(model0, q, dD, dm; options=opt)
+fjn, gjn = lsrtm_objective(model0, q, dobs, dm; nlind=true, options=opt)
+
+# By extension, lsrtm_objective is the same as fwi_objecive when `dm` is zero
+# And with computing of the residual. Small noise can be seen in the difference
+# due to floating point roundoff errors with openMP, but running with 
+# OMP_NUM_THREAS=1 (no parllelism) produces the exact (difference == 0) same result
+# gjn2 == g
+fjn2, gjn2 = lsrtm_objective(model0, q, dobs, 0f0.*dm; nlind=true, options=opt)

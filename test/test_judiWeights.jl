@@ -33,6 +33,20 @@ ftol = 1f-6
     @test isequal(typeof(w.weights), Array{Array, 1})
     @test isequal(size(w), (weight_size_x*weight_size_y*nsrc, 1))
     @test isfinite(w)
+
+    I2 = ones(Float32, 1, size(w, 1))
+    w2 = I2*w
+    @test isapprox(w2[1], sum(sum(w.weights)))
+
+    I2 = joOnes(1, size(w, 1); DDT=Float32, RDT=Float32)
+    w2 = I2*w
+    @test isapprox(w2[1], sum(sum(w.weights)))
+
+    I3 = [I2;I2]
+    w3 = I3*w
+    @test isapprox(w3[1], sum(sum(w.weights)))
+    @test isapprox(w3[2], sum(sum(w.weights)))
+
 #################################################### test operations ###################################################
     # Indexing/reshape/...
     @test isapprox(w[1].weights[1], w.weights[1])
@@ -49,6 +63,28 @@ ftol = 1f-6
 
     #test unary operator
     @test iszero(norm((-w) - (-1*w))) 
+
+    # Copies and iter utilities
+    w2 = copy(w)
+    @test isequal(w2.weights, w.weights)
+    @test isequal(w2.nsrc, w.nsrc)
+    @test firstindex(w) == 1
+    @test lastindex(w) == nsrc
+    @test ndims(w) == 2
+
+    w2 = similar(w, Float32, 1:2)
+    @test isequal(w2.weights, 0f0.* w.weights)
+    @test isequal(w2.nsrc, w.nsrc)
+    @test firstindex(w) == 1
+    @test lastindex(w) == nsrc
+    @test ndims(w) == 2
+
+    copy!(w2, w)
+    @test isequal(w2.weights, w.weights)
+    @test isequal(w2.nsrc, w.nsrc)
+    @test firstindex(w) == 1
+    @test lastindex(w) == nsrc
+    @test ndims(w) == 2
 
     # vcat
     w_vcat = [w; w]
@@ -82,7 +118,6 @@ ftol = 1f-6
     @test isapprox(u, u .* 1; rtol=ftol)
     @test isapprox(a .* (u + v), a .* u + a .* v; rtol=1f-5)
     @test isapprox((a + b) .* v, a .* v + b.* v; rtol=1f-5)
-
 
     # broadcast multiplication
     u = judiWeights(randn(Float32, weight_size_x, weight_size_y); nsrc=nsrc)

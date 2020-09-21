@@ -161,11 +161,11 @@ function -(a::judiVStack, b::Number)
 end
 
 function -(a::Number, b::judiVStack)
-    components = Array{Any}(undef, length(a.components))
-    for i=1:length(a.components)
-        components[i] = b .- a.components[i]
+    components = Array{Any}(undef, length(b.components))
+    for i=1:length(b.components)
+        components[i] = a .- b.components[i]
     end
-    return judiVStack{Float32}(a.m, a.n,components)
+    return judiVStack{Float32}(b.m, b.n,components)
 end
 
 function *(a::judiVStack, b::Number)

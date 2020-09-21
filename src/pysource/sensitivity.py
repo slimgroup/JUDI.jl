@@ -115,8 +115,7 @@ def isic_time(u, v, model, **kwargs):
         Model structure
     """
     w = - u[0].indices[0].spacing * model.irho
-    return w * sum(uu * vv.dt2 * model.m +
-                   grads(uu, so_fact=2).T * grads(vv, so_fact=2)
+    return w * sum(uu * vv.dt2 * model.m + inner_grad(uu, vv)
                    for uu, vv in zip(u, v))
 
 
@@ -148,11 +147,9 @@ def isic_freq(u, v, model, **kwargs):
         omega_t = 2*np.pi*f*tsave*factor*dt
         # Gradient weighting is (2*np.pi*f)**2/nt
         w = (2*np.pi*f)**2/time.symbolic_max
+        w2 = factor / time.symbolic_max
         expr += (w * (ufr * cos(omega_t) - ufi * sin(omega_t)) * vv * model.m -
-                 factor / time.symbolic_max * (grads(ufr * cos(omega_t) -
-                                                     ufi * sin(omega_t),
-                                                     so_fact=2).T *
-                                               grads(vv, so_fact=2)))
+                 w2 * inner_grad(ufr * cos(omega_t) - ufi * sin(omega_t), vv))
     return expr
 
 
@@ -207,6 +204,20 @@ def isic_src(model, u, **kwargs):
     if model.is_tti:
         return (-dus[0], -dus[1])
     return -dus[0]
+
+
+def inner_grad(u, v):
+    """
+    Inner product of the gradient of two Function.
+
+    Parameters
+    ----------
+    u: TimeFunction or Function
+        First wavefield
+    v: TimeFunction or Function
+        Second wavefield
+    """
+    return sum([a*b for a, b in zip(grads(u, so_fact=2), grads(v, so_fact=2))])
 
 
 ic_dict = {'isic_freq': isic_freq, 'corr_freq': crosscorr_freq,

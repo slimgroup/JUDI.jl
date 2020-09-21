@@ -5,7 +5,7 @@
 # Authors: Philipp Witte (pwitte@eos.ubc.ca), Henryk Modzelewski (hmodzelewski@eos.ubc.ca)
 # Date: June 2017
 
-export judiWavefield, judiWavefieldException, judiDFTwavefield, muteWavefield, dump_wavefield
+export judiWavefield, judiWavefieldException, judiDFTwavefield, muteWavefield, dump_wavefield, fft_wavefield
 
 ############################################################
 
@@ -57,8 +57,8 @@ function judiWavefield(info,dt::Real,data::Union{Array, PyCall.PyObject, String}
 	for j=1:info.nsrc
 		dataCell[j] = deepcopy(data)
 	end
-	return judiWavefield{vDT}("judiWavefield",m,n,info, Float32(dt),dataCell)
-end
+		return judiWavefield{vDT}("judiWavefield",m,n,info, Float32(dt),dataCell)
+	end
 
 function judiWavefield(info, dt::Real, data::Union{Array{Any,1},Array{Array,1}};vDT::DataType=Float32)
 	# length of vector
@@ -83,10 +83,6 @@ transpose(A::judiWavefield{vDT}) where vDT =
 
 # adjoint(jo)
 adjoint(A::judiWavefield{vDT}) where vDT = conj(transpose(A))
-
-# ctranspose(jo)
-ctranspose(A::judiWavefield{vDT}) where vDT =
-	judiWavefield{vDT}(""*A.name*"'",A.n,A.m,A.info,A.dt,A.data)
 
 ####################################################################
 
@@ -203,29 +199,16 @@ end
 # DFT operator for wavefields, acts along time dimension
 function fft_wavefield(x_in,mode)
 	nsrc = x_in.info.nsrc
+	nt = size(x_in.data[1], 1)
 	if mode==1
-		x = judiWavefield(x_in.info,deepcopy(x_in.data); vDT=Complex{Float32})
+		x = similar(x_in, Complex{Float32})
 		for i=1:nsrc
-			x.data[i] = convert(Array{Complex{Float32}},x.data[i])
-			nx = size(x.data[i],2)
-			nz = size(x.data[i],3)
-			for j=1:nx
-				for k=1:nz
-					x.data[i][:,j,k] = fft(x.data[i][:,j,k])
-				end
-			end
+			x.data[i] = fft(x_in.data[i], 1)/sqrt(nt)
 		end
 	elseif mode==-1
-		x = judiWavefield(x_in.info,deepcopy(x_in.data); vDT=Float32)
+		x = similar(x_in, Float32)
 		for i=1:nsrc
-			nx = size(x.data[i],2)
-			nz = size(x.data[i],3)
-			for j=1:nx
-				for k=1:nz
-					x.data[i][:,j,k] = real(ifft(x.data[i][:,j,k]))
-				end
-			end
-			x.data[i] = convert(Array{Float32},real(x.data[i]))
+			x.data[i] = real(ifft(x_in.data[i], 1)) * sqrt(nt)
 		end
 	end
 	return x
@@ -233,17 +216,8 @@ end
 
 # Sampling mask to extract wavefields from full vector
 subsample(u::judiWavefield,srcnum) = judiWavefield(u.info,u.data[srcnum];vDT=eltype(u))
-
-function muteWavefield(u_in::judiWavefield,ts_keep)
-	u = deepcopy(u_in)
-	for j=1:u.info.nsrc
-		idx = ones(size(u.data[j],1));
-		idx[ts_keep] = 0
-		zero_idx = findall(idx)
-		u.data[j][zero_idx,:,:] *= 0.f0
-	end
-	return u
-end
+similar(u::judiWavefield) = 0f0 * u
+similar(u::judiWavefield, vDT::DataType) = vDT(0) .* u
 
 # norm
 function norm(a::judiWavefield{avDT}, p::Real=2) where avDT

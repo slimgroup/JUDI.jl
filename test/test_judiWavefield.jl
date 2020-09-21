@@ -6,7 +6,6 @@
 # Updated July 2020
 
 using JUDI.TimeModeling, Test, LinearAlgebra
-import LinearAlgebra.BLAS.axpy!
 
 
 # number of sources/receivers
@@ -31,6 +30,7 @@ ftol = 1f-6
         wf[j] = randn(Float32, nt, ny, ny)
     end
     w = judiWavefield(info, dt, wf)
+    w1 = similar(w) .+ 1f0
 
     @test isequal(length(w.data), nsrc)
     @test isequal(length(w.data), info.nsrc)
@@ -43,15 +43,14 @@ ftol = 1f-6
 
     # conj, transpose, adjoint
     @test isequal(size(w), size(conj(w)))
-
     @test isequal(reverse(size(w)), size(transpose(w)))
-
     @test isequal(reverse(size(w)), size(adjoint(w)))
 
     # +, -, *, /
     @test iszero(norm(2*w - (w + w)))
     @test iszero(norm(w - (w + w)/2))
-
+    @test iszero(norm(1f0 - w1))
+    @test isequal(norm(1f0 + w1, 1), 2f0 * norm(w1, 1))
     #test unary operator
     @test iszero(norm((-w) - (-1*w))) 
 
@@ -87,5 +86,11 @@ ftol = 1f-6
     @test isapprox(u, u .* 1; rtol=ftol)
     @test isapprox(a .* (u + v), a .* u + a .* v; rtol=1f-5)
     @test isapprox((a + b) .* v, a .* v + b.* v; rtol=1f-5)
+
+    # test fft
+    fw = fft_wavefield(w, 1)
+    fwf = fft_wavefield(fw, -1)
+    @test isapprox(dot(fwf, w), real(dot(fw, fw)); rtol=ftol)
+    @test isapprox(fwf, w; rtol=ftol)
 
 end

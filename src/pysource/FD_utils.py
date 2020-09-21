@@ -1,4 +1,4 @@
-from sympy import sqrt, rot_axis2, rot_axis3
+from sympy import rot_axis2, rot_axis3
 
 from devito import TensorFunction, VectorFunction, Eq, Differentiable
 
@@ -78,7 +78,12 @@ def R_mat(model):
         Rt *= rot_axis3(model.phi)
     else:
         Rt = Rt[[0, 2], [0, 2]]
-    return TensorFunction(name="R", grid=model.grid, components=Rt, symmetric=False)
+    R = TensorFunction(name="R", grid=model.grid, components=Rt, symmetric=False)
+    try:
+        R.name == "R"
+        return R
+    except AttributeError:
+        return Rt
 
 
 def P_M(model, u, v):
@@ -117,8 +122,8 @@ def thomsen_mat(model):
     a_ii = [[b * delt, 0, 0],
             [0, b * delt, 0],
             [0, 0, b]]
-    b_ii = [[b * sqrt((eps - delt) * delt), 0, 0],
-            [0, b * sqrt((eps - delt) * delt), 0],
+    b_ii = [[b * ((eps - delt) * delt)**.5, 0, 0],
+            [0, b * ((eps - delt) * delt)**.5, 0],
             [0, 0, 0]]
     c_ii = [[b * (eps - delt), 0, 0],
             [0, b * (eps - delt), 0],
