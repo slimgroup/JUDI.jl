@@ -59,6 +59,9 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
         return op, u, rcv
 
     summary = op()
+    # Read last time step in rec
+    if rcv_coords is not None:
+        Operator(geom_expr[-1])(time_m=nt-1, time_M=nt-1)
 
     # Output
     return rcv, dft_modes or (u_save if t_sub > 1 else u), summary
@@ -93,7 +96,10 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0,
                   subs=subs, name="adjoint"+name(model),
                   opt=opt_op(model))
 
-    summary = op()
+    summary = op(time_M=nt-1)
+    if src_coords is not None:
+        # Read last time step in rec
+        Operator(ws_expr + geom_expr[-1])(time_m=0, time_M=0)
 
     # Output
     if wsrc:
@@ -107,6 +113,7 @@ def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8,
     Low level propagator, to be used through `interface.py`
     Compute the action of the adjoint Jacobian onto a residual J'* δ d.
     """
+    nt = residual.shape[0]
     # Setting adjoint wavefieldgradient
     v = wavefield(model, space_order, fw=False)
 
@@ -129,7 +136,7 @@ def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8,
 
     if return_op:
         return op, gradm, v
-    summary = op()
+    summary = op(time_M=nt-1)
 
     # Output
     return gradm, summary
@@ -164,7 +171,7 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     # Setup source and receiver
     geom_expr, _, rcvnl = src_rec(model, u, rec_coords=rcv_coords if nlind else None,
                                   src_coords=src_coords, wavelet=wavelet)
-    geom_exprl, _, rcvl = src_rec(model, ul, rec_coords=rcv_coords, nt=wavelet.shape[0])
+    geom_exprl, _, rcvl = src_rec(model, ul, rec_coords=rcv_coords, nt=nt)
 
     # On-the-fly Fourier
     dft, dft_modes = otf_dft(u, freq_list, model.critical_dt, factor=dft_sub)
@@ -180,6 +187,10 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
         return op, u, outrec
 
     summary = op()
+    # Read last time step in rec
+    if rcv_coords is not None:
+        lastgeom = geom_expr[-1] + geom_exprl[-1] if nlind else geom_exprl[-1]
+        Operator(lastgeom)(time_m=nt-1, time_M=nt-1)
 
     # Output
     return outrec, dft_modes or (u_save if t_sub > 1 else u), summary
