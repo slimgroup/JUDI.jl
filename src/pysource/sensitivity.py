@@ -63,7 +63,7 @@ def crosscorr_time(u, v, model, **kwargs):
         Model structure
     """
     w = kwargs.get('w') or u[0].indices[0].spacing * model.irho
-    return - w * sum(vv.dt2 * uu for uu, vv in zip(u, v))
+    return w * sum(vv.dt2 * uu for uu, vv in zip(u, v))
 
 
 def crosscorr_freq(u, v, model, freq=None, dft_sub=None, **kwargs):
@@ -114,7 +114,7 @@ def isic_time(u, v, model, **kwargs):
     model: Model
         Model structure
     """
-    w = - u[0].indices[0].spacing * model.irho
+    w = u[0].indices[0].spacing * model.irho
     return w * sum(uu * vv.dt2 * model.m + inner_grad(uu, vv)
                    for uu, vv in zip(u, v))
 
@@ -179,7 +179,7 @@ def basic_src(model, u, **kwargs):
     model: Model
         Model containing the perturbation dm
     """
-    w = - model.dm * model.irho
+    w = model.dm * model.irho
     if model.is_tti:
         return (w * u[0].dt2, w * u[1].dt2)
     return w * u[0].dt2
@@ -202,8 +202,8 @@ def isic_src(model, u, **kwargs):
         du_aux = divs(dm * irho * grads(uu, so_fact=2), so_fact=2)
         dus.append(dm * irho * uu.dt2 * m - du_aux)
     if model.is_tti:
-        return (-dus[0], -dus[1])
-    return -dus[0]
+        return (dus[0], dus[1])
+    return dus[0]
 
 
 def inner_grad(u, v):

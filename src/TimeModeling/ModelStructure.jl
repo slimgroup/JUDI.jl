@@ -36,7 +36,13 @@ function PhysicalParameter(v::Array{vDT}, A::PhysicalParameter) where {vDT}
     return PhysicalParameter{vDT}(A.n, A.d, A.o, v)
 end
 
-function PhysicalParameter(v::Union{Array{vDT}, vDT}, n::Tuple, d::Tuple, o::Tuple) where {vDT}
+function PhysicalParameter(v::Array{vDT, N}, n::Tuple, d::Tuple, o::Tuple) where {vDT, N}
+    length(v) != prod(n) && throw(PhysicalParameterException("Incompatible number of element in input $(length(v)) with n=$(n)"))
+    N == 1 && (v = reshape(v, n))
+    return PhysicalParameter{vDT}(n, d, o, v)
+end
+
+function PhysicalParameter(v::vDT, n::Tuple, d::Tuple, o::Tuple) where {vDT}
     return PhysicalParameter{vDT}(n, d, o, v)
 end
 
@@ -99,7 +105,6 @@ function /(A::PhysicalParameter{vDT}, B::PhysicalParameter{vDT}) where {vDT}
     return PhysicalParameter(A.data ./ B.data, A)
 end
 
-
 +(A::PhysicalParameter{vDT}, b::Number) where {vDT} = PhysicalParameter(A.data .+ b, A)
 +(b::Number, A::PhysicalParameter{vDT}) where {vDT} = PhysicalParameter(A.data .+ b, A)
 -(A::PhysicalParameter{vDT}, b::Number) where {vDT} = PhysicalParameter(A.data .- b, A)
@@ -131,6 +136,44 @@ broadcasted(::typeof(/), x::Number, y::PhysicalParameter) = x / y
 
 broadcast!(identity, x::PhysicalParameter, y::PhysicalParameter) = copy!(x, y)
 broadcasted(identity, x::PhysicalParameter) = x
+
+# ND-array opertations
+
+function *(A::AbstractArray{vDT, 2}, p::PhysicalParameter{RDT}) where {vDT, RDT}
+    @warn "External linear operator, returning julia Array"
+    return A*vec(p.data)
+end
+
+function \(A::AbstractArray{vDT, 2}, p::PhysicalParameter{RDT}) where {vDT, RDT}
+    @warn "External linear operator, returning julia Array"
+    return A\vec(p.data)
+end
+
+function broadcasted(::typeof(*), A::AbstractArray{vDT, N}, p::PhysicalParameter{RDT}) where {vDT, RDT, N}
+    size(A) == p.n ||  throw(PhysicalParameterException("Incompatible sizes $(size(A)) and $(p.n) for Hadamard product"))
+    return PhysicalParameter(RDT.(A) .* p.data, p)
+end
+
+broadcasted(::typeof(*), p::PhysicalParameter{RDT},  A::AbstractArray{vDT, N}) where {vDT, RDT, N} = A.*p 
+
+function broadcasted(::typeof(/), A::AbstractArray{vDT, N}, p::PhysicalParameter{RDT}) where {vDT, RDT, N}
+    size(A) == p.n ||  throw(PhysicalParameterException("Incompatible sizes $(size(A)) and $(p.n) for Hadamard div"))
+    return PhysicalParameter(RDT.(A) ./ p.data, p)
+end
+
+function broadcasted(::typeof(/), p::PhysicalParameter{RDT}, A::AbstractArray{vDT, N}) where {vDT, RDT, N}
+    size(A) == p.n ||  throw(PhysicalParameterException("Incompatible sizes $(size(A)) and $(p.n) for Hadamard div"))
+    return PhysicalParameter(p.data ./ RDT.(A) , p)
+end
+
+function broadcasted(::typeof(+), A::AbstractArray{vDT, N}, p::PhysicalParameter{RDT}) where {vDT, RDT, N}
+    size(A) == p.n ||  throw(PhysicalParameterException("Incompatible sizes $(size(A)) and $(p.n) for Hadamard product"))
+    return PhysicalParameter(RDT.(A) .+ p.data, p)
+end
+
+broadcasted(::typeof(+), p::PhysicalParameter{RDT}, A::AbstractArray{vDT, N}) where {vDT, RDT, N} = A .+ p
+broadcasted(::typeof(-), p::PhysicalParameter{RDT}, A::AbstractArray{vDT, N}) where {vDT, RDT, N} = p .+ (-A)
+broadcasted(::typeof(-), A::AbstractArray{vDT, N}, p::PhysicalParameter{RDT}) where {vDT, RDT, N} = A .+ (-p)
 
 # Materialize for broadcasting
 function materialize!(x::PhysicalParameter, y::PhysicalParameter)
@@ -226,6 +269,8 @@ end
 
 get_dt(m::Model) = calculate_dt(m)
 getindex(m::Model, sym::Symbol) = m.params[sym]
+
+Base.setproperty!(m::Model, s::Symbol, p::PhysicalParameter{Float32}) = (m.params[s] = p)
 
 function Base.getproperty(obj::Model, sym::Symbol)
     if sym == :params

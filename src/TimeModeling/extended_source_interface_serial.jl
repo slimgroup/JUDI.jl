@@ -13,7 +13,8 @@ function extended_source_modeling(model_full::Model, srcData, recGeometry, recDa
     # Set up Python model structure
     modelPy = devito_model(model, options)
     if op=='J' && mode == 1
-        update_dm(modelPy, reshape(dm, model.n), options)
+        update_dm(modelPy, dm, options)
+        modelPy.dm == 0 && return judiVector(recGeometry, zeros(Float32, geometry.nt[1], length(geometry.xloc[1])))
     end
 
     # Load shot record if stored on disk
@@ -38,7 +39,7 @@ function extended_source_modeling(model_full::Model, srcData, recGeometry, recDa
 
     # Extend gradient back to original model size
     if op=='J' && mode==-1 && options.limit_m==true
-        argout = vec(extend_gradient(model_full, model, reshape(argout, model.n)))
+        argout = PhysicalParameter(extend_gradient(model_full, model, argout), model.d, model.o)
     end
 
     return argout

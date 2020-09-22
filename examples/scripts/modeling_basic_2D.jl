@@ -86,6 +86,9 @@ rtm = adjoint(J)*dD
 # evaluate FWI objective function
 f, g = fwi_objective(model0, q, dobs; options=opt)
 
+# TWRI
+f, gm, gy = twri_objective(model0, q, dobs, nothing; options=opt, optionswri=TWRIOptions(params=:all))
+
 # evaluate LSRTM objective function
 fj, gj = lsrtm_objective(model0, q, dD, dm; options=opt)
 fjn, gjn = lsrtm_objective(model0, q, dobs, dm; nlind=true, options=opt)

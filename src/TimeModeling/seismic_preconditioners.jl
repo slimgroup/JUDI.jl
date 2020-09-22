@@ -171,7 +171,7 @@ function judiTopmute(n, mute_end, length)
     return T
 end
 
-function find_water_bottom(m)
+function find_water_bottom(m::Array)
     #return the indices of the water bottom of a seismic image
     n = size(m)
     idx = zeros(Integer, n[1])
@@ -188,6 +188,8 @@ function find_water_bottom(m)
     end
     return idx
 end
+
+find_water_bottom(m::PhysicalParameter) = find_water_bottom(m.data)
 
 function depth_scaling(m, model)
 # Linear depth scaling function for seismic images

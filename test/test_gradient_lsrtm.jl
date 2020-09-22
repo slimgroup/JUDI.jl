@@ -24,35 +24,38 @@ dt = srcGeometry.dt[1]
 @testset "LSRTM gradient test with $(nlayer) layers and tti $(tti) and freesurface $(fs)" begin
 	# Gradient test
 	h = 5f-2
-	maxiter = 6
+	maxiter = 3
 	err1 = zeros(maxiter, 2)
 	err2 = zeros(maxiter, 2)
-	h_all = zeros(maxiter, 2)
+	h_all = zeros(maxiter)
 
 	# Observed data
 	opt = Options(sum_padding=true, free_surface=parsed_args["fs"])
 	F = judiModeling(info, model, srcGeometry, recGeometry; options=opt)
+	F0 = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
+	J = judiJacobian(F0, q)
 	d = F*q
+	d0 = F0*q
 
 	# FWI gradient and function value for m0
 	Jm0, grad = lsrtm_objective(model0, q, d, dm; options=opt)
 	Jm01, grad1 = lsrtm_objective(model0, q, d, dm; options=opt, nlind=true)
 
-	dJ = dot(grad, vec(dm))
-	dJ1 = dot(grad1, vec(dm))
-	dm_pert = .5f0 .* dm
+	dJ = dot(grad, dm)
+	dJ1 = dot(grad1, dm)
+	dm_pert = randn(dm.n) .* dm
 
 	for j=1:maxiter
 		# FWI gradient and function falue for m0 + h*dm
 		dmloc = dm + h*dm_pert
 		Jm, _ = lsrtm_objective(model0, q, d, dmloc; options=opt)
 		Jm1, _ = lsrtm_objective(model0, q, d, dmloc; options=opt, nlind=true)
-
+		Jm2 = .5*norm(J*dmloc - d)^2
 		# Check convergence
 		err1[j, 1] = abs(Jm - Jm0)
 		err1[j, 2] = abs(Jm1 - Jm01)
-		err2[j, 1] = abs(Jm - (Jm0 + h*dJ))
-		err2[j, 2] = abs(Jm1 - (Jm01 + h*dJ1))
+		err2[j, 1] = abs(Jm - Jm0 - h*dJ)
+		err2[j, 2] = abs(Jm1 - Jm01 - h*dJ1)
 
 		j == 1 ? prev = 1 : prev = j - 1
 		for i=1:2
@@ -90,5 +93,5 @@ dt = srcGeometry.dt[1]
 	Jls, gradls = lsrtm_objective(model0, q, d, 0f0.*dm; options=opt, nlind=true)
 	Jfwi, gradfwi = fwi_objective(model0, q, d; options=opt)
 	@test isapprox(Jls, Jfwi;rtol=0, atol=0)
-	@test isapprox(gradls, gradfwi;rtol=0, atol=0)
+	@test isapprox(gradls, -gradfwi;rtol=0, atol=0)
 end

@@ -50,6 +50,8 @@ include("fwi_objective_serial.jl")  # FWI objective function value and gradient
 include("fwi_objective_parallel.jl")    # parallelization for FWI gradient
 include("lsrtm_objective_serial.jl")  # LSRTM objective function value and gradient
 include("lsrtm_objective_parallel.jl")    # parallelization for LSRTM gradient
+include("twri_objective_serial.jl")  # TWRI objective function value and gradient
+include("twri_objective_parallel.jl")    # parallelization for TWRI gradient
 
 #############################################################################
 # Linear operators

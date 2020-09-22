@@ -40,7 +40,7 @@ m0 = model0.m
     J = judiJacobian(A0, w)
 
     # Nonlinear modeling
-    dpred = A0*w
+    dobs = A0*w
     dD = J*dm
 
     # Jacobian test
@@ -51,8 +51,8 @@ m0 = model0.m
 
     for j=1:maxiter
 
-        A.model.m = m0 + h*reshape(dm, model0.n)
-        dobs = A*w
+        A.model.m = m0 + h*dm
+        dpred = A*w
 
         err1[j] = norm(dobs - dpred)
         err2[j] = norm(dobs - dpred - h*dD)

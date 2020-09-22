@@ -35,7 +35,8 @@ ftol = 1f-5
     v = p2
     u_scale = deepcopy(p)
     v_scale = deepcopy(p2)
-    
+    c = ones(Float32, v.n)
+
     u_scale .*= 2f0
     @test isapprox(u_scale, 2f0 * u; rtol=ftol)
     v_scale .+= 2f0
@@ -53,11 +54,22 @@ ftol = 1f-5
     u_scale .= u ./ v
     @test isapprox(u_scale.data[1], u.data[1]./v.data[1])
 
+    @test isapprox(u.*c, u)
+    @test isapprox(c.*u, u)
+    @test isapprox(u./c, u)
+    @test isapprox(c./u, 1 ./u)
+    @test isapprox(c .+ u, 1 .+ u)
+    @test isapprox(c .- u, 1 .- u)
+    @test isapprox(u .+ c, 1 .+ u)
+    @test isapprox(u .- c, u .- 1)
+
     # Arithmetic 
     v = PhysicalParameter(randn(Float32, n...), d, o)
     w = PhysicalParameter(randn(Float32, n...), d, o)
     a = .5f0 + rand(Float32)
     b = .5f0 + rand(Float32)
+    c2 = randn(size(v, 1), size(v,1))
+
     @test isapprox(u + (v + w), (u + v) + w; rtol=ftol)
     @test isapprox(u + v, v + u; rtol=ftol)
     @test isapprox(u, u + 0; rtol=ftol)
@@ -67,5 +79,7 @@ ftol = 1f-5
     @test isapprox(u, u .* 1; rtol=ftol)
     @test isapprox(a .* (u + v), a .* u + a .* v; rtol=1f-5)
     @test isapprox((a + b) .* v, a .* v + b.* v; rtol=1f-5)
+    @test isapprox(c2*v, c2*vec(v.data))
+    @test isapprox(c2\v, c2\vec(v.data))
 
 end

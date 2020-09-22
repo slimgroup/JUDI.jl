@@ -132,7 +132,7 @@ function *(a::Number,A::judiJacobian{ADDT,ARDT}) where {ADDT,ARDT}
 end
 
 # Needed by lsqr
-zerox(J::judiJacobian, y::judiVector) = zeros(Float32, size(J, 2))
+zerox(J::judiJacobian, y::judiVector) = PhysicalParameter(zeros(Float32, J.model.n), J.model.d, J.model.o)
 
 ############################################################
 ## overloaded Bases +(...judiJacobian...), -(...judiJacobian...)

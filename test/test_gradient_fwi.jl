@@ -39,11 +39,11 @@ dt = srcGeometry.dt[1]
 	# FWI gradient and function value for m0
 	Jm0, grad = fwi_objective(model0, q, d; options=opt)
 
-	dJ = dot(grad, vec(dm))
+	dJ = dot(grad, dm)
 
 	for j=1:maxiter
 		# FWI gradient and function falue for m0 + h*dm
-		modelH.m = model0.m + h*reshape(dm, model.n)
+		modelH.m = model0.m + h*dm
 		Jm, gradm = fwi_objective(modelH, q, d;options=opt)
 
 		# Check convergence

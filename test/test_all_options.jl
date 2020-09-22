@@ -23,10 +23,10 @@ dt = srcGeometry.dt[1]
 
         # Linearized modeling
         J = judiJacobian(F, q)
-        x = vec(dm)
+        @test norm(J*(0f0.*dm)) == 0
 
         y0 = F*q
-        y_hat = J*x
+        y_hat = J*dm
         x_hat1 = adjoint(J)*y0
 
         c = dot(y0, y_hat)
@@ -45,7 +45,7 @@ dt = srcGeometry.dt[1]
         # Linearized modeling
         J = judiJacobian(F, q)
 
-        y_hat = J*x
+        y_hat = J*dm
         x_hat2 = adjoint(J)*y0
 
         c = dot(y0, y_hat)
@@ -64,8 +64,9 @@ dt = srcGeometry.dt[1]
 
         # Linearized modeling
         J = judiJacobian(F, q)
+        @test norm(J*(0f0.*dm)) == 0
 
-        y_hat = J*x
+        y_hat = J*dm
         x_hat3 = adjoint(J)*y0
 
         c = dot(y0, y_hat)
@@ -83,8 +84,9 @@ dt = srcGeometry.dt[1]
 
         # Linearized modeling
         J = judiJacobian(F, q)
+        @test norm(J*(0f0.*dm)) == 0
 
-        y_hat = J*x
+        y_hat = J*dm
         x_hat3 = adjoint(J)*y0
 
         c = dot(y0, y_hat)
@@ -120,8 +122,9 @@ dt = srcGeometry.dt[1]
 
         # Linearized modeling
         J = judiJacobian(F, q)
+        @test norm(J*(0f0.*dm)) == 0
 
-        y_hat = J*x
+        y_hat = J*dm
         x_hat5 = adjoint(J)*y0
 
         c = dot(y0, y_hat)
