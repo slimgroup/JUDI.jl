@@ -1,8 +1,9 @@
 from kernels import wave_kernel
 from geom_utils import src_rec
 from wave_utils import (wf_as_src, wavefield, otf_dft, extended_src_weights,
-                        extented_src, wavefield_subsampled)
+                        extented_src, wavefield_subsampled, weighted_norm)
 from sensitivity import grad_expr, lin_src
+from utils import weight_fun
 
 from devito import Operator, Function
 from devito.tools import as_tuple
@@ -59,16 +60,13 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
         return op, u, rcv
 
     summary = op()
-    # Read last time step in rec
-    if rcv_coords is not None:
-        Operator(geom_expr[-1])(time_m=nt-1, time_M=nt-1)
 
     # Output
     return rcv, dft_modes or (u_save if t_sub > 1 else u), summary
 
 
 def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0,
-            save=False, ws=None):
+            save=False, ws=None, norm_v=False, w_fun=None):
     """
     Low level propagator, to be used through `interface.py`
     Compute adjoint wavefield v = adjoint(F(m))*y
@@ -90,20 +88,26 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0,
     # Extended source
     wsrc, ws_expr = extended_src_weights(model, ws, v)
 
+    # Wavefield norm
+    nv_t, nv_s = ([], [])
+    if norm_v:
+        weights = weight_fun(w_fun, model, src_coords)
+        norm_v, (nv_t, nv_s) = weighted_norm(v, weight=weights)
+
     # Create operator and run
     subs = model.spacing_map
-    op = Operator(tmp + pde + ws_expr + geom_expr,
+    op = Operator(tmp + pde + ws_expr + nv_t + geom_expr + nv_s,
                   subs=subs, name="adjoint"+name(model),
                   opt=opt_op(model))
 
+    # Read last time step in rec
     summary = op()
-    if src_coords is not None:
-        # Read last time step in rec
-        Operator(ws_expr + geom_expr[-1])(time_m=0, time_M=0)
 
     # Output
     if wsrc:
         return wsrc, summary
+    if norm_v:
+        return rcv, v, norm_v, summary
     return rcv, v, summary
 
 
@@ -113,7 +117,6 @@ def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8,
     Low level propagator, to be used through `interface.py`
     Compute the action of the adjoint Jacobian onto a residual J'* δ d.
     """
-    nt = residual.shape[0]
     # Setting adjoint wavefieldgradient
     v = wavefield(model, space_order, fw=False)
 
@@ -136,6 +139,7 @@ def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8,
 
     if return_op:
         return op, gradm, v
+
     summary = op()
 
     # Output
@@ -187,10 +191,46 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
         return op, u, outrec
 
     summary = op()
-    # Read last time step in rec
-    if rcv_coords is not None:
-        lastgeom = geom_expr[-1] + geom_exprl[-1] if nlind else geom_exprl[-1]
-        Operator(lastgeom)(time_m=nt-1, time_M=nt-1)
 
     # Output
     return outrec, dft_modes or (u_save if t_sub > 1 else u), summary
+
+
+# Forward propagation
+def forward_grad(model, src_coords, rcv_coords, wavelet, v, space_order=8,
+                 q=None, ws=None, isic=False, w=None, **kwargs):
+    """
+    Low level propagator, to be used through `interface.py`
+    Compute forward wavefield u = A(m)^{-1}*f and related quantities (u(xrcv))
+    """
+    # Number of time steps
+    nt = as_tuple(q)[0].shape[0] if wavelet is None else wavelet.shape[0]
+
+    # Setting forward wavefield
+    u = wavefield(model, space_order, save=False)
+
+    # Add extended source
+    q = q or wf_as_src(u, w=0)
+    q = extented_src(model, ws, wavelet, q=q)
+
+    # Set up PDE expression and rearrange
+    pde, tmp = wave_kernel(model, u, q=q)
+
+    # Setup source and receiver
+    geom_expr, _, rcv = src_rec(model, u, src_coords=src_coords, nt=nt,
+                                rec_coords=rcv_coords, wavelet=wavelet)
+
+    # Setup gradient wrt m
+    gradm = Function(name="gradm", grid=model.grid)
+    g_expr = grad_expr(gradm, u, v, model, w=w, isic=isic)
+
+    # Create operator and run
+    subs = model.spacing_map
+    op = Operator(tmp + pde + geom_expr + g_expr,
+                  subs=subs, name="forward_grad"+name(model),
+                  opt=opt_op(model))
+
+    summary = op()
+
+    # Output
+    return rcv, gradm, summary

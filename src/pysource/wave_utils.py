@@ -2,7 +2,7 @@ import numpy as np
 from sympy import cos, sin, sign
 
 from devito import (TimeFunction, Function, Inc, DefaultDimension,
-                    Eq, ConditionalDimension)
+                    Eq, ConditionalDimension, Dimension)
 from devito.tools import as_tuple
 from devito.symbolics import retrieve_functions, INT
 
@@ -245,3 +245,29 @@ def sub_time(time, factor, dt=1, freq=None):
         return ConditionalDimension(name='tsave', parent=time, factor=factor), factor
     else:
         return time, 1
+
+
+def weighted_norm(u, weight=None):
+    """
+    Space-time norm of a wavefield, split into norm in time first then in space to avoid
+    breaking loops
+
+    Parameters
+    ----------
+    u: TimeFunction or Tuple of TimeFunction
+        Wavefield to take the norm of
+    weight: String
+        Spacial weight to apply
+    """
+    grid = as_tuple(u)[0].grid
+    expr = grid.time_dim.spacing * sum(uu**2 for uu in as_tuple(u))
+    # Norm in time
+    norm_vy2_t = Function(name="nvy2t", grid=grid, space_order=0)
+    n_t = [Eq(norm_vy2_t, norm_vy2_t + expr)]
+    # Then norm in space
+    i = Dimension(name="i",)
+    norm_vy2 = Function(name="nvy2", shape=(1,), dimensions=(i, ), grid=grid)
+    w = weight or 1
+    n_s = [Inc(norm_vy2[0], norm_vy2_t / w**2)]
+    # Return norm object and expr
+    return norm_vy2, (n_t, n_s)

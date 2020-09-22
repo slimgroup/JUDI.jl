@@ -169,4 +169,4 @@ end
 
 getindex(J::judiJacobianExQ,a) = subsample(J, a)
 
-zerox(J::judiJacobianExQ, y::judiVector) = zeros(Float32, size(J, 2))
+zerox(J::judiJacobianExQ, y::judiVector) = PhysicalParameter(zeros(Float32, J.model.n), J.model.d, J.model.o)

@@ -12,6 +12,40 @@ export Model, PhysicalParameter, get_dt
 ###################################################################################################
 # PhysicalParameter abstract vector
 
+"""
+PhysicalParameter
+        n::IntTuple
+        d::RealTuple
+        o::RealTuple
+        data::Union{Array, Number}
+
+PhysicalParameter structure for physical space parameter.
+
+`n`: number of gridpoints in (x,y,z) for 3D or (x,z) for 2D
+
+`d`: grid spacing in (x,y,z) or (x,z) (in meters)
+
+`o`: origin of coordinate system in (x,y,z) or (x,z) (in meters)
+
+`data`: the array of the parameter values of size n
+
+Constructor
+===========
+
+A `PhysicalParameter` can be constructed in various ways but always require the origin `o` and grid spacing `d` that
+cannot be infered from the array.
+
+    PhysicalParameter(v::Array{vDT}, d, o) where `v` is an n-dimensional array and n=size(v)
+
+    PhysicalParameter(n, d, o; vDT=Float32) Creates a zero PhysicalParameter
+
+    PhysicalParameter(v::Array{vDT}, A::PhysicalParameter) Creates a PhysicalParameter from the Array `v` with n, d, o from `A`
+
+    PhysicalParameter(v::Array{vDT, N}, n::Tuple, d::Tuple, o::Tuple) where `v` is a vector or nd-array that is reshaped into shape `n`
+
+    PhysicalParameter(v::vDT, n::Tuple, d::Tuple, o::Tuple) Creates a constant (single number) PhyicalParameter
+
+"""
 mutable struct PhysicalParameter{vDT} <: AbstractVector{vDT}
     n::Tuple
     d::Tuple
@@ -36,7 +70,13 @@ function PhysicalParameter(v::Array{vDT}, A::PhysicalParameter) where {vDT}
     return PhysicalParameter{vDT}(A.n, A.d, A.o, v)
 end
 
-function PhysicalParameter(v::Union{Array{vDT}, vDT}, n::Tuple, d::Tuple, o::Tuple) where {vDT}
+function PhysicalParameter(v::Array{vDT, N}, n::Tuple, d::Tuple, o::Tuple) where {vDT, N}
+    length(v) != prod(n) && throw(PhysicalParameterException("Incompatible number of element in input $(length(v)) with n=$(n)"))
+    N == 1 && (v = reshape(v, n))
+    return PhysicalParameter{vDT}(n, d, o, v)
+end
+
+function PhysicalParameter(v::vDT, n::Tuple, d::Tuple, o::Tuple) where {vDT}
     return PhysicalParameter{vDT}(n, d, o, v)
 end
 
@@ -46,6 +86,9 @@ transpose(x::PhysicalParameter{vDT}) where vDT = x
 adjoint(x::PhysicalParameter{vDT}) where vDT = x
 
 # Basic overloads
+size(A::PhysicalParameter) = (prod(A.n), 1)
+length(A::PhysicalParameter) = prod(A.n)
+
 function norm(A::PhysicalParameter, order::Real=2)
     return norm(vec(A.data), order)
 end
@@ -56,23 +99,40 @@ dot(A::Array, B::PhysicalParameter) = dot(vec(A), vec(B.data))
 
 display(A::PhysicalParameter) = println("$(typeof(A)) of size $(A.n) with origin $(A.o) and spacing $(A.d)")
 show(A::PhysicalParameter) = show(A.data)
+showarg(io::IO, A::PhysicalParameter, toplevel) = print(io, typeof(A), " with size $(A.n), spacing $(A.d) and origin $(A.o)")
 
-size(A::PhysicalParameter) = (prod(A.n), 1)
+# Indexing
+firstindex(A::PhysicalParameter) = 1
+lastindex(A::PhysicalParameter) = length(A)
+lastindex(A::PhysicalParameter, dim::Int) = A.n[dim]
+
+function promote_shape(p::PhysicalParameter, A::Array{vDT, N}) where {vDT, N}
+    (size(A) != p.n && N>1) && return promote_shape(p.data, A)
+    (length(A) == prod(p.n) && N==1) && return size(A)
+    return promote_shape(A, A)
+end
+
+promote_shape(A::Array{vDT, N}, p::PhysicalParameter) where {vDT, N} = promote_shape(p, A)
+
+dotview(A::PhysicalParameter{vDT}, I::Vararg{Union{Function, Int, UnitRange{Int}}, N}) where {vDT, N} = dotview(A.data, I...)
+
 getindex(A::PhysicalParameter, i::Int) = A.data[i]
-getindex(A::PhysicalParameter, I::Vararg{Union{Int, UnitRange{Int}}, N}) where {N} = getindex(A.data, I...)
+getindex(A::PhysicalParameter, I::Vararg{Union{Int, Function, UnitRange{Int}}, N}) where {N} = getindex(A.data, I...)
 
-setindex!(A::PhysicalParameter, v, I::Vararg{Union{Int, UnitRange{Int}}, N}) where {N} = setindex!(A.data, v, I...)
+setindex!(A::PhysicalParameter, v, I::Vararg{Union{Int, Function, UnitRange{Int}}, N}) where {N} = setindex!(A.data, v, I...)
 setindex!(A::PhysicalParameter, v, i::Int) = (A.data[i] = v)
 
+# Constructiors by copy
 similar(x::PhysicalParameter{vDT}) where {vDT} = vDT(0) .* x
 copy(x::PhysicalParameter{vDT}) where {vDT} = PhysicalParameter{vDT}(x.n, x.d, x.o, x.data)
 
+# Equality
 isequal(A::PhysicalParameter, B::PhysicalParameter) = (A.data == B.data && A.o == B.o && A.d == B.d)
 isapprox(A::PhysicalParameter, B::PhysicalParameter; kwargs...) = (isapprox(A.data, B.data) && A.o == B.o && A.d == B.d)
 isapprox(A::PhysicalParameter, B::AbstractArray; kwargs...) = isapprox(A.data, B)
 isapprox(A::AbstractArray, B::PhysicalParameter; kwargs...) = isapprox(A, B.data)
 
-# Arithmetic operations
+# # Arithmetic operations
 function compare(A::PhysicalParameter, B::PhysicalParameter)
     A.o != B.o && throw(PhysicalParameterException("Incompatible origins $(A.o) and $(B.o)"))
     A.d != B.d && throw(PhysicalParameterException("Incompatible spacing $(A.d) and $(B.d)"))
@@ -99,53 +159,55 @@ function /(A::PhysicalParameter{vDT}, B::PhysicalParameter{vDT}) where {vDT}
     return PhysicalParameter(A.data ./ B.data, A)
 end
 
-
-+(A::PhysicalParameter{vDT}, b::Number) where {vDT} = PhysicalParameter(A.data .+ b, A)
-+(b::Number, A::PhysicalParameter{vDT}) where {vDT} = PhysicalParameter(A.data .+ b, A)
--(A::PhysicalParameter{vDT}, b::Number) where {vDT} = PhysicalParameter(A.data .- b, A)
--(A::PhysicalParameter{vDT}) where {vDT} = PhysicalParameter(-A.data, A)
--(b::Number, A::PhysicalParameter{vDT}) where {vDT} = PhysicalParameter(b .- A.data, A)
-*(A::PhysicalParameter{vDT}, b::Number) where {vDT} = PhysicalParameter(A.data .* b, A)
-*(b::Number, A::PhysicalParameter{vDT}) where {vDT} = PhysicalParameter(A.data .* b, A)
-/(A::PhysicalParameter{vDT}, b::Number) where {vDT} = PhysicalParameter(A.data ./ b, A)
-/(b::Number, A::PhysicalParameter{vDT}) where {vDT} = PhysicalParameter(b ./ A.data, A)
-
-
 # Brodacsting
-BroadcastStyle(::Type{PhysicalParameter}) = Base.Broadcast.DefaultArrayStyle{1}()
-ndims(::Type{PhysicalParameter{vDT}}) where {vDT} = 1
+BroadcastStyle(::Type{<:PhysicalParameter}) = Broadcast.ArrayStyle{PhysicalParameter}()
 
-### +/- ####
-broadcasted(::typeof(+), x::PhysicalParameter, y::PhysicalParameter) = x + y
-broadcasted(::typeof(+), x::PhysicalParameter, y::Number) = x + y
-broadcasted(::typeof(+), x::Number, y::PhysicalParameter) = x + y
-broadcasted(::typeof(-), x::PhysicalParameter, y::PhysicalParameter) = x - y
-broadcasted(::typeof(-), x::PhysicalParameter, y::Number) = x - y
-broadcasted(::typeof(-), x::Number, y::PhysicalParameter) = x - y
-broadcasted(::typeof(*), x::PhysicalParameter, y::PhysicalParameter) = x * y
-broadcasted(::typeof(*), x::PhysicalParameter, y::Number) = x * y
-broadcasted(::typeof(*), x::Number, y::PhysicalParameter) = x * y
-broadcasted(::typeof(/), x::PhysicalParameter, y::PhysicalParameter) = x / y
-broadcasted(::typeof(/), x::PhysicalParameter, y::Number) = x / y
-broadcasted(::typeof(/), x::Number, y::PhysicalParameter) = x / y
-
-broadcast!(identity, x::PhysicalParameter, y::PhysicalParameter) = copy!(x, y)
-broadcasted(identity, x::PhysicalParameter) = x
-
-# Materialize for broadcasting
-function materialize!(x::PhysicalParameter, y::PhysicalParameter)
-    x.data .= y.data
-    x.d = y.d
-    x.o = y.o
-    x.n = y.n
+function similar(bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{PhysicalParameter}}, ::Type{ElType}) where ElType
+    # Scan the inputs for the ArrayAndChar:
+    A = find_aac(bc)
+    # Use the char field of A to create the output
+    PhysicalParameter(similar(A.data), A.d, A.o)
 end
 
-function copy!(x::PhysicalParameter, y::PhysicalParameter)
-    compare(x, y)
-    x.data .= y.data
-    x.d = y.d
-    x.o = y.o
-    x.n = y.n
+"`A = find_aac(As)` returns the first PhysicalParameter among the arguments."
+find_aac(bc::Base.Broadcast.Broadcasted) = find_aac(bc.args)
+find_aac(args::Tuple) = find_aac(find_aac(args[1]), Base.tail(args))
+find_aac(x) = x
+find_aac(::Tuple{}) = nothing
+find_aac(a::PhysicalParameter, rest) = a
+find_aac(::Any, rest) = find_aac(rest)
+
+function broadcasted(f::Function, A::AbstractArray{vDT, N}, p::PhysicalParameter{RDT}) where {vDT, RDT, N}
+    if size(A) != p.n
+        if length(A) == length(p)
+            return PhysicalParameter(materialize(broadcasted(f, A, vec(p.data))), p.n, p.d, p.o)
+        end
+        throw(PhysicalParameterException("Incompatible sizes $(size(A)) and $(p.n)"))
+    end
+    return PhysicalParameter(materialize(broadcasted(f, A, p.data)), p.d, p.o)
+end
+
+function broadcasted(f::Function, p::PhysicalParameter{RDT}, A::AbstractArray{vDT, N}) where {vDT, RDT, N}
+    if size(A) != p.n
+        if length(A) == length(p)
+            return PhysicalParameter(materialize(broadcasted(f, vec(p.data), A)), p.n, p.d, p.o)
+        end
+        throw(PhysicalParameterException("Incompatible sizes $(size(A)) and $(p.n)"))
+    end
+    return PhysicalParameter(materialize(broadcasted(f, p.data, A)), p.d, p.o)
+end
+
+function broadcasted(f::Function, p1::PhysicalParameter{RDT}, p2::PhysicalParameter{RDT}) where {RDT}
+    p1.n != p2.n && throw(PhysicalParameterException("Incompatible sizes $(p1.n) and $(p2.n)"))
+    return PhysicalParameter(materialize(broadcasted(f, p1.data, p2.data)), p1.d, p1.o)
+end
+
+broadcasted(f::Function, p::PhysicalParameter, bc::Base.Broadcast.Broadcasted) = broadcasted(f, p, materialize(bc))
+broadcasted(f::Function, bc::Base.Broadcast.Broadcasted, p::PhysicalParameter) = broadcasted(f, materialize(bc), p)
+
+function *(A::Union{joMatrix, joLinearFunction, joLinearOperator, joCoreBlock}, p::PhysicalParameter{RDT}) where {RDT}
+    @warn "JOLI linear operator, returning julia Array"
+    return A*vec(p.data)
 end
 
 # For ploting
@@ -226,6 +288,8 @@ end
 
 get_dt(m::Model) = calculate_dt(m)
 getindex(m::Model, sym::Symbol) = m.params[sym]
+
+Base.setproperty!(m::Model, s::Symbol, p::PhysicalParameter{Float32}) = (m.params[s] = p)
 
 function Base.getproperty(obj::Model, sym::Symbol)
     if sym == :params

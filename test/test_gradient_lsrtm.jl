@@ -23,36 +23,42 @@ dt = srcGeometry.dt[1]
 
 @testset "LSRTM gradient test with $(nlayer) layers and tti $(tti) and freesurface $(fs)" begin
 	# Gradient test
-	h = 5f-2
-	maxiter = 6
+	h = 5f-1
+	maxiter = 5
 	err1 = zeros(maxiter, 2)
 	err2 = zeros(maxiter, 2)
-	h_all = zeros(maxiter, 2)
+	h_all = zeros(maxiter)
 
 	# Observed data
 	opt = Options(sum_padding=true, free_surface=parsed_args["fs"])
 	F = judiModeling(info, model, srcGeometry, recGeometry; options=opt)
+	F0 = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
+	J = judiJacobian(F0, q)
 	d = F*q
+	dD = J*dm
+	dD = dD .* dD
 
 	# FWI gradient and function value for m0
-	Jm0, grad = lsrtm_objective(model0, q, d, dm; options=opt)
+	Jm0, grad = lsrtm_objective(model0, q, dD, dm; options=opt)
 	Jm01, grad1 = lsrtm_objective(model0, q, d, dm; options=opt, nlind=true)
 
-	dJ = dot(grad, vec(dm))
-	dJ1 = dot(grad1, vec(dm))
-	dm_pert = .5f0 .* dm
+	# Perturbation
+	dmp = (.5f0 .+ rand(Float32, dm.n)) .* dm
+	dJ = dot(grad, dmp)
+	dJ1 = dot(grad1, dmp)
 
 	for j=1:maxiter
+		dmloc = dm + h*dmp
 		# FWI gradient and function falue for m0 + h*dm
-		dmloc = dm + h*dm_pert
-		Jm, _ = lsrtm_objective(model0, q, d, dmloc; options=opt)
+		Jm, _ = lsrtm_objective(model0, q, dD, dmloc; options=opt)
 		Jm1, _ = lsrtm_objective(model0, q, d, dmloc; options=opt, nlind=true)
-
+		@printf("h = %2.2e, J0 = %2.2e, Jm = %2.2e \n", h, Jm0, Jm)
+		@printf("h = %2.2e, J01 = %2.2e, Jm1 = %2.2e \n", h, Jm01, Jm1)
 		# Check convergence
 		err1[j, 1] = abs(Jm - Jm0)
 		err1[j, 2] = abs(Jm1 - Jm01)
-		err2[j, 1] = abs(Jm - (Jm0 + h*dJ))
-		err2[j, 2] = abs(Jm1 - (Jm01 + h*dJ1))
+		err2[j, 1] = abs(Jm - Jm0 - h*dJ)
+		err2[j, 2] = abs(Jm1 - Jm01 - h*dJ1)
 
 		j == 1 ? prev = 1 : prev = j - 1
 		for i=1:2
@@ -60,7 +66,7 @@ dt = srcGeometry.dt[1]
 			@printf(", e2  = %2.2e, rate = %2.2e \n", err2[j, i], err2[prev, i]/err2[j, i])
 		end
 		h_all[j] = h
-		h = h * .8f0
+		h = h * .5f0
 	end
 
 	for i=1:2
@@ -70,8 +76,8 @@ dt = srcGeometry.dt[1]
 
 		# This is a linearized problem, so the whole expansiaon is O(dm) and
 		# "second order error" should be first order
-		@test isapprox(rate_1, 1.25f0; rtol=5f-2)
-		@test isapprox(rate_2, 1.25f0; rtol=5f-2)
+		@test isapprox(rate_1, 2f0; rtol=5f-2)
+		@test isapprox(rate_2, 4f0; rtol=5f-2)
 	end
 
 	# Plot errors
@@ -90,5 +96,5 @@ dt = srcGeometry.dt[1]
 	Jls, gradls = lsrtm_objective(model0, q, d, 0f0.*dm; options=opt, nlind=true)
 	Jfwi, gradfwi = fwi_objective(model0, q, d; options=opt)
 	@test isapprox(Jls, Jfwi;rtol=0, atol=0)
-	@test isapprox(gradls, gradfwi;rtol=0, atol=0)
+	@test isapprox(gradls, -gradfwi;rtol=0, atol=0)
 end

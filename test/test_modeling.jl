@@ -39,64 +39,64 @@ end
 
 cases = [(true, true), (true, false), (false, true), (false, false)]
 
-@testset "Generic tests with limit_m = $(limit_m)  and save to disk = $(disk)" for (limit_m, disk)=cases
-	# Options structures
-	opt = Options(save_data_to_disk=disk, limit_m=limit_m, buffer_size=100f0,
-					file_path=pwd(),	# path to files
-					file_name="shot_record")	# saves files as file_name_xsrc_ysrc.segy
+# @testset "Generic tests with limit_m = $(limit_m)  and save to disk = $(disk)" for (limit_m, disk)=cases
+# 	# Options structures
+# 	opt = Options(save_data_to_disk=disk, limit_m=limit_m, buffer_size=100f0,
+# 					file_path=pwd(),	# path to files
+# 					file_name="shot_record")	# saves files as file_name_xsrc_ysrc.segy
 
-	opt0 = Options(save_data_to_disk=disk, limit_m=limit_m, buffer_size=100f0,
-					file_path=pwd(),	# path to files
-					file_name="smooth_shot_record")	# saves files as file_name_xsrc_ysrc.segy
+# 	opt0 = Options(save_data_to_disk=disk, limit_m=limit_m, buffer_size=100f0,
+# 					file_path=pwd(),	# path to files
+# 					file_name="smooth_shot_record")	# saves files as file_name_xsrc_ysrc.segy
 
-	optJ = Options(save_data_to_disk=disk, limit_m=limit_m, buffer_size=100f0,
-					file_path=pwd(),	# path to files
-					file_name="linearized_shot_record")	# saves files as file_name_xsrc_ysrc.segy
+# 	optJ = Options(save_data_to_disk=disk, limit_m=limit_m, buffer_size=100f0,
+# 					file_path=pwd(),	# path to files
+# 					file_name="linearized_shot_record")	# saves files as file_name_xsrc_ysrc.segy
 
-	# Setup operators
-	Pr = judiProjection(info, recGeometry)
-	F = judiModeling(info, model; options=opt)
-	F0 = judiModeling(info, model0; options=opt0)
-	Ps = judiProjection(info, srcGeometry)
+# 	# Setup operators
+# 	Pr = judiProjection(info, recGeometry)
+# 	F = judiModeling(info, model; options=opt)
+# 	F0 = judiModeling(info, model0; options=opt0)
+# 	Ps = judiProjection(info, srcGeometry)
 
-	# Combined operator Pr*F*adjoint(Ps)
-	Ffull = judiModeling(info, model, srcGeometry, recGeometry)
-	J = judiJacobian(Pr*F0*adjoint(Ps),q; options=optJ) # equivalent to J = judiJacobian(Ffull,q)
+# 	# Combined operator Pr*F*adjoint(Ps)
+# 	Ffull = judiModeling(info, model, srcGeometry, recGeometry)
+# 	J = judiJacobian(Pr*F0*adjoint(Ps),q; options=optJ) # equivalent to J = judiJacobian(Ffull,q)
 
-	# Nonlinear modeling
-	d1 = Pr*F*adjoint(Ps)*q	# equivalent to d = Ffull*q
-	dfull = Ffull*q
-	@test isapprox(to_data(d1), dfull, rtol=ftol)
+# 	# Nonlinear modeling
+# 	d1 = Pr*F*adjoint(Ps)*q	# equivalent to d = Ffull*q
+# 	dfull = Ffull*q
+# 	@test isapprox(to_data(d1), dfull, rtol=ftol)
 
-	qad = (Ps*adjoint(F))*adjoint(Pr)*d1
-	qfull = adjoint(Ffull)*d1
-	@test isapprox(qad, qfull, rtol=ftol)
+# 	qad = (Ps*adjoint(F))*adjoint(Pr)*d1
+# 	qfull = adjoint(Ffull)*d1
+# 	@test isapprox(qad, qfull, rtol=ftol)
 
-	# fwi objective function
-	f, g = fwi_objective(model0, q, d1; options=opt)
-	f, g = fwi_objective(model0, subsample(q,1), subsample(d1,1); options=opt)
+# 	# fwi objective function
+# 	f, g = fwi_objective(model0, q, d1; options=opt)
+# 	f, g = fwi_objective(model0, subsample(q,1), subsample(d1,1); options=opt)
 
-	# Subsampling
-	for inds=[2, [1, 2]]
-		dsub = subsample(dfull, inds)
-		qsub = subsample(q, inds)
-			Fsub = subsample(F, inds)
-		Jsub = subsample(J, inds)
-		Ffullsub = subsample(Ffull, inds)
-		Pssub = subsample(Ps, inds)
-		Prsub = subsample(Pr, inds)
-		ds1 = Ffullsub*qsub 
-		ds2 = Prsub * Fsub * adjoint(Pssub) *qsub 
-		@test isapprox(ds1, to_data(ds2), rtol=ftol)
-		@test isapprox(ds1, dsub, rtol=ftol)
-		@test isapprox(to_data(ds2), dsub, rtol=ftol)
-	end
+# 	# Subsampling
+# 	for inds=[2, [1, 2]]
+# 		dsub = subsample(dfull, inds)
+# 		qsub = subsample(q, inds)
+# 			Fsub = subsample(F, inds)
+# 		Jsub = subsample(J, inds)
+# 		Ffullsub = subsample(Ffull, inds)
+# 		Pssub = subsample(Ps, inds)
+# 		Prsub = subsample(Pr, inds)
+# 		ds1 = Ffullsub*qsub 
+# 		ds2 = Prsub * Fsub * adjoint(Pssub) *qsub 
+# 		@test isapprox(ds1, to_data(ds2), rtol=ftol)
+# 		@test isapprox(ds1, dsub, rtol=ftol)
+# 		@test isapprox(to_data(ds2), dsub, rtol=ftol)
+# 	end
 
-	# vcat, norms, dot
-	dcat = [d1, d1]
-	@test isapprox(norm(d1)^2, .5f0*norm(dcat)^2)
-	@test isapprox(dot(d1, d1), norm(d1)^2)
-end
+# 	# vcat, norms, dot
+# 	dcat = [d1, d1]
+# 	@test isapprox(norm(d1)^2, .5f0*norm(dcat)^2)
+# 	@test isapprox(dot(d1, d1), norm(d1)^2)
+# end
 
 
 ############################# Full wavefield ############################################
@@ -115,9 +115,9 @@ end
 	dobs = Pr*F*u
 	v = Fa*(adjoint(Pr)*dobs)
 
-	a = dot(v, u)
+	a = dot(u, v)
 	b = dot(dobs, dobs)
-	@printf(" <F x, y> : %2.5e, <x, F' y> : %2.5e, relative error : %2.5e \n", a, b, a/b - 1)
+	@printf(" <F x, y> : %2.5e, <x, F' y> : %2.5e, relative error : %2.5e \n", b, a, a/b - 1)
 	@test isapprox(a, b, rtol=1f-4)
 
 

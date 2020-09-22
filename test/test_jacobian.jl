@@ -34,8 +34,10 @@ m0 = model0.m
     J = judiJacobian(Pr*F0*adjoint(Ps), q)
 
     # Nonlinear modeling
-    dpred = Pr*F0*Ps'*q
+    dobs = Pr*F0*Ps'*q
     dD = J*dm
+
+    @test norm(J*(0f0.*dm)) == 0
 
     # Jacobian test
     maxiter = 6
@@ -45,8 +47,8 @@ m0 = model0.m
 
     for j=1:maxiter
 
-        F.model.m = m0 + h*reshape(dm, model0.n)
-        dobs = Pr*F*Ps'*q
+        F.model.m = m0 + h*dm
+        dpred = Pr*F*Ps'*q
 
         err1[j] = norm(dobs - dpred)
         err2[j] = norm(dobs - dpred - h*dD)
