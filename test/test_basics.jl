@@ -47,6 +47,15 @@ end
 
 function test_limit_m(ndim, tti)
     model = test_model(ndim; tti=tti)
+
+    @test get_dt(model) == calculate_dt(model)
+    @test model[:m] == model.m
+    mloc = model.m
+    model.m .*= 0f0
+    @test norm(model.m) == 0
+    model.m = mloc
+    @test model.m == mloc
+
     srcGeometry = example_src_geometry()
     recGeometry = example_rec_geometry(cut=true)
     dm = rand(Float32, model.n...)
@@ -71,6 +80,11 @@ function test_limit_m(ndim, tti)
 
     ex_dm = extend_gradient(model, new_mod, dm_n)
     @test size(ex_dm) == size(dm)
+    dmt = PhysicalParameter(dm_n, new_mod.n, model.d, new_mod.o)
+    ex_dm = extend_gradient(model, new_mod, dmt)
+    @test size(ex_dm.data) == size(dm)
+    @test ex_dm.o == model.o
+    @test ex_dm.n == model.n
 
 end
 

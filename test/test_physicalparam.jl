@@ -18,6 +18,14 @@ ftol = 1f-5
     @test p.n == n
     @test p.o == o
 
+    # indexing
+    @test firstindex(p) == 1
+    @test lastindex(p) == prod(n)
+    @test p == p
+    @test isapprox(p, a)
+    @test isapprox(a, p)
+
+    # copies
     p2 = similar(p)
     @test p2.n == p.n
     @test norm(p2) == 0
@@ -29,6 +37,14 @@ ftol = 1f-5
     p2 = 0f0 .* p .+ 1f0
     @test norm(p2, 1) == prod(n)
 
+    # Some basics
+    pl = PhysicalParameter(n, d, o)
+    @test norm(pl) == 0
+    pl = PhysicalParameter(0, n, d, o)
+    @test pl.data == 0
+    @test isapprox(dot(p, p), norm(p)^2)
+    @test isapprox(dot(ones(n), p), sum(p.data))
+    @test isapprox(dot(p, ones(n)), sum(p.data))
 
     # broadcast multiplication
     u = p
@@ -85,6 +101,9 @@ ftol = 1f-5
     @test isapprox(c - v, 1 .- v)
     @test isapprox(v + c, 1 .+ v)
     @test isapprox(v - c, v .- 1)
+    @test isapprox(v * v, v.^2)
+    @test isapprox(v / v, 0f0.*v .+1)
+
 
     # Indexing
     u = PhysicalParameter(randn(n), d, o)

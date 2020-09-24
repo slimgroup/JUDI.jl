@@ -329,4 +329,22 @@ ftol = 1e-6
     w1 .= d_obs
     @test w1.nsrc == d_obs.nsrc
     @test isapprox(w1.data, d_obs.data)
+
+
+    # Test transducer
+    q = judiVector(Geometry(0f0, 0f0, 0f0; dt=2, t=1000), randn(251))
+    tr = transducer(q, (10, 10), 30, pi/2)
+    @test length(tr.geometry.xloc[1]) == 22
+    @test tr.geometry.xloc[1][1:11] == range(-30., 30., length=11)
+    @test tr.geometry.xloc[1][12:end] == range(-30., 30., length=11)
+    @test all(tr.geometry.zloc[1][12:end] .== -10f0)
+    @test all(tr.geometry.zloc[1][1:11] .== 0f0)
+
+    q = judiVector(Geometry(0f0, 0f0, 0f0; dt=2, t=1000), randn(251))
+    tr = transducer(q, (10, 10), 30, pi)
+    @test length(tr.geometry.xloc[1]) == 22
+    @test isapprox(tr.geometry.zloc[1][1:11], range(30., -30., length=11); atol=1f-14, rtol=1f-14)
+    @test isapprox(tr.geometry.zloc[1][12:end], range(30., -30., length=11); atol=1f-14, rtol=1f-14)
+    @test isapprox(tr.geometry.xloc[1][12:end], -10f0*ones(11); atol=1f-14, rtol=1f-14)
+    @test isapprox(tr.geometry.xloc[1][1:11], zeros(11); atol=1f-14, rtol=1f-14)
 end

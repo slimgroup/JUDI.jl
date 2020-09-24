@@ -14,9 +14,7 @@ def name(model):
 
 
 def opt_op(model, no_ms=False):
-    if model.fs or no_ms:
-        return ('advanced', {})
-    return ('advanced', {'min-storage': True})
+    return ('advanced', {})
 
 
 # Forward propagation
@@ -100,7 +98,7 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0,
                   subs=subs, name="adjoint"+name(model),
                   opt=opt_op(model))
 
-    # Read last time step in rec
+    # Run operator
     summary = op()
 
     # Output

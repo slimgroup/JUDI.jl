@@ -44,7 +44,9 @@ function twri_objective(model_full::Model, source::judiVector, dObs::judiVector,
 
     ac = load_devito_jit()
 
-    obj, gradm, grady = pycall(ac."wri_func", Tuple{Float32, Union{Nothing, Array{Float32}}, Union{Nothing, Array{Float32}}},
+    obj, gradm, grady = pycall(ac."wri_func",
+                              Tuple{Float32, Union{Nothing, Array{Float32, modelPy.dim}},
+                                    Union{Nothing, Array{Float32, modelPy.dim}}},
                                modelPy, src_coords, qIn, rec_coords, dObserved, Y,
                                t_sub=options.subsampling_factor, space_order=options.space_order,
                                grad=optionswri.params, grad_corr=optionswri.grad_corr, eps=optionswri.eps,
@@ -60,5 +62,5 @@ function twri_objective(model_full::Model, source::judiVector, dObs::judiVector,
         grady = judiVector(dObs.geometry, grady)
     end
 
-    return obj, PhysicalParameter(-gradm, model.d, model.o), grady
+    return obj, PhysicalParameter(gradm, model.d, model.o), grady
 end

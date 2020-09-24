@@ -25,8 +25,8 @@ dt = srcGeometry.dt[1]
 @testset "TWRI gradient test w.r.t m with $(nlayer) layers and tti $(tti) and freesurface $(fs)" begin
 	optw = TWRIOptions(grad_corr=false, comp_alpha=false, weight_fun=nothing, eps=0, params=:m)
 	# Gradient test
-	h = 5f-3
-	maxiter = 6
+	h = 5f-2
+	maxiter = 5
 	err1 = zeros(maxiter)
 	err2 = zeros(maxiter)
 	h_all = zeros(maxiter)
@@ -38,7 +38,7 @@ dt = srcGeometry.dt[1]
 	F0 = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
 	d = F*q
 	d0 = F0*q
-	y = .1f0 * (d0-d)
+	y = 2.5f0*(d0 - d)
 
 	# FWI gradient and function value for m0
 	Jm0, gradm = twri_objective(model0, q, d, y; options=opt, optionswri=optw)
@@ -49,7 +49,7 @@ dt = srcGeometry.dt[1]
 	for j=1:maxiter
 		# FWI gradient and function falue for m0 + h*dm
 		modelH.m = model0.m + h*dm
-		Jm, _ = twri_objective(modelH, q, d, y;options=opt, optionswri=optw)
+		Jm, _ = twri_objective(modelH, q, d, y; options=opt, optionswri=optw)
 
 		# Check convergence
 		err1[j] = abs(Jm - Jm0)
@@ -63,8 +63,8 @@ dt = srcGeometry.dt[1]
 	# CHeck convergence rates
 	rate_1 = sum(err1[1:end-1]./err1[2:end])/(maxiter - 1)
 	rate_2 = sum(err2[1:end-1]./err2[2:end])/(maxiter - 1)
-	# @test isapprox(rate_1, 1.25f0; rtol=5f-2)
-	# @test isapprox(rate_2, 1.5625f0; rtol=5f-2)
+	@test isapprox(rate_1, 1.25f0; rtol=5f-2)
+	@test isapprox(rate_2, 1.5625f0; rtol=5f-2)
 end
 
 
@@ -72,7 +72,7 @@ end
 	optw = TWRIOptions(grad_corr=false, comp_alpha=false, weight_fun=nothing, eps=0, params=:y)
 	# Gradient test
 	h = 5f-2
-	maxiter = 6
+	maxiter = 5
 	err1 = zeros(maxiter)
 	err2 = zeros(maxiter)
 	h_all = zeros(maxiter)
@@ -85,7 +85,7 @@ end
 	d = F*q
 	d0 = F0*q
 	y = .1f0 * (d0 - d)
-	dy = .005f0*(d0 - d)
+	dy = .05f0*(d0 - d)
 
 	# FWI gradient and function value for m0
 	Jm0, grady = twri_objective(model0, q, d, y; options=opt, optionswri=optw)
@@ -97,7 +97,7 @@ end
 		# FWI gradient and function falue for m0 + h*dm
 		yloc = y + h * dy
 		Jm, _ = twri_objective(model0, q, d, yloc;options=opt, optionswri=optw)
-
+		@printf("h = %2.2e, Jm = %2.4e, Jm0 = %2.2e, h dJ = %2.2e \n", h, Jm, Jm0, h*dJ)
 		# Check convergence
 		err1[j] = abs(Jm - Jm0)
 		err2[j] = abs(Jm - Jm0 - h*dJ)
@@ -110,6 +110,6 @@ end
 	# CHeck convergence rates
 	rate_1 = sum(err1[1:end-1]./err1[2:end])/(maxiter - 1)
 	rate_2 = sum(err2[1:end-1]./err2[2:end])/(maxiter - 1)
-	# @test isapprox(rate_1, 1.25f0; rtol=5f-2)
-	# @test isapprox(rate_2, 1.5625f0; rtol=5f-2)
+	@test isapprox(rate_1, 1.25f0; rtol=5f-2)
+	@test isapprox(rate_2, 1.5625f0; rtol=5f-2)
 end

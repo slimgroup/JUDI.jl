@@ -120,7 +120,7 @@ function extend_gradient(model_full::Model, model::Model, gradient::PhysicalPara
         ny_end = ny_start + model.n[2] - 1
         full_gradient[nx_start:nx_end,ny_start:ny_end,:] = gradient.data
     end
-    return PhysicalParameter(full_gradient, model.d, model.o)
+    return PhysicalParameter(full_gradient, model.d, model_full.o)
 end
 
 function extend_gradient(model_full::Model,model::Model, gradient::Array)

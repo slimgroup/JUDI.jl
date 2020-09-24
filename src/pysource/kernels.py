@@ -35,10 +35,11 @@ def wave_kernel(model, u, fw=True, q=None):
     """
     if model.is_tti:
         pde, fact = tti_kernel(model, u[0], u[1], fw=fw, q=q)
+        fact += freesurface(model, fact) if model.fs else []
     else:
         pde = acoustic_kernel(model, u, fw, q=q)
         fact = []
-    pde += freesurface(model, pde) if model.fs else []
+        pde += freesurface(model, pde) if model.fs else []
     return pde, fact
 
 
@@ -103,10 +104,12 @@ def tti_kernel(model, u1, u2, fw=True, q=None):
     stencilr = _solve(wmr * (u2.dt2 + damp * udt2) - H1 - q[1], u2_n)
 
     if 'nofsdomain' in model.grid.subdomains:
+        pdea = freesurface(model, acoustic_kernel(model, u1, fw, q=q[0]))
         first_stencil = Eq(u1_n, stencilp, subdomain=model.grid.subdomains['nofsdomain'])
         second_stencil = Eq(u2_n, stencilr, subdomain=model.grid.subdomains['nofsdomain'])
     else:
+        pdea = []
         first_stencil = Eq(u1_n, stencilp)
         second_stencil = Eq(u2_n, stencilr)
 
-    return [first_stencil, second_stencil], [factp, factm]
+    return [first_stencil, second_stencil] + pdea, [factp, factm]

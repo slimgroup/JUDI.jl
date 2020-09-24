@@ -159,7 +159,14 @@ def tensor_fact(u, v, model):
     R = R_mat(model)
     # Tensor temps
     P_I, M_I = P_M(model, u, v)
-    eq_PI = Eq(P_I, R.T * (A * R * grads(u) + B * R * grads(v)))
-    eq_MI = Eq(M_I, R.T * (B * R * grads(u) + C * R * grads(v)))
+
+    if 'nofsdomain' in model.grid.subdomains:
+        eq_PI = Eq(P_I, R.T * (A * R * grads(u) + B * R * grads(v)),
+                   subdomain=model.grid.subdomains['nofsdomain'])
+        eq_MI = Eq(M_I, R.T * (B * R * grads(u) + C * R * grads(v)),
+                   subdomain=model.grid.subdomains['nofsdomain'])
+    else:
+        eq_PI = Eq(P_I, R.T * (A * R * grads(u) + B * R * grads(v)))
+        eq_MI = Eq(M_I, R.T * (B * R * grads(u) + C * R * grads(v)))
 
     return divs(P_I), divs(M_I), eq_PI, eq_MI

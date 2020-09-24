@@ -707,10 +707,10 @@ def wri_func(model, src_coords, wavelet, rec_coords, recin, yin, space_order=8,
     srca, v, norm_v, _ = adjoint(model, ydat, src_coords, rec_coords,
                                  norm_v=True, w_fun=w_fun,
                                  save=grad is not None)
-    ts_fact = wavelet.shape[0] * recin.shape[1]
-    norm_v = norm_v.data[0] * np.prod(model.spacing) / ts_fact
+    ts_fact = 5e3 * recin.shape[1]
+    norm_v = norm_v.data[0] / ts_fact
     # <PTy, d-F(m)*f> = <PTy, d>-<adjoint(F(m))*PTy, f>
-    wdata = model.spacing[0] * model.critical_dt
+    wdata = model.critical_dt
     PTy_dot_r = wdata * (np.dot(ydat.reshape(-1), recin.reshape(-1)) -
                          np.dot(srca.data.reshape(-1), wavelet.reshape(-1)))
     norm_y = wdata * np.linalg.norm(ydat)

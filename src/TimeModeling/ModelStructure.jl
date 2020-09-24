@@ -13,7 +13,7 @@ export Model, PhysicalParameter, get_dt
 # PhysicalParameter abstract vector
 
 """
-PhysicalParameter
+    PhysicalParameter
         n::IntTuple
         d::RealTuple
         o::RealTuple
@@ -274,9 +274,9 @@ function Model(n::IntTuple, d::RealTuple, o::RealTuple, m;
                epsilon=nothing, delta=nothing, theta=nothing,
                phi=nothing, rho=nothing, nb=40)
 
-    params = Dict(:m => PhysicalParameter(m, d, o))
+    params = Dict(:m => PhysicalParameter(Float32.(m), d, o))
     for (name, val) in zip([:rho, :epsilon, :delta, :theta, :phi], [rho, epsilon, delta, theta, phi])
-        ~isnothing(val) && (params[name] = PhysicalParameter(val, n, d, o))
+        ~isnothing(val) && (params[name] = PhysicalParameter(Float32.(val), n, d, o))
     end
     
     return Model(n, d, o, nb, params)

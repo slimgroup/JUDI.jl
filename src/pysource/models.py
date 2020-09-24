@@ -102,8 +102,8 @@ class GenericModel(object):
         origin_pml = [dtype(o - s*nbl) for o, s in zip(origin, spacing)]
         shape_pml = np.array(shape) + 2 * self.nbl
         if fs:
-            fsdomain = FSDomain(space_order//2)
-            physdomain = PhysicalDomain(space_order//2, fs=fs)
+            fsdomain = FSDomain(space_order//2+1)
+            physdomain = PhysicalDomain(space_order//2+1, fs=fs)
             subdomains = (physdomain, fsdomain)
             origin_pml[-1] = origin[-1]
             shape_pml[-1] -= self.nbl

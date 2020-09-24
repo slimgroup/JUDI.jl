@@ -1,7 +1,7 @@
 # Author: Mathias Louboutin, mlouboutin3@gatech.edu
 # Date: July 2020
 
-using JUDI.TimeModeling, ArgParse, Images
+using JUDI.TimeModeling, ArgParse, Images, Test
 
 export setup_model, parse_commandline, setup_geom
 export example_src_geometry, example_rec_geometry, example_model, example_info
@@ -43,8 +43,9 @@ function setup_model(tti=false, nlayer=2; n=(301, 151), d=(10., 10.))
         model0 = Model(n, d, o, m0; epsilon=epsilon, delta=delta, theta=theta)
         model = Model(n, d, o, m; epsilon=epsilon, delta=delta, theta=theta)
     else
-        model = Model(n,d,o,m,rho=rho0)
-        model0 = Model(n,d,o,m0,rho=rho0)
+        model = Model(n,d,o,m, rho0)
+        model0 = Model(n,d,o,m0,rho0)
+        @test Model(n,d,o,m0; rho=rho0).rho == model0.rho
     end
     dm = model.m - model0.m
     return model, model0, dm

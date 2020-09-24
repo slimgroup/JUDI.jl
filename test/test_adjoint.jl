@@ -7,7 +7,6 @@ using Distributed
 
 parsed_args = parse_commandline()
 
-
 nlayer = parsed_args["nlayer"]
 tti = parsed_args["tti"]
 fs =  parsed_args["fs"]
@@ -40,15 +39,15 @@ tol = 5f-4
     wave_rand = (.5 .+ rand(size(q.data[1]))).*q.data[1]
     q_rand = judiVector(srcGeometry, wave_rand)
 
-    # Forward-adjoint 
+    # Forward-adjoint
     d_hat = F*q_rand
     q_hat = adjoint(F)*y
 
     # Result F
     a = dot(y, d_hat)
     b = dot(q_rand, q_hat)
-    @printf(" <F x, y> : %2.5e, <x, F' y> : %2.5e, relative error : %2.5e \n", a, b, a/b - 1)
-    @test isapprox(a, b, rtol=tol)
+    @printf(" <F x, y> : %2.5e, <x, F' y> : %2.5e, relative error : %2.5e \n", a, b, (a - b)/(a + b))
+    @test isapprox(a/(a+b), b/(a+b), atol=tol, rtol=0)
 
     # Linearized modeling
     J = judiJacobian(F, q)
@@ -58,8 +57,8 @@ tol = 5f-4
 
     c = dot(ld_hat, y)
     d = dot(dm_hat, dm)
-    @printf(" <J x, y> : %2.5e, <x, J' y> : %2.5e, relative error : %2.5e \n", c, d, c/d - 1)
-    @test isapprox(c, d, rtol=tol)
+    @printf(" <J x, y> : %2.5e, <x, J' y> : %2.5e, relative error : %2.5e \n", c, d, (c - d)/(c + d))
+    @test isapprox(c/(c+d), d/(c+d), atol=tol, rtol=0)
 
 end
 ###################################################################################################
@@ -93,8 +92,8 @@ end
     # Result F
     a = dot(y, dw_hat)
     b = dot(w, w_hat)
-    @printf(" <F x, y> : %2.5e, <x, F' y> : %2.5e, relative error : %2.5e \n", a, b, a/b - 1)
-    @test isapprox(a, b, rtol=tol)
+    @printf(" <F x, y> : %2.5e, <x, F' y> : %2.5e, relative error : %2.5e \n", a, b, (a - b)/(a + b))
+    @test isapprox(a/(a+b), b/(a+b), atol=tol, rtol=0)
 
     # Linearized modeling
     Jw = judiJacobian(Fw, w)
@@ -104,6 +103,7 @@ end
 
     c = dot(y, ddw_hat)
     d = dot(dm, dmw_hat)
-    @printf(" <J x, y> : %2.5e, <x, J' y> : %2.5e, relative error : %2.5e \n", c, d, c/d - 1)
-    @test isapprox(c, d, rtol=tol)
+    @printf(" <J x, y> : %2.5e, <x, J' y> : %2.5e, relative error : %2.5e \n", c, d, (c - d)/(c + d))
+    @test isapprox(c/(c+d), d/(c+d), atol=tol, rtol=0)
+
 end
