@@ -14,8 +14,12 @@ export update_dm, pad_sizes, pad_array
 export transducer
 
 
-function update_dm(model::PyObject, dm, options)
+function update_dm(model::PyObject, dm::PhysicalParameter, options)
     model.dm = pad_array(dm.data, pad_sizes(model, options))
+end
+
+function update_dm(model::PyObject, dm::Array, options)
+    model.dm = pad_array(reshape(dm, model.n), pad_sizes(model, options))
 end
 
 function pad_sizes(model, options; so=nothing)

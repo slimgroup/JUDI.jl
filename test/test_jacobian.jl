@@ -38,6 +38,7 @@ m0 = model0.m
     dD = J*dm
 
     @test norm(J*(0f0.*dm)) == 0
+    @test isapprox(dD, J*vec(dm.data))
 
     # Jacobian test
     maxiter = 6
