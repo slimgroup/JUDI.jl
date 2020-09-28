@@ -173,7 +173,7 @@ end
 
 # d_lin = J*dm
 function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Geometry, srcData::Array, recGeometry::Geometry,
-                          recData::Nothing, dm::PhysicalParameter, options::Options)
+                          recData::Nothing, dm::Union{PhysicalParameter, Array}, options::Options)
     ac = load_devito_jit()
 
     # Interpolate input data to computational grid
@@ -295,7 +295,7 @@ end
 
 # Jacobian of extended source modeling: d_lin = J*dm
 function devito_interface(modelPy::PyCall.PyObject, model, srcData::Array, recGeometry::Geometry, recData::Nothing, weights::Array,
-                          dm::PhysicalParameter, options::Options)
+                          dm::Union{PhysicalParameter, Array}, options::Options)
     ac = load_devito_jit()
 
     # Interpolate input data to computational grid

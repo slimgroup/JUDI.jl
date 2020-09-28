@@ -51,7 +51,7 @@ dt = srcGeometry.dt[1]
         c = dot(y0, y_hat)
         d = dot(dm, x_hat2)
         @printf(" <J x, y> : %2.5e, <x, J' y> : %2.5e, relative error : %2.5e \n", c, d, c/d - 1)
-        @test isapprox(c, d, rtol=5f-4)
+        @test isapprox(c, d, rtol=5f-3)
 
         @test !isnan(norm(y_hat))
         @test !isnan(norm(x_hat2))

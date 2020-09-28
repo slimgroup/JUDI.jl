@@ -26,11 +26,11 @@ base = ["test_abstract_vectors.jl",
         "test_physicalparam.jl"]
 
 devito = ["test_linearity.jl",
+          "test_adjoint.jl",
+          "test_all_options.jl",
           "test_jacobian.jl",
           "test_jacobian_extended.jl",
-          "test_adjoint.jl",
           "test_gradient_fwi.jl",
-          "test_all_options.jl",
           "test_gradient_lsrtm.jl",
           "test_gradient_twri.jl"]
 

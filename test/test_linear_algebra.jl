@@ -72,6 +72,18 @@ fs =  parsed_args["fs"]
         @test isapprox(w_out, adjoint(Pr * F * Pw') * dobs_w_out; rtol=ftol)
         @test isapprox(w_outa, w_a; rtol=ftol)
 
+        # jacobian
+        dm2 = copy(dm)
+        dmd = copy(dm2.data)
+        mul!(dm2, J', dobs)
+        mul!(dmd, J', dobs)
+        @test isapprox(dm2, J'*dobs)
+        @test isapprox(dmd, dm2)
+
+        mul!(dobs_out, J, dm)
+        mul!(dobs, J, dm.data)
+        @test isapprox(dobs_out, J*dm)
+        @test isapprox(dobs_out, dobs)
         # JUDI precon make sure it runs
         F = judiFilter(recGeometry, .002, .030)
         Md = judiMarineTopmute2D(0, recGeometry)

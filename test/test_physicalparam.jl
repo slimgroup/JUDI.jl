@@ -8,6 +8,10 @@ ftol = 1f-5
     o = Tuple(0. for i=1:nd)
     a = randn(Float32, n...)
     p = PhysicalParameter(a, d, o)
+    @test PhysicalParameter(p) == p
+    @test PhysicalParameter(p, n, d, o) == p
+    @test PhysicalParameter(p.data, n, d, o) == p
+    @test PhysicalParameter(vec(p.data), n, d, o) == p
 
     @test size(p) == (prod(n), 1)
     @test size(conj(p)) == (prod(n), 1)
@@ -149,4 +153,5 @@ ftol = 1f-5
     @test length(u2) == 2 * length(u)
     @test u2[1:length(u)] == vec(u.data)
     @test u2[length(u)+1:end] == vec(u.data)
+
 end

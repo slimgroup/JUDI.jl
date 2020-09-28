@@ -80,6 +80,9 @@ function PhysicalParameter(v::vDT, n::Tuple, d::Tuple, o::Tuple) where {vDT}
     return PhysicalParameter{vDT}(n, d, o, v)
 end
 
+PhysicalParameter(p::PhysicalParameter, n::Tuple, d::Tuple, o::Tuple) = p 
+PhysicalParameter(p::PhysicalParameter) = p 
+
 # transpose and such.....
 conj(x::PhysicalParameter{vDT}) where vDT = x
 transpose(x::PhysicalParameter{vDT}) where vDT = x
@@ -209,6 +212,12 @@ function *(A::Union{joMatrix, joLinearFunction, joLinearOperator, joCoreBlock}, 
     @warn "JOLI linear operator, returning julia Array"
     return A*vec(p.data)
 end
+
+# Linalg Extras
+
+mul!(x::PhysicalParameter, F::Union{joAbstractLinearOperator, joLinearFunction}, y::Array) = (x .= F*y)
+mul!(x::PhysicalParameter, F::Union{joAbstractLinearOperator, joLinearFunction}, y::PhysicalParameter) = (x .= F*y)
+mul!(x::Array, F::Union{joAbstractLinearOperator, joLinearFunction}, y::PhysicalParameter) = (x .= F*y)
 
 # For ploting
 array2py(p::PhysicalParameter{vDT}, i::Int64, I::CartesianIndex{N}) where {vDT, N} = array2py(p.data, i, I)

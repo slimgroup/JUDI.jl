@@ -19,7 +19,7 @@ function update_dm(model::PyObject, dm::PhysicalParameter, options)
 end
 
 function update_dm(model::PyObject, dm::Array, options)
-    model.dm = pad_array(reshape(dm, model.n), pad_sizes(model, options))
+    model.dm = pad_array(reshape(dm, model.shape), pad_sizes(model, options))
 end
 
 function pad_sizes(model, options; so=nothing)
