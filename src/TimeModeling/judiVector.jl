@@ -288,37 +288,8 @@ adjoint(a::judiVector{vDT}) where vDT =
 
 ##########################################################
 
-# Overload base function for SegyIO objects
-
+# Overload needed base function for SegyIO objects
 vec(x::SegyIO.SeisCon) = vec(x[1].data)
-norm(x::SegyIO.IBMFloat32; kwargs...) = norm(convert(Float32,x); kwargs...)
-dot(x::SegyIO.IBMFloat32, y::SegyIO.IBMFloat32) = dot(convert(Float32,x), convert(Float32,y))
-dot(x::SegyIO.IBMFloat32, y::Float32) = dot(convert(Float32,x), y)
-dot(x::Float32, y::SegyIO.IBMFloat32) = dot(x, convert(Float32,y))
-
-# binary operations return dense arrays
-+(x::SegyIO.SeisCon, y::SegyIO.SeisCon) = +(x[1].data,y[1].data)
-+(x::SegyIO.IBMFloat32, y::SegyIO.IBMFloat32) = +(convert(Float32,x),convert(Float32,y))
-+(x::SegyIO.IBMFloat32, y::Float32) = +(convert(Float32,x),y)
-+(x::Float32, y::SegyIO.IBMFloat32) = +(x,convert(Float32,y))
-
--(x::SegyIO.SeisCon, y::SegyIO.SeisCon) = -(x[1].data,y[1].data)
--(x::SegyIO.IBMFloat32, y::SegyIO.IBMFloat32) = -(convert(Float32,x),convert(Float32,y))
--(x::SegyIO.IBMFloat32, y::Float32) = -(convert(Float32,x),y)
--(x::Float32, y::SegyIO.IBMFloat32) = -(x,convert(Float32,y))
-
-+(a::Number, x::SegyIO.SeisCon) = .+(a,x[1].data)
-+(x::SegyIO.SeisCon, a::Number) = .+(x[1].data,a)
-
--(a::Number, x::SegyIO.SeisCon) = -(a,x[1].data)
--(x::SegyIO.SeisCon, a::Number) = -(x[1].data,a)
-
-*(a::Number, x::SegyIO.SeisCon) = *(a,x[1].data)
-*(x::SegyIO.SeisCon, a::Number) = *(x[1].data,a)
-
-/(a::Number, x::SegyIO.SeisCon) = /(a,x[1].data)
-/(x::SegyIO.SeisCon, a::Number) = /(x[1].data,a)
-
 
 ##########################################################
 
@@ -330,7 +301,6 @@ function -(a::judiVector{avDT}) where {avDT}
     end
     return c
 end
-
 
 # +(judiVector, judiVector)
 function +(a::judiVector{avDT}, b::judiVector{bvDT}) where {avDT, bvDT}
@@ -730,14 +700,14 @@ end
 function sum(x::judiVector)
     s = 0f0
     for j=1:length(x.data)
-        s += vec(x.data[j])
+        s += sum(vec(x.data[j]))
     end
     return s
 end
 
+length(S::judiVector) = S.nsrc
 isfinite(v::judiVector) = all(all(isfinite.(v.data[i])) for i=1:v.nsrc)
-
-iterate(S::judiVector, state::Integer=1) = state > length(S.nsrc) ? nothing : (S.data[state], state+1)
+iterate(S::judiVector, state::Integer=1) = state > S.nsrc ? nothing : (S.data[state], state+1)
 
 ####################################################################################################
 
@@ -815,6 +785,8 @@ function copy!(x::judiVector, y::judiVector)
     end
     x.geometry = deepcopy(y.geometry)
 end
+
+copy(x::judiVector) = 1f0 * x
 
 function get_data(x::judiVector)
     shots = Array{Array}(undef, x.nsrc)

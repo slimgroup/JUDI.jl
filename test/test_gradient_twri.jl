@@ -97,7 +97,7 @@ end
 		# FWI gradient and function falue for m0 + h*dm
 		yloc = y + h * dy
 		Jm, _ = twri_objective(model0, q, d, yloc;options=opt, optionswri=optw)
-		@printf("h = %2.2e, Jm = %2.4e, Jm0 = %2.2e, h dJ = %2.2e \n", h, Jm, Jm0, h*dJ)
+
 		# Check convergence
 		err1[j] = abs(Jm - Jm0)
 		err2[j] = abs(Jm - Jm0 - h*dJ)

@@ -27,14 +27,14 @@ jobs:
 
       matrix:
         os: [ubuntu-latest]
-        op: ["ISO_OP", "ISO_OP_FS", "TTI_OP", "TTI_OP_FS"]
+        op: ["ISO_OP", "ISO_OP_FS", "TTI_OP", "TTI_OP_FS", "BASICS"]
         version: ['1.3', '1.4', '1.5']
         omp: [2]
   
         include:
           - os: macos-latest
             version: '1.4'
-            op: "ISO_OP"
+            op: "BASICS"
             omp: 1
 
           - os: ubuntu-latest

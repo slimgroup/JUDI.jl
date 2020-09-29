@@ -724,19 +724,19 @@ def wri_func(model, src_coords, wavelet, rec_coords, recin, yin, space_order=8,
     gradm = grady = None
     if grad is not None:
         w = weight_fun(w_fun, model, src_coords)
-        w = alpha*w**2 if w is not None else alpha
+        w = alpha/w**2 if w is not None else alpha
         Q = wf_as_src(v, w=w/ts_fact)
         rcv, gradm, _ = forward_grad(model, src_coords, rec_coords, wavelet, q=Q, v=v)
 
         # Compute gradient wrt y
-        if grad_corr or yin is not None:
+        if grad_corr or grad in ["all", "y"]:
             rcv.data[:] = recin - rcv.data[:]
             grady = alpha * rcv.data[:]
             if norm_y != 0:
                 grady -= np.abs(alpha*eps) * ydat / norm_y
 
         # Correcting for reduced gradient
-        if yin is not None and not grad_corr:
+        if not grad_corr:
             gradm = gradm.data
         else:
             gradm_corr, _ = gradient(model, grady, rec_coords, u0)

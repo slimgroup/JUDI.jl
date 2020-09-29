@@ -43,12 +43,17 @@ if GROUP == "JUDI" || GROUP == "All"
     end
 end
 
-# Isotropic Acoustic tests
-if GROUP == "ISO_OP" || GROUP == "All"
-    println("JUDI iso-acoustic operators tests (parallel)")
+# Generic mdeling tests
+if GROUP == "BASICS" || GROUP == "All"
+    println("JUDI generic modelling tests")
     for t=extras
         include(t)
     end
+end
+
+# Isotropic Acoustic tests
+if GROUP == "ISO_OP" || GROUP == "All"
+    println("JUDI iso-acoustic operators tests (parallel)")
     # Basic test of LA/CG/LSQR needs
     push!(Base.ARGS, "-p 2")
     for t=devito
@@ -77,7 +82,8 @@ end
 
 # Anisotropic Acoustic tests with free surface
 if GROUP == "TTI_OP_FS" || GROUP == "All"
-    println("JUDI TTI operators with free surfacetests")
+    println("JUDI TTI operators with free surface tests")
+    deleteat!(devito, devito .== "test_gradient_twri.jl")
     push!(Base.ARGS, "--tti")
     push!(Base.ARGS, "--fs")
     for t=devito

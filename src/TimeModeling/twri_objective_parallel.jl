@@ -59,7 +59,7 @@ mutable struct TWRIOptions
     grad_corr::Bool
     comp_alpha::Bool
     weight_fun
-    eps::Number
+    eps
     params::Symbol
     Invq::String
 end
@@ -69,7 +69,7 @@ end
         grad_corr::Bool
         comp_alpha::Bool
         weight_fun
-        eps::Float
+        eps
         params::Symbol
         Invq::String
 
@@ -92,7 +92,7 @@ Constructor
 
 All arguments are optional keyword arguments with the following default values:
 
-TWRIOptions(;grad_corr=false, comp_alpha=true, weight_fun=nothing, eps=0, param=:m)
+TWRIOptions(;grad_corr=false, comp_alpha=true, weight_fun=nothing, eps=0, params=:m)
 """
 
 TWRIOptions(;grad_corr=false, comp_alpha=true,

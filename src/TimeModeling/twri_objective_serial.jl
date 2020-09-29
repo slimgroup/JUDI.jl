@@ -3,7 +3,8 @@ export twri_objective
 
 function twri_objective(model_full::Model, source::judiVector, dObs::judiVector, y::Union{judiVector, Nothing},
                         srcnum::Integer; options=Options(), optionswri=TWRIOPtions())
-# Setup time-domain linear or nonlinear foward and adjoint modeling and interface to OPESCI/devito
+    # Setup time-domain linear or nonlinear foward and adjoint modeling and interface to OPESCI/devito
+    length(optionswri.eps) == 1 ? eps_loc=optionswri.eps : eps_loc=optionswri.eps[srcnum]
 
     # Load full geometry for out-of-core geometry containers
     typeof(dObs.geometry) == GeometryOOC && (dObs.geometry = Geometry(dObs.geometry))
@@ -44,12 +45,10 @@ function twri_objective(model_full::Model, source::judiVector, dObs::judiVector,
 
     ac = load_devito_jit()
 
-    obj, gradm, grady = pycall(ac."wri_func",
-                              Tuple{Float32, Union{Nothing, Array{Float32, modelPy.dim}},
-                                    Union{Nothing, Array{Float32, modelPy.dim}}},
+    obj, gradm, grady = pycall(ac."wri_func", PyObject,
                                modelPy, src_coords, qIn, rec_coords, dObserved, Y,
                                t_sub=options.subsampling_factor, space_order=options.space_order,
-                               grad=optionswri.params, grad_corr=optionswri.grad_corr, eps=optionswri.eps,
+                               grad=optionswri.params, grad_corr=optionswri.grad_corr, eps=eps_loc,
                                alpha_op=optionswri.comp_alpha, w_fun=optionswri.weight_fun)
 
     if (optionswri.params in [:m, :all])

@@ -266,7 +266,7 @@ def weighted_norm(u, weight=None):
     n_t = [Eq(norm_vy2_t, norm_vy2_t + expr)]
     # Then norm in space
     i = Dimension(name="i",)
-    norm_vy2 = Function(name="nvy2", shape=(1,), dimensions=(i, ), grid=grid)
+    norm_vy2 = Function(name="nvy2", shape=(1,), dimensions=(i,), grid=grid)
     w = weight or 1
     n_s = [Inc(norm_vy2[0], norm_vy2_t / w**2)]
     # Return norm object and expr
