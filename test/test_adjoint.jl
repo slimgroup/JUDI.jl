@@ -25,6 +25,7 @@ q, srcGeometry, recGeometry, info = setup_geom(model; nsrc=nw)
 dt = srcGeometry.dt[1]
 
 tol = 5f-4
+(tti && fs) && (tol = 5f-3)
 ###################################################################################################
 # Modeling operators
 @testset "Adjoint test with $(nlayer) layers and tti $(tti) and freesurface $(fs)" begin 

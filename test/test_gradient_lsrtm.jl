@@ -35,11 +35,9 @@ dt = srcGeometry.dt[1]
 	F0 = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
 	J = judiJacobian(F0, q)
 	d = F*q
-	dD = J*dm
-	dD = dD .* dD
 
 	# FWI gradient and function value for m0
-	Jm0, grad = lsrtm_objective(model0, q, dD, dm; options=opt)
+	Jm0, grad = lsrtm_objective(model0, q, d, dm; options=opt)
 	Jm01, grad1 = lsrtm_objective(model0, q, d, dm; options=opt, nlind=true)
 
 	# Perturbation
@@ -50,7 +48,7 @@ dt = srcGeometry.dt[1]
 	for j=1:maxiter
 		dmloc = dm + h*dmp
 		# FWI gradient and function falue for m0 + h*dm
-		Jm, _ = lsrtm_objective(model0, q, dD, dmloc; options=opt)
+		Jm, _ = lsrtm_objective(model0, q, d, dmloc; options=opt)
 		Jm1, _ = lsrtm_objective(model0, q, d, dmloc; options=opt, nlind=true)
 		@printf("h = %2.2e, J0 = %2.2e, Jm = %2.2e \n", h, Jm0, Jm)
 		@printf("h = %2.2e, J01 = %2.2e, Jm1 = %2.2e \n", h, Jm01, Jm1)
