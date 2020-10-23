@@ -54,8 +54,8 @@ m0 = model0.m
         A.model.m = m0 + h*dm
         dpred = A*w
 
-        err1[j] = norm(dobs - dpred)
-        err2[j] = norm(dobs - dpred - h*dD)
+        err1[j] = norm(dpred - dobs)
+        err2[j] = norm(dpred - dobs - h*dD)
         j == 1 ? prev = 1 : prev = j - 1
         @printf("h = %2.2e, e1 = %2.2e, rate = %2.2e", h, err1[j], err1[prev]/err1[j])
         @printf(", e2 = %2.2e, rate = %2.2e \n", err2[j], err2[prev]/err2[j])

@@ -1,5 +1,27 @@
 
-export isLegal, lbfgsUpdate, lbfgsHvFunc2, ssbin, solveSubProblem, subHv, polyval, polyinterp
+export isLegal, lbfgsUpdate, lbfgsHvFunc2, ssbin, solveSubProblem, subHv, polyval, polyinterp, result
+
+mutable struct result
+    sol
+    gradient
+    misfit
+    f_trace
+    x_trace
+    n_project
+    n_feval
+end
+
+function update!(r::result; sol=nothing, misfit=nothing, gradient=nothing, iter=1, store_trace=false)
+    ~isnothing(sol) && (r.sol = sol)
+    ~isnothing(misfit) && (r.misfit = misfit)
+    ~isnothing(gradient) && (r.gradient = gradient)
+    (~isnothing(sol) && length(r.x_trace) == iter-1 && store_trace) && (push!(r.x_trace, sol))
+    (~isnothing(misfit) && length(r.f_trace) == iter-1) && (push!(r.f_trace, misfit))
+end
+
+function result(init_x; f0=0, feval=0)
+    return result(init_x, 0.0f0*init_x, f0, Vector{}(), Vector{}(), 0, feval)
+end
 
 function isLegal(v)
     nv = norm(v)
@@ -33,7 +55,7 @@ end
 function lbfgsHvFunc2(v,Hdiag,N,M)
     if cond(M)>(1/(eps(Float32)))
         pr =  Array{Float32}(ssbin(M,500))
-        L = spdiagm((pr,),0)
+        L = spdiagm(0=> vec(pr))
         Hv = v/Hdiag - N*L*((L*M*L)\(L*(transpose(N)*v)))
     
     else
@@ -85,17 +107,11 @@ function ssbin(A,nmv)
     return 1f0./(d.*dp).^(1/4)
 end
 
-function solveSubProblem(x,g,H,funProj,optTol,progTol,maxIter,testOpt,feasibleInit,x_init)
+function solveSubProblem(x,g,H,funProj,options,x_init)
 # Uses SPG to solve for projected quasi-Newton direction
-    options = spg_options(verbose=0,
-                          optTol=optTol,
-                          progTol=progTol,
-                          maxIter = maxIter,
-                          testOpt = testOpt,
-                          feasibleInit = feasibleInit)
     funObj(p) = subHv(p,x,g,H)
-    p, f, funEvals, subProjects, hist = minConf_SPG(funObj,x_init,funProj,options)
-    return p, subProjects 
+    sol = minConf_SPG(funObj,x_init,funProj,options)
+    return sol.sol 
 end
 
 function subHv(p,x,g,HvFunc)
@@ -227,4 +243,24 @@ function polyinterp(points;xminBound=-Inf,xmaxBound=Inf)
     end
     
     return minPos, fmin
+end
+
+
+function terminate(options, optCond, t, d, f, f_old)
+    # Check optimality
+    if optCond < options.optTol
+        options.verbose >= 1 &&  @printf("First-Order Optimality Conditions Below optTol\n")
+        return true
+    end
+
+    if norm(t*d, Inf) < options.progTol
+        options.verbose >= 1 && @printf("Step size below progTol\n")
+        return true
+    end
+
+    if abs.(f-f_old) < options.progTol
+        options.verbose >= 1 && @printf("Function value changing by less than progTol\n")
+        return true
+    end
+    return false
 end

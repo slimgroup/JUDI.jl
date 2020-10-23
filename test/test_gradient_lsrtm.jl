@@ -94,5 +94,5 @@ dt = srcGeometry.dt[1]
 	Jls, gradls = lsrtm_objective(model0, q, d, 0f0.*dm; options=opt, nlind=true)
 	Jfwi, gradfwi = fwi_objective(model0, q, d; options=opt)
 	@test isapprox(Jls, Jfwi;rtol=0, atol=0)
-	@test isapprox(gradls, -gradfwi;rtol=0, atol=0)
+	@test isapprox(gradls, gradfwi;rtol=0, atol=0)
 end

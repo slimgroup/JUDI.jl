@@ -42,10 +42,10 @@ def grad_expr(gradm, u, v, model, w=None, freq=None, dft_sub=None, isic=False):
     ic_func = ic_dict[func_name(freq=freq, isic=isic)]
     expr = ic_func(as_tuple(u), as_tuple(v), model, freq=freq, factor=dft_sub, w=w)
     if model.fs:
-        eq_g = [Eq(gradm, expr + gradm, subdomain=model.grid.subdomains['nofsdomain'])]
+        eq_g = [Eq(gradm, gradm - expr, subdomain=model.grid.subdomains['nofsdomain'])]
         eq_g += freesurface(model, eq_g)
     else:
-        eq_g = [Eq(gradm, expr + gradm)]
+        eq_g = [Eq(gradm, gradm - expr)]
     return eq_g
 
 
@@ -179,7 +179,7 @@ def basic_src(model, u, **kwargs):
     model: Model
         Model containing the perturbation dm
     """
-    w = model.dm * model.irho
+    w = -model.dm * model.irho
     if model.is_tti:
         return (w * u[0].dt2, w * u[1].dt2)
     return w * u[0].dt2
@@ -202,8 +202,8 @@ def isic_src(model, u, **kwargs):
         du_aux = divs(dm * irho * grads(uu, so_fact=2), so_fact=2)
         dus.append(dm * irho * uu.dt2 * m - du_aux)
     if model.is_tti:
-        return (dus[0], dus[1])
-    return dus[0]
+        return (-dus[0], -dus[1])
+    return -dus[0]
 
 
 def inner_grad(u, v):

@@ -18,6 +18,9 @@ ftol = 1f-5
     @test size(adjoint(p)) == (prod(n), 1)
     @test size(transpose(p)) == (prod(n), 1)
     @test isequal(p.data, a)
+    p .= zeros(n...)
+    p .= a
+    @test isequal(p.data, a)
     @test p.d == d
     @test p.n == n
     @test p.o == o

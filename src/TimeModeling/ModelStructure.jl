@@ -213,8 +213,10 @@ function *(A::Union{joMatrix, joLinearFunction, joLinearOperator, joCoreBlock}, 
     return A*vec(p.data)
 end
 
-# Linalg Extras
+materialize!(p::PhysicalParameter{RDT}, b::Array{<:Number, N}) where{RDT, N} = (p.data[:] .= b)
+materialize!(p::PhysicalParameter{RDT}, b::Base.Broadcast.Broadcasted{Base.Broadcast.DefaultArrayStyle{N}}) where{RDT, N} = materialize!(p, collect(b))
 
+# Linalg Extras
 mul!(x::PhysicalParameter, F::Union{joAbstractLinearOperator, joLinearFunction}, y::Array) = (x .= F*y)
 mul!(x::PhysicalParameter, F::Union{joAbstractLinearOperator, joLinearFunction}, y::PhysicalParameter) = (x .= F*y)
 mul!(x::Array, F::Union{joAbstractLinearOperator, joLinearFunction}, y::PhysicalParameter) = (x .= F*y)

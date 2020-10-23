@@ -7,11 +7,11 @@
 ################################################################################
 ### Module loading
 
-using JLD2, JUDI.TimeModeling
+using JUDI, JLD2, JUDI.TimeModeling
 
 ### Load true model
-
-@load "./BGCompass_tti.jld"
+base_path = dirname(pathof(JUDI))*"/../examples/twri/"
+@load string(base_path*"data/BGCompass_tti.jld") n d o m epsilon delta theta
 
 # Model
 
@@ -27,13 +27,13 @@ wavelet = ricker_wavelet(T, dt, freq_peak)
 
 # Sources
 nsrc = 51
-x_src = convertToCell(range(0f0, stop = (size(m_true, 1)-1)*d[1], length = nsrc))
+x_src = convertToCell(range(0f0, stop = (n[1]-1)*d[1], length = nsrc))
 y_src = convertToCell(range(0f0, stop = 0f0, length = nsrc))
 z_src = convertToCell(range(0f0, stop = 0f0, length = nsrc))
 
 # Receivers
-nrcv = size(m_true, 1)
-x_rcv = range(0f0, stop = (size(m_true, 1)-1)*d[1], length = nrcv)
+nrcv = n[1]
+x_rcv = range(0f0, stop = (n[1]-1)*d[1], length = nrcv)
 y_rcv = 0f0
 z_rcv = range(12.5f0, stop = 12.5f0, length = nrcv)
 
@@ -53,4 +53,5 @@ F = judiModeling(info,model_true, src_geom,rcv_geom)
 dat = F*fsrc
 
 ### Saving data
-@save string("./BGCompass_data_tti.jld") model_true fsrc dat
+base_path = dirname(pathof(JUDI))*"/../examples/twri/"
+@save string(base_path*"data/BGCompass_data_tti.jld") model_true fsrc dat

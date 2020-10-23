@@ -105,7 +105,7 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0,
     if wsrc:
         return wsrc, summary
     if norm_v:
-        return rcv, v, norm_v, summary
+        return rcv, v, norm_v.data[0], summary
     return rcv, v, summary
 
 

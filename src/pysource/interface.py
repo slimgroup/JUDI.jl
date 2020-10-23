@@ -691,7 +691,7 @@ op_fwd_J = {False: forward, True: born}
 
 def wri_func(model, src_coords, wavelet, rec_coords, recin, yin, space_order=8,
              isic=False, ws=None, t_sub=1, grad="m", grad_corr=False,
-             alpha_op=True, w_fun=None, eps=0):
+             alpha_op=False, w_fun=None, eps=0):
     """
     Time domain wavefield reconstruction inversion wrapper
     """
@@ -707,33 +707,32 @@ def wri_func(model, src_coords, wavelet, rec_coords, recin, yin, space_order=8,
     srca, v, norm_v, _ = adjoint(model, ydat, src_coords, rec_coords,
                                  norm_v=True, w_fun=w_fun,
                                  save=grad is not None)
-    ts_fact = 5e3 * recin.shape[1]
-    norm_v = norm_v.data[0] / ts_fact
+    c1 = 1 / (recin.shape[1])
+    c2 = np.log(np.prod(model.shape))
     # <PTy, d-F(m)*f> = <PTy, d>-<adjoint(F(m))*PTy, f>
-    wdata = model.critical_dt
-    PTy_dot_r = wdata * (np.dot(ydat.reshape(-1), recin.reshape(-1)) -
-                         np.dot(srca.data.reshape(-1), wavelet.reshape(-1)))
-    norm_y = wdata * np.linalg.norm(ydat)
+    ndt = np.sqrt(model.critical_dt)
+    PTy_dot_r = ndt**2 * (np.dot(ydat.reshape(-1), recin.reshape(-1)) -
+                          np.dot(srca.data.reshape(-1), wavelet.reshape(-1)))
+    norm_y = ndt * np.linalg.norm(ydat)
 
     # alpha
-    alpha = compute_optalpha(norm_y, norm_v, eps, comp_alpha=alpha_op)
+    α = compute_optalpha(c2*norm_y, c1*norm_v, eps, comp_alpha=alpha_op)
 
     # Lagrangian evaluation
-    fun = -.5 * alpha**2 * norm_v + alpha * PTy_dot_r - eps * np.abs(alpha) * norm_y
+    fun = -.5 * c1 * α**2 * norm_v + c2 * α * PTy_dot_r - eps * np.abs(α) * norm_y
 
     gradm = grady = None
     if grad is not None:
         w = weight_fun(w_fun, model, src_coords)
-        w = alpha/w**2 if w is not None else alpha
-        Q = wf_as_src(v, w=w/ts_fact)
-        rcv, gradm, _ = forward_grad(model, src_coords, rec_coords, wavelet, q=Q, v=v)
+        w = c1*α/w**2 if w is not None else c1*α
+        Q = wf_as_src(v, w=w)
+        rcv, gradm, _ = forward_grad(model, src_coords, rec_coords, c2*wavelet, q=Q, v=v)
 
         # Compute gradient wrt y
         if grad_corr or grad in ["all", "y"]:
-            rcv.data[:] = recin - rcv.data[:]
-            grady = alpha * rcv.data[:]
+            grady = c2 * recin - rcv.data[:]
             if norm_y != 0:
-                grady -= np.abs(alpha*eps) * ydat / norm_y
+                grady -= np.abs(eps) * ydat / norm_y
 
         # Correcting for reduced gradient
         if not grad_corr:
@@ -741,6 +740,6 @@ def wri_func(model, src_coords, wavelet, rec_coords, recin, yin, space_order=8,
         else:
             gradm_corr, _ = gradient(model, grady, rec_coords, u0)
             # Reduced gradient post-processing
-            gradm = gradm.data + alpha * gradm_corr.data
+            gradm = gradm.data + gradm_corr.data
 
-    return fun, gradm, grady
+    return fun, α * gradm, grady

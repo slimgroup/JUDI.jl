@@ -7,11 +7,11 @@
 ################################################################################
 ### Module loading
 
-using JLD2, JUDI.TimeModeling
+using JUDI, JLD2, JUDI.TimeModeling
 
 ### Load true model
-
-@load "./GaussLens.jld"
+base_path = dirname(pathof(JUDI))*"/../examples/twri/"
+@load string(base_path*"data/GaussLens.jld") n d o m
 
 # Model
 
@@ -58,4 +58,5 @@ F = judiModeling(info,model_true, src_geom,rcv_geom)
 dat = F*fsrc
 
 ### Saving data
-@save string("./GaussLens_data_acou.jld") model_true fsrc dat
+base_path = dirname(pathof(JUDI))*"/../examples/twri/"
+@save string(base_path*"data/GaussLens_data_acou.jld") model_true fsrc dat
