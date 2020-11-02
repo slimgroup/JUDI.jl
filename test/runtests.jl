@@ -6,14 +6,15 @@
 # Mathias Louboutin, mlouboutin3@gatech.edu
 # Updated July 2020
 
-using Test
+using JUDI, JUDI.TimeModeling, ArgParse, Test
+using SegyIO, LinearAlgebra, Printf, Distributed, JOLI
 
 const GROUP = get(ENV, "GROUP", "JUDI")
 
 include("utils.jl")
 
 if endswith(GROUP, ".jl")
-    include(GROUP)
+    @time include(GROUP)
 end
 
 base = ["test_abstract_vectors.jl",
@@ -39,15 +40,16 @@ extras = ["test_modeling.jl", "test_basics.jl", "test_linear_algebra.jl"]
 # Basic JUDI objects tests, no Devito
 if GROUP == "JUDI" || GROUP == "All"
     for t=base
-        include(t)
+        @time include(t)
     end
 end
 
 # Generic mdeling tests
 if GROUP == "BASICS" || GROUP == "All"
     println("JUDI generic modelling tests")
+    VERSION >= v"1.5" && push!(Base.ARGS, "-p 2")
     for t=extras
-        include(t)
+        @time include(t)
     end
 end
 
@@ -55,9 +57,9 @@ end
 if GROUP == "ISO_OP" || GROUP == "All"
     println("JUDI iso-acoustic operators tests (parallel)")
     # Basic test of LA/CG/LSQR needs
-    push!(Base.ARGS, "-p 2")
+    VERSION >= v"1.5" && push!(Base.ARGS, "-p 2")
     for t=devito
-        include(t)
+        @time include(t)
     end
 end
 
@@ -66,7 +68,7 @@ if GROUP == "ISO_OP_FS" || GROUP == "All"
     println("JUDI iso-acoustic operators with free surface tests")
     push!(Base.ARGS, "--fs")
     for t=devito
-        include(t)
+        @time include(t)
     end
 end
 
@@ -76,7 +78,7 @@ if GROUP == "TTI_OP" || GROUP == "All"
     # TTI tests
     push!(Base.ARGS, "--tti")
     for t=devito
-        include(t)
+        @time include(t)
     end
 end
 
@@ -87,6 +89,6 @@ if GROUP == "TTI_OP_FS" || GROUP == "All"
     push!(Base.ARGS, "--tti")
     push!(Base.ARGS, "--fs")
     for t=devito
-        include(t)
+        @time include(t)
     end
 end

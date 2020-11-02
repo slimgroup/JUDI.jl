@@ -12,9 +12,9 @@ mutable struct result
 end
 
 function update!(r::result; sol=nothing, misfit=nothing, gradient=nothing, iter=1, store_trace=false)
-    ~isnothing(sol) && (r.sol = sol)
+    ~isnothing(sol) && copyto!(r.sol, sol)
     ~isnothing(misfit) && (r.misfit = misfit)
-    ~isnothing(gradient) && (r.gradient = gradient)
+    ~isnothing(gradient) && copyto!(r.gradient, gradient)
     (~isnothing(sol) && length(r.x_trace) == iter-1 && store_trace) && (push!(r.x_trace, sol))
     (~isnothing(misfit) && length(r.f_trace) == iter-1) && (push!(r.f_trace, misfit))
 end
@@ -55,7 +55,7 @@ end
 function lbfgsHvFunc2(v,Hdiag,N,M)
     if cond(M)>(1/(eps(Float32)))
         pr =  Array{Float32}(ssbin(M,500))
-        L = spdiagm(0=> vec(pr))
+        L = Diagonal(vec(pr))
         Hv = v/Hdiag - N*L*((L*M*L)\(L*(transpose(N)*v)))
     
     else

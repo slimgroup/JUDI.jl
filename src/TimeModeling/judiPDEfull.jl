@@ -33,6 +33,14 @@ end
 ############################################################
 ## Constructor
 
+# Set up info structure for linear operators
+
+function judiModeling(model::Model, srcGeometry::Geometry, recGeometry::Geometry; options=Options(), DDT::DataType=Float32, RDT::DataType=DDT)
+    ntComp = get_computational_nt(srcGeometry, recGeometry, model)
+    info = Info(prod(model.n), length(srcGeometry.xloc), ntComp)
+    return judiModeling(info, model, srcGeometry, recGeometry; options=options, DDT=DDT, RDT=RDT)
+end
+
 function judiModeling(info::Info,model::Model, srcGeometry::Geometry, recGeometry::Geometry; options=Options(), DDT::DataType=Float32, RDT::DataType=DDT)
 # JOLI wrapper for nonlinear forward modeling
     (DDT == Float32 && RDT == Float32) || throw(judiPDEfullException("Domain and range types not supported"))

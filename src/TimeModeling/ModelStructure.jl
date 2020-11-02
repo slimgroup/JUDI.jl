@@ -57,6 +57,8 @@ mutable struct PhysicalParameterException <: Exception
     msg :: String
 end
 
+PhysicalParameter(v::BitArray{N}, args...) where N = v
+
 function PhysicalParameter(v::Array{vDT}, d::Tuple, o::Tuple) where {vDT}
     length(size(v)) != length(o) && throw(PhysicalParameterException("Input array should be $(length(o))-dimensional"))
     return PhysicalParameter{vDT}(size(v), d, o, v)
@@ -76,7 +78,7 @@ function PhysicalParameter(v::Array{vDT, N}, n::Tuple, d::Tuple, o::Tuple) where
     return PhysicalParameter{vDT}(n, d, o, v)
 end
 
-function PhysicalParameter(v::vDT, n::Tuple, d::Tuple, o::Tuple) where {vDT}
+function PhysicalParameter(v::vDT, n::Tuple, d::Tuple, o::Tuple) where vDT<:Number
     return PhysicalParameter{vDT}(n, d, o, v)
 end
 
@@ -85,8 +87,8 @@ PhysicalParameter(p::PhysicalParameter) = p
 
 # transpose and such.....
 conj(x::PhysicalParameter{vDT}) where vDT = x
-transpose(x::PhysicalParameter{vDT}) where vDT = x
-adjoint(x::PhysicalParameter{vDT}) where vDT = x
+transpose(x::PhysicalParameter{vDT}) where vDT = PhysicalParameter{vDT}(x.n[end:-1:1], x.d[end:-1:1], x.o[end:-1:1], permutedims(x.data, length(x.n):-1:1))
+adjoint(x::PhysicalParameter{vDT}) where vDT = transpose(x)
 
 # Basic overloads
 size(A::PhysicalParameter) = (prod(A.n), 1)
@@ -120,7 +122,8 @@ promote_shape(A::Array{vDT, N}, p::PhysicalParameter) where {vDT, N} = promote_s
 dotview(A::PhysicalParameter{vDT}, I::Vararg{Union{Function, Int, UnitRange{Int}}, N}) where {vDT, N} = dotview(A.data, I...)
 
 getindex(A::PhysicalParameter, i::Int) = A.data[i]
-getindex(A::PhysicalParameter, I::Vararg{Union{Int, Function, UnitRange{Int}}, N}) where {N} = getindex(A.data, I...)
+getindex(A::PhysicalParameter, I::Vararg{Union{Int, BitArray, Function, UnitRange{Int}}, N}) where {N} = getindex(A.data, I...)
+Base.dotview(m::PhysicalParameter, i) = Base.dotview(m.data, i)
 
 setindex!(A::PhysicalParameter, v, I::Vararg{Union{Int, Function, UnitRange{Int}}, N}) where {N} = setindex!(A.data, v, I...)
 setindex!(A::PhysicalParameter, v, i::Int) = (A.data[i] = v)
@@ -169,7 +172,8 @@ function similar(bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{PhysicalParamete
     # Scan the inputs for the ArrayAndChar:
     A = find_aac(bc)
     # Use the char field of A to create the output
-    PhysicalParameter(similar(A.data), A.d, A.o)
+    ElType == Bool ? Ad = similar(Array{ElType}, axes(A.data)) : Ad = similar(A.data)
+    PhysicalParameter(Ad, A.d, A.o)
 end
 
 "`A = find_aac(As)` returns the first PhysicalParameter among the arguments."
@@ -215,6 +219,7 @@ end
 
 materialize!(p::PhysicalParameter{RDT}, b::Array{<:Number, N}) where{RDT, N} = (p.data[:] .= b)
 materialize!(p::PhysicalParameter{RDT}, b::Base.Broadcast.Broadcasted{Base.Broadcast.DefaultArrayStyle{N}}) where{RDT, N} = materialize!(p, collect(b))
+materialize!(p::Array, b::Broadcast.Broadcasted{Broadcast.ArrayStyle{PhysicalParameter}}) = materialize!(p, reshape(collect(b), size(p)))
 
 # Linalg Extras
 mul!(x::PhysicalParameter, F::Union{joAbstractLinearOperator, joLinearFunction}, y::Array) = (x .= F*y)

@@ -12,6 +12,8 @@ from propagators import forward, born, gradient
 parser = ArgumentParser(description="Adjoint test args")
 parser.add_argument("--tti", default=False, action='store_true',
                     help="Test acoustic or tti")
+parser.add_argument("--fs", default=False, action='store_true',
+                    help="Test with free surface")
 parser.add_argument('-so', dest='space_order', default=8, type=int,
                     help="Spatial discretization order")
 parser.add_argument('-nlayer', dest='nlayer', default=3, type=int,
@@ -44,10 +46,10 @@ v0 = m0**(-.5)
 if is_tti:
     model = Model(shape=shape, origin=origin, spacing=spacing,
                   m=m0, epsilon=.045*(v0-1.5), delta=.03*(v0-1.5),
-                  rho=rho0, theta=.1*(v0-1.5), dm=dm, space_order=so)
+                  fs=args.fs, rho=rho0, theta=.1*(v0-1.5), dm=dm, space_order=so)
 else:
     model = Model(shape=shape, origin=origin, spacing=spacing,
-                  m=m0, rho=rho0, dm=dm, space_order=so)
+                  fs=args.fs, m=m0, rho=rho0, dm=dm, space_order=so)
 
 # Time axis
 t0 = 0.
@@ -93,5 +95,4 @@ else:
 print("Difference between saving with forward and born", c)
 
 print("Adjoint test J")
-print("a = %2.2e, b = %2.2e, diff = %2.2e: " % (a, b, a - b))
-print("Relative error: ", a/b - 1)
+print("a = %2.5e, b = %2.5e, diff = %2.5e: rerr=%2.5e" % (a, b, a - b, (a-b)/(a+b)))

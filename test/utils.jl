@@ -1,8 +1,6 @@
 # Author: Mathias Louboutin, mlouboutin3@gatech.edu
 # Date: July 2020
 
-using JUDI.TimeModeling, ArgParse, Images, Test
-
 export setup_model, parse_commandline, setup_geom
 export example_src_geometry, example_rec_geometry, example_model, example_info
 
@@ -12,7 +10,12 @@ Simple 2D model setup used for the tests.
 """
 
 function smooth(v, sigma=3)
-    return Float32.(imfilter(v,  Kernel.gaussian(sigma)))
+    v0 = 1f0 .* v
+    for i=-sigma:sigma
+        i != 0 && (v0[:, sigma+1:end-sigma] .+= v[:, sigma+i+1:end-sigma+i])
+    end
+    v0[:, sigma+1:end-sigma] .*= 1/(2*sigma+1)
+    return v0
 end
 
 """

@@ -6,10 +6,7 @@
 # Mathias Louboutin, mlouboutin3@gatech.edu
 # Updated July 2020
 
-using JUDI.TimeModeling, Test, LinearAlgebra, PyPlot, Printf
-
 parsed_args = parse_commandline()
-
 
 nlayer = parsed_args["nlayer"]
 tti = parsed_args["tti"]

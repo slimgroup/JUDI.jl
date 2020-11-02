@@ -5,8 +5,6 @@
 # Mathias Louboutin, mlouboutin3@gatech.edu
 # Updated July 2020
 
-using JUDI, JUDI.TimeModeling, SegyIO, Test, LinearAlgebra
-
 datapath = joinpath(dirname(pathof(JUDI)))*"/../data/"
 
 @testset "Geometry Unit Test with $(nsrc) sources" for nsrc=[1, 2]

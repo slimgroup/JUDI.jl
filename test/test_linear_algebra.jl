@@ -1,8 +1,6 @@
 # Author: Mathias Louboutin, mlouboutin3@gatech.edu
 # Date: July 2020
 
-using JUDI.TimeModeling, Test, LinearAlgebra, Printf
-
 parsed_args = parse_commandline()
 
 nlayer = parsed_args["nlayer"]

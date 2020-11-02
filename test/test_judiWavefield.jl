@@ -5,9 +5,6 @@
 # Mathias Louboutin, mlouboutin3@gatech.edu
 # Updated July 2020
 
-using JUDI.TimeModeling, Test, LinearAlgebra
-
-
 # number of sources/receivers
 nsrc = 1
 nrec = 120

@@ -1,6 +1,8 @@
 import numpy as np
 from sympy import sqrt
 
+from devito.core import CPU64NoopOperator as cpo
+from devito.exceptions import InvalidOperator
 from devito.tools import as_tuple
 
 
@@ -50,6 +52,17 @@ def weight_srcfocus(model, src_coords, delta=.01, full=True):
 def compute_optalpha(norm_r, norm_Fty, epsilon, comp_alpha=True):
     """
     Compute optimal alpha for WRI
+
+    Parameters
+    ----------
+    norm_r: Float
+        Norm of residual
+    norm_Fty: Float
+        Norm of adjoint wavefield squared
+    epsilon: Float
+        Noise level
+    comp_alpha: Bool
+        Whether to compute the optimal alpha or just return 1
     """
     if comp_alpha:
         if norm_r > epsilon and norm_Fty > 0:
@@ -58,3 +71,36 @@ def compute_optalpha(norm_r, norm_Fty, epsilon, comp_alpha=True):
             return 0
     else:
         return 1
+
+
+def opt_op(model):
+    """
+    Setup the compiler options for the operator. Dependeing on the devito
+    version more or less options can be used for performance, mostly impacting TTI.
+
+    Parameters
+    ----------
+    model: Model
+        Model structure to know if we are in a TTI model
+    """
+    opts = {'openmp': True, 'mpi': False}
+    # Minimal size temporaries
+    if not model.fs:
+        try:
+            opts['min-storage'] = True
+            'min-storage' in cpo._normalize_kwargs(options=dict(opts))['options']
+        except InvalidOperator:
+            opts.pop('min-storage')
+    # Cire rotate for tti
+    if model.is_tti:
+        try:
+            opts['cire-rotate'] = True
+            'cire-rotate' in cpo._normalize_kwargs(options=dict(opts))['options']
+        except InvalidOperator:
+            opts.pop('cire-rotate')
+        try:
+            opts['cire-repeats-sops'] = 9
+            'cire-repeats-sops' in cpo._normalize_kwargs(options=dict(opts))['options']
+        except InvalidOperator:
+            opts.pop('cire-repeats-sops')
+    return ('advanced', opts)

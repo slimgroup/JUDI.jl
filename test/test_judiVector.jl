@@ -5,9 +5,6 @@
 # Mathias Louboutin, mlouboutin3@gatech.edu
 # Updated July 2020
 
-using JUDI.TimeModeling, JUDI, SegyIO, Test, LinearAlgebra
-import LinearAlgebra.BLAS.axpy!
-
 datapath = joinpath(dirname(pathof(JUDI)))*"/../data/"
 
 function example_rec_geometry(; nsrc=2, nrec=120)

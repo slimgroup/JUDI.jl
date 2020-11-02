@@ -1,6 +1,6 @@
 from sympy import rot_axis2, rot_axis3
 
-from devito import TensorFunction, VectorFunction, Eq, Differentiable
+from devito import TensorFunction, VectorFunction, Differentiable
 
 
 def grads(func, so_fact=1, side=1):
@@ -46,23 +46,6 @@ def laplacian(v, irho):
     return Lap
 
 
-def ssa_tti(u, v, model):
-    """
-    TTI finite difference kernel.
-
-    Parameters
-    ----------
-    u : TimeFunction
-        first TTI field
-    v : TimeFunction
-        second TTI field
-    model: Model
-        Model structure
-    """
-
-    return tensor_fact(u, v, model)
-
-
 def R_mat(model):
     """
     Rotation matrix according to tilt and asymut.
@@ -84,26 +67,6 @@ def R_mat(model):
         return R
     except AttributeError:
         return Rt
-
-
-def P_M(model, u, v):
-    """
-    Vectorial temporaries for TTI.
-
-    Parameters
-    ----------
-    model: Model
-        Model structure
-    so: Int
-        Space order for discretization
-    """
-    # Vector for gradients
-    st = tuple([None]*model.dim)
-    P_I = VectorFunction(name="P_I%s" % u.name, grid=model.grid,
-                         space_order=u.space_order, staggered=st)
-    M_I = VectorFunction(name="M_I%s" % v.name, grid=model.grid,
-                         space_order=v.space_order, staggered=st)
-    return P_I, M_I
 
 
 def thomsen_mat(model):
@@ -140,7 +103,7 @@ def thomsen_mat(model):
     return A, B, C
 
 
-def tensor_fact(u, v, model):
+def sa_tti(u, v, model):
     """
     Tensor factorized SSA TTI wave equation spatial derivatives.
 
@@ -157,16 +120,8 @@ def tensor_fact(u, v, model):
     A, B, C = thomsen_mat(model)
     # Rotation Matrix
     R = R_mat(model)
-    # Tensor temps
-    P_I, M_I = P_M(model, u, v)
 
-    if 'nofsdomain' in model.grid.subdomains:
-        eq_PI = Eq(P_I, R.T * (A * R * grads(u) + B * R * grads(v)),
-                   subdomain=model.grid.subdomains['nofsdomain'])
-        eq_MI = Eq(M_I, R.T * (B * R * grads(u) + C * R * grads(v)),
-                   subdomain=model.grid.subdomains['nofsdomain'])
-    else:
-        eq_PI = Eq(P_I, R.T * (A * R * grads(u) + B * R * grads(v)))
-        eq_MI = Eq(M_I, R.T * (B * R * grads(u) + C * R * grads(v)))
+    PI = R.T * (A * R * grads(u, so_fact=2) + B * R * grads(v, so_fact=2))
+    MI = R.T * (B * R * grads(u, so_fact=2) + C * R * grads(v, so_fact=2))
 
-    return divs(P_I), divs(M_I), eq_PI, eq_MI
+    return divs(PI, so_fact=2), divs(MI, so_fact=2)

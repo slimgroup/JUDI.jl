@@ -79,7 +79,7 @@ function  minConf_PQN(funObj, x::Array{vDt}, funProj, options) where {vDt}
        @printf("PQN optimality tolerance: %.2e\n",options.optTol)
        @printf("PQN progress tolerance: %.2e\n",options.progTol)
        @printf("Quadratic initialization of line search: %d\n",options.adjustStep)
-       @printf("Maximum number of function evaluations: %d\n",options.maxIter)
+       @printf("Maximum number of iterations: %d\n",options.maxIter)
     end
 
     # Result structure
@@ -156,7 +156,7 @@ function  minConf_PQN(funObj, x::Array{vDt}, funProj, options) where {vDt}
         end
         # Select Initial Guess to step length
         if i == 1 || ~options.adjustStep
-            (maximum(d)/maximum(x)) > 1e2 ? t = vDt(min(1,1/maximum(d))) : t = 1
+            i==1 ? t = vDt(.1*norm(x, Inf)/norm(d, Inf)) : t = 1
         else
             t = vDt(min(1, 2*(f-sol.misfit)/gtd))
         end
@@ -177,16 +177,17 @@ function  minConf_PQN(funObj, x::Array{vDt}, funProj, options) where {vDt}
                 t = t/2
             else
                 options.verbose == 3 && @printf("Cubic Backtracking\n")
-                t = polyinterp([0 f gtd; t f transpose(g)*d])
+                t = vDt(polyinterp([0 f gtd; t f dot(g,d)]))
+                isnan(t) && (t=  vDt(temp/2))
             end
 
             # Adjust if change is too small/large
             if t < temp*1e-3
                 options.verbose == 3 && @printf("Interpolated value too small, Adjusting\n")
-                t = temp*1e-3;
+                t = vDt(temp*1e-3);
             elseif t > temp*0.6
                 options.verbose == 3 && @printf("Interpolated value too large, Adjusting\n")
-                t = temp*0.6
+                t = vDt(temp*0.6)
             end
 
             # Check whether step has become too small
@@ -202,10 +203,11 @@ function  minConf_PQN(funObj, x::Array{vDt}, funProj, options) where {vDt}
             ls_failed = ls_failed || (lineSearchIters == options.maxLinesearchIter)
         end
         ls_failed && (@printf("Too mane Line Search iterations\n"); break)
-        i>1 && (terminate(options, norm(projection(x-g)-x, Inf), t, d, f, sol.misfit) && break)
+	    optCond = norm(projection(x-g) - x, Inf)
+        i>1 && (terminate(options, optCond, t, d, f, sol.misfit) && break)
         # Output Log
         if options.verbose >= 2
-            @printf("%10d %10d %10d %15.5e %15.5e %15.5e\n",i,sol.n_feval,sol.n_project,t,f,norm(projection(x-g)-x, Inf))
+            @printf("%10d %10d %10d %15.5e %15.5e %15.5e\n",i,sol.n_feval, sol.n_project, t, f, optCond)
         end
 
     end

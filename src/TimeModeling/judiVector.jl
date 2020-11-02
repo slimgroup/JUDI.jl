@@ -675,8 +675,6 @@ end
 ####################################################################################################
 # Indexing
 
-#getindex(x::judiVector, i) = x.data[i]
-
 setindex!(x::judiVector, y, i) = x.data[i][:] = y
 
 firstindex(x::judiVector) = 1
@@ -705,7 +703,7 @@ function sum(x::judiVector)
     return s
 end
 
-length(S::judiVector) = S.nsrc
+Base.IteratorSize(d::judiVector) = Base.SizeUnknown()
 isfinite(v::judiVector) = all(all(isfinite.(v.data[i])) for i=1:v.nsrc)
 iterate(S::judiVector, state::Integer=1) = state > S.nsrc ? nothing : (S.data[state], state+1)
 

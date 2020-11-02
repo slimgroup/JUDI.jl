@@ -1,11 +1,12 @@
-using JUDI.TimeModeling, LinearAlgebra, Test, JOLI
+# Author: Mathias Louboutin, mlouboutin3@gatech.edu
+# Updated July 2020
 
 ftol = 1f-5
 
 @testset "PhysicalParameter Unit Tests in $(nd) dimensions" for nd=[2, 3]
-    n = Tuple(11 for i=1:nd)
-    d = Tuple(1. for i=1:nd)
-    o = Tuple(0. for i=1:nd)
+    n = Tuple(11+i for i=1:nd)
+    d = Tuple(1f0+i for i=1:nd)
+    o = Tuple(0f0+i for i=1:nd)
     a = randn(Float32, n...)
     p = PhysicalParameter(a, d, o)
     @test PhysicalParameter(p) == p
@@ -15,8 +16,20 @@ ftol = 1f-5
 
     @test size(p) == (prod(n), 1)
     @test size(conj(p)) == (prod(n), 1)
+
     @test size(adjoint(p)) == (prod(n), 1)
+    @test adjoint(p).n == p.n[end:-1:1]
+    @test adjoint(p).d == p.d[end:-1:1]
+    @test adjoint(p).o == p.o[end:-1:1]
+    @test isapprox(adjoint(p).data, permutedims(p.data, nd:-1:1))
+
     @test size(transpose(p)) == (prod(n), 1)
+    @test transpose(p).n == p.n[end:-1:1]
+    @test transpose(p).d == p.d[end:-1:1]
+    @test transpose(p).o == p.o[end:-1:1]
+    @test isapprox(transpose(p).data, permutedims(p.data, nd:-1:1))
+
+
     @test isequal(p.data, a)
     p .= zeros(n...)
     p .= a
@@ -111,6 +124,12 @@ ftol = 1f-5
     @test isapprox(v * v, v.^2)
     @test isapprox(v / v, 0f0.*v .+1)
 
+    a = zeros(Float32, n...)
+    a .= v
+    @test isapprox(a, v.data)
+    v = PhysicalParameter(ones(Float32, n...), d, o)
+    v[v .> 0] .= -1
+    @test all(v .== -1)
 
     # Indexing
     u = PhysicalParameter(randn(n), d, o)

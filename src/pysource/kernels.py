@@ -4,7 +4,7 @@ from devito import Eq
 from devito.finite_differences.differentiable import diffify
 
 from wave_utils import freesurface
-from FD_utils import laplacian, ssa_tti
+from FD_utils import laplacian, sa_tti
 
 
 def _solve(eq, target, **kwargs):
@@ -34,13 +34,10 @@ def wave_kernel(model, u, fw=True, q=None):
         Full time-space source
     """
     if model.is_tti:
-        pde, fact = tti_kernel(model, u[0], u[1], fw=fw, q=q)
-        fact += freesurface(model, fact) if model.fs else []
+        pde = tti_kernel(model, u[0], u[1], fw=fw, q=q)
     else:
         pde = acoustic_kernel(model, u, fw, q=q)
-        fact = []
-        pde += freesurface(model, pde) if model.fs else []
-    return pde, fact
+    return pde
 
 
 def acoustic_kernel(model, u, fw=True, q=None):
@@ -69,8 +66,12 @@ def acoustic_kernel(model, u, fw=True, q=None):
     stencil = _solve(wmr * (u.dt2 + damp * udt) - ulaplace - q, u_n)
 
     if 'nofsdomain' in model.grid.subdomains:
-        return [Eq(u_n, stencil, subdomain=model.grid.subdomains['nofsdomain'])]
-    return [Eq(u_n, stencil)]
+        pde = [Eq(u_n, stencil, subdomain=model.grid.subdomains['nofsdomain'])]
+        pde += freesurface(model, pde)
+    else:
+        pde = [Eq(u_n, stencil)]
+
+    return pde
 
 
 def tti_kernel(model, u1, u2, fw=True, q=None):
@@ -97,7 +98,7 @@ def tti_kernel(model, u1, u2, fw=True, q=None):
     # Tilt and azymuth setup
     u1_n, u2_n = (u1.forward, u2.forward) if fw else (u1.backward, u2.backward)
     (udt1, udt2) = (u1.dt, u2.dt) if fw else (u1.dt.T, u2.dt.T)
-    H0, H1, factp, factm = ssa_tti(u1, u2, model)
+    H0, H1 = sa_tti(u1, u2, model)
 
     # Stencils
     stencilp = _solve(wmr * (u1.dt2 + damp * udt1) - H0 - q[0], u1_n)
@@ -112,4 +113,4 @@ def tti_kernel(model, u1, u2, fw=True, q=None):
         first_stencil = Eq(u1_n, stencilp)
         second_stencil = Eq(u2_n, stencilr)
 
-    return [first_stencil, second_stencil] + pdea, [factp, factm]
+    return [first_stencil, second_stencil] + pdea

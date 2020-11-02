@@ -2,8 +2,6 @@
 # Date: May 2020
 #
 
-using JUDI.TimeModeling, PyCall, LinearAlgebra, Test
-
 ftol = 1f-6
 
 function test_model(ndim; tti=false)

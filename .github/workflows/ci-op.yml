@@ -81,7 +81,6 @@ jobs:
         run: |
           export PYTHON=$(which python)
           julia --color=yes --check-bounds=yes --project -e 'using Pkg; Pkg.build("PyCall")'
-          julia --color=yes --check-bounds=yes --project -e 'using Pkg; Pkg.build("PyPlot")'
 
       - name: Run tests
         uses: julia-actions/julia-runtest@latest

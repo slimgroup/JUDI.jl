@@ -386,7 +386,9 @@ vec(x::Int64) = x;
 vec(x::Int32) = x;
 
 
-function time_resample(data::Array, geometry_in::Geometry, dt_new;order=2)
+SincInterpolation(Y, S, Up) = sinc.( (Up .- S') ./ (S[2] - S[1]) ) * Y
+
+function time_resample(data::Array, geometry_in::Geometry, dt_new)
 
     if dt_new==geometry_in.dt[1]
         return data, geometry_in
@@ -395,11 +397,8 @@ function time_resample(data::Array, geometry_in::Geometry, dt_new;order=2)
         numTraces = size(data,2)
         timeAxis = 0:geometry.dt[1]:geometry.t[1]
         timeInterp = 0:dt_new:geometry.t[1]
-        dataInterp = zeros(Float32,length(timeInterp),numTraces)
-        for k=1:numTraces
-            spl = Spline1D(timeAxis,data[:,k];k=order)
-            dataInterp[:,k] = spl(timeInterp)
-        end
+        dataInterp = Float32.(SincInterpolation(data, timeAxis, timeInterp))
+
         geometry.dt[1] = dt_new
         geometry.nt[1] = length(timeInterp)
         geometry.t[1] = (geometry.nt[1] - 1)*geometry.dt[1]
@@ -407,8 +406,7 @@ function time_resample(data::Array, geometry_in::Geometry, dt_new;order=2)
     end
 end
 
-function time_resample(data::Array, dt_in, geometry_out::Geometry;order=2)
-
+function time_resample(data::Array, dt_in, geometry_out::Geometry)
     if dt_in==geometry_out.dt[1]
         return data
     else
@@ -416,12 +414,7 @@ function time_resample(data::Array, dt_in, geometry_out::Geometry;order=2)
         numTraces = size(data,2)
         timeAxis = 0:dt_in:geometry_out.t[1]
         timeInterp = 0:geometry_out.dt[1]:geometry_out.t[1]
-        dataInterp = zeros(Float32,length(timeInterp),numTraces)
-        for k=1:numTraces
-            spl = Spline1D(timeAxis,data[:,k];k=order)
-            dataInterp[:,k] = spl(timeInterp)
-        end
-        return dataInterp
+        return  Float32.(SincInterpolation(data, timeAxis, timeInterp))
     end
 end
 

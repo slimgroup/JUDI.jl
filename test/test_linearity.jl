@@ -5,10 +5,7 @@
 # Mathias Louboutin, mlouboutin3@gatech.edu
 # Updated July 2020
 
-using JUDI.TimeModeling, Test, LinearAlgebra, Printf
-
 parsed_args = parse_commandline()
-
 
 nlayer = parsed_args["nlayer"]
 tti = parsed_args["tti"]
@@ -160,8 +157,8 @@ end
     A = Pr*F*adjoint(Pw)
     Aa = adjoint(A)
     # Extended source weights
-    w = Float32.(imfilter(randn(Float32, model0.n), Kernel.gaussian(5)))
-    x = Float32.(imfilter(randn(Float32, model0.n), Kernel.gaussian(5)))
+    w = randn(Float32, model0.n)
+    x = randn(Float32, model0.n)
     w[:, 1] .= 0f0; w = vec(w)
     x[:, 1] .= 0f0; x = vec(x)
 

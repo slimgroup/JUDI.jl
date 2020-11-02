@@ -2,7 +2,7 @@ import numpy as np
 from sympy import Abs, Min, exp, sqrt
 import warnings
 from devito import (Grid, Function, SubDomain, SubDimension, Eq,
-                    Operator, mmin, initialize_function)
+                    Operator, mmin, initialize_function, switchconfig)
 from devito.tools import as_tuple
 
 
@@ -43,6 +43,7 @@ class FSDomain(SubDomain):
         return map_d
 
 
+@switchconfig(log_level='ERROR')
 def initialize_damp(damp, padsizes, spacing, fs=False):
     """
     Initialise damping field with an absorbing boundary layer.
@@ -102,8 +103,8 @@ class GenericModel(object):
         origin_pml = [dtype(o - s*nbl) for o, s in zip(origin, spacing)]
         shape_pml = np.array(shape) + 2 * self.nbl
         if fs:
-            fsdomain = FSDomain(space_order//2+1)
-            physdomain = PhysicalDomain(space_order//2+1, fs=fs)
+            fsdomain = FSDomain(space_order + 1)
+            physdomain = PhysicalDomain(space_order + 1, fs=fs)
             subdomains = (physdomain, fsdomain)
             origin_pml[-1] = origin[-1]
             shape_pml[-1] -= self.nbl
@@ -136,6 +137,7 @@ class GenericModel(object):
         known = [getattr(self, i) for i in self.physical_parameters]
         return {i.name: kwargs.get(i.name, i) or i for i in known}
 
+    @switchconfig(log_level='ERROR')
     def _gen_phys_param(self, field, name, space_order, is_param=False,
                         default_value=0, func=lambda x: x):
         """
@@ -329,7 +331,7 @@ class Model(GenericModel):
                               % (self.dt, dt))
             else:
                 return self.dtype("%.3e" % self.dt)
-        return self.dtype("%.3e" % dt)
+        return self.dtype("%.2e" % dt)
 
     @property
     def dm(self):

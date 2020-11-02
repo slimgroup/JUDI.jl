@@ -6,8 +6,6 @@
 # Mathias Louboutin, mlouboutin3@gatech.edu
 # Updated July 2020
 
-using JUDI.TimeModeling, Test, LinearAlgebra, PyPlot, Printf
-
 parsed_args = parse_commandline()
 
 nlayer = parsed_args["nlayer"]
@@ -76,17 +74,6 @@ dt = srcGeometry.dt[1]
 		# "second order error" should be first order
 		@test isapprox(rate_1, 2f0; rtol=5f-2)
 		@test isapprox(rate_2, 4f0; rtol=5f-2)
-	end
-
-	# Plot errors
-	if isinteractive()
-		loglog(h_all, err1); loglog(h_all, h_all/h_all[1]*err1[1])
-		loglog(h_all, err2); loglog(h_all, ( h_all/h_all[1]).^2 * err2[1])
-		legend([L"$\Phi(m) - \Phi(m0)$", "1st order", L"$\Phi(m) - \Phi(m0) - \nabla \Phi \delta m$", "2nd order"], loc="lower right")
-		xlabel("h")
-		ylabel(L"Error $||\cdot||^\infty$")
-		title("FWI gradient test")
-		
 	end
 
 	# test that with zero dm we get the same as fwi_objective for residual

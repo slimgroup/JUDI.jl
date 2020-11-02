@@ -51,7 +51,7 @@ function spg_options(;verbose=2,optTol=1f-5,progTol=1f-7,
                      maxIter=20,suffDec=1f-4,interp=0,memory=2,
                      useSpectral=true,curvilinear=false,
                      feasibleInit=false,testOpt=true,
-                     bbType=true,testInit=false, store_trace=false,
+                     bbType=1,testInit=false, store_trace=false,
                      optNorm=Inf,iniStep=1f0, maxLinesearchIter=20)
     return SPG_params(verbose,optTol,progTol,
                       maxIter,suffDec,interp,memory,
@@ -80,11 +80,10 @@ function minConf_SPG(funObj, x::Array{vDt}, funProj, options) where {vDt}
        @printf("Running SPG...\n");
        @printf("Number of objective function to store: %d\n",options.memory);
        @printf("Using  spectral projection : %s\n",options.useSpectral);
-       @printf("Maximum number of function evaluations: %d\n",options.maxIter);
+       @printf("Maximum number of iterations: %d\n",options.maxIter);
        @printf("SPG optimality tolerance: %.2e\n",options.optTol);
        @printf("SPG progress tolerance: %.2e\n",options.progTol);
     end
-
     # Initialize local variables
     nVars = length(x)
     options.memory > 1 && (old_fvals = -Inf*ones(vDt, options.memory))
@@ -106,11 +105,11 @@ function minConf_SPG(funObj, x::Array{vDt}, funProj, options) where {vDt}
     # Output Log
     if options.verbose >= 2
         if options.testOpt
-            @printf("%10s %10s %10s %15s %15s %15s\n","Iteration","FunEvals","Projections","Step Length","Function Val","Opt Cond")
-            @printf("%10d %10d %10d %15.5e %15.5e %15.5e\n",0,0,0,0,f,norm(projection(x-g)-x, options.optNorm))
+            @printf("%10s %10s %10s %15s %15s %15s %15s\n","Iteration","FunEvals","Projections","Step Length","alpha","Function Val","Opt Cond")
+            @printf("%10d %10d %10d %15.5e %15.5e %15.5e %15.5e\n",0,0,0,0,0,f,norm(projection(x-g)-x, options.optNorm))
         else
-            @printf("%10s %10s %10s %15s %15s\n","Iteration","FunEvals","Projections","Step Length","Function Val")
-            @printf("%10d %10d %10d %15.5e %15.5e\n",0,0,0,0,f)
+            @printf("%10s %10s %10s %15s %15s %15s\n","Iteration","FunEvals","Projections","Step Length","alpha","Function Val")
+            @printf("%10d %10d %10d %15.5e %15.5e %15.5e\n",0,0,0,0,0,f)
         end
     end
 
@@ -124,12 +123,12 @@ function minConf_SPG(funObj, x::Array{vDt}, funProj, options) where {vDt}
 
     # Start iterations
     for i = 1:options.maxIter
-        # Compute Step Direction
+        # Compute Step Directional
         if i == 1 || ~options.useSpectral
-            alpha = 1
+            alpha = vDt(.1*norm(x, Inf)/norm(g, Inf))
         else
-            y = g-sol.gradient
-            s = x-sol.sol
+            y = g - sol.gradient
+            s = x - sol.sol
             if options.bbType == 1
                 alpha = dot(s,s)/dot(s,y)
             else
@@ -147,7 +146,7 @@ function minConf_SPG(funObj, x::Array{vDt}, funProj, options) where {vDt}
 
         # Check that Progress can be made along the direction
         gtd = dot(g,d)
-        if gtd > -options.progTol
+        if gtd > -options.progTol && i>1
             options.verbose >= 1 &&  @printf("Directional Derivative below progTol\n")
             break
         end
@@ -207,9 +206,9 @@ function minConf_SPG(funObj, x::Array{vDt}, funProj, options) where {vDt}
         # Output Log
         if options.verbose >= 2
             if options.testOpt
-                @printf("%10d %10d %10d %15.5e %15.5e %15.5e\n",i,sol.n_feval,sol.n_project,t,f,optCond)
+                @printf("%10d %10d %10d %15.5e %15.5e %15.5e %15.5e\n",i,sol.n_feval,sol.n_project,t,alpha,f,optCond)
             else
-                @printf("%10d %10d %10d %15.5e %15.5e\n",i,sol.n_feval,sol.n_project,t,f)
+                @printf("%10d %10d %10d %15.5e %15.5e %15.5e\n",i,sol.n_feval,sol.n_project,t,alpha,f)
             end
         end
     end

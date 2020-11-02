@@ -10,6 +10,8 @@ from propagators import forward, adjoint
 parser = ArgumentParser(description="Adjoint test args")
 parser.add_argument("--tti", default=False, action='store_true',
                     help="Test acoustic or tti")
+parser.add_argument("--fs", default=False, action='store_true',
+                    help="Test with free surface")
 parser.add_argument('-nlayer', dest='nlayer', default=3, type=int,
                     help="Number of layers in model")
 parser.add_argument('-so', dest='space_order', default=8, type=int,
@@ -37,10 +39,10 @@ v = np.sqrt(1./m)
 if is_tti:
     model = Model(shape=shape, origin=origin, spacing=spacing,
                   m=m, epsilon=.09*(v-1.5), delta=.075*(v-1.5),
-                  theta=.1*(v-1.5), rho=1, space_order=so)
+                  fs=args.fs, theta=.1*(v-1.5), rho=1, space_order=so)
 else:
     model = Model(shape=shape, origin=origin, spacing=spacing,
-                  m=m, rho=rho, space_order=so)
+                  fs=args.fs, m=m, rho=rho, space_order=so)
 
 # Time axis
 t0 = 0.
@@ -70,5 +72,4 @@ q0, _, _ = adjoint(model, d_hat, src1.coordinates.data, rec_t.coordinates.data)
 a = inner(d_hat, d_hat)
 b = inner(q0, src1)
 print("Adjoint test F")
-print("a = %2.2e, b = %2.2e, diff = %2.2e: " % (a, b, a - b))
-print("Relative error: ", a / b - 1)
+print("a = %2.5e, b = %2.5e, diff = %2.5e: rerr=%2.5e" % (a, b, a - b, (a-b)/(a+b)))

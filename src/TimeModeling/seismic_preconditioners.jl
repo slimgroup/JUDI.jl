@@ -31,14 +31,14 @@ function low_filter(Din::Array{Float32, 1}, dt_in; fmin=0.0, fmax=25.0)
 end	
 
 function low_filter(Din::Array{Float32, 2}, dt_in; fmin=0.0, fmax=25.0)	
-    Dout = deepcopy(Din)	
+    Dout = deepcopy(Din)
     responsetype = Bandpass(fmin, fmax; fs=1e3/dt_in)	
     designmethod = Butterworth(5)	
     for i=1:size(Dout,2)	
         Dout[:, i] = filt(digitalfilter(responsetype, designmethod), Float32.(Dout[:, i]))	
     end	
     return Dout	
-end	
+end
 
 function low_filter(Din::judiVector, dt_in; fmin=0.0, fmax=25.0)	
     Dout = deepcopy(Din)	
@@ -50,7 +50,7 @@ function low_filter(Din::judiVector, dt_in; fmin=0.0, fmax=25.0)
 	            Dout.data[j][:, i] = low_filter(Dout.data[j][:, i], dt_in; fmin=fmin, fmax=fmax)
 	        end	
 		end
-    end	
+    end
     return Dout	
 end
 
@@ -177,7 +177,7 @@ function judiTopmute(n, mute_end, length)
     return T
 end
 
-function find_water_bottom(m::Array{avDT,2};eps = 1e-4) where {avDT}
+function find_water_bottom(m::AbstractArray{avDT,2};eps = 1e-4) where {avDT}
     #return the indices of the water bottom of a seismic image
     n = size(m)
     idx = zeros(Integer, n[1])
@@ -194,7 +194,9 @@ function find_water_bottom(m::Array{avDT,2};eps = 1e-4) where {avDT}
     return idx
 end
 
-find_water_bottom(m::Array{avDT,3};eps = 1e-4) where {avDT} = reshape(find_water_bottom(reshape(m, :, size(m)[end]);eps=eps), size(m,1), size(m,2))
+find_water_bottom(m::AbstractArray{avDT,3};eps = 1e-4) where {avDT} = reshape(find_water_bottom(reshape(m, :, size(m)[end]);eps=eps), size(m,1), size(m,2))
+
+find_water_bottom(m::PhysicalParameter;eps = 1e-4) = find_water_bottom(m.data)
 
 function depth_scaling(m, model)
 # Linear depth scaling function for seismic images
