@@ -43,7 +43,8 @@ can also be a single (non-cell) array, in which case the weights are the same fo
     judiWeights(weights; nsrc=1)
 """
 function judiWeights(weights::Array; nsrc=1, vDT::DataType=Float32)
-    vDT == Float32 || throw(judiWeightsException("Domain type not supported"))
+
+    weights = convert(Array{vDT},weights)
 
     # length of vector
     n = 1
@@ -52,7 +53,7 @@ function judiWeights(weights::Array; nsrc=1, vDT::DataType=Float32)
     for j=1:nsrc
         weightsCell[j] = deepcopy(weights)
     end
-    return judiWeights{Float32}("Extended source weights",m,n,nsrc,weightsCell)
+    return judiWeights{vDT}("Extended source weights",m,n,nsrc,weightsCell)
 end
 
 # constructor if weights are passed as a cell array
@@ -116,7 +117,7 @@ end
 function +(a::judiWeights{avDT},b::Number) where avDT
     c = deepcopy(a)
     for j=1:a.nsrc
-        c.weights[j] = c.weights[j] .+ convert(avDT,b)
+        c.weights[j] = c.weights[j] .+ b
     end
     return c
 end
@@ -126,7 +127,7 @@ end
 function -(a::judiWeights{avDT},b::Number) where avDT
     c = deepcopy(a)
     for j=1:a.nsrc
-        c.weights[j] = c.weights[j] .- convert(avDT,b)
+        c.weights[j] = c.weights[j] .- b
     end
     return c
 end
@@ -135,7 +136,7 @@ end
 function *(a::judiWeights{avDT},b::Number) where avDT
     c = deepcopy(a)
     for j=1:a.nsrc
-        c.weights[j] = c.weights[j] .* convert(avDT,b)
+        c.weights[j] = c.weights[j] .* b
     end
     return c
 end
@@ -202,30 +203,6 @@ function mulJ(A::joAbstractLinearOperator{ADDT,ARDT}, v::judiWeights{avDT}) wher
     catch e
         V = A.fop(vcat([vec(v.weights[i]) for i=1:v.nsrc]...))
         jo_check_type_match(ARDT,eltype(V),join(["RDT from *(joLinearFunction,judiWeights):",A.name,typeof(A),eltype(V)]," / "))
-        return V
-    end
-end
-
-# *(joMatrix, judiWeights)
-function *(A::joMatrix{ADDT,ARDT}, v::judiWeights{avDT}) where {ADDT, ARDT, avDT}
-    A.n == size(v,1) || throw(judiWeightsException("shape mismatch"))
-    jo_check_type_match(ADDT,avDT,join(["DDT for *(joLinearFunction,judiWeights):",A.name,typeof(A),avDT]," / "))
-    # Evaluate as mat-mat over the weights
-    n = size(v.weights[1])
-    try
-        # Mul may be defined for judiWeights
-        V = A.fop(v)
-        jo_check_type_match(ARDT,eltype(V),join(["RDT from *(joLinearFunction,judiWeights):",A.name,typeof(A),eltype(V)]," / "))
-        return V
-    catch e
-        V = A.fop(vcat([vec(v.weights[i]) for i=1:v.nsrc]...))
-        jo_check_type_match(ARDT,eltype(V),join(["RDT from *(joLinearFunction,judiWeights):",A.name,typeof(A),eltype(V)]," / "))
-        if A.name == "(N*joDirac)" || A.name == "joDirac" || A.name == "adjoint((N*joDirac))" || A.name == "adjoint(joDirac)"
-            n = size(v.weights[1])
-            V_out = deepcopy(v)
-            [V_out.weights[i] = reshape(V[prod(n)*(i-1)+1:prod(n)*i],n) for i=1:v.nsrc]
-            return V_out
-        end
         return V
     end
 end

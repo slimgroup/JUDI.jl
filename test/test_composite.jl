@@ -26,8 +26,12 @@ ftol = 1f-6
     rec_geometry = example_rec_geometry(nsrc=nsrc, nrec=nrec)
     data = randn(Float32, ns, nrec)
     d_obs = judiVector(rec_geometry, data)
-    w0 = judiWeights(randn(Float32,n);nsrc=nsrc)
-    w0.weights=[randn(Float32,n) for i = 1:nsrc]
+    weights = Array{Array}(undef, nsrc)
+    for j=1:nsrc
+        weights[j] = randn(Float32, n)
+    end
+    w0 = judiWeights(weights)
+
 
     # Composite objs
     c1 = [d_obs; w0]
@@ -117,7 +121,7 @@ ftol = 1f-6
     u_scale ./= 2f0
     @test isapprox(u_scale, u)
     u_scale .= 2f0 .* u_scale .+ v_scale
-    @test isapprox(u_scale, 2f0 * u + 2f0 + v,rtol=1f-7)
+    @test isapprox(u_scale, 2f0 * u + (2f0 + v))
     u_scale .= u .+ v
     @test isapprox(u_scale, u + v)
     u_scale .= u .- v
@@ -176,7 +180,7 @@ ftol = 1f-6
     
     I = joDirac(nsrc*prod(n),DDT=Float32,RDT=Float32)
     @test isapprox(I*w0, w0)
-    lambda = randn()
+    lambda = randn(Float32)
     @test isapprox(lambda*I*w0, lambda*w0)
     @test isapprox(I'*w0, w0)
     @test isapprox((lambda*I)'*w0, lambda * w0)
