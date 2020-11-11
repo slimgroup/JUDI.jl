@@ -198,8 +198,29 @@ function *(A::joAbstractLinearOperator{ADDT,ARDT}, v::judiWeights{avDT}) where {
     end
 end
 
-# *(joDirac, judiWeights)
-*(a::joDirac, v::judiWeights) = copy(v)
+# *(joMatrix, judiWeights)
+function *(A::joMatrix{ADDT,ARDT}, v::judiWeights{avDT}) where {ADDT, ARDT, avDT}
+    A.n == size(v,1) || throw(judiWeightsException("shape mismatch"))
+    jo_check_type_match(ADDT,avDT,join(["DDT for *(joLinearFunction,judiWeights):",A.name,typeof(A),avDT]," / "))
+    # Evaluate as mat-mat over the weights
+    n = size(v.weights[1])
+    try
+        # Mul may be defined for judiWeights
+        V = A.fop(v)
+        jo_check_type_match(ARDT,eltype(V),join(["RDT from *(joLinearFunction,judiWeights):",A.name,typeof(A),eltype(V)]," / "))
+        return V
+    catch e
+        V = A.fop(vcat([vec(v.weights[i]) for i=1:v.nsrc]...))
+        jo_check_type_match(ARDT,eltype(V),join(["RDT from *(joLinearFunction,judiWeights):",A.name,typeof(A),eltype(V)]," / "))
+        if A.name == "(N*joDirac)" || A.name == "joDirac" || A.name == "adjoint((N*joDirac))" || A.name == "adjoint(joDirac)"
+            n = size(v.weights[1])
+            V_out = deepcopy(v)
+            [V_out.weights[i] = reshape(V[prod(n)*(i-1)+1:prod(n)*i],n) for i=1:v.nsrc]
+            return V_out
+        end
+        return V
+    end
+end
 
 # *(joCoreBlock, judiWeights)
 function *(A::joCoreBlock{ADDT,ARDT}, v::judiWeights{avDT}) where {ADDT, ARDT, avDT}

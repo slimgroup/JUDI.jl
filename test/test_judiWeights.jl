@@ -91,11 +91,20 @@ ftol = 1f-6
     @test isequal(length(w_vcat), 2*length(w))
     @test isequal(w_vcat.nsrc, 2*w.nsrc)
 
-    # dot, norm, abs, max, min
+    # dot, norm, abs
     @test isapprox(norm(w), sqrt(dot(w, w)))
     @test isapprox(abs.(w.weights[1]), abs(w).weights[1])
-    @test isapprox(maximum(w),max([maximum(w.weights[i]) for i=1:w.nsrc]...))
-    @test isapprox(minimum(w),max([minimum(w.weights[i]) for i=1:w.nsrc]...))
+    
+    # max, min
+    weights_max_min = Array{Array}(undef, nsrc)
+    for j=1:nsrc
+        weights[j] = ones(Float32, weight_size_x,weight_size_y) #model size (100,100)
+    end
+    w_max_min = judiWeights((Float32, weights_max_min)
+    w_max_min[1].weight[1,1] = 1f3
+    w_max_min[nsrc].weight[end,end] = 1f-3
+    @test isapprox(maximum(w_max_min),1f3)
+    @test isapprox(minimum(w_max_min),1f-3)
 
     # Test the norm
     d_ones = judiWeights(2f0 .* ones(Float32, weight_size_x, weight_size_y); nsrc=nsrc)
