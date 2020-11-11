@@ -44,7 +44,7 @@ can also be a single (non-cell) array, in which case the weights are the same fo
 """
 function judiWeights(weights::Array; nsrc=1, vDT::DataType=Float32)
 
-    weights = convert(Array{vDT},weights)
+    weights = convert.(Array{vDT},weights)
 
     # length of vector
     n = 1
