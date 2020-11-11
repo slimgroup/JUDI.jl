@@ -182,6 +182,14 @@ end
 
 # *(joLinearOperator, judiWeights)
 function *(A::joAbstractLinearOperator{ADDT,ARDT}, v::judiWeights{avDT}) where {ADDT, ARDT, avDT}
+    A.name == "joDirac" && return avDT(1) .* v
+    A.name == "(N*joDirac)" && return avDT(A.fop.a) .* v
+    A.name == "adjoint(joDirac)" && return avDT(1) .* v
+    A.name == "adjoint((N*joDirac))" && return avDT(A.fop.a) .* v
+    return mulJ(A, v)
+end
+
+function mulJ(A::joAbstractLinearOperator{ADDT,ARDT}, v::judiWeights{avDT}) where {ADDT, ARDT, avDT}
     A.n == size(v,1) || throw(judiWeightsException("shape mismatch"))
     jo_check_type_match(ADDT,avDT,join(["DDT for *(joLinearFunction,judiWeights):",A.name,typeof(A),avDT]," / "))
     # Evaluate as mat-mat over the weights

@@ -22,7 +22,6 @@ base = ["test_abstract_vectors.jl",
         "test_composite.jl",
         "test_judiWeights.jl",
         "test_judiWavefield.jl",
-        "test_judiVStack.jl",
         "test_linear_operators.jl"]
 
 devito = ["test_linearity.jl",
