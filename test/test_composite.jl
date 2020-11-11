@@ -26,8 +26,8 @@ ftol = 1f-6
     rec_geometry = example_rec_geometry(nsrc=nsrc, nrec=nrec)
     data = randn(Float32, ns, nrec)
     d_obs = judiVector(rec_geometry, data)
-    w0 = judiWeights(randn(n);nsrc=nsrc)
-    w0.weights=[randn(n) for i = 1:nsrc]
+    w0 = judiWeights(randn(Float32,n);nsrc=nsrc)
+    w0.weights=[randn(Float32,n) for i = 1:nsrc]
 
     # Composite objs
     c1 = [d_obs; w0]
@@ -106,7 +106,7 @@ ftol = 1f-6
     @test isapprox(norm(u_scale - 1f0, 1), norm(u_scale .- 1f0, 1))
     @test isapprox(norm(1f0 - u_scale, 1), norm(1f0 .- u_scale, 1))
     @test isapprox(norm(u_scale/2f0, 1), norm(u_scale, 1)/2f0)
-# Test broadcasting
+    # Test broadcasting
     u_scale = deepcopy(u)
     v_scale = deepcopy(v)
 
@@ -117,7 +117,7 @@ ftol = 1f-6
     u_scale ./= 2f0
     @test isapprox(u_scale, u)
     u_scale .= 2f0 .* u_scale .+ v_scale
-    @test isapprox(u_scale, 2f0 * u + 2f0 + v)
+    @test isapprox(u_scale, 2f0 * u + 2f0 + v,rtol=1f-7)
     u_scale .= u .+ v
     @test isapprox(u_scale, u + v)
     u_scale .= u .- v
@@ -172,34 +172,21 @@ ftol = 1f-6
     @test isapprox(w2.components[3], d_obs)
     @test isapprox(w2.components[4], w0)
 
+    # Test joDirac pertains judiWeights structure
+    
+    I = joDirac(nsrc*prod(n),DDT=Float32,RDT=Float32)
+    @test isapprox(I*w0, w0)
+    lambda = randn()
+    @test isapprox(lambda*I*w0, lambda*w0)
+    @test isapprox(I'*w0, w0)
+    @test isapprox((lambda*I)'*w0, lambda * w0)
+    
     # Test Forward and Adjoint joCoreBlock * judiVStack
     
-    d = (10., 10.)
-    o = (0., 0.)
-    v = ones(Float32,n) .+ 0.4f0
-    m = (1f0 ./ v).^2
-    model = Model(n, d, o, m)
+    J = joOnes(nsrc*prod(n),DDT=Float32,RDT=Float32)
     
-    wavelet = ricker_wavelet((ns-1)*1f0, 1f0, 0.01f0)
-    ntComp = get_computational_nt(rec_geometry, model)
-    info = Info(prod(n), nsrc, ntComp)
-    
-    Pr = judiProjection(info, rec_geometry)
-    F = judiModeling(info, model)
-    Pw = judiLRWF(info, wavelet)
-    F = Pr*F*adjoint(Pw)
-    
-    I = joDirac(nsrc*info.n, DDT=Float32, RDT=Float32)
-    lambda = rand(Float32)
-    F_ext = [F; lambda*I]
-    d_ext = F_ext*w0
-    
-    @test isapprox(length(d_ext), F_ext.m)
-    @test isapprox(d_ext[1], F*w0)
-    @test isapprox(d_ext[2], lambda*w0)
-
-    w_ext = F_ext'*d_ext
-    @test isapprox(length(w_ext), F_ext.n)
-    @test isapprox(w_ext,sum(F_ext'.fop[i]*d_ext[i] for i = 1:nsrc),rtol=1f-6)
-
+    a = [I;J]*w0
+    b = [w0; J*w0]
+    @test isapprox(a[1], b[1])
+    @test isapprox(a[2:end], b[2:end])
 end
