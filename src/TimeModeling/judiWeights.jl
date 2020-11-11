@@ -5,8 +5,8 @@
 # Authors: Philipp Witte (pwitte@eos.ubc.ca), Henryk Modzelewski (hmodzelewski@eos.ubc.ca)
 # Date: June 2019
 
-import Base.maximum
-import Base.minimum
+# Updated by Ziyi Yin (ziyi.yin@gatech.edu), Nov 2020
+
 export judiWeights, judiWeightsException, subsample
 
 ############################################################
@@ -116,7 +116,7 @@ end
 function +(a::judiWeights{avDT},b::Number) where avDT
     c = deepcopy(a)
     for j=1:a.nsrc
-        c.weights[j] = convert(Array{avDT}, c.weights[j] .+ b)
+        c.weights[j] = c.weights[j] .+ convert(avDT,b)
     end
     return c
 end
@@ -126,7 +126,7 @@ end
 function -(a::judiWeights{avDT},b::Number) where avDT
     c = deepcopy(a)
     for j=1:a.nsrc
-        c.weights[j] = convert(Array{avDT}, c.weights[j] .- b)
+        c.weights[j] = c.weights[j] .- convert(avDT,b)
     end
     return c
 end
@@ -135,7 +135,7 @@ end
 function *(a::judiWeights{avDT},b::Number) where avDT
     c = deepcopy(a)
     for j=1:a.nsrc
-        c.weights[j] = convert(Array{avDT}, c.weights[j] .* b)
+        c.weights[j] = c.weights[j] .* convert(avDT,b)
     end
     return c
 end
@@ -194,15 +194,12 @@ function *(A::joAbstractLinearOperator{ADDT,ARDT}, v::judiWeights{avDT}) where {
     catch e
         V = A.fop(vcat([vec(v.weights[i]) for i=1:v.nsrc]...))
         jo_check_type_match(ARDT,eltype(V),join(["RDT from *(joLinearFunction,judiWeights):",A.name,typeof(A),eltype(V)]," / "))
-        if A.name == "(N*joDirac)" || A.name == "joDirac" || A.name == "adjoint((N*joDirac))" || A.name == "adjoint(joDirac)"
-            n = size(v.weights[1])
-            V_out = deepcopy(v)
-            [V_out.weights[i] = reshape(V[prod(n)*(i-1)+1:prod(n)*i],n) for i=1:v.nsrc]
-            return V_out
-        end
         return V
     end
 end
+
+# *(joDirac, judiWeights)
+*(a::joDirac, v::judiWeights) = copy(v)
 
 # *(joCoreBlock, judiWeights)
 function *(A::joCoreBlock{ADDT,ARDT}, v::judiWeights{avDT}) where {ADDT, ARDT, avDT}
