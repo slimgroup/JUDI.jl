@@ -26,12 +26,7 @@ ftol = 1f-6
     rec_geometry = example_rec_geometry(nsrc=nsrc, nrec=nrec)
     data = randn(Float32, ns, nrec)
     d_obs = judiVector(rec_geometry, data)
-    weights = Array{Array}(undef, nsrc)
-    for j=1:nsrc
-        weights[j] = randn(Float32, n)
-    end
-    w0 = judiWeights(weights)
-
+    w0 = judiWeights(convertToCell([randn(Float32,n) for i = 1:nsrc]))
 
     # Composite objs
     c1 = [d_obs; w0]

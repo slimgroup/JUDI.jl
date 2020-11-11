@@ -58,7 +58,9 @@ end
 
 # constructor if weights are passed as a cell array
 function judiWeights(weights::Union{Array{Any,1},Array{Array,1}}; vDT::DataType=Float32)
-    vDT == Float32 || throw(judiWeightsException("Domain and range types not supported"))
+
+    weights = convert.(Array{vDT},weights)
+
     nsrc = length(weights)
     # length of vector
     n = 1
