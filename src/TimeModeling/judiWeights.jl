@@ -5,6 +5,8 @@
 # Authors: Philipp Witte (pwitte@eos.ubc.ca), Henryk Modzelewski (hmodzelewski@eos.ubc.ca)
 # Date: June 2019
 
+import Base.maximum
+import Base.minimum
 export judiWeights, judiWeightsException, subsample
 
 ############################################################
@@ -114,7 +116,7 @@ end
 function +(a::judiWeights{avDT},b::Number) where avDT
     c = deepcopy(a)
     for j=1:a.nsrc
-        c.weights[j] = c.weights[j] .+ b
+        c.weights[j] = convert(Array{avDT}, c.weights[j] .+ b)
     end
     return c
 end
@@ -124,7 +126,7 @@ end
 function -(a::judiWeights{avDT},b::Number) where avDT
     c = deepcopy(a)
     for j=1:a.nsrc
-        c.weights[j] = c.weights[j] .- b
+        c.weights[j] = convert(Array{avDT}, c.weights[j] .- b)
     end
     return c
 end
@@ -133,7 +135,7 @@ end
 function *(a::judiWeights{avDT},b::Number) where avDT
     c = deepcopy(a)
     for j=1:a.nsrc
-        c.weights[j] = c.weights[j] .* b
+        c.weights[j] = convert(Array{avDT}, c.weights[j] .* b)
     end
     return c
 end
@@ -192,6 +194,12 @@ function *(A::joAbstractLinearOperator{ADDT,ARDT}, v::judiWeights{avDT}) where {
     catch e
         V = A.fop(vcat([vec(v.weights[i]) for i=1:v.nsrc]...))
         jo_check_type_match(ARDT,eltype(V),join(["RDT from *(joLinearFunction,judiWeights):",A.name,typeof(A),eltype(V)]," / "))
+        if A.name == "(N*joDirac)" || A.name == "joDirac" || A.name == "adjoint((N*joDirac))" || A.name == "adjoint(joDirac)"
+            n = size(v.weights[1])
+            V_out = deepcopy(v)
+            [V_out.weights[i] = reshape(V[prod(n)*(i-1)+1:prod(n)*i],n) for i=1:v.nsrc]
+            return V_out
+        end
         return V
     end
 end
@@ -201,9 +209,9 @@ function *(A::joCoreBlock{ADDT,ARDT}, v::judiWeights{avDT}) where {ADDT, ARDT, a
     A.n == size(v,1) || throw(judiWeightsException("shape mismatch"))
     jo_check_type_match(ADDT,avDT,join(["DDT for *(joLinearFunction,judiWeights):",A.name,typeof(A),avDT]," / "))
     # Evaluate as mat-mat over the weights
-    V = vcat(collect(A.fop[i]*v for i=1:length(A.fop))...)
-    jo_check_type_match(ARDT,eltype(V),join(["RDT from *(joLinearFunction,judiWeights):",A.name,typeof(A),eltype(V)]," / "))
-    return V
+    V = collect(A.fop[i]*v for i=1:length(A.fop))
+    [jo_check_type_match(ARDT,eltype(V[i]),join(["RDT from *(joLinearFunction,judiWeights):",A.fop[i].name,typeof(A.fop[i]),eltype(V)]," / ")) for i=1:length(V)]
+    return vcat(V...)
 end
 
 # vcat
@@ -245,6 +253,16 @@ function norm(a::judiWeights{avDT}, p::Real=2) where avDT
         x += sum(abs.(vec(a.weights[j])).^p)
     end
     return x^(1.f0/p)
+end
+
+#maximum
+function maximum(a::judiWeights{avDT}) where avDT
+    return max([maximum(a.weights[i]) for i=1:a.nsrc]...)
+end
+
+#minimum
+function minimum(a::judiWeights{avDT}) where avDT
+    return min([minimum(a.weights[i]) for i=1:a.nsrc]...)
 end
 
 # abs
