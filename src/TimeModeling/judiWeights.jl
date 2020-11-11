@@ -256,14 +256,10 @@ function norm(a::judiWeights{avDT}, p::Real=2) where avDT
 end
 
 #maximum
-function maximum(a::judiWeights{avDT}) where avDT
-    return max([maximum(a.weights[i]) for i=1:a.nsrc]...)
-end
+maximum(a::judiWeights{avDT}) where avDT =   max([maximum(a.weights[i]) for i=1:a.nsrc]...)
 
 #minimum
-function minimum(a::judiWeights{avDT}) where avDT
-    return min([minimum(a.weights[i]) for i=1:a.nsrc]...)
-end
+minimum(a::judiWeights{avDT}) where avDT =   min([minimum(a.weights[i]) for i=1:a.nsrc]...)
 
 # abs
 function abs(a::judiWeights{avDT}) where avDT
