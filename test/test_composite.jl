@@ -20,13 +20,13 @@ ftol = 1f-6
 
 @testset "judiVStack Unit Tests with $(nsrc) sources" for nsrc=[1, 2]
 
-    # set up judiVector fr,om array
+    # set up judiVector from array
     n = (10, 10)   # (x,y,z) or (x,z)
     dsize = (nsrc*nrec*ns, 1)
     rec_geometry = example_rec_geometry(nsrc=nsrc, nrec=nrec)
     data = randn(Float32, ns, nrec)
     d_obs = judiVector(rec_geometry, data)
-    w0 = judiWeights(convertToCell([randn(Float32,n) for i = 1:nsrc]))
+    w0 = judiWeights([randn(Float32,n) for i = 1:nsrc])
 
     # Composite objs
     c1 = [d_obs; w0]

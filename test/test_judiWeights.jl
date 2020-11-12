@@ -23,16 +23,35 @@ ftol = 1f-6
 
 
     # Extended source weights
-    weights = Array{Array}(undef, nsrc)
-    for j=1:nsrc
-        weights[j] = randn(Float32, weight_size_x,weight_size_y) #model size (100,100)
-    end
-    w = judiWeights(weights)
+    w = judiWeights([randn(Float64,weight_size_x,weight_size_y) for i = 1:nsrc])
 
     @test isequal(w.nsrc, nsrc)
-    @test isequal(typeof(w.weights), Array{Array, 1})
+    @test isequal(typeof(w.weights), Array{Array{Float32,2},1})
     @test isequal(size(w), (weight_size_x*weight_size_y*nsrc, 1))
     @test isfinite(w)
+    
+    w_cell = judiWeights(convertToCell([randn(Float32,weight_size_x,weight_size_y) for i = 1:nsrc]))
+
+    @test isequal(w_cell.nsrc, nsrc)
+    @test isequal(typeof(w_cell.weights), Array{Any,1})
+    @test isequal(size(w_cell), (weight_size_x*weight_size_y*nsrc, 1))
+    @test isfinite(w_cell)
+    
+    w_multi = judiWeights(randn(Float64,weight_size_x,weight_size_y); nsrc=3)
+
+    @test isequal(w_multi.nsrc, 3)
+    @test isequal(typeof(w_multi.weights), Array{Array,1})
+    @test isequal(size(w_multi), (weight_size_x*weight_size_y*3, 1))
+    @test isfinite(w_multi)
+    @test isapprox(w_multi[1],w_multi[2])
+    @test isapprox(w_multi[2],w_multi[3])
+    
+    w_type = judiWeights([randn(Float32,weight_size_x,weight_size_y) for i = 1:nsrc];vDT=Float64)
+
+    @test isequal(w_type.nsrc, nsrc)
+    @test isequal(typeof(w_type.weights), Array{Array{Float64,2},1})
+    @test isequal(size(w_type), (weight_size_x*weight_size_y*nsrc, 1))
+    @test isfinite(w_type)
 
     I2 = ones(Float32, 1, size(w, 1))
     w2 = I2*w
@@ -96,13 +115,9 @@ ftol = 1f-6
     @test isapprox(abs.(w.weights[1]), abs(w).weights[1])
     
     # max, min
-    weights_max_min = Array{Array}(undef, nsrc)
-    for j=1:nsrc
-        weights[j] = ones(Float32, weight_size_x,weight_size_y) #model size (100,100)
-    end
-    w_max_min = judiWeights((Float32, weights_max_min)
-    w_max_min[1].weight[1,1] = 1f3
-    w_max_min[nsrc].weight[end,end] = 1f-3
+    w_max_min = judiWeights([ones(Float32,weight_size_x,weight_size_y) for i = 1:nsrc])
+    w_max_min.weights[1][1,1] = 1f3
+    w_max_min.weights[nsrc][end,end] = 1f-3
     @test isapprox(maximum(w_max_min),1f3)
     @test isapprox(minimum(w_max_min),1f-3)
 

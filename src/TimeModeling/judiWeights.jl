@@ -43,9 +43,7 @@ can also be a single (non-cell) array, in which case the weights are the same fo
     judiWeights(weights; nsrc=1)
 """
 function judiWeights(weights::Array; nsrc=1, vDT::DataType=Float32)
-
-    weights = convert.(Array{vDT},weights)
-
+    (eltype(weights) != vDT) && (weights = convert(Array{vDT},weights))
     # length of vector
     n = 1
     m = prod(size(weights))*nsrc
@@ -58,14 +56,24 @@ end
 
 # constructor if weights are passed as a cell array
 function judiWeights(weights::Union{Array{Any,1},Array{Array,1}}; vDT::DataType=Float32)
+    nsrc = length(weights)
+    for i = 1:nsrc
+        (eltype(weights[i]) != vDT) && (weights[i] = convert(Array{vDT},weights[i]))
+    end
+    # length of vector
+    n = 1
+    m = prod(size(weights[1]))*nsrc
+    return judiWeights{vDT}("Extended source weights",m,n,nsrc,weights)
+end
 
-    weights = convert.(Array{vDT},weights)
-
+#
+function judiWeights(weights::Array{Array{iDT, N},1}; vDT::DataType=Float32) where {iDT,N}
+    (iDT != vDT) && (weights = convert.(Array{vDT},weights))
     nsrc = length(weights)
     # length of vector
     n = 1
     m = prod(size(weights[1]))*nsrc
-    return judiWeights{Float32}("Extended source weights",m,n,nsrc,weights)
+    return judiWeights{vDT}("Extended source weights",m,n,nsrc,weights)
 end
 
 
