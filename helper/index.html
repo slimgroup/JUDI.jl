@@ -139,9 +139,8 @@
                 <h1 id="helper-functions">Helper functions</h1>
 <h2 id="ricker-wavelet">Ricker wavelet</h2>
 <p>Create a 1D Ricker wavelet:</p>
-<pre><code class="julia">wavelet = ricker_wavelet(tmax, dt, f0)
+<pre><code class="language-julia">wavelet = ricker_wavelet(tmax, dt, f0)
 </code></pre>
-
 <p><strong>Parameters:</strong></p>
 <ul>
 <li>
@@ -156,9 +155,8 @@
 </ul>
 <h2 id="compute-cfl-time-stepping-interval">Compute CFL time stepping interval</h2>
 <p>Calculate the time stepping interval based on the CFL condition</p>
-<pre><code class="julia">dt = calculate_dt(n, d, o, v, rho)
+<pre><code class="language-julia">dt = calculate_dt(n, d, o, v, rho)
 </code></pre>
-
 <p><strong>Parameters:</strong></p>
 <ul>
 <li>
@@ -179,13 +177,11 @@
 </ul>
 <h2 id="compute-number-of-computational-time-steps">Compute number of computational time steps</h2>
 <p>Estimate the number of computational time steps. Required for calculating the dimensions of the matrix-free linear modeling operators:</p>
-<pre><code class="julia">nt = get_computational_nt(src_geometry, rec_geometry, model)
+<pre><code class="language-julia">nt = get_computational_nt(src_geometry, rec_geometry, model)
 </code></pre>
-
 <p><strong>or</strong> (for extended source modeling, where <code>src_geometry</code> is not available):</p>
-<pre><code class="julia">nt = get_computational_nt(rec_geometry, model)
+<pre><code class="language-julia">nt = get_computational_nt(rec_geometry, model)
 </code></pre>
-
 <p><strong>Parameters:</strong></p>
 <ul>
 <li>
@@ -200,9 +196,8 @@
 </ul>
 <h2 id="set-up-3d-acquisition-grid">Set up 3D acquisition grid</h2>
 <p>Helper function to create a regular acquisition grid for a 3D survey.</p>
-<pre><code class="julia">x_coord_full, y_coord_full, z_coord_full = setup_3D_grid(x_coord, y_coord, z_coord)
+<pre><code class="language-julia">x_coord_full, y_coord_full, z_coord_full = setup_3D_grid(x_coord, y_coord, z_coord)
 </code></pre>
-
 <p><strong>Parameters:</strong></p>
 <ul>
 <li>
@@ -229,13 +224,11 @@
 </ul>
 <h2 id="data-interpolation">Data interpolation</h2>
 <p>Time interpolation for source/receiver data using splines. For modeling, the data is interpolated automatically onto the computational time axis, so generally, these functions are not needed for users.</p>
-<pre><code class="julia">data_interp, geometry_out = time_resample(data, geometry_in, dt_out; order=2)
+<pre><code class="language-julia">data_interp, geometry_out = time_resample(data, geometry_in, dt_out; order=2)
 </code></pre>
-
 <p><strong>or</strong>:</p>
-<pre><code class="julia">data_interp = time_resample(data, geometry_out, dt_in; order=2)
+<pre><code class="language-julia">data_interp = time_resample(data, geometry_out, dt_in; order=2)
 </code></pre>
-
 <p><strong>Parameters:</strong></p>
 <ul>
 <li>
@@ -267,7 +260,6 @@
 <p>Create a probability distribution with the shape of the source spectrum from which we can draw random frequencies.</p>
 <pre><code>dist = generate_distribution(q; src_no=1)
 </code></pre>
-
 <p><strong>Parameters:</strong></p>
 <ul>
 <li>
@@ -282,17 +274,15 @@
 <li><code>dist</code>: probability distribution. </li>
 </ul>
 <p>We can draw random samples from <code>dist</code> by passing it values between 0 and 1:</p>
-<pre><code class="julia"># Draw a single random frequency
+<pre><code class="language-julia"># Draw a single random frequency
 f = dist(rand(1))
 
 # Draw 10 random frequencies
 f = dist(rand(10))
 </code></pre>
-
 <p>Alternatively, we can use the function:</p>
-<pre><code class="julia">f = select_frequencies(dist; fmin=0f0, fmax=Inf, nf=1)
+<pre><code class="language-julia">f = select_frequencies(dist; fmin=0f0, fmax=Inf, nf=1)
 </code></pre>
-
 <p>to draw <code>nf</code> number of frequencies for a given distribution <code>dist</code> in the frequency range of <code>fmin</code> to <code>fmax</code> (both in kHz).</p>
               
             </div>

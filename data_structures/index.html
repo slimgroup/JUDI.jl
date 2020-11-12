@@ -137,9 +137,8 @@
 <p>Data structure for velocity models in JUDI.</p>
 <p><strong>Construction:</strong></p>
 <p><code>Model</code> requires the following input arguments:</p>
-<pre><code class="julia">model = Model(n, d, o, m; nb=40, rho=1f0, epsilon=0f0, delta=0f0, theta=0f0, phi=0f0)
+<pre><code class="language-julia">model = Model(n, d, o, m; nb=40, rho=1f0, epsilon=0f0, delta=0f0, theta=0f0, phi=0f0)
 </code></pre>
-
 <p><strong>Parameters:</strong></p>
 <ul>
 <li>
@@ -175,20 +174,18 @@
 </ul>
 <p><strong>Access fields:</strong></p>
 <p>Accessible fields include all of the above parameters, which can be accessed as follows:</p>
-<pre><code class="julia"># Access model
+<pre><code class="language-julia"># Access model
 model.m
 
 # Access number of grid points
 model.n
 </code></pre>
-
 <h2 id="geometry-structure">Geometry structure</h2>
 <p>JUDI's geometry structure contains the information of either the source <strong>or</strong> the receiver geometry. </p>
 <p><strong>Construction:</strong></p>
 <p>Construct an (in-core) geometry object for <strong>either</strong> a source or receiver set up:</p>
-<pre><code class="julia">geometry = Geometry(xloc, yloc, zloc; dt=[], nt=[], t=[])
+<pre><code class="language-julia">geometry = Geometry(xloc, yloc, zloc; dt=[], nt=[], t=[])
 </code></pre>
-
 <p><strong>Parameters:</strong></p>
 <ul>
 <li>
@@ -213,7 +210,7 @@ model.n
 <p>From the optional arguments, you have to pass (at least) <strong>two</strong> of <code>dt</code>, <code>nt</code> and <code>t</code>. The third value is automatically determined and set from the two other values.</p>
 <p><strong>Access fields:</strong></p>
 <p>Accessible fields include all of the above parameters, which can be accessed as follows:</p>
-<pre><code class="julia"># Access cell arrays of x coordinates:
+<pre><code class="language-julia"># Access cell arrays of x coordinates:
 geometry.xloc
 
 # Access x coordinates of the i-th source location
@@ -222,13 +219,11 @@ geometry.xloc[i]
 # Access j-th receiver location (in x) of the i-th source location
 geometry.xloc[i][j]
 </code></pre>
-
 <h2 id="info-structure">Info structure</h2>
 <p>The info structure contains some basic dimensionality information that needs to be available to any type of linear operator:</p>
 <p><strong>Construction:</strong></p>
-<pre><code class="julia">info = Info(n, nsrc, nt)
+<pre><code class="language-julia">info = Info(n, nsrc, nt)
 </code></pre>
-
 <p><strong>Parameters</strong>:</p>
 <ul>
 <li>
@@ -242,9 +237,8 @@ geometry.xloc[i][j]
 </li>
 </ul>
 <p>You can automatically obtain the number of computational time steps as follows:</p>
-<pre><code class="julia">nt = get_computational_nt(src_geometry, rec_geometry, model)
+<pre><code class="language-julia">nt = get_computational_nt(src_geometry, rec_geometry, model)
 </code></pre>
-
 <p>where <code>src_geometry</code> is a <code>Geometry</code> object with the source geometry, <code>rec_geometry</code> is a <code>Geometry</code> object with the receiver geometry and <code>model</code> is a <code>Model</code> structure.</p>
 <h2 id="options-structure">Options structure</h2>
 <p>The options structure allows setting several modeling parameters.</p>
@@ -252,13 +246,12 @@ geometry.xloc[i][j]
 <ul>
 <li>Choose all default options:</li>
 </ul>
-<pre><code class="julia">opt = Options()
+<pre><code class="language-julia">opt = Options()
 </code></pre>
-
 <ul>
 <li>List of all possible options:</li>
 </ul>
-<pre><code class="julia">opt = Options(
+<pre><code class="language-julia">opt = Options(
     space_order:: Integer
     space_order:: Integer
     free_surface:: Bool
@@ -280,7 +273,6 @@ geometry.xloc[i][j]
     dt_comp:: Union{Real, Nothing}
 )
 </code></pre>
-
 <p><strong>Parameters:</strong></p>
 <ul>
 <li>

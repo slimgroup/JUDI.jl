@@ -172,21 +172,18 @@ $$</p>
 
 </div>
 
-<pre><code class="julia"># NOT FOR MANUSCRIPT
+<pre><code class="language-julia"># NOT FOR MANUSCRIPT
 # using Distributed
 # addprocs(4);
 </code></pre>
-
-<pre><code class="julia">using JUDI.TimeModeling, JUDI.SLIM_optim, SegyIO, Random, Statistics
+<pre><code class="language-julia">using JUDI.TimeModeling, JUDI.SLIM_optim, SegyIO, Random, Statistics
 </code></pre>
-
 <h2 id="implementing-fwi-in-judi">Implementing FWI in JUDI</h2>
 <p>We start our demonstration by reading our data set, which consists of 16 shot records and was generated with an excerpt from the SEG/EAGE Overthrust model (Aminzadeh et al. 1997). We store it as a <code>judiVector</code>:</p>
-<pre><code class="julia">block = segy_read(&quot;overthrust_shot_records.segy&quot;)
+<pre><code class="language-julia">block = segy_read(&quot;overthrust_shot_records.segy&quot;)
 d_obs = judiVector(block);
 </code></pre>
-
-<pre><code class="julia">using PyPlot
+<pre><code class="language-julia">using PyPlot
 
 i = 8
 figure(figsize=(15,6))
@@ -196,21 +193,18 @@ ylabel(&quot;Time [s]&quot;, size=12)
 text(3, 0.13, &quot;Shot record $i&quot;, size=16)
 show()
 </code></pre>
-
 <blockquote>
 <p><strong>Figure 1</strong>: Observed shot record number 8.</p>
 </blockquote>
 <p>JUDI vectors such as <code>d_obs</code> can be used like a regular Julia vectors, so we can compute norms via <code>norm(d_obs)</code> or the inner product via <code>dot(d_obs, d_obs)</code>, but they contain the shot records in their original dimension. Shot records can be accessed via their respective shot number with <code>d_obs.data[shot_no]</code>, while the header information can be accessed with <code>d_obs.geometry</code>. We extract the source geometry from our SEG-Y file and then manually set up a source vector <code>q</code> with an 8 Hz Ricker wavelet:</p>
-<pre><code class="julia">f = 0.008  # kHz
+<pre><code class="language-julia">f = 0.008  # kHz
 src_geom = Geometry(block; key=&quot;source&quot;)
 src_data = ricker_wavelet(src_geom.t[1], src_geom.dt[1], f)
 q = judiVector(src_geom, src_data);
 </code></pre>
-
-<pre><code class="julia">plot(q.data[1])
+<pre><code class="language-julia">plot(q.data[1])
 show()
 </code></pre>
-
 <div style="background: #eeeeee; border: 2px solid gray; border-radius:5px; padding: 6px 10px 6px 10px;">
 
 <h3> NOT FOR MANUSCRIPT</h3>
@@ -223,19 +217,17 @@ show()
 <p>Since the dimensions of the inverse wave equation operator depend on the number of computational time steps, we calculate this number using the <code>get_computational_nt</code> function and set up an <code>info</code> object that contains some dimensionality information required by all operators.</p>
 <p>Then we can define <code>Pr</code> and <code>Ps</code> as matrix-free operators implementing Devito sparse point injection and interpolation (Louboutin et al., 2017). Multiplications with <code>Ps</code> and <code>Pr</code> represent sampling the wavefield at source/receiver locations, while their adjoints <code>Ps', Pr'</code> denote injecting either source wavelets or shot records into the computational grid.</p>
 <p>These projection and modelling operators can then be set up in Julia in the following way:</p>
-<pre><code class="julia">using HDF5
+<pre><code class="language-julia">using HDF5
 
 m0, n, d, o = read(h5open(&quot;overthrust_model.h5&quot;,&quot;r&quot;),&quot;m0&quot;,&quot;n&quot;,&quot;d&quot;,&quot;o&quot;)
 model0 = Model((n[1],n[2]), (d[1],d[2]), (o[1],o[2]), m0);
 </code></pre>
-
-<pre><code class="julia">ntComp = get_computational_nt(q.geometry, d_obs.geometry, model0)
+<pre><code class="language-julia">ntComp = get_computational_nt(q.geometry, d_obs.geometry, model0)
 info = Info(prod(model0.n), d_obs.nsrc, ntComp)
 Pr = judiProjection(info, d_obs.geometry)
 Ps = judiProjection(info, q.geometry)
 Ainv = judiModeling(info, model0);
 </code></pre>
-
 <p>The forward modeling step can be expressed mathematically as</p>
 <p>$$ F(\mathbf{m};\mathbf{q})=\mathbf{P}_r\mathbf{A}^{-1}(\mathbf{m})\mathbf{P}_s^\top\mathbf{q} $$</p>
 <p>which is expressed in Julia as</p>
@@ -243,9 +235,8 @@ Ainv = judiModeling(info, model0);
 </code></pre>
 <p>This forward models all 16 predicted shot records in parallel. Notice that, in instantiating <code>Ainv</code>, we made the wave equation solver implicitly dependent on <code>model0</code>.</p>
 <p>Finally, we set up the matrix-free Jacobian operator <code>J</code> and the Gauss–Newton Hessian <code>J' * J</code>. As mentioned in the introduction, <code>J</code> is the partial derivative of the forward modeling operator $\mathbf{F}(\mathbf{m}, \mathbf{q})$ with respect to the model <code>m</code> and is therefore directly constructed from our modeling operator <code>Pr * Ainv * Ps'</code> and a specified source vector <code>q</code>:</p>
-<pre><code class="julia">J = judiJacobian(Pr * Ainv * Ps', q);
+<pre><code class="language-julia">J = judiJacobian(Pr * Ainv * Ps', q);
 </code></pre>
-
 <div style="background: #eeeeee; border: 2px solid gray; border-radius:5px; padding: 6px 10px 6px 10px;">
 
 <h3> NOT FOR MANUSCRIPT</h3>
@@ -274,7 +265,7 @@ Ainv = judiModeling(info, model0);
 <h2 id="fwi-via-gradient-descent">FWI via gradient descent</h2>
 <p>With expressions for modeling operators, Jacobians and gradients of the FWI objective, we can now implement different FWI algorithms in a few lines of code. We will start with a basic gradient descent example with a line search. To reduce the computational cost of full gradient descent, we will use a stochastic approach in which we only compute the gradient and function value for a randomized subset of source locations. In JUDI, this is accomplished by choosing a random vector of integers between 1 and 16 and indexing the data vectors as described earlier. Furthermore, we will apply a projection operator <code>proj(x)</code>, which prevent velocities (or squared slownesses) becoming negative or too large by clipping values outside the allowed range.</p>
 <p>A few extra variables are defined in the notebook, but the full algorithm for FWI with stochastic gradient descent and box constraints is implemented as follows:</p>
-<pre><code class="julia"># Set up bound constraints.
+<pre><code class="language-julia"># Set up bound constraints.
 v0 = sqrt.(1f0./model0.m)
 vmin = ones(Float32, model0.n) .* 1.3f0
 vmax = ones(Float32, model0.n) .* 6.5f0
@@ -287,14 +278,12 @@ vmax[:,1:21] = v0[:,1:21]
 mmin = vec((1f0./vmax).^2)
 mmax = vec((1f0./vmin).^2);
 </code></pre>
-
-<pre><code class="julia">maxiter = 10
+<pre><code class="language-julia">maxiter = 10
 batchsize = 8    # Number of shots for each iteration.
 proj(x) = reshape(median([vec(mmin) vec(x) vec(mmax)], dims=2), model0.n)
 fhistory_SGD = zeros(Float32, maxiter);
 </code></pre>
-
-<pre><code class="julia">for j=1:maxiter
+<pre><code class="language-julia">for j=1:maxiter
 
     # FWI objective function value and gradient.
     i = randperm(d_obs.nsrc)[1:batchsize]
@@ -309,18 +298,15 @@ fhistory_SGD = zeros(Float32, maxiter);
     model0.m = proj(model0.m)
 end
 </code></pre>
-
-<pre><code class="julia">model_SGD = copy(model0.m);
+<pre><code class="language-julia">model_SGD = copy(model0.m);
 </code></pre>
-
 <p>JUDI's <code>backtracking_linesearch</code> function performs an approximate line search and returns a model update that leads to a decrease of the objective function value (Armijo condition; Nocedal and Wright, 2009). The result after 10 iterations of SGD with box constraints is shown in Figure 2. In practice, where starting models are typically less accurate than in our example, FWI is often performed from low to high frequencies, since the objective function has less local minima for lower frequencies (Bunks et al., 1995). In this multi-scale FWI approach, a low-pass filtered version of the data is used to invert for a low resolution velocity model first and higher frequencies are added in subsequent iterations.</p>
 <h2 id="fwi-via-the-gaussnewton-method">FWI via the Gauss–Newton method</h2>
 <p>As discussed earlier, the convergence rate of GD depends on the objective function, but requires many FWI iterations necessary to reach an acceptable solution. Using our matrix-free operator for the Jacobian J, we can modify the above code to implement the Gauss–Newton method (Equation 3) to improve the convergence rate. In practice, directly inverting the Gauss–Newton Hessian <code>J'* J</code> should be avoided, because the matrix is badly conditioned and takes many iterations to invert. Instead, we perform a few iterations of a least-squares solver, <code>lsqr()</code>, to approximately solve <code>J * p = d_pred - d_obs</code> and obtain the update direction <code>p</code>. <code>lsqr</code>,  from the Julia <code>IterativeSolvers</code> package, is a conjugate-gradient type algorithm for solving least squares problems and is mathematically equivalent to inverting <code>J' * J</code>, but has better numerical properties (Paige and Saunders, 1982). We implement the Gauss-Newton method as follows:</p>
-<pre><code class="julia">model0.m = m0    # Reset velocity model.
+<pre><code class="language-julia">model0.m = m0    # Reset velocity model.
 fhistory_GN = zeros(Float32,maxiter);
 </code></pre>
-
-<pre><code class="julia">using IterativeSolvers
+<pre><code class="language-julia">using IterativeSolvers
 
 # Return data as Julia array
 Ainv.options.return_array = true
@@ -339,7 +325,6 @@ for j=1:maxiter
     model0.m = model0.m - reshape(p, model0.n)
 end
 </code></pre>
-
 <div style="background: #eeeeee; border: 2px solid gray; border-radius:5px; padding: 6px 10px 6px 10px;">
 
 <h3> NOT FOR MANUSCRIPT</h3>
@@ -349,7 +334,7 @@ end
 </div>
 
 <p>In contrast to our SGD algorithm, we use all shot records in every iteration, since stochastic methods for second order algorithms are less well understood, making this approach considerably more expensive than our previous algorithm. However, as shown in figures 2 and 3, it achieves a superior result, with a considerably lower misfit compared to the known model. Furthermore, figure 3 shows that it achieves the improved result in relatively few iterations.</p>
-<pre><code class="julia">figure(figsize=(15, 12))
+<pre><code class="language-julia">figure(figsize=(15, 12))
 
 subplot(311)
 imshow(sqrt.(1f0./m0)', cmap=&quot;GnBu&quot;, extent=(0,10,3,0), vmin=1.5, vmax=5.4)
@@ -377,12 +362,10 @@ text(10.35, 1.5, &quot;Velocity [km/s]&quot;, va=&quot;center&quot;, size=12, ro
 
 show()
 </code></pre>
-
-<pre><code class="julia">fhistory_SGD = fhistory_SGD/norm(fhistory_SGD, Inf)
+<pre><code class="language-julia">fhistory_SGD = fhistory_SGD/norm(fhistory_SGD, Inf)
 fhistory_GN = fhistory_GN/norm(fhistory_GN, Inf);
 </code></pre>
-
-<pre><code class="julia">figure(figsize=(8,3))
+<pre><code class="language-julia">figure(figsize=(8,3))
 plot(1:10, fhistory_SGD, label=&quot;Gradient descent&quot;)
 plot(1:10, fhistory_GN, label=&quot;Gauss–Newton&quot;)
 text(9.8, 0.28, &quot;Gradient descent&quot;, ha=&quot;right&quot;, color=&quot;steelblue&quot;)
@@ -392,7 +375,6 @@ ylabel(&quot;Misfit&quot;, size=12)
 xlim(1, 10)
 show()
 </code></pre>
-
 <blockquote>
 <p><strong>Figure 3</strong>: Normalized function values for the FWI inversion example with stochastic gradient descent and the Gauss-Newton method.</p>
 </blockquote>

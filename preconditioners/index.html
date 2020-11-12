@@ -133,9 +133,8 @@
                 <h1 id="seismic-preconditioners">Seismic preconditioners</h1>
 <h2 id="model-topmute">Model topmute</h2>
 <p>Create a linear operator for a 2D model topmute, i.e. for muting the water column:</p>
-<pre><code class="julia">Mr = judiTopmute(n, mute_start, length)
+<pre><code class="language-julia">Mr = judiTopmute(n, mute_start, length)
 </code></pre>
-
 <p><strong>Parameters:</strong></p>
 <ul>
 <li>
@@ -149,28 +148,25 @@
 </li>
 </ul>
 <p><strong>Usage:</strong></p>
-<pre><code class="julia"># Forward
+<pre><code class="language-julia"># Forward
 m_mute = Mr*vec(m)
 
 # Adjoint
 m_mute = Mr'*vec(m)
 </code></pre>
-
 <p>As <code>Mr</code> is self adjoint, <code>Mr</code> is equal to <code>Mr'</code>.</p>
 <h2 id="model-depth-scaling">Model depth scaling</h2>
 <p>Create a 2D model depth scaling:</p>
-<pre><code class="julia">Mr = judiDepthScaling(model)
+<pre><code class="language-julia">Mr = judiDepthScaling(model)
 </code></pre>
-
 <p><strong>Parameters:</strong></p>
 <ul>
 <li><code>model</code>: JUDI <code>Model</code> structure.</li>
 </ul>
 <h2 id="data-topmute-experimental">Data topmute (experimental)</h2>
 <p>Create a data topmute for a 2D marine shot record (i.e. for a shot record with an end-on-spread acquisition geometry).</p>
-<pre><code class="julia">Ml = judiMarineTopmute2D(muteStart, geometry; flipmask=false)
+<pre><code class="language-julia">Ml = judiMarineTopmute2D(muteStart, geometry; flipmask=false)
 </code></pre>
-
 <p><strong>Parameters:</strong></p>
 <ul>
 <li>

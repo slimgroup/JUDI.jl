@@ -139,9 +139,8 @@
 <p>The class <code>judiVector</code> is the basic data structure for seismic shot records or seismic sources. From JUDI's perspective, both are treated the same and can be multiplied with modeling operators.</p>
 <p><strong>Construction:</strong></p>
 <p>In the most basic way, <code>judiVectors</code> are contstructed from a <code>Geometry</code> object (containing either source or receiver geometry) and a cell array of data:</p>
-<pre><code class="julia">x = judiVector(geometry, data)
+<pre><code class="language-julia">x = judiVector(geometry, data)
 </code></pre>
-
 <p><strong>Parameters:</strong></p>
 <ul>
 <li>
@@ -152,7 +151,7 @@
 </li>
 </ul>
 <p><strong>Access fields (in-core data containers):</strong></p>
-<pre><code class="julia"># Access i-th shot record
+<pre><code class="language-julia"># Access i-th shot record
 x.data[i]
 
 # Extract judiVector for i-th shot
@@ -161,9 +160,8 @@ x1 = x[i]
 # Access j-th receiver location of i-th shot
 x.geometry.xloc[i][j]
 </code></pre>
-
 <p><strong>Access fields (out-of-core data containers):</strong></p>
-<pre><code class="julia"># Access data container of i-th shot
+<pre><code class="language-julia"># Access data container of i-th shot
 x.data[i]
 
 # Read data from i-th shot into memory
@@ -175,10 +173,9 @@ x.geometry
 # Load OOC geometry into memory
 Geometry(x.geometry)
 </code></pre>
-
 <p><strong>Operations:</strong></p>
 <p>In-core <code>judiVectors</code> can be used like regular Julia arrays and support common operations such as:</p>
-<pre><code class="julia">x = judiVector(geometry, data)
+<pre><code class="language-julia">x = judiVector(geometry, data)
 
 # Size (as if all data was vectorized)
 size(x)
@@ -200,13 +197,11 @@ y = x * α
 # Concatenate
 y = vcat(x, x)
 </code></pre>
-
 <h2 id="judiwavefield">judiWavefield</h2>
 <p>Abstract vector class for wavefields. </p>
 <p><strong>Construction:</strong></p>
-<pre><code class="julia">u = judiWavefield(info, dt, data)
+<pre><code class="language-julia">u = judiWavefield(info, dt, data)
 </code></pre>
-
 <p><strong>Parameters:</strong></p>
 <ul>
 <li>
@@ -220,13 +215,12 @@ y = vcat(x, x)
 </li>
 </ul>
 <p><strong>Access fields:</strong></p>
-<pre><code class="julia"># Access wavefield from i-th shot location
+<pre><code class="language-julia"># Access wavefield from i-th shot location
 u.data[i]
 </code></pre>
-
 <p><strong>Operations:</strong></p>
 <p>Supports some basic arithmetric operations:</p>
-<pre><code class="julia"># Size 
+<pre><code class="language-julia"># Size 
 size(u)
 
 # Norms
@@ -245,18 +239,15 @@ abs(u)
 # Concatenation
 v = vcat(u, u)
 </code></pre>
-
 <h2 id="judirhs">judiRHS</h2>
 <p>Abstract vector class for a right-hand-side (RHS). A RHS has the size of a full wavefield, but only contains the data of the source wavelet of shot records in memory, as well as the geometry information of where the data is injected during modeling.</p>
 <p><strong>Construction:</strong></p>
-<pre><code class="julia">rhs = judiRHS(info, geometry, data)
+<pre><code class="language-julia">rhs = judiRHS(info, geometry, data)
 </code></pre>
-
 <p>A JUDI RHS can also be constructed by multplying a <code>judiVector</code> and the corresponding transpose of a <code>judiProjection</code> operator:</p>
-<pre><code class="julia">rhs1 = Ps'*q
+<pre><code class="language-julia">rhs1 = Ps'*q
 rhs2 = Pr'*d_obs
 </code></pre>
-
 <p>where <code>Ps</code> and <code>Pr</code> are <code>judiProjection</code> operators for sources and receivers respectively and <code>q</code> and <code>d_obs</code> are <code>judiVectors</code> with the source and receiver data.</p>
 <p><strong>Parameters:</strong></p>
 <ul>
@@ -272,7 +263,7 @@ rhs2 = Pr'*d_obs
 </ul>
 <p><strong>Access fields:</strong></p>
 <p>Accessible fields include:</p>
-<pre><code class="julia"># Source/receiver data
+<pre><code class="language-julia"># Source/receiver data
 rhs.data
 
 # Source/receiver geometry
@@ -281,35 +272,30 @@ rhs.geometry
 # Info structure
 rhs.info
 </code></pre>
-
 <h2 id="judiweights">judiWeights</h2>
 <p>Abstract vector class for extended source weights. The weights for each shot location have the dimensions of the model (namely <code>model.n</code>).</p>
 <p><strong>Construction:</strong></p>
-<pre><code class="julia">w = judiWeights(weights)
+<pre><code class="language-julia">w = judiWeights(weights)
 </code></pre>
-
 <p><strong>Parameters:</strong></p>
 <ul>
 <li><code>weights</code>: Cell array with one cell per shot location. Each cell contains a 2D/3D Julia array with the weights for the spatially extended source. Alternatively: pass a single Julia array which will be used for all source locations.</li>
 </ul>
 <p><strong>Access fields:</strong></p>
-<pre><code class="julia"># Access weights of i-th shot locatoin
+<pre><code class="language-julia"># Access weights of i-th shot locatoin
 w.weights[i]
 </code></pre>
-
 <p><strong>Operations:</strong></p>
 <p>Supports the same arithmetric operations as a <code>judiVector</code>.</p>
 <h2 id="judiextendedsource">judiExtendedSource</h2>
 <p>Abstract data vector for an extended source. This data structure is the equivalent type of <code>judiRHS</code> for extended source modeling. A <code>judiExtendedSource</code> has the dimension of the full wavefield, but only contains the 1D wavelet and the 2D/3D spatially varying weights in memory.</p>
 <p><strong>Construction:</strong></p>
 <p>Construction from weights and source wavelets:</p>
-<pre><code class="julia">ex_src = judiExtendedSource(info, wavelet, weights)
+<pre><code class="language-julia">ex_src = judiExtendedSource(info, wavelet, weights)
 </code></pre>
-
 <p>Construction from a <code>judiWeights</code> vector and a <code>judiLRWF</code> injection operator:</p>
-<pre><code class="julia">ex_src = Pw'*w
+<pre><code class="language-julia">ex_src = Pw'*w
 </code></pre>
-
 <p>where <code>Pw</code> is a <code>judiLRWF</code> operator and <code>w</code> is a <code>judiWeights</code> vector.</p>
 <p><strong>Parameters:</strong></p>
 <ul>
@@ -324,7 +310,7 @@ w.weights[i]
 </li>
 </ul>
 <p><strong>Access fields:</strong></p>
-<pre><code class="julia"># Access weights of i-th source location
+<pre><code class="language-julia"># Access weights of i-th source location
 ex_src.weights[i]
 
 # Access wavelet of i-th source location

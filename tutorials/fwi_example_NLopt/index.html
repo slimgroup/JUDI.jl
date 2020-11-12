@@ -124,28 +124,25 @@
               
                 <h2 id="fwi-with-quasi-newton-methods-from-the-nlopt-library">FWI with Quasi-Newton methods from the NLopt library</h2>
 <p>In this notebook, we demonstrate how to interface the NLopt optimization library for full-waveform inversion with a limited-memory Quasi-Newton (L-BFGS) algorithm. Once again, we start by adding additional workers for parallel computing and by loading all necessary modules:</p>
-<pre><code class="julia">using Distributed; addprocs(2)
+<pre><code class="language-julia">using Distributed; addprocs(2)
 @everywhere using SegyIO, HDF5, PyPlot, JUDI.TimeModeling, NLopt, Random, LinearAlgebra, Printf
 </code></pre>
-
 <p>We load the FWI starting model from the HDF5 model file and set up the JUDI model structure:</p>
-<pre><code class="julia">m0, n, d, o = read(h5open(&quot;overthrust_model.h5&quot;,&quot;r&quot;),&quot;m0&quot;,&quot;n&quot;,&quot;d&quot;,&quot;o&quot;); title(&quot;Starting model&quot;)
+<pre><code class="language-julia">m0, n, d, o = read(h5open(&quot;overthrust_model.h5&quot;,&quot;r&quot;),&quot;m0&quot;,&quot;n&quot;,&quot;d&quot;,&quot;o&quot;); title(&quot;Starting model&quot;)
 model0 = Model((n[1],n[2]), (d[1],d[2]), (o[1],o[2]), m0);
 imshow(sqrt.(1f0./m0)', cmap=&quot;GnBu&quot;, extent=(0,10,3,0));
 xlabel(&quot;Lateral position [km]&quot;);
 ylabel(&quot;Depth [km]&quot;);
 </code></pre>
-
 <p><img alt="png" src="../fwi_example_NLopt_files/fwi_example_NLopt_3_0.png" /></p>
 <p>Then we read the SEG-Y file containing our test data set. The data was generated with a 2D excerpt from the Overthrust velocity model and consists of 31 shot records with 2 seconds recording time. We load the data and set up a JUDI seismic data vector:</p>
-<pre><code class="julia">block = segy_read(&quot;overthrust_shot_records.segy&quot;);
+<pre><code class="language-julia">block = segy_read(&quot;overthrust_shot_records.segy&quot;);
 d_obs = judiVector(block);
 </code></pre>
-
 <pre><code>┌ Warning: Fixed length trace flag set in stream: IOBuffer(data=UInt8[...], readable=true, writable=false, seekable=true, append=false, size=7076688, maxsize=Inf, ptr=3601, mark=-1)
 └ @ SegyIO /Users/mathiaslouboutin/.julia/packages/SegyIO/uw4ZW/src/read/read_file.jl:26
 </code></pre>
-<pre><code class="julia">extent = [0, 10, 2, 0]
+<pre><code class="language-julia">extent = [0, 10, 2, 0]
 figure(figsize=(7, 7))
 subplot(221)
 imshow(d_obs.data[1], vmin=-1, vmax=1, cmap=&quot;PuOr&quot;, extent=extent, aspect=4, interpolation=&quot;hamming&quot;)
@@ -166,17 +163,15 @@ ylabel(&quot;Time(s)&quot;)
 tight_layout()
 
 </code></pre>
-
 <p><img alt="png" src="../fwi_example_NLopt_files/fwi_example_NLopt_6_0.png" /></p>
 <p>Since the SEG-Y file contains the source coordinates, but not the wavelet itself, we create a JUDI <code>Geometry</code> structure for the source and then manually set up an 8 Hz Ricker wavelet. As for the observed data, we set up a JUDI seismic data vector <code>q</code> with the source geometry and wavelet:</p>
-<pre><code class="julia">src_geometry = Geometry(block; key=&quot;source&quot;);
+<pre><code class="language-julia">src_geometry = Geometry(block; key=&quot;source&quot;);
 src_data = ricker_wavelet(src_geometry.t[1], src_geometry.dt[1], 0.008f0);
 q = judiVector(src_geometry, src_data);
 </code></pre>
-
 <h2 id="optimization">Optimization</h2>
 <p>Rather than implementing the L-BFGS algorithms in Julia ourselves, we interface the NLopt optimization library. This library requires objective functions with the current variable and gradient as input arguments and the function value as the only output argument. For this reason, we build a wrapper that is customized for the NLopt library around our <code>fwi_objective</code> function. The function <code>f!</code> takes a vectorized estimate of the current model as well as the (vectorized) gradient as input arguments. NLopt uses double precision for floating point variables, so the first step inside <code>f!</code> is to reshape and convert the model to single precision. Then we choose a randomized subset of sources and shot records and compute the function value <code>fval</code> and <code>gradient</code> of the FWI objective function. We then set the gradient in the water layer to zero and overwrite the input gradient <code>grad</code> with the new gradient. Furthermore, we keep track of the number of function evaluations through increasing the <code>count</code> variable, which will serve as the termination criterion for the algorithm. In Julia, we set up <code>f!</code> in the following way: </p>
-<pre><code class="julia">batchsize = 8;
+<pre><code class="language-julia">batchsize = 8;
 count = 0;
 
 # NLopt objective function
@@ -202,15 +197,13 @@ function f!(x, grad)
     return convert(Float64, fval)
 end
 </code></pre>
-
 <pre><code>UndefVarError: @printf not defined
 </code></pre>
-<pre><code class="julia">g = zeros(prod(model0.n))
+<pre><code class="language-julia">g = zeros(prod(model0.n))
 f0 = f!(vec(model0.m), g)
 # Reset count
 global count = 0;
 </code></pre>
-
 <pre><code>1    255339.66398837214    262117.01773563828
 
 
@@ -219,15 +212,14 @@ global count = 0;
 
 255339.66398837214
 </code></pre>
-<pre><code class="julia">imshow(reshape(g, model0.n)', vmin=-1e3, vmax=1e3, extent=(0,10,3,0), cmap=&quot;jet&quot;)
+<pre><code class="language-julia">imshow(reshape(g, model0.n)', vmin=-1e3, vmax=1e3, extent=(0,10,3,0), cmap=&quot;jet&quot;)
 title(&quot;FWI first gradient&quot;)
 xlabel(&quot;Lateral position [km]&quot;);
 ylabel(&quot;Depth [km]&quot;);
 </code></pre>
-
 <p><img alt="png" src="../fwi_example_NLopt_files/fwi_example_NLopt_12_0.png" /></p>
 <p>As in our gradient descent and Gauss-Newton example, we define bound constraints for the squared slowness to prevent velocities from becoming negative or too large:</p>
-<pre><code class="julia"># Set up bound constrains
+<pre><code class="language-julia"># Set up bound constrains
 v0 = sqrt.(1f0./model0.m)
 vmin = ones(Float32, model0.n) .* 1.3f0;
 vmax = ones(Float32, model0.n) .* 6.5f0;
@@ -236,20 +228,17 @@ vmax = ones(Float32, model0.n) .* 6.5f0;
 mmin = vec((1f0 ./ vmax).^2);
 mmax = vec((1f0 ./ vmin).^2);
 </code></pre>
-
 <p>The NLopt library offers a range of different optimization algorithms, from which we choose the L-BFGS method. We create an optimization object called <code>opt</code> by specifying the algorithm we want to use and the dimenions of the unknown model vector. We then set the upper and lower bounds of the variable, define <code>f!</code> as the objective function and set the termination criterion to be a maximum of 15 function evaluations:</p>
-<pre><code class="julia">opt = Opt(:LD_LBFGS, prod(model0.n))
+<pre><code class="language-julia">opt = Opt(:LD_LBFGS, prod(model0.n))
 lower_bounds!(opt, mmin)
 upper_bounds!(opt, mmax)
 min_objective!(opt, f!)
 maxeval!(opt, 15)
 </code></pre>
-
 <p>Remark: Subsampling the number of sources should in practice never be used for second order methods such as L-BFGS. Specialized stochastic second order methods exist, but differ from standard Quasi-Newton methods. We only use source subsampling to reduce the computational cost of our example. Having set up the objective function, bound constraints and termination criterion, we can now run the inversion:</p>
 <p><strong> This example requires ~200 MB of memory per gradient, i.e. 800 MB with four parallel workers. It runs for approximately 15 minutes. </strong></p>
-<pre><code class="julia">(minf, minx, ret) = optimize(opt, vec(model0.m));
+<pre><code class="language-julia">(minf, minx, ret) = optimize(opt, vec(model0.m));
 </code></pre>
-
 <pre><code>2    257901.94477162338    258980.10388516955
 3    172803.59079827153    302780.85054677405
 4    189130.6172962864    318396.30082959705
@@ -267,11 +256,10 @@ maxeval!(opt, 15)
 16    35267.624712575205    96966.99249506553
 </code></pre>
 <p>We plot the final velocity model after 15 function evaluations:</p>
-<pre><code class="julia">imshow(sqrt.(1f0./reshape(minx, model0.n))', cmap=&quot;GnBu&quot;, extent=(0,10,3,0), vmin=1.5, vmax=5.4); title(&quot;FWI with L-BFGS&quot;)
+<pre><code class="language-julia">imshow(sqrt.(1f0./reshape(minx, model0.n))', cmap=&quot;GnBu&quot;, extent=(0,10,3,0), vmin=1.5, vmax=5.4); title(&quot;FWI with L-BFGS&quot;)
 xlabel(&quot;Lateral position [km]&quot;);
 ylabel(&quot;Depth [km]&quot;);
 </code></pre>
-
 <p><img alt="png" src="../fwi_example_NLopt_files/fwi_example_NLopt_21_0.png" /></p>
               
             </div>
