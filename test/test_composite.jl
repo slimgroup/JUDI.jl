@@ -2,7 +2,7 @@
 # Mathias Louboutin (mlouboutin3@gatech.edu)
 # July 2021
 
-using JUDI.TimeModeling, Test, LinearAlgebra
+using JUDI.TimeModeling, JOLI, Test, LinearAlgebra
 
 function example_rec_geometry(; nsrc=2, nrec=120)
     xrec = range(50f0, stop=1150f0, length=nrec)
@@ -20,12 +20,13 @@ ftol = 1f-6
 
 @testset "judiVStack Unit Tests with $(nsrc) sources" for nsrc=[1, 2]
 
-    # set up judiVector fr,om array
+    # set up judiVector from array
+    n = (10, 10)   # (x,y,z) or (x,z)
     dsize = (nsrc*nrec*ns, 1)
     rec_geometry = example_rec_geometry(nsrc=nsrc, nrec=nrec)
     data = randn(Float32, ns, nrec)
     d_obs = judiVector(rec_geometry, data)
-    w0 = judiWeights(rand(10, 10); nsrc=nsrc)
+    w0 = judiWeights([randn(Float32,n) for i = 1:nsrc])
 
     # Composite objs
     c1 = [d_obs; w0]
@@ -104,7 +105,7 @@ ftol = 1f-6
     @test isapprox(norm(u_scale - 1f0, 1), norm(u_scale .- 1f0, 1))
     @test isapprox(norm(1f0 - u_scale, 1), norm(1f0 .- u_scale, 1))
     @test isapprox(norm(u_scale/2f0, 1), norm(u_scale, 1)/2f0)
-# Test broadcasting
+    # Test broadcasting
     u_scale = deepcopy(u)
     v_scale = deepcopy(v)
 
@@ -115,7 +116,7 @@ ftol = 1f-6
     u_scale ./= 2f0
     @test isapprox(u_scale, u)
     u_scale .= 2f0 .* u_scale .+ v_scale
-    @test isapprox(u_scale, 2f0 * u + 2f0 + v)
+    @test isapprox(u_scale, 2f0 * u + (2f0 + v))
     u_scale .= u .+ v
     @test isapprox(u_scale, u + v)
     u_scale .= u .- v
@@ -170,4 +171,21 @@ ftol = 1f-6
     @test isapprox(w2.components[3], d_obs)
     @test isapprox(w2.components[4], w0)
 
+    # Test joDirac pertains judiWeights structure
+    
+    I = joDirac(nsrc*prod(n),DDT=Float32,RDT=Float32)
+    @test isapprox(I*w0, w0)
+    lambda = randn(Float32)
+    @test isapprox(lambda*I*w0, lambda*w0)
+    @test isapprox(I'*w0, w0)
+    @test isapprox((lambda*I)'*w0, lambda * w0)
+    
+    # Test Forward and Adjoint joCoreBlock * judiVStack
+    
+    J = joOnes(nsrc*prod(n),DDT=Float32,RDT=Float32)
+    
+    a = [I;J]*w0
+    b = [w0; J*w0]
+    @test isapprox(a[1], b[1])
+    @test isapprox(a[2:end], b[2:end])
 end

@@ -8,7 +8,7 @@ module TimeModeling
 using JUDI, LinearAlgebra, Base.Broadcast, FFTW, Pkg, Printf, Distributed, IterativeSolvers
 using PyCall, JOLI, SegyIO, DSP, Dierckx
 
-import Base.*, Base./, Base.+, Base.-, Base.copy!, Base.copy, Base.sum, Base.ndims, Base.reshape, Base.fill!
+import Base.*, Base./, Base.+, Base.-, Base.copy!, Base.copy, Base.sum, Base.ndims, Base.reshape, Base.fill!, Base.maximum, Base.minimum
 import Base.Broadcast.broadcasted, Base.BroadcastStyle, Base.Broadcast.DefaultArrayStyle
 import Base.getindex, Base.setindex!, Base.firstindex, Base.lastindex, Base.axes, Base.ndims
 import Base.similar, Base.isapprox, Base.isequal, Base.broadcast!, Base.materialize!

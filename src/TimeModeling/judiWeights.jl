@@ -5,6 +5,8 @@
 # Authors: Philipp Witte (pwitte@eos.ubc.ca), Henryk Modzelewski (hmodzelewski@eos.ubc.ca)
 # Date: June 2019
 
+# Updated by Ziyi Yin (ziyi.yin@gatech.edu), Nov 2020
+
 export judiWeights, judiWeightsException, subsample
 
 ############################################################
@@ -41,8 +43,7 @@ can also be a single (non-cell) array, in which case the weights are the same fo
     judiWeights(weights; nsrc=1)
 """
 function judiWeights(weights::Array; nsrc=1, vDT::DataType=Float32)
-    vDT == Float32 || throw(judiWeightsException("Domain type not supported"))
-
+    (eltype(weights) != vDT) && (weights = convert(Array{vDT},weights))
     # length of vector
     n = 1
     m = prod(size(weights))*nsrc
@@ -50,17 +51,29 @@ function judiWeights(weights::Array; nsrc=1, vDT::DataType=Float32)
     for j=1:nsrc
         weightsCell[j] = deepcopy(weights)
     end
-    return judiWeights{Float32}("Extended source weights",m,n,nsrc,weightsCell)
+    return judiWeights{vDT}("Extended source weights",m,n,nsrc,weightsCell)
 end
 
 # constructor if weights are passed as a cell array
 function judiWeights(weights::Union{Array{Any,1},Array{Array,1}}; vDT::DataType=Float32)
-    vDT == Float32 || throw(judiWeightsException("Domain and range types not supported"))
+    nsrc = length(weights)
+    for i = 1:nsrc
+        (eltype(weights[i]) != vDT) && (weights[i] = convert(Array{vDT},weights[i]))
+    end
+    # length of vector
+    n = 1
+    m = prod(size(weights[1]))*nsrc
+    return judiWeights{vDT}("Extended source weights",m,n,nsrc,weights)
+end
+
+#
+function judiWeights(weights::Array{Array{iDT, N},1}; vDT::DataType=Float32) where {iDT,N}
+    (iDT != vDT) && (weights = convert.(Array{vDT},weights))
     nsrc = length(weights)
     # length of vector
     n = 1
     m = prod(size(weights[1]))*nsrc
-    return judiWeights{Float32}("Extended source weights",m,n,nsrc,weights)
+    return judiWeights{vDT}("Extended source weights",m,n,nsrc,weights)
 end
 
 
@@ -180,6 +193,14 @@ end
 
 # *(joLinearOperator, judiWeights)
 function *(A::joAbstractLinearOperator{ADDT,ARDT}, v::judiWeights{avDT}) where {ADDT, ARDT, avDT}
+    A.name == "joDirac" && return avDT(1) .* v
+    A.name == "(N*joDirac)" && return avDT(A.fop.a) .* v
+    A.name == "adjoint(joDirac)" && return avDT(1) .* v
+    A.name == "adjoint((N*joDirac))" && return avDT(A.fop.a) .* v
+    return mulJ(A, v)
+end
+
+function mulJ(A::joAbstractLinearOperator{ADDT,ARDT}, v::judiWeights{avDT}) where {ADDT, ARDT, avDT}
     A.n == size(v,1) || throw(judiWeightsException("shape mismatch"))
     jo_check_type_match(ADDT,avDT,join(["DDT for *(joLinearFunction,judiWeights):",A.name,typeof(A),avDT]," / "))
     # Evaluate as mat-mat over the weights
@@ -201,9 +222,9 @@ function *(A::joCoreBlock{ADDT,ARDT}, v::judiWeights{avDT}) where {ADDT, ARDT, a
     A.n == size(v,1) || throw(judiWeightsException("shape mismatch"))
     jo_check_type_match(ADDT,avDT,join(["DDT for *(joLinearFunction,judiWeights):",A.name,typeof(A),avDT]," / "))
     # Evaluate as mat-mat over the weights
-    V = vcat(collect(A.fop[i]*v for i=1:length(A.fop))...)
-    jo_check_type_match(ARDT,eltype(V),join(["RDT from *(joLinearFunction,judiWeights):",A.name,typeof(A),eltype(V)]," / "))
-    return V
+    V = collect(A.fop[i]*v for i=1:length(A.fop))
+    [jo_check_type_match(ARDT,eltype(V[i]),join(["RDT from *(joLinearFunction,judiWeights):",A.fop[i].name,typeof(A.fop[i]),eltype(V)]," / ")) for i=1:length(V)]
+    return vcat(V...)
 end
 
 # vcat
@@ -246,6 +267,12 @@ function norm(a::judiWeights{avDT}, p::Real=2) where avDT
     end
     return x^(1.f0/p)
 end
+
+#maximum
+maximum(a::judiWeights{avDT}) where avDT =   max([maximum(a.weights[i]) for i=1:a.nsrc]...)
+
+#minimum
+minimum(a::judiWeights{avDT}) where avDT =   min([minimum(a.weights[i]) for i=1:a.nsrc]...)
 
 # abs
 function abs(a::judiWeights{avDT}) where avDT
