@@ -191,7 +191,7 @@ end
 
 function depth_scaling(m, model)
 # Linear depth scaling function for seismic images
-    m = reshape(m,model.n)
+    m = copy(reshape(m,model.n))
     filter = sqrt.(0f0:model.d[2]:model.d[2]*(model.n[2]-1))
     F = diagm(0=>filter)
     for j=1:model.n[1]
