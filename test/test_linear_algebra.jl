@@ -94,4 +94,37 @@ fs =  parsed_args["fs"]
         @test isapprox(norm(w_out.weights[1][:, 1:19]), 0f0; rtol=ftol)
         mul!(w_out, M', w)
         @test isapprox(w_out, M'*w; rtol=ftol)
+
+        # test in-place
+
+        dobs1 = deepcopy(dobs)
+        dobs2 = deepcopy(dobs)
+        dobs3 = deepcopy(dobs)
+        dobs4 = deepcopy(dobs)
+
+        temp1 = F*dobs
+        temp2 = F'*dobs
+        temp3 = Md*dobs
+        temp4 = Md'*dobs
+
+        @test dobs == dobs1
+        @test dobs == dobs2
+        @test dobs == dobs3
+        @test dobs == dobs4
+
+        w1 = deepcopy(w)
+        w2 = deepcopy(w)
+        w3 = deepcopy(w)
+        w4 = deepcopy(w)
+
+        temp5 = D*w
+        temp6 = D'*w
+        temp7 = M*w
+        temp8 = M'*w
+
+        @test w == w1
+        @test w == w2
+        @test w == w3
+        @test w == w4
+
 end
