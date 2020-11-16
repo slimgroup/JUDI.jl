@@ -194,8 +194,18 @@ function depth_scaling(m, model)
     m = deepcopy(reshape(m,model.n))
     filter = sqrt.(0f0:model.d[2]:model.d[2]*(model.n[2]-1))
     F = diagm(0=>filter)
-    for j=1:model.n[1]
-        m[j,:] = F*m[j,:]
+    if length(model.n) == 2
+        for j=1:model.n[1]
+            m[j,:] = F*m[j,:]
+        end
+    elseif length(model.n) == 3
+        for i=1:model.n[1]
+            for j=1:model.n[2]
+                m[i,j,:] = F*m[i,j,:]
+            end
+        end
+    else
+        throw("Dimension not supported")
     end
     return vec(m)
 end

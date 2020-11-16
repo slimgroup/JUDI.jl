@@ -101,7 +101,7 @@ fs =  parsed_args["fs"]
         for Op in [F, F', Md , Md']
                 m = Op*dobs 
                 # Test that dobs wasn't modified
-                @test dobs == dobs1
+                @test isapprox(dobs,dobs1,rtol=eps())
                 # Test that it did compute something 
                 @test m != dobs
         end
@@ -110,8 +110,28 @@ fs =  parsed_args["fs"]
         for Op in [D, D', M , M']
                 m = Op*w
                 # Test that w wasn't modified
-                @test w == w1
+                @test isapprox(w,w1,rtol=eps())
                 # Test that it did compute something 
                 @test m != w
         end
+
+        
+        n = (10,10,10)
+        d = (10.,10.,10.)
+        o = (0.,0.,0.)
+        m = 0.25*ones(Float32,n)
+        model3D = Model(n,d,o,m)
+
+        D3 = judiDepthScaling(model3D)
+
+        w2 = randn(Float32,prod(n))
+        w3 = deepcopy(w2)
+        for Op in [D3, D3']
+                m = Op*w2
+                # Test that w wasn't modified
+                @test w3 == w2
+                # Test that it did compute something 
+                @test m != w2
+        end
+
 end
