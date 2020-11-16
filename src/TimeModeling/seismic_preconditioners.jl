@@ -127,7 +127,7 @@ end
 
 function model_topmute(n::Tuple{Int64,Int64}, mute_end::Array{Integer,1}, length::Int64, x_orig)
 # Model domain topmute for a velocity model of dimensions n = [nx, nz].
-    x = copy(reshape(x_orig,n))
+    x = deepcopy(reshape(x_orig,n))
     for j=1:n[1]
         mute_start = mute_end[j] - length
         filter = zeros(Float32, n[2])
@@ -144,7 +144,7 @@ end
 
 function model_topmute(n::Tuple{Int64,Int64}, mute_end::Int64, length::Int64, x_orig)
 # Model domain topmute for a velocity model of dimensions n = [nx, nz].
-    x = copy(reshape(x_orig,n))
+    x = deepcopy(reshape(x_orig,n))
     mute_start = mute_end - length
     filter = zeros(Float32, n[2])
     filter[1:mute_start-1] .= 0f0
@@ -191,7 +191,7 @@ end
 
 function depth_scaling(m, model)
 # Linear depth scaling function for seismic images
-    m = copy(reshape(m,model.n))
+    m = deepcopy(reshape(m,model.n))
     filter = sqrt.(0f0:model.d[2]:model.d[2]*(model.n[2]-1))
     F = diagm(0=>filter)
     for j=1:model.n[1]
