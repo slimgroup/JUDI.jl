@@ -103,7 +103,7 @@ fs =  parsed_args["fs"]
                 # Test that dobs wasn't modified
                 @test dobs == dobs1
                 # Test that it did compute something 
-                @test m ~= dobs
+                @test m != dobs
         end
 
         w1 = deepcopy(w)
@@ -112,6 +112,6 @@ fs =  parsed_args["fs"]
                 # Test that w wasn't modified
                 @test w == w1
                 # Test that it did compute something 
-                @test m ~= w
+                @test m != w
         end
 end
