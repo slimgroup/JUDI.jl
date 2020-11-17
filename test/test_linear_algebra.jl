@@ -107,31 +107,60 @@ fs =  parsed_args["fs"]
         end
 
         w1 = deepcopy(w)
-        for Op in [D, D', M , M']
+
+        for Op in [D, D']
                 m = Op*w
                 # Test that w wasn't modified
                 @test isapprox(w,w1,rtol=eps())
-                # Test that it did compute something 
-                @test m != w
+
+                w_expect = deepcopy(w)
+                for j = 1:model.n[2]
+                        w_expect.weights[1][:,j] = w.weights[1][:,j] * Float32(sqrt(model.d[2]*(j-1)))
+                end
+                @test isapprox(w_expect,m)
+        end
+
+        for Op in [M , M']
+                m = Op*w
+                # Test that w wasn't modified
+                @test isapprox(w,w1,rtol=eps())
+
+                @test all(isapprox.(m.weights[1][:,1:18], 0))
+                @test isapprox(m.weights[1][:,21:end],w.weights[1][:,21:end])
         end
 
         
-        n = (10,10,10)
-        d = (10.,10.,10.)
+        n = (100,100,100)
+        d = (10f0,10f0,10f0)
         o = (0.,0.,0.)
         m = 0.25*ones(Float32,n)
         model3D = Model(n,d,o,m)
 
         D3 = judiDepthScaling(model3D)
 
-        w2 = randn(Float32,prod(n))
-        w3 = deepcopy(w2)
+        dm = randn(Float32,prod(n))
+        dm1 = deepcopy(dm)
         for Op in [D3, D3']
-                m = Op*w2
-                # Test that w wasn't modified
-                @test w3 == w2
-                # Test that it did compute something 
-                @test m != w2
+                opt_out = Op*dm
+                # Test that dm wasn't modified
+                @test dm1 == dm
+
+                dm_expect = zeros(Float32,model3D.n)
+                for j = 1:model3D.n[3]
+                        dm_expect[:,:,j] = reshape(dm,model3D.n)[:,:,j] * Float32(sqrt(model3D.d[3]*(j-1)))
+                end
+                @test isapprox(vec(dm_expect),opt_out)
+        end
+
+        M3 = judiTopmute(model3D.n, 20, 1)
+
+        for Op in [M3, M3']
+                opt_out = Op*dm
+                # Test that dm wasn't modified
+                @test dm1 == dm
+
+                @test all(isapprox.(reshape(opt_out,model3D.n)[:,:,1:18], 0))
+                @test isapprox(reshape(opt_out,model3D.n)[:,:,21:end],reshape(dm,model3D.n)[:,:,21:end])
         end
 
 end
