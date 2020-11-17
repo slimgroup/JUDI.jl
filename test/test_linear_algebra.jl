@@ -95,7 +95,7 @@ fs =  parsed_args["fs"]
         mul!(w_out, M', w)
         @test isapprox(w_out, M'*w; rtol=ftol)
 
-        # test in-place
+        # test the output of depth scaling and topmute operators, and test if they are out-of-place
         
         dobs1 = deepcopy(dobs)
         for Op in [F, F', Md , Md']
