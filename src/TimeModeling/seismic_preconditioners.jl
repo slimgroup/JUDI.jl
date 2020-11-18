@@ -161,26 +161,9 @@ end
 
 model_topmute(n::Tuple{Int64,Int64}, mute_end::Array{Float32, 2}, length, x) = vec(mute_end) .* vec(x)
 
+model_topmute(n::Tuple{Int64,Int64,Int64}, mute_end::Int64, length::Int64, x_orig) = model_topmute((n[1]*n[2], n[3]), mute_end, length, x_orig)
 
-function model_topmute(n::Tuple{Int64,Int64,Int64}, mute_end::Array{Integer,2}, length::Int64, x_orig)
-    # Model domain topmute for a velocity model of dimensions n = [nx, nz].
-    x = deepcopy(reshape(x_orig,n))
-    x_out = deepcopy(reshape(x_orig,n))
-    for i = 1:n[2]
-        x_out[:,i,:] = reshape(model_topmute((n[1],n[3]),mute_end[:,i],length,x[:,i,:]),n[1],n[3])
-    end
-    return vec(x_out)
-end
-    
-function model_topmute(n::Tuple{Int64,Int64,Int64}, mute_end::Int64, length::Int64, x_orig)
-    # Model domain topmute for a velocity model of dimensions n = [nx, nz].
-    x = deepcopy(reshape(x_orig,n))
-    x_out = deepcopy(reshape(x_orig,n))
-    for i = 1:n[2]
-        x_out[:,i,:] = reshape(model_topmute((n[1],n[3]),mute_end,length,x[:,i,:]),n[1],n[3])
-    end
-    return vec(x_out)
-end
+model_topmute(n::Tuple{Int64,Int64,Int64}, mute_end::Array{Integer,2}, length::Int64, x_orig) = model_topmute((n[1]*n[2], n[3]), vec(mute_end), length, x_orig)
     
 model_topmute(n::Tuple{Int64,Int64,Int64}, mute_end::Array{Float32, 3}, length, x) = vec(mute_end) .* vec(x)
 
