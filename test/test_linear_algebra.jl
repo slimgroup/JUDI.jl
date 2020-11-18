@@ -11,6 +11,12 @@ fs =  parsed_args["fs"]
 
 @testset "Arithmetic test with $(nlayer) layers and tti $(tti) and freesurface $(fs)" begin
 
+        # Test 2D find_water_bottom
+
+        dm2D = zeros(Float32,10,10)
+        dm2D[:,6:end] .= 1f0
+        @test find_water_bottom(dm2D) == 6*ones(Integer,10)
+
         ### Model
         model, model0, dm = setup_model(parsed_args["tti"], parsed_args["nlayer"])
         wb = find_water_bottom(model.m .- maximum(model.m))
@@ -162,5 +168,11 @@ fs =  parsed_args["fs"]
                 @test all(isapprox.(reshape(opt_out,model3D.n)[:,:,1:18], 0))
                 @test isapprox(reshape(opt_out,model3D.n)[:,:,21:end],reshape(dm,model3D.n)[:,:,21:end])
         end
+
+        # test find_water_bottom in 3D
+
+        dm3D = zeros(Float32,10,10,10)
+        dm3D[:,:,4:end] .= 1f0
+        @test find_water_bottom(dm3D) == 4*ones(Integer,10,10)
 
 end

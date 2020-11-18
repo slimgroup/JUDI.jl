@@ -1,6 +1,8 @@
 # Data topmute
 # Author: Philipp Witte, pwitte@eos.ubc.ca
 # Date: December 2017
+
+# Updated by Ziyi Yin, November 2020, ziyi.yin@gatech.edu
 #
 export marineTopmute2D, judiMarineTopmute2D
 export model_topmute, judiTopmute, find_water_bottom, depth_scaling, judiDepthScaling, laplace, low_filter, judiFilter
@@ -163,37 +165,21 @@ model_topmute(n::Tuple{Int64,Int64}, mute_end::Array{Float32, 2}, length, x) = v
 function model_topmute(n::Tuple{Int64,Int64,Int64}, mute_end::Array{Integer,2}, length::Int64, x_orig)
     # Model domain topmute for a velocity model of dimensions n = [nx, nz].
     x = deepcopy(reshape(x_orig,n))
-    for i=1:n[1]
-        for j=1:n[2]
-            mute_start = mute_end[i,j] - length
-            filter = zeros(Float32, n[end])
-            filter[1:mute_start-1] .= 0f0
-            filter[mute_end[i,j]+1:end] .= 1f0
-            taper_length = mute_end[i,j] - mute_start + 1
-            taper = (1f0 .+ sin.((Float32(pi)*(0:taper_length-1))/(taper_length - 1) .- Float32(pi)/2f0))/2f0
-            filter[mute_start:mute_end[i,j]] = taper
-            global x[i,j,:] = x[i,j,:].*filter
-        end
+    x_out = deepcopy(reshape(x_orig,n))
+    for i = 1:n[2]
+        x_out[:,i,:] = reshape(model_topmute((n[1],n[3]),mute_end[:,i],length,x[:,i,:]),n[1],n[3])
     end
-    return vec(x)
+    return vec(x_out)
 end
     
 function model_topmute(n::Tuple{Int64,Int64,Int64}, mute_end::Int64, length::Int64, x_orig)
     # Model domain topmute for a velocity model of dimensions n = [nx, nz].
     x = deepcopy(reshape(x_orig,n))
-    mute_start = mute_end - length
-    filter = zeros(Float32, n[end])
-    filter[1:mute_start-1] .= 0f0
-    filter[mute_end+1:end] .= 1f0
-    taper_length = mute_end - mute_start + 1
-    taper = (1f0 .+ sin.((Float32(pi)*(0:taper_length-1))/(taper_length - 1) .- Float32(pi)/2f0))/2f0
-    filter[mute_start:mute_end] = taper
-    for i = 1:n[1]
-        for j=1:n[2]
-            global x[i,j,:] = x[i,j,:].*filter
-        end
+    x_out = deepcopy(reshape(x_orig,n))
+    for i = 1:n[2]
+        x_out[:,i,:] = reshape(model_topmute((n[1],n[3]),mute_end,length,x[:,i,:]),n[1],n[3])
     end
-    return vec(x)
+    return vec(x_out)
 end
     
 model_topmute(n::Tuple{Int64,Int64,Int64}, mute_end::Array{Float32, 3}, length, x) = vec(mute_end) .* vec(x)
@@ -225,25 +211,7 @@ function find_water_bottom(m::Array{avDT,2};eps = 1e-4) where {avDT}
     return idx
 end
 
-
-function find_water_bottom(m::Array{avDT,3};eps = 1e-4) where {avDT}
-    #return the indices of the water bottom of a seismic image
-    n = size(m)
-    idx = zeros(Integer, n[1], n[2])
-    for i=1:n[1]
-        for j = 1:n[2]
-            k=1
-            while true
-                if abs(m[i,j,k]) > eps
-                    idx[i,j] = k
-                    break
-                end
-                k += 1
-            end
-        end
-    end
-    return idx
-end
+find_water_bottom(m::Array{avDT,3};eps = 1e-4) where {avDT} = reshape(find_water_bottom(reshape(m, :, size(m)[end]);eps=eps), size(m,1), size(m,2))
 
 function depth_scaling(m, model)
 # Linear depth scaling function for seismic images
