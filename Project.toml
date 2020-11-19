@@ -5,7 +5,6 @@ version = "2.1.4"
 
 [deps]
 ArgParse = "c7e460c6-2fb9-53a9-8c5b-16f535851c63"
-Caching = "68ad905a-5087-500a-aae7-0fd6acda2eb1"
 DSP = "717857b8-e6f2-59f4-9121-6e50c889abd2"
 Dierckx = "39dd38d3-220a-591b-8e3c-4c3a8c710a94"
 Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
