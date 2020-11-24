@@ -7,7 +7,7 @@
 ### Module loading
 using LinearAlgebra, JLD2, PyPlot, Dates, Distributed, Images
 using Optim, LineSearches
-using JUDI.TimeModeling, JUDI.SLIM_optim
+using JUDI.TimeModeling, SlimOptim
 
 ### Load synthetic data
 base_path = dirname(pathof(JUDI))*"/../examples/twri/"

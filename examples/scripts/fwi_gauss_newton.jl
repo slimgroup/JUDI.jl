@@ -4,7 +4,7 @@
 #
 
 using Statistics, Random, LinearAlgebra
-using JUDI.TimeModeling, JUDI.SLIM_optim, HDF5, SegyIO, PyPlot, IterativeSolvers
+using JUDI.TimeModeling, HDF5, SegyIO, PyPlot, IterativeSolvers
 
 # Load starting model
 n,d,o,m0 = read(h5open("../../data/overthrust_model.h5","r"), "n", "d", "o", "m0")
@@ -55,7 +55,7 @@ for j=1:maxiter
     fhistory_GN[j] = .5f0*norm(d_pred - d_obs)^2
 
     # GN update direction
-    p = lsqr(J, d_pred - d_obs; maxiter=maxiter_GN, verbose=true)
+    p = lsqr!(similar(model0.m), J, d_pred - d_obs; maxiter=maxiter_GN, verbose=true)
 
     # update model and bound constraints
     model0.m .= proj(model0.m .- reshape(p, model0.n))  # alpha=1

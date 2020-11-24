@@ -5,8 +5,8 @@
 #__precompile__()
 module TimeModeling
 
-using JUDI, LinearAlgebra, Base.Broadcast, FFTW, Pkg, Printf, Distributed, IterativeSolvers
-using PyCall, JOLI, SegyIO, DSP, Dierckx
+using JUDI, LinearAlgebra, Base.Broadcast, FFTW, Pkg, Printf, Distributed
+using PyCall, JOLI, SegyIO, DSP
 
 import Base.*, Base./, Base.+, Base.-, Base.copy!, Base.copy, Base.sum, Base.ndims, Base.reshape, Base.fill!, Base.maximum, Base.minimum
 import Base.Broadcast.broadcasted, Base.BroadcastStyle, Base.Broadcast.DefaultArrayStyle
@@ -19,8 +19,6 @@ import Base.cumsum, Base.diff
 import LinearAlgebra.transpose, LinearAlgebra.conj, LinearAlgebra.vcat, LinearAlgebra.adjoint
 import LinearAlgebra.vec, LinearAlgebra.dot, LinearAlgebra.norm, LinearAlgebra.abs
 import LinearAlgebra.lmul!, LinearAlgebra.rmul!, LinearAlgebra.ldiv!, LinearAlgebra.rdiv!, LinearAlgebra.mul!, Base.isfinite
-
-import IterativeSolvers.zerox
 
 import PyCall.array2py
 
