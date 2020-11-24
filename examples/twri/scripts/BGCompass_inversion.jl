@@ -11,8 +11,13 @@ using JUDI.TimeModeling, JUDI.SLIM_optim
 
 ### Load synthetic data
 base_path = dirname(pathof(JUDI))*"/../examples/twri/"
-@load string(base_path*"data/BGCompass_data_tti.jld") model_true dat fsrc
-
+try
+    @load string(base_path*"data/BGCompass_data_acou.jld") model_true dat fsrc
+catch e
+    @info "Data not found, modeling true data"
+    include(base_path*"data/gen_data_bg_acou.jl")
+    @load string(base_path*"data/BGCompass_data_acou.jld") model_true dat fsrc
+end
 ### Background mode
 idx_w = 1
 var = 20

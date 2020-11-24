@@ -11,9 +11,15 @@ using LinearAlgebra, JLD2, PyPlot, Dates, Distributed
 using Optim, LineSearches
 using JUDI, JUDI.TimeModeling, JUDI.SLIM_optim
 
-### Load synthetic data
+### Load or model synthetic data
 base_path = dirname(pathof(JUDI))*"/../examples/twri/"
-@load string(base_path*"data/GaussLens_data_acou.jld") model_true dat fsrc
+try
+    @load string(base_path*"data/GaussLens_data_acou.jld") model_true dat fsrc
+catch e
+    @info "Data not found, modeling true data"
+    include(base_path*"data/gen_data_gausslens_acou.jl")
+    @load string(base_path*"data/GaussLens_data_acou.jld") model_true dat fsrc
+end
 
 ### Background model
 m0 = 1f0./2f0.^2*ones(R, model_true.n)

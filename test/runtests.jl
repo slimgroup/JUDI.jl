@@ -85,7 +85,6 @@ end
 # Anisotropic Acoustic tests with free surface
 if GROUP == "TTI_OP_FS" || GROUP == "All"
     println("JUDI TTI operators with free surface tests")
-    deleteat!(devito, devito .== "test_gradient_twri.jl")
     push!(Base.ARGS, "--tti")
     push!(Base.ARGS, "--fs")
     for t=devito

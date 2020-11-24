@@ -11,10 +11,20 @@ using JUDI, JUDI.TimeModeling, JUDI.SLIM_optim, JLD2
 R = Float32
 ### Load synthetic data
 base_path = dirname(pathof(JUDI))*"/../examples/twri/"
-@load string(base_path*"data/BGCompass_data_tti.jld") model_true dat fsrc
-
+try
+    @load string(base_path*"data/BGCompass_data_tti.jld") model_true dat fsrc
+catch e
+    @info "Data not found, modeling true data"
+    include(base_path*"data/gen_data_bg_tti.jl")
+    @load string(base_path*"data/BGCompass_data_tti.jld") model_true dat fsrc
+end
 # Different sigmas for smoothing
 vvar = [20, 25, 30, 40]
+# Global parameters
+idx_w = 17
+vare = 15
+fevals = 20
+batchsize = 25
 
 # Bound projection
 function proj_bounds(m, mmin, mmax)
@@ -27,18 +37,14 @@ mmax = 1f0/1.4f0^2
 ProjBound(x) = proj_bounds(x, mmin,  mmax)
 
 for var=vvar
-    for smooth_thomsen=[true, false]
+    for anis=["tt", "st"]
         ### Background model
-        idx_w = 17
         model0 = deepcopy(model_true)
         model0.m[:, idx_w+1:end] = R.(imfilter(model0.m[:, idx_w+1:end], Kernel.gaussian(var)))
-        anis = "tt"
-        if smooth_thomsen
-            vare = 15
+        if anis == "st"
             model0.epsilon[:, idx_w+1:end] = R.(imfilter(model0.epsilon[:, idx_w+1:end], Kernel.gaussian(vare)))
             model0.delta[:, idx_w+1:end] = R.(imfilter(model0.delta[:, idx_w+1:end], Kernel.gaussian(vare)))
             model0.theta[:, idx_w+1:end] = R.(imfilter(model0.theta[:, idx_w+1:end], Kernel.gaussian(vare)))
-            anis = "st"
         end
         m0 = model0.m
 
@@ -54,8 +60,6 @@ for var=vvar
         DZ = judiDepthScaling(model0)
 
         # Optimization parameters
-        fevals = 20
-        batchsize = 25
         optwri = TWRIOptions(;grad_corr=false, comp_alpha=false, weight_fun=nothing, eps=ε, params=:m)
 
         # Objective function for minConf library
@@ -82,11 +86,15 @@ for var=vvar
         x0 = vec(m0)
         options = spg_options(verbose=3, maxIter=fevals, memory=3, interp=0)
 
-        xwri, fsavewri, funEvals, p, hwri = minConf_SPG(wri_fun, x0, ProjBound, options)
+        sol = minConf_SPG(wri_fun, x0, ProjBound, options)
+        xwri = sol.x
+        hwri = sol.ϕ_trace
         @save string(base_path*"data/wriw_$(anis)_$(var).jld") xwri hwri
 
         x0 = vec(m0)
-        xfwi, fsavefwi, funEvals, p, hfwi = minConf_SPG(fwi_fun, x0, ProjBound, options)
+        sol = minConf_SPG(fwi_fun, x0, ProjBound, options)
+        xfwi = sol.x
+        hfwi = sol.ϕ_trace
         @save string(base_path*"data/fwiw_$(anis)_$(var).jld") xfwi hfwi
     end
 end

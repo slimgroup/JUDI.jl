@@ -12,6 +12,7 @@ using Pkg
 # IO
 Pkg.add("HDF5")
 Pkg.add("JLD")
+Pkg.add("JLD2")
 
 # Plotting
 Pkg.add("PyPlot")
@@ -19,6 +20,8 @@ Pkg.add("PyPlot")
 # Optimization
 Pkg.add("NLopt")
 Pkg.add("IterativeSolvers")
+Pkg.add("Optim")
+Pkg.add("LineSearches")
 ```
 
 ## Overview
@@ -31,6 +34,7 @@ Pkg.add("IterativeSolvers")
 
  * Reproducable examples for *Compressive least squares migration with on-the-fly Fourier transforms* are available in [compressive_splsrtm](https://github.com/slimgroup/JUDI.jl/tree/master/examples/compressive_splsrtm)
 
+ * Examples related to *A dual formulation of wavefield reconstruction inversion for large-scale seismic inversion* are available in [twri](https://github.com/slimgroup/JUDI.jl/tree/master/examples/twri)
 
 ## References
 
@@ -39,3 +43,4 @@ Pkg.add("IterativeSolvers")
  * Philipp A. Witte, Mathias Louboutin, Fabio Luporini, Gerard J. Gorman and Felix J. Herrmann. Compressive least-squares migration with on-the-fly Fourier transforms. GEOPHYSICS, vol. 84 (5), pp. R655-R672, 2019. <https://library.seg.org/doi/abs/10.1190/geo2018-0490.1>
 
 
+ * Gabrio Rizzuti, Mathias Louboutin, Rongrong Wang, and Felix J. Herrmann. A dual formulation of wavefield reconstruction inversion for large-scale seismic inversion. Submitted to Geophysics. <https://slim.gatech.edu/content/dual-formulation-wavefield-reconstruction-inversion-large-scale-seismic-inversion>

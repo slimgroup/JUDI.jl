@@ -2,7 +2,7 @@
 
 ## Physical Parameter
 
-Data structure for physicall parameter array in JUDI. A `PhysicalParameter` inherits from julia `AbstractVector`
+Data structure for physical parameter array in JUDI. A `PhysicalParameter` inherits from julia `AbstractVector`
 
 **Construction**
 
