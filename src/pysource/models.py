@@ -1,8 +1,8 @@
 import numpy as np
-from sympy import Abs, Min, exp
+from sympy import Abs, Min, exp, sqrt
 import warnings
 from devito import (Grid, Function, SubDomain, SubDimension, Eq,
-                    Operator, mmax, initialize_function)
+                    Operator, mmin, initialize_function, switchconfig)
 from devito.tools import as_tuple
 
 
@@ -43,6 +43,7 @@ class FSDomain(SubDomain):
         return map_d
 
 
+@switchconfig(log_level='ERROR')
 def initialize_damp(damp, padsizes, spacing, fs=False):
     """
     Initialise damping field with an absorbing boundary layer.
@@ -102,8 +103,8 @@ class GenericModel(object):
         origin_pml = [dtype(o - s*nbl) for o, s in zip(origin, spacing)]
         shape_pml = np.array(shape) + 2 * self.nbl
         if fs:
-            fsdomain = FSDomain(space_order//2)
-            physdomain = PhysicalDomain(space_order//2, fs=fs)
+            fsdomain = FSDomain(space_order + 1)
+            physdomain = PhysicalDomain(space_order + 1, fs=fs)
             subdomains = (physdomain, fsdomain)
             origin_pml[-1] = origin[-1]
             shape_pml[-1] -= self.nbl
@@ -136,6 +137,7 @@ class GenericModel(object):
         known = [getattr(self, i) for i in self.physical_parameters]
         return {i.name: kwargs.get(i.name, i) or i for i in known}
 
+    @switchconfig(log_level='ERROR')
     def _gen_phys_param(self, field, name, space_order, is_param=False,
                         default_value=0, func=lambda x: x):
         """
@@ -219,8 +221,8 @@ class Model(GenericModel):
         Number of grid points size in (x,y,z) order.
     space_order : int
         Order of the spatial stencil discretisation.
-    vp : array_like or float
-        Velocity in km/s.
+    m : array_like or float
+        Squared slownes in s^2/km^2
     nbl : int, optional
         The number of absorbin layers for boundary damping.
     dtype : np.float32 or np.float64
@@ -236,7 +238,7 @@ class Model(GenericModel):
     dt: Float
         User provided computational time-step
     """
-    def __init__(self, origin, spacing, shape, vp, space_order=2, nbl=40,
+    def __init__(self, origin, spacing, shape, m, space_order=2, nbl=40,
                  dtype=np.float32, epsilon=None, delta=None, theta=None, phi=None,
                  rho=1, dm=None, fs=False, **kwargs):
         super(Model, self).__init__(origin, spacing, shape, space_order, nbl, dtype,
@@ -245,7 +247,7 @@ class Model(GenericModel):
         self.scale = 1
         self._space_order = space_order
         # Create square slowness of the wave as symbol `m`
-        self._vp = self._gen_phys_param(vp, 'vp', space_order)
+        self._m = self._gen_phys_param(m, 'm', space_order)
         # density
         self._init_density(rho, space_order)
         self._dm = self._gen_phys_param(dm, 'dm', space_order)
@@ -308,9 +310,9 @@ class Model(GenericModel):
         Maximum velocity
         """
         try:
-            return mmax(self.vp)
+            return np.sqrt(1./mmin(self.m))
         except ValueError:
-            return np.max(self.vp)
+            return np.sqrt(1./np.min(self.m))
 
     @property
     def critical_dt(self):
@@ -329,7 +331,7 @@ class Model(GenericModel):
                               % (self.dt, dt))
             else:
                 return self.dtype("%.3e" % self.dt)
-        return self.dtype("%.3e" % dt)
+        return self.dtype("%.2e" % dt)
 
     @property
     def dm(self):
@@ -345,8 +347,8 @@ class Model(GenericModel):
 
         Parameters
         ----------
-        vp : float or array
-            New velocity in km/s.
+        dm : float or array
+            New model perturbation
         """
         # Update the square slowness according to new value
         if isinstance(dm, np.ndarray):
@@ -367,42 +369,42 @@ class Model(GenericModel):
                 self._dm = dm
 
     @property
-    def vp(self):
+    def m(self):
         """
-        Function holding the model velocity in km/s.
+        Function holding the squared slowness in s^2/km^2.
         """
-        return self._vp
+        return self._m
 
-    @vp.setter
-    def vp(self, vp):
+    @m.setter
+    def m(self, m):
         """
-        Set a new velocity model.
+        Set a new squared slowness model.
 
         Parameters
         ----------
-        vp : float or array
-            New velocity in km/s.
+        m : float or array
+            New squared slowness in s^2/km^2.
         """
         # Update the square slowness according to new value
-        if isinstance(vp, np.ndarray):
-            if vp.shape == self.vp.shape:
-                self.vp.data[:] = vp[:]
-            elif vp.shape == self.shape:
-                initialize_function(self._vp, vp, self.nbl)
+        if isinstance(m, np.ndarray):
+            if m.shape == self.m.shape:
+                self.m.data[:] = m[:]
+            elif m.shape == self.shape:
+                initialize_function(self._m, m, self.nbl)
             else:
-                raise ValueError("Incorrect input size %s for model of size" % vp.shape +
+                raise ValueError("Incorrect input size %s for model of size" % m.shape +
                                  " %s without or %s with padding" % (self.shape,
-                                                                     self.vp.shape))
+                                                                     self.m.shape))
         else:
-            self._vp.data = vp
+            self._m.data = m
 
     @property
-    def m(self):
+    def vp(self):
         """
-        Symbolic representation of the squared slowness
-        m = 1/vp^2
+        Symbolic representation of the velocity
+        vp = sqrt(1 / m)
         """
-        return 1 / (self.vp * self.vp)
+        return sqrt(1 / self.m)
 
     @property
     def spacing_map(self):

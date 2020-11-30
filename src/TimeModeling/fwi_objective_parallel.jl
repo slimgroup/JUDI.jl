@@ -5,7 +5,7 @@
 """
     fwi_objective(model, source, dobs; options=Options())
 
-Evaluate the full-waveform-inversion (reduced state) objective function. Returns a tuple with function value and vectorized \\
+Evaluate the full-waveform-inversion (reduced state) objective function. Returns a tuple with function value and \\
 gradient. `model` is a `Model` structure with the current velocity model and `source` and `dobs` are the wavelets and \\
 observed data of type `judiVector`.
 
@@ -15,7 +15,7 @@ Example
     function_value, gradient = fwi_objective(model, source, dobs)
 
 """
-function fwi_objective(model::Modelall, source::judiVector, dObs::judiVector; options=Options())
+function fwi_objective(model::Model, source::judiVector, dObs::judiVector; options=Options())
 # fwi_objective function for multiple sources. The function distributes the sources and the input data amongst the available workers.
 
     p = default_worker_pool()
@@ -32,8 +32,8 @@ function fwi_objective(model::Modelall, source::judiVector, dObs::judiVector; op
     end
 
     # Collect and reduce gradients
-    gradient = zeros(Float32, prod(model.n))
     objective = 0f0
+    gradient = PhysicalParameter(zeros(Float32, model.n), model.d, model.o)
 
     for j=1:dObs.nsrc
         gradient .+= results[j][2]

@@ -5,10 +5,7 @@
 # Mathias Louboutin, mlouboutin3@gatech.edu
 # Updated July 2020
 
-using JUDI.TimeModeling, Test, LinearAlgebra, Printf
-
 parsed_args = parse_commandline()
-
 
 nlayer = parsed_args["nlayer"]
 tti = parsed_args["tti"]
@@ -50,7 +47,8 @@ ftol = 5f-5
     q4 = adjoint(A1) * (2f0 * d1)
     q5 = (2f0 * adjoint(A1)) * d1
 
-    dm2 = .5f0 .* vec(circshift(reshape(dm, model.n), (0, 20)))
+    dm2 =  .5f0 * dm
+    dm2.data .= circshift(dm2.data, (0, 20))
     lind =  J * dm
     lind2 = J * (2f0 .* dm)
     lind3 = J * dm2
@@ -159,8 +157,8 @@ end
     A = Pr*F*adjoint(Pw)
     Aa = adjoint(A)
     # Extended source weights
-    w = Float32.(imfilter(randn(Float32, model0.n), Kernel.gaussian(5)))
-    x = Float32.(imfilter(randn(Float32, model0.n), Kernel.gaussian(5)))
+    w = randn(Float32, model0.n)
+    x = randn(Float32, model0.n)
     w[:, 1] .= 0f0; w = vec(w)
     x[:, 1] .= 0f0; x = vec(x)
 
@@ -177,7 +175,8 @@ end
     q4 = Aa * (2f0 * d1)
     q5 = (2f0 * Aa) * d1
 
-    dm2 = .5f0 .* vec(circshift(reshape(dm, model.n), (0, 20)))
+    dm2 =  .5f0 * dm
+    dm2.data .= circshift(dm2.data, (0, 20))    
     lind =  J * dm
     lind2 = J * (2f0 .* dm)
     lind3 = J * dm2

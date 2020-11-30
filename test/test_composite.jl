@@ -2,15 +2,6 @@
 # Mathias Louboutin (mlouboutin3@gatech.edu)
 # July 2021
 
-using JUDI.TimeModeling, JOLI, Test, LinearAlgebra
-
-function example_rec_geometry(; nsrc=2, nrec=120)
-    xrec = range(50f0, stop=1150f0, length=nrec)
-    yrec = 0f0
-    zrec = range(50f0, stop=50f0, length=nrec)
-    return Geometry(xrec, yrec, zrec; dt=4f0, t=1000f0, nsrc=nsrc)
-end
-
 # number of sources/receivers
 nsrc = 2
 nrec = 120

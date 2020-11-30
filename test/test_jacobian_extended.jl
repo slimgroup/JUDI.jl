@@ -6,8 +6,6 @@
 # Author: Mathias Louboutin, mlouboutin3@gatech.edu
 # Update Date: July 2020
 
-using JUDI.TimeModeling, SegyIO, LinearAlgebra, Test
-
 parsed_args = parse_commandline()
 
 nlayer = parsed_args["nlayer"]
@@ -40,7 +38,7 @@ m0 = model0.m
     J = judiJacobian(A0, w)
 
     # Nonlinear modeling
-    dpred = A0*w
+    dobs = A0*w
     dD = J*dm
 
     # Jacobian test
@@ -51,11 +49,11 @@ m0 = model0.m
 
     for j=1:maxiter
 
-        A.model.m = m0 + h*reshape(dm, model0.n)
-        dobs = A*w
+        A.model.m = m0 + h*dm
+        dpred = A*w
 
-        err1[j] = norm(dobs - dpred)
-        err2[j] = norm(dobs - dpred - h*dD)
+        err1[j] = norm(dpred - dobs)
+        err2[j] = norm(dpred - dobs - h*dD)
         j == 1 ? prev = 1 : prev = j - 1
         @printf("h = %2.2e, e1 = %2.2e, rate = %2.2e", h, err1[j], err1[prev]/err1[j])
         @printf(", e2 = %2.2e, rate = %2.2e \n", err2[j], err2[prev]/err2[j])

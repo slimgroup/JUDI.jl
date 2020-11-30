@@ -1,8 +1,6 @@
 # Author: Mathias Louboutin, mlouboutin3@gatech.edu
 # Date: July 2020
 
-using JUDI.TimeModeling, ArgParse, Images
-
 export setup_model, parse_commandline, setup_geom
 export example_src_geometry, example_rec_geometry, example_model, example_info
 
@@ -12,7 +10,12 @@ Simple 2D model setup used for the tests.
 """
 
 function smooth(v, sigma=3)
-    return Float32.(imfilter(v,  Kernel.gaussian(sigma)))
+    v0 = 1f0 .* v
+    for i=-sigma:sigma
+        i != 0 && (v0[:, sigma+1:end-sigma] .+= v[:, sigma+i+1:end-sigma+i])
+    end
+    v0[:, sigma+1:end-sigma] .*= 1/(2*sigma+1)
+    return v0
 end
 
 """
@@ -33,7 +36,6 @@ function setup_model(tti=false, nlayer=2; n=(301, 151), d=(10., 10.))
     # Slowness squared [s^2/km^2]
     m = (1f0 ./ v).^2
     m0 = (1f0 ./ v0).^2
-    dm = vec(m - m0)
 
     # Setup model structure
     if tti
@@ -44,10 +46,11 @@ function setup_model(tti=false, nlayer=2; n=(301, 151), d=(10., 10.))
         model0 = Model(n, d, o, m0; epsilon=epsilon, delta=delta, theta=theta)
         model = Model(n, d, o, m; epsilon=epsilon, delta=delta, theta=theta)
     else
-        model = Model(n,d,o,m,rho=rho0)
-        model0 = Model(n,d,o,m0,rho=rho0)
+        model = Model(n,d,o,m, rho0)
+        model0 = Model(n,d,o,m0,rho0)
+        @test Model(n,d,o,m0; rho=rho0).rho == model0.rho
     end
-
+    dm = model0.m - model.m
     return model, model0, dm
 end
 

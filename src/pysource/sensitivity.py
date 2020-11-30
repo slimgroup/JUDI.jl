@@ -42,10 +42,10 @@ def grad_expr(gradm, u, v, model, w=None, freq=None, dft_sub=None, isic=False):
     ic_func = ic_dict[func_name(freq=freq, isic=isic)]
     expr = ic_func(as_tuple(u), as_tuple(v), model, freq=freq, factor=dft_sub, w=w)
     if model.fs:
-        eq_g = [Eq(gradm, expr + gradm, subdomain=model.grid.subdomains['nofsdomain'])]
+        eq_g = [Eq(gradm, gradm - expr, subdomain=model.grid.subdomains['nofsdomain'])]
         eq_g += freesurface(model, eq_g)
     else:
-        eq_g = [Eq(gradm, expr + gradm)]
+        eq_g = [Eq(gradm, gradm - expr)]
     return eq_g
 
 
@@ -63,7 +63,7 @@ def crosscorr_time(u, v, model, **kwargs):
         Model structure
     """
     w = kwargs.get('w') or u[0].indices[0].spacing * model.irho
-    return - w * sum(vv.dt2 * uu for uu, vv in zip(u, v))
+    return w * sum(vv.dt2 * uu for uu, vv in zip(u, v))
 
 
 def crosscorr_freq(u, v, model, freq=None, dft_sub=None, **kwargs):
@@ -114,7 +114,7 @@ def isic_time(u, v, model, **kwargs):
     model: Model
         Model structure
     """
-    w = - u[0].indices[0].spacing * model.irho
+    w = u[0].indices[0].spacing * model.irho
     return w * sum(uu * vv.dt2 * model.m + inner_grad(uu, vv)
                    for uu, vv in zip(u, v))
 
@@ -179,7 +179,7 @@ def basic_src(model, u, **kwargs):
     model: Model
         Model containing the perturbation dm
     """
-    w = - model.dm * model.irho
+    w = -model.dm * model.irho
     if model.is_tti:
         return (w * u[0].dt2, w * u[1].dt2)
     return w * u[0].dt2

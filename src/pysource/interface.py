@@ -5,8 +5,10 @@ from devito.tools import as_tuple
 from pyrevolve import Revolver
 
 from checkpoint import CheckpointOperator, DevitoCheckpoint
-from propagators import forward, adjoint, born, gradient
+from propagators import forward, adjoint, born, gradient, forward_grad
 from sources import Receiver
+from utils import weight_fun, compute_optalpha
+from wave_utils import wf_as_src
 
 
 # Forward wrappers Pr*F*Ps'*q
@@ -660,8 +662,8 @@ def J_adjoint_checkpointing(model, src_coords, wavelet, rec_coords, recin, space
     uk.update({'rcv%s' % as_tuple(u)[0].name: as_tuple(rec_g)[0]})
     vk.update({'src%s' % as_tuple(v)[0].name: rec})
     # Wrapped ops
-    wrap_fw = CheckpointOperator(op_f, vp=model.vp, **uk)
-    wrap_rev = CheckpointOperator(op, vp=model.vp, **vk)
+    wrap_fw = CheckpointOperator(op_f, m=model.m, **uk)
+    wrap_rev = CheckpointOperator(op, m=model.m, **vk)
 
     # Run forward
     wrp = Revolver(cp, wrap_fw, wrap_rev, n_checkpoints, nt-2)
@@ -685,3 +687,59 @@ def J_adjoint_checkpointing(model, src_coords, wavelet, rec_coords, recin, space
 
 
 op_fwd_J = {False: forward, True: born}
+
+
+def wri_func(model, src_coords, wavelet, rec_coords, recin, yin, space_order=8,
+             isic=False, ws=None, t_sub=1, grad="m", grad_corr=False,
+             alpha_op=False, w_fun=None, eps=0):
+    """
+    Time domain wavefield reconstruction inversion wrapper
+    """
+    # F(m0) * q if y is not an input and compute y = r(m0)
+    if yin is None or grad_corr:
+        y, u0, _ = forward(model, src_coords, rec_coords, wavelet, save=grad_corr,
+                           space_order=space_order, ws=ws)
+        ydat = recin[:] - y.data[:]
+    else:
+        ydat = yin
+
+    # Compute wavefield vy = adjoint(F(m0))*y and norm on the fly
+    srca, v, norm_v, _ = adjoint(model, ydat, src_coords, rec_coords,
+                                 norm_v=True, w_fun=w_fun,
+                                 save=grad is not None)
+    c1 = 1 / (recin.shape[1])
+    c2 = np.log(np.prod(model.shape))
+    # <PTy, d-F(m)*f> = <PTy, d>-<adjoint(F(m))*PTy, f>
+    ndt = np.sqrt(model.critical_dt)
+    PTy_dot_r = ndt**2 * (np.dot(ydat.reshape(-1), recin.reshape(-1)) -
+                          np.dot(srca.data.reshape(-1), wavelet.reshape(-1)))
+    norm_y = ndt * np.linalg.norm(ydat)
+
+    # alpha
+    α = compute_optalpha(c2*norm_y, c1*norm_v, eps, comp_alpha=alpha_op)
+
+    # Lagrangian evaluation
+    fun = -.5 * c1 * α**2 * norm_v + c2 * α * PTy_dot_r - eps * np.abs(α) * norm_y
+
+    gradm = grady = None
+    if grad is not None:
+        w = weight_fun(w_fun, model, src_coords)
+        w = c1*α/w**2 if w is not None else c1*α
+        Q = wf_as_src(v, w=w)
+        rcv, gradm, _ = forward_grad(model, src_coords, rec_coords, c2*wavelet, q=Q, v=v)
+
+        # Compute gradient wrt y
+        if grad_corr or grad in ["all", "y"]:
+            grady = c2 * recin - rcv.data[:]
+            if norm_y != 0:
+                grady -= np.abs(eps) * ydat / norm_y
+
+        # Correcting for reduced gradient
+        if not grad_corr:
+            gradm = gradm.data
+        else:
+            gradm_corr, _ = gradient(model, grady, rec_coords, u0)
+            # Reduced gradient post-processing
+            gradm = gradm.data + gradm_corr.data
+
+    return fun, α * gradm, grady

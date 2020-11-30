@@ -5,9 +5,6 @@
 # Mathias Louboutin, mlouboutin3@gatech.edu
 # Updated July 2020
 
-using JUDI.TimeModeling, JUDI, SegyIO, Test, LinearAlgebra
-import LinearAlgebra.BLAS.axpy!
-
 datapath = joinpath(dirname(pathof(JUDI)))*"/../data/"
 
 function example_rec_geometry(; nsrc=2, nrec=120)
@@ -26,7 +23,7 @@ ftol = 1e-6
 
 @testset "judiVector Unit Tests with $(nsrc) sources" for nsrc=[1, 2]
 
-    # set up judiVector fr,om array
+    # set up judiVector from array
     info = example_info(nsrc=nsrc)
     dsize = (nsrc*nrec*ns, 1)
     rec_geometry = example_rec_geometry(nsrc=nsrc, nrec=nrec)
@@ -40,7 +37,6 @@ ftol = 1e-6
     @test iszero(norm(d_obs.data[1] - d_obs.data[end]))
     @test isequal(size(d_obs), dsize)
 
-    @test isfinite(d_obs)
     # set up judiVector from cell array
     data = Array{Array}(undef, nsrc)
     for j=1:nsrc
@@ -53,6 +49,7 @@ ftol = 1e-6
     @test isequal(typeof(d_obs.geometry), GeometryIC)
     @test iszero(norm(d_obs.data - d_obs.data))
     @test isequal(size(d_obs), dsize)
+    @test isapprox(convert_to_array(d_obs), vcat([vec(d) for d in data]...); rtol=ftol)
 
     # contructor for in-core data container
     block = segy_read(datapath*"unit_test_shot_records_$(nsrc).segy"; warn_user=false)
@@ -63,6 +60,7 @@ ftol = 1e-6
     @test isequal(typeof(d_block.data), Array{Array, 1})
     @test isequal(typeof(d_block.geometry), GeometryIC)
     @test isequal(size(d_block), dsize)
+
 
     # contructor for in-core data container and given geometry
     rec_geometry = Geometry(block; key="receiver", segy_depth_key="RecGroupElevation")
@@ -135,10 +133,6 @@ ftol = 1e-6
 
     @test iszero(norm(2*d_block - (d_block + d_block)))
     @test iszero(norm(d_block - (d_block + d_block)/2))
-
-    # TO DO: add operations for OOC containers
-    #@test iszero(norm(2*d_cont - (d_cont + d_cont)))    # creates in-core judiVector
-    #@test iszero(norm(1*d_cont - (d_cont + d_cont)/2))
 
     # vcat
     d_vcat = [d_block; d_block]
@@ -251,11 +245,27 @@ ftol = 1e-6
     a = .5f0 + rand(Float32)
     d_scale = deepcopy(d_block)
 
-    # Tes norms
+    # Test norms
     d_ones = judiVector(rec_geometry, 2f0 .* ones(Float32, ns, nrec))
     @test isapprox(norm(d_ones, 2), sqrt(rec_geometry.dt[1]*nsrc*ns*nrec*4))
     @test isapprox(norm(d_ones, 1), rec_geometry.dt[1]*nsrc*ns*nrec*2)
     @test isapprox(norm(d_ones, Inf), 2)
+
+    # Indexing and utilities
+    @test isfinite(d_obs)
+    @test ndims(judiVector{Float32}) == 1
+    @test isapprox(sum(d_obs), sum(sum([vec(d) for d in d_obs])))
+    d0 = copy(d_obs)
+    fill!(d0, 0f0)
+    @test iszero(norm(d0))
+
+    @test firstindex(d_obs) == 1
+    @test lastindex(d_obs) == nsrc
+    @test axes(d_obs) == Base.OneTo(nsrc)
+    @test ndims(d_obs) == 2
+
+    d0[1] = d_obs.data[1]
+    @test isapprox(d0.data[1], d_obs.data[1])
 
     # broadcast multiplication
     u = judiVector(rec_geometry, randn(Float32, ns, nrec))
@@ -329,4 +339,22 @@ ftol = 1e-6
     w1 .= d_obs
     @test w1.nsrc == d_obs.nsrc
     @test isapprox(w1.data, d_obs.data)
+
+
+    # Test transducer
+    q = judiVector(Geometry(0f0, 0f0, 0f0; dt=2, t=1000), randn(251))
+    tr = transducer(q, (10, 10), 30, pi/2)
+    @test length(tr.geometry.xloc[1]) == 22
+    @test tr.geometry.xloc[1][1:11] == range(-30., 30., length=11)
+    @test tr.geometry.xloc[1][12:end] == range(-30., 30., length=11)
+    @test all(tr.geometry.zloc[1][12:end] .== -10f0)
+    @test all(tr.geometry.zloc[1][1:11] .== 0f0)
+
+    q = judiVector(Geometry(0f0, 0f0, 0f0; dt=2, t=1000), randn(251))
+    tr = transducer(q, (10, 10), 30, pi)
+    @test length(tr.geometry.xloc[1]) == 22
+    @test isapprox(tr.geometry.zloc[1][1:11], range(30., -30., length=11); atol=1f-14, rtol=1f-14)
+    @test isapprox(tr.geometry.zloc[1][12:end], range(30., -30., length=11); atol=1f-14, rtol=1f-14)
+    @test isapprox(tr.geometry.xloc[1][12:end], -10f0*ones(11); atol=1f-14, rtol=1f-14)
+    @test isapprox(tr.geometry.xloc[1][1:11], zeros(11); atol=1f-14, rtol=1f-14)
 end

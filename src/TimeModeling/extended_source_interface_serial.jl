@@ -1,7 +1,7 @@
 export extended_source_modeling
 
 # Setup time-domain linear or nonlinear foward and adjoint modeling and interface to OPESCI/devito
-function extended_source_modeling(model_full::Modelall, srcData, recGeometry, recData, weights, dm, srcnum::Int64, op::Char, mode::Int64, options)
+function extended_source_modeling(model_full::Model, srcData, recGeometry, recData, weights, dm, srcnum::Int64, op::Char, mode::Int64, options)
     pm = load_pymodel()
 
     # Load full geometry for out-of-core geometry containers
@@ -13,7 +13,8 @@ function extended_source_modeling(model_full::Modelall, srcData, recGeometry, re
     # Set up Python model structure
     modelPy = devito_model(model, options)
     if op=='J' && mode == 1
-        update_dm(modelPy, reshape(dm, model.n), options)
+        update_dm(modelPy, dm, options)
+        modelPy.dm == 0 && return judiVector(recGeometry, zeros(Float32, recGeometry.nt[1], length(recGeometry.xloc[1])))
     end
 
     # Load shot record if stored on disk
@@ -38,12 +39,12 @@ function extended_source_modeling(model_full::Modelall, srcData, recGeometry, re
 
     # Extend gradient back to original model size
     if op=='J' && mode==-1 && options.limit_m==true
-        argout = vec(extend_gradient(model_full, model, reshape(argout, model.n)))
+        argout = PhysicalParameter(extend_gradient(model_full, model, argout), model.d, model.o)
     end
 
     return argout
 end
 
 # Function instance without options
-extended_source_modeling(model::Modelall, srcData, recGeometry, recData,  weights, perturbation, srcnum::Int64, op::Char, mode::Int64) =
+extended_source_modeling(model::Model, srcData, recGeometry, recData,  weights, perturbation, srcnum::Int64, op::Char, mode::Int64) =
     extended_source_modeling(model, srcData, recGeometry, recData, weights, perturbation, srcnum, op, mode, Options())

@@ -5,8 +5,6 @@
 # Mathias Louboutin, mlouboutin3@gatech.edu
 # Updated July 2020
 
-using JUDI.TimeModeling, SegyIO, Test, LinearAlgebra
-
 ########################################################### judiRHS ####################################################
 
 @testset "judiRHS Unit Tests with $(nsrc) sources" for nsrc=[1, 2]

@@ -16,7 +16,7 @@ struct judiJacobianExQ{DDT<:Number,RDT<:Number} <: joAbstractLinearOperator{DDT,
     m::Integer
     n::Integer
     info::Info
-    model::Modelall
+    model::Model
     recGeometry::Geometry
     wavelet
     weights
@@ -63,7 +63,8 @@ function judiJacobian(F::judiPDEextended, weights::Union{judiWeights, Array}; DD
 
     return J = judiJacobianExQ{Float32,Float32}("linearized wave equation", m, n, F.info, F.model, F.recGeometry, F.wavelet, weights, F.options,
         v -> extended_source_modeling(F.model, F.wavelet, F.recGeometry, nothing, weights, v, srcnum, 'J', 1, F.options),
-        w -> extended_source_modeling(F.model, F.wavelet, F.recGeometry, process_input_data(w, F.recGeometry, F.info), weights, nothing, srcnum, 'J', -1, F.options)
+        w -> extended_source_modeling(F.model, F.wavelet, F.recGeometry, process_input_data(w, F.recGeometry, F.info),
+                                      weights, nothing, srcnum, 'J', -1, F.options)
     )
 end
 
@@ -168,4 +169,4 @@ end
 
 getindex(J::judiJacobianExQ,a) = subsample(J, a)
 
-zerox(J::judiJacobianExQ, y::judiVector) = zeros(Float32, size(J, 2))
+zerox(J::judiJacobianExQ, y::judiVector) = PhysicalParameter(zeros(Float32, J.model.n), J.model.d, J.model.o)

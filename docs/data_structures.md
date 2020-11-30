@@ -1,5 +1,42 @@
 # Data structures
 
+## Physical Parameter
+
+Data structure for physical parameter array in JUDI. A `PhysicalParameter` inherits from julia `AbstractVector`
+
+**Construction**
+
+A `PhysicalParameter` can be constructed in various ways but always require the origin `o` and grid spacing `d` that
+cannot be infered from the array.
+
+```julia
+p = PhysicalParameter(v::Array{vDT}, d, o)
+```
+where `v` is an n-dimensional array and n=size(v).
+
+```julia
+p = PhysicalParameter(n, d, o; vDT=Float32)
+```
+Creates a zero PhysicalParameter.
+
+```julia
+p = PhysicalParameter(v::Array{vDT}, A::PhysicalParameter)
+```
+Creates a PhysicalParameter from the Array `v` with n, d, o from `A`.
+
+```julia
+p = PhysicalParameter(v::Array{vDT, N}, n::Tuple, d::Tuple, o::Tuple)
+```
+where `v` is a vector or nd-array that is reshaped into shape `n`.
+
+```julia
+p = PhysicalParameter(v::vDT, n::Tuple, d::Tuple, o::Tuple)
+```
+Creates a constant (single number) PhyicalParameter.
+
+**Access fields:**
+
+
 ## Model structure
 
 Data structure for velocity models in JUDI.
@@ -11,6 +48,8 @@ Data structure for velocity models in JUDI.
 ```julia
 model = Model(n, d, o, m; nb=40, rho=1f0, epsilon=0f0, delta=0f0, theta=0f0, phi=0f0)
 ```
+
+Accessible fields include all of the above parameters `p.n, p.d, p.o, p.data`. Additionaly, arithmetic operation are all impemented such as addition, multiplication, broadcasting and indexing. Linear algebra operation are implemented as well but will return a standard Julia vector if the matrix used is external to JUDI.
 
 **Parameters:**
 

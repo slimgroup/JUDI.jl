@@ -303,6 +303,8 @@ function subsample(a::judiWeights{avDT},srcnum) where avDT
     return sub
 end
 
+length(x::judiWeights) = x.m
+
 getindex(x::judiWeights, a::Integer) = subsample(x,a)
 
 setindex!(x::judiWeights, y, i) = x.weights[i][:] = y

@@ -5,10 +5,6 @@
 # Mathias Louboutin, mlouboutin3@gatech.edu
 # Updated July 2020
 
-using JUDI.TimeModeling, Test, LinearAlgebra, JOLI
-import LinearAlgebra.BLAS.axpy!
-
-
 # number of sources/receivers
 nrec = 120
 weight_size_x = 4

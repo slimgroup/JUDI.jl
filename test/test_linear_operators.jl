@@ -5,8 +5,6 @@
 # Mathias Louboutin, mlouboutin3@gatech.edu
 # Updated July 2020
 
-using JUDI.TimeModeling, SegyIO, Test, LinearAlgebra
-
 # Tests
 function test_transpose(Op)
     @test isequal(size(Op), size(conj(Op)))

@@ -1,8 +1,6 @@
 # Author: Mathias Louboutin, mlouboutin3@gatech.edu
 # Date: July 2020
 
-using PyCall, PyPlot, JUDI.TimeModeling, Images, LinearAlgebra, Test, ArgParse, Printf
-
 parsed_args = parse_commandline()
 
 nlayer = parsed_args["nlayer"]
@@ -23,14 +21,14 @@ dt = srcGeometry.dt[1]
 
         # Linearized modeling
         J = judiJacobian(F, q)
-        x = vec(dm)
+        @test norm(J*(0f0.*dm)) == 0
 
         y0 = F*q
-        y_hat = J*x
+        y_hat = J*dm
         x_hat1 = adjoint(J)*y0
 
         c = dot(y0, y_hat)
-        d = dot(x, x_hat1)
+        d = dot(dm, x_hat1)
         @printf(" <J x, y> : %2.5e, <x, J' y> : %2.5e, relative error : %2.5e \n", c, d, c/d - 1)
         @test isapprox(c, d, rtol=5f-2)
         @test !isnan(norm(y0))
@@ -45,13 +43,13 @@ dt = srcGeometry.dt[1]
         # Linearized modeling
         J = judiJacobian(F, q)
 
-        y_hat = J*x
+        y_hat = J*dm
         x_hat2 = adjoint(J)*y0
 
         c = dot(y0, y_hat)
-        d = dot(x, x_hat2)
+        d = dot(dm, x_hat2)
         @printf(" <J x, y> : %2.5e, <x, J' y> : %2.5e, relative error : %2.5e \n", c, d, c/d - 1)
-        @test isapprox(c, d, rtol=5f-4)
+        @test isapprox(c, d, rtol=5f-3)
 
         @test !isnan(norm(y_hat))
         @test !isnan(norm(x_hat2))
@@ -64,12 +62,13 @@ dt = srcGeometry.dt[1]
 
         # Linearized modeling
         J = judiJacobian(F, q)
+        @test norm(J*(0f0.*dm)) == 0
 
-        y_hat = J*x
+        y_hat = J*dm
         x_hat3 = adjoint(J)*y0
 
         c = dot(y0, y_hat)
-        d = dot(x, x_hat3)
+        d = dot(dm, x_hat3)
         @printf(" <J x, y> : %2.5e, <x, J' y> : %2.5e, relative error : %2.5e \n", c, d, c/d - 1)
         @test !isnan(norm(y_hat))
         @test !isnan(norm(x_hat3))
@@ -83,12 +82,13 @@ dt = srcGeometry.dt[1]
 
         # Linearized modeling
         J = judiJacobian(F, q)
+        @test norm(J*(0f0.*dm)) == 0
 
-        y_hat = J*x
+        y_hat = J*dm
         x_hat3 = adjoint(J)*y0
 
         c = dot(y0, y_hat)
-        d = dot(x, x_hat3)
+        d = dot(dm, x_hat3)
         @printf(" <J x, y> : %2.5e, <x, J' y> : %2.5e, relative error : %2.5e \n", c, d, c/d - 1)
         @test !isnan(norm(y_hat))
         @test !isnan(norm(x_hat3))
@@ -101,11 +101,11 @@ dt = srcGeometry.dt[1]
         # Linearized modeling
         J = judiJacobian(F, q)
 
-        y_hat = J*x
+        y_hat = J*dm
         x_hat4 = adjoint(J)*y0
 
         c = dot(y0, y_hat)
-        d = dot(x, x_hat4)
+        d = dot(dm, x_hat4)
         @printf(" <J x, y> : %2.5e, <x, J' y> : %2.5e, relative error : %2.5e \n", c, d, c/d - 1)
         @test isapprox(c, d, rtol=1f-2)
         @test !isnan(norm(y_hat))
@@ -120,12 +120,13 @@ dt = srcGeometry.dt[1]
 
         # Linearized modeling
         J = judiJacobian(F, q)
+        @test norm(J*(0f0.*dm)) == 0
 
-        y_hat = J*x
+        y_hat = J*dm
         x_hat5 = adjoint(J)*y0
 
         c = dot(y0, y_hat)
-        d = dot(x, x_hat5)
+        d = dot(dm, x_hat5)
         @printf(" <J x, y> : %2.5e, <x, J' y> : %2.5e, relative error : %2.5e \n", c, d, c/d - 1)
         @test !isnan(norm(y_hat))
         @test !isnan(norm(x_hat5))

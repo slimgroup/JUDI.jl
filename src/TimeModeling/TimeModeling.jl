@@ -10,15 +10,18 @@ using PyCall, JOLI, SegyIO, DSP, Dierckx
 
 import Base.*, Base./, Base.+, Base.-, Base.copy!, Base.copy, Base.sum, Base.ndims, Base.reshape, Base.fill!, Base.maximum, Base.minimum
 import Base.Broadcast.broadcasted, Base.BroadcastStyle, Base.Broadcast.DefaultArrayStyle
-import Base.getindex, Base.setindex!, Base.firstindex, Base.lastindex, Base.axes, Base.ndims
-import Base.similar, Base.isapprox, Base.isequal, Base.broadcast!, Base.materialize!
-import Base.eltype, Base.length, Base.size, Base.iterate
+import Base.getindex, Base.setindex!, Base.firstindex, Base.lastindex, Base.axes, Base.ndims, Base.dotview
+import Base.similar, Base.isapprox, Base.isequal, Base.broadcast!, Base.materialize!, Base.materialize
+import Base.eltype, Base.length, Base.size, Base.iterate, Base.show, Base.display, Base.showarg
+import Base.promote_shape
 
 import LinearAlgebra.transpose, LinearAlgebra.conj, LinearAlgebra.vcat, LinearAlgebra.adjoint
 import LinearAlgebra.vec, LinearAlgebra.dot, LinearAlgebra.norm, LinearAlgebra.abs
 import LinearAlgebra.rmul!, LinearAlgebra.mul!, Base.isfinite
 
 import IterativeSolvers.zerox
+
+import PyCall.array2py
 
 #############################################################################
 # Containers
@@ -48,6 +51,8 @@ include("fwi_objective_serial.jl")  # FWI objective function value and gradient
 include("fwi_objective_parallel.jl")    # parallelization for FWI gradient
 include("lsrtm_objective_serial.jl")  # LSRTM objective function value and gradient
 include("lsrtm_objective_parallel.jl")    # parallelization for LSRTM gradient
+include("twri_objective_serial.jl")  # TWRI objective function value and gradient
+include("twri_objective_parallel.jl")    # parallelization for TWRI gradient
 
 #############################################################################
 # Linear operators
@@ -63,5 +68,9 @@ include("judiJacobianExtendedSource.jl")  # Jacobian of extended source modeling
 #############################################################################
 # Preconditioners and optimization
 include("seismic_preconditioners.jl")
+
+#############################################################################
+# Utility types
+const SourceTypes = Union{judiVector, Tuple{judiWeights, judiLRWF}}
 
 end

@@ -172,7 +172,8 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Nothing,
 end
 
 # d_lin = J*dm
-function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Geometry, srcData::Array, recGeometry::Geometry, recData::Nothing, dm::Array, options::Options)
+function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Geometry, srcData::Array, recGeometry::Geometry,
+                          recData::Nothing, dm::Union{PhysicalParameter, Array}, options::Options)
     ac = load_devito_jit()
 
     # Interpolate input data to computational grid
@@ -205,7 +206,8 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Geometry
 end
 
 # dm = J'*d_lin
-function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Geometry, srcData::Array, recGeometry::Geometry, recData::Array, dm::Nothing, options::Options)
+function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Geometry, srcData::Array, recGeometry::Geometry,
+                          recData::Array, dm::Nothing, options::Options)
     ac = load_devito_jit()
 
     # Interpolate input data to computational grid
@@ -225,7 +227,7 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Geometry
 
     # Remove PML and return gradient as Array
     grad = remove_padding(grad, modelPy.padsizes; true_adjoint=options.sum_padding)
-    return vec(grad)
+    return PhysicalParameter(grad, model.d, model.o)
 end
 
 
@@ -233,7 +235,8 @@ end
 
 
 # d_obs = Pr*F*Pw'*w - modeling w/ extended source
-function devito_interface(modelPy::PyCall.PyObject, model, srcData::Array, recGeometry::Geometry, recData::Nothing, weights::Array, dm::Nothing, options::Options)
+function devito_interface(modelPy::PyCall.PyObject, model, srcData::Array, recGeometry::Geometry, recData::Nothing,
+                          weights::Array, dm::Nothing, options::Options)
     ac = load_devito_jit()
 
     # Interpolate input data to computational grid
@@ -291,7 +294,8 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcData::Array, recGe
 end
 
 # Jacobian of extended source modeling: d_lin = J*dm
-function devito_interface(modelPy::PyCall.PyObject, model, srcData::Array, recGeometry::Geometry, recData::Nothing, weights::Array, dm::Array, options::Options)
+function devito_interface(modelPy::PyCall.PyObject, model, srcData::Array, recGeometry::Geometry, recData::Nothing, weights::Array,
+                          dm::Union{PhysicalParameter, Array}, options::Options)
     ac = load_devito_jit()
 
     # Interpolate input data to computational grid
@@ -337,5 +341,5 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcData::Array, recGe
                   dft_sub=options.dft_subsampling_factor[1])
     # Remove PML and return gradient as Array
     grad = remove_padding(grad, modelPy.padsizes; true_adjoint=options.sum_padding)
-    return vec(grad)
+    return PhysicalParameter(grad, model.d, model.o)
 end

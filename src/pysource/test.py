@@ -32,38 +32,39 @@ shape = (201, 201)
 spacing = (5., 5.)
 origin = (0., 0.)
 
-v = np.empty(shape, dtype=np.float32)
-v0 = np.empty(shape, dtype=np.float32)
+m = np.empty(shape, dtype=np.float32)
+m0 = np.empty(shape, dtype=np.float32)
 rho = np.empty(shape, dtype=np.float32)
 rho0 = np.empty(shape, dtype=np.float32)
 
-v[:] = 1.5  # Top velocity (background)
-v0[:] = 1.5  # Top velocity (background)
+m[:] = 1/1.5**2  # Top velocity (background)
+m0[:] = 1.5**2  # Top velocity (background)
 rho[:] = 1.0
 rho0[:] = 1.0
 
-vp_i = np.linspace(1.5, 4.5, args.nlayer)
+m_i = np.linspace(1/1.5**2, 1/4.5**2, args.nlayer)
 rho_i = np.linspace(1.0, 2.8, args.nlayer)
 
 for i in range(1, args.nlayer):
-    v[..., i*int(shape[-1] / args.nlayer):] = vp_i[i]  # Bottom velocity
+    m[..., i*int(shape[-1] / args.nlayer):] = m_i[i]  # Bottom velocity
     rho[..., i*int(shape[-1] / args.nlayer):] = rho_i[i]  # Bottom velocity
 
-dm = 1/v**2 - 1/v0**2
+dm = m0 - m
+v = m**(-.5)
 # Set up model structures
 if is_tti:
     model = Model(shape=shape, origin=origin, spacing=spacing,
-                  vp=v, epsilon=.09*(v-1.5), delta=.075*(v-1.5),
+                  m=m, epsilon=.09*(v-1.5), delta=.075*(v-1.5),
                   rho=1, space_order=8, fs=args.fs)
 
     model0 = Model(shape=shape, origin=origin, spacing=spacing,
-                   vp=v0, epsilon=.09*(v-1.5), delta=.075*(v-1.5),
+                   m=m0, epsilon=.09*(v-1.5), delta=.075*(v-1.5),
                    rho=1, space_order=8, dt=model.critical_dt, dm=dm, fs=args.fs)
 else:
     model = Model(shape=shape, origin=origin, spacing=spacing,
-                  vp=v, space_order=8, fs=args.fs)
+                  m=m, space_order=8, fs=args.fs)
     model0 = Model(shape=shape, origin=origin, spacing=spacing, dm=dm,
-                   vp=v0, space_order=8, dt=model.critical_dt, fs=args.fs)
+                   m=m0, space_order=8, dt=model.critical_dt, fs=args.fs)
 
 # Time axis
 t0 = 0.

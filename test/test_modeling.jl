@@ -6,8 +6,6 @@
 # Mathias Louboutin, mlouboutin3@gatech.edu
 # Updated July 2020
 
-using Distributed, JOLI
-
 parsed_args = parse_commandline()
 
 # Set parallel if specified
@@ -60,7 +58,7 @@ cases = [(true, true), (true, false), (false, true), (false, false)]
 	Ps = judiProjection(info, srcGeometry)
 
 	# Combined operator Pr*F*adjoint(Ps)
-	Ffull = judiModeling(info, model, srcGeometry, recGeometry)
+	Ffull = judiModeling(model, srcGeometry, recGeometry)
 	J = judiJacobian(Pr*F0*adjoint(Ps),q; options=optJ) # equivalent to J = judiJacobian(Ffull,q)
 
 	# Nonlinear modeling
@@ -115,9 +113,9 @@ end
 	dobs = Pr*F*u
 	v = Fa*(adjoint(Pr)*dobs)
 
-	a = dot(v, u)
+	a = dot(u, v)
 	b = dot(dobs, dobs)
-	@printf(" <F x, y> : %2.5e, <x, F' y> : %2.5e, relative error : %2.5e \n", a, b, a/b - 1)
+	@printf(" <F x, y> : %2.5e, <x, F' y> : %2.5e, relative error : %2.5e \n", b, a, a/b - 1)
 	@test isapprox(a, b, rtol=1f-4)
 
 
