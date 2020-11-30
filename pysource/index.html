@@ -86,8 +86,6 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#fd_utils-module">FD_utils module</a>
         <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#fd_utilsp_mmodel-u-v">FD_utils.P_M(model, u, v)</a>
-    </li>
     <li class="toctree-l3"><a class="reference internal" href="#fd_utilsr_matmodel">FD_utils.R_mat(model)</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#fd_utilsdivsfunc-so_fact1-side-1">FD_utils.divs(func, so_fact=1, side=- 1)</a>
@@ -96,9 +94,7 @@
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#fd_utilslaplacianv-irho">FD_utils.laplacian(v, irho)</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#fd_utilsssa_ttiu-v-model">FD_utils.ssa_tti(u, v, model)</a>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#fd_utilstensor_factu-v-model">FD_utils.tensor_fact(u, v, model)</a>
+    <li class="toctree-l3"><a class="reference internal" href="#fd_utilssa_ttiu-v-model">FD_utils.sa_tti(u, v, model)</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#fd_utilsthomsen_matmodel">FD_utils.thomsen_mat(model)</a>
     </li>
@@ -212,6 +208,8 @@
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#interfacegrad_fwimodel-recin-rec_coords-u-space_order8">interface.grad_fwi(model, recin, rec_coords, u, space_order=8)</a>
     </li>
+    <li class="toctree-l3"><a class="reference internal" href="#interfacewri_funcmodel-src_coords-wavelet-rec_coords-recin-yin-space_order8-isicfalse-wsnone-t_sub1-gradm-grad_corrfalse-alpha_opfalse-w_funnone-eps0">interface.wri_func(model, src_coords, wavelet, rec_coords, recin, yin, space_order=8, isic=False, ws=None, t_sub=1, grad='m', grad_corr=False, alpha_op=False, w_fun=None, eps=0)</a>
+    </li>
         </ul>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#kernels-module">kernels module</a>
@@ -226,7 +224,7 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#models-module">models module</a>
         <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#class-modelsmodelorigin-spacing-shape-vp-space_order2-nbl40-dtype-epsilonnone-deltanone-thetanone-phinone-rho1-dmnone-fsfalse-kwargs">class models.Model(origin, spacing, shape, vp, space_order=2, nbl=40, dtype=, epsilon=None, delta=None, theta=None, phi=None, rho=1, dm=None, fs=False, **kwargs)</a>
+    <li class="toctree-l3"><a class="reference internal" href="#class-modelsmodelorigin-spacing-shape-m-space_order2-nbl40-dtype-epsilonnone-deltanone-thetanone-phinone-rho1-dmnone-fsfalse-kwargs">class models.Model(origin, spacing, shape, m, space_order=2, nbl=40, dtype=, epsilon=None, delta=None, theta=None, phi=None, rho=1, dm=None, fs=False, **kwargs)</a>
         <ul>
     <li class="toctree-l4"><a class="reference internal" href="#property-critical_dt">property critical_dt()</a>
     </li>
@@ -250,17 +248,17 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#propagators-module">propagators module</a>
         <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#propagatorsadjointmodel-y-src_coords-rcv_coords-space_order8-q0-savefalse-wsnone">propagators.adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0, save=False, ws=None)</a>
+    <li class="toctree-l3"><a class="reference internal" href="#propagatorsadjointmodel-y-src_coords-rcv_coords-space_order8-q0-savefalse-wsnone-norm_vfalse-w_funnone">propagators.adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0, save=False, ws=None, norm_v=False, w_fun=None)</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#propagatorsbornmodel-src_coords-rcv_coords-wavelet-space_order8-savefalse-qnone-return_opfalse-isicfalse-freq_listnone-dft_subnone-wsnone-t_sub1-nlindfalse">propagators.born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False, q=None, return_op=False, isic=False, freq_list=None, dft_sub=None, ws=None, t_sub=1, nlind=False)</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#propagatorsforwardmodel-src_coords-rcv_coords-wavelet-space_order8-savefalse-qnone-return_opfalse-freq_listnone-dft_subnone-wsnone-t_sub1-kwargs">propagators.forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False, q=None, return_op=False, freq_list=None, dft_sub=None, ws=None, t_sub=1, **kwargs)</a>
     </li>
+    <li class="toctree-l3"><a class="reference internal" href="#propagatorsforward_gradmodel-src_coords-rcv_coords-wavelet-v-space_order8-qnone-wsnone-isicfalse-wnone-kwargs">propagators.forward_grad(model, src_coords, rcv_coords, wavelet, v, space_order=8, q=None, ws=None, isic=False, w=None, **kwargs)</a>
+    </li>
     <li class="toctree-l3"><a class="reference internal" href="#propagatorsgradientmodel-residual-rcv_coords-u-return_opfalse-space_order8-wnone-freqnone-dft_subnone-isicfalse">propagators.gradient(model, residual, rcv_coords, u, return_op=False, space_order=8, w=None, freq=None, dft_sub=None, isic=False)</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#propagatorsnamemodel">propagators.name(model)</a>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#propagatorsopt_opmodel-no_msfalse">propagators.opt_op(model, no_ms=False)</a>
     </li>
         </ul>
     </li>
@@ -396,6 +394,8 @@
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#wave_utilswavefield_subsampledmodel-u-nt-t_sub-space_order8">wave_utils.wavefield_subsampled(model, u, nt, t_sub, space_order=8)</a>
     </li>
+    <li class="toctree-l3"><a class="reference internal" href="#wave_utilsweighted_normu-weightnone">wave_utils.weighted_norm(u, weight=None)</a>
+    </li>
     <li class="toctree-l3"><a class="reference internal" href="#wave_utilswf_as_srcv-w1">wave_utils.wf_as_src(v, w=1)</a>
     </li>
         </ul>
@@ -447,21 +447,6 @@
                 <h1 id="pysource-package">pysource package</h1>
 <h2 id="submodules">Submodules</h2>
 <h2 id="fd_utils-module">FD_utils module</h2>
-<h3 id="fd_utilsp_mmodel-u-v">FD_utils.P_M(model, u, v)</h3>
-<p>Vectorial temporaries for TTI.</p>
-<ul>
-<li>
-<p><strong>Parameters</strong></p>
-<ul>
-<li>
-<p><strong>model</strong> (<em>Model</em>) – Model structure</p>
-</li>
-<li>
-<p><strong>so</strong> (<em>Int</em>) – Space order for discretization</p>
-</li>
-</ul>
-</li>
-</ul>
 <h3 id="fd_utilsr_matmodel">FD_utils.R_mat(model)</h3>
 <p>Rotation matrix according to tilt and asymut.</p>
 <ul>
@@ -478,25 +463,7 @@ with grads.</p>
 with divs.</p>
 <h3 id="fd_utilslaplacianv-irho">FD_utils.laplacian(v, irho)</h3>
 <p>Laplacian with density div( 1/rho grad) (u)</p>
-<h3 id="fd_utilsssa_ttiu-v-model">FD_utils.ssa_tti(u, v, model)</h3>
-<p>TTI finite difference kernel.</p>
-<ul>
-<li>
-<p><strong>Parameters</strong></p>
-<ul>
-<li>
-<p><strong>u</strong> (<em>TimeFunction</em>) – first TTI field</p>
-</li>
-<li>
-<p><strong>v</strong> (<em>TimeFunction</em>) – second TTI field</p>
-</li>
-<li>
-<p><strong>model</strong> (<em>Model</em>) – Model structure</p>
-</li>
-</ul>
-</li>
-</ul>
-<h3 id="fd_utilstensor_factu-v-model">FD_utils.tensor_fact(u, v, model)</h3>
+<h3 id="fd_utilssa_ttiu-v-model">FD_utils.sa_tti(u, v, model)</h3>
 <p>Tensor factorized SSA TTI wave equation spatial derivatives.</p>
 <ul>
 <li>
@@ -1315,6 +1282,8 @@ perturbation (square slowness) dm with an extended source</p>
 <p>Array</p>
 </li>
 </ul>
+<h3 id="interfacewri_funcmodel-src_coords-wavelet-rec_coords-recin-yin-space_order8-isicfalse-wsnone-t_sub1-gradm-grad_corrfalse-alpha_opfalse-w_funnone-eps0">interface.wri_func(model, src_coords, wavelet, rec_coords, recin, yin, space_order=8, isic=False, ws=None, t_sub=1, grad='m', grad_corr=False, alpha_op=False, w_fun=None, eps=0)</h3>
+<p>Time domain wavefield reconstruction inversion wrapper</p>
 <h2 id="kernels-module">kernels module</h2>
 <h3 id="kernelsacoustic_kernelmodel-u-fwtrue-qnone">kernels.acoustic_kernel(model, u, fw=True, q=None)</h3>
 <p>Acoustic wave equation time stepper</p>
@@ -1383,7 +1352,7 @@ perturbation (square slowness) dm with an extended source</p>
 </li>
 </ul>
 <h2 id="models-module">models module</h2>
-<h3 id="class-modelsmodelorigin-spacing-shape-vp-space_order2-nbl40-dtype-epsilonnone-deltanone-thetanone-phinone-rho1-dmnone-fsfalse-kwargs">class models.Model(origin, spacing, shape, vp, space_order=2, nbl=40, dtype=<class 'numpy.float32'>, epsilon=None, delta=None, theta=None, phi=None, rho=1, dm=None, fs=False, **kwargs)</h3>
+<h3 id="class-modelsmodelorigin-spacing-shape-m-space_order2-nbl40-dtype-epsilonnone-deltanone-thetanone-phinone-rho1-dmnone-fsfalse-kwargs">class models.Model(origin, spacing, shape, m, space_order=2, nbl=40, dtype=<class 'numpy.float32'>, epsilon=None, delta=None, theta=None, phi=None, rho=1, dm=None, fs=False, **kwargs)</h3>
 <p>The physical model used in seismic inversion processes.</p>
 <ul>
 <li>
@@ -1402,7 +1371,7 @@ perturbation (square slowness) dm with an extended source</p>
 <p><strong>space_order</strong> (<em>int</em>) – Order of the spatial stencil discretisation.</p>
 </li>
 <li>
-<p><strong>vp</strong> (<em>array_like</em><em> or </em><em>float</em>) – Velocity in km/s.</p>
+<p><strong>m</strong> (<em>array_like</em><em> or </em><em>float</em>) – Squared slownes in s^2/km^2</p>
 </li>
 <li>
 <p><strong>nbl</strong> (<em>int</em><em>, </em><em>optional</em>) – The number of absorbin layers for boundary damping.</p>
@@ -1437,16 +1406,16 @@ perturbation (square slowness) dm with an extended source</p>
 <h4 id="property-is_tti">property is_tti()</h4>
 <p>Whether the model is TTI or isotopic</p>
 <h4 id="property-m">property m()</h4>
-<p>Symbolic representation of the squared slowness
-m = 1/vp^2</p>
+<p>Function holding the squared slowness in s^2/km^2.</p>
 <h4 id="property-space_order">property space_order()</h4>
 <p>Spatial discretization order</p>
 <h4 id="property-spacing_map">property spacing_map()</h4>
 <p>Map between spacing symbols and their values for each SpaceDimension.</p>
 <h4 id="property-vp">property vp()</h4>
-<p>Function holding the model velocity in km/s.</p>
+<p>Symbolic representation of the velocity
+vp = sqrt(1 / m)</p>
 <h2 id="propagators-module">propagators module</h2>
-<h3 id="propagatorsadjointmodel-y-src_coords-rcv_coords-space_order8-q0-savefalse-wsnone">propagators.adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0, save=False, ws=None)</h3>
+<h3 id="propagatorsadjointmodel-y-src_coords-rcv_coords-space_order8-q0-savefalse-wsnone-norm_vfalse-w_funnone">propagators.adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0, save=False, ws=None, norm_v=False, w_fun=None)</h3>
 <p>Low level propagator, to be used through interface.py
 Compute adjoint wavefield v = adjoint(F(m))*y
 and related quantities (||v||_w, v(xsrc))</p>
@@ -1457,11 +1426,13 @@ and related quantities.</p>
 <h3 id="propagatorsforwardmodel-src_coords-rcv_coords-wavelet-space_order8-savefalse-qnone-return_opfalse-freq_listnone-dft_subnone-wsnone-t_sub1-kwargs">propagators.forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False, q=None, return_op=False, freq_list=None, dft_sub=None, ws=None, t_sub=1, **kwargs)</h3>
 <p>Low level propagator, to be used through interface.py
 Compute forward wavefield u = A(m)^{-1}*f and related quantities (u(xrcv))</p>
+<h3 id="propagatorsforward_gradmodel-src_coords-rcv_coords-wavelet-v-space_order8-qnone-wsnone-isicfalse-wnone-kwargs">propagators.forward_grad(model, src_coords, rcv_coords, wavelet, v, space_order=8, q=None, ws=None, isic=False, w=None, **kwargs)</h3>
+<p>Low level propagator, to be used through interface.py
+Compute forward wavefield u = A(m)^{-1}*f and related quantities (u(xrcv))</p>
 <h3 id="propagatorsgradientmodel-residual-rcv_coords-u-return_opfalse-space_order8-wnone-freqnone-dft_subnone-isicfalse">propagators.gradient(model, residual, rcv_coords, u, return_op=False, space_order=8, w=None, freq=None, dft_sub=None, isic=False)</h3>
 <p>Low level propagator, to be used through interface.py
 Compute the action of the adjoint Jacobian onto a residual J’* δ d.</p>
 <h3 id="propagatorsnamemodel">propagators.name(model)</h3>
-<h3 id="propagatorsopt_opmodel-no_msfalse">propagators.opt_op(model, no_ms=False)</h3>
 <h2 id="sensitivity-module">sensitivity module</h2>
 <h3 id="sensitivitybasic_srcmodel-u-kwargs">sensitivity.basic_src(model, u, **kwargs)</h3>
 <p>Basic source for linearized modeling</p>
@@ -1904,6 +1875,22 @@ the acoustic wave equation</p>
 </li>
 <li>
 <p><strong>space_order</strong> (<em>int</em>) – Spatial discretization order</p>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="wave_utilsweighted_normu-weightnone">wave_utils.weighted_norm(u, weight=None)</h3>
+<p>Space-time norm of a wavefield, split into norm in time first then in space to avoid
+breaking loops</p>
+<ul>
+<li>
+<p><strong>Parameters</strong></p>
+<ul>
+<li>
+<p><strong>u</strong> (<em>TimeFunction</em><em> or </em><em>Tuple of TimeFunction</em>) – Wavefield to take the norm of</p>
+</li>
+<li>
+<p><strong>weight</strong> (<em>String</em>) – Spacial weight to apply</p>
 </li>
 </ul>
 </li>
