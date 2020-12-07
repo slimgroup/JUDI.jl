@@ -7,7 +7,7 @@
 ################################################################################
 ### Module loading
 
-using JUDI, JLD2, JUDI.TimeModeling
+using JUDI, JLD2, JUDI
 
 ### Load true model
 base_path = dirname(pathof(JUDI))*"/../examples/twri/"

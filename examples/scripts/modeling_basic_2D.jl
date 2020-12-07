@@ -4,7 +4,7 @@
 # Date: January 2017
 #
 
-using JUDI.TimeModeling, SegyIO, LinearAlgebra
+using JUDI, SegyIO, LinearAlgebra
 
 # Set up model structure
 n = (120, 100)   # (x,y,z) or (x,z)
@@ -88,6 +88,8 @@ f, g = fwi_objective(model0, q, dobs; options=opt)
 
 # TWRI
 f, gm, gy = twri_objective(model0, q, dobs, nothing; options=opt, optionswri=TWRIOptions(params=:all))
+f, gm = twri_objective(model0, q, dobs, nothing; options=Options(frequencies=[[.009, .011], [.008, .012]]),
+                                                 optionswri=TWRIOptions(params=:m))
 
 # evaluate LSRTM objective function
 fj, gj = lsrtm_objective(model0, q, dD, dm; options=opt)

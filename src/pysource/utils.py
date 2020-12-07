@@ -83,7 +83,7 @@ def opt_op(model):
     model: Model
         Model structure to know if we are in a TTI model
     """
-    opts = {'openmp': True, 'mpi': False}
+    opts = {'openmp': True, 'mpi': False, 'par-collapse-ncores': 2}
     # Minimal size temporaries
     if not model.fs:
         try:

@@ -4,7 +4,7 @@
 #
 
 using Statistics, Random, LinearAlgebra
-using JUDI.TimeModeling, NLopt, HDF5, SegyIO, PyPlot
+using JUDI, NLopt, HDF5, SegyIO, PyPlot
 
 # Load starting model
 if ~isfile("overthrust_model_2D.h5")

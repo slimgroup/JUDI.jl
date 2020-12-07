@@ -218,7 +218,7 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Geometry
     # Set up coordinates with devito dimensions
     src_coords = setup_grid(srcGeometry, modelPy.shape)
     rec_coords = setup_grid(recGeometry, modelPy.shape)
-    length(options.frequencies) == 0 ? freqs = [] : freqs = options.frequencies[1]
+    length(options.frequencies) == 0 ? freqs = nothing : freqs = options.frequencies
     grad = pycall(ac."J_adjoint", Array{Float32, modelPy.dim}, modelPy,
                   src_coords, qIn, rec_coords, dIn, t_sub=options.subsampling_factor,
                   space_order=options.space_order, checkpointing=options.optimal_checkpointing,
@@ -333,7 +333,7 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcData::Array, recGe
     dIn = time_resample(recData[1],recGeometry,dtComp)[1]
     # Set up coordinates with devito dimensions
     rec_coords = setup_grid(recGeometry, modelPy.shape)
-    length(options.frequencies) == 0 ? freqs = [] : freqs = options.frequencies[1]
+    length(options.frequencies) == 0 ? freqs = nothing : freqs = options.frequencies
     grad = pycall(ac."J_adjoint", Array{Float32, modelPy.dim}, modelPy,
                   nothing, qIn, rec_coords, dIn, t_sub=options.subsampling_factor,
                   space_order=options.space_order, checkpointing=options.optimal_checkpointing,

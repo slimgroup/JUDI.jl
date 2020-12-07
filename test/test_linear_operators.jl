@@ -50,6 +50,15 @@ end
     @test test_getindex(F_forward, nsrc)
     @test test_getindex(F_adjoint, nsrc)
 
+    if VERSION>v"1.2"
+        a = randn(Float32, model.n...)
+        F2 = F_forward(;m=a)
+        @test isapprox(F2.model.m, a)
+        F2 = F_forward(Model(model.n, model.d, model.o, a))
+        @test isapprox(F2.model.m, a)
+        @test F2.model.n == model.n
+    end
+
 end
 
 ############################################################# judiPDE ##################################################

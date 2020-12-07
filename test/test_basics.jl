@@ -117,8 +117,8 @@ end
         test_padding(ndim)
     end
     opt = Options(frequencies=[[2.5, 4.5], [3.5, 5.5]])
-    @test subsample(opt, 1).frequencies[1] == [2.5, 4.5]
-    @test subsample(opt, 2).frequencies[1] == [3.5, 5.5]
+    @test subsample(opt, 1).frequencies == [2.5, 4.5]
+    @test subsample(opt, 2).frequencies == [3.5, 5.5]
 
     for ndim=[2, 3]
         for tti=[true, false]

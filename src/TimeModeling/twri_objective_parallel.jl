@@ -25,7 +25,6 @@ function twri_objective(model::Model, source::judiVector, dObs::judiVector, y::U
     twri_objective = retry(twri_objective_par)
 
     results = Array{Any}(undef, dObs.nsrc)
-
     @sync begin
         for j=1:dObs.nsrc
             opt_local = subsample(options,j)

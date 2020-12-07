@@ -1,26 +1,7 @@
-# Module with functions for time-domain modeling and inversion using OPESCI/devito
+# Functions for time-domain modeling and inversion using devito
 # Author: Philipp Witte, pwitte@eos.ubc.ca
 # Date: January, 2017
-#
-#__precompile__()
-module TimeModeling
-
-using JUDI, LinearAlgebra, Base.Broadcast, FFTW, Pkg, Printf, Distributed
-using PyCall, JOLI, SegyIO, DSP
-
-import Base.*, Base./, Base.+, Base.-, Base.copy!, Base.copy, Base.sum, Base.ndims, Base.reshape, Base.fill!, Base.maximum, Base.minimum
-import Base.Broadcast.broadcasted, Base.BroadcastStyle, Base.Broadcast.DefaultArrayStyle
-import Base.getindex, Base.setindex!, Base.firstindex, Base.lastindex, Base.axes, Base.ndims, Base.dotview
-import Base.similar, Base.isapprox, Base.isequal, Base.broadcast!, Base.materialize!, Base.materialize
-import Base.eltype, Base.length, Base.size, Base.iterate, Base.show, Base.display, Base.showarg
-import Base.promote_shape
-import Base.cumsum, Base.diff
-
-import LinearAlgebra.transpose, LinearAlgebra.conj, LinearAlgebra.vcat, LinearAlgebra.adjoint
-import LinearAlgebra.vec, LinearAlgebra.dot, LinearAlgebra.norm, LinearAlgebra.abs
-import LinearAlgebra.lmul!, LinearAlgebra.rmul!, LinearAlgebra.ldiv!, LinearAlgebra.rdiv!, LinearAlgebra.mul!, Base.isfinite
-
-import PyCall.array2py
+# Updated, December 2020, Mathias Louboutin, mlouboutin3@gatech.edu
 
 #############################################################################
 # Containers
@@ -37,6 +18,9 @@ include("judiExtendedSource.jl")   # sparse RHS (point source(s))
 include("judiWeights.jl")    # Extended source weight vector
 include("judiVector.jl")    # Julia data container
 include("judiComposites.jl")    # A composite type to work with hcat/vcat of judi types
+
+#############################################################################
+# Utils
 include("auxiliaryFunctions.jl")
 
 #############################################################################
@@ -71,5 +55,29 @@ include("seismic_preconditioners.jl")
 #############################################################################
 # Utility types
 const SourceTypes = Union{judiVector, Tuple{judiWeights, judiLRWF}}
+# PDE types are callable w.r.t non-linear parameters, i.e F(model) or F(;m=m, epsilon=new_epsilon)
+const pde_types = Union{judiModeling, judiModelingAdjoint, judiPDEfull, judiPDE, judiPDEadjoint,
+                        judiJacobian, judiJacobianExQ, judiPDEextended}
 
+function __init__()
+  if VERSION>v"1.2"
+    @eval function (F::pde_types)(m::Model)
+      Fl = deepcopy(F)
+      Fl.model.n = m.n
+      Fl.model.d = m.d
+      Fl.model.o = m.o
+      for (k, v) in m.params
+        Fl.model.params[k] = v
+      end
+      Fl
+    end
+
+    @eval function (F::pde_types)(;kwargs...)
+      Fl = deepcopy(F)
+      for (k, v) in kwargs
+        k in keys(Fl.model.params) && Fl.model.params[k] .= v
+      end
+      Fl
+    end
+  end
 end

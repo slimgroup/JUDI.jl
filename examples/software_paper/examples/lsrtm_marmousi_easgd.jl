@@ -6,7 +6,7 @@
 #
 
 using Statistics, Random, LinearAlgebra, Distributed
-using JUDI.TimeModeling, SegyIO, HDF5, PyPlot
+using JUDI, SegyIO, HDF5, PyPlot
 
 # Load migration velocity model
 if ~isfile("marmousi_model.h5")

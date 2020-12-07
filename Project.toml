@@ -13,6 +13,7 @@ LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 PyCall = "438e738f-606a-5dbb-bf0a-cddfbfd45ab0"
+Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
 SegyIO = "157a0f19-4d44-4de5-a0d0-07e2f0ac4dfa"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 

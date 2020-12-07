@@ -1,4 +1,4 @@
-using JUDI.TimeModeling, SegyIO, LinearAlgebra, PyPlot
+using JUDI, SegyIO, LinearAlgebra, PyPlot
 
 # Set up model structure
 n = (121, 101)   # (x,y,z) or (x,z)

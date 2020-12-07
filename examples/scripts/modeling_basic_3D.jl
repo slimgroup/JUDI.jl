@@ -4,7 +4,7 @@
 # Date: January 2017
 #
 
-using JUDI.TimeModeling
+using JUDI
 
 # Set up model structure
 n = (120, 100, 90)    # (x,y,z) or (x,z)

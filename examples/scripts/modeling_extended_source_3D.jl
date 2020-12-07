@@ -4,7 +4,7 @@
 # Date: January 2017
 #
 
-using JUDI.TimeModeling, SegyIO, LinearAlgebra, PyPlot
+using JUDI, SegyIO, LinearAlgebra, PyPlot
 
 # Set up model structure
 n = (100, 100, 80)   # (x,y,z) or (x,z)

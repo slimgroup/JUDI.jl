@@ -17,7 +17,7 @@ if nw > 1 && nworkers() < nw
     addprocs(nw-nworkers() + 1; exeflags=["--code-coverage=user", "--inline=no", "--check-bounds=yes"])
 end
 
-@everywhere using JUDI.TimeModeling, LinearAlgebra, Test, Distributed, Printf
+@everywhere using JUDI, LinearAlgebra, Test, Distributed, Printf
 
 ### Model
 model, model0, dm = setup_model(parsed_args["tti"], parsed_args["nlayer"])

@@ -1,6 +1,6 @@
 import numpy as np
 
-from devito import TimeFunction, norm
+from devito import TimeFunction, norm, warning
 from devito.tools import as_tuple
 from pyrevolve import Revolver
 
@@ -470,7 +470,7 @@ def J_adjoint(model, src_coords, wavelet, rec_coords, recin, space_order=8,
                                        recin, space_order=8,
                                        n_checkpoints=n_checkpoints, is_residual=True,
                                        maxmem=maxmem, isic=isic, ws=ws, t_sub=t_sub)
-    elif len(freq_list) > 0:
+    elif freq_list is not None:
         grad = J_adjoint_freq(model, src_coords, wavelet, rec_coords, recin,
                               space_order=space_order, is_residual=True, dft_sub=dft_sub,
                               freq_list=freq_list,
@@ -691,10 +691,18 @@ op_fwd_J = {False: forward, True: born}
 
 def wri_func(model, src_coords, wavelet, rec_coords, recin, yin, space_order=8,
              isic=False, ws=None, t_sub=1, grad="m", grad_corr=False,
-             alpha_op=False, w_fun=None, eps=0):
+             alpha_op=False, w_fun=None, eps=0, freq_list=[]):
     """
     Time domain wavefield reconstruction inversion wrapper
     """
+    if freq_list is not None:
+        if grad_corr or grad in ["all", "y"]:
+            warning("On-the-fly DFT is not supported with gradient correction")
+        dft = True
+    else:
+        dft = False
+        freq_list = None
+
     # F(m0) * q if y is not an input and compute y = r(m0)
     if yin is None or grad_corr:
         y, u0, _ = forward(model, src_coords, rec_coords, wavelet, save=grad_corr,
@@ -705,8 +713,8 @@ def wri_func(model, src_coords, wavelet, rec_coords, recin, yin, space_order=8,
 
     # Compute wavefield vy = adjoint(F(m0))*y and norm on the fly
     srca, v, norm_v, _ = adjoint(model, ydat, src_coords, rec_coords,
-                                 norm_v=True, w_fun=w_fun,
-                                 save=grad is not None)
+                                 norm_v=True, w_fun=w_fun, freq_list=freq_list,
+                                 save=not (grad is None or dft))
     c1 = 1 / (recin.shape[1])
     c2 = np.log(np.prod(model.shape))
     # <PTy, d-F(m)*f> = <PTy, d>-<adjoint(F(m))*PTy, f>
@@ -725,8 +733,9 @@ def wri_func(model, src_coords, wavelet, rec_coords, recin, yin, space_order=8,
     if grad is not None:
         w = weight_fun(w_fun, model, src_coords)
         w = c1*α/w**2 if w is not None else c1*α
-        Q = wf_as_src(v, w=w)
-        rcv, gradm, _ = forward_grad(model, src_coords, rec_coords, c2*wavelet, q=Q, v=v)
+        Q = wf_as_src(v, w=w, freq_list=freq_list)
+        rcv, gradm, _ = forward_grad(model, src_coords, rec_coords, c2*wavelet,
+                                     freq=freq_list, q=Q, v=v)
 
         # Compute gradient wrt y
         if grad_corr or grad in ["all", "y"]:

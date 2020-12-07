@@ -5,7 +5,7 @@
 
 using Statistics, Random, Pkg
 using LinearAlgebra
-using JUDI.TimeModeling, SlimOptim, HDF5, SegyIO, PyPlot, FFTW
+using JUDI, SlimOptim, HDF5, SegyIO, PyPlot, FFTW
 using SetIntersectionProjection
 
 # Load starting model

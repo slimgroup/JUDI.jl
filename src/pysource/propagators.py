@@ -59,8 +59,8 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     return rcv, dft_modes or (u_save if t_sub > 1 else u), summary
 
 
-def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0,
-            save=False, ws=None, norm_v=False, w_fun=None):
+def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0, dft_sub=None,
+            save=False, ws=None, norm_v=False, w_fun=None, freq_list=None):
     """
     Low level propagator, to be used through `interface.py`
     Compute adjoint wavefield v = adjoint(F(m))*y
@@ -74,6 +74,9 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0,
 
     # Set up PDE expression and rearrange
     pde = wave_kernel(model, v, q=q, fw=False)
+
+    # On-the-fly Fourier
+    dft, dft_modes = otf_dft(v, freq_list, model.critical_dt, factor=dft_sub)
 
     # Setup source and receiver
     geom_expr, _, rcv = src_rec(model, v, src_coords=rcv_coords, nt=nt,
@@ -90,7 +93,7 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0,
 
     # Create operator and run
     subs = model.spacing_map
-    op = Operator(pde + ws_expr + nv_t + geom_expr + nv_s,
+    op = Operator(pde + ws_expr + nv_t + dft + geom_expr + nv_s,
                   subs=subs, name="adjoint"+name(model),
                   opt=opt_op(model))
 
@@ -101,7 +104,7 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0,
     if wsrc:
         return wsrc, summary
     if norm_v:
-        return rcv, v, norm_v.data[0], summary
+        return rcv, dft_modes or v, norm_v.data[0], summary
     return rcv, v, summary
 
 
@@ -192,7 +195,7 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
 
 # Forward propagation
 def forward_grad(model, src_coords, rcv_coords, wavelet, v, space_order=8,
-                 q=None, ws=None, isic=False, w=None, **kwargs):
+                 q=None, ws=None, isic=False, w=None, freq=None, **kwargs):
     """
     Low level propagator, to be used through `interface.py`
     Compute forward wavefield u = A(m)^{-1}*f and related quantities (u(xrcv))
@@ -216,7 +219,7 @@ def forward_grad(model, src_coords, rcv_coords, wavelet, v, space_order=8,
 
     # Setup gradient wrt m
     gradm = Function(name="gradm", grid=model.grid)
-    g_expr = grad_expr(gradm, u, v, model, w=w, isic=isic)
+    g_expr = grad_expr(gradm, v, u, model, w=w, isic=isic, freq=freq)
 
     # Create operator and run
     subs = model.spacing_map

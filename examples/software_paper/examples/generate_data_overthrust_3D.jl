@@ -3,7 +3,7 @@
 # Date: January 2017
 #
 
-using JUDI.TimeModeling, HDF5
+using JUDI, HDF5
 
 # Load overthrust model
 if ~isfile("overthrust_3D_true_model.h5")

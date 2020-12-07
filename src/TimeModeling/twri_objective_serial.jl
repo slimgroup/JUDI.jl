@@ -44,12 +44,13 @@ function twri_objective(model_full::Model, source::judiVector, dObs::judiVector,
     rec_coords = setup_grid(dObs.geometry, model.n)    # shifts rec coordinates by origin
 
     ac = load_devito_jit()
-
+    ~isempty(options.frequencies) ? freqs = options.frequencies : freqs = nothing
     obj, gradm, grady = pycall(ac."wri_func", PyObject,
                                modelPy, src_coords, qIn, rec_coords, dObserved, Y,
                                t_sub=options.subsampling_factor, space_order=options.space_order,
                                grad=optionswri.params, grad_corr=optionswri.grad_corr, eps=eps_loc,
-                               alpha_op=optionswri.comp_alpha, w_fun=optionswri.weight_fun)
+                               alpha_op=optionswri.comp_alpha, w_fun=optionswri.weight_fun,
+                               freq_list=freqs)
 
     if (optionswri.params in [:m, :all])
         gradm = remove_padding(gradm, modelPy.padsizes; true_adjoint=options.sum_padding)
