@@ -4,7 +4,7 @@
 #
 
 using Statistics, Random, LinearAlgebra
-using JUDI, JUDI.TimeModeling.SLIM_optim, HDF5, SegyIO
+using JUDI, SlimOptim, HDF5, SegyIO
 
 # Load overthrust model
 if ~isfile("overthrust_3D_initial_model.h5")
