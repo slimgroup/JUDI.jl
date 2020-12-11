@@ -96,7 +96,7 @@ def crosscorr_freq(u, v, model, freq=None, dft_sub=None, **kwargs):
         fdim = ufr.dimensions[0]
         omega_t = lambda f: 2*np.pi*f*tsave*factor*dt
         # Gradient weighting is (2*np.pi*f)**2/nt
-        w = lambda f: (2*np.pi*f)**2/time.symbolic_max
+        w = lambda f: -(2*np.pi*f)**2/time.symbolic_max
         expr += sum(w(freq[ff])*(ufr._subs(fdim, ff)*cos(omega_t(freq[ff])) -
                                  ufi._subs(fdim, ff)*sin(omega_t(freq[ff])))
                     for ff in range(nfreq))*vv
@@ -147,7 +147,7 @@ def isic_freq(u, v, model, **kwargs):
         fdim = ufr.dimensions[0]
         omega_t = lambda f: 2*np.pi*f*tsave*factor*dt
         # Gradient weighting is (2*np.pi*f)**2/nt
-        w = lambda f: (2*np.pi*f)**2/time.symbolic_max
+        w = lambda f: -(2*np.pi*f)**2/time.symbolic_max
         w2 = factor / time.symbolic_max
         for ff in range(nfreq):
             cwt, swt = cos(omega_t(freq[ff])), sin(omega_t(freq[ff]))

@@ -46,7 +46,7 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
 
     # Create operator and run
     subs = model.spacing_map
-    op = Operator(pde + geom_expr + dft + eq_save,
+    op = Operator(pde + dft + geom_expr + eq_save,
                   subs=subs, name="forward"+name(model),
                   opt=opt_op(model))
 
@@ -133,7 +133,12 @@ def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8,
     op = Operator(pde + geom_expr + g_expr,
                   subs=subs, name="gradient"+name(model),
                   opt=opt_op(model))
-
+    try:
+        op.cfunction
+    except:
+        op = Operator(pde + geom_expr + g_expr,
+                      subs=subs, name="gradient"+name(model),
+                      opt='advanced')
     if return_op:
         return op, gradm, v
 

@@ -691,7 +691,7 @@ op_fwd_J = {False: forward, True: born}
 
 def wri_func(model, src_coords, wavelet, rec_coords, recin, yin, space_order=8,
              isic=False, ws=None, t_sub=1, grad="m", grad_corr=False,
-             alpha_op=False, w_fun=None, eps=0, freq_list=[]):
+             alpha_op=False, w_fun=None, eps=0, freq_list=[], wfilt=None):
     """
     Time domain wavefield reconstruction inversion wrapper
     """
@@ -702,6 +702,7 @@ def wri_func(model, src_coords, wavelet, rec_coords, recin, yin, space_order=8,
     else:
         dft = False
         freq_list = None
+        wfilt = wavelet
 
     # F(m0) * q if y is not an input and compute y = r(m0)
     if yin is None or grad_corr:
@@ -734,7 +735,7 @@ def wri_func(model, src_coords, wavelet, rec_coords, recin, yin, space_order=8,
         w = weight_fun(w_fun, model, src_coords)
         w = c1*α/w**2 if w is not None else c1*α
         Q = wf_as_src(v, w=w, freq_list=freq_list)
-        rcv, gradm, _ = forward_grad(model, src_coords, rec_coords, c2*wavelet,
+        rcv, gradm, _ = forward_grad(model, src_coords, rec_coords, c2*wfilt,
                                      freq=freq_list, q=Q, v=v)
 
         # Compute gradient wrt y
@@ -751,4 +752,4 @@ def wri_func(model, src_coords, wavelet, rec_coords, recin, yin, space_order=8,
             # Reduced gradient post-processing
             gradm = gradm.data + gradm_corr.data
 
-    return fun, α * gradm, grady
+    return fun, gradm if gradm is None else α * gradm, grady

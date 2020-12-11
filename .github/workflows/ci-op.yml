@@ -49,9 +49,10 @@ jobs:
 
       - name: Install GCC 9
         if : runner.os == 'macOS'
-        run : |
-          brew install gcc@9
-          gcc --version
+        run : brew install gcc@9
+
+      - name : Check GCC
+        run : gcc --version
 
       - name: Setup julia
         uses: julia-actions/setup-julia@v1

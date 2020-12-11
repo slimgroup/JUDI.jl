@@ -59,25 +59,24 @@ const SourceTypes = Union{judiVector, Tuple{judiWeights, judiLRWF}}
 const pde_types = Union{judiModeling, judiModelingAdjoint, judiPDEfull, judiPDE, judiPDEadjoint,
                         judiJacobian, judiJacobianExQ, judiPDEextended}
 
-function __init__()
-  if VERSION>v"1.2"
-    @eval function (F::pde_types)(m::Model)
-      Fl = deepcopy(F)
-      Fl.model.n = m.n
-      Fl.model.d = m.d
-      Fl.model.o = m.o
-      for (k, v) in m.params
-        Fl.model.params[k] = v
-      end
-      Fl
-    end
 
-    @eval function (F::pde_types)(;kwargs...)
-      Fl = deepcopy(F)
-      for (k, v) in kwargs
-        k in keys(Fl.model.params) && Fl.model.params[k] .= v
-      end
-      Fl
+if VERSION>v"1.2"
+  function (F::pde_types)(m::Model)
+    Fl = deepcopy(F)
+    Fl.model.n = m.n
+    Fl.model.d = m.d
+    Fl.model.o = m.o
+    for (k, v) in m.params
+      Fl.model.params[k] = v
     end
+    Fl
+  end
+
+  function (F::pde_types)(;kwargs...)
+    Fl = deepcopy(F)
+    for (k, v) in kwargs
+      k in keys(Fl.model.params) && Fl.model.params[k] .= v
+    end
+    Fl
   end
 end

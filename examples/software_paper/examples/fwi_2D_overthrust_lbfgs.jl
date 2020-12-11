@@ -42,7 +42,7 @@ println("No.  ", "fval         ", "norm(gradient)")
 function f!(x, grad)
 
     # Update model
-    model0.m = convert(Array{Float32, 2}, reshape(x, model0.n))
+    model0.m .= x
 
     # Select batch and calculate gradient
     i = randperm(d_obs.nsrc)[1:batchsize]
@@ -50,7 +50,7 @@ function f!(x, grad)
 
     # Reset gradient in water column to zero
     gradient = reshape(gradient, model0.n); gradient[:, 1:21] .= 0f0
-    grad[1:end] = vec(gradient)
+    grad[1:end] .= gradient[1:end]
 
     global count; count += 1
     println(count, "    ", fval, "    ", norm(grad))
@@ -65,7 +65,7 @@ mmin = (1f0 ./ vmax)^2   # bound constraints on slowness squared
 mmax = (1f0 ./ vmin)^2
 lower_bounds!(opt, mmin); upper_bounds!(opt, mmax)
 maxeval!(opt, fevals)
-(minf, minx, ret) = optimize(opt, vec(model0.m))
+(minf, minx, ret) = optimize(opt, copy(model0.m))
 
 # Save results, function values and elapsed time
 h5open("result_2D_overthrust_lbfgs.h5", "w") do file

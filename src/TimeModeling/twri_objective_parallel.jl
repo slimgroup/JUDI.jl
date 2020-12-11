@@ -59,7 +59,7 @@ mutable struct TWRIOptions
     comp_alpha::Bool
     weight_fun
     eps
-    params::Symbol
+    params
     Invq::String
 end
 

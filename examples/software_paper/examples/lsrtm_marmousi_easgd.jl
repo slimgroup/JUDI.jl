@@ -37,7 +37,7 @@ info = Info(prod(model0.n), d_lin.nsrc, ntComp)
 
 # Setup operators
 opt = Options(optimal_checkpointing=true)  # ~40 GB of memory per source w/o checkpointing
-M = judiModeling(info, model0, q.geometry, d_lin.geometry)
+M = judiModeling(info, model0, q.geometry, d_lin.geometry;options=opt)
 J = judiJacobian(M, q)
 
 # Right-hand preconditioners (model topmute)

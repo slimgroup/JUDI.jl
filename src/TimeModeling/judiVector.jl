@@ -716,9 +716,14 @@ iterate(S::judiVector, state::Integer=1) = state > S.nsrc ? nothing : (S.data[st
 # Integration/differentiation of shot records
 
 function cumsum(x::judiVector;dims=1)
+    y = deepcopy(x)
+    cumsum!(y, x; dims=dims)
+    return y
+end
+
+function cumsum!(y::judiVector, x::judiVector;dims=1)
     dims == 1 || dims == 2 || throw(judiVectorException("Dimension $(dims) is out of range for a 2D array"))
     h = dims == 1 ? x.geometry.dt[1] : 1f0              # receiver dimension is non-dimensional
-    y = deepcopy(x)        
     for i = 1:x.nsrc
         cumsum!(y.data[i], x.data[i], dims=dims)
     end

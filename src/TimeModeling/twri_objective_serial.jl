@@ -45,16 +45,18 @@ function twri_objective(model_full::Model, source::judiVector, dObs::judiVector,
 
     ac = load_devito_jit()
     ~isempty(options.frequencies) ? freqs = options.frequencies : freqs = nothing
+    ~isempty(options.frequencies) ? (wfilt, freqs) =  filter_w(qIn, dtComp, freqs) : wfilt = nothing
     obj, gradm, grady = pycall(ac."wri_func", PyObject,
                                modelPy, src_coords, qIn, rec_coords, dObserved, Y,
                                t_sub=options.subsampling_factor, space_order=options.space_order,
                                grad=optionswri.params, grad_corr=optionswri.grad_corr, eps=eps_loc,
                                alpha_op=optionswri.comp_alpha, w_fun=optionswri.weight_fun,
-                               freq_list=freqs)
+                               freq_list=freqs, wfilt=wfilt)
 
     if (optionswri.params in [:m, :all])
         gradm = remove_padding(gradm, modelPy.padsizes; true_adjoint=options.sum_padding)
         options.limit_m==true && (gradm = extend_gradient(model_full, model, gradm))
+        gradm = PhysicalParameter(gradm, model_full.d, model_full.o)
     end
     if ~isnothing(grady)
         ntRec > ntComp && (grady = [grady zeros(size(grady,1), ntRec - ntComp)])
@@ -62,5 +64,16 @@ function twri_objective(model_full::Model, source::judiVector, dObs::judiVector,
         grady = judiVector(dObs.geometry, grady)
     end
 
-    return obj, PhysicalParameter(gradm, model.d, model.o), grady
+    return obj, gradm, grady
+end
+
+
+function filter_w(qIn, dt, freqs)
+    ff = FFTW.fftfreq(length(qIn), 1/dt)
+    df = ff[2] - ff[1]
+    inds = [findmin(abs.(ff.-f))[2] for f in freqs]
+    DFT = joDFT(length(qIn); DDT=Float32)
+    R = joRestriction(size(DFT,1), inds; RDT=Complex{Float32}, DDT=Complex{Float32})
+    qfilt = DFT'*R'*R*DFT*qIn
+    return qfilt, freqs
 end

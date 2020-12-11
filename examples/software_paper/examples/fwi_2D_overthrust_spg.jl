@@ -45,22 +45,22 @@ fvals = []
 
 # Objective function for library
 function objective_function(x)
-    model0.m = reshape(x, model0.n);
+    model0.m .= x;
 
     # select batch          "elapsed_time", elapsed_time
     idx = randperm(d_obs.nsrc)[1:batchsize]
     f, g = fwi_objective(model0, q[idx], d_obs[idx])
 
     global fvals; fvals = [fvals; f]
-    return f, vec(g/norm(g, Inf))    # normalize gradient for line search
+    return f, vec(g.data/norm(g, Inf))    # normalize gradient for line search
 end
 
 # Bound projection
-ProjBound(x) = median([mmin x mmax], dims=2)
+ProjBound(x) = median([mmin x mmax], dims=2)[1:end]
 
 # FWI with SPG
 options = spg_options(verbose = 3, maxIter = fevals, memory = 3, iniStep = 1f0)
-x, fsave, funEvals = minConf_SPG(objective_function, vec(model0.m), ProjBound, options)
+x, fsave, funEvals = spg(objective_function, vec(m0), ProjBound, options)
 
 # Save results
 h5open("result_2D_overthrust_spg.h5", "w") do file

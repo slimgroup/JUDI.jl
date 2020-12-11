@@ -1,7 +1,11 @@
 import numpy as np
 from sympy import sqrt
 
-from devito.core import CPU64NoopOperator as cpo
+try:
+    from devito.core.operator import BasicOperator as cpo
+except ImportError:
+    from devito.core.cpu import CPU64NoopOperator as cpo
+
 from devito.exceptions import InvalidOperator
 from devito.tools import as_tuple
 
@@ -92,7 +96,7 @@ def opt_op(model):
         except InvalidOperator:
             opts.pop('min-storage')
     # Cire rotate for tti
-    if model.is_tti:
+    if model.is_tti and model.dim > 2:
         try:
             opts['cire-rotate'] = True
             'cire-rotate' in cpo._normalize_kwargs(options=dict(opts))['options']

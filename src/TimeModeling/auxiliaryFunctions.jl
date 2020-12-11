@@ -111,26 +111,10 @@ function limit_model_to_receiver_area(srcGeometry::Geometry, recGeometry::Geomet
     end
 end
 
-function extend_gradient(model_full::Model, model::Model, gradient::PhysicalParameter)
+function extend_gradient(model_full::Model, model::Model, gradient::Union{Array, PhysicalParameter})
     # Extend gradient back to full model size
     ndim = length(model.n)
-    full_gradient = zeros(Float32, model_full.n)
-    nx_start = trunc(Int, Float32(Float32(model.o[1] - model_full.o[1])/model.d[1]) + 1)
-    nx_end = nx_start + model.n[1] - 1
-    if ndim == 2
-        full_gradient[nx_start:nx_end,:] = gradient.data
-    else
-        ny_start = Int((model.o[2] - model_full.o[2])/model.d[2] + 1)
-        ny_end = ny_start + model.n[2] - 1
-        full_gradient[nx_start:nx_end,ny_start:ny_end,:] = gradient.data
-    end
-    return PhysicalParameter(full_gradient, model.d, model_full.o)
-end
-
-function extend_gradient(model_full::Model,model::Model, gradient::Array)
-    # Extend gradient back to full model size
-    ndim = length(model.n)
-    full_gradient = zeros(Float32, model_full.n)
+    full_gradient = similar(gradient, model_full)
     nx_start = trunc(Int, Float32(Float32(model.o[1] - model_full.o[1])/model.d[1]) + 1)
     nx_end = nx_start + model.n[1] - 1
     if ndim == 2
@@ -436,7 +420,7 @@ function generate_distribution(x; src_no=1)
 	f = 0:2*df:fnyq	# frequencies
 
 	# amplitude spectrum of data (serves as probability density function)
-	ns = convert(Integer,ceil(nt/2))
+	ns = nt ÷ 2 + 1
 	amp = abs.(fft(x.data[src_no]))[1:ns]	# get first half of spectrum
 
 	# convert to cumulative probability distribution (integrate)

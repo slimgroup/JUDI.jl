@@ -32,7 +32,6 @@ q = judiVector(src_geometry,wavelet)
 
 ############################### FWI ###########################################
 
-
 # Optimization parameters
 fevals = 10
 batchsize = 8
@@ -40,23 +39,23 @@ fvals = []
 
 # Objective function for minConf library
 function objective_function(x)
-    model0.m = reshape(x,model0.n);
+    model0.m .= x
 
     # fwi function value and gradient
     i = randperm(d_obs.nsrc)[1:batchsize]
     fval, grad = fwi_objective(model0, q[i], d_obs[i])
-    grad = .125f0*grad/maximum(abs.(grad))  # scale for line search
+    grad = .125f0*grad/norm(grad, Inf)  # scale for line search
 
     global fvals; fvals = [fvals; fval]
-    return fval, vec(grad)
+    return fval, vec(grad.data)
 end
 
 # Bound projection
-ProjBound(x) = median([mmin x mmax]; dims=2)
+ProjBound(x) = median([mmin x mmax]; dims=2)[1:end]
 
 # FWI with SPG
 options = spg_options(verbose=3, maxIter=fevals, memory=3)
-x, fsave, funEvals= minConf_SPG(objective_function, vec(model0.m), ProjBound, options)
+x, fsave, funEvals= spg(objective_function, vec(m0), ProjBound, options)
 
 # Save results
 h5open("result_2D_small_overthrust_spg.h5", "w") do file

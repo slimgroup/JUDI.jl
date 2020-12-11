@@ -200,7 +200,6 @@ def otf_dft(u, freq, dt, factor=None):
         return [], None
 
     # init
-    dft = []
     dft_modes = []
 
     # Subsampled dft time axis
@@ -212,16 +211,21 @@ def otf_dft(u, freq, dt, factor=None):
     freq_dim = DefaultDimension(name='freq_dim', default_value=nfreq)
     f = Function(name='f', dimensions=(freq_dim,), shape=(nfreq,))
     f.data[:] = np.array(freq[:])
-
+    # Get fourier atoms to avoid shitty perf
+    cf = TimeFunction(name="cf", dimensions=(as_tuple(u)[0].grid.stepping_dim, freq_dim),
+                      shape=(3, nfreq), time_order=2)
+    sf = TimeFunction(name="sf", dimensions=(as_tuple(u)[0].grid.stepping_dim, freq_dim),
+                      shape=(3, nfreq), time_order=2)
     # Pulsation
     omega_t = 2*np.pi*f*tsave*factor*dt
+    dft = [Eq(cf, cos(omega_t)), Eq(sf, sin(omega_t))]
     for wf in as_tuple(u):
         ufr = Function(name='ufr%s' % wf.name, dimensions=(freq_dim,) + wf.indices[1:],
                        grid=wf.grid, shape=(nfreq,) + wf.shape[1:])
         ufi = Function(name='ufi%s' % wf.name, dimensions=(freq_dim,) + wf.indices[1:],
                        grid=wf.grid, shape=(nfreq,) + wf.shape[1:])
-        dft += [Inc(ufr, factor * cos(omega_t) * wf)]
-        dft += [Inc(ufi, -factor * sin(omega_t) * wf)]
+        dft += [Inc(ufr, factor * cf * wf)]
+        dft += [Inc(ufi, -factor * sf * wf)]
         dft_modes += [(ufr, ufi)]
     return dft, dft_modes
 
@@ -245,8 +249,9 @@ def idft(v, freq=None):
         time = ufr.grid.time_dim
         dt = time.spacing
         omega_t = lambda f: 2*np.pi*f*time*dt
-        idftloc = sum([ufr.subs({ufr.indices[0]: i})*cos(omega_t(f)) -
-                       ufi.subs({ufi.indices[0]: i})*sin(omega_t(f))
+        w = 1/time.symbolic_max
+        idftloc = sum([w*(ufr.subs({ufr.indices[0]: i})*cos(omega_t(f)) -
+                          ufi.subs({ufi.indices[0]: i})*sin(omega_t(f)))
                        for i, f in enumerate(freq)])
         idft.append(idftloc)
     return tuple(idft)
