@@ -118,6 +118,7 @@ function promote_shape(p::PhysicalParameter, A::Array{vDT, N}) where {vDT, N}
 end
 
 promote_shape(A::Array{vDT, N}, p::PhysicalParameter) where {vDT, N} = promote_shape(p, A)
+reshape(p::PhysicalParameter, n::Tuple{Vararg{Int64,N}}) where N = (prod(n)==prod(p.n) && return p)
 
 dotview(A::PhysicalParameter{vDT}, I::Vararg{Union{Function, Int, UnitRange{Int}}, N}) where {vDT, N} = dotview(A.data, I...)
 

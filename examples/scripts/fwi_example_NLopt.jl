@@ -39,7 +39,7 @@ println("No.  ", "fval         ", "norm(gradient)")
 function f!(x,grad)
 
     # Update model
-    model0.m = convert(Array{Float32, 2}, reshape(x, model0.n))
+    model0.m .= convert(Array{Float32, 2}, reshape(x, model0.n))
 
     # Seclect batch and calculate gradient
     i = randperm(d_obs.nsrc)[1:batchsize]
@@ -60,4 +60,4 @@ opt = Opt(:LD_LBFGS, prod(model0.n))
 lower_bounds!(opt, mmin); upper_bounds!(opt, mmax)
 min_objective!(opt, f!)
 maxeval!(opt, 10)
-(minf, minx, ret) = optimize(opt, vec(model0.m))
+(minf, minx, ret) = optimize(opt, vec(model0.m.data))

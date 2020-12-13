@@ -40,7 +40,7 @@ batchsize = 8
 # Objective function for minConf library
 count = 0
 function objective_function(x)
-    model0.m = reshape(x,model0.n);
+    model0.m .= reshape(x,model0.n);
 
     # fwi function value and gradient
     i = randperm(d_obs.nsrc)[1:batchsize]
@@ -48,7 +48,7 @@ function objective_function(x)
     grad = .125f0*grad/maximum(abs.(grad))  # scale for line search
 
     global count; count+= 1
-    return fval, vec(grad)
+    return fval, vec(grad.data)
 end
 
 # Bound projection
@@ -56,7 +56,7 @@ ProjBound(x) = median([mmin x mmax]; dims=2)
 
 # FWI with SPG
 options = spg_options(verbose=3, maxIter=fevals, memory=3)
-sol = minConf_SPG(objective_function, vec(model0.m), ProjBound, options)
+sol = minConf_SPG(objective_function, vec(m0), ProjBound, options)
 
 # Plot result
 imshow(reshape(sqrt.(1f0 ./ sol.sol), model0.n)', extent=[0, 10, 3, 0])
