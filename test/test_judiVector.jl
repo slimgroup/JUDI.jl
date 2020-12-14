@@ -359,16 +359,16 @@ ftol = 1e-6
     @test isapprox(tr.geometry.xloc[1][1:11], zeros(11); atol=1f-14, rtol=1f-14)
 
     # Test integral & derivative
-
-    d_orig = judiVector(Geometry(0f0, 0f0, 0f0; dt=2, t=1000), randn(251))
+    refarray = randn(Float32,251)
+    d_orig = judiVector(Geometry(0f0, 0f0, 0f0; dt=2, t=1000), refarray)
     d_cumsum = cumsum(d_orig)
     for i = 1:d_orig.nsrc
-        @test isapprox(cumsum(d_orig.data[i],dims=1), d_cumsum.data[i])
+        @test isapprox(cumsum(refarray,dims=1), d_cumsum.data[i])
     end
     d_diff = diff(d_orig)
     for i = 1:d_orig.nsrc
-        @test isapprox(d_orig.data[i][1,:], d_diff.data[i][1,:])
-        @test isapprox(d_diff.data[i][2:end,:], diff(d_orig.data[i],dims=1))
+        @test isapprox(refarray[1,:], d_diff.data[i][1,:])
+        @test isapprox(d_diff.data[i][2:end,:], diff(refarray,dims=1))
     end
 
 end
