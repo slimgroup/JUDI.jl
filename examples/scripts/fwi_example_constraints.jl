@@ -91,7 +91,7 @@ proj_intersection = x-> PARSDMM(x, AtA, TD_OP, set_Prop, P_sub, model0, options)
 
 function prj(input)
     input = Float32.(input)
-    (x,dummy1,dummy2,dymmy3) = proj_intersection(vec(input))
+    (x,dummy1,dummy2,dymmy3) = proj_intersection(vec(input.data))
     return reshape(x, model0.n)
 end
 

@@ -145,7 +145,8 @@ class GenericModel(object):
         """
         if field is None:
             return func(default_value)
-        if isinstance(field, np.ndarray) and (np.min(field) != np.max(field)):
+        if isinstance(field, np.ndarray) and (name == 'm' or
+                                              np.min(field) != np.max(field)):
             function = Function(name=name, grid=self.grid, space_order=space_order,
                                 parameter=is_param)
             if field.shape == self.shape:
