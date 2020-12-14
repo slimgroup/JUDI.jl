@@ -709,6 +709,30 @@ iterate(S::judiVector, state::Integer=1) = state > S.nsrc ? nothing : (S.data[st
 
 ####################################################################################################
 
+# Integration/differentiation of shot records
+
+function cumsum(x::judiVector;dims=1)
+    dims == 1 || @warn("Integration over receivers might not make sense, please double check your dims argument")
+    y = deepcopy(x)
+    for i = 1:x.nsrc
+        y.data[i] = cumsum(x.data[i],dims=dims)
+    end
+    return y
+end
+
+function diff(x::judiVector;dims=1)
+    # note that this is not the same as default diff in julia, the first entry stays in the diff result
+    dims == 1 || @warn("Differentiation over receivers might not make sense, please double check your dims argument")
+    y = deepcopy(x)
+    for i = 1:x.nsrc
+        y.data[i][1,:]= x.data[i][1,:]
+        y.data[i][2:end,:] = diff(x.data[i],dims=dims)
+    end
+    return y
+end
+
+####################################################################################################
+
 BroadcastStyle(::Type{judiVector}) = Base.Broadcast.DefaultArrayStyle{1}()
 
 ndims(::Type{judiVector{Float32}}) = 1
