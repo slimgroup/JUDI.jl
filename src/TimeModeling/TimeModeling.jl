@@ -14,6 +14,7 @@ import Base.getindex, Base.setindex!, Base.firstindex, Base.lastindex, Base.axes
 import Base.similar, Base.isapprox, Base.isequal, Base.broadcast!, Base.materialize!, Base.materialize
 import Base.eltype, Base.length, Base.size, Base.iterate, Base.show, Base.display, Base.showarg
 import Base.promote_shape
+import Base.cumsum, Base.diff
 
 import LinearAlgebra.transpose, LinearAlgebra.conj, LinearAlgebra.vcat, LinearAlgebra.adjoint
 import LinearAlgebra.vec, LinearAlgebra.dot, LinearAlgebra.norm, LinearAlgebra.abs
