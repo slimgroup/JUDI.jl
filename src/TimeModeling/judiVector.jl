@@ -712,7 +712,7 @@ iterate(S::judiVector, state::Integer=1) = state > S.nsrc ? nothing : (S.data[st
 # Integration/differentiation of shot records
 
 function cumsum(x::judiVector;dims=1)
-    dims == 1 || dims == 2 || throw(judiVectorException("dims is out of range, please double check your dims argument"))
+    dims == 1 || dims == 2 || throw(judiVectorException("Dimension $(dims) is out of range for a 2D array"))
     y = deepcopy(x)
     for i = 1:x.nsrc
         cumsum!(y.data[i], x.data[i], dims=dims)
@@ -722,7 +722,7 @@ end
 
 function diff(x::judiVector;dims=1)
     # note that this is not the same as default diff in julia, the first entry stays in the diff result
-    dims == 1 || dims == 2 || throw(judiVectorException("dims is out of range, please double check your dims argument"))
+    dims == 1 || dims == 2 || throw(judiVectorException("Dimension $(dims) is out of range for a 2D array"))
     y = deepcopy(x)
     for i = 1:x.nsrc
         y.data[i][2:end,:] = diff(x.data[i],dims=dims)
