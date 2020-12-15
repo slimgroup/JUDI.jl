@@ -49,11 +49,11 @@ for j=1:niterations
     println("FWI iteration no: ",j,"; function value: ",fval)
     fhistory_SGD[j] = fval
 
-	# linesearch
-	step = backtracking_linesearch(model0, q[i], d_obs[i], fval, gradient, proj; alpha=1f0)
+    # linesearch
+    step = backtracking_linesearch(model0, q[i], d_obs[i], fval, gradient, proj; alpha=1f0)
 
-	# Update model and bound projection
-	model0.m = proj(model0.m + reshape(step,model0.n))
+    # Update model and bound projection
+    model0.m .= proj(model0.m .+ reshape(step,model0.n))
 end
 
 figure(); imshow(sqrt.(1f0./adjoint(model0.m))); title("FWI with SGD")

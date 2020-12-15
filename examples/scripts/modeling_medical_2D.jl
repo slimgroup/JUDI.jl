@@ -17,8 +17,8 @@ dm = vec(m - m0)
 
 # Setup info and model structure
 nsrc = 1	# number of sources
-model = Model(n, d, o, m, rho)
-model0 = Model(n, d, o, m0, rho)
+model = Model(n, d, o, m)
+model0 = Model(n, d, o, m0)
 
 ## Set up receiver geometry
 nxrec = 120

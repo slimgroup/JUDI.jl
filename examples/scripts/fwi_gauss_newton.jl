@@ -44,7 +44,7 @@ J = judiJacobian(Pr*F*Ps',q)
 maxiter = 10
 maxiter_GN = 5
 fhistory_GN = zeros(Float32,maxiter)
-proj(x) = reshape(median([vec(mmin) vec(x) vec(mmax)],2),model0.n)
+proj(x) = reshape(median([vec(mmin) vec(x) vec(mmax)]; dims=2),model0.n)
 
 # Gauss-Newton method
 for j=1:maxiter
@@ -58,7 +58,7 @@ for j=1:maxiter
     p = lsqr(J, d_pred - d_obs; maxiter=maxiter_GN, verbose=true)
 
     # update model and bound constraints
-    model0.m = proj(model0.m - reshape(p, model0.n))  # alpha=1
+    model0.m .= proj(model0.m .- reshape(p, model0.n))  # alpha=1
 end
 
 figure(); imshow(sqrt.(1f0./model0.m)'); title("FWI with Gauss-Newton")

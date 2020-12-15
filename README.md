@@ -129,13 +129,13 @@ function objective_function(x)
 	grad = .1f0*grad/maximum(abs.(grad))	# scale gradient for line search
 
 	global count; count += 1; fvals[count] = fval
-    return fval, vec(grad)
+    return fval, vec(grad.data)
 end
 
 # FWI with SPG
 ProjBound(x) = median([mmin x mmax], dims=2)	# Bound projection
 options = spg_options(verbose=3, maxIter=fevals, memory=3)
-x, fsave, funEvals= minConf_SPG(objective_function, vec(model0.m), ProjBound, options)
+x, fsave, funEvals= minConf_SPG(objective_function, vec(m0), ProjBound, options)
 ```
 
 This example script can be run in parallel and requires roughly 220 MB of memory per source location. Execute the following code to generate figures of the initial model and the result, as well as the function values:
