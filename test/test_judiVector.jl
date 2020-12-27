@@ -359,16 +359,38 @@ ftol = 1e-6
     @test isapprox(tr.geometry.xloc[1][1:11], zeros(11); atol=1f-14, rtol=1f-14)
 
     # Test integral & derivative
-    refarray = randn(Float32,251)
-    d_orig = judiVector(Geometry(0f0, 0f0, 0f0; dt=2, t=1000), refarray)
+    refarray = Array{Array}(undef, nsrc)
+    for j=1:nsrc
+        refarray[j] = randn(Float32, ns, nrec)
+    end
+    d_orig = judiVector(rec_geometry, refarray)
+
+    dt = rec_geometry.dt[1]
+    drec = rec_geometry.xloc[1][2]-rec_geometry.xloc[1][1]
+
     d_cumsum = cumsum(d_orig)
     for i = 1:d_orig.nsrc
-        @test isapprox(cumsum(refarray,dims=1), d_cumsum.data[i])
+        @test isapprox(dt * cumsum(refarray[i],dims=1), d_cumsum.data[i])
     end
+
     d_diff = diff(d_orig)
     for i = 1:d_orig.nsrc
-        @test isapprox(refarray[1,:], d_diff.data[i][1,:])
-        @test isapprox(d_diff.data[i][2:end,:], diff(refarray,dims=1))
+        @test isapprox(1/dt * refarray[i][1,:], d_diff.data[i][1,:])
+        @test isapprox(d_diff.data[i][2:end,:], 1/dt * diff(refarray[i],dims=1))
+    end
+
+    @test isapprox(cumsum(d_orig,dims=1),cumsum(d_orig))
+    @test isapprox(diff(d_orig,dims=1),diff(d_orig))
+
+    d_cumsum_rec = cumsum(d_orig,dims=2)
+    for i = 1:d_orig.nsrc
+        @test isapprox(drec * cumsum(refarray[i],dims=2), d_cumsum_rec.data[i])
+    end
+
+    d_diff_rec = diff(d_orig,dims=2)
+    for i = 1:d_orig.nsrc
+        @test isapprox(1/drec * refarray[i][:,1], d_diff_rec.data[i][:,1])
+        @test isapprox(d_diff_rec.data[i][:,2:end], 1/drec * diff(refarray[i],dims=2))
     end
 
 end

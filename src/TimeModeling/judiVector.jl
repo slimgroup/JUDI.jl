@@ -713,9 +713,9 @@ iterate(S::judiVector, state::Integer=1) = state > S.nsrc ? nothing : (S.data[st
 
 function cumsum(x::judiVector;dims=1)
     dims == 1 || dims == 2 || throw(judiVectorException("Dimension $(dims) is out of range for a 2D array"))
-    y = deepcopy(x)
+    y = (dims == 1 ? x.geometry.dt[1] : (x.geometry.xloc[1][2]-x.geometry.xloc[1][1])) * x
     for i = 1:x.nsrc
-        cumsum!(y.data[i], x.data[i], dims=dims)
+        cumsum!(y.data[i], y.data[i], dims=dims)
     end
     return y
 end
@@ -723,9 +723,15 @@ end
 function diff(x::judiVector;dims=1)
     # note that this is not the same as default diff in julia, the first entry stays in the diff result
     dims == 1 || dims == 2 || throw(judiVectorException("Dimension $(dims) is out of range for a 2D array"))
-    y = deepcopy(x)
-    for i = 1:x.nsrc
-        y.data[i][2:end,:] = diff(x.data[i],dims=dims)
+    y = 1/(dims == 1 ? x.geometry.dt[1] : (x.geometry.xloc[1][2]-x.geometry.xloc[1][1])) * x
+    if dims == 1
+        for i = 1:x.nsrc
+            y.data[i][2:end,:] = diff(y.data[i],dims=1)
+        end
+    else
+        for i = 1:x.nsrc
+            y.data[i][:,2:end] = diff(y.data[i],dims=2)
+        end
     end
     return y
 end
