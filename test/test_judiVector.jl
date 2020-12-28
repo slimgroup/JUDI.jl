@@ -382,15 +382,4 @@ ftol = 1e-6
     @test isapprox(cumsum(d_orig,dims=1),cumsum(d_orig))
     @test isapprox(diff(d_orig,dims=1),diff(d_orig))
 
-    d_cumsum_rec = cumsum(d_orig,dims=2)
-    for i = 1:d_orig.nsrc
-        @test isapprox(drec * cumsum(refarray[i],dims=2), d_cumsum_rec.data[i])
-    end
-
-    d_diff_rec = diff(d_orig,dims=2)
-    for i = 1:d_orig.nsrc
-        @test isapprox(1/drec * refarray[i][:,1], d_diff_rec.data[i][:,1])
-        @test isapprox(d_diff_rec.data[i][:,2:end], 1/drec * diff(refarray[i],dims=2))
-    end
-
 end
