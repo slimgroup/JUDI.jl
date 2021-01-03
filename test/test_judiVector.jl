@@ -366,7 +366,6 @@ ftol = 1e-6
     d_orig = judiVector(rec_geometry, refarray)
 
     dt = rec_geometry.dt[1]
-    drec = rec_geometry.xloc[1][2]-rec_geometry.xloc[1][1]
 
     d_cumsum = cumsum(d_orig)
     for i = 1:d_orig.nsrc
@@ -381,5 +380,16 @@ ftol = 1e-6
 
     @test isapprox(cumsum(d_orig,dims=1),cumsum(d_orig))
     @test isapprox(diff(d_orig,dims=1),diff(d_orig))
+
+    d_cumsum_rec = cumsum(d_orig,dims=2)
+    for i = 1:d_orig.nsrc
+        @test isapprox(cumsum(refarray[i],dims=2), d_cumsum_rec.data[i])
+    end
+
+    d_diff_rec = diff(d_orig,dims=2)
+    for i = 1:d_orig.nsrc
+        @test isapprox(refarray[i][:,1], d_diff_rec.data[i][:,1])
+        @test isapprox(d_diff_rec.data[i][:,2:end], diff(refarray[i],dims=2))
+    end
 
 end

@@ -712,8 +712,8 @@ iterate(S::judiVector, state::Integer=1) = state > S.nsrc ? nothing : (S.data[st
 # Integration/differentiation of shot records
 
 function cumsum(x::judiVector;dims=1)
-    dims == 1 || throw(judiVectorException("Only time integration is supported"))
-    y = x.geometry.dt[1] * x
+    dims == 1 || dims == 2 || throw(judiVectorException("Dimension $(dims) is out of range for a 2D array"))
+    y = (dims == 1 ? x.geometry.dt[1] : 1f0) * x        # receiver dimension is non-dimensional
     for i = 1:x.nsrc
         cumsum!(y.data[i], y.data[i], dims=dims)
     end
@@ -722,10 +722,16 @@ end
 
 function diff(x::judiVector;dims=1)
     # note that this is not the same as default diff in julia, the first entry stays in the diff result
-    dims == 1 || throw(judiVectorException("Only time derivative is supported"))
-    y = 1 / x.geometry.dt[1] * x
-    for i = 1:x.nsrc
-        y.data[i][2:end,:] = diff(y.data[i],dims=1)
+    dims == 1 || dims == 2 || throw(judiVectorException("Dimension $(dims) is out of range for a 2D array"))
+    y = (dims == 1 ? 1f0 / x.geometry.dt[1] : 1f0) * x        # receiver dimension is non-dimensional
+    if dims == 1
+        for i = 1:x.nsrc
+            y.data[i][2:end,:] = diff(y.data[i],dims=1)
+        end
+    else
+        for i = 1:x.nsrc
+            y.data[i][:,2:end] = diff(y.data[i],dims=2)
+        end
     end
     return y
 end
