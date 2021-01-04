@@ -379,26 +379,16 @@ end
 function ldiv!(b::Number, a::judiVector{avDT}) where avDT
     typeof(a.data[1]) == SeisCon && throw(DomainError(a, "Division for OOC judiVectors not supported."))
     iszero(b) && throw(DivideError())
-    try
-        ldiv!(b, a.data)
-        return a
-    catch e             # julia 1.1 does not support ldiv!
-        lmul!(1f0/b, a.data)
-        return a
-    end
+    lmul!(1f0/b, a.data)
+    return a
 end
 
 # rdiv!(judiVector, number)
 function rdiv!(a::judiVector{avDT}, b::Number) where avDT
     typeof(a.data[1]) == SeisCon && throw(DomainError(a, "Division for OOC judiVectors not supported."))
     iszero(b) && throw(DivideError())
-    try
-        rdiv!(a.data, b)
-        return a
-    catch e             # julia 1.1 does not support rdiv!
-        rmul!(a.data, 1f0/b)
-        return a
-    end
+    rmul!(a.data, 1f0/b)
+    return a
 end
 
 # /(judiVector, number)
@@ -406,7 +396,7 @@ function /(a::judiVector{avDT}, b::Number) where avDT
     typeof(a.data[1]) == SeisCon && throw(DomainError(a, "Division for OOC judiVectors not supported."))
     iszero(b) && throw(DivideError())
     c = deepcopy(a)
-    rdiv!(c.data, b)
+    rmul!(c.data, 1f0/b)
     return c
 end
 
