@@ -306,7 +306,7 @@ end
 function +(a::judiVector{avDT}, b::judiVector{bvDT}) where {avDT, bvDT}
     size(a) == size(b) || throw(judiVectorException("dimension mismatch"))
     compareGeometry(a.geometry, b.geometry) == 1 || throw(judiVectorException("geometry mismatch"))
-    typeof(a.data[1]) == SeisCon && throw("Addition for OOC judiVectors not supported.")
+    typeof(a.data[1]) == SeisCon && throw(DomainError(a, "Addition for OOC judiVectors not supported."))
     c = deepcopy(a)
     for j=1:c.nsrc
         c.data[j] = a.data[j] + b.data[j]
@@ -318,7 +318,7 @@ end
 function -(a::judiVector{avDT}, b::judiVector{bvDT}) where {avDT, bvDT}
     size(a) == size(b) || throw(judiVectorException("dimension mismatch"))
     compareGeometry(a.geometry, b.geometry) == 1 || throw(judiVectorException("geometry mismatch"))
-    typeof(a.data[1]) == SeisCon && throw("Subtraction for OOC judiVectors not supported.")
+    typeof(a.data[1]) == SeisCon && throw(DomainError(a, "Subtraction for OOC judiVectors not supported."))
     c = deepcopy(a)
     for j=1:c.nsrc
         c.data[j] = a.data[j] - b.data[j]
@@ -328,7 +328,7 @@ end
 
 # +(judiVector, number)
 function +(a::judiVector{avDT}, b::Number) where avDT
-    typeof(a.data[1]) == SeisCon && throw("Addition for OOC judiVectors not supported.")
+    typeof(a.data[1]) == SeisCon && throw(DomainError(a, "Addition for OOC judiVectors not supported."))
     c = deepcopy(a)
     for j=1:c.nsrc
         c.data[j] = c.data[j] .+ b
@@ -341,7 +341,7 @@ end
 
 # -(judiVector, number)
 function -(a::judiVector{avDT}, b::Number) where avDT
-    typeof(a.data[1]) == SeisCon && throw("Subtraction for OOC judiVectors not supported.")
+    typeof(a.data[1]) == SeisCon && throw(DomainError(a, "Subtraction for OOC judiVectors not supported."))
     c = deepcopy(a)
     for j=1:c.nsrc
         c.data[j] = c.data[j] .- b
@@ -353,21 +353,21 @@ end
 
 # lmul!(number, judiVector)
 function lmul!(b::Number, a::judiVector{avDT}) where avDT
-    typeof(a.data[1]) == SeisCon && throw("Multiplication for OOC judiVectors not supported.")
+    typeof(a.data[1]) == SeisCon && throw(DomainError(a, "Multiplication for OOC judiVectors not supported."))
     lmul!(b, a.data)
     return a
 end
 
 # rmul!(judiVector, number)
 function rmul!(a::judiVector{avDT}, b::Number) where avDT
-    typeof(a.data[1]) == SeisCon && throw("Multiplication for OOC judiVectors not supported.")
+    typeof(a.data[1]) == SeisCon && throw(DomainError(a, "Multiplication for OOC judiVectors not supported."))
     rmul!(a.data, b)
     return a
 end
 
 # *(judiVector, number)
 function *(a::judiVector{avDT}, b::Number) where avDT
-    typeof(a.data[1]) == SeisCon && throw("Multiplication for OOC judiVectors not supported.")
+    typeof(a.data[1]) == SeisCon && throw(DomainError(a, "Multiplication for OOC judiVectors not supported."))
     c = deepcopy(a)
     rmul!(c.data, b)
     return c
@@ -377,35 +377,26 @@ end
 
 # ldiv!(number, judiVector)
 function ldiv!(b::Number, a::judiVector{avDT}) where avDT
-    typeof(a.data[1]) == SeisCon && throw("Division for OOC judiVectors not supported.")
-    if iszero(b)
-        error("Division by zero")
-    else
-        ldiv!(b, a.data)
-    end
+    typeof(a.data[1]) == SeisCon && throw(DomainError(a, "Division for OOC judiVectors not supported."))
+    iszero(b) && throw(DivideError())
+    ldiv!(b, a.data)
     return a
 end
 
 # rdiv!(judiVector, number)
 function rdiv!(a::judiVector{avDT}, b::Number) where avDT
-    typeof(a.data[1]) == SeisCon && throw("Division for OOC judiVectors not supported.")
-    if iszero(b)
-        error("Division by zero")
-    else
-        rdiv!(a.data, b)
-    end
+    typeof(a.data[1]) == SeisCon && throw(DomainError(a, "Division for OOC judiVectors not supported."))
+    iszero(b) && throw(DivideError())
+    rdiv!(a.data, b)
     return a
 end
 
 # /(judiVector, number)
 function /(a::judiVector{avDT}, b::Number) where avDT
-    typeof(a.data[1]) == SeisCon && throw("Division for OOC judiVectors not supported.")
+    typeof(a.data[1]) == SeisCon && throw(DomainError(a, "Division for OOC judiVectors not supported."))
+    iszero(b) && throw(DivideError())
     c = deepcopy(a)
-    if iszero(b)
-        error("Division by zero")
-    else
-        rdiv!(c.data, b)
-    end
+    rdiv!(c.data, b)
     return c
 end
 
