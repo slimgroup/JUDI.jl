@@ -139,10 +139,10 @@ ftol = 1e-6
     d2 = deepcopy(d_obs)
     d3 = deepcopy(d_obs)
     d4 = deepcopy(d_obs)
-    @test iszero(norm(2*d_obs - lmul!(2, d1)))
-    @test iszero(norm(3*d_obs - rmul!(d2,3)))
-    @test iszero(norm(d_obs/4 - ldiv!(4,d3)))
-    @test iszero(norm(d_obs/5 - rdiv!(d4,5)))
+    @test iszero(norm(2f0*d_obs - lmul!(2f0, d1)))
+    @test iszero(norm(3f0*d_obs - rmul!(d2,3f0)))
+    @test iszero(norm(d_obs/4f0 - ldiv!(4f0,d3)))
+    @test iszero(norm(d_obs/5f0 - rdiv!(d4,5f0)))
 
     # vcat
     d_vcat = [d_block; d_block]
