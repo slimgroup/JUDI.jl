@@ -748,14 +748,8 @@ function diff(x::judiVector;dims=1)
     # note that this is not the same as default diff in julia, the first entry stays in the diff result
     dims == 1 || dims == 2 || throw(judiVectorException("Dimension $(dims) is out of range for a 2D array"))
     y = (dims == 1 ? 1f0 / x.geometry.dt[1] : 1f0) * x        # receiver dimension is non-dimensional
-    if dims == 1
-        for i = 1:x.nsrc
-            y.data[i][2:end,:] = diff(y.data[i],dims=1)
-        end
-    else
-        for i = 1:x.nsrc
-            y.data[i][:,2:end] = diff(y.data[i],dims=2)
-        end
+    for i = 1:x.nsrc
+        copy!(selectdim(y.data[i], dims, 2:size(y.data[i],dims)), diff(y.data[i],dims=dims))
     end
     return y
 end
