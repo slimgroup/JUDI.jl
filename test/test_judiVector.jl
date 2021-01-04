@@ -134,6 +134,16 @@ ftol = 1e-6
     @test iszero(norm(2*d_block - (d_block + d_block)))
     @test iszero(norm(d_block - (d_block + d_block)/2))
 
+    # lmul!, rmul!, ldiv!, rdiv!
+    d1 = deepcopy(d_obs)
+    d2 = deepcopy(d_obs)
+    d3 = deepcopy(d_obs)
+    d4 = deepcopy(d_obs)
+    @test iszero(norm(2*d_obs - lmul!(2, d1)))
+    @test iszero(norm(3*d_obs - rmul!(d2,3)))
+    @test iszero(norm(d_obs/4 - ldiv!(4,d3)))
+    @test iszero(norm(d_obs/5 - rdiv!(d4,5)))
+
     # vcat
     d_vcat = [d_block; d_block]
     @test isequal(length(d_vcat), 2*length(d_block))

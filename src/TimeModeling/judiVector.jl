@@ -351,29 +351,60 @@ end
 
 -(a::Number, b::judiVector{avDT}) where avDT = -1f0 * (b  - a)
 
+# lmul!(number, judiVector)
+function lmul!(b::Number, a::judiVector{avDT}) where avDT
+    typeof(a.data[1]) == SeisCon && throw("Multiplication for OOC judiVectors not supported.")
+    lmul!(b, a.data)
+    return a
+end
+
+# rmul!(judiVector, number)
+function rmul!(a::judiVector{avDT}, b::Number) where avDT
+    typeof(a.data[1]) == SeisCon && throw("Multiplication for OOC judiVectors not supported.")
+    rmul!(a.data, b)
+    return a
+end
+
 # *(judiVector, number)
 function *(a::judiVector{avDT}, b::Number) where avDT
     typeof(a.data[1]) == SeisCon && throw("Multiplication for OOC judiVectors not supported.")
     c = deepcopy(a)
-    for j=1:c.nsrc
-        c.data[j] = c.data[j] .* b
-    end
+    rmul!(c.data, b)
     return c
 end
 
 *(a::Number, b::judiVector{avDT}) where avDT = b * a
 
+# ldiv!(number, judiVector)
+function ldiv!(b::Number, a::judiVector{avDT}) where avDT
+    typeof(a.data[1]) == SeisCon && throw("Division for OOC judiVectors not supported.")
+    if iszero(b)
+        error("Division by zero")
+    else
+        ldiv!(b, a.data)
+    end
+    return a
+end
+
+# rdiv!(judiVector, number)
+function rdiv!(a::judiVector{avDT}, b::Number) where avDT
+    typeof(a.data[1]) == SeisCon && throw("Division for OOC judiVectors not supported.")
+    if iszero(b)
+        error("Division by zero")
+    else
+        rdiv!(a.data, b)
+    end
+    return a
+end
 
 # /(judiVector, number)
-function /(a::judiVector{avDT},b::Number) where avDT
+function /(a::judiVector{avDT}, b::Number) where avDT
     typeof(a.data[1]) == SeisCon && throw("Division for OOC judiVectors not supported.")
     c = deepcopy(a)
     if iszero(b)
         error("Division by zero")
     else
-        for j=1:c.nsrc
-            c.data[j] = c.data[j]/b
-        end
+        rdiv!(c.data, b)
     end
     return c
 end
@@ -713,10 +744,12 @@ iterate(S::judiVector, state::Integer=1) = state > S.nsrc ? nothing : (S.data[st
 
 function cumsum(x::judiVector;dims=1)
     dims == 1 || dims == 2 || throw(judiVectorException("Dimension $(dims) is out of range for a 2D array"))
-    y = (dims == 1 ? x.geometry.dt[1] : 1f0) * x        # receiver dimension is non-dimensional
+    h = dims == 1 ? x.geometry.dt[1] : 1f0              # receiver dimension is non-dimensional
+    y = deepcopy(x)        
     for i = 1:x.nsrc
-        cumsum!(y.data[i], y.data[i], dims=dims)
+        cumsum!(y.data[i], x.data[i], dims=dims)
     end
+    rmul!(y, h)
     return y
 end
 
