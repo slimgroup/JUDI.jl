@@ -40,7 +40,7 @@ ftol = 1e-6
     # set up judiVector from cell array
     data = Array{Array}(undef, nsrc)
     for j=1:nsrc
-        data[j] = randn(Float32, 251, nrec)
+        data[j] = randn(Float32, ns, nrec)
     end
     d_obs =  judiVector(rec_geometry, data)
 
@@ -135,18 +135,19 @@ ftol = 1e-6
     @test iszero(norm(d_block - (d_block + d_block)/2))
 
     # lmul!, rmul!, ldiv!, rdiv!
-    d1 = deepcopy(d_obs)
-    d2 = deepcopy(d_obs)
-    d3 = deepcopy(d_obs)
-    d4 = deepcopy(d_obs)
+    data_ones = Array{Array}(undef, nsrc)
+    for j=1:nsrc
+        data_ones[j] = ones(Float32, ns, nrec)
+    end
+    d1 =  judiVector(rec_geometry, data_ones)
     lmul!(2f0, d1)
-    rmul!(d2,3f0)
-    ldiv!(4f0,d3)
-    rdiv!(d4,5f0)
-    @test iszero(norm(2f0*d_obs - d1))
-    @test iszero(norm(3f0*d_obs - d2))
-    @test iszero(norm(d_obs/4f0 - d3))
-    @test iszero(norm(d_obs/5f0 - d4))
+    @test all([all(d1.data[i] .== 2f0) for i = 1:d1.nsrc])
+    rmul!(d1, 3f0)
+    @test all([all(d1.data[i] .== 6f0) for i = 1:d1.nsrc])
+    ldiv!(2f0,d1)
+    @test all([all(d1.data[i] .== 3f0) for i = 1:d1.nsrc])
+    rdiv!(d1, 3f0)
+    @test all([all(d1.data[i] .== 1f0) for i = 1:d1.nsrc])
 
     # vcat
     d_vcat = [d_block; d_block]
