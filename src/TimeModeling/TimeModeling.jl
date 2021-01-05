@@ -18,7 +18,7 @@ import Base.cumsum, Base.diff
 
 import LinearAlgebra.transpose, LinearAlgebra.conj, LinearAlgebra.vcat, LinearAlgebra.adjoint
 import LinearAlgebra.vec, LinearAlgebra.dot, LinearAlgebra.norm, LinearAlgebra.abs
-import LinearAlgebra.rmul!, LinearAlgebra.mul!, Base.isfinite
+import LinearAlgebra.lmul!, LinearAlgebra.rmul!, LinearAlgebra.ldiv!, LinearAlgebra.rdiv!, LinearAlgebra.mul!, Base.isfinite
 
 import IterativeSolvers.zerox
 

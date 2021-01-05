@@ -40,7 +40,7 @@ ftol = 1e-6
     # set up judiVector from cell array
     data = Array{Array}(undef, nsrc)
     for j=1:nsrc
-        data[j] = randn(Float32, 251, nrec)
+        data[j] = randn(Float32, ns, nrec)
     end
     d_obs =  judiVector(rec_geometry, data)
 
@@ -133,6 +133,21 @@ ftol = 1e-6
 
     @test iszero(norm(2*d_block - (d_block + d_block)))
     @test iszero(norm(d_block - (d_block + d_block)/2))
+
+    # lmul!, rmul!, ldiv!, rdiv!
+    data_ones = Array{Array}(undef, nsrc)
+    for j=1:nsrc
+        data_ones[j] = ones(Float32, ns, nrec)
+    end
+    d1 =  judiVector(rec_geometry, data_ones)
+    lmul!(2f0, d1)
+    @test all([all(d1.data[i] .== 2f0) for i = 1:d1.nsrc])
+    rmul!(d1, 3f0)
+    @test all([all(d1.data[i] .== 6f0) for i = 1:d1.nsrc])
+    ldiv!(2f0,d1)
+    @test all([all(d1.data[i] .== 3f0) for i = 1:d1.nsrc])
+    rdiv!(d1, 3f0)
+    @test all([all(d1.data[i] .== 1f0) for i = 1:d1.nsrc])
 
     # vcat
     d_vcat = [d_block; d_block]
@@ -359,16 +374,37 @@ ftol = 1e-6
     @test isapprox(tr.geometry.xloc[1][1:11], zeros(11); atol=1f-14, rtol=1f-14)
 
     # Test integral & derivative
-    refarray = randn(Float32,251)
-    d_orig = judiVector(Geometry(0f0, 0f0, 0f0; dt=2, t=1000), refarray)
+    refarray = Array{Array}(undef, nsrc)
+    for j=1:nsrc
+        refarray[j] = randn(Float32, ns, nrec)
+    end
+    d_orig = judiVector(rec_geometry, refarray)
+
+    dt = rec_geometry.dt[1]
+
     d_cumsum = cumsum(d_orig)
     for i = 1:d_orig.nsrc
-        @test isapprox(cumsum(refarray,dims=1), d_cumsum.data[i])
+        @test isapprox(dt * cumsum(refarray[i],dims=1), d_cumsum.data[i])
     end
+
     d_diff = diff(d_orig)
     for i = 1:d_orig.nsrc
-        @test isapprox(refarray[1,:], d_diff.data[i][1,:])
-        @test isapprox(d_diff.data[i][2:end,:], diff(refarray,dims=1))
+        @test isapprox(1/dt * refarray[i][1,:], d_diff.data[i][1,:])
+        @test isapprox(d_diff.data[i][2:end,:], 1/dt * diff(refarray[i],dims=1))
+    end
+
+    @test isapprox(cumsum(d_orig,dims=1),cumsum(d_orig))
+    @test isapprox(diff(d_orig,dims=1),diff(d_orig))
+
+    d_cumsum_rec = cumsum(d_orig,dims=2)
+    for i = 1:d_orig.nsrc
+        @test isapprox(cumsum(refarray[i],dims=2), d_cumsum_rec.data[i])
+    end
+
+    d_diff_rec = diff(d_orig,dims=2)
+    for i = 1:d_orig.nsrc
+        @test isapprox(refarray[i][:,1], d_diff_rec.data[i][:,1])
+        @test isapprox(d_diff_rec.data[i][:,2:end], diff(refarray[i],dims=2))
     end
 
 end

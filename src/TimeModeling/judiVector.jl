@@ -306,7 +306,7 @@ end
 function +(a::judiVector{avDT}, b::judiVector{bvDT}) where {avDT, bvDT}
     size(a) == size(b) || throw(judiVectorException("dimension mismatch"))
     compareGeometry(a.geometry, b.geometry) == 1 || throw(judiVectorException("geometry mismatch"))
-    typeof(a.data[1]) == SeisCon && throw("Addition for OOC judiVectors not supported.")
+    typeof(a.data[1]) == SeisCon && throw(DomainError(a, "Addition for OOC judiVectors not supported."))
     c = deepcopy(a)
     for j=1:c.nsrc
         c.data[j] = a.data[j] + b.data[j]
@@ -318,7 +318,7 @@ end
 function -(a::judiVector{avDT}, b::judiVector{bvDT}) where {avDT, bvDT}
     size(a) == size(b) || throw(judiVectorException("dimension mismatch"))
     compareGeometry(a.geometry, b.geometry) == 1 || throw(judiVectorException("geometry mismatch"))
-    typeof(a.data[1]) == SeisCon && throw("Subtraction for OOC judiVectors not supported.")
+    typeof(a.data[1]) == SeisCon && throw(DomainError(a, "Subtraction for OOC judiVectors not supported."))
     c = deepcopy(a)
     for j=1:c.nsrc
         c.data[j] = a.data[j] - b.data[j]
@@ -328,7 +328,7 @@ end
 
 # +(judiVector, number)
 function +(a::judiVector{avDT}, b::Number) where avDT
-    typeof(a.data[1]) == SeisCon && throw("Addition for OOC judiVectors not supported.")
+    typeof(a.data[1]) == SeisCon && throw(DomainError(a, "Addition for OOC judiVectors not supported."))
     c = deepcopy(a)
     for j=1:c.nsrc
         c.data[j] = c.data[j] .+ b
@@ -341,7 +341,7 @@ end
 
 # -(judiVector, number)
 function -(a::judiVector{avDT}, b::Number) where avDT
-    typeof(a.data[1]) == SeisCon && throw("Subtraction for OOC judiVectors not supported.")
+    typeof(a.data[1]) == SeisCon && throw(DomainError(a, "Subtraction for OOC judiVectors not supported."))
     c = deepcopy(a)
     for j=1:c.nsrc
         c.data[j] = c.data[j] .- b
@@ -351,30 +351,52 @@ end
 
 -(a::Number, b::judiVector{avDT}) where avDT = -1f0 * (b  - a)
 
+# lmul!(number, judiVector)
+function lmul!(b::Number, a::judiVector{avDT}) where avDT
+    typeof(a.data[1]) == SeisCon && throw(DomainError(a, "Multiplication for OOC judiVectors not supported."))
+    lmul!(b, a.data)
+    return a
+end
+
+# rmul!(judiVector, number)
+function rmul!(a::judiVector{avDT}, b::Number) where avDT
+    typeof(a.data[1]) == SeisCon && throw(DomainError(a, "Multiplication for OOC judiVectors not supported."))
+    rmul!(a.data, b)
+    return a
+end
+
 # *(judiVector, number)
 function *(a::judiVector{avDT}, b::Number) where avDT
-    typeof(a.data[1]) == SeisCon && throw("Multiplication for OOC judiVectors not supported.")
+    typeof(a.data[1]) == SeisCon && throw(DomainError(a, "Multiplication for OOC judiVectors not supported."))
     c = deepcopy(a)
-    for j=1:c.nsrc
-        c.data[j] = c.data[j] .* b
-    end
+    rmul!(c.data, b)
     return c
 end
 
 *(a::Number, b::judiVector{avDT}) where avDT = b * a
 
+# ldiv!(number, judiVector)
+function ldiv!(b::Number, a::judiVector{avDT}) where avDT
+    typeof(a.data[1]) == SeisCon && throw(DomainError(a, "Division for OOC judiVectors not supported."))
+    iszero(b) && throw(DivideError())
+    lmul!(1f0/b, a.data)
+    return a
+end
+
+# rdiv!(judiVector, number)
+function rdiv!(a::judiVector{avDT}, b::Number) where avDT
+    typeof(a.data[1]) == SeisCon && throw(DomainError(a, "Division for OOC judiVectors not supported."))
+    iszero(b) && throw(DivideError())
+    rmul!(a.data, 1f0/b)
+    return a
+end
 
 # /(judiVector, number)
-function /(a::judiVector{avDT},b::Number) where avDT
-    typeof(a.data[1]) == SeisCon && throw("Division for OOC judiVectors not supported.")
+function /(a::judiVector{avDT}, b::Number) where avDT
+    typeof(a.data[1]) == SeisCon && throw(DomainError(a, "Division for OOC judiVectors not supported."))
+    iszero(b) && throw(DivideError())
     c = deepcopy(a)
-    if iszero(b)
-        error("Division by zero")
-    else
-        for j=1:c.nsrc
-            c.data[j] = c.data[j]/b
-        end
-    end
+    rmul!(c.data, 1f0/b)
     return c
 end
 
@@ -713,19 +735,21 @@ iterate(S::judiVector, state::Integer=1) = state > S.nsrc ? nothing : (S.data[st
 
 function cumsum(x::judiVector;dims=1)
     dims == 1 || dims == 2 || throw(judiVectorException("Dimension $(dims) is out of range for a 2D array"))
-    y = deepcopy(x)
+    h = dims == 1 ? x.geometry.dt[1] : 1f0              # receiver dimension is non-dimensional
+    y = deepcopy(x)        
     for i = 1:x.nsrc
         cumsum!(y.data[i], x.data[i], dims=dims)
     end
+    rmul!(y, h)
     return y
 end
 
 function diff(x::judiVector;dims=1)
     # note that this is not the same as default diff in julia, the first entry stays in the diff result
     dims == 1 || dims == 2 || throw(judiVectorException("Dimension $(dims) is out of range for a 2D array"))
-    y = deepcopy(x)
+    y = (dims == 1 ? 1f0 / x.geometry.dt[1] : 1f0) * x        # receiver dimension is non-dimensional
     for i = 1:x.nsrc
-        y.data[i][2:end,:] = diff(x.data[i],dims=dims)
+        copy!(selectdim(y.data[i], dims, 2:size(y.data[i],dims)), diff(y.data[i],dims=dims))
     end
     return y
 end
