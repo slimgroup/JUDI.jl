@@ -72,5 +72,5 @@ x, fsave, funEvals = minConf_SPG(objective_function, vec(model0.m), ProjBound, s
 
 # Save results
 h5open("result_3D_overthrust_spg.h5", "w") do file
-    write(file, "x", sqrt.(1./reshape(x, model0.n)), "fsave", fsave, "fhistory", convert(Array{Float32, 1}, fvals))
+    write(file, "x", sqrt.(1 ./reshape(x, model0.n)), "fsave", fsave, "fhistory", convert(Array{Float32, 1}, fvals))
 end

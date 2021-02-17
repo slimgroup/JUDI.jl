@@ -172,4 +172,4 @@ function subsample(J::judiJacobian{ADDT,ARDT}, srcnum) where {ADDT,ARDT}
     return judiJacobian(Fsub, qsub; DDT=ADDT, RDT=ARDT)
 end
 
-getindex(J::judiJacobian,a) = subsample(J,a)
+getindex(J::judiJacobian, a) = subsample(J, a)

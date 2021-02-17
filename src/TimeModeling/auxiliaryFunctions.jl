@@ -378,7 +378,6 @@ function time_resample(data::Array, geometry_in::Geometry, dt_new)
         return data, geometry_in
     else
         geometry = deepcopy(geometry_in)
-        numTraces = size(data,2)
         timeAxis = 0:geometry.dt[1]:geometry.t[1]
         timeInterp = 0:dt_new:geometry.t[1]
         dataInterp = Float32.(SincInterpolation(data, timeAxis, timeInterp))
@@ -395,7 +394,6 @@ function time_resample(data::Array, dt_in, geometry_out::Geometry)
         return data
     else
         geometry = deepcopy(geometry_out)
-        numTraces = size(data,2)
         timeAxis = 0:dt_in:geometry_out.t[1]
         timeInterp = 0:geometry_out.dt[1]:geometry_out.t[1]
         return  Float32.(SincInterpolation(data, timeAxis, timeInterp))

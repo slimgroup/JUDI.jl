@@ -7,7 +7,7 @@
 ################################################################################
 ### Module loading
 
-using JUDI, JLD2, JUDI
+using JUDI, JLD2
 
 ### Load true model
 base_path = dirname(pathof(JUDI))*"/../examples/twri/"

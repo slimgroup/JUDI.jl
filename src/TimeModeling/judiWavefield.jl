@@ -256,6 +256,21 @@ function isapprox(x::judiWavefield, y::judiWavefield; rtol::Real=sqrt(eps()), at
     isapprox(x.data, y.data; rtol=rtol, atol=atol)
 end
 
+
+function diff(a::judiWavefield{avDT}; dims=1) where avDT
+	b = deepcopy(a)
+	for j=1:a.info.nsrc
+		s = 1
+		@views loc = b.data[j]
+		for d in dims
+			s *= dims == 1 ? 1/a.dt : 1
+			loc = selectdim(loc, d, 2:size(loc, d))
+		end
+		loc .= s*diff(a.data[j], dims=dims)
+	end
+	return b
+end
+
 ####################################################################################################
 
 isfinite(x::judiWavefield) = all(all(isfinite.(x.data[i])) for i=1:length(x.data))

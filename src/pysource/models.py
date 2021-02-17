@@ -93,7 +93,7 @@ class GenericModel(object):
     General model class with common properties
     """
     def __init__(self, origin, spacing, shape, space_order, nbl=20,
-                 dtype=np.float32, fs=False):
+                 dtype=np.float32, fs=False, grid=None):
         self.shape = shape
         self.nbl = int(nbl)
         self.origin = tuple([dtype(o) for o in origin])
@@ -112,8 +112,9 @@ class GenericModel(object):
             subdomains = ()
         # Physical extent is calculated per cell, so shape - 1
         extent = tuple(np.array(spacing) * (shape_pml - 1))
-        self.grid = Grid(extent=extent, shape=shape_pml, origin=tuple(origin_pml),
-                         dtype=dtype, subdomains=subdomains)
+        self.grid = grid or Grid(extent=extent, shape=shape_pml,
+                                 origin=tuple(origin_pml),
+                                 dtype=dtype, subdomains=subdomains)
 
         if self.nbl != 0:
             # Create dampening field as symbol `damp`
@@ -243,7 +244,7 @@ class Model(GenericModel):
                  dtype=np.float32, epsilon=None, delta=None, theta=None, phi=None,
                  rho=1, dm=None, fs=False, **kwargs):
         super(Model, self).__init__(origin, spacing, shape, space_order, nbl, dtype,
-                                    fs=fs)
+                                    fs=fs, grid=kwargs.get('grid'))
 
         self.scale = 1
         self._space_order = space_order
