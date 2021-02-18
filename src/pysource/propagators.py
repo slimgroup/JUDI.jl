@@ -49,7 +49,7 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     op = Operator(pde + dft + geom_expr + eq_save,
                   subs=subs, name="forward"+name(model),
                   opt=opt_op(model))
-
+    op.cfunction
     if return_op:
         return op, u, rcv
 
@@ -96,7 +96,7 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0, dft_sub=None,
     op = Operator(pde + ws_expr + nv_t + dft + geom_expr + nv_s,
                   subs=subs, name="adjoint"+name(model),
                   opt=opt_op(model))
-
+    op.cfunction
     # Run operator
     summary = op()
 
@@ -139,6 +139,7 @@ def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8,
         op = Operator(pde + geom_expr + g_expr,
                       subs=subs, name="gradient"+name(model),
                       opt='advanced')
+        op.cfunction
     if return_op:
         return op, gradm, v
 
@@ -170,10 +171,10 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
 
     # Set up PDE expression and rearrange
     pde = wave_kernel(model, u, q=q)
-    pdel = wave_kernel(model, ul, q=lin_src(model, u, isic=isic))
     if model.dm == 0:
         pdel = []
-
+    else:
+        pdel = wave_kernel(model, ul, q=lin_src(model, u, isic=isic))
     # Setup source and receiver
     geom_expr, _, rcvnl = src_rec(model, u, rec_coords=rcv_coords if nlind else None,
                                   src_coords=src_coords, wavelet=wavelet)
@@ -187,7 +188,7 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     op = Operator(pde + geom_expr + geom_exprl + pdel + dft + eq_save,
                   subs=subs, name="born"+name(model),
                   opt=opt_op(model))
-
+    op.cfunction
     outrec = (rcvl, rcvnl) if nlind else rcvl
     if return_op:
         return op, u, outrec
