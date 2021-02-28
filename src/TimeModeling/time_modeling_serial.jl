@@ -27,7 +27,7 @@ function time_modeling(model_full::Model, srcGeometry, srcData, recGeometry, rec
         if modelPy.dm == 0 && options.return_array == false
             return judiVector(recGeometry, zeros(Float32, recGeometry.nt[1], length(recGeometry.xloc[1])))
         elseif modelPy.dm == 0 && options.return_array == true
-            return zeros(Float32, prod(model_full.n))
+            return vec(zeros(Float32, recGeometry.nt[1], length(recGeometry.xloc[1])))
         end
     end
 
