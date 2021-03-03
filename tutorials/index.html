@@ -150,7 +150,7 @@
 <p>These tutorials provide instructions of how to set up various modeling or inversion scenarios with JUDI. For a list of runnable Julia scripts and reproducable research, please also check out the <a href="https://github.com/slimgroup/JUDI.jl/tree/master/examples">examples</a> directory on Github.</p>
 <h2 id="2d-modeling-quickstart">2D Modeling Quickstart</h2>
 <p>To set up a simple 2D modeling experiment with JUDI with an OBN-type acquisition (receivers everywhere), we start by loading the module and building a two layer model:</p>
-<pre><code>using JUDI.TimeModeling
+<pre><code>using JUDI
 
 # Grid
 n = (120, 100)   # (x,z)
@@ -253,7 +253,7 @@ imshow(rtm', cmap=&quot;gray&quot;, vmin=-1e3, vmax=1e3)
 </code></pre>
 <h2 id="3d-modeling-quickstart">3D Modeling Quickstart</h2>
 <p>Setting up a 3D experiment largely follows the instructions for the 2D example. Instead of a 2D model, we define our velocity model as:</p>
-<pre><code>using JUDI.TimeModeling
+<pre><code>using JUDI
 
 # Grid
 n = (120, 100, 80)   # (x,y,z)
@@ -461,7 +461,7 @@ q = judiVector(src_geometry, wavelet)
 </code></pre>
 <h2 id="working-with-wavefields">Working with wavefields</h2>
 <p>JUDI allows computing full time domain wavefields and using them as right-hand sides for wave equations solves. This tutorial shows how. We start by setting up a basic 2D experiment:</p>
-<pre><code>using JUDI.TimeModeling
+<pre><code>using JUDI
 
 # Grid
 n = (120, 100)   # (x,z)
@@ -520,7 +520,7 @@ w = A_inv'*u
 <p>Similarly, by setting up a receiver projection operator, we can use wavefields as right-hand sides, but restrict the output to the receiver locations.</p>
 <h2 id="extended-source-modeling">Extended source modeling</h2>
 <p>JUDI supports extened source modeling, which injects a 1D wavelet <code>q</code> at every point in the subsurface weighted by a spatially varying extended source. To demonstrate extended source modeling, we first set up a runnable 2D experiment with JUDI. We start with defining the model:</p>
-<pre><code>using JUDI.TimeModeling
+<pre><code>using JUDI
 
 # Grid
 n = (120, 100)   # (x,z)

@@ -125,7 +125,7 @@
                 <h2 id="fwi-with-quasi-newton-methods-from-the-nlopt-library">FWI with Quasi-Newton methods from the NLopt library</h2>
 <p>In this notebook, we demonstrate how to interface the NLopt optimization library for full-waveform inversion with a limited-memory Quasi-Newton (L-BFGS) algorithm. Once again, we start by adding additional workers for parallel computing and by loading all necessary modules:</p>
 <pre><code class="language-julia">using Distributed; addprocs(2)
-@everywhere using SegyIO, HDF5, PyPlot, JUDI.TimeModeling, NLopt, Random, LinearAlgebra, Printf
+@everywhere using SegyIO, HDF5, PyPlot, JUDI, NLopt, Random, LinearAlgebra, Printf
 </code></pre>
 <p>We load the FWI starting model from the HDF5 model file and set up the JUDI model structure:</p>
 <pre><code class="language-julia">m0, n, d, o = read(h5open(&quot;overthrust_model.h5&quot;,&quot;r&quot;),&quot;m0&quot;,&quot;n&quot;,&quot;d&quot;,&quot;o&quot;); title(&quot;Starting model&quot;)

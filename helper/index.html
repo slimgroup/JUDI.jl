@@ -86,6 +86,8 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#generate-and-sample-from-frequency-distribution">Generate and sample from frequency distribution</a>
     </li>
+    <li class="toctree-l2"><a class="reference internal" href="#read-data-from-out-of-core-container">Read data from out of core container</a>
+    </li>
     </ul>
                     </li>
                 </ul>
@@ -284,6 +286,11 @@ f = dist(rand(10))
 <pre><code class="language-julia">f = select_frequencies(dist; fmin=0f0, fmax=Inf, nf=1)
 </code></pre>
 <p>to draw <code>nf</code> number of frequencies for a given distribution <code>dist</code> in the frequency range of <code>fmin</code> to <code>fmax</code> (both in kHz).</p>
+<h2 id="read-data-from-out-of-core-container">Read data from out of core container</h2>
+<p>In the case where a <code>judiVector</code> is out of core (points to a segy file) it is possible to convert it or part of it into an in core <code>judiVecor</code> with the <code>get_data</code> function.</p>
+<pre><code class="language-julia">d_ic = get_data(d_ooc, inds)
+</code></pre>
+<p>where <code>inds</code> is either a single index, a list of index or a range of index.</p>
               
             </div>
           </div>

@@ -208,7 +208,7 @@
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#interfacegrad_fwimodel-recin-rec_coords-u-space_order8">interface.grad_fwi(model, recin, rec_coords, u, space_order=8)</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#interfacewri_funcmodel-src_coords-wavelet-rec_coords-recin-yin-space_order8-isicfalse-wsnone-t_sub1-gradm-grad_corrfalse-alpha_opfalse-w_funnone-eps0">interface.wri_func(model, src_coords, wavelet, rec_coords, recin, yin, space_order=8, isic=False, ws=None, t_sub=1, grad='m', grad_corr=False, alpha_op=False, w_fun=None, eps=0)</a>
+    <li class="toctree-l3"><a class="reference internal" href="#interfacewri_funcmodel-src_coords-wavelet-rec_coords-recin-yin-space_order8-isicfalse-wsnone-t_sub1-gradm-grad_corrfalse-alpha_opfalse-w_funnone-eps0-freq_list-wfiltnone">interface.wri_func(model, src_coords, wavelet, rec_coords, recin, yin, space_order=8, isic=False, ws=None, t_sub=1, grad='m', grad_corr=False, alpha_op=False, w_fun=None, eps=0, freq_list=[], wfilt=None)</a>
     </li>
         </ul>
     </li>
@@ -248,13 +248,13 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#propagators-module">propagators module</a>
         <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#propagatorsadjointmodel-y-src_coords-rcv_coords-space_order8-q0-savefalse-wsnone-norm_vfalse-w_funnone">propagators.adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0, save=False, ws=None, norm_v=False, w_fun=None)</a>
+    <li class="toctree-l3"><a class="reference internal" href="#propagatorsadjointmodel-y-src_coords-rcv_coords-space_order8-q0-dft_subnone-savefalse-wsnone-norm_vfalse-w_funnone-freq_listnone">propagators.adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0, dft_sub=None, save=False, ws=None, norm_v=False, w_fun=None, freq_list=None)</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#propagatorsbornmodel-src_coords-rcv_coords-wavelet-space_order8-savefalse-qnone-return_opfalse-isicfalse-freq_listnone-dft_subnone-wsnone-t_sub1-nlindfalse">propagators.born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False, q=None, return_op=False, isic=False, freq_list=None, dft_sub=None, ws=None, t_sub=1, nlind=False)</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#propagatorsforwardmodel-src_coords-rcv_coords-wavelet-space_order8-savefalse-qnone-return_opfalse-freq_listnone-dft_subnone-wsnone-t_sub1-kwargs">propagators.forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False, q=None, return_op=False, freq_list=None, dft_sub=None, ws=None, t_sub=1, **kwargs)</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#propagatorsforward_gradmodel-src_coords-rcv_coords-wavelet-v-space_order8-qnone-wsnone-isicfalse-wnone-kwargs">propagators.forward_grad(model, src_coords, rcv_coords, wavelet, v, space_order=8, q=None, ws=None, isic=False, w=None, **kwargs)</a>
+    <li class="toctree-l3"><a class="reference internal" href="#propagatorsforward_gradmodel-src_coords-rcv_coords-wavelet-v-space_order8-qnone-wsnone-isicfalse-wnone-freqnone-kwargs">propagators.forward_grad(model, src_coords, rcv_coords, wavelet, v, space_order=8, q=None, ws=None, isic=False, w=None, freq=None, **kwargs)</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#propagatorsgradientmodel-residual-rcv_coords-u-return_opfalse-space_order8-wnone-freqnone-dft_subnone-isicfalse">propagators.gradient(model, residual, rcv_coords, u, return_op=False, space_order=8, w=None, freq=None, dft_sub=None, isic=False)</a>
     </li>
@@ -386,6 +386,8 @@
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#wave_utilsfreesurfacemodel-eq">wave_utils.freesurface(model, eq)</a>
     </li>
+    <li class="toctree-l3"><a class="reference internal" href="#wave_utilsidftv-freqnone">wave_utils.idft(v, freq=None)</a>
+    </li>
     <li class="toctree-l3"><a class="reference internal" href="#wave_utilsotf_dftu-freq-dt-factornone">wave_utils.otf_dft(u, freq, dt, factor=None)</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#wave_utilssub_timetime-factor-dt1-freqnone">wave_utils.sub_time(time, factor, dt=1, freq=None)</a>
@@ -396,7 +398,7 @@
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#wave_utilsweighted_normu-weightnone">wave_utils.weighted_norm(u, weight=None)</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#wave_utilswf_as_srcv-w1">wave_utils.wf_as_src(v, w=1)</a>
+    <li class="toctree-l3"><a class="reference internal" href="#wave_utilswf_as_srcv-w1-freq_listnone">wave_utils.wf_as_src(v, w=1, freq_list=None)</a>
     </li>
         </ul>
     </li>
@@ -1282,7 +1284,7 @@ perturbation (square slowness) dm with an extended source</p>
 <p>Array</p>
 </li>
 </ul>
-<h3 id="interfacewri_funcmodel-src_coords-wavelet-rec_coords-recin-yin-space_order8-isicfalse-wsnone-t_sub1-gradm-grad_corrfalse-alpha_opfalse-w_funnone-eps0">interface.wri_func(model, src_coords, wavelet, rec_coords, recin, yin, space_order=8, isic=False, ws=None, t_sub=1, grad='m', grad_corr=False, alpha_op=False, w_fun=None, eps=0)</h3>
+<h3 id="interfacewri_funcmodel-src_coords-wavelet-rec_coords-recin-yin-space_order8-isicfalse-wsnone-t_sub1-gradm-grad_corrfalse-alpha_opfalse-w_funnone-eps0-freq_list-wfiltnone">interface.wri_func(model, src_coords, wavelet, rec_coords, recin, yin, space_order=8, isic=False, ws=None, t_sub=1, grad='m', grad_corr=False, alpha_op=False, w_fun=None, eps=0, freq_list=[], wfilt=None)</h3>
 <p>Time domain wavefield reconstruction inversion wrapper</p>
 <h2 id="kernels-module">kernels module</h2>
 <h3 id="kernelsacoustic_kernelmodel-u-fwtrue-qnone">kernels.acoustic_kernel(model, u, fw=True, q=None)</h3>
@@ -1415,7 +1417,7 @@ perturbation (square slowness) dm with an extended source</p>
 <p>Symbolic representation of the velocity
 vp = sqrt(1 / m)</p>
 <h2 id="propagators-module">propagators module</h2>
-<h3 id="propagatorsadjointmodel-y-src_coords-rcv_coords-space_order8-q0-savefalse-wsnone-norm_vfalse-w_funnone">propagators.adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0, save=False, ws=None, norm_v=False, w_fun=None)</h3>
+<h3 id="propagatorsadjointmodel-y-src_coords-rcv_coords-space_order8-q0-dft_subnone-savefalse-wsnone-norm_vfalse-w_funnone-freq_listnone">propagators.adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0, dft_sub=None, save=False, ws=None, norm_v=False, w_fun=None, freq_list=None)</h3>
 <p>Low level propagator, to be used through interface.py
 Compute adjoint wavefield v = adjoint(F(m))*y
 and related quantities (||v||_w, v(xsrc))</p>
@@ -1426,7 +1428,7 @@ and related quantities.</p>
 <h3 id="propagatorsforwardmodel-src_coords-rcv_coords-wavelet-space_order8-savefalse-qnone-return_opfalse-freq_listnone-dft_subnone-wsnone-t_sub1-kwargs">propagators.forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False, q=None, return_op=False, freq_list=None, dft_sub=None, ws=None, t_sub=1, **kwargs)</h3>
 <p>Low level propagator, to be used through interface.py
 Compute forward wavefield u = A(m)^{-1}*f and related quantities (u(xrcv))</p>
-<h3 id="propagatorsforward_gradmodel-src_coords-rcv_coords-wavelet-v-space_order8-qnone-wsnone-isicfalse-wnone-kwargs">propagators.forward_grad(model, src_coords, rcv_coords, wavelet, v, space_order=8, q=None, ws=None, isic=False, w=None, **kwargs)</h3>
+<h3 id="propagatorsforward_gradmodel-src_coords-rcv_coords-wavelet-v-space_order8-qnone-wsnone-isicfalse-wnone-freqnone-kwargs">propagators.forward_grad(model, src_coords, rcv_coords, wavelet, v, space_order=8, q=None, ws=None, isic=False, w=None, freq=None, **kwargs)</h3>
 <p>Low level propagator, to be used through interface.py
 Compute forward wavefield u = A(m)^{-1}*f and related quantities (u(xrcv))</p>
 <h3 id="propagatorsgradientmodel-residual-rcv_coords-u-return_opfalse-space_order8-wnone-freqnone-dft_subnone-isicfalse">propagators.gradient(model, residual, rcv_coords, u, return_op=False, space_order=8, w=None, freq=None, dft_sub=None, isic=False)</h3>
@@ -1795,6 +1797,21 @@ the acoustic wave equation</p>
 </ul>
 </li>
 </ul>
+<h3 id="wave_utilsidftv-freqnone">wave_utils.idft(v, freq=None)</h3>
+<p>Symbolic inverse dft of v</p>
+<ul>
+<li>
+<p><strong>Parameters</strong></p>
+<ul>
+<li>
+<p><strong>v</strong> (<em>TimeFunction</em><em> or </em><em>Tuple</em>) – Wavefield to take inverse DFT of</p>
+</li>
+<li>
+<p><strong>freq</strong> (<em>Array</em>) – Array of frequencies for on-the-fly DFT</p>
+</li>
+</ul>
+</li>
+</ul>
 <h3 id="wave_utilsotf_dftu-freq-dt-factornone">wave_utils.otf_dft(u, freq, dt, factor=None)</h3>
 <p>On the fly DFT wavefield (frequency slices) and expression</p>
 <ul>
@@ -1895,7 +1912,7 @@ breaking loops</p>
 </ul>
 </li>
 </ul>
-<h3 id="wave_utilswf_as_srcv-w1">wave_utils.wf_as_src(v, w=1)</h3>
+<h3 id="wave_utilswf_as_srcv-w1-freq_listnone">wave_utils.wf_as_src(v, w=1, freq_list=None)</h3>
 <p>Weighted source as a time-space wavefield</p>
 <ul>
 <li>
