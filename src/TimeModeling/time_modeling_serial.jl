@@ -24,7 +24,11 @@ function time_modeling(model_full::Model, srcGeometry, srcData, recGeometry, rec
     modelPy = devito_model(model, options)
     if op=='J' && mode == 1
         update_dm(modelPy, dm, options)
-        modelPy.dm == 0 && return judiVector(recGeometry, zeros(Float32, recGeometry.nt[1], length(recGeometry.xloc[1])))
+        if modelPy.dm == 0 && options.return_array == false
+            return judiVector(recGeometry, zeros(Float32, recGeometry.nt[1], length(recGeometry.xloc[1])))
+        elseif modelPy.dm == 0 && options.return_array == true
+            return vec(zeros(Float32, recGeometry.nt[1], length(recGeometry.xloc[1])))
+        end
     end
 
     # Load shot record if stored on disk
@@ -48,7 +52,11 @@ function time_modeling(model_full::Model, srcGeometry, srcData, recGeometry, rec
 
     # Extend gradient back to original model size
     if op=='J' && mode==-1 && options.limit_m==true
-        argout = PhysicalParameter(extend_gradient(model_full, model, argout), model.d, model.o)
+        if options.return_array == true
+            argout = extend_gradient(model_full, model, argout)
+        else
+            argout = PhysicalParameter(extend_gradient(model_full, model, argout), model.d, model.o)
+        end
     end
 
     return argout

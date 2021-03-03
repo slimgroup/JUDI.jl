@@ -227,7 +227,11 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Geometry
 
     # Remove PML and return gradient as Array
     grad = remove_padding(grad, modelPy.padsizes; true_adjoint=options.sum_padding)
-    return PhysicalParameter(grad, model.d, model.o)
+    if options.return_array == true
+        return vec(grad)
+    else
+        return PhysicalParameter(grad, model.d, model.o)
+    end
 end
 
 
@@ -341,5 +345,9 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcData::Array, recGe
                   dft_sub=options.dft_subsampling_factor[1])
     # Remove PML and return gradient as Array
     grad = remove_padding(grad, modelPy.padsizes; true_adjoint=options.sum_padding)
-    return PhysicalParameter(grad, model.d, model.o)
+    if options.return_array == true
+        return vec(grad)
+    else
+        return PhysicalParameter(grad, model.d, model.o)
+    end
 end
