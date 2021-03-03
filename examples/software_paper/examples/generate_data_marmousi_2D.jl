@@ -3,7 +3,7 @@
 # Date: December 2018
 #
 
-using JUDI.TimeModeling, SegyIO, HDF5, LinearAlgebra
+using JUDI, SegyIO, HDF5, LinearAlgebra
 
 # Load migration velocity model
 n, d, o, m0, dm = read(h5open("../data/marmousi_model.h5", "r"), "n", "d", "o", "m0", "dm")

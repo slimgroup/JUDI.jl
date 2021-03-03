@@ -5,7 +5,7 @@
 
 using Statistics, Random, Pkg
 using LinearAlgebra
-using JUDI.TimeModeling, JUDI.SLIM_optim, HDF5, SegyIO, PyPlot, FFTW
+using JUDI, SlimOptim, HDF5, SegyIO, PyPlot, FFTW
 using SetIntersectionProjection
 
 # Load starting model
@@ -96,6 +96,8 @@ function prj(input)
 end
 
 ########## Run
+F0 = judiModeling(deepcopy(model0), q.geometry, d_obs.geometry)
+ls = BackTracking(order=3, iterations=10)
 
 # Main loop
 for j=1:niterations
@@ -103,14 +105,20 @@ for j=1:niterations
     # get fwi objective function value and gradient
     i = randperm(d_obs.nsrc)[1:batchsize]
     fval, gradient = fwi_objective(model0,q[i],d_obs[i])
+    p = -gradient/norm(gradient, Inf)
     println("FWI iteration no: ",j,"; function value: ",fval)
     fhistory_SGD[j] = fval
 
     # linesearch
-    step = backtracking_linesearch(model0, q[i], d_obs[i], fval, gradient, prj; alpha=1f0)
+    function ϕ(α) 
+        F0.model.m .= proj(model0.m .+ α * p)
+        misfit = .5*norm(F0[i]*q[i] - d_obs[i])^2
+        return misfit
+    end
+    step, fval = ls(ϕ, 1f0, fval, dot(gradient, p))
 
     # Update model and bound projection
-    model0.m .= prj(model0.m + reshape(step,model0.n))
+    model0.m = proj(model0.m .+ step .* p)
 end
 
 figure(); imshow(sqrt.(1f0./adjoint(model0.m))); title("FWI with SPG")

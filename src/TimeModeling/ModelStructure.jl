@@ -223,9 +223,9 @@ materialize!(p::PhysicalParameter{RDT}, b::Base.Broadcast.Broadcasted{Base.Broad
 materialize!(p::Array, b::Broadcast.Broadcasted{Broadcast.ArrayStyle{PhysicalParameter}}) = materialize!(p, reshape(collect(b), size(p)))
 
 # Linalg Extras
-mul!(x::PhysicalParameter, F::Union{joAbstractLinearOperator, joLinearFunction}, y::Array) = (x .= F*y)
-mul!(x::PhysicalParameter, F::Union{joAbstractLinearOperator, joLinearFunction}, y::PhysicalParameter) = (x .= F*y)
-mul!(x::Array, F::Union{joAbstractLinearOperator, joLinearFunction}, y::PhysicalParameter) = (x .= F*y)
+mul!(x::PhysicalParameter, F::Union{joAbstractLinearOperator, joLinearFunction, Array}, y::Array) = mul!(view(x.data, :), F, y)
+mul!(x::PhysicalParameter, F::Union{joAbstractLinearOperator, joLinearFunction, Array}, y::PhysicalParameter) = mul!(view(x.data, :), F, view(y.data, :))
+mul!(x::Array, F::Union{joAbstractLinearOperator, joLinearFunction, Array}, y::PhysicalParameter) = mul!(x, F, y[1:end])
 
 # For ploting
 array2py(p::PhysicalParameter{vDT}, i::Int64, I::CartesianIndex{N}) where {vDT, N} = array2py(p.data, i, I)
@@ -318,3 +318,6 @@ function Base.getproperty(obj::Model, sym::Symbol)
         return getfield(obj, sym)
     end
 end
+
+similar(x::PhysicalParameter{vDT}, m::Model) where {vDT} = PhysicalParameter(m.n, m.d, m.o; vDT=vDT)
+similar(x::Array, m::Model) where {vDT} = similar(x, m.n)

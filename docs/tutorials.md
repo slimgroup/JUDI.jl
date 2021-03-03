@@ -7,7 +7,7 @@ These tutorials provide instructions of how to set up various modeling or invers
 To set up a simple 2D modeling experiment with JUDI with an OBN-type acquisition (receivers everywhere), we start by loading the module and building a two layer model:
 
 ```
-using JUDI.TimeModeling
+using JUDI
 
 # Grid
 n = (120, 100)   # (x,z)
@@ -158,7 +158,7 @@ imshow(rtm', cmap="gray", vmin=-1e3, vmax=1e3)
 Setting up a 3D experiment largely follows the instructions for the 2D example. Instead of a 2D model, we define our velocity model as:
 
 ```
-using JUDI.TimeModeling
+using JUDI
 
 # Grid
 n = (120, 100, 80)   # (x,y,z)
@@ -424,7 +424,7 @@ JUDI allows computing full time domain wavefields and using them as right-hand s
 
 
 ```
-using JUDI.TimeModeling
+using JUDI
 
 # Grid
 n = (120, 100)   # (x,z)
@@ -502,7 +502,7 @@ Similarly, by setting up a receiver projection operator, we can use wavefields a
 JUDI supports extened source modeling, which injects a 1D wavelet `q` at every point in the subsurface weighted by a spatially varying extended source. To demonstrate extended source modeling, we first set up a runnable 2D experiment with JUDI. We start with defining the model:
 
 ```
-using JUDI.TimeModeling
+using JUDI
 
 # Grid
 n = (120, 100)   # (x,z)

@@ -21,7 +21,7 @@ struct judiPDEfull{DDT<:Number,RDT<:Number} <: joAbstractLinearOperator{DDT,RDT}
     srcGeometry::Geometry
     recGeometry::Geometry
     options::Options
-    fop::Function              # forward
+    fop::Function  # forward
     fop_T::Union{Function, Nothing}  # transpose
 end
 
@@ -73,6 +73,7 @@ function judiModeling(info::Info,model::Model, srcGeometry::Geometry, recGeometr
                                                    process_input_data(rec, recGeometry, info), nothing, srcnum, 'F', -1, options),
                               )
 end
+
 
 
 ############################################################

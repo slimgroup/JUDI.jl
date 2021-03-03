@@ -9,7 +9,7 @@ R = Float32
 ### Module loading
 using LinearAlgebra, JLD2, PyPlot, Dates, Distributed
 using Optim, LineSearches
-using JUDI, JUDI.TimeModeling, JUDI.SLIM_optim
+using JUDI, JUDI.TimeModeling
 
 ### Load or model synthetic data
 base_path = dirname(pathof(JUDI))*"/../examples/twri/"

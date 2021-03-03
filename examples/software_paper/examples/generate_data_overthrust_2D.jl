@@ -3,7 +3,7 @@
 # Date: December 2018
 #
 
-using JUDI.TimeModeling, HDF5, SegyIO
+using JUDI, HDF5, SegyIO
 
 # Load overthrust model
 n, d, o, m = read(h5open("../data/overthrust_model_2D.h5","r"), "n", "d", "o", "m")

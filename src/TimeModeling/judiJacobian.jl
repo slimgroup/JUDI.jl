@@ -5,7 +5,7 @@
 # Authors: Philipp Witte (pwitte@eos.ubc.ca), Henryk Modzelewski (hmodzelewski@eos.ubc.ca)
 # Date: January 2017
 
-export judiJacobian, judiJacobianException, subsample, zerox
+export judiJacobian, judiJacobianException, subsample
 
 ############################################################
 
@@ -131,9 +131,6 @@ function *(a::Number,A::judiJacobian{ADDT,ARDT}) where {ADDT,ARDT}
                                 )
 end
 
-# Needed by lsqr
-zerox(J::judiJacobian, y::judiVector) = PhysicalParameter(zeros(Float32, J.model.n), J.model.d, J.model.o)
-
 ############################################################
 ## overloaded Bases +(...judiJacobian...), -(...judiJacobian...)
 
@@ -175,4 +172,4 @@ function subsample(J::judiJacobian{ADDT,ARDT}, srcnum) where {ADDT,ARDT}
     return judiJacobian(Fsub, qsub; DDT=ADDT, RDT=ARDT)
 end
 
-getindex(J::judiJacobian,a) = subsample(J,a)
+getindex(J::judiJacobian, a) = subsample(J, a)

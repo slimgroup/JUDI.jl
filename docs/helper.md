@@ -153,3 +153,14 @@ f = select_frequencies(dist; fmin=0f0, fmax=Inf, nf=1)
 ```
 
 to draw `nf` number of frequencies for a given distribution `dist` in the frequency range of `fmin` to `fmax` (both in kHz).
+
+## Read data from out of core container
+
+In the case where a `judiVector` is out of core (points to a segy file) it is possible to convert it or part of it into an in core `judiVecor` with the `get_data` function.
+
+
+```julia
+d_ic = get_data(d_ooc, inds)
+```
+
+where `inds` is either a single index, a list of index or a range of index.

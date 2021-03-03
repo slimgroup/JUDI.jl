@@ -4,7 +4,7 @@
 # Date: January 2017
 #
 
-using JUDI.TimeModeling, SegyIO, LinearAlgebra, PyPlot, IterativeSolvers, JOLI
+using JUDI, SegyIO, LinearAlgebra, PyPlot, IterativeSolvers, JOLI
 
 # Set up model structure
 n = (120, 100)   # (x,y,z) or (x,z)
@@ -36,7 +36,7 @@ dt = 4f0    # receiver sampling interval [ms]
 recGeometry = Geometry(xrec, yrec, zrec; dt=dt, t=time, nsrc=nsrc)
 
 # Source wavelet
-f0 = 0.01f0     # MHz
+f0 = 0.01f0     # kHz
 wavelet = ricker_wavelet(time, dt, f0)
 
 # Set up info structure for linear operators

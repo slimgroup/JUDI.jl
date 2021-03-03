@@ -53,7 +53,7 @@ dtS = 4f0   # ms
 srcGeometry = Geometry(xsrc, ysrc, zsrc; dt=dtS, t=timeS)
 
 # setup wavelet
-f0 = 0.01f0     # MHz
+f0 = 0.01f0     # kHz
 wavelet = ricker_wavelet(timeS, dtS, f0)
 q = judiVector(srcGeometry, wavelet)
 

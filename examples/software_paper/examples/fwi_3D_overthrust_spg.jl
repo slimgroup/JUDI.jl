@@ -4,7 +4,7 @@
 #
 
 using Statistics, Random, LinearAlgebra
-using JUDI.TimeModeling, JUDI.SLIM_optim, HDF5, SegyIO
+using JUDI, SlimOptim, HDF5, SegyIO
 
 # Load overthrust model
 if ~isfile("overthrust_3D_initial_model.h5")
@@ -72,5 +72,5 @@ x, fsave, funEvals = minConf_SPG(objective_function, vec(model0.m), ProjBound, s
 
 # Save results
 h5open("result_3D_overthrust_spg.h5", "w") do file
-    write(file, "x", sqrt.(1./reshape(x, model0.n)), "fsave", fsave, "fhistory", convert(Array{Float32, 1}, fvals))
+    write(file, "x", sqrt.(1 ./reshape(x, model0.n)), "fsave", fsave, "fhistory", convert(Array{Float32, 1}, fvals))
 end

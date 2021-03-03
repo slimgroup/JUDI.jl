@@ -168,5 +168,3 @@ function subsample(J::judiJacobianExQ{ADDT,ARDT}, srcnum) where {ADDT,ARDT}
 end
 
 getindex(J::judiJacobianExQ,a) = subsample(J, a)
-
-zerox(J::judiJacobianExQ, y::judiVector) = PhysicalParameter(zeros(Float32, J.model.n), J.model.d, J.model.o)

@@ -4,7 +4,7 @@
 #
 
 using Statistics, Random, LinearAlgebra
-using JUDI.TimeModeling, JUDI.SLIM_optim, HDF5, SegyIO, PyPlot
+using JUDI, SlimOptim, HDF5, SegyIO, PyPlot
 
 # Load starting model
 n,d,o,m0 = read(h5open("../../data/overthrust_model.h5","r"), "n", "d", "o", "m0")
@@ -31,6 +31,7 @@ wavelet = ricker_wavelet(src_geometry.t[1],src_geometry.dt[1],0.008f0)  # 8 Hz w
 q = judiVector(src_geometry,wavelet)
 
 ############################### FWI ###########################################
+F0 = judiModeling(deepcopy(model0), src_geometry, d_obs.geometry)
 
 # Optimization parameters
 niterations = 10
@@ -39,6 +40,7 @@ fhistory_SGD = zeros(Float32,niterations)
 
 # Projection operator for bound constraints
 proj(x) = reshape(median([vec(mmin) vec(x) vec(mmax)]; dims=2),model0.n)
+ls = BackTracking(order=3, iterations=10, )
 
 # Main loop
 for j=1:niterations
@@ -46,14 +48,21 @@ for j=1:niterations
     # get fwi objective function value and gradient
     i = randperm(d_obs.nsrc)[1:batchsize]
     fval, gradient = fwi_objective(model0,q[i],d_obs[i])
+    p = -gradient/norm(gradient, Inf)
+    
     println("FWI iteration no: ",j,"; function value: ",fval)
     fhistory_SGD[j] = fval
 
     # linesearch
-    step = backtracking_linesearch(model0, q[i], d_obs[i], fval, gradient, proj; alpha=1f0)
+    function ϕ(α)
+        F0.model.m .= proj(model0.m .+ α * p)
+        misfit = .5*norm(F0[i]*q[i] - d_obs[i])^2
+        return misfit
+    end
+    step, fval = ls(ϕ, 1f0, fval, dot(gradient, p))
 
     # Update model and bound projection
-    model0.m .= proj(model0.m .+ reshape(step,model0.n))
+    model0.m .= proj(model0.m .+ step .* p)
 end
 
 figure(); imshow(sqrt.(1f0./adjoint(model0.m))); title("FWI with SGD")

@@ -47,11 +47,10 @@ function lsrtm_objective(model_full::Model, source::judiVector, dObs::judiVector
                                   t_sub=options.subsampling_factor, space_order=options.space_order,
                                   born_fwd=true, nlind=nlind, isic=options.isic)
     elseif ~isempty(options.frequencies)
-        typeof(options.frequencies) == Array{Any,1} && (options.frequencies = options.frequencies[srcnum])
         argout1, argout2 = pycall(ac."J_adjoint_freq", Tuple{Float32, Array{Float32, modelPy.dim}},
                                   modelPy, src_coords, qIn,
                                   rec_coords, dObserved, is_residual=false, return_obj=true, nlind=nlind,
-                                  freq_list=options.frequencies[1], t_sub=options.subsampling_factor,
+                                  freq_list=options.frequencies, t_sub=options.subsampling_factor,
                                   space_order=options.space_order, born_fwd=true, isic=options.isic)
     else
         argout1, argout2 = pycall(ac."J_adjoint_standard", Tuple{Float32, Array{Float32, modelPy.dim}},

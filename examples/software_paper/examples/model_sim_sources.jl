@@ -3,7 +3,7 @@
 # Date: December 2018
 #
 
-using JUDI.TimeModeling, PyPlot
+using JUDI, PyPlot
 
 ## Set up model structure
 n = (120, 100)	# (x, y, z) or (x, z)

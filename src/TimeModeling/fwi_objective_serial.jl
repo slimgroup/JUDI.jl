@@ -45,14 +45,13 @@ function fwi_objective(model_full::Model, source::judiVector, dObs::judiVector, 
     if options.optimal_checkpointing == true
         argout1, argout2 = pycall(ac."J_adjoint_checkpointing", Tuple{Float32, Array{Float32, modelPy.dim}},
                                   modelPy, src_coords, qIn,
-                                  rec_coords, dObserved, is_residual=false, return_obj=true,
+                                  rec_coords, dObserved, is_residual=false, return_obj=true, isic=options.isic,
                                   t_sub=options.subsampling_factor, space_order=options.space_order)
     elseif ~isempty(options.frequencies)
-        typeof(options.frequencies) == Array{Any,1} && (options.frequencies = options.frequencies[srcnum])
         argout1, argout2 = pycall(ac."J_adjoint_freq", Tuple{Float32,  Array{Float32, modelPy.dim}},
                                   modelPy, src_coords, qIn,
-                                  rec_coords, dObserved, is_residual=false, return_obj=true,
-                                  freq_list=options.frequencies[1], t_sub=options.subsampling_factor,
+                                  rec_coords, dObserved, is_residual=false, return_obj=true, isic=options.isic,
+                                  freq_list=options.frequencies, t_sub=options.subsampling_factor,
                                   space_order=options.space_order)
     else
         argout1, argout2 = pycall(ac."J_adjoint_standard", Tuple{Float32,  Array{Float32, modelPy.dim}},

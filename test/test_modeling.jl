@@ -15,7 +15,7 @@ if nw > 1 && nworkers() < nw
 end
 
 @everywhere using JOLI
-@everywhere using JUDI.TimeModeling, LinearAlgebra, Test, Distributed, Printf
+@everywhere using JUDI, LinearAlgebra, Test, Distributed, Printf
 
 ### Model
 model, model0, dm = setup_model(parsed_args["tti"], parsed_args["nlayer"]; n=(101, 101), d=(10., 10.))

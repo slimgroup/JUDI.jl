@@ -4,7 +4,7 @@
 # Date: January 2017
 #
 
-using JUDI.TimeModeling, SegyIO, LinearAlgebra
+using JUDI, SegyIO, LinearAlgebra
 
 # Set up model structure
 n = (120, 100)   # (x,y,z) or (x,z)
@@ -53,7 +53,7 @@ dtS = 2f0   # ms
 srcGeometry = Geometry(xsrc, ysrc, zsrc; dt=dtS, t=timeS)
 
 # setup wavelet
-f0 = 0.01f0     # MHz
+f0 = 0.01f0     # kHz
 wavelet = ricker_wavelet(timeS, dtS, f0)
 q = judiVector(srcGeometry, wavelet)
 
@@ -88,6 +88,8 @@ f, g = fwi_objective(model0, q, dobs; options=opt)
 
 # TWRI
 f, gm, gy = twri_objective(model0, q, dobs, nothing; options=opt, optionswri=TWRIOptions(params=:all))
+f, gm = twri_objective(model0, q, dobs, nothing; options=Options(frequencies=[[.009, .011], [.008, .012]]),
+                                                 optionswri=TWRIOptions(params=:m))
 
 # evaluate LSRTM objective function
 fj, gj = lsrtm_objective(model0, q, dD, dm; options=opt)

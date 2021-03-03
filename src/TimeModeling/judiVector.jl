@@ -638,44 +638,26 @@ function write_shot_record(srcGeometry,srcData,recGeometry,recData,options)
 end
 
 
-function time_resample!(x::judiVector,dt_new;order=2)
+function time_resample!(x::judiVector, dt_new; order=2)
+    x.m = 0
     for j=1:x.nsrc
-        numTraces = size(x.data[j],2)
-        timeAxis = 0:x.geometry.dt[j]:x.geometry.t[j]
-        timeInterp = 0:dt_new:x.geometry.t[j]
-        dataInterp = zeros(Float32,length(timeInterp),numTraces)
-        for k=1:numTraces
-            spl = Spline1D(timeAxis,x.data[j][:,k];k=order)
-            dataInterp[:,k] = spl(timeInterp)
-        end
+        dataInterp, geom = time_resample(x.data[j], subsample(x.geometry, j), dt_new)
         x.data[j] = dataInterp
         x.geometry.dt[j] = dt_new
-        x.geometry.nt[j] = length(timeInterp)
-        x.geometry.t[j] = (x.geometry.nt[j] - 1)*x.geometry.dt[j]
+        x.geometry.nt[j] = geom.nt[1]
+        x.geometry.t[j] = geom.t[1]
+        x.m += prod(size(dataInterp))
     end
-    return judiVector(x.geometry,x.data)
+    return x
 end
 
-function time_resample(x::judiVector,dt_new;order=2)
+function time_resample(x::judiVector, dt_new; order=2)
     xout = deepcopy(x)
-    for j=1:x.nsrc
-        numTraces = size(x.data[j],2)
-        timeAxis = 0:x.geometry.dt[j]:x.geometry.t[j]
-        timeInterp = 0:dt_new:x.geometry.t[j]
-        dataInterp = zeros(Float32,length(timeInterp),numTraces)
-        for k=1:numTraces
-            spl = Spline1D(timeAxis,x.data[j][:,k];k=order)
-            dataInterp[:,k] = spl(timeInterp)
-        end
-        xout.data[j] = dataInterp
-        xout.geometry.dt[j] = dt_new
-        xout.geometry.nt[j] = length(timeInterp)
-        xout.geometry.t[j] = (x.geometry.nt[j] - 1)*x.geometry.dt[j]
-    end
-    return judiVector(xout.geometry,xout.data)
+    time_resample!(xout, dt_new; order=order)
+    return xout
 end
 
-function judiTimeInterpolation(geometry::Geometry,dt_coarse,dt_fine)
+function judiTimeInterpolation(geometry::Geometry, dt_coarse, dt_fine)
 # Time interpolation as a linear operator (copies input data)
 
     nsrc = length(geometry.xloc)
@@ -688,9 +670,9 @@ function judiTimeInterpolation(geometry::Geometry,dt_coarse,dt_fine)
         m += length(geometry.xloc[j])*nt_fine
     end
     I = joLinearFunctionFwd_T(m,n,
-                             v -> time_resample(v,dt_fine),
-                             w -> time_resample(w,dt_coarse),
-                             Float32,Float32,name="Time resampling")
+                              v -> time_resample(v, dt_fine),
+                              w -> time_resample(w, dt_coarse),
+                              Float32,Float32,name="Time resampling")
     return I
 end
 
@@ -734,9 +716,14 @@ iterate(S::judiVector, state::Integer=1) = state > S.nsrc ? nothing : (S.data[st
 # Integration/differentiation of shot records
 
 function cumsum(x::judiVector;dims=1)
+    y = deepcopy(x)
+    cumsum!(y, x; dims=dims)
+    return y
+end
+
+function cumsum!(y::judiVector, x::judiVector;dims=1)
     dims == 1 || dims == 2 || throw(judiVectorException("Dimension $(dims) is out of range for a 2D array"))
     h = dims == 1 ? x.geometry.dt[1] : 1f0              # receiver dimension is non-dimensional
-    y = deepcopy(x)        
     for i = 1:x.nsrc
         cumsum!(y.data[i], x.data[i], dims=dims)
     end

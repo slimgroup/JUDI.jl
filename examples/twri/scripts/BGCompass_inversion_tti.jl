@@ -86,15 +86,13 @@ for var=vvar
         x0 = vec(m0)
         options = spg_options(verbose=3, maxIter=fevals, memory=3, interp=0)
 
-        sol = minConf_SPG(wri_fun, x0, ProjBound, options)
-        xwri = sol.x
-        hwri = sol.ϕ_trace
+        sol = spg(wri_fun, x0, ProjBound, options)
+        xwri, hwri = sol.x, sol.ϕ_trace
         @save string(base_path*"data/wriw_$(anis)_$(var).jld") xwri hwri
 
         x0 = vec(m0)
-        sol = minConf_SPG(fwi_fun, x0, ProjBound, options)
-        xfwi = sol.x
-        hfwi = sol.ϕ_trace
+        sol = spg(fwi_fun, x0, ProjBound, options)
+        xfwi, hfwi = sol.x, sol.ϕ_trace
         @save string(base_path*"data/fwiw_$(anis)_$(var).jld") xfwi hfwi
     end
 end

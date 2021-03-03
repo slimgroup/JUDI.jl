@@ -1,4 +1,4 @@
-using JUDI.TimeModeling, SegyIO, LinearAlgebra, PyPlot
+using JUDI, SegyIO, LinearAlgebra, PyPlot
 
 # Set up model structure
 n = (121, 101)   # (x,y,z) or (x,z)
@@ -46,7 +46,7 @@ dtS =  0.2f0    # ms
 srcGeometry = Geometry(xsrc, ysrc, zsrc; dt=dtS, t=timeS)
 
 # setup wavelet
-f0 = .05  # MHz
+f0 = .05  # kHz
 wavelet = ricker_wavelet(timeS, dtS, f0)
 q = judiVector(srcGeometry, wavelet)
 

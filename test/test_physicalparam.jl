@@ -29,6 +29,11 @@ ftol = 1f-5
     @test transpose(p).o == p.o[end:-1:1]
     @test isapprox(transpose(p).data, permutedims(p.data, nd:-1:1))
 
+    ps = similar(p, Model(n, d, o, a))
+    @test norm(ps) == 0
+    @test ps.n == n
+    @test ps.d == d
+    @test ps.o == o
 
     @test isequal(p.data, a)
     p .= zeros(n...)
