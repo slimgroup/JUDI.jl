@@ -375,9 +375,9 @@ You can find a full (reproducable) example for generating a marine streamer data
 
 ## Simultaneous sources
 
-To set up a simultaneous source with JUDI, we first create a cell array with `nsrc` cells, where `nsrc` is the number of separate experiments (here `nsrc=1`). For a simultaneous source, we create an array of source coordinates for each cell entry. In fact, this is exactly like setting up the receiver geometry, in which case we define multiple receivers per shot location. Here, we define a single experiment with a simultaneous source consisting of four sources:
+To set up a simultaneous source with JUDI, we first create a cell array with `nsrc` cells, where `nsrc` is the number of separate experiments (here `nsrc=2`). For a simultaneous source, we create an array of source coordinates for each cell entry. In fact, this is exactly like setting up the receiver geometry, in which case we define multiple receivers per shot location. Here, we define a single experiment with 2 super-shots. Each of them consists of four sources:
 ```
-nsrc = 1    # single simultaneous source
+nsrc = 2    # 2 super-shots
 xsrc = Array{Any}(undef, nsrc)
 ysrc = Array{Any}(undef, nsrc)
 zsrc = Array{Any}(undef, nsrc)
@@ -385,7 +385,11 @@ zsrc = Array{Any}(undef, nsrc)
 # Set up source geometry
 xsrc[1] = [250f0, 500f0, 750f0, 1000f0]     # four simultaneous sources
 ysrc[1] = 0f0
-zsrc[1] = [50f0, 50f0, 50f0, 50f0]	
+zsrc[1] = [50f0, 50f0, 50f0, 50f0]
+
+xsrc[2] = [300f0, 500f0, 700f0, 900f0]     # four simultaneous sources
+ysrc[2] = 0f0
+zsrc[2] = [100f0, 100f0, 100f0, 100f0]
 
 # Source sampling and number of time steps
 time = 2000f0
@@ -403,11 +407,19 @@ f0 = 0.01	# source peak frequencies
 q = ricker_wavelet(500f0, dt, f0)  # 500 ms wavelet
 
 # Create array with different time shifts of the wavelet
-wavelet = zeros(Float32, 4, src_geometry.nt[1])
-wavelet[1, 1:1+length(q)-1] = q
-wavelet[2, 41:41+length(q)-1] = q
-wavelet[3, 121:121+length(q)-1] = q
-wavelet[4, 201:201+length(q)-1] = q
+wavelet = Array{Any}(undef, nsrc)
+
+wavelet[1] = zeros(Float32, src_geometry.nt[1], 4)
+wavelet[1][1:1+length(q)-1, 1] = q
+wavelet[1][1:41+length(q)-1, 2] = q
+wavelet[1][121:121+length(q)-1, 3] = q
+wavelet[1][201:201+length(q)-1, 4] = q
+
+wavelet[2] = zeros(Float32, src_geometry.nt[1], 4)
+wavelet[2][1:1+length(q)-1, 1] = q
+wavelet[2][51:41+length(q)-1, 2] = q
+wavelet[2][131:121+length(q)-1, 3] = q
+wavelet[2][221:201+length(q)-1, 4] = q
 ```
 
 Finally, we create our simultaneous source as a `judiVector`:
