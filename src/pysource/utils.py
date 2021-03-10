@@ -1,5 +1,6 @@
 import numpy as np
 from sympy import sqrt
+from devito import configuration
 
 try:
     from devito.core.operator import BasicOperator as cpo
@@ -87,7 +88,7 @@ def opt_op(model):
     model: Model
         Model structure to know if we are in a TTI model
     """
-    opts = {'openmp': True, 'par-collapse-ncores': 2}
+    opts = {'openmp': True, 'mpi': configuration['mpi'], 'par-collapse-ncores': 2}
     # Minimal size temporaries
     if not model.fs:
         try:
