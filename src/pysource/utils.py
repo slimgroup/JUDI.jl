@@ -9,7 +9,7 @@ except ImportError:
 
 from devito.exceptions import InvalidOperator
 from devito.tools import as_tuple
-
+from devito import configuration
 
 # Weighting
 def weight_fun(w_fun, model, src_coords):
@@ -88,9 +88,13 @@ def opt_op(model):
     model: Model
         Model structure to know if we are in a TTI model
     """
-    opts = {'openmp': True, 'mpi': configuration['mpi'], 'par-collapse-ncores': 2}
+    if configuration['platform'].name in ['nvidiaX', 'amdgpuX']:
+        opts = {'openmp': True if configuration['language'] == 'openmp' else None,
+                'mpi': configuration['mpi']}
+    else:
+        opts = {'openmp': True, 'par-collapse-ncores': 2, 'mpi': configuration['mpi']}
     # Minimal size temporaries
-    if not model.fs:
+    if not model.fs and not (configuration['platform'].name in ['nvidiaX', 'amdgpuX']):
         try:
             opts['min-storage'] = True
             'min-storage' in cpo._normalize_kwargs(options=dict(opts))['options']
