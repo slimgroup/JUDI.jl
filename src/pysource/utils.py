@@ -3,7 +3,7 @@ from sympy import sqrt
 from devito import configuration
 
 try:
-    from devito.core.operator import BasicOperator as cpo
+    from devito.core.cpu import Cpu64OperatorMixin as cpo
 except ImportError:
     from devito.core.cpu import CPU64NoopOperator as cpo
 
