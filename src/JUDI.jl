@@ -32,6 +32,16 @@ import LinearAlgebra.rmul!, LinearAlgebra.lmul!, LinearAlgebra.rdiv!, LinearAlge
 # Import pycall array to python for easy plotting
 import PyCall.array2py
 
+# Set python paths
+const pm = PyNULL()
+const ac = PyNULL()
+
+function __init__()
+    pushfirst!(PyVector(pyimport("sys")."path"), joinpath(JUDIPATH, "pysource"))
+    copy!(pm, pyimport("models"))
+    copy!(ac, pyimport("interface"))
+end
+
 # JUDI time modeling
 include("TimeModeling/TimeModeling.jl")
 
@@ -41,5 +51,6 @@ module TimeModeling
     @reexport using ..JUDI
     Base.@warn "JUDI.TimeModeling is deprecated, use `using JUDI` instead"
 end
+
 
 end

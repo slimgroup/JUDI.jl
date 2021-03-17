@@ -43,7 +43,6 @@ function twri_objective(model_full::Model, source::judiVector, dObs::judiVector,
     src_coords = setup_grid(source.geometry, model.n)  # shifts source coordinates by origin
     rec_coords = setup_grid(dObs.geometry, model.n)    # shifts rec coordinates by origin
 
-    ac = load_devito_jit()
     ~isempty(options.frequencies) ? freqs = options.frequencies : freqs = nothing
     ~isempty(options.frequencies) ? (wfilt, freqs) =  filter_w(qIn, dtComp, freqs) : wfilt = nothing
     obj, gradm, grady = pycall(ac."wri_func", PyObject,

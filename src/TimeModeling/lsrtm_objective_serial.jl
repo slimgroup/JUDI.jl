@@ -38,8 +38,6 @@ function lsrtm_objective(model_full::Model, source::judiVector, dObs::judiVector
     src_coords = setup_grid(source.geometry, model.n)  # shifts source coordinates by origin
     rec_coords = setup_grid(dObs.geometry, model.n)    # shifts rec coordinates by origin
 
-    ac = load_devito_jit()
-
     if options.optimal_checkpointing == true
         argout1, argout2 = pycall(ac."J_adjoint_checkpointing", Tuple{Float32,  Array{Float32, modelPy.dim}},
                                   modelPy, src_coords, qIn,

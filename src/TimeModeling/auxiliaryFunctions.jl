@@ -9,17 +9,16 @@ export ricker_wavelet, get_computational_nt, calculate_dt, setup_grid, setup_3D_
 export convertToCell, limit_model_to_receiver_area, extend_gradient, remove_out_of_bounds_receivers
 export time_resample, remove_padding, subsample, process_input_data
 export generate_distribution, select_frequencies
-export load_pymodel, load_devito_jit, load_numpy, devito_model
-export update_dm, pad_sizes, pad_array
+export devito_model, update_dm, pad_sizes, pad_array
 export transducer
 
 
-function update_dm(model::PyObject, dm::PhysicalParameter, options)
+function update_dm(model::PyObject, dm::PhysicalParameter, options::Options)
     model.dm = pad_array(dm.data, pad_sizes(model, options))
 end
 
 function update_dm(model::PyObject, dm::Array, options)
-    model.dm = pad_array(reshape(dm, model.shape), pad_sizes(model, options))
+    model.dm = pad_array(reshape(dm, model.shape), pad_sizes(model, options::Options))
 end
 
 function pad_sizes(model, options; so=nothing)
@@ -35,8 +34,7 @@ function pad_sizes(model, options; so=nothing)
     end
 end
 
-function devito_model(model::Model, options)
-    pm = load_pymodel()
+function devito_model(model::Model, options::Options)
     pad = pad_sizes(model, options)
     # Set up Python model structure
     m = pad_array(model[:m].data, pad)
@@ -47,7 +45,8 @@ function devito_model(model::Model, options)
     return modelPy
 end
 
-function limit_model_to_receiver_area(srcGeometry::Geometry, recGeometry::Geometry, model::Model, buffer; pert=[])
+function limit_model_to_receiver_area(srcGeometry::Geometry, recGeometry::Geometry,
+                                      model::Model, buffer::Number; pert=[])
     # Restrict full velocity model to area that contains either sources and receivers
     ndim = length(model.n)
     # scan for minimum and maximum x and y source/receiver coordinates
@@ -59,22 +58,22 @@ function limit_model_to_receiver_area(srcGeometry::Geometry, recGeometry::Geomet
     end
 
     # add buffer zone if possible
-    min_x = max(model.o[1], min_x-buffer)
-    max_x = min(model.o[1] + model.d[1]*(model.n[1]-1), max_x+buffer)
+    min_x = max(model.o[1], min_x - buffer)
+    max_x = min(model.o[1] + model.d[1]*(model.n[1]-1), max_x + buffer)
     if ndim == 3
-        min_y = max(model.o[2], min_y-buffer)
-        max_y = min(model.o[2] + model.d[2]*(model.n[2]-1), max_y+buffer)
+        min_y = max(model.o[2], min_y - buffer)
+        max_y = min(model.o[2] + model.d[2]*(model.n[2]-1), max_y + buffer)
     end
 
     # extract part of the model that contains sources/receivers
-    nx_min = Int(round(min_x/model.d[1])) + 1
-    nx_max = Int(round(max_x/model.d[1])) + 1
+    nx_min = Int(min_x ÷ model.d[1]) + 1
+    nx_max = Int(max_x ÷ model.d[1]) + 1
     if ndim == 2
         ox = Float32((nx_min - 1)*model.d[1])
         oz = model.o[2]
     else
-        ny_min = Int(round(min_y/model.d[2])) + 1
-        ny_max = Int(round(max_y/model.d[2])) + 1
+        ny_min = Int(min_y ÷ model.d[1]) + 1
+        ny_max = Int(max_y ÷ model.d[1]) + 1
         ox = Float32((nx_min - 1)*model.d[1])
         oy = Float32((ny_min - 1)*model.d[2])
         oz = model.o[3]
@@ -204,21 +203,10 @@ function ricker_wavelet(tmax, dt, f0; t0=nothing)
     return q
 end
 
-function load_pymodel()
-    pushfirst!(PyVector(pyimport("sys")."path"), joinpath(JUDIPATH, "pysource"))
-    return pyimport("models")
-end
-
-function load_devito_jit()
-    pushfirst!(PyVector(pyimport("sys")."path"), joinpath(JUDIPATH, "pysource"))
-    return pyimport("interface")
-end
-
 function calculate_dt(model::Model; dt=nothing)
     if ~isnothing(dt)
         return dt
     end
-    pm = load_pymodel()
     m = minimum(model[:m])
     epsilon = maximum(get(model.params, :epsilon, 0))
     modelPy = pm."Model"(origin=model.o, spacing=model.d, shape=model.n,
