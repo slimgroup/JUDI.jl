@@ -52,11 +52,7 @@ function time_modeling(model_full::Model, srcGeometry, srcData, recGeometry, rec
 
     # Extend gradient back to original model size
     if op=='J' && mode==-1 && options.limit_m==true
-        if options.return_array == true
-            argout = extend_gradient(model_full, model, argout)
-        else
-            argout = PhysicalParameter(extend_gradient(model_full, model, argout), model.d, model.o)
-        end
+        argout = extend_gradient(model_full, model, argout)
     end
 
     return argout
