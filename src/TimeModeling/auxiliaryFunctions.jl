@@ -17,8 +17,8 @@ function update_dm(model::PyObject, dm::PhysicalParameter, options::Options)
     model.dm = pad_array(dm.data, pad_sizes(model, options))
 end
 
-function update_dm(model::PyObject, dm::Array, options)
-    model.dm = pad_array(reshape(dm, model.shape), pad_sizes(model, options::Options))
+function update_dm(model::PyObject, dm::Array, options::Options)
+    model.dm = pad_array(reshape(dm, model.shape), pad_sizes(model, options))
 end
 
 function pad_sizes(model, options; so=nothing)
@@ -50,11 +50,11 @@ function limit_model_to_receiver_area(srcGeometry::Geometry, recGeometry::Geomet
     # Restrict full velocity model to area that contains either sources and receivers
     ndim = length(model.n)
     # scan for minimum and maximum x and y source/receiver coordinates
-    min_x = minimum([vec(recGeometry.xloc[1]); vec(srcGeometry.xloc[1])])
-    max_x = maximum([vec(recGeometry.xloc[1]); vec(srcGeometry.xloc[1])])
+    min_x = min(minimum(recGeometry.xloc[1]), minimum(srcGeometry.xloc[1]))
+    max_x = max(maximum(recGeometry.xloc[1]), maximum(srcGeometry.xloc[1]))
     if ndim == 3
-        min_y = minimum([vec(recGeometry.yloc[1]); vec(srcGeometry.yloc[1])])
-        max_y = maximum([vec(recGeometry.yloc[1]); vec(srcGeometry.yloc[1])])
+        min_y = min(minimum(recGeometry.yloc[1]), minimum(srcGeometry.yloc[1]))
+        max_y = max(maximum(recGeometry.yloc[1]), maximum(srcGeometry.yloc[1]))
     end
 
     # add buffer zone if possible
@@ -66,48 +66,29 @@ function limit_model_to_receiver_area(srcGeometry::Geometry, recGeometry::Geomet
     end
 
     # extract part of the model that contains sources/receivers
-    nx_min = Int(min_x ÷ model.d[1]) + 1
+    nx_min = Int(min_x ÷ model.d[1])
     nx_max = Int(max_x ÷ model.d[1]) + 1
-    if ndim == 2
-        ox = Float32((nx_min - 1)*model.d[1])
-        oz = model.o[2]
-    else
+    inds = [max(1, nx_min):nx_max, 1:model.n[end]]
+    if ndim == 3
         ny_min = Int(min_y ÷ model.d[1]) + 1
         ny_max = Int(max_y ÷ model.d[1]) + 1
-        ox = Float32((nx_min - 1)*model.d[1])
-        oy = Float32((ny_min - 1)*model.d[2])
-        oz = model.o[3]
+        insert!(inds, 2, max(1, ny_min):ny_max)
     end
 
     # Extract relevant model part from full domain
     n_orig = model.n
-    if ndim == 2
-        for (p, v) in model.params
-            typeof(v) <: AbstractArray && (model.params[p] = PhysicalParameter(v.data[nx_min: nx_max, :],
-                                                                               model.d, (ox, oz)))
-        end
-        model.o = (ox, oz)
-    else
-        for (p, v) in model.params
-            typeof(v) <: AbstractArray && (model.params[p] = PhysicalParameter(v.data[nx_min:nx_max,ny_min:ny_max,:],
-                                                                       model.d, (ox, oy, oz)))
-        end
-        model.o = (ox,oy,oz)
+    for (p, v) in model.params
+        typeof(v) <: AbstractArray && (model.params[p] = v[inds...])
     end
 
     println("N old $(model.n)")
     model.n = model.m.n
+    model.o = model.m.o
     println("N new $(model.n)")
-    if isempty(pert)
-        return model
-    else
-        if ndim==2
-            pert = reshape(pert,n_orig)[nx_min: nx_max, :]
-        else
-            pert = reshape(pert,n_orig)[nx_min: nx_max,ny_min: ny_max, :]
-        end
-        return model,vec(pert)
-    end
+    isempty(pert) && (return model)
+
+    pert = reshape(pert,n_orig)[inds...]
+    return model, vec(pert)
 end
 
 function extend_gradient(model_full::Model, model::Model, gradient::Union{Array, PhysicalParameter})
@@ -129,17 +110,17 @@ end
 function remove_out_of_bounds_receivers(recGeometry::Geometry, model::Model)
 
     # Only keep receivers within the model
-    xmin = model.o[1]
+    xmin, xmax = model.o[1], model.o[1] + (model.n[1] - 1)*model.d[1] 
     if typeof(recGeometry.xloc[1]) <: Array
-        idx_xrec = findall(x -> x >= xmin, recGeometry.xloc[1])
+        idx_xrec = findall(x -> xmax >= x >= xmin, recGeometry.xloc[1])
         recGeometry.xloc[1] = recGeometry.xloc[1][idx_xrec]
         recGeometry.zloc[1] = recGeometry.zloc[1][idx_xrec]
     end
 
     # For 3D shot records, scan also y-receivers
     if length(model.n) == 3 && typeof(recGeometry.yloc[1]) <: Array
-        ymin = model.o[2]
-        idx_yrec = findall(x -> x >= ymin, recGeometry.yloc[1])
+        ymin, ymax = model.o[2], model.o[2] + (model.n[2] - 1)*model.d[2] 
+        idx_yrec = findall(x -> ymax >= x >= ymin, recGeometry.yloc[1])
         recGeometry.yloc[1] = recGeometry.yloc[1][idx_yrec]
         recGeometry.zloc[1] = recGeometry.zloc[1][idx_yrec]
     end
@@ -149,9 +130,9 @@ end
 function remove_out_of_bounds_receivers(recGeometry::Geometry, recData::Array, model::Model)
 
     # Only keep receivers within the model
-    xmin = model.o[1]
+    xmin, xmax = model.o[1], model.o[1] + (model.n[1] - 1)*model.d[1]
     if typeof(recGeometry.xloc[1]) <: Array
-        idx_xrec = findall(x -> x >= xmin, recGeometry.xloc[1])
+        idx_xrec = findall(x -> xmax >= x >= xmin, recGeometry.xloc[1])
         recGeometry.xloc[1] = recGeometry.xloc[1][idx_xrec]
         recGeometry.zloc[1] = recGeometry.zloc[1][idx_xrec]
         recData[1] = recData[1][:, idx_xrec]
@@ -159,8 +140,8 @@ function remove_out_of_bounds_receivers(recGeometry::Geometry, recData::Array, m
 
     # For 3D shot records, scan also y-receivers
     if length(model.n) == 3 && typeof(recGeometry.yloc[1]) <: Array
-        ymin = model.o[2]
-        idx_yrec = findall(x -> x > ymin, recGeometry.yloc[1])
+        ymin, ymax = model.o[2], model.o[2] + (model.n[2] - 1)*model.d[2]
+        idx_yrec = findall(x -> ymax >= x >= ymin, recGeometry.yloc[1])
         recGeometry.yloc[1] = recGeometry.yloc[1][idx_yrec]
         recGeometry.zloc[1] = recGeometry.zloc[1][idx_yrec]
         recData[1] = recData[1][:, idx_yrec]
@@ -254,7 +235,6 @@ function get_computational_nt(Geometry, model::Model; dt=nothing)
     end
     return nt
 end
-
 
 function setup_grid(geometry, n)
     # 3D grid
@@ -357,7 +337,6 @@ vec(x::Float32) = x;
 vec(x::Int64) = x;
 vec(x::Int32) = x;
 
-
 SincInterpolation(Y, S, Up) = sinc.( (Up .- S') ./ (S[2] - S[1]) ) * Y
 
 function time_resample(data::Array, geometry_in::Geometry, dt_new)
@@ -381,7 +360,6 @@ function time_resample(data::Array, dt_in, geometry_out::Geometry)
     if dt_in==geometry_out.dt[1]
         return data
     else
-        geometry = deepcopy(geometry_out)
         timeAxis = 0:dt_in:geometry_out.t[1]
         timeInterp = 0:geometry_out.dt[1]:geometry_out.t[1]
         return  Float32.(SincInterpolation(data, timeAxis, timeInterp))
@@ -430,8 +408,8 @@ function select_frequencies(q_dist; fmin=0f0, fmax=Inf, nf=1)
 	return freq
 end
 
-process_input_data(input::judiVector, geometry::Geometry, info::Info) = input.data
-process_input_data(input::judiWeights, model::Model, info::Info) = input.weights
+process_input_data(input::judiVector, ::Geometry, ::Info) = input.data
+process_input_data(input::judiWeights, ::Model, ::Info) = input.weights
 
 function process_input_data(input::Array{Float32}, geometry::Geometry, info::Info)
     # Input data is pure Julia array: assume fixed no.

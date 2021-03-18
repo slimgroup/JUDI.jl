@@ -121,10 +121,15 @@ promote_shape(A::Array{vDT, N}, p::PhysicalParameter) where {vDT, N} = promote_s
 reshape(p::PhysicalParameter, n::Tuple{Vararg{Int64,N}}) where N = (prod(n)==prod(p.n) && return p)
 
 dotview(A::PhysicalParameter{vDT}, I::Vararg{Union{Function, Int, UnitRange{Int}}, N}) where {vDT, N} = dotview(A.data, I...)
+Base.dotview(m::PhysicalParameter, i) = Base.dotview(m.data, i)
 
 getindex(A::PhysicalParameter, i::Int) = A.data[i]
-getindex(A::PhysicalParameter, I::Vararg{Union{Int, BitArray, Function, UnitRange{Int}}, N}) where {N} = getindex(A.data, I...)
-Base.dotview(m::PhysicalParameter, i) = Base.dotview(m.data, i)
+function getindex(A::PhysicalParameter{T}, I::Vararg{Union{Int, BitArray, Function, UnitRange{Int}}, N}) where {N, T}
+    s = [i == (:) ? 0 : i[1]-1 for i in I]
+    new_o = [ao+i*d for (ao, i, d) in zip(A.o, s, A.d)]
+    new_d = getindex(A.data, I...)
+    PhysicalParameter{T}(size(new_d), A.d, tuple(new_o...), new_d)
+end
 
 setindex!(A::PhysicalParameter, v, I::Vararg{Union{Int, Function, UnitRange{Int}}, N}) where {N} = setindex!(A.data, v, I...)
 setindex!(A::PhysicalParameter, v, i::Int) = (A.data[i] = v)
