@@ -2,7 +2,7 @@
 export time_modeling
 
 # Setup time-domain linear or nonlinear foward and adjoint modeling and interface to devito
-function time_modeling(model_full::Model, srcGeometry, srcData, recGeometry, recData, dm, srcnum::Int64, op::Char, mode::Int64, options)
+function time_modeling(model_full::Model, srcGeometry, srcData, recGeometry, recData, dm, op::Char, mode::Int64, options)
 
     # Load full geometry for out-of-core geometry containers
     typeof(recGeometry) == GeometryOOC && (recGeometry = Geometry(recGeometry))
@@ -11,19 +11,14 @@ function time_modeling(model_full::Model, srcGeometry, srcData, recGeometry, rec
     # limit model to area with sources/receivers
     if options.limit_m == true
         model = deepcopy(model_full)
-        if op=='J' && mode==1
-            model, dm = limit_model_to_receiver_area(srcGeometry,recGeometry,model,options.buffer_size;pert=dm)
-        else
-            model = limit_model_to_receiver_area(srcGeometry,recGeometry,model,options.buffer_size)
-        end
+        model, dm = limit_model_to_receiver_area(srcGeometry, recGeometry, model, options.buffer_size; pert=dm)
     else
         model = model_full
     end
 
     # Set up Python model structure
-    modelPy = devito_model(model, options)
+    modelPy = devito_model(model, options; dm=dm)
     if op=='J' && mode == 1
-        update_dm(modelPy, dm, options)
         if modelPy.dm == 0 && options.return_array == false
             return judiVector(recGeometry, zeros(Float32, recGeometry.nt[1], length(recGeometry.xloc[1])))
         elseif modelPy.dm == 0 && options.return_array == true
@@ -33,10 +28,10 @@ function time_modeling(model_full::Model, srcGeometry, srcData, recGeometry, rec
 
     # Load shot record if stored on disk
     if recData != nothing
-        if typeof(recData[1]) == SegyIO.SeisCon
-            recDataCell = Array{Array}(undef, 1); recDataCell[1] = convert(Array{Float32,2},recData[1][1].data); recData = recDataCell
-        elseif typeof(recData[1]) == String
-            recData = load(recData[1])."d".data
+        if typeof(recData) == SegyIO.SeisCon
+            recData = convert(Array{Float32,2},recData[1].data)
+        elseif typeof(recData) == String
+            recData = load(recData)."d".data
         end
     end
 
@@ -52,11 +47,7 @@ function time_modeling(model_full::Model, srcGeometry, srcData, recGeometry, rec
 
     # Extend gradient back to original model size
     if op=='J' && mode==-1 && options.limit_m==true
-        if options.return_array == true
-            argout = extend_gradient(model_full, model, argout)
-        else
-            argout = PhysicalParameter(extend_gradient(model_full, model, argout), model.d, model.o)
-        end
+        argout = extend_gradient(model_full, model, argout)
     end
 
     return argout

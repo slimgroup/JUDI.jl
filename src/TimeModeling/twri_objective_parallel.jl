@@ -21,18 +21,9 @@ function twri_objective(model::Model, source::judiVector, dObs::judiVector, y::U
 # fwi_objective function for multiple sources. The function distributes the sources and the input data amongst the available workers.
 
     p = default_worker_pool()
-    twri_objective_par = remote(TimeModeling.twri_objective)
-    twri_objective = retry(twri_objective_par)
-
-    results = Array{Any}(undef, dObs.nsrc)
-    @sync begin
-        for j=1:dObs.nsrc
-            opt_local = subsample(options,j)
-            isnothing(y) ? yloc = y : yloc = y[j]
-            @async results[j] = twri_objective(model, source[j], dObs[j], yloc, j;
-                                               options=opt_local, optionswri=optionswri)
-        end
-    end
+    results = pmap(j -> twri_objective(model, source[j], dObs[j], subsample(y, j), j;
+                                       options=subsample(options,j), optionswri=optionswri),
+                   p, 1:dObs.nsrc)
 
     # Collect and reduce gradients
     objective = results[1][1]

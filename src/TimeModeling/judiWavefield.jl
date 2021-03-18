@@ -53,14 +53,12 @@ function judiWavefield(info,dt::Real,data::Union{Array, PyCall.PyObject, String}
 	# length of vector
 	m = info.n * sum(info.nt)
 	n = 1
-	dataCell = Array{Any}(undef, info.nsrc)
-	for j=1:info.nsrc
-		dataCell[j] = deepcopy(data)
-	end
-		return judiWavefield{vDT}("judiWavefield",m,n,info, Float32(dt),dataCell)
-	end
+	dataCell = [vDT.(data) for j=1:info.nsrc]
 
-function judiWavefield(info, dt::Real, data::Union{Array{Any,1},Array{Array,1}};vDT::DataType=Float32)
+	return judiWavefield{vDT}("judiWavefield",m,n,info, Float32(dt), dataCell)
+end
+
+function judiWavefield(info, dt::Real, data::Union{Array{Any,1}, Array{Array,1}};vDT::DataType=Float32)
 	# length of vector
 	nsrc = length(data)
 	nsrc != info.nsrc && throw("Different number of sources in info ($(info.nsrc)) and data array ($nsrc)")
@@ -179,7 +177,7 @@ function vcat(a::judiWavefield{avDT},b::judiWavefield{bvDT}) where {avDT, bvDT}
 	m = a.m + b.m
 	n = 1
 	nsrc = a.info.nsrc + b.info.nsrc
-	data = Array{Any}(undef, nsrc)
+	data = Array{Array{avDT}}(undef, nsrc)
 	nt = Array{Any}(undef, nsrc)
 	for j=1:a.info.nsrc
 		data[j] = a.data[j]
@@ -190,7 +188,15 @@ function vcat(a::judiWavefield{avDT},b::judiWavefield{bvDT}) where {avDT, bvDT}
 		nt[j] = b.info.nt[j-a.info.nsrc]
 	end
 	info = Info(a.info.n, nsrc, nt)
-	return judiWavefield(info, a.dt, data)
+	return judiWavefield{avDT}("judiWavefield",info.n * sum(info.nt), 1, info, a.dt ,data)
+end
+
+function vcat(a::Array{judiWavefield{T}, 1}) where T
+    out = a[1]
+    for i=2:length(a)
+        out = [out; a[i]]
+    end
+    return out
 end
 
 # add and subtract, mulitply and divide, norms, dot ...
@@ -217,7 +223,7 @@ end
 # Sampling mask to extract wavefields from full vector
 subsample(u::judiWavefield,srcnum) = judiWavefield(u.info,u.data[srcnum];vDT=eltype(u))
 similar(u::judiWavefield) = 0f0 * u
-similar(u::judiWavefield, vDT::DataType) = vDT(0) .* u
+similar(u::judiWavefield, vDT::DataType) = judiWavefield{vDT}("judiWavefield",u.m, u.n, u.info, u.dt, Array{vDT}.(0f0.*u.data))
 
 # norm
 function norm(a::judiWavefield{avDT}, p::Real=2) where avDT

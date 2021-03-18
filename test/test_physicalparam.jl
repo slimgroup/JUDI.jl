@@ -50,6 +50,19 @@ ftol = 1f-5
     @test isapprox(p, a)
     @test isapprox(a, p)
 
+    # Subsampling
+    inds = [3:11 for i=1:nd]
+    b = p[inds...]
+    @test b.o == tuple([o+d*2 for (o,d)=zip(p.o,p.d)]...)
+    @test b.n == tuple([9 for i=1:nd]...)
+    @test b.d == p.d
+
+    inds = [3:2:11 for i=1:nd]
+    b = p[inds...]
+    @test b.o == tuple([o+d*2 for (o,d)=zip(p.o,p.d)]...)
+    @test b.n == tuple([5 for i=1:nd]...)
+    @test b.d == tuple([d*2 for d=p.d]...)
+
     # copies
     p2 = similar(p)
     @test p2.n == p.n
@@ -152,22 +165,23 @@ ftol = 1f-5
     @test u[11] == 0f0
 
     if nd == 2
-        tmp = randn(size(u[1:10, :]))
+        tmp = randn(u[1:10, :].n)
         u[1:10, :] .= tmp
         @test u.data[1:10, :] == tmp
         @test size(u[:, 1]) == (n[1],)
         @test size(u[1, :]) == (n[2],)
-        @test size(u[2:end, 2:3]) == (n[1]-1, 2)
+        @test u[2:end, 2:3].n == (n[1]-1, 2)
         u[:, 1] .= ones(Float32, n[1])
         @test all(u.data[:, 1] .== 1f0)
     else
-        tmp = randn(size(u[1:10, :, :]))
+        tmp = randn(u[1:10, :, :].n)
         u[1:10, :, :] .= tmp
         @test u.data[1:10, :, :] == tmp
         @test size(u[:, :, 1]) == (n[1], n[2])
         @test size(u[:, 1, :]) == (n[1], n[3])
         @test size(u[1, :, :]) == (n[2], n[3])
         @test size(u[1, 2:3, 1:end]) == (2, n[3])
+        @test u[1:2, 2:3, 1:end].n == (2, 2, n[3])
         u[:, 1:end-2, 1] .= ones(Float32, n[1])
         @test all(u.data[:, 1:end-2, 1] .== 1f0)
     end

@@ -71,11 +71,8 @@ function judiModeling(info::Info, model::Model; options=Options(), DDT::DataType
 	(DDT == Float32 && RDT == Float32) || throw(judiModelingException("Domain and range types not supported"))
 	m = info.n * sum(info.nt)
 	n = m
-	if info.nsrc > 1
-		srcnum = 1:info.nsrc
-	else
-		srcnum = 1
-	end
+	srcnum = 1:info.nsrc
+
 	return F = judiModeling{Float32,Float32}("forward wave equation", m, n, info, model, options,
 							  args -> time_modeling(model, args[1], args[2], args[3], args[4], args[5], srcnum, 'F', 1, options),
 							  args_T -> time_modeling(model, args_T[1], args_T[2], args_T[3], args_T[4], args_T[5], srcnum, 'F', -1, options)
@@ -87,11 +84,8 @@ function judiModelingAdjoint(info::Info, model::Model; options=Options(), DDT::D
 	(DDT == Float32 && RDT == Float32) || throw(judiModelingAdjointException("Domain and range types not supported"))
 	m = info.n * sum(info.nt)
 	n = m
-	if info.nsrc > 1
-		srcnum = 1:info.nsrc
-	else
-		srcnum = 1
-	end
+	srcnum = 1:info.nsrc
+
 	return F = judiModelingAdjoint{Float32,Float32}("adjoint wave equation", m, n, info, model, options,
 							  args_T -> time_modeling(model, args_T[1], args_T[2], args_T[3], args_T[4], args_T[5], srcnum, 'F', -1, options),
 							  args -> time_modeling(model, args[1], args[2], args[3], args[4], args[5], srcnum, 'F', 1, options)

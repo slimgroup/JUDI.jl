@@ -54,11 +54,8 @@ function judiJacobian(F::judiPDEextended, weights::Union{judiWeights, Array}; DD
         for j=1:F.info.nsrc m += length(F.recGeometry.xloc[j])*F.recGeometry.nt[j] end
     end
     n = F.info.n
-    if F.info.nsrc > 1
-        srcnum = 1:F.info.nsrc
-    else
-        srcnum = 1
-    end
+    srcnum = 1:F.info.nsrc
+
     weights = process_input_data(weights, F.model, F.info)  # extract cell array
 
     return J = judiJacobianExQ{Float32,Float32}("linearized wave equation", m, n, F.info, F.model, F.recGeometry, F.wavelet, weights, F.options,

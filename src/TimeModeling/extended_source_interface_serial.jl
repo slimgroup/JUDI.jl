@@ -2,7 +2,6 @@ export extended_source_modeling
 
 # Setup time-domain linear or nonlinear foward and adjoint modeling and interface to OPESCI/devito
 function extended_source_modeling(model_full::Model, srcData, recGeometry, recData, weights, dm, srcnum::Int64, op::Char, mode::Int64, options)
-    pm = load_pymodel()
 
     # Load full geometry for out-of-core geometry containers
     typeof(recGeometry) == GeometryOOC && (recGeometry = Geometry(recGeometry))
@@ -11,18 +10,21 @@ function extended_source_modeling(model_full::Model, srcData, recGeometry, recDa
     model = model_full
 
     # Set up Python model structure
-    modelPy = devito_model(model, options)
+    modelPy = devito_model(model, options; dm=dm)
     if op=='J' && mode == 1
-        update_dm(modelPy, dm, options)
-        modelPy.dm == 0 && return judiVector(recGeometry, zeros(Float32, recGeometry.nt[1], length(recGeometry.xloc[1])))
+        if modelPy.dm == 0 && options.return_array == false
+            return judiVector(recGeometry, zeros(Float32, recGeometry.nt[1], length(recGeometry.xloc[1])))
+        elseif modelPy.dm == 0 && options.return_array == true
+            return vec(zeros(Float32, recGeometry.nt[1], length(recGeometry.xloc[1])))
+        end
     end
 
     # Load shot record if stored on disk
     if recData != nothing
-        if typeof(recData[1]) == SegyIO.SeisCon
-            recDataCell = Array{Any}(undef, 1); recDataCell[1] = convert(Array{Float32,2},recData[1][1].data); recData = recDataCell
+        if typeof(recData) == SegyIO.SeisCon
+            recData = convert(Array{Float32,2}, recData[1].data)
         elseif typeof(recData[1]) == String
-            recData = load(recData[1])."d".data
+            recData = load(recData)."d".data
         end
     end
 
@@ -39,7 +41,7 @@ function extended_source_modeling(model_full::Model, srcData, recGeometry, recDa
 
     # Extend gradient back to original model size
     if op=='J' && mode==-1 && options.limit_m==true
-        argout = PhysicalParameter(extend_gradient(model_full, model, argout), model.d, model.o)
+        argout = extend_gradient(model_full, model, argout)
     end
 
     return argout

@@ -47,21 +47,6 @@ ftol = 5f-5
     q4 = adjoint(A1) * (2f0 * d1)
     q5 = (2f0 * adjoint(A1)) * d1
 
-    dm2 =  .5f0 * dm
-    dm2.data .= circshift(dm2.data, (0, 20))
-    lind =  J * dm
-    lind2 = J * (2f0 .* dm)
-    lind3 = J * dm2
-    lind4 = J * (dm + dm2)
-    lind5 = J * (dm - dm2)
-    lind6 = (2f0 * J) * dm
-
-    dma = adjoint(J) * d1
-    dmb = adjoint(J) * (2f0 * d1)
-    dmc = adjoint(J) * d2
-    dmd = adjoint(J) * (d1 + d2)
-    dme = adjoint(2f0 * J) * d1
-
     # Test linearity F * (a + b) == F * a + F * b
 
     println("Test linearity of F: F * (a + b) == F * a + F * b")
@@ -78,7 +63,6 @@ ftol = 5f-5
     @test isapprox(d4, d1 - d2, rtol=ftol)
 
     # Test linearity F a x == a F x
-
     println("Test linearity of F: F * (a * b) == a * F * b")
     nd1 = norm(2f0 * d1)
     nd1_b = norm(d6)
@@ -101,6 +85,14 @@ ftol = 5f-5
     @test isapprox(2f0 * q3, q5, rtol=ftol)
 
     # Test linearity J * (a + b) == J * a + J * b
+    dm2 = .5f0 * dm
+    dm2.data .= circshift(dm2.data, (0, 20))
+    lind =  J * dm
+    lind2 = J * (2f0 .* dm)
+    lind3 = J * dm2
+    lind4 = J * (dm + dm2)
+    lind5 = J * (dm - dm2)
+    lind6 = (2f0 * J) * dm
 
     println("Test linearity of J: J * (a + b) == J * a + J * b")
     nd1 = norm(lind4)
@@ -123,8 +115,15 @@ ftol = 5f-5
     nd3 = norm(2f0 * lind - lind2)/norm(lind2)
     nd4 = norm(lind6 - lind2)/norm(lind2)
 
+    # Adjoint J
+    dma = adjoint(J) * d1
+    dmb = adjoint(J) * (2f0 * d1)
+    dmc = adjoint(J) * d2
+    dmd = adjoint(J) * (d1 + d2)
+    dme = adjoint(2f0 * J) * d1
+
     nm1 = norm(2f0 * dma)
-    nm1_b = norm(2f0 * dme)
+    nm1_b = norm(dme)
     nm2 = norm(dmb)
     nm3 = norm(2f0*dma - dmb)/norm(dmb)
     nm4 = norm(dme - dmb)/norm(dmb)
@@ -252,7 +251,7 @@ end
     nd4 = norm(lind6 - lind2)/norm(lind2)
 
     nm1 = norm(2f0 * dma)
-    nm1_b = norm(2f0 * dme)
+    nm1_b = norm(dme)
     nm2 = norm(dmb)
     nm3 = norm(2f0*dma - dmb)/norm(dmb)
     nm4 = norm(dme - dmb)/norm(dmb)

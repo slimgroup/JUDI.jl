@@ -11,13 +11,13 @@ nlayer = parsed_args["nlayer"]
 tti = parsed_args["tti"]
 fs =  parsed_args["fs"]
 
-# Set parallel if specified
+# # Set parallel if specified
 nw = parsed_args["parallel"]
-if nw > 1 && nworkers() < nw
-    addprocs(nw-nworkers() + 1; exeflags=["--code-coverage=user", "--inline=no", "--check-bounds=yes"])
-end
+# if nw > 1 && nworkers() < nw
+#     addprocs(nw-nworkers() + 1; exeflags=["--code-coverage=user", "--inline=no", "--check-bounds=yes"])
+# end
 
-@everywhere using JUDI, LinearAlgebra, Test, Distributed, Printf
+# @everywhere using JUDI, LinearAlgebra, Test, Distributed, Printf
 
 ### Model
 model, model0, dm = setup_model(parsed_args["tti"], parsed_args["nlayer"])

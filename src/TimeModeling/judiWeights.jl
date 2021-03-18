@@ -245,6 +245,14 @@ function vcat(a::judiWeights{avDT},b::judiWeights{bvDT}) where {avDT, bvDT}
     return judiWeights{nvDT}(a.name,m,n,nsrc,weights)
 end
 
+function vcat(a::Array{judiWeights{T}, 1}) where T
+    out = a[1]
+    for i=2:length(a)
+        out = [out; a[i]]
+    end
+    return out
+end
+
 # dot product
 function dot(a::judiWeights{avDT}, b::judiWeights{bvDT}) where {avDT, bvDT}
 # Dot product for data containers

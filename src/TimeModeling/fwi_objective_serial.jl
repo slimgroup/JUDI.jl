@@ -1,7 +1,7 @@
 
 export fwi_objective
 
-function fwi_objective(model_full::Model, source::judiVector, dObs::judiVector, srcnum::Integer; options=Options())
+function fwi_objective(model_full::Model, source::judiVector, dObs::judiVector, options::Options)
 # Setup time-domain linear or nonlinear foward and adjoint modeling and interface to OPESCI/devito
 
     # Load full geometry for out-of-core geometry containers

@@ -61,11 +61,8 @@ function judiPDE(name::String,info::Info,model::Model, geometry::Geometry; optio
         for j=1:info.nsrc m += length(geometry.xloc[j])*geometry.nt[j] end
     end
     n = info.n * sum(info.nt)
-    if info.nsrc > 1
-        srcnum = 1:info.nsrc
-    else
-        srcnum = 1
-    end
+    srcnum = 1:info.nsrc
+
     return F = judiPDE{Float32,Float32}(name, m, n, info, model, geometry, options,
                               args -> time_modeling(model, args[1], args[2], args[3], args[4], args[5], srcnum, 'F', 1, options),
                               args_T -> time_modeling(model, args_T[1], args_T[2], args_T[3], args_T[4], args_T[5], srcnum, 'F', -1, options)
@@ -82,11 +79,9 @@ function judiPDEadjoint(name::String,info::Info,model::Model, geometry::Geometry
         for j=1:info.nsrc m += length(geometry.xloc[j])*geometry.nt[j] end
     end
     n = info.n * sum(info.nt)
-    if info.nsrc > 1
-        srcnum = 1:info.nsrc
-    else
-        srcnum = 1
-    end
+
+    srcnum = 1:info.nsrc
+
     return F = judiPDEadjoint{Float32,Float32}(name, m, n, info, model, geometry, options,
                                 args_T -> time_modeling(model, args_T[1], args_T[2], args_T[3], args_T[4], args_T[5], srcnum, 'F', -1, options),
                                 args -> time_modeling(model, args[1], args[2], args[3], args[4], args[5], srcnum, 'F', 1, options),
@@ -146,7 +141,7 @@ adjoint(A::judiPDEadjoint{DDT,RDT}) where {DDT,RDT} =
 function *(A::judiPDE{ADDT,ARDT},v::judiRHS{vDT}) where {ADDT,ARDT,vDT}
     A.n == size(v,1) || throw(judiPDEexception("shape mismatch"))
     jo_check_type_match(ADDT,vDT,join(["DDT for *(judiPDE,judiRHS):",A.name,typeof(A),vDT]," / "))
-	args = (v.geometry,v.data,A.geometry,nothing,nothing)
+	args = (v.geometry, v.data, A.geometry, nothing, nothing)
     V = A.fop(args)
     jo_check_type_match(ARDT,eltype(V),join(["RDT from *(judiPDE,judiVector):",A.name,typeof(A),eltype(V)]," / "))
     return V

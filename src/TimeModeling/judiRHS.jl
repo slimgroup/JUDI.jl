@@ -101,7 +101,7 @@ function +(A::judiRHS{avDT}, B::judiRHS{bvDT}) where {avDT, bvDT}
     dt = Array{Any}(undef, A.info.nsrc)
     nt = Array{Any}(undef, A.info.nsrc)
     t = Array{Any}(undef, A.info.nsrc)
-    data = Array{Any}(undef, A.info.nsrc)
+    data = Array{Array{Float32, 2}}(undef, A.info.nsrc)
 
     for j=1:A.info.nsrc
         xloc[j] = [vec(A.geometry.xloc[j])' vec(B.geometry.xloc[j])']
@@ -139,7 +139,7 @@ function -(A::judiRHS{avDT}, B::judiRHS{bvDT}) where {avDT, bvDT}
     dt = Array{Any}(undef, A.info.nsrc)
     nt = Array{Any}(undef, A.info.nsrc)
     t = Array{Any}(undef, A.info.nsrc)
-    data = Array{Any}(undef, A.info.nsrc)
+    data = Array{Array{Float32, 2}}(undef, A.info.nsrc)
 
     for j=1:A.info.nsrc
         xloc[j] = [vec(A.geometry.xloc[j])' vec(B.geometry.xloc[j])']

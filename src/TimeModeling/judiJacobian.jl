@@ -61,11 +61,8 @@ function judiJacobian(F::judiPDEfull, source::judiVector; DDT::DataType=Float32,
         for j=1:F.info.nsrc m += length(F.recGeometry.xloc[j])*F.recGeometry.nt[j] end
     end
     n = F.info.n
-    if F.info.nsrc > 1
-        srcnum = 1:F.info.nsrc
-    else
-        srcnum = 1
-    end
+    srcnum = 1:F.info.nsrc
+
     isnothing(options) && (options = F.options)
     return J = judiJacobian{Float32,Float32}("linearized wave equation", m, n, 
         F.info, F.model, F.srcGeometry, F.recGeometry, source.data, options,

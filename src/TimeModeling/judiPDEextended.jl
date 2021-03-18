@@ -47,11 +47,7 @@ function judiPDEextended(info::Info,model::Model, wavelet::Array, recGeometry::G
     end
     n = info.n * info.nsrc
 
-    if info.nsrc > 1
-        srcnum = 1:info.nsrc
-    else
-        srcnum = 1
-    end
+    srcnum = 1:info.nsrc
 
     return F = judiPDEextended{Float32,Float32}("Proj*F*Proj'", m, n, info, model, wavelet, recGeometry, options,
         w -> extended_source_modeling(model, wavelet, recGeometry, nothing, process_input_data(w, model,info),
@@ -112,7 +108,7 @@ function *(A::judiPDEextended{ADDT,ARDT},v::AbstractVector{vDT}) where {ADDT,ARD
     A.n == size(v,1) || throw(judiPDEextendedException("shape mismatch"))
     jo_check_type_match(ADDT,vDT,join(["DDT for *(judiPDEextended,AbstractVector):",A.name,typeof(A),vDT]," / "))
     V = A.fop(v)
-    jo_check_type_match(ARDT,eltype(V),join(["RDT from *(judiPDEextended,AbstractVector):",A.name,typeof(A),eltype(V)]," / "))
+    jo_check_type_match(ARDT, eltype(V),join(["RDT from *(judiPDEextended,AbstractVector):",A.name,typeof(A),eltype(V)]," / "))
     return V
 end
 

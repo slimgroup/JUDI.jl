@@ -12,15 +12,6 @@ export generate_distribution, select_frequencies
 export devito_model, update_dm, pad_sizes, pad_array
 export transducer
 
-
-function update_dm(model::PyObject, dm::PhysicalParameter, options::Options)
-    model.dm = pad_array(dm.data, pad_sizes(model, options))
-end
-
-function update_dm(model::PyObject, dm::Array, options::Options)
-    model.dm = pad_array(reshape(dm, model.shape), pad_sizes(model, options))
-end
-
 function pad_sizes(model, options; so=nothing)
     isnothing(so) && (so = options.space_order)
     try
@@ -34,19 +25,20 @@ function pad_sizes(model, options; so=nothing)
     end
 end
 
-function devito_model(model::Model, options::Options)
+function devito_model(model::Model, options::Options; dm=nothing)
     pad = pad_sizes(model, options)
     # Set up Python model structure
     m = pad_array(model[:m].data, pad)
+    dm = pad_array(getattr(dm, :data, dm), pad)
     physpar = Dict((n, pad_array(v.data, pad)) for (n, v) in model.params if n != :m)
     modelPy = pm."Model"(model.o, model.d, model.n, m, fs=options.free_surface,
-                         nbl=model.nb, space_order=options.space_order, dt=options.dt_comp;
+                         nbl=model.nb, space_order=options.space_order, dt=options.dt_comp, dm=dm;
                          physpar...)
     return modelPy
 end
 
 function limit_model_to_receiver_area(srcGeometry::Geometry, recGeometry::Geometry,
-                                      model::Model, buffer::Number; pert=[])
+                                      model::Model, buffer::Number; pert=nothing)
     # Restrict full velocity model to area that contains either sources and receivers
     ndim = length(model.n)
     # scan for minimum and maximum x and y source/receiver coordinates
@@ -85,9 +77,9 @@ function limit_model_to_receiver_area(srcGeometry::Geometry, recGeometry::Geomet
     model.n = model.m.n
     model.o = model.m.o
     println("N new $(model.n)")
-    isempty(pert) && (return model)
+    isnothing(pert) && (return model, nothing)
 
-    pert = reshape(pert,n_orig)[inds...]
+    pert = reshape(pert, n_orig)[inds...]
     return model, vec(pert)
 end
 
@@ -135,7 +127,7 @@ function remove_out_of_bounds_receivers(recGeometry::Geometry, recData::Array, m
         idx_xrec = findall(x -> xmax >= x >= xmin, recGeometry.xloc[1])
         recGeometry.xloc[1] = recGeometry.xloc[1][idx_xrec]
         recGeometry.zloc[1] = recGeometry.zloc[1][idx_xrec]
-        recData[1] = recData[1][:, idx_xrec]
+        recData = recData[:, idx_xrec]
     end
 
     # For 3D shot records, scan also y-receivers
@@ -144,7 +136,7 @@ function remove_out_of_bounds_receivers(recGeometry::Geometry, recData::Array, m
         idx_yrec = findall(x -> ymax >= x >= ymin, recGeometry.yloc[1])
         recGeometry.yloc[1] = recGeometry.yloc[1][idx_yrec]
         recGeometry.zloc[1] = recGeometry.zloc[1][idx_yrec]
-        recData[1] = recData[1][:, idx_yrec]
+        recData = recData[:, idx_yrec]
     end
     return recGeometry, recData
 end
@@ -303,8 +295,6 @@ function setup_3D_grid(xrec,yrec,zrec)
     return xloc, yloc, zloc
 end
 
-pad_array(m::Number, nb::Array{Tuple{Int64,Int64},1}) = m
-
 function pad_array(m::Array{DT}, nb::Array{Tuple{Int64,Int64},1}; mode::Symbol=:border) where {DT}
     n = size(m)
     new_size = Tuple([n[i] + sum(nb[i]) for i=1:length(nb)])
@@ -330,14 +320,6 @@ function remove_padding(gradient::Array{DT}, nb::Array{Tuple{Int64,Int64},1}; tr
     gradient = reshape(joKron(Ei...)' * vec(gradient), new_size)
     return collect(Float32, gradient)
 end
-
-# Vectorization of single variable (not defined in Julia)
-vec(x::Float64) = x;
-vec(x::Float32) = x;
-vec(x::Int64) = x;
-vec(x::Int32) = x;
-
-SincInterpolation(Y, S, Up) = sinc.( (Up .- S') ./ (S[2] - S[1]) ) * Y
 
 function time_resample(data::Array, geometry_in::Geometry, dt_new)
 
@@ -496,7 +478,7 @@ function transducer(q::judiVector, d::Tuple, r::Number, theta)
     xloc = Array{Any}(undef, nsrc)
     yloc = Array{Any}(undef, nsrc)
     zloc = Array{Any}(undef, nsrc)
-    data = Array{Any}(undef, nsrc)
+    data = Array{Array{Float32, 2}}(undef, nsrc)
     t = q.geometry.t[1]
     dt = q.geometry.dt[1]
 
@@ -515,4 +497,29 @@ function transducer(q::judiVector, d::Tuple, r::Number, theta)
         data[i][:, nsrc_loc+1:end] .= -q.data[i]/nsrc_loc
     end
     return judiVector(Geometry(xloc, yloc, zloc; t=t, dt=dt), data)
+end
+
+# Misc defaults
+
+pad_array(m::Number, ::Array{Tuple{Int64,Int64},1}) = m
+pad_array(::Nothing, ::Array{Tuple{Int64,Int64},1}) = nothing
+# Vectorization of single variable (not defined in Julia)
+vec(x::Float64) = x;
+vec(x::Float32) = x;
+vec(x::Int64) = x;
+vec(x::Int32) = x;
+vec(::Nothing) = nothing
+
+SincInterpolation(Y, S, Up) = sinc.( (Up .- S') ./ (S[2] - S[1]) ) * Y
+
+subsample(::Nothing, i) = nothing
+subsample(a::Array{Array}, i) = a[i]
+subsample(a::Array{Array{T,2}, 1}, i::Int64) where T = a[i]
+
+function getattr(o, attr::Symbol, default)
+    try
+        return getfield(o, attr)
+    catch e
+        return default
+    end
 end

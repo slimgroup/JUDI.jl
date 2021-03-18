@@ -1,7 +1,7 @@
 
 export lsrtm_objective
 
-function lsrtm_objective(model_full::Model, source::judiVector, dObs::judiVector, srcnum::Integer, dm; options=Options(), frequencies=[], nlind=false)
+function lsrtm_objective(model_full::Model, source::judiVector, dObs::judiVector, srcnum::Integer, dm, options::Options; nlind=false)
     # Load full geometry for out-of-core geometry containers
     typeof(dObs.geometry) == GeometryOOC && (dObs.geometry = Geometry(dObs.geometry))
     typeof(source.geometry) == GeometryOOC && (source.geometry = Geometry(source.geometry))
@@ -9,7 +9,7 @@ function lsrtm_objective(model_full::Model, source::judiVector, dObs::judiVector
     # for 3D modeling, limit model to area with sources/receivers
     if options.limit_m == true # only supported for 3D
         model = deepcopy(model_full)
-        model = limit_model_to_receiver_area(source.geometry,dObs.geometry,model,options.buffer_size)
+        model, dm = limit_model_to_receiver_area(source.geometry,dObs.geometry,model,options.buffer_size; pert=dm)
     else
         model = model_full
     end
@@ -20,8 +20,7 @@ function lsrtm_objective(model_full::Model, source::judiVector, dObs::judiVector
 
     # Set up Python model structure (force origin to be zero due to current devito bug)
     # Set up Python model structure
-    modelPy = devito_model(model, options)
-    update_dm(modelPy, dm, options)
+    modelPy = devito_model(model, options; dm=dm)
     dtComp = modelPy.critical_dt
 
     # Extrapolate input data to computational grid

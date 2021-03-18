@@ -20,18 +20,8 @@ function lsrtm_objective(model::Model, source::judiVector, dObs::judiVector, dm;
 # lsrtm_objective function for multiple sources. The function distributes the sources and the input data amongst the available workers.
 
     p = default_worker_pool()
-    lsrtm_objective_par = remote(TimeModeling.lsrtm_objective)
-    lsrtm_objective = retry(lsrtm_objective_par)
-
-    results = Array{Any}(undef, dObs.nsrc)
-
-    @sync begin
-        for j=1:dObs.nsrc
-            opt_local = subsample(options,j)
-            @async results[j] = lsrtm_objective(model, source[j], dObs[j], j, dm; options=opt_local, nlind=nlind)
-        end
-    end
-
+    results = pmap(j -> lsrtm_objective(model, source[j], dObs[j], dm, options=subsample(options, j); nlind=nlind).
+                   p, 1:dObs.nsrc)
     # Collect and reduce gradients
     objective = 0f0
     gradient = PhysicalParameter(zeros(Float32, model.n), model.d, model.o)

@@ -34,7 +34,6 @@ end
 ## Constructor
 
 # Set up info structure for linear operators
-
 function judiModeling(model::Model, srcGeometry::Geometry, recGeometry::Geometry; options=Options(), DDT::DataType=Float32, RDT::DataType=DDT)
     ntComp = get_computational_nt(srcGeometry, recGeometry, model)
     info = Info(prod(model.n), length(srcGeometry.xloc), ntComp)
@@ -60,11 +59,7 @@ function judiModeling(info::Info,model::Model, srcGeometry::Geometry, recGeometr
         for j=1:info.nsrc n += length(srcGeometry.xloc[j])*srcGeometry.nt[j] end
     end
 
-    if info.nsrc > 1
-        srcnum = 1:info.nsrc
-    else
-        srcnum = 1
-    end
+    srcnum = 1:info.nsrc
 
     return F = judiPDEfull{Float32,Float32}("Proj*F*Proj'", m, n, info, model, srcGeometry, recGeometry, options,
                               src -> time_modeling(model, srcGeometry, process_input_data(src, srcGeometry, info),
