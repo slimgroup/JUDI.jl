@@ -12,6 +12,38 @@ export generate_distribution, select_frequencies
 export devito_model, update_dm, pad_sizes, pad_array
 export transducer
 
+"""
+    devito_model(model, options;dm=nothing)
+
+Creates a python side model strucutre for devito.
+
+Parameters
+* `model`: JUDI Model structure.
+* `options`: JUDI Options structure.
+* `dm`: Squared slowness perturbation (optional), Array or PhysicalParameter.
+"""
+function devito_model(model::Model, options::Options; dm=nothing)
+    pad = pad_sizes(model, options)
+    # Set up Python model structure
+    m = pad_array(model[:m].data, pad)
+    dm = pad_array(getattr(dm, :data, dm), pad)
+    physpar = Dict((n, pad_array(v.data, pad)) for (n, v) in model.params if n != :m)
+    modelPy = pm."Model"(model.o, model.d, model.n, m, fs=options.free_surface,
+                         nbl=model.nb, space_order=options.space_order, dt=options.dt_comp, dm=dm;
+                         physpar...)
+    return modelPy
+end
+
+"""
+    pad_sizes(model, options; so=nothing)
+
+Computes ABC padding sizes according to the model's numbr of abc points and spatial order
+
+Parameters
+* `model`: JUDI or Python side Model.
+* `options`: JUDI Options structure.
+* `so`: Space order (optional) defaults to options.space_order.
+"""
 function pad_sizes(model, options; so=nothing)
     isnothing(so) && (so = options.space_order)
     try
@@ -25,18 +57,84 @@ function pad_sizes(model, options; so=nothing)
     end
 end
 
-function devito_model(model::Model, options::Options; dm=nothing)
-    pad = pad_sizes(model, options)
-    # Set up Python model structure
-    m = pad_array(model[:m].data, pad)
-    dm = pad_array(getattr(dm, :data, dm), pad)
-    physpar = Dict((n, pad_array(v.data, pad)) for (n, v) in model.params if n != :m)
-    modelPy = pm."Model"(model.o, model.d, model.n, m, fs=options.free_surface,
-                         nbl=model.nb, space_order=options.space_order, dt=options.dt_comp, dm=dm;
-                         physpar...)
-    return modelPy
+"""
+    pad_array(m, nb; mode=:border)
+
+Pads to the input array with either copying the edge value (:border) or zeros (:zeros)
+
+Parameters
+* `m`: Array to be padded.
+* `nb`: Size of padding. Array of tuple with one (nb_left, nb_right) tuple per dimension.
+* `mode`: Padding mode (optional), defaults to :border.
+"""
+function pad_array(m::Array{DT}, nb::Array{Tuple{Int64,Int64},1}; mode::Symbol=:border) where {DT}
+    n = size(m)
+    new_size = Tuple([n[i] + sum(nb[i]) for i=1:length(nb)])
+    Ei = []
+    for i=length(nb):-1:1
+        left, right = nb[i]
+        push!(Ei, joExtend(n[i], mode;pad_upper=right, pad_lower=left, RDT=DT, DDT=DT))
+    end
+    padded = joKron(Ei...) * vec(m)
+    return reshape(padded, new_size)
 end
 
+"""
+    remove_padding(m, nb; true_adjoint=False)
+
+Removes the padding from array `m`. This is the adjoint of [`pad_array`](@ref).
+
+Parameters
+* `m`: Array to remvove padding from.
+* `nb`: Size of padding. Array of tuple with one (nb_left, nb_right) tuple per dimension.
+* `true_adjoint`: Unpadding mode, defaults to False. Will sum the padding to the edge point with `true_adjoint=true`
+ and should only be used this way for adjoint testing purpose.
+"""
+function remove_padding(gradient::Array{DT}, nb::Array{Tuple{Int64,Int64},1}; true_adjoint::Bool=false) where {DT}
+    # Pad is applied x then y then z, so sum must be done in reverse order x then y then x
+    true_adjoint ? mode = :border : mode = :zeros
+    n = size(gradient)
+    new_size = Tuple([n[i] - sum(nb[i]) for i=1:length(nb)])
+    Ei = []
+    for i=length(nb):-1:1
+        left, right = nb[i]
+        push!(Ei, joExtend(new_size[i], mode;pad_upper=right, pad_lower=left, RDT=DT, DDT=DT))
+    end
+    gradient = reshape(joKron(Ei...)' * vec(gradient), new_size)
+    return collect(Float32, gradient)
+end
+
+"""
+    limit_model_to_receiver_area(srcGeometry, recGeometry, model, buffer; pert=nothing)
+
+Crops the `model` to the area of the source an receiver with an extra buffer. This reduces the size
+of the problem when the model si large and the source and receiver located in a small part of the domain.
+
+In the cartoon below, the full model will be cropped to the center area containg the source (o) receivers (x) and 
+buffer area (*)
+
+--------------------------------------------
+| . . . . . . . . . . . . . . . . . . . . . |
+| . . . . . . . . . . . . . . . . . . . . . |  - o Source position
+| . . . . * * * * * * * * * * * * . . . . . |  - x receiver positions
+| . . . . * x x x x x x x x x x * . . . . . |  - * Extra buffer (grid spacing in that simple case)
+| . . . . * x x x x x x x x x x * . . . . . | 
+| . . . . * x x x x x x x x x x * . . . . . |
+| . . . . * x x x x x o x x x x * . . . . . |
+| . . . . * x x x x x x x x x x * . . . . . |
+| . . . . * x x x x x x x x x x * . . . . . |
+| . . . . * x x x x x x x x x x * . . . . . |
+| . . . . * * * * * * * * * * * * . . . . . |
+| . . . . . . . . . . . . . . . . . . . . . |
+| . . . . . . . . . . . . . . . . . . . . . |
+--------------------------------------------
+Parameters
+* `srcGeometry`: Geometry of the source.
+* `recGeometry`: Geometry of the receivers.
+* `model`: Model to be croped.
+* `buffer`: Size of the buffer on each side.
+* `pert`: Model perturbation (optional) to be cropped as well.
+"""
 function limit_model_to_receiver_area(srcGeometry::Geometry, recGeometry::Geometry,
                                       model::Model, buffer::Number; pert=nothing)
     # Restrict full velocity model to area that contains either sources and receivers
@@ -83,6 +181,17 @@ function limit_model_to_receiver_area(srcGeometry::Geometry, recGeometry::Geomet
     return model, vec(pert)
 end
 
+"""
+    extend_gradient(model_full, model, array)
+
+This operation does the opposite of [`limit_model_to_receiver_area`](@ref) and put back a cropped array into
+the full model.
+
+Parameters
+* `model_full`: Full domain model.
+* `model`: Cropped model.
+* `array`: Array to be extended (padded with zero) to the full model size.
+"""
 function extend_gradient(model_full::Model, model::Model, gradient::Union{Array, PhysicalParameter})
     # Extend gradient back to full model size
     ndim = length(model.n)
@@ -99,6 +208,15 @@ function extend_gradient(model_full::Model, model::Model, gradient::Union{Array,
     return full_gradient
 end
 
+"""
+    remove_out_of_bounds_receivers(recGeometry, model)
+
+Removes receivers that are positionned outside the computational domain defined by the model.
+
+Parameters
+* `recGeometry`: Geometry of receivers in which out of bounds will be removed.
+* `model`: Model defining the computational domain.
+"""
 function remove_out_of_bounds_receivers(recGeometry::Geometry, model::Model)
 
     # Only keep receivers within the model
@@ -119,6 +237,16 @@ function remove_out_of_bounds_receivers(recGeometry::Geometry, model::Model)
     return recGeometry
 end
 
+"""
+    remove_out_of_bounds_receivers(recGeometry, recData, model)
+
+Removes receivers that are positionned outside the computational domain defined by the model.
+
+Parameters
+* `recGeometry`: Geometry of receivers in which out of bounds will be removed.
+* `recData`: Shot record for that geometry in which traces will be removed.
+* `model`: Model defining the computational domain.
+"""
 function remove_out_of_bounds_receivers(recGeometry::Geometry, recData::Array, model::Model)
 
     # Only keep receivers within the model
@@ -147,6 +275,8 @@ end
 Convert an array `x` to a cell array (`Array{Any,1}`) with `length(x)` entries,\\
 where the i-th cell contains the i-th entry of `x`.
 
+Parameters
+* `x`: Array to be converted into and array of array
 """
 function convertToCell(x)
     n = length(x)
@@ -176,6 +306,16 @@ function ricker_wavelet(tmax, dt, f0; t0=nothing)
     return q
 end
 
+"""
+    calculate_dt(model; dt=nothing)
+
+Compute the computational time step based on the CFL condition and physical parameters
+in the model.
+
+Parameters
+* `model`: Model structure
+* `dt`: User defined time step (optional), will be the value returned if provided.
+"""
 function calculate_dt(model::Model; dt=nothing)
     if ~isnothing(dt)
         return dt
@@ -213,6 +353,15 @@ function get_computational_nt(srcGeometry, recGeometry, model::Model; dt=nothing
     return nt
 end
 
+"""
+    get_computational_nt(Geoemtry, model; dt=nothing)
+
+Estimate the number of computational time steps. Required for calculating the dimensions\\
+of the matrix-free linear modeling operators. `srcGeometry` and `recGeometry` are source\\
+and receiver geometries of type `Geometry` and `model` is the model structure of type \\
+`Model`.
+
+"""
 function get_computational_nt(Geometry, model::Model; dt=nothing)
     # Determine number of computational time steps
     if typeof(Geometry) == GeometryOOC
@@ -228,6 +377,15 @@ function get_computational_nt(Geometry, model::Model; dt=nothing)
     return nt
 end
 
+"""
+    setup_grid(geometry, n)
+
+Sets up the coordinate arrays for Devito. 
+
+Parameters:
+* `geometry`: Geometry containing the coordinates
+* `n`: Domain size
+"""
 function setup_grid(geometry, n)
     # 3D grid
     if length(n)==3
@@ -247,19 +405,30 @@ function setup_grid(geometry, n)
     return source_coords
 end
 
-function setup_3D_grid(xrec::Array{Any,1},yrec::Array{Any,1},zrec::Array{Any,1})
+"""
+    setup_3D_grid(x, y, z)  
+
+Converts one dimensional input (x, y, z) into three dimensional coordinates. The number of point created
+is `length(x)*lenght(y)` with all the x/y pairs and each pair at depth z[idx[x]]. `x` and `z` must have the same size.
+
+Parameters:
+* `x`: X coordinates.
+* `y`: Y coordinates.
+* `z`: Z coordinates.
+"""
+function setup_3D_grid(xrec::Array{Array{T, 1}, 1},yrec::Array{Array{T, 1},1},zrec::Array{Array{T, 1}, 1}) where T
     # Take input 1d x and y coordinate vectors and generate 3d grid. Input are cell arrays
     nsrc = length(xrec)
-    xloc = Array{Any}(undef, nsrc)
-    yloc = Array{Any}(undef, nsrc)
-    zloc = Array{Any}(undef, nsrc)
+    xloc = Array{Array{T}, 1}(undef, nsrc)
+    yloc = Array{Array{T}, 1}(undef, nsrc)
+    zloc = Array{Array{T}, 1}(undef, nsrc)
     for i=1:nsrc
         nxrec = length(xrec[i])
         nyrec = length(yrec[i])
 
-        xloc[i] = zeros(nxrec*nyrec)
-        yloc[i] = zeros(nxrec*nyrec)
-        zloc[i] = zeros(nxrec*nyrec)
+        xloc[i] = zeros(T, nxrec*nyrec)
+        yloc[i] = zeros(T, nxrec*nyrec)
+        zloc[i] = zeros(T, nxrec*nyrec)
 
         idx = 1
 
@@ -275,14 +444,25 @@ function setup_3D_grid(xrec::Array{Any,1},yrec::Array{Any,1},zrec::Array{Any,1})
     return xloc, yloc, zloc
 end
 
-function setup_3D_grid(xrec,yrec,zrec)
+"""
+    setup_3D_grid(x, y, z)  
+
+Converts one dimensional input (x, y, z) into three dimensional coordinates. The number of point created
+is `length(x)*lenght(y)` with all the x/y pairs and each pair at same depth z.
+
+Parameters:
+* `x`: X coordinates.
+* `y`: Y coordinates.
+* `z`: Z coordinate.
+"""
+function setup_3D_grid(xrec::Array{T, 1},yrec::Array{T,1},zrec::T) where T
 # Take input 1d x and y coordinate vectors and generate 3d grid. Input are arrays/ranges
     nxrec = length(xrec)
     nyrec = length(yrec)
 
-    xloc = zeros(nxrec*nyrec)
-    yloc = zeros(nxrec*nyrec)
-    zloc = zeros(nxrec*nyrec)
+    xloc = zeros(T, nxrec*nyrec)
+    yloc = zeros(T, nxrec*nyrec)
+    zloc = zeros(T, nxrec*nyrec)
     idx = 1
     for k=1:nyrec
         for j=1:nxrec
@@ -295,32 +475,17 @@ function setup_3D_grid(xrec,yrec,zrec)
     return xloc, yloc, zloc
 end
 
-function pad_array(m::Array{DT}, nb::Array{Tuple{Int64,Int64},1}; mode::Symbol=:border) where {DT}
-    n = size(m)
-    new_size = Tuple([n[i] + sum(nb[i]) for i=1:length(nb)])
-    Ei = []
-    for i=length(nb):-1:1
-        left, right = nb[i]
-        push!(Ei, joExtend(n[i], mode;pad_upper=right, pad_lower=left, RDT=DT, DDT=DT))
-    end
-    padded = joKron(Ei...) * vec(m)
-    return reshape(padded, new_size)
-end
+"""
+    time_resample(data, geometry_in, dt_new)
 
-function remove_padding(gradient::Array{DT}, nb::Array{Tuple{Int64,Int64},1}; true_adjoint::Bool=false) where {DT}
-    # Pad is applied x then y then z, so sum must be done in reverse order x then y then x
-    true_adjoint ? mode = :border : mode = :zeros
-    n = size(gradient)
-    new_size = Tuple([n[i] - sum(nb[i]) for i=1:length(nb)])
-    Ei = []
-    for i=length(nb):-1:1
-        left, right = nb[i]
-        push!(Ei, joExtend(new_size[i], mode;pad_upper=right, pad_lower=left, RDT=DT, DDT=DT))
-    end
-    gradient = reshape(joKron(Ei...)' * vec(gradient), new_size)
-    return collect(Float32, gradient)
-end
+Resample the input data with sinc interpolation from the current time sampling (geometrty_in) to the 
+new time sampling `dt_new`.
 
+Parameters
+* `data`: Data to be reampled. If data is a matrix, resamples each column.
+* `geometry_in`: Geometry on which `data` is defined.
+* `dt_new`: New time sampling rate to interpolate onto.
+"""
 function time_resample(data::Array, geometry_in::Geometry, dt_new)
 
     if dt_new==geometry_in.dt[1]
@@ -338,6 +503,17 @@ function time_resample(data::Array, geometry_in::Geometry, dt_new)
     end
 end
 
+"""
+    time_resample(data, dt_in, geometry_in)
+
+Resample the input data with sinc interpolation from the current time sampling (dt_in) to the 
+new time sampling `geometry_out`.
+
+Parameters
+* `data`: Data to be reampled. If data is a matrix, resamples each column.
+* `geometry_out`: Geometry on which `data` is to be interpolated.
+* `dt_in`: Time sampling rate of the `data.`
+"""
 function time_resample(data::Array, dt_in, geometry_out::Geometry)
     if dt_in==geometry_out.dt[1]
         return data
@@ -348,8 +524,15 @@ function time_resample(data::Array, dt_in, geometry_out::Geometry)
     end
 end
 
-#subsample(x::Nothing) = x
+"""
+    generate_distribution(x; src_no=1)
 
+Generates a probability distribution for the discrete input judiVector `x`.
+
+Parameters
+* `x`: judiVector. Usualy a source with a single trace per source position.
+* `src_no`: Index of the source to select out of `x`
+"""
 function generate_distribution(x; src_no=1)
 	# Generate interpolator to sample from probability distribution given
 	# from spectrum of the input data
@@ -380,6 +563,17 @@ function generate_distribution(x; src_no=1)
 	return Spline1D(pd, f)
 end
 
+"""
+    select_frequencies(q_dist; fmin=0f0, fmax=Inf, nf=1)
+
+Selects `nf` frequencies based on the source distribution `q_dist` computed with [`generate_distribution`](@ref).
+
+Parameters
+* `q_dist`: Distribution to sample from.
+* `f_min`: Minimum acceptable frequency to sample (defaults to 0).
+* `f_max`: Maximum acceptable frequency to sample (defaults to Inf).
+* `fd`: Number of frequnecies to sample (defaults to 1).
+"""
 function select_frequencies(q_dist; fmin=0f0, fmax=Inf, nf=1)
 	freq = zeros(Float32, nf)
 	for j=1:nf
@@ -390,8 +584,6 @@ function select_frequencies(q_dist; fmin=0f0, fmax=Inf, nf=1)
 	return freq
 end
 
-process_input_data(input::judiVector, ::Geometry, ::Info) = input.data
-process_input_data(input::judiWeights, ::Model, ::Info) = input.weights
 
 function process_input_data(input::Array{Float32}, geometry::Geometry, info::Info)
     # Input data is pure Julia array: assume fixed no.
@@ -426,6 +618,8 @@ function process_input_data(input::Array{Float32}, model::Model, info::Info)
     return dataCell
 end
 
+process_input_data(input::judiVector, ::Geometry, ::Info) = input.data
+process_input_data(input::judiWeights, ::Model, ::Info) = input.weights
 
 function reshape(x::Array{Float32, 1}, geometry::Geometry)
     nt = geometry.nt[1]
@@ -499,7 +693,7 @@ function transducer(q::judiVector, d::Tuple, r::Number, theta)
     return judiVector(Geometry(xloc, yloc, zloc; t=t, dt=dt), data)
 end
 
-# Misc defaults
+########################################### Misc defaults
 
 pad_array(m::Number, ::Array{Tuple{Int64,Int64},1}) = m
 pad_array(::Nothing, ::Array{Tuple{Int64,Int64},1}) = nothing
