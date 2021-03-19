@@ -3,7 +3,6 @@ export time_modeling
 
 # Setup time-domain linear or nonlinear foward and adjoint modeling and interface to devito
 function time_modeling(model_full::Model, srcGeometry, srcData, recGeometry, recData, dm, op::Char, mode::Int64, options)
-
     # Load full geometry for out-of-core geometry containers
     typeof(recGeometry) == GeometryOOC && (recGeometry = Geometry(recGeometry))
     typeof(srcGeometry) == GeometryOOC && (srcGeometry = Geometry(srcGeometry))

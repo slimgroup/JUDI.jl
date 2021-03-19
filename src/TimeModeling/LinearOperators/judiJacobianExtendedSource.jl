@@ -105,7 +105,7 @@ end
 *(A::judiJacobianExQ{ADDT,ARDT},v::AbstractMatrix{vDT}) where {ADDT,ARDT,vDT} = *(A, vec(v))
 
 # *(judiJacobianExQ,judiVector)
-function *(A::judiJacobianExQ{ADDT,ARDT},v::judiVector{vDT}) where {ADDT,ARDT,vDT}
+function *(A::judiJacobianExQ{ADDT,ARDT},v::judiVector{vDT, AT}) where {ADDT,ARDT,vDT, AT}
     A.n == size(v,1) || throw(judiJacobianExQException("shape mismatch"))
     jo_check_type_match(ADDT,vDT,join(["DDT for *(judiJacobianExQ,judiVector):",A.name,typeof(A),vDT]," / "))
     compareGeometry(A.recGeometry,v.geometry) == true || throw(judiJacobianExQException("Geometry mismatch"))

@@ -116,66 +116,15 @@ isfinite(S::judiVStack) = all(isfinite(c) for c in S)
 
 ##########################################################
 
-
 # minus
-function -(a::judiVStack{avDT}) where {avDT}
-    c = deepcopy(a)
-    for j=1:length(a.components)
-        c.components[j] = -c.components[j]
-    end
-    return c
-end
+-(a::judiVStack) = -1*a
++(a::judiVStack, b::judiVStack) = judiVStack{Float32}(a.m, a.n, a.components + b.components)
+-(a::judiVStack, b::judiVStack) = judiVStack{Float32}(a.m, a.n, a.components - b.components)
++(a::judiVStack, b::Number) = judiVStack{Float32}(a.m, a.n,a.components .+ b)
+-(a::judiVStack, b::Number) = judiVStack{Float32}(a.m, a.n,a.components .- b)
+-(a::Number, b::judiVStack) = judiVStack{Float32}(b.m, b.n, a .- b.components)
 
-function +(a::judiVStack, b::judiVStack)
-    size(a) == size(b) || throw(judiWeightsException("dimension mismatch"))
-    components = Array{Any}(undef, length(a.components))
-    for i=1:length(a.components)
-        components[i] = a.components[i] + b.components[i]
-    end
-    return judiVStack{Float32}(a.m, a.n,components)
-end
-
-function +(a::judiVStack, b::Number)
-    components = Array{Any}(undef, length(a.components))
-    for i=1:length(a.components)
-        components[i] = a.components[i] + b
-    end
-    return judiVStack{Float32}(a.m, a.n,components)
-end
-
-function -(a::judiVStack, b::judiVStack)
-    size(a) == size(b) || throw(judiWeightsException("dimension mismatch"))
-    components = Array{Any}(undef, length(a.components))
-    for i=1:length(a.components)
-        components[i] = a.components[i] - b.components[i]
-    end
-    return judiVStack{Float32}(a.m, a.n,components)
-end
-
-function -(a::judiVStack, b::Number)
-    components = Array{Any}(undef, length(a.components))
-    for i=1:length(a.components)
-        components[i] = a.components[i] .- b
-    end
-    return judiVStack{Float32}(a.m, a.n,components)
-end
-
-function -(a::Number, b::judiVStack)
-    components = Array{Any}(undef, length(b.components))
-    for i=1:length(b.components)
-        components[i] = a .- b.components[i]
-    end
-    return judiVStack{Float32}(b.m, b.n,components)
-end
-
-function *(a::judiVStack, b::Number)
-    components = Array{Any}(undef, length(a.components))
-    for i=1:length(a.components)
-        components[i] = a.components[i] .* b
-    end
-    return judiVStack{Float32}(a.m, a.n,components)
-end
-
+*(a::judiVStack, b::Number) = judiVStack{Float32}(a.m, a.n, b .* a.components)
 *(a::Number, b::judiVStack) = b * a
 +(a::Number, b::judiVStack) = b + a
 

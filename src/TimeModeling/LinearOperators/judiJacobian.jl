@@ -111,7 +111,7 @@ end
 *(A::judiJacobian{ADDT,ARDT}, v::AbstractVector{Float64}) where {ADDT,ARDT} = *(A, jo_convert(Float32, v, false))
 
 # *(judiJacobian,judiVector)
-function *(A::judiJacobian{ADDT,ARDT}, v::judiVector{vDT}) where {ADDT,ARDT,vDT}
+function *(A::judiJacobian{ADDT,ARDT}, v::judiVector{vDT, AT}) where {ADDT,ARDT,vDT, AT}
     A.n == size(v,1) || throw(judiJacobianException("shape mismatch"))
     jo_check_type_match(ADDT,vDT,join(["DDT for *(judiJacobian,judiVector):",A.name,typeof(A),vDT]," / "))
     compareGeometry(A.recGeometry,v.geometry) == true || throw(judiJacobianException("Geometry mismatch"))

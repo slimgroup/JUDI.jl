@@ -95,24 +95,18 @@ function +(A::judiRHS{avDT}, B::judiRHS{bvDT}) where {avDT, bvDT}
     n = 1
 
     # merge geometries and data
-    xloc = Array{Any}(undef, A.info.nsrc)
-    yloc = Array{Any}(undef, A.info.nsrc)
-    zloc = Array{Any}(undef, A.info.nsrc)
-    dt = Array{Any}(undef, A.info.nsrc)
-    nt = Array{Any}(undef, A.info.nsrc)
-    t = Array{Any}(undef, A.info.nsrc)
+    xloc = [vcat(A.geometry.xloc[j], B.geometry.xloc[j]) for j=1:A.info.nsrc]
+    yloc = [vcat(A.geometry.yloc[j], B.geometry.yloc[j]) for j=1:A.info.nsrc]
+    zloc = [vcat(A.geometry.zloc[j], B.geometry.zloc[j]) for j=1:A.info.nsrc]
+    dt = vcat(A.geometry.dt, B.geometry.dt)
+    nt = vcat(A.geometry.nt, B.geometry.nt)
+    t = vcat(A.geometry.t, B.geometry.t)
     data = Array{Array{Float32, 2}}(undef, A.info.nsrc)
 
     for j=1:A.info.nsrc
-        xloc[j] = [vec(A.geometry.xloc[j])' vec(B.geometry.xloc[j])']
-        yloc[j] = [vec(A.geometry.yloc[j])' vec(B.geometry.yloc[j])']
-        zloc[j] = [vec(A.geometry.zloc[j])' vec(B.geometry.zloc[j])']
-        dt[j] = A.geometry.dt[j]
-        nt[j] = A.geometry.nt[j]
-        t[j] = A.geometry.t[j]
         data[j] = [A.data[j] B.data[j]]
     end
-    geometry = Geometry(xloc,yloc,zloc,dt,nt,t)
+    geometry = GeometryIC{Float32}(xloc,yloc,zloc,dt,nt,t)
     nvDT = promote_type(avDT,bvDT)
 
     return judiRHS{nvDT}("judiRHS",m,n,A.info,geometry,data)
@@ -133,24 +127,18 @@ function -(A::judiRHS{avDT}, B::judiRHS{bvDT}) where {avDT, bvDT}
     n = 1
 
     # merge geometries and data
-    xloc = Array{Any}(undef, A.info.nsrc)
-    yloc = Array{Any}(undef, A.info.nsrc)
-    zloc = Array{Any}(undef, A.info.nsrc)
-    dt = Array{Any}(undef, A.info.nsrc)
-    nt = Array{Any}(undef, A.info.nsrc)
-    t = Array{Any}(undef, A.info.nsrc)
+    xloc = [vcat(A.geometry.xloc[j], B.geometry.xloc[j]) for j=1:A.info.nsrc]
+    yloc = [vcat(A.geometry.yloc[j], B.geometry.yloc[j]) for j=1:A.info.nsrc]
+    zloc = [vcat(A.geometry.zloc[j], B.geometry.zloc[j]) for j=1:A.info.nsrc]
+    dt = vcat(A.geometry.dt, B.geometry.dt)
+    nt = vcat(A.geometry.nt, B.geometry.nt)
+    t = vcat(A.geometry.t, B.geometry.t)
     data = Array{Array{Float32, 2}}(undef, A.info.nsrc)
 
     for j=1:A.info.nsrc
-        xloc[j] = [vec(A.geometry.xloc[j])' vec(B.geometry.xloc[j])']
-        yloc[j] = [vec(A.geometry.yloc[j])' vec(B.geometry.yloc[j])']
-        zloc[j] = [vec(A.geometry.zloc[j])' vec(B.geometry.zloc[j])']
-        dt[j] = A.geometry.dt[j]
-        nt[j] = A.geometry.nt[j]
-        t[j] = A.geometry.t[j]
         data[j] = [A.data[j] -B.data[j]]
     end
-    geometry = Geometry(xloc,yloc,zloc,dt,nt,t)
+    geometry = GeometryIC{Float32}(xloc,yloc,zloc,dt,nt,t)
     nvDT = promote_type(avDT,bvDT)
 
     return judiRHS{nvDT}("judiRHS",m,n,A.info,geometry,data)

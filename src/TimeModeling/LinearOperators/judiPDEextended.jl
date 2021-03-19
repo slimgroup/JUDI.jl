@@ -95,7 +95,7 @@ function *(A::judiPDEextended{ADDT,ARDT},v::judiWeights{vDT}) where {ADDT,ARDT,v
 end
 
 # *(judiPDEextended,judiVector)
-function *(A::judiPDEextended{ADDT,ARDT},v::judiVector{vDT}) where {ADDT,ARDT,vDT}
+function *(A::judiPDEextended{ADDT,ARDT},v::judiVector{vDT, AT}) where {ADDT,ARDT,vDT, AT}
     A.n == size(v,1) || throw(judiPDEextendedException("shape mismatch"))
     jo_check_type_match(ADDT,vDT,join(["DDT for *(judiPDEextended,judiWeights):",A.name,typeof(A),vDT]," / "))
     V = A.fop(v)

@@ -108,7 +108,7 @@ function *(A::judiPDEfull{ADDT,ARDT},v::AbstractVector{vDT}) where {ADDT,ARDT,vD
 end
 
 # *(judiPDEfull,judiVector)
-function *(A::judiPDEfull{ADDT,ARDT}, v::judiVector{vDT}) where {ADDT,ARDT,vDT}
+function *(A::judiPDEfull{ADDT,ARDT}, v::judiVector{vDT, AT}) where {ADDT,ARDT,vDT, AT}
     A.n == size(v,1) || throw(judiPDEfullException("shape mismatch"))
     if compareGeometry(A.srcGeometry,v.geometry) == false && compareGeometry(A.recGeometry,v.geometry) == false
         throw(judiPDEfullException("geometry mismatch"))

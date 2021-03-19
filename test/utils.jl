@@ -50,7 +50,7 @@ function setup_model(tti=false, nlayer=2; n=(301, 151), d=(10., 10.))
         model0 = Model(n,d,o,m0,rho0)
         @test Model(n,d,o,m0; rho=rho0).rho == model0.rho
     end
-    dm = model0.m - model.m
+    dm = m - m0
     return model, model0, dm
 end
 

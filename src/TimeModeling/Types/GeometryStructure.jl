@@ -7,23 +7,25 @@ export Geometry, compareGeometry, GeometryIC, GeometryOOC
 
 abstract type Geometry end
 
+const CoordT = Union{Array{T, 1}, Array{Array{T, 1}, 1}} where T
+
 # In-core geometry structure for seismic header information
-mutable struct GeometryIC <: Geometry
-    xloc::Array{Any,1}  # Array of receiver positions (fixed for all experiments)
-    yloc::Array{Any,1}
-    zloc::Array{Any,1}
-    dt::Array{Any,1}
-    nt::Array{Any,1}
-    t::Array{Any,1}
+mutable struct GeometryIC{T} <: Geometry
+    xloc::CoordT  # Array of receiver positions (fixed for all experiments)
+    yloc::CoordT
+    zloc::CoordT
+    dt::Array{T,1}
+    nt::Array{Integer,1}
+    t::Array{T,1}
 end
 
 # Out-of-core geometry structure, contains look-up table instead of coordinates
-mutable struct GeometryOOC <: Geometry
+mutable struct GeometryOOC{T} <: Geometry
     container::Array{SegyIO.SeisCon,1}
-    dt::Array{Any,1}
-    nt::Array{Any,1}
-    t::Array{Any,1}
-    nsamples::Array{Any,1}
+    dt::Array{T,1}
+    nt::Array{Integer,1}
+    t::Array{T,1}
+    nsamples::Array{Integer,1}
     key::String
     segy_depth_key::String
 end
@@ -32,12 +34,12 @@ end
 
 """
     Geometry
-        xloc::Array{Any,1}
-        yloc::Array{Any,1}
-        zloc::Array{Any,1}
-        dt::Array{Any,1}
-        nt::Array{Any,1}
-        t::Array{Any,1}
+        xloc::Array{Array{T, 1},1}
+        yloc::Array{Array{T, 1},1}
+        zloc::Array{Array{T, 1},1}
+        dt::Array{T,1}
+        nt::Array{Integer,1}
+        t::Array{T,1}
 
 Geometry structure for seismic sources or receivers. Each field is a cell array, where individual cell entries\\
 contain values or arrays with coordinates and sampling information for the corresponding shot position. The \\
@@ -106,54 +108,33 @@ geometry object `GeometryOOC` without the source/receiver coordinates, but a loo
     src_geometry = Geometry(seis_container; key="source", segy_depth_key="SourceDepth")
 
 """
-Geometry(xloc::Array{Any,1},yloc::Array{Any,1},zloc::Array{Any,1},dt::Array{Any,1},nt::Array{Any,1},t::Array{Any,1}) = GeometryIC(xloc,yloc,zloc,dt,nt,t)
+Geometry(xloc::CoordT, yloc::CoordT,zloc::CoordT,dt::Array{T,1},nt::Array{Integer,1},t::Array{T,1}) where T = GeometryIC{T}(xloc,yloc,zloc,dt,nt,t)
+function Geometry(xloc, yloc, zloc;dt=[], t=[], nsrc=1)
+    Geometry(tof32(xloc), tof32(yloc), tof32(zloc); dt=dt, t=t, nsrc=nsrc)
+end
 
 # Constructor if nt is not passed
-function Geometry(xloc::Array{Any,1},yloc::Array{Any,1},zloc::Array{Any,1};dt=[],t=[])
+function Geometry(xloc::Array{Array{T, 1},1}, yloc::CoordT, zloc::Array{Array{T, 1},1};dt=[],t=[]) where T
     nsrc = length(xloc)
     # Check if single dt was passed
-    if typeof(dt) <: Real
-        dtCell = Array{Any}(undef, nsrc)
-        for j=1:nsrc
-            dtCell[j] = dt
-        end
-    else
-        dtCell = dt
-    end
+    dtCell = typeof(t) <: Real ? [T(dt) for j=1:nsrc] : T.(dt)
     # Check if single t was passed
-    if typeof(t) <: Real
-        tCell = Array{Any}(undef, nsrc)
-        for j=1:nsrc
-            tCell[j] = t
-        end
-    else
-        tCell = t
-    end
+    tCell = typeof(t) <: Real ? [T(t) for j=1:nsrc] : T.(t)
+
     # Calculate number of time steps
-    ntCell = Array{Any}(undef, nsrc)
-    for j=1:nsrc
-        ntCell[j] = trunc(Int64, tCell[j]/dtCell[j]) + 1
-    end
-    return GeometryIC(xloc,yloc,zloc,dtCell,ntCell,tCell)
+    ntCell = typeof(t) <: Real ? [Int(t ÷ dt) + 1 for j=1:nsrc] : Int(tCell .÷ dtCell) .+ 1
+    return GeometryIC{T}(xloc, yloc, zloc, dtCell, ntCell, tCell)
 end
 
 # Constructor if coordinates are not passed as a cell arrays
-function Geometry(xloc, yloc, zloc; dt=[], t=[], nsrc::Integer=1)
-    xlocCell = Array{Any}(undef, nsrc)
-    ylocCell = Array{Any}(undef, nsrc)
-    zlocCell = Array{Any}(undef, nsrc)
-    dtCell = Array{Any}(undef, nsrc)
-    ntCell = Array{Any}(undef, nsrc)
-    tCell = Array{Any}(undef, nsrc)
-    for j=1:nsrc
-        xlocCell[j] = xloc
-        ylocCell[j] = yloc
-        zlocCell[j] = zloc
-        dtCell[j] = dt
-        ntCell[j] = trunc(Int64, t/dt) + 1
-        tCell[j] = t
-    end
-    return GeometryIC(xlocCell,ylocCell,zlocCell,dtCell,ntCell,tCell)
+function Geometry(xloc::Array{T, 1}, yloc::Union{Array{T, 1}, T}, zloc::Array{T, 1}; dt=[], t=[], nsrc::Integer=1) where T
+    xlocCell = [xloc for j=1:nsrc]
+    ylocCell = [yloc for j=1:nsrc]
+    zlocCell = [zloc for j=1:nsrc]
+    dtCell = [T(dt) for j=1:nsrc]
+    ntCell = [Int(t÷dt)+1 for j=1:nsrc]
+    tCell = [T(t) for j=1:nsrc]
+    return GeometryIC{T}(xlocCell, ylocCell, zlocCell, dtCell, ntCell, tCell)
 end
 
 
@@ -166,14 +147,20 @@ function Geometry(data::SegyIO.SeisBlock; key="source", segy_depth_key="")
     if key=="source"
         isempty(segy_depth_key) && (segy_depth_key="SourceSurfaceElevation")
         params = ["SourceX","SourceY",segy_depth_key]
+        gt = Float32
     elseif key=="receiver"
         isempty(segy_depth_key) && (segy_depth_key="RecGroupElevation")
         params = ["GroupX","GroupY",segy_depth_key]
+        gt = Array{Float32, 1}
     else
         throw("Specified keyword not supported")
     end
-    xloc = Array{Any}(undef, nsrc); yloc = Array{Any}(undef, nsrc); zloc = Array{Any}(undef, nsrc)
-    dt = Array{Any}(undef, nsrc); nt = Array{Any}(undef, nsrc); t = Array{Any}(undef, nsrc)
+    xloc = Array{gt, 1}(undef, nsrc)
+    yloc = Array{gt, 1}(undef, nsrc)
+    zloc = Array{gt, 1}(undef, nsrc)
+    dt = Array{Float32}(undef, nsrc)
+    nt = Array{Integer}(undef, nsrc)
+    t = Array{Float32}(undef, nsrc)
 
     xloc_full = get_header(data, params[1])
     yloc_full = get_header(data, params[2])
@@ -184,19 +171,19 @@ function Geometry(data::SegyIO.SeisBlock; key="source", segy_depth_key="")
     for j=1:nsrc
         traces = findall(src .== unique(src)[j])
         if key=="source"    # assume same source location for all traces within one shot record
-            xloc[j] = convert(Float32,xloc_full[traces][1])
-            yloc[j] = convert(Float32,yloc_full[traces][1])
-            zloc[j] = abs.(convert(Float32,zloc_full[traces][1]))
+            xloc[j] = convert(gt, xloc_full[traces][1])
+            yloc[j] = convert(gt,yloc_full[traces][1])
+            zloc[j] = abs.(convert(gt,zloc_full[traces][1]))
         else
-            xloc[j] = convert(Array{Float32,1}, xloc_full[traces])
-            yloc[j] = convert(Array{Float32,1}, yloc_full[traces])
-            zloc[j] = abs.(convert(Array{Float32,1}, zloc_full[traces]))
+            xloc[j] = convert(gt, xloc_full[traces])
+            yloc[j] = convert(gt, yloc_full[traces])
+            zloc[j] = abs.(convert(gt, zloc_full[traces]))
         end
-        dt[j] = dt_full/1f3
+        dt[j] = Float32(dt_full/1f3)
         nt[j] = convert(Integer,nt_full)
-        t[j] =  (nt[j]-1)*dt[j]
+        t[j] =  Float32((nt[j]-1)*dt[j])
     end
-    return  GeometryIC(xloc,yloc,zloc,dt,nt,t)
+    return GeometryIC{Float32}(xloc,yloc,zloc,dt,nt,t)
 end
 
 # Set up geometry summary from out-of-core data container
@@ -213,8 +200,10 @@ function Geometry(data::SegyIO.SeisCon; key="source", segy_depth_key="")
     # read either source or receiver geometry
     nsrc = length(data)
     container = Array{SegyIO.SeisCon}(undef, nsrc)
-    dt = Array{Any}(undef, nsrc); nt = Array{Any}(undef, nsrc); t = Array{Any}(undef, nsrc)
-    nsamples = Array{Any}(undef, nsrc)
+    dt = Array{Float32}(undef, nsrc)
+    nt = Array{Integer}(undef, nsrc)
+    t = Array{Float32}(undef, nsrc)
+    nsamples = Array{Integer}(undef, nsrc)
     for j=1:nsrc
         container[j] = split(data,j)
         dt[j] = data.blocks[j].summary["dt"][1]/1f3
@@ -222,7 +211,7 @@ function Geometry(data::SegyIO.SeisCon; key="source", segy_depth_key="")
         t[j] = (nt[j]-1)*dt[j]
         key=="source" ? nsamples[j] = data.ns : nsamples[j] = Int((data.blocks[j].endbyte - data.blocks[j].startbyte)/(240 + data.ns*4)*data.ns)
     end
-    return  GeometryOOC(container,dt,nt,t,nsamples,key,segy_depth_key)
+    return  GeometryOOC{Float32}(container,dt,nt,t,nsamples,key,segy_depth_key)
 end
 
 # Set up geometry summary from out-of-core data container passed as cell array
@@ -238,8 +227,8 @@ function Geometry(data::Array{SegyIO.SeisCon,1}; key="source", segy_depth_key=""
 
     nsrc = length(data)
     container = Array{SegyIO.SeisCon}(undef, nsrc)
-    dt = Array{Any}(undef, nsrc); nt = Array{Any}(undef, nsrc); t = Array{Any}(undef, nsrc)
-    nsamples = Array{Any}(undef, nsrc)
+    dt = Array{Float32}(undef, nsrc); nt = Array{Integer}(undef, nsrc); t = Array{Float32}(undef, nsrc)
+    nsamples = Array{Integer}(undef, nsrc)
     for j=1:nsrc
         container[j] = data[j]
         dt[j] = data[j].blocks[1].summary["dt"][1]/1f3
@@ -247,7 +236,7 @@ function Geometry(data::Array{SegyIO.SeisCon,1}; key="source", segy_depth_key=""
         t[j] = (nt[j]-1)*dt[j]
         key=="source" ? nsamples[j] = data[j].ns : nsamples[j] = Int((data[j].blocks[1].endbyte - data[j].blocks[1].startbyte)/(240 + data[j].ns*4)*data[j].ns)
     end
-    return  GeometryOOC(container,dt,nt,t,nsamples,key,segy_depth_key)
+    return  GeometryOOC{Float32}(container,dt,nt,t,nsamples,key,segy_depth_key)
 end
 
 # Load geometry from out-of-core Geometry container
@@ -257,25 +246,29 @@ function Geometry(geometry::GeometryOOC)
     # read either source or receiver geometry
     if geometry.key=="source"
         params = ["SourceX","SourceY",geometry.segy_depth_key,"dt","ns"]
+        gt = Float32
     elseif geometry.key=="receiver"
         params = ["GroupX","GroupY",geometry.segy_depth_key,"dt","ns"]
+        gt = Array{Float32, 1}
     else
         throw("Specified keyword not supported")
     end
-    xloc = Array{Any}(undef, nsrc); yloc = Array{Any}(undef, nsrc); zloc = Array{Any}(undef, nsrc)
-    dt = Array{Any}(undef, nsrc); nt = Array{Any}(undef, nsrc); t = Array{Any}(undef, nsrc)
+    xloc = Array{gt, 1}(undef, nsrc)
+    yloc = Array{gt, 1}(undef, nsrc)
+    zloc = Array{gt, 1}(undef, nsrc)
+    dt = Array{Float32}(undef, nsrc); nt = Array{Integer}(undef, nsrc); t = Array{Float32}(undef, nsrc)
 
     for j=1:nsrc
 
         header = read_con_headers(geometry.container[j], params, 1)
         if geometry.key=="source"
-            xloc[j] = convert(Float32, get_header(header, params[1])[1])
-            yloc[j] = convert(Float32, get_header(header, params[2])[1])
-            zloc[j] = abs.(convert(Float32,get_header(header, params[3])[1]))
+            xloc[j] = convert(gt, get_header(header, params[1])[1])
+            yloc[j] = convert(gt, get_header(header, params[2])[1])
+            zloc[j] = abs.(convert(gt,get_header(header, params[3])[1]))
         else
-            xloc[j] = convert(Array{Float32,1}, get_header(header, params[1]))
-            yloc[j] = convert(Array{Float32,1}, get_header(header, params[2]))
-            zloc[j] = abs.(convert(Array{Float32,1}, get_header(header, params[3])))
+            xloc[j] = convert(gt, get_header(header, params[1]))
+            yloc[j] = convert(gt, get_header(header, params[2]))
+            zloc[j] = abs.(convert(gt, get_header(header, params[3])))
         end
         dt[j] = get_header(header, params[4])[1]/1f3
         nt[j] = convert(Integer, get_header(header, params[5])[1])

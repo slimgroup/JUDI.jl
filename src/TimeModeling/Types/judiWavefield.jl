@@ -84,82 +84,12 @@ adjoint(A::judiWavefield{vDT}) where vDT = conj(transpose(A))
 
 ####################################################################
 
-# +(judiWavefield, judiWavefield)
-function +(a::judiWavefield{avDT}, b::judiWavefield{bvDT}) where {avDT, bvDT}
-    size(a) == size(b) || throw(judiWavefieldException("dimension mismatch"))
-	c = deepcopy(a)
-	for i=1:a.info.nsrc
-		c.data[i] = a.data[i] .+ b.data[i]
+for opo=[:+, :-, :*, :/]
+    @eval begin
+		$opo(a::judiWavefield{avDT}, b::T) where {avDT, T<:Number} = eval_op(a, b, $opo)
+        $opo(a::T, b::judiWavefield{avDT}) where {avDT, T<:Number} = eval_op(a, b, $opo)
+		$opo(a::judiWavefield{T}, b::judiWavefield{T}) where T = eval_op(a, b, $opo)
 	end
-    return c
-end
-
-# -(judiWavefield, judiWavefield)
-function -(a::judiWavefield{avDT}, b::judiWavefield{bvDT}) where {avDT, bvDT}
-    size(a) == size(b) || throw(judiWavefieldException("dimension mismatch"))
-    c = deepcopy(a)
-	for i=1:a.info.nsrc
-		c.data[i] = a.data[i] .- b.data[i]
-	end
-    return c
-end
-
-# +(judiWavefield, number)
-function +(a::judiWavefield{avDT},b::Number) where avDT
-    c = deepcopy(a)
-	for i=1:a.info.nsrc
-		c.data[i] = a.data[i] .+ b
-	end
-    return c
-end
-
-# +(number, judiWavefield)
-function +(a::Number,b::judiWavefield{avDT}) where avDT
-    c = deepcopy(b)
-	for i=1:b.info.nsrc
-		c.data[i] = a .+ b.data[i]
-	end
-    return c
-end
-
-# -(judiWavefield, number)
-function -(a::judiWavefield{avDT},b::Number) where avDT
-    c = deepcopy(a)
-	for i=1:a.info.nsrc
-		c.data[i] = a.data[i] .- b
-	end
-    return c
-end
-
-# *(judiWavefield, number)
-function *(a::judiWavefield{avDT},b::Number) where avDT
-    c = deepcopy(a)
-	for i=1:a.info.nsrc
-		c.data[i] = a.data[i] .* b
-	end
-    return c
-end
-
-# *(number, judiWavefield)
-function *(a::Number,b::judiWavefield{bvDT}) where bvDT
-    c = deepcopy(b)
-	for i=1:b.info.nsrc
-		c.data[i] = a .* b.data[i]
-	end
-    return c
-end
-
-# /(judiWavefield, number)
-function /(a::judiWavefield{avDT},b::Number) where avDT
-    c = deepcopy(a)
-    if iszero(b)
-        error("Division by zero")
-    else
-		for i=1:a.info.nsrc
-			c.data[i] = a.data[i] ./ b
-		end
-    end
-    return c
 end
 
 # minus
@@ -178,7 +108,7 @@ function vcat(a::judiWavefield{avDT},b::judiWavefield{bvDT}) where {avDT, bvDT}
 	n = 1
 	nsrc = a.info.nsrc + b.info.nsrc
 	data = Array{Array{avDT}}(undef, nsrc)
-	nt = Array{Any}(undef, nsrc)
+	nt = Array{Integer}(undef, nsrc)
 	for j=1:a.info.nsrc
 		data[j] = a.data[j]
 		nt[j] = a.info.nt[j]

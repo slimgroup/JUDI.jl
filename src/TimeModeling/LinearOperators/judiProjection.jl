@@ -84,7 +84,7 @@ adjoint(A::judiProjection{DDT,RDT}) where {DDT,RDT} =
 ## overloaded Base *(...judiProjection...)
 
 # *(judiProjection,judiVector)
-function *(A::judiProjection{ADDT,ARDT},v::judiVector{vDT}) where {ADDT,ARDT,vDT}
+function *(A::judiProjection{ADDT,ARDT},v::judiVector{vDT, AT}) where {ADDT,ARDT,vDT, AT}
     A.n == size(v,1) || throw(judiProjectionException("shape mismatch"))
     compareGeometry(A.geometry,v.geometry) == true || throw(judiProjectionException("geometry mismatch"))
     jo_check_type_match(ADDT,vDT,join(["DDT for *(judiProjection,judiVector):",A.name,typeof(A),vDT]," / "))

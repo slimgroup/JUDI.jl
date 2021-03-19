@@ -196,7 +196,7 @@ function extend_gradient(model_full::Model, model::Model, gradient::Union{Array,
     # Extend gradient back to full model size
     ndim = length(model.n)
     full_gradient = similar(gradient, model_full)
-    nx_start = trunc(Int, Float32(Float32(model.o[1] - model_full.o[1])/model.d[1]) + 1)
+    nx_start = Int(Float32(Float32(model.o[1] - model_full.o[1]) ÷ model.d[1])) + 1
     nx_end = nx_start + model.n[1] - 1
     if ndim == 2
         full_gradient[nx_start:nx_end,:] = gradient
@@ -278,14 +278,18 @@ where the i-th cell contains the i-th entry of `x`.
 Parameters
 * `x`: Array to be converted into and array of array
 """
-function convertToCell(x)
+function convertToCell(x::Array{T, 1}) where T
     n = length(x)
-    y = Array{Any}(undef, n)
+    y = Array{Array{T, 1}, 1}(undef, n)
     for j=1:n
-        y[j] = x[j]
+        y[j] = [x[j]]
     end
     return y
 end
+
+convertToCell(x::Array{Array{T, N}, 1}) where {T, N} = x
+convertToCell(x::StepRangeLen) = convertToCell(Float32.(x))
+convertToCell(x::Number) = [x]
 
 # 1D source time function
 """
@@ -298,7 +302,7 @@ and central frequency `f0` (in kHz).
 function ricker_wavelet(tmax, dt, f0; t0=nothing)
     R = typeof(dt)
     isnothing(t0) ? t0 = R(0) : tmax = R(tmax - t0)
-    nt = trunc(Int64, tmax / dt) + 1
+    nt = Int(tmax ÷ dt) + 1
     t = range(t0, stop=tmax, length=nt)
     r = (pi * f0 * (t .- 1 / f0))
     q = zeros(Float32,nt,1)
@@ -343,11 +347,11 @@ function get_computational_nt(srcGeometry, recGeometry, model::Model; dt=nothing
     else
         nsrc = length(srcGeometry.xloc)
     end
-    nt = Array{Any}(undef, nsrc)
+    nt = Array{Integer}(undef, nsrc)
     dtComp = calculate_dt(model; dt=dt)
     for j=1:nsrc
-        ntRec = trunc(Int64, recGeometry.dt[j]*(recGeometry.nt[j]-1) / dtComp) + 1
-        ntSrc = trunc(Int64, srcGeometry.dt[j]*(srcGeometry.nt[j]-1) / dtComp) + 1
+        ntRec = Int(recGeometry.dt[j]*(recGeometry.nt[j]-1) ÷ dtComp) + 1
+        ntSrc = Int(srcGeometry.dt[j]*(srcGeometry.nt[j]-1) ÷ dtComp) + 1
         nt[j] = max(ntRec, ntSrc)
     end
     return nt
@@ -369,10 +373,10 @@ function get_computational_nt(Geometry, model::Model; dt=nothing)
     else
         nsrc = length(Geometry.xloc)
     end
-    nt = Array{Any}(undef, nsrc)
+    nt = Array{Integer}(undef, nsrc)
     dtComp = calculate_dt(model; dt=dt)
     for j=1:nsrc
-        nt[j] = trunc(Int64, Geometry.dt[j]*(Geometry.nt[j]-1) / dtComp) + 1
+        nt[j] = Int(Geometry.dt[j]*(Geometry.nt[j]-1) ÷ dtComp) + 1
     end
     return nt
 end
@@ -584,7 +588,16 @@ function select_frequencies(q_dist; fmin=0f0, fmax=Inf, nf=1)
 	return freq
 end
 
+"""
+    process_input_data(input, geometry, info)
 
+Preprocesses input Array into an Array of Array for modeling
+
+Parameters:
+* `input`: Input to preprocess.
+* `geometry`: Geometry containing physical parameters.
+* `info`: Infor structure.
+"""
 function process_input_data(input::Array{Float32}, geometry::Geometry, info::Info)
     # Input data is pure Julia array: assume fixed no.
     # of receivers and reshape into data cube nt x nrec x nsrc
@@ -599,6 +612,16 @@ function process_input_data(input::Array{Float32}, geometry::Geometry, info::Inf
     return dataCell
 end
 
+"""
+    process_input_data(input, model, info)
+
+Preprocesses input Array into an Array of Array for modeling
+
+Parameters:
+* `input`: Input to preprocess.
+* `model`: Model containing physical parameters.
+* `info`: Infor structure.
+"""
 function process_input_data(input::Array{Float32}, model::Model, info::Info)
     ndims = length(model.n)
     dataCell = Array{Array}(undef, info.nsrc)
@@ -621,6 +644,11 @@ end
 process_input_data(input::judiVector, ::Geometry, ::Info) = input.data
 process_input_data(input::judiWeights, ::Model, ::Info) = input.weights
 
+"""
+    reshape(x::Array{Float32, 1}, geometry::Geometry)
+
+Reshapes input vector intu a 3D `nt x nrec x nsrc` Array.
+"""
 function reshape(x::Array{Float32, 1}, geometry::Geometry)
     nt = geometry.nt[1]
     nrec = length(geometry.xloc[1])
@@ -669,24 +697,24 @@ function transducer(q::judiVector, d::Tuple, r::Number, theta)
     y_base_b = zeros(nsrc_loc) .- d[end]
 
     # New coords and data
-    xloc = Array{Any}(undef, nsrc)
-    yloc = Array{Any}(undef, nsrc)
-    zloc = Array{Any}(undef, nsrc)
+    xloc = Array{Array{Float32, 1}, 1}(undef, nsrc)
+    yloc = Array{Array{Float32, 1}, 1}(undef, nsrc)
+    zloc = Array{Array{Float32, 1}, 1}(undef, nsrc)
     data = Array{Array{Float32, 2}}(undef, nsrc)
     t = q.geometry.t[1]
     dt = q.geometry.dt[1]
 
     for i=1:nsrc
         # Build the rotated array of dipole
-        R = [cos(theta[i] - pi/2) sin(theta[i] - pi/2);-sin(theta[i] - pi/2) cos(theta[i] - pi/2)]
+        R = Float32.([cos(theta[i] - pi/2) sin(theta[i] - pi/2);-sin(theta[i] - pi/2) cos(theta[i] - pi/2)])
         # +1 coords
         r_loc = R * [x_base';y_base']
         # -1 coords
         r_loc_b = R * [x_base';y_base_b']
         xloc[i] = q.geometry.xloc[i] .+ vec(vcat(r_loc[1, :], r_loc_b[1, :]))
         zloc[i] = q.geometry.zloc[i] .+ vec(vcat(r_loc[2, :], r_loc_b[2, :]))
-        yloc[i] = zeros(2*nsrc_loc)
-        data[i] = zeros(length(q.data[i]), 2*nsrc_loc)
+        yloc[i] = zeros(Float32, 2*nsrc_loc)
+        data[i] = zeros(Float32, length(q.data[i]), 2*nsrc_loc)
         data[i][:, 1:nsrc_loc] .= q.data[i]/nsrc_loc
         data[i][:, nsrc_loc+1:end] .= -q.data[i]/nsrc_loc
     end
@@ -710,10 +738,41 @@ subsample(::Nothing, i) = nothing
 subsample(a::Array{Array}, i) = a[i]
 subsample(a::Array{Array{T,2}, 1}, i::Int64) where T = a[i]
 
-function getattr(o, attr::Symbol, default)
+function getattr(o, attr::Symbol, default=o)
     try
         return getfield(o, attr)
     catch e
         return default
     end
+end
+
+function getattri(o, attr::Symbol, ind::Integer, default=o)
+    try
+        return getproperty(o, attr)[ind]
+    catch e
+        return default
+    end
+end
+
+tof32(x::Number) = [Float32(x)]
+tof32(x::Array{T}) where T = T==Float32 ? x : Float32.(x)
+tof32(x::StepRangeLen) = tof32(collect(x))
+
+function eval_op(a, b, op)
+    c = typeof(a) <: joAbstractLinearOperator ? deepcopy(a) : deepcopy(b)
+    for j=1:c.nsrc
+        try
+            c.data[j] = op(getattri(a, :data, j), getattri(b, :data, j))
+        catch e
+            broadcast!(op, c.data[j], getattri(a, :data, j), getattri(b, :data, j))
+        end
+    end
+    return c
+end
+
+function eval_op_ip(a, b, op)
+    for j=1:getattr(a, :nsrc, getattr(b, :nsrc))
+        op(getattri(a, :data, j), getattri(b, :data, j))
+    end
+    a
 end

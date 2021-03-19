@@ -11,7 +11,7 @@ export Info, compareInfo
 mutable struct Info
     n::IntNum
     nsrc::Integer
-    nt::Array{Any,1}
+    nt::Array{Integer,1}
 end
 
 # Constructor if nt is not passed as a cell
@@ -34,7 +34,7 @@ number of computational time steps `nt` (either as single integer or cell array)
 
 """
 function Info(n::IntNum, nsrc::Integer, nt::Integer)
-    ntCell = Array{Any}(undef, nsrc)
+    ntCell = Array{Integer}(undef, nsrc)
     for j=1:nsrc
         ntCell[j] = nt
     end

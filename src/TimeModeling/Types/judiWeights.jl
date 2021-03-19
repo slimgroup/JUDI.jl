@@ -42,12 +42,12 @@ Construct vector cell array of weights. The `weights` keyword\\
 can also be a single (non-cell) array, in which case the weights are the same for all source positions:
     judiWeights(weights; nsrc=1)
 """
-function judiWeights(weights::Array; nsrc=1, vDT::DataType=Float32)
-    (eltype(weights) != vDT) && (weights = convert(Array{vDT},weights))
+function judiWeights(weights::Array{T, N}; nsrc=1, vDT::DataType=Float32) where {T, N}
+    (T != vDT) && (weights = convert(Array{vDT},weights))
     # length of vector
     n = 1
     m = prod(size(weights))*nsrc
-    weightsCell = Array{Array}(undef, nsrc)
+    weightsCell = Array{Array{vDT, N}, 1}(undef, nsrc)
     for j=1:nsrc
         weightsCell[j] = deepcopy(weights)
     end
@@ -55,27 +55,14 @@ function judiWeights(weights::Array; nsrc=1, vDT::DataType=Float32)
 end
 
 # constructor if weights are passed as a cell array
-function judiWeights(weights::Union{Array{Any,1},Array{Array,1}}; vDT::DataType=Float32)
+function judiWeights(weights::Array{Array{T, N},1}; vDT::DataType=Float32) where {T, N}
     nsrc = length(weights)
-    for i = 1:nsrc
-        (eltype(weights[i]) != vDT) && (weights[i] = convert(Array{vDT},weights[i]))
-    end
+    (T != vDT) &&  (weights = convert.(Array{vDT, N}, weights))
     # length of vector
     n = 1
     m = prod(size(weights[1]))*nsrc
     return judiWeights{vDT}("Extended source weights",m,n,nsrc,weights)
 end
-
-#
-function judiWeights(weights::Array{Array{iDT, N},1}; vDT::DataType=Float32) where {iDT,N}
-    (iDT != vDT) && (weights = convert.(Array{vDT},weights))
-    nsrc = length(weights)
-    # length of vector
-    n = 1
-    m = prod(size(weights[1]))*nsrc
-    return judiWeights{vDT}("Extended source weights",m,n,nsrc,weights)
-end
-
 
 ############################################################
 ## overloaded Base functions
@@ -103,81 +90,16 @@ function -(a::judiWeights{avDT}) where {avDT}
     return c
 end
 
-# +(judiWeights, judiWeights)
-function +(a::judiWeights{avDT}, b::judiWeights{bvDT}) where {avDT, bvDT}
-    size(a) == size(b) || throw(judiWeightsException("dimension mismatch"))
-    c = deepcopy(a)
-    for j=1:a.nsrc
-        c.weights[j] = a.weights[j] + b.weights[j]
-    end
-    return c
+Base.getproperty(obj::judiWeights, sym::Symbol) = sym == :data ? getfield(obj, :weights) : getfield(obj, sym)
+
+for opo=[:+, :-, :*, :/]
+    @eval begin
+		$opo(a::judiWeights{avDT}, b::T) where {avDT, T<:Number} = eval_op(a, b, $opo)
+        $opo(a::T, b::judiWeights{avDT}) where {avDT, T<:Number} = eval_op(a, b, $opo)
+        $opo(a::judiWeights{T}, b::judiWeights{T}) where T = eval_op(a, b, $opo)
+	end
 end
-
-# -(judiWeights, judiWeights)
-function -(a::judiWeights{avDT}, b::judiWeights{bvDT}) where {avDT, bvDT}
-    size(a) == size(b) || throw(judiWeightsException("dimension mismatch"))
-    c = deepcopy(a)
-    for j=1:a.nsrc
-        c.weights[j] = a.weights[j] - b.weights[j]
-    end
-    return c
-end
-
-# +(judiWeights, number)
-function +(a::judiWeights{avDT},b::Number) where avDT
-    c = deepcopy(a)
-    for j=1:a.nsrc
-        c.weights[j] = c.weights[j] .+ b
-    end
-    return c
-end
-
-
-# -(judiWeights, number)
-function -(a::judiWeights{avDT},b::Number) where avDT
-    c = deepcopy(a)
-    for j=1:a.nsrc
-        c.weights[j] = c.weights[j] .- b
-    end
-    return c
-end
-
-# *(judiWeights, number)
-function *(a::judiWeights{avDT},b::Number) where avDT
-    c = deepcopy(a)
-    for j=1:a.nsrc
-        c.weights[j] = c.weights[j] .* b
-    end
-    return c
-end
-
-
-# *(Array, judiWeights)
-function *(A::Union{Array, Adjoint, Transpose}, x::judiWeights)
-    xvec = vec(x.weights[1])
-    if x.nsrc > 1
-        for j=2:x.nsrc
-            xvec = [xvec; vec(x.weights[j])]
-        end
-    end
-    return A*xvec
-end
-
-# /(judiWeights, number)
-function /(a::judiWeights{avDT},b::Number) where avDT
-    c = deepcopy(a)
-    if iszero(b)
-        error("Division by zero")
-    else
-        c.weights = c.weights/b
-    end
-    return c
-end
-
-# +(number, judiWeights)
-+(a::Number, b::judiWeights{avDT}) where{avDT} = b + a
--(a::Number, b::judiWeights{avDT}) where{avDT} = -1f0*(b - a)
-*(a::Number, b::judiWeights{avDT}) where{avDT} = b * a
+*(a::AbstractArray{T, 2}, b::judiWeights{T}) where T = eval_op(a, b, *)
 
 # *(joLinearFunction, judiWeights)
 function *(A::joLinearFunction{ADDT,ARDT},v::judiWeights{avDT}) where {ADDT, ARDT, avDT}
@@ -232,15 +154,8 @@ function vcat(a::judiWeights{avDT},b::judiWeights{bvDT}) where {avDT, bvDT}
     m = a.m + b.m
     n = 1
     nsrc = a.nsrc + b.nsrc
-    weights = Array{Array}(undef, nsrc)
+    weights = vcat(a.weights, b.weights)
 
-    # Merge data sets and geometries
-    for j=1:a.nsrc
-        weights[j] = a.weights[j]
-    end
-    for j=a.nsrc+1:nsrc
-        weights[j] = b.weights[j-a.nsrc]
-    end
     nvDT = promote_type(avDT,bvDT)
     return judiWeights{nvDT}(a.name,m,n,nsrc,weights)
 end
