@@ -108,9 +108,17 @@ geometry object `GeometryOOC` without the source/receiver coordinates, but a loo
     src_geometry = Geometry(seis_container; key="source", segy_depth_key="SourceDepth")
 
 """
-Geometry(xloc::CoordT, yloc::CoordT,zloc::CoordT,dt::Array{T,1},nt::Array{Integer,1},t::Array{T,1}) where T = GeometryIC{T}(xloc,yloc,zloc,dt,nt,t)
-function Geometry(xloc, yloc, zloc;dt=[], t=[], nsrc=1)
-    Geometry(tof32(xloc), tof32(yloc), tof32(zloc); dt=dt, t=t, nsrc=nsrc)
+Geometry(xloc::CoordT, yloc::CoordT, zloc::CoordT, dt::Array{T,1}, nt::Array{Integer,1}, t::Array{T,1}) where T = GeometryIC{T}(xloc,yloc,zloc,dt,nt,t)
+
+# Fallback constructors for non standard input types 
+function Geometry(xloc, yloc, zloc; dt=[], t=[], nsrc=nothing)
+    if any(typeof(x) <: StepRangeLen for x=[xloc, yloc, zloc])
+        args = [typeof(x) <: StepRangeLen ? collect(x) : x for x=[xloc, yloc, zloc]]
+        isnothing(nsrc) && (return Geometry(args...; dt=dt, t=t))
+        return Geometry(args...; dt=dt, t=t, nsrc=nsrc)
+    end
+    isnothing(nsrc) && (return Geometry(tof32(xloc), tof32(yloc), tof32(zloc); dt=dt, t=t))
+    return Geometry(tof32(xloc), tof32(yloc), tof32(zloc); dt=dt, t=t, nsrc=nsrc)
 end
 
 # Constructor if nt is not passed
@@ -127,7 +135,7 @@ function Geometry(xloc::Array{Array{T, 1},1}, yloc::CoordT, zloc::Array{Array{T,
 end
 
 # Constructor if coordinates are not passed as a cell arrays
-function Geometry(xloc::Array{T, 1}, yloc::Union{Array{T, 1}, T}, zloc::Array{T, 1}; dt=[], t=[], nsrc::Integer=1) where T
+function Geometry(xloc::Array{T, 1}, yloc::CoordT, zloc::Array{T, 1}; dt=[], t=[], nsrc::Integer=1) where T
     xlocCell = [xloc for j=1:nsrc]
     ylocCell = [yloc for j=1:nsrc]
     zlocCell = [zloc for j=1:nsrc]
@@ -277,6 +285,8 @@ function Geometry(geometry::GeometryOOC)
     return  GeometryIC(xloc,yloc,zloc,dt,nt,t)
 end
 
+Geometry(geometry::GeometryIC) = geometry
+Geometry(::Nothing) = nothing
 
 ###########################################################################################################################################
 

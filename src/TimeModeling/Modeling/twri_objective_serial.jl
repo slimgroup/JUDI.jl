@@ -2,42 +2,28 @@
 export twri_objective
 
 function twri_objective(model_full::Model, source::judiVector, dObs::judiVector, y::Union{judiVector, Nothing},
-                        srcnum::Integer; options=Options(), optionswri=TWRIOPtions())
-    # Setup time-domain linear or nonlinear foward and adjoint modeling and interface to OPESCI/devito
-    length(optionswri.eps) == 1 ? eps_loc=optionswri.eps : eps_loc=optionswri.eps[srcnum]
-
+                        options::Options, optionswri::TWRIOptions)
     # Load full geometry for out-of-core geometry containers
-    typeof(dObs.geometry) == GeometryOOC && (dObs.geometry = Geometry(dObs.geometry))
-    typeof(source.geometry) == GeometryOOC && (source.geometry = Geometry(source.geometry))
+    dObs.geometry = Geometry(dObs.geometry)
+    source.geometry = Geometry(source.geometry)
 
     # for 3D modeling, limit model to area with sources/receivers
     if options.limit_m == true # only supported for 3D
         model = deepcopy(model_full)
-        model = limit_model_to_receiver_area(source.geometry,dObs.geometry,model,options.buffer_size)
+        model = limit_model_to_receiver_area(source.geometry, dObs.geometry, model, options.buffer_size)
     else
         model = model_full
     end
-
-    # Source/receiver parameters
-    tmaxSrc = source.geometry.t[1]
-    tmaxRec = dObs.geometry.t[1]
-
-    # Set up Python model structure (force origin to be zero due to current devito bug)
-    # Set up Python model structure
+    # Set up Python model structure 
     modelPy = devito_model(model, options)
-    dtComp = modelPy.critical_dt
+    dtComp = get_dt(model; dt=options.dt_comp)
 
     # Extrapolate input data to computational grid
     qIn = time_resample(source.data[1],source.geometry,dtComp)[1]
-    if typeof(dObs.data[1]) == SegyIO.SeisCon
-        data = convert(Array{Float32,2},dObs.data[1][1].data)
-        dObs = judiVector(dObs.geometry,data)
-    end
-    dObserved = time_resample(dObs.data[1], dObs.geometry, dtComp)[1]
+    obsd = typeof(dObs.data[1]) == SegyIO.SeisCon ? convert(Array{Float32,2}, dObs.data[1][1].data) : dObs.data[1]
+    dObserved = time_resample(obsd, dObs.geometry, dtComp)[1]
+
     isnothing(y) ? Y = nothing : Y = time_resample(y.data[1], y.geometry, dtComp)[1]
-    ntComp = size(dObserved, 1)
-    ntSrc = Int(trunc(tmaxSrc/dtComp+1))
-    ntRec = Int(trunc(tmaxRec/dtComp+1))
 
     # Set up coordinates
     src_coords = setup_grid(source.geometry, model.n)  # shifts source coordinates by origin
@@ -55,7 +41,6 @@ function twri_objective(model_full::Model, source::judiVector, dObs::judiVector,
     if (optionswri.params in [:m, :all])
         gradm = remove_padding(gradm, modelPy.padsizes; true_adjoint=options.sum_padding)
         options.limit_m==true && (gradm = extend_gradient(model_full, model, gradm))
-        gradm = PhysicalParameter(gradm, model_full.d, model_full.o)
     end
     if ~isnothing(grady)
         ntRec > ntComp && (grady = [grady zeros(size(grady,1), ntRec - ntComp)])

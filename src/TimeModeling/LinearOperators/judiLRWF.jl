@@ -4,6 +4,7 @@
 
 # Authors: Philipp Witte (pwitte@eos.ubc.ca), Henryk Modzelewski (hmodzelewski@eos.ubc.ca)
 # Date: January 2017
+# Updated: March 2021, Mathias Louboutin (mlouboutin3@gatech.edu)
 
 export judiLRWF, judiLRWFexception
 
@@ -39,11 +40,11 @@ Examples
     dobs = Pr*F*Pw'*w
     dw = Pw*F'*Pr'*dobs
 """
-function judiLRWF(info::Info, data; DDT::DataType=Float32, RDT::DataType=DDT)
-    (DDT == Float32 && RDT == Float32) || throw(judiProjectionException("Domain and range types not supported"))
+function judiLRWF(info::Info, data::Array{T, N}; DDT::DataType=Float32, RDT::DataType=DDT) where {T, N}
+    (DDT == Float32 && RDT == Float32 && T == Float32) || throw(judiProjectionException("Domain and range types not supported"))
     m = info.n * info.nsrc
     n = info.n * sum(info.nt)
-    wavelet = Array{Array}(undef, info.nsrc)
+    wavelet = Array{Array{DDT, N}, 1}(undef, info.nsrc)
     for j=1:info.nsrc
         wavelet[j] = data
     end
@@ -51,8 +52,8 @@ function judiLRWF(info::Info, data; DDT::DataType=Float32, RDT::DataType=DDT)
 end
 
 
-function judiLRWF(info::Info, wavelet::Array{Array}; DDT::DataType=Float32, RDT::DataType=DDT)
-    (DDT == Float32 && RDT == Float32) || throw(judiProjectionException("Domain and range types not supported"))
+function judiLRWF(info::Info, wavelet::Array{Array{T, N}, 1}; DDT::DataType=Float32, RDT::DataType=DDT) where {T, N}
+    (DDT == Float32 && RDT == Float32 && T == Float32) || throw(judiProjectionException("Domain and range types not supported"))
     m = info.n * info.nsrc
     n = info.n * sum(info.nt)
     return judiLRWF{Float32,Float32}("restriction operator",m,n,info,wavelet)

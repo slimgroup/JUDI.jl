@@ -7,11 +7,11 @@ function extended_source_modeling(model::Model, srcData, recGeometry, recData, w
 
     p = default_worker_pool()
     results = pmap(j ->extended_source_modeling(model, subsample(srcData, j), subsample(recGeometry, j),
-                                                subsample(recData, j), weights, dm, j, op, mode, subsample(options, j)),
+                                                subsample(recData, j), weights, dm, op, mode, subsample(options, j)),
                    p, srcnum)
 
     if op=='F' || (op=='J' && mode==1)
-        argout1 = vcat(results)
+        argout1 = vcat(results...)
     elseif op=='J' && mode==-1
         argout1 = sum(results)
     else

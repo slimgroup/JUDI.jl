@@ -47,10 +47,7 @@ function judiWeights(weights::Array{T, N}; nsrc=1, vDT::DataType=Float32) where 
     # length of vector
     n = 1
     m = prod(size(weights))*nsrc
-    weightsCell = Array{Array{vDT, N}, 1}(undef, nsrc)
-    for j=1:nsrc
-        weightsCell[j] = deepcopy(weights)
-    end
+    weightsCell = [deepcopy(weights) for j=1:nsrc]
     return judiWeights{vDT}("Extended source weights",m,n,nsrc,weightsCell)
 end
 
@@ -80,27 +77,6 @@ adjoint(a::judiWeights{vDT}) where vDT =
         judiWeights{vDT}(""*a.name*".'",a.n,a.m,a.nsrc,a.weights)
 
 ##########################################################
-
-# minus
-function -(a::judiWeights{avDT}) where {avDT}
-    c = deepcopy(a)
-    for j=1:a.nsrc
-        c.weights[j] = -c.weights[j]
-    end
-    return c
-end
-
-Base.getproperty(obj::judiWeights, sym::Symbol) = sym == :data ? getfield(obj, :weights) : getfield(obj, sym)
-
-for opo=[:+, :-, :*, :/]
-    @eval begin
-		$opo(a::judiWeights{avDT}, b::T) where {avDT, T<:Number} = eval_op(a, b, $opo)
-        $opo(a::T, b::judiWeights{avDT}) where {avDT, T<:Number} = eval_op(a, b, $opo)
-        $opo(a::judiWeights{T}, b::judiWeights{T}) where T = eval_op(a, b, $opo)
-	end
-end
-*(a::AbstractArray{T, 2}, b::judiWeights{T}) where T = eval_op(a, b, *)
-
 # *(joLinearFunction, judiWeights)
 function *(A::joLinearFunction{ADDT,ARDT},v::judiWeights{avDT}) where {ADDT, ARDT, avDT}
     A.n == size(v,1) || throw(judiWeightsException("shape mismatch"))
@@ -150,22 +126,15 @@ function *(A::joCoreBlock{ADDT,ARDT}, v::judiWeights{avDT}) where {ADDT, ARDT, a
 end
 
 # vcat
-function vcat(a::judiWeights{avDT},b::judiWeights{bvDT}) where {avDT, bvDT}
+function vcat(ai::Vararg{judiWeights{avDT}, N}) where {avDT, N}
+    N == 1 && (return ai[1])
+    N > 2 && (return vcat(ai[1], vcat(ai[2:end]...)))
+    a, b = ai
     m = a.m + b.m
     n = 1
     nsrc = a.nsrc + b.nsrc
     weights = vcat(a.weights, b.weights)
-
-    nvDT = promote_type(avDT,bvDT)
-    return judiWeights{nvDT}(a.name,m,n,nsrc,weights)
-end
-
-function vcat(a::Array{judiWeights{T}, 1}) where T
-    out = a[1]
-    for i=2:length(a)
-        out = [out; a[i]]
-    end
-    return out
+    return judiWeights{avDT}(a.name,m,n,nsrc,weights)
 end
 
 # dot product

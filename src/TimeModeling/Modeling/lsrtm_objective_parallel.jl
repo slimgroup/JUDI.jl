@@ -20,18 +20,12 @@ function lsrtm_objective(model::Model, source::judiVector, dObs::judiVector, dm;
 # lsrtm_objective function for multiple sources. The function distributes the sources and the input data amongst the available workers.
 
     p = default_worker_pool()
-    results = pmap(j -> lsrtm_objective(model, source[j], dObs[j], dm, options=subsample(options, j); nlind=nlind).
+    results = pmap(j -> lsrtm_objective(model, source[j], dObs[j], dm, subsample(options, j); nlind=nlind),
                    p, 1:dObs.nsrc)
-    # Collect and reduce gradients
-    objective = 0f0
-    gradient = PhysicalParameter(zeros(Float32, model.n), model.d, model.o)
 
-    for j=1:dObs.nsrc
-        gradient .+= results[j][2]
-        objective += results[j][1]
-        results[j] = []
-    end
+    # Collect and reduce gradients
+    obj, gradient = reduce((x, y) -> x .+ y, results)
 
     # first value corresponds to function value, the rest to the gradient
-    return objective, gradient
+    return obj, gradient
 end

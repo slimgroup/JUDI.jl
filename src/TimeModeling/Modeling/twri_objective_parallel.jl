@@ -21,8 +21,7 @@ function twri_objective(model::Model, source::judiVector, dObs::judiVector, y::U
 # fwi_objective function for multiple sources. The function distributes the sources and the input data amongst the available workers.
 
     p = default_worker_pool()
-    results = pmap(j -> twri_objective(model, source[j], dObs[j], subsample(y, j), j;
-                                       options=subsample(options,j), optionswri=optionswri),
+    results = pmap(j -> twri_objective(model, source[j], dObs[j], subsample(y, j), subsample(options,j), subsample(optionswri,j)),
                    p, 1:dObs.nsrc)
 
     # Collect and reduce gradients
@@ -88,3 +87,9 @@ TWRIOptions(;grad_corr=false, comp_alpha=true, weight_fun=nothing, eps=0, params
 TWRIOptions(;grad_corr=false, comp_alpha=true,
             weight_fun=nothing, eps=0, params=:m, Invq="standard")=
             TWRIOptions(grad_corr, comp_alpha, weight_fun, eps, params, Invq)
+
+
+function subsample(opt::TWRIOptions, srcnum::Int)
+    eloc = length(opt.eps) == 1 ? opt.eps : opt.eps[srcnum]
+    return TWRIOptions(opt.grad_corr, opt.comp_alpha, opt.weight_fun, eloc, opt.params, opt.Invq)
+end

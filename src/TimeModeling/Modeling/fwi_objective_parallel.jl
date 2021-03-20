@@ -19,18 +19,11 @@ function fwi_objective(model::Model, source::judiVector, dObs::judiVector; optio
 # fwi_objective function for multiple sources. The function distributes the sources and the input data amongst the available workers.
 
     p = default_worker_pool()
-    results = pmap(j -> fwi_objective(model, source[j], dObs[j], options=subsample(options, j)), p, 1:dObs.nsrc)
+    results = pmap(j -> fwi_objective(model, source[j], dObs[j], subsample(options, j)), p, 1:dObs.nsrc)
 
     # Collect and reduce gradients
-    objective = 0f0
-    gradient = PhysicalParameter(zeros(Float32, model.n), model.d, model.o)
-
-    for j=1:dObs.nsrc
-        gradient .+= results[j][2]
-        objective += results[j][1]
-        results[j] = []
-    end
+    obj, gradient = reduce((x, y) -> x .+ y, results)
 
     # first value corresponds to function value, the rest to the gradient
-    return objective, gradient
+    return obj, gradient
 end

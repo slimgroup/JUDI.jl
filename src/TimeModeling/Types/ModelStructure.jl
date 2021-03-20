@@ -312,7 +312,7 @@ function Model(n::IntTuple, d::RealTuple, o::RealTuple, m, rho; nb=40)
     return Model(n, d, o, m; rho=rho, nb=nb)
 end
 
-get_dt(m::Model) = calculate_dt(m)
+get_dt(m::Model; dt=nothing) = calculate_dt(m; dt=dt)
 getindex(m::Model, sym::Symbol) = m.params[sym]
 
 Base.setproperty!(m::Model, s::Symbol, p::PhysicalParameter{Float32}) = (m.params[s] = p)

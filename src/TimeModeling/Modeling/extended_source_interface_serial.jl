@@ -1,10 +1,10 @@
 export extended_source_modeling
 
 # Setup time-domain linear or nonlinear foward and adjoint modeling and interface to OPESCI/devito
-function extended_source_modeling(model_full::Model, srcData, recGeometry, recData, weights, dm, srcnum::Int64, op::Char, mode::Int64, options)
+function extended_source_modeling(model_full::Model, srcData, recGeometry, recData, weights, dm, op::Char, mode::Int64, options)
 
     # Load full geometry for out-of-core geometry containers
-    typeof(recGeometry) == GeometryOOC && (recGeometry = Geometry(recGeometry))
+    recGeometry = Geometry(recGeometry)
 
     # TO DO: limit model to area with sources/receivers
     model = model_full
@@ -20,20 +20,10 @@ function extended_source_modeling(model_full::Model, srcData, recGeometry, recDa
     end
 
     # Load shot record if stored on disk
-    if recData != nothing
-        if typeof(recData) == SegyIO.SeisCon
-            recData = convert(Array{Float32,2}, recData[1].data)
-        elseif typeof(recData[1]) == String
-            recData = load(recData)."d".data
-        end
-    end
+    typeof(recData) == SegyIO.SeisCon && (recData = convert(Array{Float32,2}, recData[1].data))
 
     # Remove receivers outside the modeling domain (otherwise leads to segmentation faults)
-    if mode==1 && recGeometry != nothing
-        recGeometry = remove_out_of_bounds_receivers(recGeometry, model)
-    elseif mode==-1 && recGeometry != nothing
-        recGeometry, recData = remove_out_of_bounds_receivers(recGeometry, recData, model)
-    end
+    recGeometry, recData = remove_out_of_bounds_receivers(recGeometry, recData, model)
 
     isnothing(weights) ? nothing : weights = pad_array(weights[1], pad_sizes(model, options; so=0); mode=:zeros)
     # Devito interface

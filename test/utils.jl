@@ -50,7 +50,7 @@ function setup_model(tti=false, nlayer=2; n=(301, 151), d=(10., 10.))
         model0 = Model(n,d,o,m0,rho0)
         @test Model(n,d,o,m0; rho=rho0).rho == model0.rho
     end
-    dm = m - m0
+    dm = model.m - model0.m
     return model, model0, dm
 end
 
@@ -132,8 +132,8 @@ function example_rec_geometry(; nsrc=2, nrec=120, cut=false)
 end
 
 function example_src_geometry(; nsrc=2)
-    xrec = nsrc == 1 ? 500f0 : range(300f0, stop=900f0, length=nsrc)
-    yrec = 0f0
-    zrec = range(50f0, stop=50f0, length=nsrc)
-    return Geometry(xrec, yrec, zrec; dt=4f0, t=1000f0, nsrc=nsrc)
+    xsrc = nsrc == 1 ? 500f0 : range(300f0, stop=900f0, length=nsrc)
+    ysrc = nsrc == 1 ? 0f0 : zeros(Float32, nsrc)
+    zsrc = range(50f0, stop=50f0, length=nsrc)
+    return Geometry(convertToCell(xsrc), convertToCell(ysrc), convertToCell(zsrc); dt=4f0, t=1000f0)
 end

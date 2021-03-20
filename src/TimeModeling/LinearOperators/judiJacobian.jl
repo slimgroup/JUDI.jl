@@ -17,9 +17,8 @@ struct judiJacobian{DDT<:Number,RDT<:Number} <: joAbstractLinearOperator{DDT,RDT
     n::Integer
     info::Info
     model::Model
-    srcGeometry::Geometry
+    source::judiVector
     recGeometry::Geometry
-    source
     options::Options
     fop::Function              # forward
     fop_T::Union{Function, Nothing}  # transpose
@@ -54,22 +53,12 @@ function judiJacobian(F::judiPDEfull, source::judiVector; DDT::DataType=Float32,
 # JOLI wrapper for nonlinear forward modeling
     compareGeometry(F.srcGeometry, source.geometry) == true || judiJacobianException("Source geometry mismatch")
     (DDT == Float32 && RDT == Float32) || throw(judiJacobianException("Domain and range types not supported"))
-    if typeof(F.recGeometry) == GeometryOOC
-        m = sum(F.recGeometry.nsamples)
-    else
-        m = 0
-        for j=1:F.info.nsrc m += length(F.recGeometry.xloc[j])*F.recGeometry.nt[j] end
-    end
+    m = typeof(F.recGeometry) == GeometryOOC ? sum(F.recGeometry.nsamples) : sum([length(F.recGeometry.xloc[j])*F.recGeometry.nt[j] for j=1:source.nsrc])
     n = F.info.n
-    srcnum = 1:F.info.nsrc
 
     isnothing(options) && (options = F.options)
     return J = judiJacobian{Float32,Float32}("linearized wave equation", m, n, 
-        F.info, F.model, F.srcGeometry, F.recGeometry, source.data, options,
-        v -> time_modeling(F.model, F.srcGeometry, source.data, F.recGeometry, nothing, v, srcnum, 'J', 1, options),
-        w -> time_modeling(F.model, F.srcGeometry, source.data, F.recGeometry,
-                           process_input_data(w, F.recGeometry, F.info), nothing, srcnum, 'J', -1, options)
-    )
+        F.info, F.model, source, F.recGeometry, options, bornop, adjbornop)
 end
 
 ############################################################
@@ -77,21 +66,21 @@ end
 
 # conj(judiJacobian)
 conj(A::judiJacobian{DDT,RDT}) where {DDT,RDT} =
-    judiJacobian{DDT,RDT}("conj("*A.name*")",A.m,A.n,A.info,A.model,A.srcGeometry,A.recGeometry,A.source,A.options,
+    judiJacobian{DDT,RDT}("conj("*A.name*")",A.m,A.n,A.info,A.model,A.source,A.recGeometry,A.options,
         A.fop,
         A.fop_T
         )
 
 # transpose(judiJacobian)
 transpose(A::judiJacobian{DDT,RDT}) where {DDT,RDT} =
-    judiJacobian{DDT,RDT}("adjoint linearized wave equation",A.n,A.m,A.info,A.model,A.srcGeometry,A.recGeometry,A.source,A.options,
+    judiJacobian{DDT,RDT}("adjoint linearized wave equation",A.n,A.m,A.info,A.model,A.source,A.recGeometry,A.options,
         A.fop_T,
         A.fop
         )
 
 # adjoint(judiJacobian)
 adjoint(A::judiJacobian{DDT,RDT}) where {DDT,RDT} =
-    judiJacobian{DDT,RDT}("adjoint linearized wave equation",A.n,A.m,A.info,A.model,A.srcGeometry,A.recGeometry,A.source,A.options,
+    judiJacobian{DDT,RDT}("adjoint linearized wave equation",A.n,A.m,A.info,A.model,A.source,A.recGeometry,A.options,
         A.fop_T,
         A.fop
         )
@@ -102,7 +91,7 @@ adjoint(A::judiJacobian{DDT,RDT}) where {DDT,RDT} =
 # *(judiJacobian,vec)
 function *(A::judiJacobian{ADDT,ARDT}, v::AbstractVector{Float32}) where {ADDT,ARDT}
     A.n == size(v,1) || throw(judiJacobianException("shape mismatch"))
-    V = A.fop(v)
+    V = A.fop(A, v)
     jo_check_type_match(ARDT,eltype(V),join(["RDT from *(judiJacobian,vec):",A.name,typeof(A),eltype(V)]," / "))
     return V
 end
@@ -115,58 +104,64 @@ function *(A::judiJacobian{ADDT,ARDT}, v::judiVector{vDT, AT}) where {ADDT,ARDT,
     A.n == size(v,1) || throw(judiJacobianException("shape mismatch"))
     jo_check_type_match(ADDT,vDT,join(["DDT for *(judiJacobian,judiVector):",A.name,typeof(A),vDT]," / "))
     compareGeometry(A.recGeometry,v.geometry) == true || throw(judiJacobianException("Geometry mismatch"))
-    V = A.fop(v)
+    V = A.fop(A, v)
     jo_check_type_match(ARDT,eltype(V),join(["RDT from *(judiJacobian,judiVector):",A.name,typeof(A),eltype(V)]," / "))
     return V
 end
 
 # *(num,judiJacobian)
-function *(a::Number,A::judiJacobian{ADDT,ARDT}) where {ADDT,ARDT}
-    return judiJacobian{ADDT,ARDT}("(N*"*A.name*")",A.m,A.n,A.info,A.model,A.srcGeometry,A.recGeometry,A.source,A.options,
-                                v1 -> jo_convert(ARDT,a, false)*A.fop(v1),
-                                v2 -> jo_convert(ARDT,a, false)*A.fop_T(v2)
-                                )
-end
+*(a::Number,A::judiJacobian{ADDT,ARDT}) where {ADDT,ARDT} =  judiJacobian{ADDT,ARDT}("(N*"*A.name*")",A.m,A.n,A.info,A.model,a*A.source,A.recGeometry,A.options, A.fop, A.fop_T)
 
 ############################################################
 ## overloaded Bases +(...judiJacobian...), -(...judiJacobian...)
 
 # +(judiJacobian,num)
-function +(A::judiJacobian{ADDT,ARDT},b::Number) where {ADDT,ARDT}
-    return judiJacobian{ADDT,ARDT}("("*A.name*"+N)",A.m,A.n,A.info,A.model,A.srcGeometry,A.recGeometry,A.source,A.options,
-                            v1 -> A.fop(v1)+joConstants(A.m,A.n,b;DDT=ADDT,RDT=ARDT)*v1,
-                            v2 -> A.fop_T(v2)+joConstants(A.n,A.m,b;DDT=ADDT,RDT=ARDT)*v2
+function +(A::judiJacobian{ADDT,ARDT}, b::Number) where {ADDT,ARDT}
+    return judiJacobian{ADDT,ARDT}("("*A.name*"+N)",A.m,A.n,A.info,A.model,A.source,A.recGeometry,A.options,
+                            v1 -> A.fop(A, v1)+joConstants(A.m,A.n,b;DDT=ADDT,RDT=ARDT)*v1,
+                            v2 -> A.fop_T(A, v2)+joConstants(A.n,A.m,b;DDT=ADDT,RDT=ARDT)*v2
                             )
 end
 
 # -(judiJacobian,num)
 function -(A::judiJacobian{ADDT,ARDT},b::Number) where {ADDT,ARDT}
-    return judiJacobian{ADDT,ARDT}("("*A.name*"-N)",A.m,A.n,A.info,A.model,A.srcGeometry,A.recGeometry,A.source,A.options,
-                            v1 -> A.fop(v1)-joConstants(A.m,A.n,b;DDT=ADDT,RDT=ARDT)*v1,
-                            v2 -> A.fop_T(v2)-joConstants(A.n,A.m,b;DDT=ADDT,RDT=ARDT)*v2
+    return judiJacobian{ADDT,ARDT}("("*A.name*"-N)",A.m,A.n,A.info,A.model,A.source,A.recGeometry,A.options,
+                            v1 -> A.fop(A, v1)-joConstants(A.m,A.n,b;DDT=ADDT,RDT=ARDT)*v1,
+                            v2 -> A.fop_T(A, v2)-joConstants(A.n,A.m,b;DDT=ADDT,RDT=ARDT)*v2
                             )
 end
 
 # -(judiJacobian)
 -(A::judiJacobian{DDT,RDT}) where {DDT,RDT} =
-    judiJacobian{DDT,RDT}("(-"*A.name*")",A.m,A.n,A.info,A.model,A.srcGeometry,A.recGeometry,A.source,A.options,
-                    v1 -> -A.fop(v1),
-                    v2 -> -A.fop_T(v2)
-                    )
+    judiJacobian{DDT,RDT}("(-"*A.name*")",A.m,A.n,A.info,A.model,-A.source,A.recGeometry,A.options, A.fop, A.fop_T)
 
 ############################################################
 ## Additional overloaded functions
 
 # Subsample Jacobian
 function subsample(J::judiJacobian{ADDT,ARDT}, srcnum) where {ADDT,ARDT}
+    recGeometry = subsample(J.recGeometry, srcnum)
+    nsrc = typeof(srcnum) <: Int ? 1 : length(srcnum)
+    info = Info(J.info.n, nsrc, J.info.nt)
+    m = typeof(recGeometry) == GeometryOOC ? sum(recGeometry.nsamples) : sum([length(recGeometry.xloc[j])*recGeometry.nt[j] for j=1:nsrc])
 
-    srcGeometry = subsample(J.srcGeometry,srcnum)       # Geometry of subsampled data container
-    recGeometry = subsample(J.recGeometry,srcnum)
+    return J = judiJacobian{Float32,Float32}("linearized wave equation", m, J.n, 
+        info, J.model, J.source[srcnum], recGeometry, subsample(J.options, srcnum), J.fop, J.fop_T)
 
-    info = Info(J.info.n, length(srcnum), J.info.nt[srcnum])
-    Fsub = judiModeling(info, J.model, srcGeometry, recGeometry; options=J.options)
-    qsub = judiVector(srcGeometry, J.source[srcnum])
-    return judiJacobian(Fsub, qsub; DDT=ADDT, RDT=ARDT)
 end
 
 getindex(J::judiJacobian, a) = subsample(J, a)
+
+############################################################
+## Forward/adjoint function to avoid unecessary extra declaration
+
+function bornop(J::judiJacobian, v)
+    srcnum = 1:J.info.nsrc
+    return time_modeling(J.model, J.source.geometry, J.source.data, J.recGeometry, nothing, v, srcnum, 'J', 1, J.options)
+end
+
+function adjbornop(J::judiJacobian, w)
+    srcnum = 1:J.info.nsrc
+    return time_modeling(J.model, J.source.geometry, J.source.data, J.recGeometry,
+                         process_input_data(w, J.recGeometry, J.info), nothing, srcnum, 'J', -1, J.options)
+end

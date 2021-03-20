@@ -13,11 +13,11 @@ fs =  parsed_args["fs"]
 
 # # Set parallel if specified
 nw = parsed_args["parallel"]
-# if nw > 1 && nworkers() < nw
-#     addprocs(nw-nworkers() + 1; exeflags=["--code-coverage=user", "--inline=no", "--check-bounds=yes"])
-# end
+if nw > 1 && nworkers() < nw
+    addprocs(nw-nworkers() + 1; exeflags=["--code-coverage=user", "--inline=no", "--check-bounds=yes"])
+end
 
-# @everywhere using JUDI, LinearAlgebra, Test, Distributed, Printf
+@everywhere using JUDI, LinearAlgebra, Test, Distributed, Printf
 
 ### Model
 model, model0, dm = setup_model(parsed_args["tti"], parsed_args["nlayer"])
@@ -31,13 +31,13 @@ tol = 5f-4
 @testset "Adjoint test with $(nlayer) layers and tti $(tti) and freesurface $(fs)" begin 
 
     opt = Options(sum_padding=true, dt_comp=dt, free_surface=parsed_args["fs"])
-    F = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
+    F = judiModeling(model0, srcGeometry, recGeometry; options=opt)
 
     # Nonlinear modeling
     y = F*q
 
     # Generate random noise data vector with size of d_hat in the range of F
-    wave_rand = (.5 .+ rand(size(q.data[1]))).*q.data[1]
+    wave_rand = (.5f0 .+ rand(Float32, size(q.data[1]))).*q.data[1]
     q_rand = judiVector(srcGeometry, wave_rand)
 
     # Forward-adjoint
@@ -54,7 +54,7 @@ tol = 5f-4
     J = judiJacobian(F, q)
 
     ld_hat = J*dm
-    dm_hat = adjoint(J)*y
+    dm_hat = J'*y
 
     c = dot(ld_hat, y)
     @show norm(dm), norm(dm_hat)

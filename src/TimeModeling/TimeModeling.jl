@@ -16,6 +16,7 @@ include("Types/judiWavefield.jl") # dense RHS (wavefield)
 include("Types/judiWeights.jl")    # Extended source weight vector
 include("Types/judiVector.jl")    # Julia data container
 include("Types/judiComposites.jl")    # A composite type to work with hcat/vcat of judi types
+include("Types/typeutils.jl") # dense RHS (wavefield)
 
 #############################################################################
 # Utils
@@ -32,8 +33,8 @@ include("Modeling/fwi_objective_serial.jl")  # FWI objective function value and 
 include("Modeling/fwi_objective_parallel.jl")    # parallelization for FWI gradient
 include("Modeling/lsrtm_objective_serial.jl")  # LSRTM objective function value and gradient
 include("Modeling/lsrtm_objective_parallel.jl")    # parallelization for LSRTM gradient
-include("Modeling/twri_objective_serial.jl")  # TWRI objective function value and gradient
 include("Modeling/twri_objective_parallel.jl")    # parallelization for TWRI gradient
+include("Modeling/twri_objective_serial.jl")  # TWRI objective function value and gradient
 
 #############################################################################
 # Linear operators

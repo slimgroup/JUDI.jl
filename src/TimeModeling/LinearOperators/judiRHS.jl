@@ -55,7 +55,7 @@ seismic vectors of type `judiVector`, then a `judiRHS` vector can be created as 
     rhs = Ps'*q    # right-hand-side with injected wavelet
 
 """
-function judiRHS(info,geometry,data;vDT::DataType=Float32)
+function judiRHS(info, geometry, data;vDT::DataType=Float32)
     vDT == Float32 || throw(judiRHSexception("Domain type not supported"))
     # length of vector
     m = info.n * sum(info.nt)

@@ -27,13 +27,6 @@ println("Generic modeling and misc test with ", parsed_args["nlayer"], " layers 
 
 ftol = 1f-5
 ######################## WITH DENSITY ############################################
-@everywhere function to_data(judiVec)
-    try
-        return get_data(judiVec)
-    catch e
-        return judiVec
-    end
-end
 
 cases = [(true, true), (true, false), (false, true), (false, false)]
 
@@ -64,7 +57,7 @@ cases = [(true, true), (true, false), (false, true), (false, false)]
 	# Nonlinear modeling
 	d1 = Pr*F*adjoint(Ps)*q	# equivalent to d = Ffull*q
 	dfull = Ffull*q
-	@test isapprox(to_data(d1), dfull, rtol=ftol)
+	@test isapprox(get_data(d1), dfull, rtol=ftol)
 
 	qad = (Ps*adjoint(F))*adjoint(Pr)*d1
 	qfull = adjoint(Ffull)*d1
@@ -85,9 +78,9 @@ cases = [(true, true), (true, false), (false, true), (false, false)]
 		Prsub = subsample(Pr, inds)
 		ds1 = Ffullsub*qsub 
 		ds2 = Prsub * Fsub * adjoint(Pssub) *qsub 
-		@test isapprox(ds1, to_data(ds2), rtol=ftol)
+		@test isapprox(ds1, get_data(ds2), rtol=ftol)
 		@test isapprox(ds1, dsub, rtol=ftol)
-		@test isapprox(to_data(ds2), dsub, rtol=ftol)
+		@test isapprox(get_data(ds2), dsub, rtol=ftol)
 	end
 
 	# vcat, norms, dot

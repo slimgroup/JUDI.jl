@@ -141,7 +141,8 @@ function subsample(options::Options, srcnum)
         return options
     else
         opt_out = deepcopy(options)
-        opt_out.frequencies = options.frequencies[srcnum]
+        floc = options.frequencies[srcnum]
+        typeof(floc) <: Array && (opt_out.frequencies = floc)
         return opt_out
     end
 end

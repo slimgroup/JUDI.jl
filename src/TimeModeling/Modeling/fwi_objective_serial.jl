@@ -3,37 +3,26 @@ export fwi_objective
 
 function fwi_objective(model_full::Model, source::judiVector, dObs::judiVector, options::Options)
 # Setup time-domain linear or nonlinear foward and adjoint modeling and interface to OPESCI/devito
-
     # Load full geometry for out-of-core geometry containers
-    typeof(dObs.geometry) == GeometryOOC && (dObs.geometry = Geometry(dObs.geometry))
-    typeof(source.geometry) == GeometryOOC && (source.geometry = Geometry(source.geometry))
+    dObs.geometry = Geometry(dObs.geometry)
+    source.geometry = Geometry(source.geometry)
 
     # for 3D modeling, limit model to area with sources/receivers
     if options.limit_m == true # only supported for 3D
         model = deepcopy(model_full)
-        model = limit_model_to_receiver_area(source.geometry,dObs.geometry,model,options.buffer_size)
+        model, _ = limit_model_to_receiver_area(source.geometry,dObs.geometry,model,options.buffer_size)
     else
         model = model_full
     end
 
-    # Source/receiver parameters
-    tmaxSrc = source.geometry.t[1]
-    tmaxRec = dObs.geometry.t[1]
-
-    # Set up Python model structure (force origin to be zero due to current devito bug)
-    # Set up Python model structure
+    # Set up Python model
     modelPy = devito_model(model, options)
-    dtComp = modelPy.critical_dt
+    dtComp = get_dt(model; dt=options.dt_comp)
 
     # Extrapolate input data to computational grid
-    qIn = time_resample(source.data[1],source.geometry,dtComp)[1]
-    if typeof(dObs.data[1]) == SegyIO.SeisCon
-        data = convert(Array{Float32,2},dObs.data[1][1].data)
-        dObs = judiVector(dObs.geometry,data)
-    end
-    dObserved = time_resample(dObs.data[1],dObs.geometry,dtComp)[1]
-    ntSrc = Int(trunc(tmaxSrc/dtComp+1))
-    ntRec = Int(trunc(tmaxRec/dtComp+1))
+    qIn = time_resample(source.data[1], source.geometry, dtComp)[1]
+    obsd = typeof(dObs.data[1]) == SegyIO.SeisCon ? convert(Array{Float32,2}, dObs.data[1][1].data) : dObs.data[1]
+    dObserved = time_resample(obsd, dObs.geometry, dtComp)[1]
 
     # Set up coordinates
     src_coords = setup_grid(source.geometry, model.n)  # shifts source coordinates by origin
@@ -62,5 +51,5 @@ function fwi_objective(model_full::Model, source::judiVector, dObs::judiVector, 
     if options.limit_m==true
         argout2 = extend_gradient(model_full, model, argout2)
     end
-    return argout1, PhysicalParameter(argout2, model.d, model.o)
+    return argout1, argout2
 end

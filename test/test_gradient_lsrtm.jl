@@ -21,8 +21,8 @@ dt = srcGeometry.dt[1]
 
 @testset "LSRTM gradient test with $(nlayer) layers and tti $(tti) and freesurface $(fs)" begin
 	# Gradient test
-	h = 5f-1
-	maxiter = 5
+	h = 5f-2
+	maxiter = 6
 	err1 = zeros(maxiter, 2)
 	err2 = zeros(maxiter, 2)
 	h_all = zeros(maxiter)
@@ -39,7 +39,7 @@ dt = srcGeometry.dt[1]
 	Jm01, grad1 = lsrtm_objective(model0, q, d, dm; options=opt, nlind=true)
 
 	# Perturbation
-	dmp = (.5f0 .+ rand(Float32, dm.n)) .* dm
+	dmp = dm .+ .1f0*randn(Float32, dm.n)
 	dJ = dot(grad, dmp)
 	dJ1 = dot(grad1, dmp)
 

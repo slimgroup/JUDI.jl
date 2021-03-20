@@ -285,34 +285,19 @@ vec(x::SegyIO.SeisCon) = vec(x[1].data)
 
 ##########################################################
 
-# minus
-function -(a::judiVector{avDT, AT}) where {avDT, AT}
-    c = deepcopy(a)
-    for j=1:a.nsrc
-        c.data[j] = -c.data[j]
-    end
-    return c
-end
-
 for opo=[:+, :-, :*, :/]
     @eval begin
-        $opo(a::judiVector{avDT, SeisCon}, b) where avDT = throw(DomainError(a, "Addition for OOC judiVectors not supported."))
-        $opo(a, b::judiVector{bvDT, SeisCon}) where bvDT = throw(DomainError(b, "Addition for OOC judiVectors not supported."))
+        $opo(a::judiVector{avDT, SeisCon}, ::T) where {avDT, T<:Real} = throw(DomainError(a, "Addition for OOC judiVectors not supported."))
+        $opo(::T, b::judiVector{bvDT, SeisCon}) where {bvDT, T<:Real} = throw(DomainError(b, "Addition for OOC judiVectors not supported."))
         $opo(::judiVector{avDT, SeisCon}, b::judiVector{bvDT, SeisCon}) where {avDT, bvDT} = throw(DomainError(b, "Addition for OOC judiVectors not supported."))
-        $opo(a::judiVector{avDT, AT}, b::T) where {avDT, AT, T<:Number} = eval_op(a, b, $opo)
-        $opo(a::T, b::judiVector{avDT, AT}) where {avDT, AT, T<:Number} = eval_op(a, b, $opo)
-        $opo(a::judiVector{avDT, AT}, b::judiVector{avDT, AT}) where {avDT, AT} = eval_op(a, b, $opo)
     end
 end
 
-for ipop=[:lmul!, :rmul!, :rdiv!, :ldiv!]
+for ipop=[:lmul!, :rmul!, :rdiv!]
     @eval begin
-        $ipop(a::judiVector{avDT, SeisCon}, b) where avDT = throw(DomainError(a, "Addition for OOC judiVectors not supported."))
-        $ipop(a, b::judiVector{bvDT, SeisCon}) where bvDT = throw(DomainError(b, "Addition for OOC judiVectors not supported."))
-        $ipop(a::judiVector{avDT, SeisCon}, b::judiVector{bvDT, SeisCon}) where {avDT, bvDT} = throw(DomainError(b, "Addition for OOC judiVectors not supported."))
-        $ipop(a::judiVector{avDT, AT}, b::T) where {avDT, AT, T<:Number} = eval_op_ip(a, b, $ipop)
-        $ipop(a::T, b::judiVector{avDT, AT}) where {avDT, AT, T<:Number} = eval_op_ip(a, b, $ipop)
-        $ipop(a::judiVector{avDT, AT}, b::judiVector{avDT, AT}) where {avDT, AT} = eval_op_ip(a, b, $ipop)
+        $ipop(a::judiVector{avDT, SeisCon}, ::T) where {avDT, T<:Real} = throw(DomainError(a, "Addition for OOC judiVectors not supported."))
+        $ipop(::T, b::judiVector{bvDT, SeisCon}) where {bvDT, T<:Real} = throw(DomainError(b, "Addition for OOC judiVectors not supported."))
+        $ipop(::judiVector{avDT, SeisCon}, b::judiVector{bvDT, SeisCon}) where {avDT, bvDT} = throw(DomainError(b, "Addition for OOC judiVectors not supported."))
     end
 end
 
@@ -335,18 +320,17 @@ function *(A::joLinearOperator{ADDT,ARDT},v::judiVector{avDT, AT}) where {ADDT, 
 end
 
 # vcat
-function vcat(a::judiVector{avDT, AT},b::judiVector{bvDT, BT}) where {avDT, bvDT, AT, BT}
+function vcat(ai::Vararg{judiVector{avDT, AT}, N}) where {avDT, AT, N}
+    N == 1 && (return ai[1])
+    N > 2 && (return vcat(ai[1], vcat(ai[2:end]...)))
+    a, b = ai
     typeof(a.geometry) == typeof(b.geometry) || throw(judiVectorException("Geometry type mismatch"))
-    AT == BT || throw(judiVectorException("Data type mismatch"))
     m = a.m + b.m
     n = 1
     nsrc = a.nsrc + b.nsrc
 
-    data = Array{AT}(undef, nsrc)
+    data = vcat(a.data, b.data)
 
-    dt = Array{Float32}(undef, nsrc)
-    nt = Array{Integer}(undef, nsrc)
-    t = Array{Float32}(undef, nsrc)
     if AT == SegyIO.SeisCon
         nsamples = vcat(a.geometry.nsamples, b.geometry.nsamples)
     else
@@ -364,41 +348,8 @@ function vcat(a::judiVector{avDT, AT},b::judiVector{bvDT, BT}) where {avDT, bvDT
     else
         geometry = GeometryIC{Float32}(xloc, yloc, zloc, dt, nt, t)
     end
-    nvDT = promote_type(avDT,bvDT)
-    return judiVector{nvDT, AT}(a.name, m, n, nsrc, geometry, data)
-end
 
-
-"""
-    vcat(array)
-
-Turn an array of judiVector into a single smultenous judiVector, for example
-
-sim_source = vcat([q[i] for i=1:nsrc])
-
-will make the nsrc simultaneous source from multiple point sources `q`
-"""
-function vcat(a::Array{judiVector{avDT, AT}, 1}) where {avDT, AT}
-    out = a[1]
-    for i=2:length(a)
-        out = [out; a[i]]
-    end
-    return out
-end
-
-
-"""
-    vcat(judiVector)
-
-Turn a judiVector of multiple sources into a single
-
-sim_source = vcat(q)
-
-will make the simultaneous source made of all the point sources in q
-"""
-
-function vcat(a::judiVector{avDT, AT}) where {avDT, AT}
-    return vcat([a[i] for i=1:a.nsrc])
+    return judiVector{avDT, AT}(a.name, m, n, nsrc, geometry, data)
 end
 
 # dot product
@@ -711,15 +662,16 @@ end
 
 copy(x::judiVector) = 1f0 * x
 
-function get_data(x::judiVector)
+function get_data(x::judiVector{T, SeisCon}) where T
     shots = Array{Array{Float32, 2}, 1}(undef, x.nsrc)
     rec_geometry = Geometry(x.geometry)
-
     for j=1:x.nsrc
         shots[j] = convert(Array{Float32, 2}, x.data[j][1].data)
     end
     return judiVector(rec_geometry, shots)
 end
+
+get_data(x::judiVector{T, Array{Float32, 2}}) where T = judiVector(Geometry(x.geometry), x.data)
 
 function convert_to_array(x::judiVector)
     y = vec(x.data[1])

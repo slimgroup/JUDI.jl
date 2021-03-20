@@ -13,7 +13,7 @@ function time_modeling(model::Model, srcGeometry, srcData, recGeometry, recData,
                    p, srcnum)
 
     if op=='F' || (op=='J' && mode==1)
-        argout1 = vcat(results)
+        argout1 = vcat(results...)
     elseif op=='J' && mode==-1
         argout1 = sum(results)
     else

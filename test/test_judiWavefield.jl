@@ -22,7 +22,7 @@ ftol = 1f-6
     info = Info(nx*ny, nsrc, nt)
 
     # Extended source weights
-    wf = Array{Array}(undef, nsrc)
+    wf = Array{Array{Float32, 3}, 1}(undef, nsrc)
     for j=1:nsrc
         wf[j] = randn(Float32, nt, ny, ny)
     end
@@ -32,7 +32,7 @@ ftol = 1f-6
     @test isequal(length(w.data), nsrc)
     @test isequal(length(w.data), info.nsrc)
     @test isequal(w.info.nsrc, nsrc)
-    @test isequal(typeof(w.data), Array{Array, 1})
+    @test isequal(typeof(w.data), Array{Array{Float32, 3}, 1})
     @test isequal(size(w), (nx*ny*nt*nsrc, 1))
     @test isfinite(w)
 

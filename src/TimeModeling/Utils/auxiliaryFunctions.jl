@@ -26,7 +26,7 @@ function devito_model(model::Model, options::Options; dm=nothing)
     pad = pad_sizes(model, options)
     # Set up Python model structure
     m = pad_array(model[:m].data, pad)
-    dm = pad_array(getattr(dm, :data, dm), pad)
+    !isnothing(dm) && (dm = pad_array(reshape(getattr(dm, :data, dm), model.n), pad))
     physpar = Dict((n, pad_array(v.data, pad)) for (n, v) in model.params if n != :m)
     modelPy = pm."Model"(model.o, model.d, model.n, m, fs=options.free_surface,
                          nbl=model.nb, space_order=options.space_order, dt=options.dt_comp, dm=dm;
@@ -148,7 +148,7 @@ function limit_model_to_receiver_area(srcGeometry::Geometry, recGeometry::Geomet
     end
 
     # add buffer zone if possible
-    min_x = max(model.o[1], min_x - buffer)
+    min_x = max(model.o[1], min_x - buffer) + 1
     max_x = min(model.o[1] + model.d[1]*(model.n[1]-1), max_x + buffer)
     if ndim == 3
         min_y = max(model.o[2], min_y - buffer)
@@ -156,7 +156,7 @@ function limit_model_to_receiver_area(srcGeometry::Geometry, recGeometry::Geomet
     end
 
     # extract part of the model that contains sources/receivers
-    nx_min = Int(min_x ÷ model.d[1])
+    nx_min = Int(min_x ÷ model.d[1]) + 1
     nx_max = Int(max_x ÷ model.d[1]) + 1
     inds = [max(1, nx_min):nx_max, 1:model.n[end]]
     if ndim == 3
@@ -269,6 +269,10 @@ function remove_out_of_bounds_receivers(recGeometry::Geometry, recData::Array, m
     return recGeometry, recData
 end
 
+remove_out_of_bounds_receivers(G::Geometry, ::Nothing, M::Model) = (remove_out_of_bounds_receivers(G, M), nothing)
+remove_out_of_bounds_receivers(::Nothing, ::Nothing, M::Model) = (nothing, nothing)
+remove_out_of_bounds_receivers(::Nothing, r::Array, M::Model) = (nothing, r)
+
 """
     convertToCell(x)
 
@@ -289,7 +293,7 @@ end
 
 convertToCell(x::Array{Array{T, N}, 1}) where {T, N} = x
 convertToCell(x::StepRangeLen) = convertToCell(Float32.(x))
-convertToCell(x::Number) = [x]
+convertToCell(x::Number) = convertToCell([x])
 
 # 1D source time function
 """
@@ -420,7 +424,7 @@ Parameters:
 * `y`: Y coordinates.
 * `z`: Z coordinates.
 """
-function setup_3D_grid(xrec::Array{Array{T, 1}, 1},yrec::Array{Array{T, 1},1},zrec::Array{Array{T, 1}, 1}) where T
+function setup_3D_grid(xrec::Array{Array{T, 1}, 1},yrec::Array{Array{T, 1},1},zrec::Array{T, 1}) where T<:Real
     # Take input 1d x and y coordinate vectors and generate 3d grid. Input are cell arrays
     nsrc = length(xrec)
     xloc = Array{Array{T}, 1}(undef, nsrc)
@@ -459,7 +463,7 @@ Parameters:
 * `y`: Y coordinates.
 * `z`: Z coordinate.
 """
-function setup_3D_grid(xrec::Array{T, 1},yrec::Array{T,1},zrec::T) where T
+function setup_3D_grid(xrec::Array{T, 1},yrec::Array{T,1}, zrec::T) where T<:Real
 # Take input 1d x and y coordinate vectors and generate 3d grid. Input are arrays/ranges
     nxrec = length(xrec)
     nyrec = length(yrec)
@@ -478,6 +482,8 @@ function setup_3D_grid(xrec::Array{T, 1},yrec::Array{T,1},zrec::T) where T
     end
     return xloc, yloc, zloc
 end
+
+setup_3D_grid(xrec, yrec, zrec) = setup_3D_grid(tof32(xrec), tof32(yrec), tof32(zrec))
 
 """
     time_resample(data, geometry_in, dt_new)
@@ -605,7 +611,7 @@ function process_input_data(input::Array{Float32}, geometry::Geometry, info::Inf
     nrec = length(geometry.xloc[1])
     nsrc = info.nsrc
     data = reshape(input, nt, nrec, nsrc)
-    dataCell = Array{Array}(undef, nsrc)
+    dataCell = Array{Array{Float32, 2}, 1}(undef, nsrc)
     for j=1:nsrc
         dataCell[j] = data[:,:,j]
     end
@@ -624,7 +630,7 @@ Parameters:
 """
 function process_input_data(input::Array{Float32}, model::Model, info::Info)
     ndims = length(model.n)
-    dataCell = Array{Array}(undef, info.nsrc)
+    dataCell = Array{Array{Float32, ndims}, 1}(undef, info.nsrc)
     if ndims == 2
         input = reshape(input, model.n[1], model.n[2], info.nsrc)
         for j=1:info.nsrc
@@ -725,6 +731,7 @@ end
 
 pad_array(m::Number, ::Array{Tuple{Int64,Int64},1}) = m
 pad_array(::Nothing, ::Array{Tuple{Int64,Int64},1}) = nothing
+
 # Vectorization of single variable (not defined in Julia)
 vec(x::Float64) = x;
 vec(x::Float32) = x;
@@ -735,44 +742,5 @@ vec(::Nothing) = nothing
 SincInterpolation(Y, S, Up) = sinc.( (Up .- S') ./ (S[2] - S[1]) ) * Y
 
 subsample(::Nothing, i) = nothing
-subsample(a::Array{Array}, i) = a[i]
-subsample(a::Array{Array{T,2}, 1}, i::Int64) where T = a[i]
-
-function getattr(o, attr::Symbol, default=o)
-    try
-        return getfield(o, attr)
-    catch e
-        return default
-    end
-end
-
-function getattri(o, attr::Symbol, ind::Integer, default=o)
-    try
-        return getproperty(o, attr)[ind]
-    catch e
-        return default
-    end
-end
-
-tof32(x::Number) = [Float32(x)]
-tof32(x::Array{T}) where T = T==Float32 ? x : Float32.(x)
-tof32(x::StepRangeLen) = tof32(collect(x))
-
-function eval_op(a, b, op)
-    c = typeof(a) <: joAbstractLinearOperator ? deepcopy(a) : deepcopy(b)
-    for j=1:c.nsrc
-        try
-            c.data[j] = op(getattri(a, :data, j), getattri(b, :data, j))
-        catch e
-            broadcast!(op, c.data[j], getattri(a, :data, j), getattri(b, :data, j))
-        end
-    end
-    return c
-end
-
-function eval_op_ip(a, b, op)
-    for j=1:getattr(a, :nsrc, getattr(b, :nsrc))
-        op(getattri(a, :data, j), getattri(b, :data, j))
-    end
-    a
-end
+subsample(a::Array{Array{T, N}, 1}, i::Int64) where {T, N} = a[i]
+subsample(a::Array{SeisCon,1}, i::Int64) = a[i]
