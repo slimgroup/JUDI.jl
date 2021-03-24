@@ -6,11 +6,9 @@ function time_modeling(model::Model, srcGeometry, srcData, recGeometry, recData,
 # time_modeling function for multiple sources. Depending on the operator and mode, this function distributes the sources
 # and if applicable the input data amongst the available workers.
 
-    p = default_worker_pool()
-    results = pmap(j -> time_modeling(model, subsample(srcGeometry,j), subsample(srcData, j),
-                                      subsample(recGeometry,j), subsample(recData, j), dm,
-                                      op, mode, subsample(options, j)),
-                   p, srcnum)
+    results = judipmap(j -> time_modeling(model, subsample(srcGeometry,j), subsample(srcData, j),
+                                          subsample(recGeometry,j), subsample(recData, j), dm,
+                                          op, mode, subsample(options, j)), srcnum)
 
     if op=='F' || (op=='J' && mode==1)
         argout1 = vcat(results...)

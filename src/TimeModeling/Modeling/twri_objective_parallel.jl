@@ -20,9 +20,7 @@ function twri_objective(model::Model, source::judiVector, dObs::judiVector, y::U
                         options=Options(), optionswri=TWRIOptions())
 # fwi_objective function for multiple sources. The function distributes the sources and the input data amongst the available workers.
 
-    p = default_worker_pool()
-    results = pmap(j -> twri_objective(model, source[j], dObs[j], subsample(y, j), subsample(options,j), subsample(optionswri,j)),
-                   p, 1:dObs.nsrc)
+    results = judipmap(j -> twri_objective(model, source[j], dObs[j], subsample(y, j), subsample(options,j), subsample(optionswri,j)), 1:dObs.nsrc)
 
     # Collect and reduce gradients
     objective = results[1][1]

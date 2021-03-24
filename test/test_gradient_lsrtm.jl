@@ -13,7 +13,7 @@ tti = parsed_args["tti"]
 fs =  parsed_args["fs"]
 
 ### Model
-model, model0, dm = setup_model(parsed_args["tti"], 4)
+model, model0, dm = setup_model(tti, 4)
 q, srcGeometry, recGeometry, info = setup_geom(model)
 dt = srcGeometry.dt[1]
 
@@ -28,7 +28,7 @@ dt = srcGeometry.dt[1]
 	h_all = zeros(maxiter)
 
 	# Observed data
-	opt = Options(sum_padding=true, free_surface=parsed_args["fs"])
+	opt = Options(sum_padding=true, free_surface=fs)
 	F = judiModeling(info, model, srcGeometry, recGeometry; options=opt)
 	F0 = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
 	J = judiJacobian(F0, q)
@@ -39,7 +39,7 @@ dt = srcGeometry.dt[1]
 	Jm01, grad1 = lsrtm_objective(model0, q, d, dm; options=opt, nlind=true)
 
 	# Perturbation
-	dmp = dm .+ .1f0*randn(Float32, dm.n)
+	dmp = 2f0*circshift(dm, 10)
 	dJ = dot(grad, dmp)
 	dJ1 = dot(grad1, dmp)
 

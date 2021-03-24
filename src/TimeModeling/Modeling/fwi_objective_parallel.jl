@@ -18,8 +18,7 @@ Example
 function fwi_objective(model::Model, source::judiVector, dObs::judiVector; options=Options())
 # fwi_objective function for multiple sources. The function distributes the sources and the input data amongst the available workers.
 
-    p = default_worker_pool()
-    results = pmap(j -> fwi_objective(model, source[j], dObs[j], subsample(options, j)), p, 1:dObs.nsrc)
+    results = judipmap(j -> fwi_objective(model, source[j], dObs[j], subsample(options, j)), 1:dObs.nsrc)
 
     # Collect and reduce gradients
     obj, gradient = reduce((x, y) -> x .+ y, results)

@@ -5,10 +5,8 @@ function extended_source_modeling(model::Model, srcData, recGeometry, recData, w
 # extended_source_modeling function for multiple sources. Depending on the operator and mode, this function distributes the sources
 # and if applicable the input data amongst the available workers.
 
-    p = default_worker_pool()
-    results = pmap(j ->extended_source_modeling(model, subsample(srcData, j), subsample(recGeometry, j),
-                                                subsample(recData, j), weights, dm, op, mode, subsample(options, j)),
-                   p, srcnum)
+    results = judipmap(j ->extended_source_modeling(model, subsample(srcData, j), subsample(recGeometry, j),
+                                                    subsample(recData, j), weights, dm, op, mode, subsample(options, j)), srcnum)
 
     if op=='F' || (op=='J' && mode==1)
         argout1 = vcat(results...)

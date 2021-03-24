@@ -23,12 +23,13 @@ Sets up a simple 2D layered model for the wave equation operators tests
 """
 function setup_model(tti=false, nlayer=2; n=(301, 151), d=(10., 10.))
     ## Set up model structure	
-    o = (0., 0.)	
+    o = (0., 0.)
+    lw = n[2] ÷ nlayer
     
-    v = ones(Float32,n) .* 1.5f0	
-    vp_i = range(1.5f0, 3.5f0, length=nlayer)	
+    v = ones(Float32,n) .* 1.5f0
+    vp_i = range(1.5f0, 3.5f0, length=nlayer)
     for i in range(2, nlayer, step=1)	
-        v[:, (i-1)*Int(floor(n[2] / nlayer)) + 1:end] .= vp_i[i]  # Bottom velocity	
+        v[:, (i-1)*lw+ 1:end] .= vp_i[i]  # Bottom velocity	
     end
 
     v0 = smooth(v, 7)
