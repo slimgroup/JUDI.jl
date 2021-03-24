@@ -95,7 +95,7 @@ adjoint(A::judiJacobianExQ{DDT,RDT}) where {DDT,RDT} =
 
 # *(judiJacobianExQ,vec)
 function *(A::judiJacobianExQ{ADDT,ARDT},v::AbstractVector{vDT}) where {ADDT,ARDT,vDT}
-    A.n == size(v,1) || throw(judiJacobianExQException("shape mismatch"))
+    A.n == size(v,1) || throw(judiJacobianExQException("Shape mismatch: A:$(size(A)), v: $(size(v))"))
     jo_check_type_match(ADDT,vDT,join(["DDT for *(judiJacobianExQ,vec):",A.name,typeof(A),vDT]," / "))
     V = A.fop(v)
     jo_check_type_match(ARDT,eltype(V),join(["RDT from *(judiJacobianExQ,vec):",A.name,typeof(A),eltype(V)]," / "))
@@ -106,7 +106,7 @@ end
 
 # *(judiJacobianExQ,judiVector)
 function *(A::judiJacobianExQ{ADDT,ARDT},v::judiVector{vDT, AT}) where {ADDT,ARDT,vDT, AT}
-    A.n == size(v,1) || throw(judiJacobianExQException("shape mismatch"))
+    A.n == size(v,1) || throw(judiJacobianExQException("Shape mismatch: A:$(size(A)), v: $(size(v))"))
     jo_check_type_match(ADDT,vDT,join(["DDT for *(judiJacobianExQ,judiVector):",A.name,typeof(A),vDT]," / "))
     compareGeometry(A.recGeometry,v.geometry) == true || throw(judiJacobianExQException("Geometry mismatch"))
     V = A.fop(v)

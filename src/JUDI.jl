@@ -27,7 +27,7 @@ import Base.promote_shape, Base.diff, Base.cumsum, Base.cumsum!
 # Import Linear Lagebra functions to dispatch on JUDI types
 import LinearAlgebra.transpose, LinearAlgebra.conj, LinearAlgebra.vcat, LinearAlgebra.adjoint
 import LinearAlgebra.vec, LinearAlgebra.dot, LinearAlgebra.norm, LinearAlgebra.abs
-import LinearAlgebra.rmul!, LinearAlgebra.lmul!, LinearAlgebra.rdiv!
+import LinearAlgebra.rmul!, LinearAlgebra.lmul!, LinearAlgebra.rdiv!, LinearAlgebra.ldiv!
 import LinearAlgebra.mul!, Base.isfinite
 
 # Import pycall array to python for easy plotting

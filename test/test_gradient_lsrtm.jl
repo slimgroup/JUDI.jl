@@ -22,7 +22,7 @@ dt = srcGeometry.dt[1]
 @testset "LSRTM gradient test with $(nlayer) layers and tti $(tti) and freesurface $(fs)" begin
 	# Gradient test
 	h = 5f-2
-	maxiter = 6
+	maxiter = 5
 	err1 = zeros(maxiter, 2)
 	err2 = zeros(maxiter, 2)
 	h_all = zeros(maxiter)

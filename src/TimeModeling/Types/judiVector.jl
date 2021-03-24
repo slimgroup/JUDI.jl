@@ -293,7 +293,7 @@ for opo=[:+, :-, :*, :/]
     end
 end
 
-for ipop=[:lmul!, :rmul!, :rdiv!]
+for ipop=[:lmul!, :rmul!, :rdiv!, :ldiv!]
     @eval begin
         $ipop(a::judiVector{avDT, SeisCon}, ::T) where {avDT, T<:Real} = throw(DomainError(a, "Addition for OOC judiVectors not supported."))
         $ipop(::T, b::judiVector{bvDT, SeisCon}) where {bvDT, T<:Real} = throw(DomainError(b, "Addition for OOC judiVectors not supported."))
@@ -303,7 +303,7 @@ end
 
 # *(joLinearFunction, judiVector)
 function *(A::joLinearFunction{ADDT,ARDT},v::judiVector{avDT, AT}) where {ADDT, ARDT, avDT, AT}
-    A.n == size(v,1) || throw(judiVectorException("shape mismatch"))
+    A.n == size(v,1) || throw(judiVectorException("Shape mismatch: A:$((A.m, A.n)), v: $(size(v))"))
     jo_check_type_match(ADDT,avDT,join(["DDT for *(joLinearFunction,judiVector):",A.name,typeof(A),avDT]," / "))
     V = A.fop(v)
     jo_check_type_match(ARDT,eltype(V),join(["RDT from *(joLinearFunction,judiVector):",A.name,typeof(A),eltype(V)]," / "))
@@ -312,7 +312,7 @@ end
 
 # *(joLinearOperator, judiVector)
 function *(A::joLinearOperator{ADDT,ARDT},v::judiVector{avDT, AT}) where {ADDT, ARDT, avDT, AT}
-    A.n == size(v,1) || throw(judiVectorException("shape mismatch"))
+    A.n == size(v,1) || throw(judiVectorException("Shape mismatch: A:$((A.m, A.n)), v: $(size(v))"))
     jo_check_type_match(ADDT,avDT,join(["DDT for *(joLinearFunction,judiVector):",A.name,typeof(A),avDT]," / "))
     V = A.fop(v)
     jo_check_type_match(ARDT,eltype(V),join(["RDT from *(joLinearFunction,judiVector):",A.name,typeof(A),eltype(V)]," / "))
@@ -355,8 +355,8 @@ end
 # dot product
 function dot(a::judiVector{avDT, AT}, b::judiVector{bvDT, AT}) where {avDT, bvDT, AT}
 # Dot product for data containers
-    size(a) == size(b) || throw(judiVectorException("dimension mismatch"))
-    compareGeometry(a.geometry, b.geometry) == 1 || throw(judiVectorException("geometry mismatch"))
+    size(a) == size(b) || throw(judiVectorException("Size mismatch: a:$(size(a)) b:$(size(b))"))
+    compareGeometry(a.geometry, b.geometry) == 1 || throw(judiVectorException("Geometry mismatch"))
     dotprod = 0f0
     for j=1:a.nsrc
         dotprod += a.geometry.dt[j] * dot(vec(a.data[j]),vec(b.data[j]))
@@ -601,8 +601,8 @@ broadcasted(::typeof(-), x::Number, y::judiVector) = x - y
 
 ### * ####
 function broadcasted(::typeof(*), x::judiVector, y::judiVector)
-    size(x) == size(y) || throw(judiVectorException("dimension mismatch"))
-    compareGeometry(x.geometry, y.geometry) == 1 || throw(judiVectorException("geometry mismatch"))
+    size(x) == size(y) || throw(judiVectorException("Size mismatch: x:$(size(x)), y:$(size(y))"))
+    compareGeometry(x.geometry, y.geometry) == 1 || throw(judiVectorException("Geometry mismatch"))
     typeof(x.data[1]) == SeisCon && throw("Addition for OOC judiVectors not supported.")
     typeof(y.data[1]) == SeisCon && throw("Addition for OOC judiVectors not supported.")
     z = deepcopy(x)
@@ -624,7 +624,7 @@ broadcasted(::typeof(*), x::Number, y::judiVector) = broadcasted(*, y, x)
 
 ### / ####
 function broadcasted(::typeof(/), x::judiVector, y::judiVector)
-    size(x) == size(y) || throw(judiVectorException("dimension mismatch"))
+    size(x) == size(y) || throw(judiVectorException("Size mismatch: x:$(size(x)), y:$(size(y))"))
     compareGeometry(x.geometry, y.geometry) == 1 || throw(judiVectorException("geometry mismatch"))
     typeof(x.data[1]) == SeisCon && throw("Addition for OOC judiVectors not supported.")
     typeof(y.data[1]) == SeisCon && throw("Addition for OOC judiVectors not supported.")
@@ -684,7 +684,7 @@ function convert_to_array(x::judiVector)
 end
 
 function isapprox(x::judiVector, y::judiVector; rtol::Real=sqrt(eps()), atol::Real=0)
-    compareGeometry(x.geometry, y.geometry) == 1 || throw(judiVectorException("geometry mismatch"))
+    compareGeometry(x.geometry, y.geometry) == 1 || throw(judiVectorException("Geometry mismatch"))
     isapprox(x.data, y.data; rtol=rtol, atol=atol)
 end
 

@@ -74,9 +74,8 @@ adjoint(A::judiExtendedSource{vDT}) where vDT =
 
 # +(judiExtendedSource,judiExtendedSource)
 function +(A::judiExtendedSource{avDT}, B::judiExtendedSource{bvDT}) where {avDT, bvDT}
-
     # Error checking
-    size(A) == size(B) || throw(judiExtendedSourceException("shape mismatch"))
+    size(A) == size(B) || throw(judiExtendedSourceException("Shape mismatch: A:$(size(A)), v: $(size(B))"))
     compareInfo(A.info, B.info) == true || throw(judiExtendedSourceException("info mismatch"))
 
     # Size
@@ -98,7 +97,7 @@ end
 function -(A::judiExtendedSource{avDT}, B::judiExtendedSource{bvDT}) where {avDT, bvDT}
 
         # Error checking
-        size(A) == size(B) || throw(judiExtendedSourceException("shape mismatch"))
+        size(A) == size(B) || throw(judiExtendedSourceException("Shape mismatch: A:$(size(A)), v: $(size(B))"))
         compareInfo(A.info, B.info) == true || throw(judiExtendedSourceException("info mismatch"))
 
         # Size

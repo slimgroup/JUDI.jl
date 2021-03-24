@@ -84,7 +84,7 @@ adjoint(A::judiRHS{vDT}) where vDT =
 function +(A::judiRHS{avDT}, B::judiRHS{bvDT}) where {avDT, bvDT}
 
     # Error checking
-    size(A) == size(B) || throw(judiRHSexception("shape mismatch"))
+    size(A) == size(B) || throw(judiRHSexception("Shape mismatch: A:$(size(A)), B: $(size(B))"))
     compareInfo(A.info, B.info) == true || throw(judiRHSexception("info mismatch"))
     isequal(A.geometry.nt,B.geometry.nt) == true || throw(judiRHSexception("sample number mismatch"))
     isequal(A.geometry.dt,B.geometry.dt) == true || throw(judiRHSexception("sample interval mismatch"))
@@ -116,7 +116,7 @@ end
 function -(A::judiRHS{avDT}, B::judiRHS{bvDT}) where {avDT, bvDT}
 
     # Error checking
-    size(A) == size(B) || throw(judiRHSexception("shape mismatch"))
+    size(A) == size(B) || throw(judiRHSexception("Shape mismatch: A:$(size(A)), B: $(size(B))"))
     compareInfo(A.info, B.info) == true || throw(judiRHSexception("info mismatch"))
     isequal(A.geometry.nt,B.geometry.nt) == true || throw(judiRHSexception("sample number mismatch"))
     isequal(A.geometry.dt,B.geometry.dt) == true || throw(judiRHSexception("sample interval mismatch"))

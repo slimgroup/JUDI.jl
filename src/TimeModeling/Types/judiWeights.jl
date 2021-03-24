@@ -79,7 +79,7 @@ adjoint(a::judiWeights{vDT}) where vDT =
 ##########################################################
 # *(joLinearFunction, judiWeights)
 function *(A::joLinearFunction{ADDT,ARDT},v::judiWeights{avDT}) where {ADDT, ARDT, avDT}
-    A.n == size(v,1) || throw(judiWeightsException("shape mismatch"))
+    A.n == size(v,1) || throw(judiWeightsException("Shape mismatch: A:$(size(A)), v: $(size(v))"))
     jo_check_type_match(ADDT,avDT,join(["DDT for *(joLinearFunction,judiWeights):",A.name,typeof(A),avDT]," / "))
     # Evaluate as mat-mat over the weights
     n = size(v.weights[1])
@@ -99,7 +99,7 @@ function *(A::joAbstractLinearOperator{ADDT,ARDT}, v::judiWeights{avDT}) where {
 end
 
 function mulJ(A::joAbstractLinearOperator{ADDT,ARDT}, v::judiWeights{avDT}) where {ADDT, ARDT, avDT}
-    A.n == size(v,1) || throw(judiWeightsException("shape mismatch"))
+    A.n == size(v,1) || throw(judiWeightsException("Shape mismatch: A:$(size(A)), v: $(size(v))"))
     jo_check_type_match(ADDT,avDT,join(["DDT for *(joLinearFunction,judiWeights):",A.name,typeof(A),avDT]," / "))
     # Evaluate as mat-mat over the weights
     n = size(v.weights[1])
@@ -117,7 +117,7 @@ end
 
 # *(joCoreBlock, judiWeights)
 function *(A::joCoreBlock{ADDT,ARDT}, v::judiWeights{avDT}) where {ADDT, ARDT, avDT}
-    A.n == size(v,1) || throw(judiWeightsException("shape mismatch"))
+    A.n == size(v,1) || throw(judiWeightsException("Shape mismatch: A:$(size(A)), v: $(size(v))"))
     jo_check_type_match(ADDT,avDT,join(["DDT for *(joLinearFunction,judiWeights):",A.name,typeof(A),avDT]," / "))
     # Evaluate as mat-mat over the weights
     V = collect(A.fop[i]*v for i=1:length(A.fop))

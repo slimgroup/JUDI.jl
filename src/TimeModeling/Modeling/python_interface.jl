@@ -62,7 +62,7 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Geometry
     u = pycall(ac."forward_no_rec", Array{Float32, 3}, modelPy, src_coords, qIn, space_order=options.space_order)
 
     # Output forward wavefield as judiWavefield
-    return judiWavefield(Info(prod(modelPy.shape), 1, ntComp), dtComp, u)
+    return judiWavefield(Info(prod(modelPy.shape), 1, size(u, 1)), dtComp, u)
 end
 
 # v = F'*Pr'*d_obs

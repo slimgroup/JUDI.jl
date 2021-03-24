@@ -125,7 +125,7 @@ adjoint(A::judiModelingAdjoint{DDT,RDT}) where {DDT,RDT} =
 
 # *(judiModeling,judiWavefield)
 function *(A::judiModeling{ADDT,ARDT}, v::judiWavefield{vDT}) where {ADDT,ARDT,vDT}
-	A.n == size(v,1) || throw(judiModelingException("shape mismatch"))
+	A.n == size(v,1) || throw(judiModelingException("Shape mismatch: A:$(size(A)), v: $(size(v))"))
 	jo_check_type_match(ADDT,vDT,join(["DDT for *(judiModeling,judiWavefield):",A.name,typeof(A),vDT]," / "))
 	args = (nothing,v.data,nothing,nothing,nothing)
 	V = A.fop(args)
@@ -135,7 +135,7 @@ end
 
 # *(judiModelingAdjoint,judiWavefield)
 function *(A::judiModelingAdjoint{ADDT,ARDT}, v::judiWavefield{vDT}) where {ADDT,ARDT,vDT}
-	A.n == size(v,1) || throw(judiModelingAdjointException("shape mismatch"))
+	A.n == size(v,1) || throw(judiModelingAdjointException("Shape mismatch: A:$(size(A)), v: $(size(v))"))
 	jo_check_type_match(ADDT,vDT,join(["DDT for *(judiModeling,judiWavefield):",A.name,typeof(A),vDT]," / "))
 	args = (nothing,nothing,nothing,v.data,nothing)
 	V = A.fop(args)
@@ -145,7 +145,7 @@ end
 
 # *(judiModeling,judiRHS)
 function *(A::judiModeling{ADDT,ARDT}, v::judiRHS{vDT}) where {ADDT,ARDT,vDT}
-	A.n == size(v,1) || throw(judiModelingException("shape mismatch"))
+	A.n == size(v,1) || throw(judiModelingException("Shape mismatch: A:$(size(A)), v: $(size(v))"))
 	jo_check_type_match(ADDT,vDT,join(["DDT for *(judiModeling,judiRHS):",A.name,typeof(A),vDT]," / "))
 	args = (v.geometry,v.data,nothing,nothing,nothing)
 	V = A.fop(args)
@@ -155,7 +155,7 @@ end
 
 # *(judiModelingAdjoint,judiRHS)
 function *(A::judiModelingAdjoint{ADDT,ARDT}, v::judiRHS{vDT}) where {ADDT,ARDT,vDT}
-	A.n == size(v,1) || throw(judiModelingException("shape mismatch"))
+	A.n == size(v,1) || throw(judiModelingException("Shape mismatch: A:$(size(A)), v: $(size(v))"))
 	jo_check_type_match(ADDT,vDT,join(["DDT for *(judiModeling,judiRHS):",A.name,typeof(A),vDT]," / "))
 	args = (nothing, nothing, v.geometry,v.data,nothing)
 	V = A.fop(args)

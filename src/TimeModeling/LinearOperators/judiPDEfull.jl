@@ -100,7 +100,7 @@ adjoint(A::judiPDEfull{DDT,RDT}) where {DDT,RDT} =
 
 # *(judiPDEfull,vec)
 function *(A::judiPDEfull{ADDT,ARDT}, v::AbstractVector{vDT}) where {ADDT,ARDT,vDT}
-    A.n == size(v,1) || throw(judiPDEfullException("shape mismatch"))
+    A.n == size(v,1) || throw(judiPDEfullException("Shape mismatch: A:$(size(A)), v: $(size(v))"))
     jo_check_type_match(ADDT,vDT,join(["DDT for *(judiPDEfull,judiVector):",A.name,typeof(A),vDT]," / "))
     V = A.fop(v)
     jo_check_type_match(ARDT,eltype(V),join(["RDT from *(judiPDEfull,judiVector):",A.name,typeof(A),eltype(V)]," / "))
@@ -109,7 +109,7 @@ end
 
 # *(judiPDEfull,judiVector)
 function *(A::judiPDEfull{ADDT,ARDT}, v::judiVector{vDT, AT}) where {ADDT, ARDT,vDT, AT}
-    A.n == size(v,1) || throw(judiPDEfullException("shape mismatch"))
+    A.n == size(v,1) || throw(judiPDEfullException("Shape mismatch: A:$(size(A)), v: $(size(v))"))
     if compareGeometry(A.srcGeometry,v.geometry) == false && compareGeometry(A.recGeometry,v.geometry) == false
         throw(judiPDEfullException("geometry mismatch"))
     end

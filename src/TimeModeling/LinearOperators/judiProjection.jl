@@ -85,7 +85,7 @@ adjoint(A::judiProjection{DDT,RDT}) where {DDT,RDT} =
 
 # *(judiProjection,judiVector)
 function *(A::judiProjection{ADDT,ARDT},v::judiVector{vDT, AT}) where {ADDT,ARDT,vDT, AT}
-    A.n == size(v,1) || throw(judiProjectionException("shape mismatch"))
+    A.n == size(v,1) || throw(judiProjectionException("Shape mismatch: A:$(size(A)), v: $(size(v))"))
     compareGeometry(A.geometry,v.geometry) == true || throw(judiProjectionException("geometry mismatch"))
     jo_check_type_match(ADDT,vDT,join(["DDT for *(judiProjection,judiVector):",A.name,typeof(A),vDT]," / "))
     V = judiRHS(A.info,v.geometry,v.data)
@@ -95,7 +95,7 @@ end
 
 # *(judiProjection,vec)
 function *(A::judiProjection{ADDT,ARDT}, v::AbstractVector{vDT}) where {ADDT,ARDT,vDT}
-    A.n == size(v,1) || throw(judiProjectionException("shape mismatch"))
+    A.n == size(v,1) || throw(judiProjectionException("Shape mismatch: A:$(size(A)), v: $(size(v))"))
     jo_check_type_match(ADDT,vDT,join(["DDT for *(judiProjection,judiVector):",A.name,typeof(A),vDT]," / "))
     V = judiRHS(A.info,A.geometry, process_input_data(v, A.geometry, A.info))
     jo_check_type_match(ARDT,eltype(V),join(["RDT from *(judiProjection,judiVector):",A.name,typeof(A),eltype(V)]," / "))
@@ -104,7 +104,7 @@ end
 
 # *(judiProjection, judiModeling)
 function *(A::judiProjection{CDT,ARDT}, B::judiModeling{BDDT,CDT}) where {ARDT,BDDT,CDT}
-    A.n == size(B,1) || throw(judiProjectionException("shape mismatch"))
+    A.n == size(B,1) || throw(judiProjectionException("Shape mismatch: A:$(size(A)), B: $(size(B))"))
     compareInfo(A.info, B.info) == true || throw(judiProjectionException("info mismatch"))
     if typeof(A.geometry) == GeometryOOC
         m = sum(A.geometry.nsamples)
@@ -116,7 +116,7 @@ function *(A::judiProjection{CDT,ARDT}, B::judiModeling{BDDT,CDT}) where {ARDT,B
 end
 
 function *(A::judiProjection{CDT,ARDT}, B::judiModelingAdjoint{BDDT,CDT}) where {ARDT,BDDT,CDT}
-    A.n == size(B,1) || throw(judiProjectionException("shape mismatch"))
+    A.n == size(B,1) || throw(judiProjectionException("Shape mismatch: A:$(size(A)), B: $(size(B))"))
     compareInfo(A.info, B.info) == true || throw(judiProjectionException("info mismatch"))
     if typeof(A.geometry) == GeometryOOC
         m = sum(A.geometry.nsamples)

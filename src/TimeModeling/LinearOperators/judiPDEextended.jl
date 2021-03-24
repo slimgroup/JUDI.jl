@@ -87,7 +87,7 @@ adjoint(A::judiPDEextended{DDT,RDT}) where {DDT,RDT} =
 
 # *(judiPDEextended,judiWeights)
 function *(A::judiPDEextended{ADDT,ARDT},v::judiWeights{vDT}) where {ADDT,ARDT,vDT}
-    A.n == size(v,1) || throw(judiPDEextendedException("shape mismatch"))
+    A.n == size(v,1) || throw(judiPDEextendedException("Shape mismatch: A:$(size(A)), v: $(size(v))"))
     jo_check_type_match(ADDT,vDT,join(["DDT for *(judiPDEextended,judiWeights):",A.name,typeof(A),vDT]," / "))
     V = A.fop(v)
     jo_check_type_match(ARDT,eltype(V),join(["RDT from *(judiPDEextended,judiWeights):",A.name,typeof(A),eltype(V)]," / "))
@@ -96,7 +96,7 @@ end
 
 # *(judiPDEextended,judiVector)
 function *(A::judiPDEextended{ADDT,ARDT},v::judiVector{vDT, AT}) where {ADDT,ARDT,vDT, AT}
-    A.n == size(v,1) || throw(judiPDEextendedException("shape mismatch"))
+    A.n == size(v,1) || throw(judiPDEextendedException("Shape mismatch: A:$(size(A)), v: $(size(v))"))
     jo_check_type_match(ADDT,vDT,join(["DDT for *(judiPDEextended,judiWeights):",A.name,typeof(A),vDT]," / "))
     V = A.fop(v)
     jo_check_type_match(ARDT,eltype(V),join(["RDT from *(judiPDEextended,judiWeights):",A.name,typeof(A),eltype(V)]," / "))
@@ -105,7 +105,7 @@ end
 
 # *(judiPDEextended,vec)
 function *(A::judiPDEextended{ADDT,ARDT},v::AbstractVector{vDT}) where {ADDT,ARDT,vDT}
-    A.n == size(v,1) || throw(judiPDEextendedException("shape mismatch"))
+    A.n == size(v,1) || throw(judiPDEextendedException("Shape mismatch: A:$(size(A)), v: $(size(v))"))
     jo_check_type_match(ADDT,vDT,join(["DDT for *(judiPDEextended,AbstractVector):",A.name,typeof(A),vDT]," / "))
     V = A.fop(v)
     jo_check_type_match(ARDT, eltype(V),join(["RDT from *(judiPDEextended,AbstractVector):",A.name,typeof(A),eltype(V)]," / "))

@@ -139,7 +139,7 @@ adjoint(A::judiPDEadjoint{DDT,RDT}) where {DDT,RDT} =
 
 # *(judiPDE,judiRHS)
 function *(A::judiPDE{ADDT,ARDT},v::judiRHS{vDT}) where {ADDT,ARDT,vDT}
-    A.n == size(v,1) || throw(judiPDEexception("shape mismatch"))
+    A.n == size(v,1) || throw(judiPDEexception("Shape mismatch: A:$(size(A)), v: $(size(v))"))
     jo_check_type_match(ADDT,vDT,join(["DDT for *(judiPDE,judiRHS):",A.name,typeof(A),vDT]," / "))
 	args = (v.geometry, v.data, A.geometry, nothing, nothing)
     V = A.fop(args)
@@ -148,7 +148,7 @@ function *(A::judiPDE{ADDT,ARDT},v::judiRHS{vDT}) where {ADDT,ARDT,vDT}
 end
 
 function *(A::judiPDEadjoint{ADDT,ARDT},v::judiRHS{vDT}) where {ADDT,ARDT,vDT}
-    A.n == size(v,1) || throw(judiPDEadjointException("shape mismatch"))
+    A.n == size(v,1) || throw(judiPDEadjointException("Shape mismatch: A:$(size(A)), v: $(size(v))"))
     jo_check_type_match(ADDT,vDT,join(["DDT for *(judiPDE,judiRHS):",A.name,typeof(A),vDT]," / "))
 	args = (A.geometry,nothing,v.geometry,v.data,nothing)
     V = A.fop(args)
@@ -158,7 +158,7 @@ end
 
 # *(judiPDE,judiWavefield)
 function *(A::judiPDE{ADDT,ARDT},v::judiWavefield{vDT}) where {ADDT,ARDT,vDT}
-	A.n == size(v,1) || throw(judiPDEexception("shape mismatch"))
+	A.n == size(v,1) || throw(judiPDEexception("Shape mismatch: A:$(size(A)), v: $(size(v))"))
 	jo_check_type_match(ADDT,vDT,join(["DDT for *(judiPDE,judiWavefield):",A.name,typeof(A),vDT]," / "))
 	args = (nothing,v.data,A.geometry,nothing,nothing)
 	V = A.fop(args)
@@ -167,7 +167,7 @@ function *(A::judiPDE{ADDT,ARDT},v::judiWavefield{vDT}) where {ADDT,ARDT,vDT}
 end
 
 function *(A::judiPDEadjoint{ADDT,ARDT},v::judiWavefield{vDT}) where {ADDT,ARDT,vDT}
-	A.n == size(v,1) || throw(judiPDEadjointException("shape mismatch"))
+	A.n == size(v,1) || throw(judiPDEadjointException("Shape mismatch: A:$(size(A)), v: $(size(v))"))
 	jo_check_type_match(ADDT,vDT,join(["DDT for *(judiPDE,judiWavefield):",A.name,typeof(A),vDT]," / "))
 	args = (A.geometry,nothing,nothing,v.data,nothing)
 	V = A.fop(args)
@@ -177,30 +177,30 @@ end
 
 # *(judiPDE,judiProjection)
 function *(A::judiPDE{CDT,ARDT},B::judiProjection{BDDT,CDT}) where {ARDT,BDDT,CDT}
-    A.n == size(B,1) || throw(judiPDEexception("shape mismatch"))
+    A.n == size(B,1) || throw(judiPDEexception("Shape mismatch: A:$(size(A)), B: $(size(B))"))
     return judiModeling(A.info,A.model,B.geometry,A.geometry;options=A.options,DDT=CDT,RDT=ARDT)
 end
 
 function *(A::judiPDEadjoint{CDT,ARDT},B::judiProjection{BDDT,CDT}) where {ARDT,BDDT,CDT}
-    A.n == size(B,1) || throw(judiPDEadjointException("shape mismatch"))
+    A.n == size(B,1) || throw(judiPDEadjointException("Shape mismatch: A:$(size(A)), B: $(size(B))"))
     return adjoint(judiModeling(A.info,A.model,A.geometry,B.geometry,options=A.options,DDT=CDT,RDT=ARDT))
 end
 
 # *(judiPDE,judiLRWF)
 function *(A::judiPDE{CDT,ARDT},B::judiLRWF{BDDT,CDT}) where {ARDT,BDDT,CDT}
-    A.n == size(B,1) || throw(judiPDEexception("shape mismatch"))
+    A.n == size(B,1) || throw(judiPDEexception("Shape mismatch: A:$(size(A)), B: $(size(B))"))
     return judiPDEextended(A.info,A.model,B.wavelet,A.geometry;options=A.options,DDT=CDT,RDT=ARDT)
 end
 
 function *(A::judiPDEadjoint{CDT,ARDT},B::judiLRWF{BDDT,CDT}) where {ARDT,BDDT,CDT}
-    A.n == size(B,1) || throw(judiPDEadjointException("shape mismatch"))
+    A.n == size(B,1) || throw(judiPDEadjointException("Shape mismatch: A:$(size(A)), B: $(size(B))"))
     return adjoint(judiPDEextended(A.info,A.model,B.wavelet,A.geometry,options=A.options,DDT=CDT,RDT=ARDT))
 end
 
 #multiplications with judiExtendedSource
 # *(judiPDE,judiExtendedSource)
 function *(A::judiPDE{ADDT,ARDT}, B::judiExtendedSource{vDT}) where {ADDT, ARDT,vDT}
-    A.n == size(B,1) || throw(judiPDEexception("shape mismatch"))
+    A.n == size(B,1) || throw(judiPDEexception("Shape mismatch: A:$(size(A)), B: $(size(B))"))
     jo_check_type_match(ADDT, vDT, join(["DDT for *(judiPDE,judiExtendedSource):",A.name,typeof(A),vDT]," / "))
     F = judiPDEextended(A.info, A.model, B.wavelet, A.geometry; options=A.options,DDT=vDT, RDT=ARDT)
     V = F*B.weights
@@ -210,7 +210,7 @@ end
 
 # *(judiPDEadjoint, judiExtendedSource)
 function *(A::judiPDEadjoint{ADDT,ARDT}, B::judiExtendedSource{vDT}) where {ADDT,ARDT,vDT}
-    A.n == size(B, 1) || throw(judiPDEadjointException("shape mismatch"))
+    A.n == size(B, 1) || throw(judiPDEadjointException("Shape mismatch: A:$(size(A)), B: $(size(B))"))
     jo_check_type_match(ADDT, vDT, join(["DDT for *(judiPDEadjoint,judiExtendedSource):",A.name,typeof(A),vDT]," / "))
     F = adjoint(judiPDEextended(A.info, A.model, B.wavelet, A.geometry; options=A.options,DDT=vDT,RDT=ARDT))
     V = F*B.weights
