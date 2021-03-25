@@ -21,6 +21,7 @@ dt = srcGeometry.dt[1]
 
 @testset "LSRTM gradient test with $(nlayer) layers and tti $(tti) and freesurface $(fs)" begin
 	# Gradient test
+	ftol = (tti && fs) ? 1f-1 : 5f-2
 	h = 5f-2
 	maxiter = 5
 	err1 = zeros(maxiter, 2)
@@ -72,8 +73,8 @@ dt = srcGeometry.dt[1]
 
 		# This is a linearized problem, so the whole expansiaon is O(dm) and
 		# "second order error" should be first order
-		@test isapprox(rate_1, 2f0; rtol=5f-2)
-		@test isapprox(rate_2, 4f0; rtol=5f-2)
+		@test isapprox(rate_1, 2f0; rtol=ftol)
+		@test isapprox(rate_2, 4f0; rtol=ftol)
 	end
 
 	# test that with zero dm we get the same as fwi_objective for residual

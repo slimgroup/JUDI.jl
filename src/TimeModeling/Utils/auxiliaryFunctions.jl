@@ -648,6 +648,7 @@ function process_input_data(input::Array{Float32}, model::Model, info::Info)
 end
 
 process_input_data(input::judiVector, ::Geometry, ::Info) = input.data
+process_input_data(input::judiVector, ::Info) = input.data
 process_input_data(input::judiWeights, ::Model, ::Info) = input.weights
 
 """
