@@ -10,7 +10,11 @@ export JUDIPATH
 JUDIPATH = dirname(pathof(JUDI))
 
 # Dependencies
-using PyCall, JOLI, SegyIO, DSP, Distributed, Pkg, Printf, LinearAlgebra, FFTW, Dierckx
+using Pkg, Printf, LinearAlgebra
+using Distributed
+using DSP, FFTW, Dierckx
+using PyCall
+using JOLI, SegyIO
 
 # Import Base functions to dispatch on JUDI types
 import Base.*, Base./, Base.+, Base.-
@@ -46,7 +50,7 @@ end
 # JUDI time modeling
 include("TimeModeling/TimeModeling.jl")
 
-# Backward compatibility for JUDI
+# # Backward compatibility for JUDI
 module TimeModeling
     using Reexport
     @reexport using ..JUDI

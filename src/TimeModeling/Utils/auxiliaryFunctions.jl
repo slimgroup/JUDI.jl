@@ -740,7 +740,7 @@ vec(x::Int64) = x;
 vec(x::Int32) = x;
 vec(::Nothing) = nothing
 
-SincInterpolation(Y, S, Up) = sinc.( (Up .- S') ./ (S[2] - S[1]) ) * Y
+SincInterpolation(Y::Array{T, 2}, S, Up) where T<:Real = sinc.( (Up .- S') ./ (S[2] - S[1]) ) * Y
 
 subsample(::Nothing, i) = nothing
 subsample(a::Array{Array{T, N}, 1}, i::Int64) where {T, N} = a[i]
