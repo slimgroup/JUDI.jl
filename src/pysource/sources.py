@@ -1,14 +1,10 @@
-import sympy
-
 from cached_property import cached_property
 
-from devito import Dimension
 from devito.types import SparseTimeFunction
-from devito.logger import error
 import numpy as np
 
 
-__all__ = ['PointSource', 'Receiver', 'Shot', 'RickerSource', 'GaborSource', 'TimeAxis']
+__all__ = ['PointSource', 'Receiver', 'RickerSource', 'TimeAxis']
 
 
 class TimeAxis(object):
@@ -97,94 +93,38 @@ class PointSource(SparseTimeFunction):
     initialised `data` array need to be provided.
     """
 
-    def __new__(cls, *args, **kwargs):
-        options = kwargs.get('options', {})
+    @classmethod
+    def __args_setup__(cls, *args, **kwargs):
+        try:
+            kwargs['nt'] = kwargs['ntime']
+        except KeyError:
+            kwargs['nt'] = kwargs.get('time').shape[0]
 
-        key = cls
-        obj = cls._cache_get(key)
-
-        if obj is not None:
-            newobj = sympy.Function.__new__(cls, *args, **options)
-            newobj.__init_cached__(key)
-            return newobj
-
-        p_dim = kwargs.get('dimension', Dimension('p_%s' % kwargs.get("name")))
-        npoint = kwargs.get("npoint")
-        coords = kwargs.get("coordinates")
+        # Either `npoint` or `coordinates` must be provided
+        npoint = kwargs.get('npoint')
         if npoint is None:
-            if coords is None:
+            coordinates = kwargs.get('coordinates', kwargs.get('coordinates_data'))
+            if coordinates is None:
                 raise TypeError("Need either `npoint` or `coordinates`")
-            else:
-                npoint = coords.shape[0]
+            kwargs['npoint'] = coordinates.shape[0]
 
-        grid = kwargs.get("grid")
-        ntime = kwargs.get("ntime")
-        if kwargs.get("data") is None:
-            if ntime is None:
-                error('Either data or ntime are required to'
-                      'initialise source/receiver objects')
-        else:
-            ntime = kwargs.get("ntime") or kwargs.get("data").shape[0]
+        return args, kwargs
 
-        # Create the underlying SparseTimeFunction object
-        kwargs["nt"] = ntime
-        kwargs['npoint'] = npoint
-        obj = SparseTimeFunction.__new__(cls, dimensions=[grid.time_dim, p_dim], **kwargs)
+    def __init_finalize__(self, *args, **kwargs):
+        data = kwargs.pop('data', None)
+
+        kwargs.setdefault('time_order', 2)
+        super(PointSource, self).__init_finalize__(*args, **kwargs)
 
         # If provided, copy initial data into the allocated buffer
-        if kwargs.get("data") is not None:
-            obj.data[:] = kwargs.get("data")
-
-        return obj
+        if data is not None:
+            self.data[:] = data
 
 
 Receiver = PointSource
-Shot = PointSource
 
 
-class WaveletSource(PointSource):
-    """
-    Abstract base class for symbolic objects that encapsulate a set of
-    sources with a pre-defined source signal wavelet.
-    name: Name for the resulting symbol
-    grid: :class:`Grid` object defining the computational domain.
-    f0: Peak frequency for Ricker wavelet in kHz
-    time: Discretized values of time in ms
-    """
-
-    def __new__(cls, *args, **kwargs):
-        options = kwargs.get('options', {})
-
-        key = cls
-        obj = cls._cache_get(key)
-
-        if obj is not None:
-            newobj = sympy.Function.__new__(cls, *args, **options)
-            newobj.__init_cached__(key)
-            return newobj
-
-        time = kwargs.get('time')
-        npoint = kwargs.get('npoint', 1)
-        kwargs['ntime'] = len(time)
-        kwargs['npoint'] = npoint
-        obj = PointSource.__new__(cls, *args, **kwargs)
-
-        obj.time = time
-        obj.f0 = kwargs.get('f0')
-        for p in range(npoint):
-            obj.data[:, p] = obj.wavelet(obj.f0, obj.time)
-        return obj
-
-    def wavelet(self, f0, t):
-        """
-        Defines a wavelet with a peak frequency f0 at time t.
-        f0: Peak frequency in kHz
-        t: Discretized values of time in ms
-        """
-        raise NotImplementedError('Wavelet not defined')
-
-
-class RickerSource(WaveletSource):
+class RickerSource(PointSource):
     """
     Symbolic object that encapsulate a set of sources with a
     pre-defined Ricker wavelet:
@@ -194,35 +134,23 @@ class RickerSource(WaveletSource):
     f0: Peak frequency for Ricker wavelet in kHz
     time: Discretized values of time in ms
     """
+    @classmethod
+    def __args_setup__(cls, *args, **kwargs):
+        kwargs.setdefault('npoint', 1)
 
-    def wavelet(self, f0, t):
-        """
-        Defines a Ricker wavelet with a peak frequency f0 at time t.
-        f0: Peak frequency in kHz
-        t: Discretized values of time in ms
-        """
-        r = (np.pi * f0 * (t - 1./f0))
-        return (1-2.*r**2)*np.exp(-r**2)
+        return super(RickerSource, cls).__args_setup__(*args, **kwargs)
 
+    def __init_finalize__(self, *args, **kwargs):
+        super(RickerSource, self).__init_finalize__(*args, **kwargs)
 
-class GaborSource(WaveletSource):
-    """
-    Symbolic object that encapsulate a set of sources with a
-    pre-defined Gabor wavelet:
-    https://en.wikipedia.org/wiki/Gabor_wavelet
-    name: Name for the resulting symbol
-    grid: :class:`Grid` object defining the computational domain.
-    f0: Peak frequency for Ricker wavelet in kHz
-    time: Discretized values of time in ms
-    """
+        self.f0 = kwargs.get('f0')
+        self.a = kwargs.get('a')
+        self.t0 = kwargs.get('t0')
+        for p in range(kwargs['npoint']):
+            self.data[:, p] = self.wavelet(kwargs.get('time'))
 
-    def wavelet(self, f0, t):
-        """
-        Defines a Gabor wavelet with a peak frequency f0 at time t.
-        f0: Peak frequency in kHz
-        t: Discretized values of time in ms
-        """
-        agauss = 0.5 * f0
-        tcut = 1.5 / agauss
-        s = (t-tcut) * agauss
-        return np.exp(-2*s**2) * np.cos(2 * np.pi * s)
+    def wavelet(self, timev):
+        t0 = self.t0 or 1 / self.f0
+        a = self.a or 1
+        r = (np.pi * self.f0 * (timev - t0))
+        return a * (1-2.*r**2)*np.exp(-r**2)

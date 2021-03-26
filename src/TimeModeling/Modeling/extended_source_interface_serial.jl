@@ -6,7 +6,6 @@ function extended_source_modeling(model_full::Model, srcData, recGeometry, recDa
     # Load full geometry for out-of-core geometry containers
     recGeometry = Geometry(recGeometry)
 
-    # TO DO: limit model to area with sources/receivers
     model = model_full
 
     # Set up Python model structure

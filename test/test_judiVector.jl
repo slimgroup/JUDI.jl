@@ -139,8 +139,10 @@ ftol = 1e-6
     @test all([all(d1.data[i] .== 2f0) for i = 1:d1.nsrc])
     rmul!(d1, 3f0)
     @test all([all(d1.data[i] .== 6f0) for i = 1:d1.nsrc])
+    ldiv!(2f0,d1)
+    @test all([all(d1.data[i] .== 3f0) for i = 1:d1.nsrc])
     rdiv!(d1, 3f0)
-    @test all([all(d1.data[i] .== 2f0) for i = 1:d1.nsrc])
+    @test all([all(d1.data[i] .== 1f0) for i = 1:d1.nsrc])
 
     # vcat
     d_vcat = [d_block; d_block]

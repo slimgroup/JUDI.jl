@@ -7,13 +7,14 @@ function twri_objective(model_full::Model, source::judiVector, dObs::judiVector,
     dObs.geometry = Geometry(dObs.geometry)
     source.geometry = Geometry(source.geometry)
 
-    # for 3D modeling, limit model to area with sources/receivers
-    if options.limit_m == true # only supported for 3D
+    # Limit model to area with sources/receivers
+    if options.limit_m == true
         model = deepcopy(model_full)
         model = limit_model_to_receiver_area(source.geometry, dObs.geometry, model, options.buffer_size)
     else
         model = model_full
     end
+
     # Set up Python model structure 
     modelPy = devito_model(model, options)
     dtComp = get_dt(model; dt=options.dt_comp)
