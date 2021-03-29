@@ -8,7 +8,7 @@
 export judiVector, judiVectorException, subsample, judiVector_to_SeisBlock
 export time_resample, time_resample!, judiTimeInterpolation
 export write_shot_record, get_data, convert_to_array
-
+export meld
 ############################################################
 
 # structure for seismic data as an abstract vector
@@ -510,6 +510,40 @@ will make the simultaneous source made of all the point sources in q
 
 function vcat(a::judiVector{avDT}) where {avDT}
     return vcat([a[i] for i=1:a.nsrc])
+end
+
+function meld(a::judiVector{avDT},b::judiVector{bvDT}) where {avDT, bvDT}
+    typeof(a.geometry) == typeof(b.geometry) || throw(judiVectorException("Geometry type mismatch"))
+    m    = a.m
+    n    = 1
+    nsrc = a.nsrc
+
+    data = Array{Array}(undef, nsrc)
+    dt = Array{Any}(undef, nsrc)
+    nt = Array{Any}(undef, nsrc)
+    t = Array{Any}(undef, nsrc)
+
+    xloc = Array{Any}(undef, nsrc)
+    yloc = Array{Any}(undef, nsrc)
+    zloc = Array{Any}(undef, nsrc)
+
+    # Merge data sets and geometries
+    for j=1:nsrc
+        data[j] = hcat(a.data[j], b.data[j])
+        
+        xloc[j] = vcat(a[j].geometry.xloc[j], b[j].geometry.xloc[j])
+        yloc[j] = vcat(a[j].geometry.yloc[j], b[j].geometry.yloc[j])
+        zloc[j] = vcat(a[j].geometry.zloc[j], b[j].geometry.zloc[j])
+        
+        dt[j]   = a.geometry.dt[j]
+        nt[j]   = a.geometry.nt[j]
+        t[j]    = a.geometry.t[j]
+    end
+
+    geometry = Geometry(xloc,yloc,zloc,dt,nt,t)
+   
+    nvDT = promote_type(avDT,bvDT)
+    return judiVector{nvDT}(a.name,m,n,nsrc,geometry,data)
 end
 
 # dot product

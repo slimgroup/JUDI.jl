@@ -4,11 +4,12 @@ function devito_interface(model::Model, op, args...)
     options = args[end]
     if options.mpi > 1
         argout = mpi_devito_interface(model, op, args...)
+        println("argout final size is")
+        println(size(argout))
         return argout
     else
         # Set up Python model structure
         modelPy = devito_model(model, options)
-        update_m(modelPy, model.m, dims)
         if op=='J' && mode == 1
             update_dm(modelPy, reshape(dm, model.n), dims)
         end
@@ -33,6 +34,10 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Geometry
     res = pycall(ac."forward_rec", PyObject, modelPy, src_coords, qIn, rec_coords, space_order=options.space_order)
     dOut = get(res, 0)
     coords = get(res, 1)
+
+    println("hello here with this many coords")
+    println(size(coords[:, 1]))
+
     xrec = coords[:, 1]
     zrec = coords[:, end]
     size(coords,2) == 3 ? yrec = coords[:, 2] : yrec = zeros(Float32, size(xrec))

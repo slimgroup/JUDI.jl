@@ -55,6 +55,7 @@ function mpi_devito_interface(model, op, args...)
         #update_m(modelPy, $model.m, $dims)
         # Run devito interface
         argout = devito_interface(modelPy, $model, $(args...))
+        
         # Wait for it to finish
         MPI.Barrier(comm)
         # GAther results
@@ -65,7 +66,7 @@ function mpi_devito_interface(model, op, args...)
         if MPI.Comm_rank(comm) == 0
             for i=1:(MPI.Comm_size(comm)-1)
                 out, status = MPI.recv(i, i, comm)
-                vcat(argout, out)
+                global argout = meld(argout, out)
             end
         end
         MPI.Barrier(comm)
