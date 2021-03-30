@@ -43,7 +43,7 @@ def src_rec(model, u, src_coords=None, rec_coords=None, wavelet=None, fw=True, n
         if isinstance(wavelet, PointSource):
             src = wavelet
         else:
-            src = PointSource(name="src%s" % namef, grid=model.grid, ntime=nt,
+            src = DipoleSource(name="src%s" % namef, grid=model.grid, ntime=nt,
                               coordinates=src_coords)
             src.data[:] = wavelet[:] if wavelet is not None else 0.
         u_n = as_tuple(u)[0].forward if fw else as_tuple(u)[0].backward

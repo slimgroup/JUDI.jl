@@ -17,6 +17,7 @@ mutable struct GeometryIC{T} <: Geometry
     dt::Array{T,1}
     nt::Array{Integer,1}
     t::Array{T,1}
+    type::Symbol
 end
 
 # Out-of-core geometry structure, contains look-up table instead of coordinates
@@ -28,6 +29,7 @@ mutable struct GeometryOOC{T} <: Geometry
     nsamples::Array{Integer,1}
     key::String
     segy_depth_key::String
+    type::Symbol
 end
 
 ################################################ Constructors ####################################################################
@@ -108,21 +110,21 @@ geometry object `GeometryOOC` without the source/receiver coordinates, but a loo
     src_geometry = Geometry(seis_container; key="source", segy_depth_key="SourceDepth")
 
 """
-Geometry(xloc::CoordT, yloc::CoordT, zloc::CoordT, dt::Array{T,1}, nt::Array{Integer,1}, t::Array{T,1}) where T = GeometryIC{T}(xloc,yloc,zloc,dt,nt,t)
+Geometry(xloc::CoordT, yloc::CoordT, zloc::CoordT, dt::Array{T,1}, nt::Array{Integer,1}, t::Array{T,1}; type=:monopole) where T = GeometryIC{T}(xloc,yloc,zloc,dt,nt,t, type)
 
 # Fallback constructors for non standard input types 
-function Geometry(xloc, yloc, zloc; dt=[], t=[], nsrc=nothing)
+function Geometry(xloc, yloc, zloc; dt=[], t=[], nsrc=nothing, type=:monopole)
     if any(typeof(x) <: StepRangeLen for x=[xloc, yloc, zloc])
         args = [typeof(x) <: StepRangeLen ? collect(x) : x for x=[xloc, yloc, zloc]]
-        isnothing(nsrc) && (return Geometry(args...; dt=dt, t=t))
-        return Geometry(args...; dt=dt, t=t, nsrc=nsrc)
+        isnothing(nsrc) && (return Geometry(args...; dt=dt, t=t, type=type))
+        return Geometry(args...; dt=dt, t=t, nsrc=nsrc, type=type)
     end
-    isnothing(nsrc) && (return Geometry(tof32(xloc), tof32(yloc), tof32(zloc); dt=dt, t=t))
-    return Geometry(tof32(xloc), tof32(yloc), tof32(zloc); dt=dt, t=t, nsrc=nsrc)
+    isnothing(nsrc) && (return Geometry(tof32(xloc), tof32(yloc), tof32(zloc); dt=dt, t=t, type=type))
+    return Geometry(tof32(xloc), tof32(yloc), tof32(zloc); dt=dt, t=t, nsrc=nsrc, type=type)
 end
 
 # Constructor if nt is not passed
-function Geometry(xloc::Array{Array{T, 1},1}, yloc::CoordT, zloc::Array{Array{T, 1},1};dt=[],t=[]) where T
+function Geometry(xloc::Array{Array{T, 1},1}, yloc::CoordT, zloc::Array{Array{T, 1},1};dt=[],t=[], type=:monopole) where T
     nsrc = length(xloc)
     # Check if single dt was passed
     dtCell = typeof(t) <: Real ? [T(dt) for j=1:nsrc] : T.(dt)
@@ -131,25 +133,25 @@ function Geometry(xloc::Array{Array{T, 1},1}, yloc::CoordT, zloc::Array{Array{T,
 
     # Calculate number of time steps
     ntCell = typeof(t) <: Real ? [Int(t ÷ dt) + 1 for j=1:nsrc] : Int(tCell .÷ dtCell) .+ 1
-    return GeometryIC{T}(xloc, yloc, zloc, dtCell, ntCell, tCell)
+    return GeometryIC{T}(xloc, yloc, zloc, dtCell, ntCell, tCell, type)
 end
 
 # Constructor if coordinates are not passed as a cell arrays
-function Geometry(xloc::Array{T, 1}, yloc::CoordT, zloc::Array{T, 1}; dt=[], t=[], nsrc::Integer=1) where T
+function Geometry(xloc::Array{T, 1}, yloc::CoordT, zloc::Array{T, 1}; dt=[], t=[], nsrc::Integer=1, type=:monopole) where T
     xlocCell = [xloc for j=1:nsrc]
     ylocCell = [yloc for j=1:nsrc]
     zlocCell = [zloc for j=1:nsrc]
     dtCell = [T(dt) for j=1:nsrc]
     ntCell = [Int(t÷dt)+1 for j=1:nsrc]
     tCell = [T(t) for j=1:nsrc]
-    return GeometryIC{T}(xlocCell, ylocCell, zlocCell, dtCell, ntCell, tCell)
+    return GeometryIC{T}(xlocCell, ylocCell, zlocCell, dtCell, ntCell, tCell, type)
 end
 
 
 ################################################ Constructors from SEGY data  ####################################################
 
 # Set up source geometry object from in-core data container
-function Geometry(data::SegyIO.SeisBlock; key="source", segy_depth_key="")
+function Geometry(data::SegyIO.SeisBlock; key="source", segy_depth_key="", type=:monopole)
     src = get_header(data,"FieldRecord")
     nsrc = length(unique(src))
     if key=="source"
@@ -191,11 +193,11 @@ function Geometry(data::SegyIO.SeisBlock; key="source", segy_depth_key="")
         nt[j] = convert(Integer,nt_full)
         t[j] =  Float32((nt[j]-1)*dt[j])
     end
-    return GeometryIC{Float32}(xloc,yloc,zloc,dt,nt,t)
+    return GeometryIC{Float32}(xloc,yloc,zloc,dt,nt,t,type)
 end
 
 # Set up geometry summary from out-of-core data container
-function Geometry(data::SegyIO.SeisCon; key="source", segy_depth_key="")
+function Geometry(data::SegyIO.SeisCon; key="source", segy_depth_key="", type=:monopole)
 
     if key=="source"
         isempty(segy_depth_key) && (segy_depth_key="SourceSurfaceElevation")
@@ -219,11 +221,11 @@ function Geometry(data::SegyIO.SeisCon; key="source", segy_depth_key="")
         t[j] = (nt[j]-1)*dt[j]
         key=="source" ? nsamples[j] = data.ns : nsamples[j] = Int((data.blocks[j].endbyte - data.blocks[j].startbyte)/(240 + data.ns*4)*data.ns)
     end
-    return  GeometryOOC{Float32}(container,dt,nt,t,nsamples,key,segy_depth_key)
+    return  GeometryOOC{Float32}(container,dt,nt,t,nsamples,key,segy_depth_key,type)
 end
 
 # Set up geometry summary from out-of-core data container passed as cell array
-function Geometry(data::Array{SegyIO.SeisCon,1}; key="source", segy_depth_key="")
+function Geometry(data::Array{SegyIO.SeisCon,1}; key="source", segy_depth_key="", type=:monopole)
 
     if key=="source"
         isempty(segy_depth_key) && (segy_depth_key="SourceSurfaceElevation")
@@ -244,7 +246,7 @@ function Geometry(data::Array{SegyIO.SeisCon,1}; key="source", segy_depth_key=""
         t[j] = (nt[j]-1)*dt[j]
         key=="source" ? nsamples[j] = data[j].ns : nsamples[j] = Int((data[j].blocks[1].endbyte - data[j].blocks[1].startbyte)/(240 + data[j].ns*4)*data[j].ns)
     end
-    return  GeometryOOC{Float32}(container,dt,nt,t,nsamples,key,segy_depth_key)
+    return  GeometryOOC{Float32}(container,dt,nt,t,nsamples,key,segy_depth_key, type)
 end
 
 # Load geometry from out-of-core Geometry container
@@ -282,7 +284,7 @@ function Geometry(geometry::GeometryOOC)
         nt[j] = convert(Integer, get_header(header, params[5])[1])
         t[j] =  (nt[j]-1)*dt[j]
     end
-    return  GeometryIC(xloc,yloc,zloc,dt,nt,t)
+    return  GeometryIC(xloc,yloc,zloc,dt,nt,t,geometry.type)
 end
 
 Geometry(geometry::GeometryIC) = geometry
@@ -294,16 +296,16 @@ Geometry(::Nothing) = nothing
 function subsample(geometry::GeometryIC,srcnum)
     if length(srcnum)==1
         geometry = Geometry(geometry.xloc[srcnum], geometry.yloc[srcnum], geometry.zloc[srcnum];
-                            dt=geometry.dt[srcnum],t=geometry.t[srcnum],nsrc=1)
+                            dt=geometry.dt[srcnum],t=geometry.t[srcnum],nsrc=1, type=geometry.type)
     else
         geometry = Geometry(geometry.xloc[srcnum], geometry.yloc[srcnum], geometry.zloc[srcnum],
-                            geometry.dt[srcnum], geometry.nt[srcnum], geometry.t[srcnum])
+                            geometry.dt[srcnum], geometry.nt[srcnum], geometry.t[srcnum]; type=geometry.type)
     end
     return geometry
 end
 
 # Subsample out-of-core geometry structure
-subsample(geometry::GeometryOOC, srcnum) = Geometry(geometry.container[srcnum]; key=geometry.key, segy_depth_key=geometry.segy_depth_key)
+subsample(geometry::GeometryOOC, srcnum) = Geometry(geometry.container[srcnum]; key=geometry.key, segy_depth_key=geometry.segy_depth_key, type=geometry.type)
 
 # Compare if geometries match
 function compareGeometry(geometry_A::Geometry, geometry_B::Geometry)
