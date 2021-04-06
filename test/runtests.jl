@@ -6,8 +6,9 @@
 # Mathias Louboutin, mlouboutin3@gatech.edu
 # Updated July 2020
 
-using JUDI, ArgParse, Test
-using SegyIO, LinearAlgebra, Printf, Distributed, JOLI
+using JUDI
+using ArgParse, Test, Printf
+using SegyIO, LinearAlgebra, Distributed, JOLI
 
 const GROUP = get(ENV, "GROUP", "JUDI")
 

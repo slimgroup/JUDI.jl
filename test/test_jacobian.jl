@@ -31,7 +31,7 @@ m0 = model0.m
     Ps = judiProjection(info, srcGeometry)
     J = judiJacobian(Pr*F0*adjoint(Ps), q)
 
-    # Nonlinear modeling
+    # Linear modeling
     dobs = Pr*F0*Ps'*q
     dD = J*dm
 

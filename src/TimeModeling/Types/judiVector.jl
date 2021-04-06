@@ -7,7 +7,7 @@
 
 export judiVector, judiVectorException, subsample, judiVector_to_SeisBlock
 export time_resample, time_resample!, judiTimeInterpolation
-export write_shot_record, get_data, convert_to_array
+export write_shot_record, get_data, convert_to_array, rebuild_jv
 
 ############################################################
 
@@ -728,3 +728,14 @@ mul!(x::judiVector, F::Union{joAbstractLinearOperator, joLinearFunction}, y::jud
 mul!(x::judiVector, F::Union{joAbstractLinearOperator, joLinearFunction}, y::judiVector) = A_mul_B!(x, F, y)
 mul!(x::Union{Array, PhysicalParameter}, J::Union{joAbstractLinearOperator, joLinearFunction}, y::judiVector) = A_mul_B!(x, J, y)
 mul!(x::judiVector, J::Union{joAbstractLinearOperator, joLinearFunction}, y::Union{Array, PhysicalParameter}) = A_mul_B!(x, J, y)
+
+# Rebuild for backward compatinility
+convgeom(x) = GeometryIC{Float32}([getfield(x.geometry, s) for s=fieldnames(GeometryIC)]...)
+convdata(x) = convert(Array{Array{Float32, 2}, 1}, x.data)
+
+"""
+    reuild_jv(v)
+rebuild a judiVector from previous version type or JLD2 reconstructed type
+"""
+rebuild_jv(v::judiVector{T, AT}) where {T, AT} = v
+rebuild_jv(v) = judiVector(convgeom(v), convdata(v))

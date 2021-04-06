@@ -10,7 +10,7 @@ export JUDIPATH
 JUDIPATH = dirname(pathof(JUDI))
 
 # Dependencies
-using Pkg, Printf, LinearAlgebra
+using LinearAlgebra
 using Distributed
 using DSP, FFTW, Dierckx
 using PyCall
