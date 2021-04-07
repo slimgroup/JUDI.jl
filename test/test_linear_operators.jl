@@ -134,7 +134,8 @@ end
 
     @test isequal(typeof(J), judiJacobian{Float32, Float32})
     @test isequal(J.recGeometry, rec_geometry)
-    @test isequal(J.srcGeometry, src_geometry)
+    @test isequal(J.source.geometry, src_geometry)
+    @test all(isequal(J.source.data[i], wavelet) for i=1:nsrc)
     @test isequal(size(J)[2], prod(model.n))
     @test test_transpose(J)
 

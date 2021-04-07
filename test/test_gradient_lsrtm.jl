@@ -13,7 +13,7 @@ tti = parsed_args["tti"]
 fs =  parsed_args["fs"]
 
 ### Model
-model, model0, dm = setup_model(parsed_args["tti"], 4)
+model, model0, dm = setup_model(tti, 4)
 q, srcGeometry, recGeometry, info = setup_geom(model)
 dt = srcGeometry.dt[1]
 
@@ -21,14 +21,15 @@ dt = srcGeometry.dt[1]
 
 @testset "LSRTM gradient test with $(nlayer) layers and tti $(tti) and freesurface $(fs)" begin
 	# Gradient test
-	h = 5f-1
+	ftol = (tti && fs) ? 1f-1 : 5f-2
+	h = 5f-2
 	maxiter = 5
 	err1 = zeros(maxiter, 2)
 	err2 = zeros(maxiter, 2)
 	h_all = zeros(maxiter)
 
 	# Observed data
-	opt = Options(sum_padding=true, free_surface=parsed_args["fs"])
+	opt = Options(sum_padding=true, free_surface=fs)
 	F = judiModeling(info, model, srcGeometry, recGeometry; options=opt)
 	F0 = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
 	J = judiJacobian(F0, q)
@@ -39,7 +40,7 @@ dt = srcGeometry.dt[1]
 	Jm01, grad1 = lsrtm_objective(model0, q, d, dm; options=opt, nlind=true)
 
 	# Perturbation
-	dmp = (.5f0 .+ rand(Float32, dm.n)) .* dm
+	dmp = 2f0*circshift(dm, 10)
 	dJ = dot(grad, dmp)
 	dJ1 = dot(grad1, dmp)
 
@@ -72,8 +73,8 @@ dt = srcGeometry.dt[1]
 
 		# This is a linearized problem, so the whole expansiaon is O(dm) and
 		# "second order error" should be first order
-		@test isapprox(rate_1, 2f0; rtol=5f-2)
-		@test isapprox(rate_2, 4f0; rtol=5f-2)
+		@test isapprox(rate_1, 2f0; rtol=ftol)
+		@test isapprox(rate_2, 4f0; rtol=ftol)
 	end
 
 	# test that with zero dm we get the same as fwi_objective for residual

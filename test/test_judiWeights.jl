@@ -29,14 +29,14 @@ ftol = 1f-6
     w_cell = judiWeights(convertToCell([randn(Float32,weight_size_x,weight_size_y) for i = 1:nsrc]))
 
     @test isequal(w_cell.nsrc, nsrc)
-    @test isequal(typeof(w_cell.weights), Array{Any,1})
+    @test isequal(typeof(w_cell.weights), Array{Array{Float32, 2},1})
     @test isequal(size(w_cell), (weight_size_x*weight_size_y*nsrc, 1))
     @test isfinite(w_cell)
     
     w_multi = judiWeights(randn(Float64,weight_size_x,weight_size_y); nsrc=3)
 
     @test isequal(w_multi.nsrc, 3)
-    @test isequal(typeof(w_multi.weights), Array{Array,1})
+    @test isequal(typeof(w_multi.weights), Array{Array{Float32, 2},1})
     @test isequal(size(w_multi), (weight_size_x*weight_size_y*3, 1))
     @test isfinite(w_multi)
     @test isapprox(w_multi[1],w_multi[2])

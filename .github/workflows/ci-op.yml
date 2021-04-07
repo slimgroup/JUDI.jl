@@ -42,6 +42,10 @@ jobs:
             op: "ISO_OP_FS"
             omp: 2
 
+          - os: ubuntu-latest
+            version: '1.6'
+            op: "ISO_OP"
+            omp: 2
 
     steps:
       - name: Checkout JUDI
