@@ -9,7 +9,7 @@ except ImportError:
 
 from devito.exceptions import InvalidOperator
 from devito.tools import as_tuple
-from devito import configuration
+
 
 # Weighting
 def weight_fun(w_fun, model, src_coords):

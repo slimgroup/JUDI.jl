@@ -17,6 +17,30 @@ You can find an FAQ with answers to issues at [FAQ](https://github.com/slimgroup
 
 You can find installation instruction in our Wiki at [Installation](https://github.com/slimgroup/JUDI.jl/wiki/Installation)
 
+## GPU
+
+JUDI supports the computation of the wave equation on GPU via [Devito](https://www.devitoproject.org)'s GPU offloading support.
+
+**NOTE**: Only the wave equation part will be computed on GPU, the julia arrays will still be CPU arrays and `CUDA.jl` is not supported.
+
+### Installation
+
+To enable gpu support in JUDI, you will need to install one of [Devito](https://www.devitoproject.org)'s supported offloading compilers. We strongly recommend checking the [Wiki](https://github.com/devitocodes/devito/wiki) for installations steps and to reach out tp the Devito community for GPU compiler realted issues.
+
+- [x] `nvc/pgcc`. This is recommended and the simplest installation. You can install the compiler following Nvidia's intallation instruction at [HPC-sdk](https://developer.nvidia.com/hpc-sdk)
+- [ ] `aompcc`. This is the AMD compiler that is necessary for running on AMD GPUs. This installation is not tested with JUDI and we recommend to reach out to Devito's team for installation guidelines.
+- [ ] `openmp5/clang`. This installation requires the compilation from source `openmp`, `clang` and `llvm` to isntall the latest version of `openmp5` enabling gpu offloading. You can find instructions on this installation in Devito's [Wiki](https://github.com/devitocodes/devito/wiki)
+
+### Setup
+
+The only required setup for GPU support are the environment variables for [Devito](https://www.devitoproject.org). For the currently supported `nvc+openacc` setup these are:
+
+```
+export DEVITO_LANGUAGE=openacc
+export DEVITO_ARCH=nvc
+export DEVITO_PLATFORM=nvidiaX
+```
+
 ## Running with Docker
 
 If you do not want to install JUDI, you can run JUDI as a docker image. The first possibility is to run the docker container as a Jupyter notebook:
