@@ -51,7 +51,7 @@ Pr = judiProjection(info, recGeometry)
 F = judiModeling(info, model; options=opt)
 
 # Extended source weights
-weights = Array{Array}(undef, nsrc)
+weights = Array{Array{Float32,2}}(undef, nsrc)
 for j=1:nsrc
     weights[j] = randn(Float32, model.n)
 end
