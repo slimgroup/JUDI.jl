@@ -76,8 +76,9 @@ fs =  parsed_args["fs"]
 
         mul!(dobs_out, J, dm)
         mul!(dobs, J, dm.data)
-        @test isapprox(dobs_out, J*dm)
-        @test isapprox(dobs_out, dobs)
+        dlin = J*dm
+        @test isapprox(dobs_out, dlin; rtol=ftol)
+        @test isapprox(dobs_out, dobs; rtol=ftol)
         # JUDI precon make sure it runs
         F = judiFilter(recGeometry, .002, .030)
         Md = judiMarineTopmute2D(0, recGeometry)

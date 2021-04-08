@@ -31,12 +31,12 @@ m0 = model0.m
     Ps = judiProjection(info, srcGeometry)
     J = judiJacobian(Pr*F0*adjoint(Ps), q)
 
-    # Nonlinear modeling
+    # Linear modeling
     dobs = Pr*F0*Ps'*q
     dD = J*dm
 
     @test norm(J*(0f0.*dm)) == 0
-    @test isapprox(dD, J*vec(dm.data))
+    @test isapprox(dD, J*vec(dm.data); rtol=1f-6)
 
     # Jacobian test
     maxiter = 6

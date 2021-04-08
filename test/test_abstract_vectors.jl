@@ -64,14 +64,14 @@
     # get index
     rhs_sub = rhs[1]
     @test isequal(rhs_sub.info.nsrc, 1)
-    @test isequal(typeof(rhs_sub.geometry), GeometryIC)
+    @test isequal(typeof(rhs_sub.geometry), GeometryIC{Float32})
     @test isequal(typeof(rhs.data), Array{Array, 1})
     @test isequal(length(rhs_sub), Int(length(rhs)/nsrc))
 
     inds = nsrc > 1 ? (1:nsrc) : 1
     rhs_sub = rhs[inds]
     @test isequal(rhs_sub.info.nsrc, nsrc)
-    @test isequal(typeof(rhs_sub.geometry), GeometryIC)
+    @test isequal(typeof(rhs_sub.geometry), GeometryIC{Float32})
     @test isequal(typeof(rhs.data), Array{Array, 1})
     @test isequal(length(rhs_sub), length(rhs))
 

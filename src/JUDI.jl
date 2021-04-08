@@ -10,7 +10,11 @@ export JUDIPATH
 JUDIPATH = dirname(pathof(JUDI))
 
 # Dependencies
-using PyCall, JOLI, SegyIO, DSP, Distributed, Pkg, Printf, LinearAlgebra, FFTW, Dierckx
+using LinearAlgebra
+using Distributed
+using DSP, FFTW, Dierckx
+using PyCall
+using JOLI, SegyIO
 
 # Import Base functions to dispatch on JUDI types
 import Base.*, Base./, Base.+, Base.-
@@ -27,19 +31,31 @@ import Base.promote_shape, Base.diff, Base.cumsum, Base.cumsum!
 # Import Linear Lagebra functions to dispatch on JUDI types
 import LinearAlgebra.transpose, LinearAlgebra.conj, LinearAlgebra.vcat, LinearAlgebra.adjoint
 import LinearAlgebra.vec, LinearAlgebra.dot, LinearAlgebra.norm, LinearAlgebra.abs
-import LinearAlgebra.rmul!, LinearAlgebra.lmul!, LinearAlgebra.rdiv!, LinearAlgebra.ldiv!, LinearAlgebra.mul!, Base.isfinite
+import LinearAlgebra.rmul!, LinearAlgebra.lmul!, LinearAlgebra.rdiv!, LinearAlgebra.ldiv!
+import LinearAlgebra.mul!, Base.isfinite
 
 # Import pycall array to python for easy plotting
 import PyCall.array2py
 
+# Set python paths
+const pm = PyNULL()
+const ac = PyNULL()
+
+function __init__()
+    pushfirst!(PyVector(pyimport("sys")."path"), joinpath(JUDIPATH, "pysource"))
+    copy!(pm, pyimport("models"))
+    copy!(ac, pyimport("interface"))
+end
+
 # JUDI time modeling
 include("TimeModeling/TimeModeling.jl")
 
-# Backward compatibility for JUDI
+# # Backward compatibility for JUDI
 module TimeModeling
     using Reexport
     @reexport using ..JUDI
     Base.@warn "JUDI.TimeModeling is deprecated, use `using JUDI` instead"
 end
+
 
 end

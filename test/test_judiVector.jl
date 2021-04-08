@@ -7,13 +7,6 @@
 
 datapath = joinpath(dirname(pathof(JUDI)))*"/../data/"
 
-function example_rec_geometry(; nsrc=2, nrec=120)
-    xrec = range(50f0, stop=1150f0, length=nrec)
-    yrec = 0f0
-    zrec = range(50f0, stop=50f0, length=nrec)
-    return Geometry(xrec, yrec, zrec; dt=4f0, t=1000f0, nsrc=nsrc)
-end
-
 # number of sources/receivers
 nrec = 120
 ns = 251
@@ -29,24 +22,25 @@ ftol = 1e-6
     rec_geometry = example_rec_geometry(nsrc=nsrc, nrec=nrec)
     data = randn(Float32, ns, nrec)
     d_obs = judiVector(rec_geometry, data)
+    @test typeof(d_obs) == judiVector{Float32, Array{Float32, 2}}
     @test isequal(process_input_data(d_obs, rec_geometry, info), d_obs.data)
 
     @test isequal(d_obs.nsrc, nsrc)
-    @test isequal(typeof(d_obs.data), Array{Array, 1})
-    @test isequal(typeof(d_obs.geometry), GeometryIC)
+    @test isequal(typeof(d_obs.data), Array{Array{Float32, 2}, 1})
+    @test isequal(typeof(d_obs.geometry), GeometryIC{Float32})
     @test iszero(norm(d_obs.data[1] - d_obs.data[end]))
     @test isequal(size(d_obs), dsize)
 
     # set up judiVector from cell array
-    data = Array{Array}(undef, nsrc)
+    data = Array{Array{Float32, 2}, 1}(undef, nsrc)
     for j=1:nsrc
         data[j] = randn(Float32, ns, nrec)
     end
     d_obs =  judiVector(rec_geometry, data)
 
     @test isequal(d_obs.nsrc, nsrc)
-    @test isequal(typeof(d_obs.data), Array{Array, 1})
-    @test isequal(typeof(d_obs.geometry), GeometryIC)
+    @test isequal(typeof(d_obs.data), Array{Array{Float32, 2}, 1})
+    @test isequal(typeof(d_obs.geometry), GeometryIC{Float32})
     @test iszero(norm(d_obs.data - d_obs.data))
     @test isequal(size(d_obs), dsize)
     @test isapprox(convert_to_array(d_obs), vcat([vec(d) for d in data]...); rtol=ftol)
@@ -57,8 +51,8 @@ ftol = 1e-6
     dsize = (prod(size(block.data)), 1)
 
     @test isequal(d_block.nsrc, nsrc)
-    @test isequal(typeof(d_block.data), Array{Array, 1})
-    @test isequal(typeof(d_block.geometry), GeometryIC)
+    @test isequal(typeof(d_block.data), Array{Array{Float32, 2}, 1})
+    @test isequal(typeof(d_block.geometry), GeometryIC{Float32})
     @test isequal(size(d_block), dsize)
 
 
@@ -67,8 +61,8 @@ ftol = 1e-6
     d_block = judiVector(rec_geometry, block)
 
     @test isequal(d_block.nsrc, nsrc)
-    @test isequal(typeof(d_block.data), Array{Array, 1})
-    @test isequal(typeof(d_block.geometry), GeometryIC)
+    @test isequal(typeof(d_block.data), Array{Array{Float32, 2}, 1})
+    @test isequal(typeof(d_block.geometry), GeometryIC{Float32})
     @test isequal(rec_geometry, d_block.geometry)
     @test isequal(size(d_block), dsize)
 
@@ -76,9 +70,10 @@ ftol = 1e-6
     container = segy_scan(datapath, "unit_test_shot_records_$(nsrc)", ["GroupX", "GroupY", "RecGroupElevation", "SourceSurfaceElevation", "dt"])
     d_cont = judiVector(container; segy_depth_key="RecGroupElevation")
 
+    @test typeof(d_cont) == judiVector{Float32, SeisCon}
     @test isequal(d_cont.nsrc, nsrc)
     @test isequal(typeof(d_cont.data), Array{SegyIO.SeisCon, 1})
-    @test isequal(typeof(d_cont.geometry), GeometryOOC)
+    @test isequal(typeof(d_cont.geometry), GeometryOOC{Float32})
     @test isequal(size(d_cont), dsize)
 
     # contructor for single out-of-core data container and given geometry
@@ -86,7 +81,7 @@ ftol = 1e-6
 
     @test isequal(d_cont.nsrc, nsrc)
     @test isequal(typeof(d_cont.data), Array{SegyIO.SeisCon, 1})
-    @test isequal(typeof(d_cont.geometry), GeometryIC)
+    @test isequal(typeof(d_cont.geometry), GeometryIC{Float32})
     @test isequal(rec_geometry, d_cont.geometry)
     @test isequal(size(d_cont), dsize)
 
@@ -99,7 +94,7 @@ ftol = 1e-6
 
     @test isequal(d_cont.nsrc, nsrc)
     @test isequal(typeof(d_cont.data), Array{SegyIO.SeisCon, 1})
-    @test isequal(typeof(d_cont.geometry), GeometryOOC)
+    @test isequal(typeof(d_cont.geometry), GeometryOOC{Float32})
     @test isequal(size(d_cont), dsize)
 
     # contructor for out-of-core data container from cell array of containers and given geometry
@@ -107,7 +102,7 @@ ftol = 1e-6
 
     @test isequal(d_cont.nsrc, nsrc)
     @test isequal(typeof(d_cont.data), Array{SegyIO.SeisCon, 1})
-    @test isequal(typeof(d_cont.geometry), GeometryIC)
+    @test isequal(typeof(d_cont.geometry), GeometryIC{Float32})
     @test isequal(rec_geometry, d_cont.geometry)
     @test isequal(size(d_cont), dsize)
 
@@ -135,7 +130,7 @@ ftol = 1e-6
     @test iszero(norm(d_block - (d_block + d_block)/2))
 
     # lmul!, rmul!, ldiv!, rdiv!
-    data_ones = Array{Array}(undef, nsrc)
+    data_ones = Array{Array{Float32, 2}, 1}(undef, nsrc)
     for j=1:nsrc
         data_ones[j] = ones(Float32, ns, nrec)
     end
@@ -181,24 +176,24 @@ ftol = 1e-6
     # subsamling
     d_block_sub = d_block[1]
     @test isequal(d_block_sub.nsrc, 1)
-    @test isequal(typeof(d_block_sub.geometry), GeometryIC)
-    @test isequal(typeof(d_block_sub.data), Array{Array, 1})
+    @test isequal(typeof(d_block_sub.geometry), GeometryIC{Float32})
+    @test isequal(typeof(d_block_sub.data), Array{Array{Float32, 2}, 1})
 
     inds = nsrc > 1 ? (1:nsrc) : 1
     d_block_sub = d_block[inds]
     @test isequal(d_block_sub.nsrc, nsrc)
-    @test isequal(typeof(d_block_sub.geometry), GeometryIC)
-    @test isequal(typeof(d_block_sub.data), Array{Array, 1})
+    @test isequal(typeof(d_block_sub.geometry), GeometryIC{Float32})
+    @test isequal(typeof(d_block_sub.data), Array{Array{Float32, 2}, 1})
 
     d_cont =  judiVector(container_cell; segy_depth_key="RecGroupElevation")
     d_cont_sub = d_cont[1]
     @test isequal(d_cont_sub.nsrc, 1)
-    @test isequal(typeof(d_cont_sub.geometry), GeometryOOC)
+    @test isequal(typeof(d_cont_sub.geometry), GeometryOOC{Float32})
     @test isequal(typeof(d_cont_sub.data), Array{SegyIO.SeisCon, 1})
 
     d_cont_sub = d_cont[inds]
     @test isequal(d_cont_sub.nsrc, nsrc)
-    @test isequal(typeof(d_cont_sub.geometry), GeometryOOC)
+    @test isequal(typeof(d_cont_sub.geometry), GeometryOOC{Float32})
     @test isequal(typeof(d_cont_sub.data), Array{SegyIO.SeisCon, 1})
 
     # Conversion to SegyIO.Block
@@ -268,7 +263,7 @@ ftol = 1e-6
 
     # Indexing and utilities
     @test isfinite(d_obs)
-    @test ndims(judiVector{Float32}) == 1
+    @test ndims(judiVector{Float32, Array{Float32, 2}}) == 1
     @test isapprox(sum(d_obs), sum(sum([vec(d) for d in d_obs])))
     d0 = copy(d_obs)
     fill!(d0, 0f0)
@@ -374,7 +369,7 @@ ftol = 1e-6
     @test isapprox(tr.geometry.xloc[1][1:11], zeros(11); atol=1f-14, rtol=1f-14)
 
     # Test integral & derivative
-    refarray = Array{Array}(undef, nsrc)
+    refarray = Array{Array{Float32, 2}, 1}(undef, nsrc)
     for j=1:nsrc
         refarray[j] = randn(Float32, ns, nrec)
     end
