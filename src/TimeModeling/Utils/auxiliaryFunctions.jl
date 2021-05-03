@@ -444,7 +444,7 @@ function setup_3D_grid(xrec::Array{Array{T, 1}, 1},yrec::Array{Array{T, 1},1},zr
             for j=1:nxrec
                 xloc[i][idx] = xrec[i][j]
                 yloc[i][idx] = yrec[i][k]
-                zloc[i][idx] = ( length(JUDI.tof32(zrec)) == 1 ? zrec[1] : zrec[i])
+                zloc[i][idx] = zrec[i]
                 idx += 1
             end
         end

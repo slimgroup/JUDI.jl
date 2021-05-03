@@ -7,7 +7,7 @@
 using JUDI
 
 # Set up model structure
-n = (120, 100, 90)    # (x,y,z) or (x,z)
+n = (20, 20, 20)    # (x,y,z) or (x,z)
 d = (10., 10., 10.)
 o = (0., 0., 0.)
 
