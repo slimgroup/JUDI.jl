@@ -9,7 +9,7 @@ export judiPDEinitial, judiPDEinitialException, subsample
 
 ############################################################
 
-# Type for linear operator representing  Pr*A(m)^-1*iv,
+# Type for linear operator representing  Pr*A(m)^-1*Pi*iv,
 # i.e. it includes receiver projections
 
 struct judiPDEinitial{DDT<:Number,RDT<:Number} <: joAbstractLinearOperator{DDT,RDT}
@@ -83,9 +83,9 @@ adjoint(A::judiPDEinitial{DDT,RDT}) where {DDT,RDT} =
         A.fop_T,
         A.fop
         )
-    
+
 ############################################################
-## overloaded Base *(...judiPDEspatial...)
+## overloaded Base *(...judiPDEinitial...)
 
 #*(judiPDEinitial,judiInitialValue)
 function *(A::judiPDEinitial{ADDT,ARDT},v::judiInitialValue{vDT}) where {ADDT,ARDT,vDT}
@@ -95,15 +95,6 @@ function *(A::judiPDEinitial{ADDT,ARDT},v::judiInitialValue{vDT}) where {ADDT,AR
     jo_check_type_match(ARDT,eltype(V),join(["RDT from *(judiPDEinitial,judiInitialValue):",A.name,typeof(A),eltype(V)]," / "))
     return V
 end
-
-#*(judiPDEinitial,judiVector)
-#function *(A::judiPDEinitial{ADDT,ARDT},v::judiVector{vDT}) where {ADDT,ARDT,vDT}
-#    A.n == size(v,1) || throw(judiPDEinitialException("shape mismatch"))
-#    jo_check_type_match(ADDT,vDT,join(["DDT for *(judiPDEinitial,judiVector):",A.name,typeof(A),vDT]," / "))
-#    V = A.fop(v)
-#    jo_check_type_match(ARDT,eltype(V),join(["RDT from *(judiPDEinitial,judiVector):",A.name,typeof(A),eltype(V)]," / "))
-#    return V
-#end
 
 # *(judiPDEinitial,judiVector)
 function *(A::judiPDEinitial{ADDT,ARDT},v::judiVector{vDT, AT}) where {ADDT,ARDT,vDT, AT}

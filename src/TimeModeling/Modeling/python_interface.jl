@@ -286,12 +286,17 @@ end
 function devito_interface(modelPy::PyCall.PyObject, model, recGeometry::Geometry,
                            recData::Array, weights::Nothing, dm::Nothing, options::Options)
 
-    ac = load_devito_jit()
+    #ac = load_devito_jit()
 
     # Interpolate input data to computational grid
-    dtComp = modelPy.critical_dt
-    dIn = time_resample(recData[1],recGeometry,dtComp)[1]
-    ntComp = size(dIn,1)
+    #dtComp = modelPy.critical_dt
+    #dIn = time_resample(recData[1],recGeometry,dtComp)[1]
+    #ntComp = size(dIn,1)
+
+    # Interpolate input data to computational grid
+    dtComp = get_dt(model; dt=options.dt_comp)
+    dIn = time_resample(recData,recGeometry,dtComp)[1]
+    #qIn = time_resample(srcData,recGeometry,dtComp)[1]
 
     # Set up coordinates with devito dimensions
     rec_coords = setup_grid(recGeometry, modelPy.shape)
@@ -310,7 +315,7 @@ function devito_interface(modelPy::PyCall.PyObject, model, recGeometry::Geometry
     if options.return_array == true
         return vec([wOut_0; wOut_1]) #stack both distributions into col vector
     else
-        return judiInitialStateValue(wOut_0, wOut_1)
+        return judiInitialValue(wOut_0, wOut_1)
     end
 end
 

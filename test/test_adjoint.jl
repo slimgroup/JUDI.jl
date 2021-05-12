@@ -109,3 +109,69 @@ end
     @test isapprox(c/(c+d), d/(c+d), atol=tol, rtol=0)
 
 end
+
+
+@testset "Initial value source adjoint test" begin
+
+    # Set up model structure
+    n = (64,64) 
+    d = (0.0125f0, 0.0125f0) # in mm
+    o = (0.0f0, 0.0f0)
+
+    # Velocity [mm/microsec]
+    v = 1.5*ones(Float32,(n...)) ; #constant water velocity
+
+    # Slowness squared [s^2/km^2]
+    m = (1f0 ./ v).^2.0f0;
+
+    # Setup info and model structure
+    model = Model(n, d, o, m;)
+
+    nxrec = n[1]
+    xrec = range(d[1], stop=(n[1]-1)*d[1], length=nxrec)
+    yrec = [0f0]
+    zrec = range(0, stop=0, length=nxrec)
+
+    # receiver sampling and recording time in microseconds
+    timeR = 0.9f0  # receiver sampling interval [micro sec]
+    dtR = 1.5f-3 # receiver sampling interval [micro sec]
+
+    # Set up receiver structure
+    recGeometry = Geometry(xrec, yrec, zrec; dt=dtR, t=timeR, nsrc=1)
+
+    # Set up info structure for linear operators
+    ntComp = get_computational_nt(recGeometry, model)
+    info = Info(prod(n), 1, ntComp)
+
+    opt = Options( dt_comp=dtR)
+
+    # Setup operators
+    Pr = judiProjection(info, recGeometry)
+    F  = judiModeling(info, model;options=opt)
+    Ps = judiInitial(info)
+
+    A = Pr*F*adjoint(Ps)
+
+    #### adjoint test. 
+    tol = 5f-4
+
+    # Extended source weights
+    w = .5f0 .+ rand(model.n...);
+    w = judiInitialValue(w,w)
+
+    q = .5f0 .+ rand(model.n...);
+    q = judiInitialValue(q,q)
+    y = A*q
+
+    # Forward-Adjoint computation
+    dw_hat = A*w
+    w_hat = adjoint(A)*y
+
+    # Result A
+    a = dot(y, dw_hat)
+    b = dot(vec(w.firstValue), vec(w_hat.firstValue))
+    @printf(" <A x, y> : %2.5e, <x, A' y> : %2.5e, relative error : %2.5e \n", a, b, (a - b)/(a + b))
+    @test isapprox(a/(a+b), b/(a+b), atol=tol, rtol=0)
+
+end
+

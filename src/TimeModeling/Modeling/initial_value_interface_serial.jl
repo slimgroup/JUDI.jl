@@ -25,7 +25,7 @@ function initial_value_modeling(model_full::Model, recGeometry, recData, weights
     if mode==1 && recGeometry != nothing
         recGeometry = remove_out_of_bounds_receivers(recGeometry, model)
     elseif mode==-1 && recGeometry != nothing
-        recGeometry, recData = remove_out_of_bounds_receivers(recGeometry, recData, model)
+        recGeometry, recData = remove_out_of_bounds_receivers(recGeometry, recData[1], model)
     end
 
     # Pad both values with PML 

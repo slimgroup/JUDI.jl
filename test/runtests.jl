@@ -45,7 +45,7 @@ if GROUP == "JUDI" || GROUP == "All"
     end
 end
 
-# Generic mdeling tests
+# Generic modeling tests
 if GROUP == "BASICS" || GROUP == "All"
     println("JUDI generic modelling tests")
     VERSION >= v"1.5" && push!(Base.ARGS, "-p 2")
