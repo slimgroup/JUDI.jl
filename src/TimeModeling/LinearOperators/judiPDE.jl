@@ -218,6 +218,13 @@ function *(A::judiPDEadjoint{ADDT,ARDT}, B::judiExtendedSource{vDT}) where {ADDT
     return V
 end
 
+#multiplications with judiInitial
+#*(judiPDE,judiInitial)
+function *(A::judiPDE{CDT,ARDT},B::judiInitial{BDDT,CDT}) where {ARDT,BDDT,CDT}
+    A.n == size(B,1) || throw(judiPDEspatial("shape mismatch"))
+    return judiPDEinitial(A.info,A.model,A.geometry;options=A.options,DDT=CDT,RDT=ARDT)
+end
+
 # *(num,judiPDE)
 function *(a::Number,A::judiPDE{ADDT,ARDT}) where {ADDT,ARDT}
     return judiPDE{ADDT,ARDT}("(N*"*A.name*")",A.m,A.n,A.info,A.model,A.geometry,A.options,

@@ -7,7 +7,7 @@ from devito.tools import as_tuple
 from devito.symbolics import retrieve_functions, INT
 
 
-def wavefield(model, space_order, save=False, nt=None, fw=True, name='', t_sub=1):
+def wavefield(model, space_order, save=False, nt=None, fw=True, name='', t_sub=1, init_dist=None):
     """
     Create the wavefield for the wave equation
 
@@ -26,6 +26,9 @@ def wavefield(model, space_order, save=False, nt=None, fw=True, name='', t_sub=1
         Forward or backward (for naming)
     name: string
         Custom name attached to default (u+name)
+    init_dist: Array
+        spatial distribution that will be used as initial condition in first two time steps
+        currently being tested for photoacoustic ivp.
     """
 
     name = "u"+name if fw else "v"+name
@@ -37,9 +40,15 @@ def wavefield(model, space_order, save=False, nt=None, fw=True, name='', t_sub=1
                          space_order=space_order, save=None if not save else nt)
         return (u, v)
     else:
-        return TimeFunction(name=name, grid=model.grid, time_order=2,
+        u =  TimeFunction(name=name, grid=model.grid, time_order=2,
                             space_order=space_order, save=None if not save else nt)
-
+        if init_dist is not None: 
+            m, irho = model.m , model.irho
+            m = m * irho
+            
+            u.data[0] = np.array(init_dist[0] / m.data)
+            u.data[1] = np.array(init_dist[1] / m.data)
+        return u
 
 def wavefield_subsampled(model, u, nt, t_sub, space_order=8):
     """

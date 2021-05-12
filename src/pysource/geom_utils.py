@@ -3,7 +3,7 @@ from devito.tools import as_tuple
 from sources import *
 
 
-def src_rec(model, u, src_coords=None, rec_coords=None, wavelet=None, fw=True, nt=None):
+def src_rec(model, u, src_coords=None, rec_coords=None, wavelet=None, fw=True, nt=None, ivp_adj=False):
     """
     Generates the source injection and receiver interpolation.
     This function is fully abstracted and does not care whether this is a
@@ -47,7 +47,11 @@ def src_rec(model, u, src_coords=None, rec_coords=None, wavelet=None, fw=True, n
                               coordinates=src_coords)
             src.data[:] = wavelet[:] if wavelet is not None else 0.
         u_n = as_tuple(u)[0].forward if fw else as_tuple(u)[0].backward
-        geom_expr += src.inject(field=u_n, expr=src*dt**2/m)
+        if(ivp_adj):
+            #for PA adjoint we need -(derivative of source)   
+            geom_expr += src.inject(field=u_n, expr=-src.dt*dt**2/m)
+        else:
+            geom_expr += src.inject(field=u_n, expr=src*dt**2/m)
     # Setup adjoint wavefield sampling at source locations
     rcv = None
     if rec_coords is not None:

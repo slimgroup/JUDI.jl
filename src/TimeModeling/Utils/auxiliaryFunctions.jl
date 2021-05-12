@@ -650,6 +650,7 @@ end
 process_input_data(input::judiVector, ::Geometry, ::Info) = input.data
 process_input_data(input::judiVector, ::Info) = input.data
 process_input_data(input::judiWeights, ::Model, ::Info) = input.weights
+process_input_data(input::judiInitialValue, ::Model, ::Info) = [input.firstValue, input.secondValue]
 
 """
     reshape(x::Array{Float32, 1}, geometry::Geometry)

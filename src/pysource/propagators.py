@@ -16,16 +16,17 @@ def name(model):
 # Forward propagation
 def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
             q=None, return_op=False, freq_list=None, dft_sub=None,
-            ws=None, t_sub=1, **kwargs):
+            ws=None, t_sub=1, init_dist=None, nt=None, **kwargs):
     """
     Low level propagator, to be used through `interface.py`
     Compute forward wavefield u = A(m)^{-1}*f and related quantities (u(xrcv))
     """
     # Number of time steps
-    nt = as_tuple(q)[0].shape[0] if wavelet is None else wavelet.shape[0]
+    if nt is None:
+        nt = as_tuple(q)[0].shape[0] if wavelet is None else wavelet.shape[0]
 
     # Setting forward wavefield
-    u = wavefield(model, space_order, save=save, nt=nt, t_sub=t_sub)
+    u = wavefield(model, space_order, save=save, nt=nt, t_sub=t_sub, init_dist=init_dist)
 
     # Expression for saving wavefield if time subsampling is used
     u_save, eq_save = wavefield_subsampled(model, u, nt, t_sub)
@@ -60,7 +61,7 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
 
 
 def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0, dft_sub=None,
-            save=False, ws=None, norm_v=False, w_fun=None, freq_list=None):
+            save=False, ws=None, norm_v=False, w_fun=None, freq_list=None, ivp_adj=False):
     """
     Low level propagator, to be used through `interface.py`
     Compute adjoint wavefield v = adjoint(F(m))*y
@@ -80,7 +81,7 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0, dft_sub=None,
 
     # Setup source and receiver
     geom_expr, _, rcv = src_rec(model, v, src_coords=rcv_coords, nt=nt,
-                                rec_coords=src_coords, wavelet=y, fw=False)
+                                rec_coords=src_coords, wavelet=y, fw=False, ivp_adj=ivp_adj)
 
     # Extended source
     wsrc, ws_expr = extended_src_weights(model, ws, v)
@@ -101,6 +102,8 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0, dft_sub=None,
     summary = op()
 
     # Output
+    if ivp_adj:
+        return v.data[3], v.data[2], summary #return last two values
     if wsrc:
         return wsrc, summary
     if norm_v:

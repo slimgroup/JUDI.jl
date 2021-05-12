@@ -66,6 +66,30 @@ def forward_rec_w(model, weight, wavelet, rec_coords, space_order=8):
                         space_order=space_order)
     return rec.data
 
+#  Pr*F*Piv'*iv
+def forward_rec_ivp(model, weight, rec_coords, T, space_order=8):
+    """
+    Forward modeling of an initial spatial source with receivers  Pr*F*w
+
+    Parameters
+    ----------
+    model: Model
+        Physical model
+    weights: Array
+        Spatial distribution of the inital spatial source.
+    rec_coords: Array
+        Coordiantes of the receiver(s)
+    space_order: Int (optional)
+        Spatial discretization order, defaults to 8
+
+    Returns
+    ----------
+    Array
+        Shot record
+    """
+    rec, _, _ = forward(model, None, rec_coords, None, save=False, ws=None,
+                        space_order=space_order, init_dist=weight, nt = T)
+    return rec.data
 
 # Pr*F*Ps'*q
 def forward_rec_wf(model, src_coords, wavelet, rec_coords, t_sub=1,
@@ -239,7 +263,34 @@ def adjoint_w(model, rec_coords, data, wavelet, space_order=8):
     """
     w, _ = adjoint(model, data, None, rec_coords, ws=wavelet, space_order=space_order)
     return w.data
+    
+#  F'*Pr'*d_obs 
+def adjoint_ivp(model, rec_coords, data, space_order=8):
+    """
+    Adjoint/backward modeling of a shot record (receivers as source) for an
+    initial value setup Piv*F^T*Pr^T*d_obs.
 
+    Parameters
+    ----------
+    model: Model
+        Physical model
+    rec_coords: Array
+        Coordiantes of the receiver(s)
+    data: Array
+        Shot gather
+    space_order: Int (optional)
+        Spatial discretization order, defaults to 8 should be 16 for PA
+
+    Returns
+    ----------
+    Array1
+        spatial distribution at final time step of adjoint simulation
+    Array2
+        spatial distribution at penultimate time step of adjoint simulation
+    """
+  
+    w_0, w_1, _ = adjoint(model, data, None, rec_coords, space_order=space_order, ivp_adj=True)
+    return w_0, w_1
 
 # F'*Pr'*d_obs
 def adjoint_no_rec(model, rec_coords, data, space_order=8):

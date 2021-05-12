@@ -261,6 +261,63 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcData::Array, recGe
     end
 end
 
+# d_obs = Pr*F*Piv'*iv - modeling w/ initial value conditions
+function devito_interface(modelPy::PyCall.PyObject, model, recGeometry::Geometry, 
+                            recData::Nothing, weights::Array, dm::Nothing, options::Options)
+
+    #ac = load_devito_jit()
+
+    # Set up coordinates with devito dimensions
+    rec_coords = setup_grid(recGeometry, modelPy.shape)
+
+    # Devito call
+    dOut = pycall(ac."forward_rec_ivp", Array{Float32,2}, modelPy, weights,
+                 rec_coords, recGeometry.nt[1], space_order=options.space_order)
+
+    # Output shot record as judiVector
+    if options.return_array == true
+        return vec(dOut)
+    else
+        return judiVector(recGeometry,dOut)
+    end
+end
+
+# div = Piv*F'*Pr'*d_obs - adjoint modeling w/ initial value conditions
+function devito_interface(modelPy::PyCall.PyObject, model, recGeometry::Geometry,
+                           recData::Array, weights::Nothing, dm::Nothing, options::Options)
+
+    ac = load_devito_jit()
+
+    # Interpolate input data to computational grid
+    dtComp = modelPy.critical_dt
+    dIn = time_resample(recData[1],recGeometry,dtComp)[1]
+    ntComp = size(dIn,1)
+
+    # Set up coordinates with devito dimensions
+    rec_coords = setup_grid(recGeometry, modelPy.shape)
+
+    # Devito call
+    wOut_0, wOut_1 = pycall(ac."adjoint_ivp", Tuple{Array{Float32,2}, Array{Float32,2}}, modelPy,
+                 rec_coords, dIn, space_order=options.space_order)
+
+    # Output adjoint data as judiWeights
+    wOut_0 = remove_padding(wOut_0, modelPy.padsizes; true_adjoint=false)
+    wOut_1 = remove_padding(wOut_1, modelPy.padsizes; true_adjoint=false)
+    if options.free_surface
+        selectdim(wOut_0, modelPy.dim, 1) .= 0f0
+        selectdim(wOut_1, modelPy.dim, 1) .= 0f0
+    end
+    if options.return_array == true
+        return vec([wOut_0; wOut_1]) #stack both distributions into col vector
+    else
+        return judiInitialStateValue(wOut_0, wOut_1)
+    end
+end
+
+
+
+
+
 # Jacobian of extended source modeling: d_lin = J*dm
 function devito_interface(modelPy::PyCall.PyObject, model, srcData::Array, recGeometry::Geometry, recData::Nothing, weights::Array,
                           dm::Union{PhysicalParameter, Array}, options::Options)
