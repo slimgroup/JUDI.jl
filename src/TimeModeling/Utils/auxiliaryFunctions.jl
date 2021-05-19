@@ -753,13 +753,13 @@ function SrcRecReciprocal(d_obs::judiVector, q::judiVector)
     ysrc = convertToCell(d_obs.geometry.yloc[1])
     zsrc = convertToCell(d_obs.geometry.zloc[1])
 
-    src_geometry = Geometry(xsrc,ysrc,zsrc;dt=d_obs.geometry.dt[1],nt=d_obs.geometry.nt[1])
+    src_geometry = Geometry(xsrc,ysrc,zsrc;dt=d_obs.geometry.dt[1],t=d_obs.geometry.t[1])
 
     xrec = q.geometry.xloc[1]
     yrec = q.geometry.yloc[1]
     zrec = q.geometry.zloc[1]
 
-    rec_geometry = Geometry(xrec,yrec,zrec;dt=q.geometry.dt[1],nt=q.geometry.nt[1])
+    rec_geometry = Geometry(xrec,yrec,zrec;dt=q.geometry.dt[1],t=q.geometry.t[1])
 
     d_reci = judiVector(rec_geometry, reci_data)
     q_reci = judiVector(src_geometry, q.wavelet)
