@@ -35,7 +35,7 @@ function twri_objective(model_full::Model, source::judiVector, dObs::judiVector,
     obj, gradm, grady = pycall(ac."wri_func", PyObject,
                                modelPy, src_coords, qIn, rec_coords, dObserved, Y,
                                t_sub=options.subsampling_factor, space_order=options.space_order,
-                               grad=optionswri.params, grad_corr=optionswri.grad_corr, eps=eps_loc,
+                               grad=optionswri.params, grad_corr=optionswri.grad_corr, eps=optionswri.eps,
                                alpha_op=optionswri.comp_alpha, w_fun=optionswri.weight_fun,
                                freq_list=freqs, wfilt=wfilt)
 
@@ -44,7 +44,6 @@ function twri_objective(model_full::Model, source::judiVector, dObs::judiVector,
         options.limit_m==true && (gradm = extend_gradient(model_full, model, gradm))
     end
     if ~isnothing(grady)
-        ntRec > ntComp && (grady = [grady zeros(size(grady,1), ntRec - ntComp)])
         grady = time_resample(grady, dtComp, dObs.geometry)
         grady = judiVector(dObs.geometry, grady)
     end

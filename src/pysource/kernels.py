@@ -1,21 +1,7 @@
-from sympy.solvers.solveset import linear_coeffs
-
-from devito import Eq
-from devito.finite_differences.differentiable import diffify
+from devito import Eq, solve
 
 from wave_utils import freesurface
 from FD_utils import laplacian, sa_tti
-
-
-def _solve(eq, target, **kwargs):
-    """
-    To be remved at next Devito release
-    """
-    if isinstance(eq, Eq):
-        eq = eq.lhs - eq.rhs if eq.rhs != 0 else eq.lhs
-    # Try first linear solver
-    cc = linear_coeffs(eq.evaluate, target)
-    return diffify(-cc[1]/cc[0])
 
 
 def wave_kernel(model, u, fw=True, q=None):
@@ -63,7 +49,7 @@ def acoustic_kernel(model, u, fw=True, q=None):
     ulaplace = laplacian(u, model.irho)
     wmr = model.irho * model.m
     damp = model.damp
-    stencil = _solve(wmr * (u.dt2 + damp * udt) - ulaplace - q, u_n)
+    stencil = solve(wmr * (u.dt2 + damp * udt) - ulaplace - q, u_n)
 
     if 'nofsdomain' in model.grid.subdomains:
         pde = [Eq(u_n, stencil, subdomain=model.grid.subdomains['nofsdomain'])]
@@ -101,8 +87,8 @@ def tti_kernel(model, u1, u2, fw=True, q=None):
     H0, H1 = sa_tti(u1, u2, model)
 
     # Stencils
-    stencilp = _solve(wmr * (u1.dt2 + damp * udt1) - H0 - q[0], u1_n)
-    stencilr = _solve(wmr * (u2.dt2 + damp * udt2) - H1 - q[1], u2_n)
+    stencilp = solve(wmr * (u1.dt2 + damp * udt1) - H0 - q[0], u1_n)
+    stencilr = solve(wmr * (u2.dt2 + damp * udt2) - H1 - q[1], u2_n)
 
     if 'nofsdomain' in model.grid.subdomains:
         pdea = freesurface(model, acoustic_kernel(model, u1, fw, q=q[0]))
