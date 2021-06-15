@@ -25,11 +25,11 @@ JUDI supports the computation of the wave equation on GPU via [Devito](https://w
 
 ### Installation
 
-To enable gpu support in JUDI, you will need to install one of [Devito](https://www.devitoproject.org)'s supported offloading compilers. We strongly recommend checking the [Wiki](https://github.com/devitocodes/devito/wiki) for installations steps and to reach out tp the Devito community for GPU compiler realted issues.
+To enable gpu support in JUDI, you will need to install one of [Devito](https://www.devitoproject.org)'s supported offloading compilers. We strongly recommend checking the [Wiki](https://github.com/devitocodes/devito/wiki) for installation steps and to reach out to the Devito community for GPU compiler related issues.
 
-- [x] `nvc/pgcc`. This is recommended and the simplest installation. You can install the compiler following Nvidia's intallation instruction at [HPC-sdk](https://developer.nvidia.com/hpc-sdk)
+- [x] `nvc/pgcc`. This is recommended and the simplest installation. You can install the compiler following Nvidia's installation instruction at [HPC-sdk](https://developer.nvidia.com/hpc-sdk)
 - [ ] `aompcc`. This is the AMD compiler that is necessary for running on AMD GPUs. This installation is not tested with JUDI and we recommend to reach out to Devito's team for installation guidelines.
-- [ ] `openmp5/clang`. This installation requires the compilation from source `openmp`, `clang` and `llvm` to isntall the latest version of `openmp5` enabling gpu offloading. You can find instructions on this installation in Devito's [Wiki](https://github.com/devitocodes/devito/wiki)
+- [ ] `openmp5/clang`. This installation requires the compilation from source `openmp`, `clang` and `llvm` to install the latest version of `openmp5` enabling gpu offloading. You can find instructions on this installation in Devito's [Wiki](https://github.com/devitocodes/devito/wiki)
 
 ### Setup
 

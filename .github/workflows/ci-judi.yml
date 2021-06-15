@@ -44,11 +44,6 @@ jobs:
           version: ${{ matrix.version }}
           arch: x64
 
-      - name: Set up Python 3.7
-        uses: actions/setup-python@v1
-        with:
-          python-version: 3.7
-
       - name: Add SLIM registery
         run: |
            julia --color=yes --check-bounds=yes -e 'using Pkg;Pkg.update();Pkg.Registry.add(RegistrySpec(url="https://github.com/slimgroup/SLIMregistryJL.git"))'
@@ -57,19 +52,8 @@ jobs:
         if: runner.os == 'macOS'
         run: brew install gcc@7
 
-      - name: Install devito
-        run: |
-          python -m pip install --upgrade pip
-          pip install devito
-          pip install matplotlib
-
       - name: Build JUDI
         uses: julia-actions/julia-buildpkg@latest
-
-      - name: Rebuild PyCall with system python
-        run: |
-          export PYTHON=$(which python)
-          julia --color=yes --check-bounds=yes --project -e 'using Pkg; Pkg.build("PyCall")'
 
       - name: Run tests
         uses: julia-actions/julia-runtest@latest

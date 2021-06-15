@@ -57,5 +57,4 @@ module TimeModeling
     Base.@warn "JUDI.TimeModeling is deprecated, use `using JUDI` instead"
 end
 
-
 end
