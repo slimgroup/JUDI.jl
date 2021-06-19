@@ -68,7 +68,7 @@ dt = srcGeometry.dt[1]
 	d0 = F0*q
 
 	Jm01 = 0.5f0 * norm(d-d0)^2f0
-	grad1 = J'*(d-d0)
+	grad1 = J'*(d0-d)
 
 	@test isapprox(vec(grad), vec(grad1.data); rtol=5f-2)
 	@test isapprox(Jm0, Jm01; rtol=5f-2)
