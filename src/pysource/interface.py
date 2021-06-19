@@ -528,7 +528,7 @@ def J_adjoint_freq(model, src_coords, wavelet, rec_coords, recin, space_order=8,
     """
     rec, u, _ = op_fwd_J[born_fwd](model, src_coords, rec_coords, wavelet, save=False,
                                    space_order=space_order, freq_list=freq_list,
-                                   isic=isic,ws=ws, dft_sub=dft_sub, nlind=nlind)
+                                   isic=isic, ws=ws, dft_sub=dft_sub, nlind=nlind)
     # Residual and gradient
     if not is_residual:
         if nlind:
