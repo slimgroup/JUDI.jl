@@ -61,4 +61,26 @@ dt = srcGeometry.dt[1]
 	@test isapprox(rate_1, 1.25f0; rtol=5f-2)
 	@test isapprox(rate_2, 1.5625f0; rtol=5f-2)
 
+	### Test if fwi_objective produces the same value/gradient as is done by the correct algebra
+
+	F0 = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
+	J = judiJacobian(F0, q)
+	d0 = F0*q
+
+	Jm01 = 0.5f0 * norm(d-d0)^2f0
+	grad1 = J'*(d-d0)
+
+	@test isapprox(vec(grad), vec(grad1.data); rtol=5f-2)
+	@test isapprox(Jm0, Jm01; rtol=5f-2)
+
+	opt.isic = true
+	J.options.isic = true
+
+	Jm0, grad = fwi_objective(model0, q, d; options=opt)
+	Jm01 = 0.5f0 * norm(d0-d)^2f0
+	grad1 = J'*(d0-d)
+
+	@test isapprox(vec(grad), vec(grad1.data); rtol=5f-2)
+	@test isapprox(Jm0, Jm01; rtol=5f-2)
+
 end
