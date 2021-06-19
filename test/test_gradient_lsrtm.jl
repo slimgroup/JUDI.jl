@@ -43,7 +43,7 @@ dt = srcGeometry.dt[1]
 	# Test if lsrtm_objective produces the same value/gradient as is done by the correct algebra
 
 	d_res = F0*q + J*dm - d
-	Jm0_1 = 0.5f0 * norm(d_rec)^2f0
+	Jm0_1 = 0.5f0 * norm(d_res)^2f0
 	grad_1 = J'*d_res
 
 	@test isapprox(vec(grad), vec(grad_1.data); rtol=ftol)
