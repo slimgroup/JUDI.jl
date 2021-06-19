@@ -13,7 +13,7 @@ tti = parsed_args["tti"]
 fs =  parsed_args["fs"]
 
 ### Model
-model, model0, dm = setup_model(parsed_args["tti"], parsed_args["nlayer"])
+model, model0, dm = setup_model(tti, nlayer)
 q, srcGeometry, recGeometry, info = setup_geom(model)
 dt = srcGeometry.dt[1]
 m0 = model0.m
@@ -21,7 +21,7 @@ m0 = model0.m
 ###################################################################################
 
 @testset "Extended source Jacobian test with $(nlayer) layers and tti $(tti) and freesurface $(fs)" begin
-    opt = Options(sum_padding=true, dt_comp=dt, return_array=true, free_surface=parsed_args["fs"])
+    opt = Options(sum_padding=true, dt_comp=dt, return_array=true, free_surface=fs)
 
     # Setup operators
     Pr = judiProjection(info, recGeometry)

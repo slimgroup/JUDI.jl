@@ -6,8 +6,9 @@ parsed_args = parse_commandline()
 nlayer = parsed_args["nlayer"]
 tti = parsed_args["tti"]
 fs =  parsed_args["fs"]
+isic =  parsed_args["isic"]
 
-@testset "Arithmetic test with $(nlayer) layers and tti $(tti) and freesurface $(fs)" begin
+@testset "Arithmetic test with $(nlayer) layers and tti $(tti) and freesurface $(fs) and isic $(isic)" begin
 
         # Test 2D find_water_bottom
 
@@ -16,15 +17,15 @@ fs =  parsed_args["fs"]
         @test find_water_bottom(dm2D) == 6*ones(Integer,10)
 
         ### Model
-        model, model0, dm = setup_model(parsed_args["tti"], parsed_args["nlayer"])
+        model, model0, dm = setup_model(tti, nlayer)
         wb = find_water_bottom(model.m .- maximum(model.m))
         q, srcGeometry, recGeometry, info = setup_geom(model)
         dt = srcGeometry.dt[1]
         nt = length(q.data[1])
         nrec = length(recGeometry.xloc[1])
 
-        opt = Options(free_surface=parsed_args["fs"])
-        opta = Options(free_surface=parsed_args["fs"], return_array=true)
+        opt = Options(free_surface=fs, isic=isic)
+        opta = Options(free_surface=fs, isic=isic, return_array=true)
         ftol = 5f-5
 
         w = judiWeights(randn(Float32, model0.n))

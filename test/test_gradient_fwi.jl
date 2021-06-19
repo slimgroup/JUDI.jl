@@ -30,7 +30,7 @@ dt = srcGeometry.dt[1]
 	modelH = deepcopy(model0)
 
 	# Observed data
-	opt = Options(sum_padding=true, free_surface=parsed_args["fs"])
+	opt = Options(sum_padding=true, free_surface=fs)
 	F = judiModeling(info, model, srcGeometry, recGeometry; options=opt)
 	d = F*q
 

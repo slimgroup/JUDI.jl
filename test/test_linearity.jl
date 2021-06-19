@@ -10,21 +10,22 @@ parsed_args = parse_commandline()
 nlayer = parsed_args["nlayer"]
 tti = parsed_args["tti"]
 fs =  parsed_args["fs"]
+isic = parsed_args["isic"]
 
 ### Model
-model, model0, dm = setup_model(parsed_args["tti"], parsed_args["nlayer"])
+model, model0, dm = setup_model(tti, nlayer)
 q1, srcGeometry1, recGeometry, info = setup_geom(model)
 srcGeometry2 = deepcopy(srcGeometry1)
 srcGeometry2.xloc[:] .= .9*srcGeometry2.xloc[:] 
 srcGeometry2.zloc[:] .= .9*srcGeometry2.zloc[:]
 dt = srcGeometry1.dt[1]
 
-opt = Options(free_surface=parsed_args["fs"])
+opt = Options(free_surface=fs, isic=isic)
 ftol = 5f-5
 
 ####################### Modeling operators ##########################################
 
-@testset "Linearity test with $(nlayer) layers and tti $(tti) and freesurface $(fs)" begin
+@testset "Linearity test with $(nlayer) layers and tti $(tti) and freesurface $(fs) and isic $(isic)" begin
     # Modeling operators
     Pr = judiProjection(info,recGeometry)
     Ps1 = judiProjection(info,srcGeometry1)
@@ -143,11 +144,11 @@ end
 
 ####################### Extended source operators ##########################################
 
-if parsed_args["tti"]
+if tti
     ftol = 5f-4
 end
 
-@testset "Extended source linearity test with $(nlayer) layers and tti $(tti) and freesurface $(fs)" begin
+@testset "Extended source linearity test with $(nlayer) layers and tti $(tti) and freesurface $(fs) and isic $(isic)" begin
     # Modeling operators
     Pr = judiProjection(info, recGeometry)
     F = judiModeling(info, model; options=opt)

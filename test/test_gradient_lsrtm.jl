@@ -11,6 +11,7 @@ parsed_args = parse_commandline()
 nlayer = parsed_args["nlayer"]
 tti = parsed_args["tti"]
 fs =  parsed_args["fs"]
+isic =  parsed_args["isic"]
 
 ### Model
 model, model0, dm = setup_model(tti, 4)
@@ -19,7 +20,7 @@ dt = srcGeometry.dt[1]
 
 ###################################################################################################
 
-@testset "LSRTM gradient test with $(nlayer) layers and tti $(tti) and freesurface $(fs)" begin
+@testset "LSRTM gradient test with $(nlayer) layers and tti $(tti) and freesurface $(fs) and isic $(isic)" begin
 	# Gradient test
 	ftol = (tti && fs) ? 1f-1 : 5f-2
 	h = 5f-2
@@ -29,7 +30,7 @@ dt = srcGeometry.dt[1]
 	h_all = zeros(maxiter)
 
 	# Observed data
-	opt = Options(sum_padding=true, free_surface=fs)
+	opt = Options(sum_padding=true, free_surface=fs, isic=isic)
 	F = judiModeling(info, model, srcGeometry, recGeometry; options=opt)
 	F0 = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
 	J = judiJacobian(F0, q)

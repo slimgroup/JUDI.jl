@@ -10,6 +10,7 @@ parsed_args = parse_commandline()
 nlayer = parsed_args["nlayer"]
 tti = parsed_args["tti"]
 fs =  parsed_args["fs"]
+isic =  parsed_args["isic"]
 
 # # Set parallel if specified
 nw = parsed_args["parallel"]
@@ -20,7 +21,7 @@ end
 @everywhere using JUDI, LinearAlgebra, Test, Distributed
 
 ### Model
-model, model0, dm = setup_model(parsed_args["tti"], parsed_args["nlayer"])
+model, model0, dm = setup_model(tti, nlayer)
 q, srcGeometry, recGeometry, info = setup_geom(model; nsrc=nw)
 dt = srcGeometry.dt[1]
 
@@ -28,9 +29,9 @@ tol = 5f-4
 (tti && fs) && (tol = 5f-3)
 ###################################################################################################
 # Modeling operators
-@testset "Adjoint test with $(nlayer) layers and tti $(tti) and freesurface $(fs)" begin 
+@testset "Adjoint test with $(nlayer) layers and tti $(tti) and freesurface $(fs) and isic $(isic)" begin 
 
-    opt = Options(sum_padding=true, dt_comp=dt, free_surface=parsed_args["fs"])
+    opt = Options(sum_padding=true, dt_comp=dt, free_surface=fs, isic=isic)
     F = judiModeling(model0, srcGeometry, recGeometry; options=opt)
 
     # Nonlinear modeling
@@ -65,14 +66,14 @@ tol = 5f-4
 end
 ###################################################################################################
 # Extended source modeling
-if parsed_args["tti"] &&  parsed_args["fs"]
+if tti && fs
     # FS + tti leads to slightly worst (still fairly ok) accuracy
     tol = 5f-3
 end
 
-@testset "Extended source adjoint test with $(nlayer) layers and tti $(tti) and freesurface $(fs)" begin
+@testset "Extended source adjoint test with $(nlayer) layers and tti $(tti) and freesurface $(fs) and isic $(isic)" begin
 
-    opt = Options(sum_padding=true, dt_comp=dt, free_surface=parsed_args["fs"])
+    opt = Options(sum_padding=true, dt_comp=dt, free_surface=fs, isic=isic)
     F = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
     # Nonlinear modeling
     y = F*q
@@ -84,7 +85,7 @@ end
 
     # Extended source weights
     w = .5f0 .+ rand(model0.n...)
-    parsed_args["fs"] ? w[:, 1:2] .= 0f0 : nothing
+    fs ? w[:, 1:2] .= 0f0 : nothing
     w = judiWeights(w; nsrc=nw)
 
     # Forward-Adjoint computation
