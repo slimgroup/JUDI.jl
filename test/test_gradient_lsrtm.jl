@@ -110,3 +110,22 @@ for fs in [true, false]
 		end
 	end
 end
+
+
+@testset "lsrtm_objective correct algebra test with $(nlayer) layers and tti $(tti) and freesurface $(fs) and isic $(isic)" begin
+
+	opt = Options(free_surface=fs, isic=isic)
+	F = judiModeling(info, model, srcGeometry, recGeometry; options=opt)
+	d = F*q
+	Jm0, grad = lsrtm_objective(model0, q, d, dm; options=opt)
+
+	F0 = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
+	J = judiJacobian(F0, q)
+	d_res = F0*q + J*dm - d
+	Jm0_1 = 0.5f0 * norm(d_res)^2f0
+	grad_1 = J'*d_res
+
+	@test isapprox(vec(grad), vec(grad_1.data); rtol=1f-5)
+	@test isapprox(Jm0, Jm01; rtol=1f-5)
+
+end

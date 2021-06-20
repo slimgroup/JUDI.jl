@@ -64,27 +64,20 @@ dt = srcGeometry.dt[1]
 end
 
 
-### Test if fwi_objective produces the same value/gradient as is done by the correct algebra
+@testset "fwi_objective correct algebra test with $(nlayer) layers and tti $(tti) and freesurface $(fs) and isic $(isic)" begin
 
-for fs in [true, false]
-	for isic in [true, false]
-		for optchk in [true, false]
-			for freq in [[], [2.5, 4.5]]
+	opt = Options(free_surface=fs, isic=isic)
+	F = judiModeling(info, model, srcGeometry, recGeometry; options=opt)
+	d = F*q
+	Jm0, grad = fwi_objective(model0, q, d; options=opt)
 
-				opt = Options(free_surface=fs, isic=isic, optimal_checkpointing=optchk, frequencies=freq)
-				F = judiModeling(info, model, srcGeometry, recGeometry; options=opt)
-				d = F*q
-				F0 = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
-				J = judiJacobian(F0, q)
-				d0 = F0*q
+	F0 = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
+	J = judiJacobian(F0, q)
+	d0 = F0*q
+	Jm01 = 0.5f0 * norm(d-d0)^2f0
+	grad1 = J'*(d0-d)
 
-				Jm01 = 0.5f0 * norm(d-d0)^2f0
-				grad1 = J'*(d0-d)
+	@test isapprox(vec(grad), vec(grad1.data); rtol=1f-5)
+	@test isapprox(Jm0, Jm01; rtol=5f-2)
 
-				@test isapprox(vec(grad), vec(grad1.data); rtol=1f-5)
-				@test isapprox(Jm0, Jm01; rtol=5f-2)
-
-			end
-		end
-	end
 end
