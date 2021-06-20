@@ -61,26 +61,30 @@ dt = srcGeometry.dt[1]
 	@test isapprox(rate_1, 1.25f0; rtol=5f-2)
 	@test isapprox(rate_2, 1.5625f0; rtol=5f-2)
 
-	### Test if fwi_objective produces the same value/gradient as is done by the correct algebra
+end
 
-	F0 = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
-	J = judiJacobian(F0, q)
-	d0 = F0*q
 
-	Jm01 = 0.5f0 * norm(d-d0)^2f0
-	grad1 = J'*(d0-d)
+### Test if fwi_objective produces the same value/gradient as is done by the correct algebra
 
-	@test isapprox(vec(grad), vec(grad1.data); rtol=5f-2)
-	@test isapprox(Jm0, Jm01; rtol=5f-2)
+for fs in [true, false]
+	for isic in [true, false]
+		for optchk in [true, false]
+			for freq in [[], [2.5, 4.5]]
 
-	opt.isic = true
-	J.options.isic = true
+				opt = Options(free_surface=fs, isic=isic, optimal_checkpointing=optchk, frequencies=freq)
+				F = judiModeling(info, model, srcGeometry, recGeometry; options=opt)
+				d = F*q
+				F0 = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
+				J = judiJacobian(F0, q)
+				d0 = F0*q
 
-	Jm0, grad = fwi_objective(model0, q, d; options=opt)
-	Jm01 = 0.5f0 * norm(d0-d)^2f0
-	grad1 = J'*(d0-d)
+				Jm01 = 0.5f0 * norm(d-d0)^2f0
+				grad1 = J'*(d0-d)
 
-	@test isapprox(vec(grad), vec(grad1.data); rtol=5f-2)
-	@test isapprox(Jm0, Jm01; rtol=5f-2)
+				@test isapprox(vec(grad), vec(grad1.data); rtol=1f-5)
+				@test isapprox(Jm0, Jm01; rtol=5f-2)
 
+			end
+		end
+	end
 end
