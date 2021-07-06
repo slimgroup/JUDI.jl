@@ -599,6 +599,16 @@ broadcasted(::typeof(-), x::judiVector, y::Number) = x - y
 broadcasted(::typeof(+), x::Number, y::judiVector) = x + y
 broadcasted(::typeof(-), x::Number, y::judiVector) = x - y
 
+### ^ ####
+
+function broadcasted(::typeof(^), x::judiVector, y::Number)
+    z = deepcopy(x)
+    for j=1:length(x.data)
+        z.data[j] .^= y
+    end
+    return z
+end
+
 ### * ####
 function broadcasted(::typeof(*), x::judiVector, y::judiVector)
     size(x) == size(y) || throw(judiVectorException("Size mismatch: x:$(size(x)), y:$(size(y))"))
