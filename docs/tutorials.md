@@ -378,9 +378,9 @@ You can find a full (reproducable) example for generating a marine streamer data
 To set up a simultaneous source with JUDI, we first create a cell array with `nsrc` cells, where `nsrc` is the number of separate experiments (here `nsrc=2`). For a simultaneous source, we create an array of source coordinates for each cell entry. In fact, this is exactly like setting up the receiver geometry, in which case we define multiple receivers per shot location. Here, we define a single experiment with 2 super-shots. Each of them consists of four sources:
 ```
 nsrc = 2    # 2 super-shots
-xsrc = Array{Any}(undef, nsrc)
-ysrc = Array{Any}(undef, nsrc)
-zsrc = Array{Any}(undef, nsrc)
+xsrc = Array{Array{Float32,1}}(undef, nsrc)
+ysrc = Array{Float32}(undef, nsrc)
+zsrc = Array{Array{Float32,1}}(undef, nsrc)
 
 # Set up source geometry
 xsrc[1] = [250f0, 500f0, 750f0, 1000f0]     # four simultaneous sources
@@ -407,7 +407,7 @@ f0 = 0.01	# source peak frequencies
 q = ricker_wavelet(500f0, dt, f0)  # 500 ms wavelet
 
 # Create array with different time shifts of the wavelet
-wavelet = Array{Any}(undef, nsrc)
+wavelet = Array{Array{Float32,2}}(undef, nsrc)
 
 wavelet[1] = zeros(Float32, src_geometry.nt[1], 4)
 wavelet[1][1:1+length(q)-1, 1] = q

@@ -746,9 +746,9 @@ function SrcRecReciprocal(d_obs::judiVector, q::judiVector)
     nsrc = length(d_obs.geometry.xloc[1])   # actual number of receivers
     nrec = d_obs.nsrc # actual number of sources
 
-    all([d_obs.geometry.xloc[1]==d_obs.geometry.xloc[i] for i=2:nsrc]) || throw(judiVectorException("Not all sources see the same receivers"))
-    all([d_obs.geometry.yloc[1]==d_obs.geometry.yloc[i] for i=2:nsrc]) || throw(judiVectorException("Not all sources see the same receivers"))
-    all([d_obs.geometry.xloc[1]==d_obs.geometry.xloc[i] for i=2:nsrc]) || throw(judiVectorException("Not all sources see the same receivers"))
+    all([d_obs.geometry.xloc[1]==d_obs.geometry.xloc[i] for i=2:d_obs.nsrc]) || throw(judiVectorException("Not all sources see the same receivers"))
+    all([d_obs.geometry.yloc[1]==d_obs.geometry.yloc[i] for i=2:d_obs.nsrc]) || throw(judiVectorException("Not all sources see the same receivers"))
+    all([d_obs.geometry.xloc[1]==d_obs.geometry.xloc[i] for i=2:d_obs.nsrc]) || throw(judiVectorException("Not all sources see the same receivers"))
     norm(diff(d_obs.geometry.dt))==0 || throw(judiVectorException("dt is difference for difference sources"))
     norm(diff(d_obs.geometry.nt))==0 || throw(judiVectorException("nt is difference for difference sources"))
 
@@ -766,9 +766,9 @@ function SrcRecReciprocal(d_obs::judiVector, q::judiVector)
 
     src_geometry = Geometry(xsrc,ysrc,zsrc;dt=d_obs.geometry.dt[1],t=d_obs.geometry.t[1])
 
-    xrec = q.geometry.xloc[1]
-    yrec = q.geometry.yloc[1]
-    zrec = q.geometry.zloc[1]
+    xrec = [q.geometry.xloc[i][1] for i = 1:nrec]
+    yrec = [q.geometry.yloc[i][1] for i = 1:nrec]
+    zrec = [q.geometry.zloc[i][1] for i = 1:nrec]
 
     rec_geometry = Geometry(xrec,yrec,zrec;dt=q.geometry.dt[1],t=q.geometry.t[1],nsrc=nsrc)
 
