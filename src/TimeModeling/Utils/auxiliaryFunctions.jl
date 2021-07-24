@@ -761,9 +761,12 @@ function SrcRecReciprocal(d_obs::judiVector, q::judiVector)
     end
     
     xsrc = convertToCell(d_obs.geometry.xloc[1])
-    ysrc = convertToCell(d_obs.geometry.yloc[1])
+    ysrc = (length(d_obs.geometry.yloc[1])<length(d_obs.geometry.xloc[1]) ? d_obs.geometry.yloc : convertToCell(d_obs.geometry.yloc[1]))
     zsrc = convertToCell(d_obs.geometry.zloc[1])
+    
+    if length(ysrc)<length(xsrc)
 
+    end
     src_geometry = Geometry(xsrc,ysrc,zsrc;dt=d_obs.geometry.dt[1],t=d_obs.geometry.t[1])
 
     xrec = [q.geometry.xloc[i][1] for i = 1:nrec]
