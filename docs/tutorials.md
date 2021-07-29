@@ -452,7 +452,7 @@ src_geometry = Geometry(xsrc, ysrc, zsrc; dt=q.geometry.dt[1], t=q.geometry.t[1]
 weights = randn(Float32,nsimsrc,q.nsrc)
 
 # Create wavelet
-wavelet = [q.data[1]*weights[k:k,:] for k = 1:nsimsrc]
+wavelet = [hcat(q.data...) .* weights[k:k,:] for k = 1:nsimsrc]
 
 q_sim = judiVector(src_geometry, wavelet)
 data_sim = [sum(weights[k,:].*dobs.data) for k = 1:nsimsrc]
