@@ -10,7 +10,6 @@ parsed_args = parse_commandline()
 nlayer = parsed_args["nlayer"]
 tti = parsed_args["tti"]
 fs =  parsed_args["fs"]
-isic =  parsed_args["isic"]
 
 # # Set parallel if specified
 nw = parsed_args["parallel"]
@@ -29,9 +28,10 @@ tol = 5f-4
 (tti && fs) && (tol = 5f-3)
 ###################################################################################################
 # Modeling operators
-@testset "Adjoint test with $(nlayer) layers and tti $(tti) and freesurface $(fs) and isic $(isic)" begin 
+cases = [(true, true), (true, false), (false, true), (false, false)]
+@testset "Adjoint test with $(nlayer) layers and tti $(tti) and freesurface $(fs) and isic $(isic) and optimal_checkpointing $(optchk)" for (isic, optchk) = cases
 
-    opt = Options(sum_padding=true, dt_comp=dt, free_surface=fs, isic=isic)
+    opt = Options(sum_padding=true, dt_comp=dt, free_surface=fs, isic=isic, optimal_checkpointing=optchk)
     F = judiModeling(model0, srcGeometry, recGeometry; options=opt)
 
     # Nonlinear modeling
@@ -71,9 +71,9 @@ if tti && fs
     tol = 5f-3
 end
 
-@testset "Extended source adjoint test with $(nlayer) layers and tti $(tti) and freesurface $(fs) and isic $(isic)" begin
+@testset "Extended source adjoint test with $(nlayer) layers and tti $(tti) and freesurface $(fs) and isic $(isic) and optimal_checkpointing $(optchk)" for (isic, optchk) = cases
 
-    opt = Options(sum_padding=true, dt_comp=dt, free_surface=fs, isic=isic)
+    opt = Options(sum_padding=true, dt_comp=dt, free_surface=fs, isic=isic, optimal_checkpointing=optchk)
     F = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
     # Nonlinear modeling
     y = F*q

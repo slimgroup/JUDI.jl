@@ -1,4 +1,4 @@
-# 2D FWI gradient test with 4 sources
+# 2D LS-RTM gradient test with 4 sources
 # The receiver positions and the source wavelets are the same for each of the four experiments.
 # Author: Philipp Witte, pwitte@eos.ubc.ca
 # Date: January 2017
@@ -11,7 +11,6 @@ parsed_args = parse_commandline()
 nlayer = parsed_args["nlayer"]
 tti = parsed_args["tti"]
 fs =  parsed_args["fs"]
-isic =  parsed_args["isic"]
 
 ### Model
 model, model0, dm = setup_model(tti, 4)
@@ -19,8 +18,9 @@ q, srcGeometry, recGeometry, info = setup_geom(model)
 dt = srcGeometry.dt[1]
 
 ###################################################################################################
+# Test if the first order approximation is correct
 
-@testset "LSRTM gradient test with $(nlayer) layers and tti $(tti) and freesurface $(fs) and isic $(isic)" begin
+@testset "LSRTM gradient test with $(nlayer) layers and tti $(tti) and freesurface $(fs) and optimal_checkpointing $(optchk)" for optchk = [true, false]
 	# Gradient test
 	ftol = (tti && fs) ? 1f-1 : 5f-2
 	h = 5f-2
@@ -30,7 +30,7 @@ dt = srcGeometry.dt[1]
 	h_all = zeros(maxiter)
 
 	# Observed data
-	opt = Options(sum_padding=true, free_surface=fs, isic=isic)
+	opt = Options(sum_padding=true, free_surface=fs)
 	F = judiModeling(info, model, srcGeometry, recGeometry; options=opt)
 	F0 = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
 	J = judiJacobian(F0, q)
@@ -82,50 +82,32 @@ dt = srcGeometry.dt[1]
 	ENV["OMP_NUM_THREADS"]=1
 	Jls, gradls = lsrtm_objective(model0, q, d, 0f0.*dm; options=opt, nlind=true)
 	Jfwi, gradfwi = fwi_objective(model0, q, d; options=opt)
-	@test isapprox(Jls, Jfwi;rtol=0, atol=0)
-	@test isapprox(gradls, gradfwi;rtol=0, atol=0)
+	@test isapprox(Jls, Jfwi;rtol=1f-5, atol=1f-5)
+	@test isapprox(gradls, gradfwi;rtol=1f-5, atol=1f-5)
 end
 
 # Test if lsrtm_objective produces the same value/gradient as is done by the correct algebra
 
-for fs in [true, false]
-	for isic in [true, false]
-		for optchk in [true, false]
-			for freq in [[], [2.5, 4.5]]
+cases = [(true, true, true), (true, false, true), (false, true, true), (false, false, true), (true, true, false), (true, false, false), (false, true, false), (false, false, false)]
+@testset "LSRTM gradient linear algebra test with $(nlayer) layers and tti $(tti) and freesurface $(fs) and isic $(isic) and optimal_checkpointing $(optchk) and DFT $(dft)" for (isic,optchk, dft) = cases
 
-				opt = Options(free_surface=fs, isic=isic, optimal_checkpointing=optchk, frequencies=freq)
-				F = judiModeling(info, model, srcGeometry, recGeometry; options=opt)
-				d = F*q
-				F0 = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
-				J = judiJacobian(F0, q)
-
-				d_res = F0*q + J*dm - d
-				Jm0_1 = 0.5f0 * norm(d_res)^2f0
-				grad_1 = J'*d_res
-			
-				@test isapprox(vec(grad), vec(grad_1.data); rtol=1f-5)
-				@test isapprox(Jm0, Jm01; rtol=1f-5)
-			
-			end
-		end
-	end
-end
-
-
-@testset "lsrtm_objective correct algebra test with $(nlayer) layers and tti $(tti) and freesurface $(fs) and isic $(isic)" begin
-
-	opt = Options(free_surface=fs, isic=isic)
+	freq = dft ? [25, 45] : []
+	opt = Options(free_surface=fs, isic=isic, optimal_checkpointing=optchk, frequencies=freq)
 	F = judiModeling(info, model, srcGeometry, recGeometry; options=opt)
-	d = F*q
-	Jm0, grad = lsrtm_objective(model0, q, d, dm; options=opt)
-
+	dobs = F*q
 	F0 = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
+	dobs0 = F0*q
 	J = judiJacobian(F0, q)
-	d_res = F0*q + J*dm - d
+
+	dm1 = 2f0*circshift(dm, 10)
+	d_res = dobs0 + J*dm1 - dobs
 	Jm0_1 = 0.5f0 * norm(d_res)^2f0
 	grad_1 = J'*d_res
+	
+	Jm0, grad = lsrtm_objective(model0, q, dobs, dm1; options=opt, nlind=true)
+	Jm01, grad1 = lsrtm_objective(model0, q, dobs-dobs0, dm1; options=opt, nlind=false)
 
 	@test isapprox(vec(grad), vec(grad_1.data); rtol=1f-5)
-	@test isapprox(Jm0, Jm01; rtol=1f-5)
-
+	@test isapprox(Jm0, Jm0_1; rtol=1f-5)
+			
 end
