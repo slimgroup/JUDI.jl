@@ -1,4 +1,4 @@
-# 2D FWI gradient test with 4 sources
+# 2D FWI gradient test with 1 source
 # The receiver positions and the source wavelets are the same for each of the four experiments.
 # Author: Philipp Witte, pwitte@eos.ubc.ca
 # Date: January 2017
@@ -15,7 +15,7 @@ fs =  parsed_args["fs"]
 
 ### Model
 model, model0, dm = setup_model(parsed_args["tti"], 4)
-q, srcGeometry, recGeometry, info = setup_geom(model)
+q, srcGeometry, recGeometry, info = setup_geom(model; nsrc=4)
 dt = srcGeometry.dt[1]
 
 ###################################################################################################
