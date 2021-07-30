@@ -22,7 +22,7 @@ dt = srcGeometry.dt[1]
 
 ###################################################################################################
 
-@testset "LSRTM gradient test with $(nlayer) layers and tti $(tti) and freesurface $(fs) and optimal_checkpointing $(optchk)" for optchk = [true, false]
+@testset "LSRTM gradient test with $(nlayer) layers and tti $(tti) and freesurface $(fs)" begin
 	# Gradient test
 	ftol = (tti && fs) ? 1f-1 : 5f-2
 	h = 5f-2
@@ -32,7 +32,7 @@ dt = srcGeometry.dt[1]
 	h_all = zeros(maxiter)
 
 	# Observed data
-	opt = Options(sum_padding=true, free_surface=fs, optimal_checkpointing=optchk)
+	opt = Options(sum_padding=true, free_surface=fs)
 	F = judiModeling(info, model, srcGeometry, recGeometry; options=opt)
 	F0 = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
 	J = judiJacobian(F0, q)
@@ -115,4 +115,3 @@ cases = [(true, false, true), (false, false, true), (true, true, false), (true, 
 	@test isapprox(Jm0, Jm01; rtol=ftol)
 			
 end
-
