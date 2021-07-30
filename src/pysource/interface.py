@@ -659,7 +659,7 @@ def J_adjoint_checkpointing(model, src_coords, wavelet, rec_coords, recin, space
     # Op arguments
     uk = {uu.name: uu for uu in as_tuple(u)}
     vk = {**uk, **{vv.name: vv for vv in as_tuple(v)}}
-    uk.update({'rcv%s' % as_tuple(u)[0].name: as_tuple(rec_g)[0]})
+    uk.update({r.name: r for r in as_tuple(rec_g)})
     vk.update({'src%s' % as_tuple(v)[0].name: rec})
     # Wrapped ops
     wrap_fw = CheckpointOperator(op_f, m=model.m, **uk)
