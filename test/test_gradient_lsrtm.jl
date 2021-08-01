@@ -17,7 +17,7 @@ fs =  parsed_args["fs"]
 
 ### Model
 model, model0, dm = setup_model(tti, 4)
-q, srcGeometry, recGeometry, info = setup_geom(model; nsrc=2)
+q, srcGeometry, recGeometry, info = setup_geom(model)
 dt = srcGeometry.dt[1]
 
 ###################################################################################################
