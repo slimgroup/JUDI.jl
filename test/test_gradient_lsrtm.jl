@@ -96,8 +96,10 @@ cases = [(true, false, true), (false, false, true), (true, true, false), (true, 
 
 	ftol = (fs||dft) ? 1f-2 : 1f-3
 	freq = dft ? [[2.5, 4.5],[3.5, 5.5],[10.0, 15.0], [30.0, 32.0]] : []
-	opt = Options(free_surface=fs, isic=isic, optimal_checkpointing=optchk, frequencies=freq)
-	J.options = opt
+	J.options.free_surface = fs
+	J.options.isic = isic
+	J.options.optimal_checkpointing = optchk
+	J.options.frequencies = freq
 
 	dm1 = 2f0*circshift(dm, 10)
 	d_res = dobs0 + J*dm1 - dobs
