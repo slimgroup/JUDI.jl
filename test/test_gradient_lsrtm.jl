@@ -20,6 +20,15 @@ model, model0, dm = setup_model(tti, 4)
 q, srcGeometry, recGeometry, info = setup_geom(model)
 dt = srcGeometry.dt[1]
 
+opt = Options(sum_padding=true, free_surface=fs)
+F = judiModeling(info, model, srcGeometry, recGeometry; options=opt)
+F0 = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
+J = judiJacobian(F0, q)
+
+# Observed data
+dobs = F*q
+dobs0 = F0*q
+
 ###################################################################################################
 
 @testset "LSRTM gradient test with $(nlayer) layers and tti $(tti) and freesurface $(fs)" begin
@@ -31,16 +40,9 @@ dt = srcGeometry.dt[1]
 	err2 = zeros(maxiter, 2)
 	h_all = zeros(maxiter)
 
-	# Observed data
-	opt = Options(sum_padding=true, free_surface=fs)
-	F = judiModeling(info, model, srcGeometry, recGeometry; options=opt)
-	F0 = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
-	J = judiJacobian(F0, q)
-	d = F*q
-
-	# FWI gradient and function value for m0
-	Jm0, grad = lsrtm_objective(model0, q, d, dm; options=opt)
-	Jm01, grad1 = lsrtm_objective(model0, q, d, dm; options=opt, nlind=true)
+	# LS-RTM gradient and function value for m0
+	Jm0, grad = lsrtm_objective(model0, q, dobs, dm; options=opt)
+	Jm01, grad1 = lsrtm_objective(model0, q, dobs, dm; options=opt, nlind=true)
 
 	# Perturbation
 	dmp = 2f0*circshift(dm, 10)
@@ -49,9 +51,9 @@ dt = srcGeometry.dt[1]
 
 	for j=1:maxiter
 		dmloc = dm + h*dmp
-		# FWI gradient and function falue for m0 + h*dm
-		Jm, _ = lsrtm_objective(model0, q, d, dmloc; options=opt)
-		Jm1, _ = lsrtm_objective(model0, q, d, dmloc; options=opt, nlind=true)
+		# LS-RTM gradient and function falue for m0 + h*dm
+		Jm, _ = lsrtm_objective(model0, q, dobs, dmloc; options=opt)
+		Jm1, _ = lsrtm_objective(model0, q, dobs, dmloc; options=opt, nlind=true)
 		@printf("h = %2.2e, J0 = %2.2e, Jm = %2.2e \n", h, Jm0, Jm)
 		@printf("h = %2.2e, J01 = %2.2e, Jm1 = %2.2e \n", h, Jm01, Jm1)
 		# Check convergence
@@ -82,8 +84,8 @@ dt = srcGeometry.dt[1]
 
 	# test that with zero dm we get the same as fwi_objective for residual
 	ENV["OMP_NUM_THREADS"]=1
-	Jls, gradls = lsrtm_objective(model0, q, d, 0f0.*dm; options=opt, nlind=true)
-	Jfwi, gradfwi = fwi_objective(model0, q, d; options=opt)
+	Jls, gradls = lsrtm_objective(model0, q, dobs, 0f0.*dm; options=opt, nlind=true)
+	Jfwi, gradfwi = fwi_objective(model0, q, dobs; options=opt)
 	@test isapprox(Jls, Jfwi; rtol=0f0, atol=0f0)
 	@test isapprox(gradls, gradfwi; rtol=0f0, atol=0f0)
 end
@@ -95,11 +97,7 @@ cases = [(true, false, true), (false, false, true), (true, true, false), (true, 
 	ftol = (fs||dft) ? 1f-2 : 1f-3
 	freq = dft ? [[2.5, 4.5],[3.5, 5.5],[10.0, 15.0], [30.0, 32.0]] : []
 	opt = Options(free_surface=fs, isic=isic, optimal_checkpointing=optchk, frequencies=freq)
-	F = judiModeling(info, model, srcGeometry, recGeometry; options=opt)
-	dobs = F*q
-	F0 = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
-	dobs0 = F0*q
-	J = judiJacobian(F0, q)
+	J.options = opt
 
 	dm1 = 2f0*circshift(dm, 10)
 	d_res = dobs0 + J*dm1 - dobs
