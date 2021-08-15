@@ -124,6 +124,7 @@ dotview(A::PhysicalParameter{vDT}, I::Vararg{Union{Function, Int, UnitRange{Int}
 Base.dotview(m::PhysicalParameter, i) = Base.dotview(m.data, i)
 
 getindex(A::PhysicalParameter, i::Int) = A.data[i]
+getindex(A::PhysicalParameter, i::Colon) = A.data[:]
 
 function getindex(A::PhysicalParameter{T}, I::Vararg{Union{Int, BitArray, Function, StepRange{Int}, UnitRange{Int}}, N}) where {N, T}
     new_v = getindex(A.data, I...)

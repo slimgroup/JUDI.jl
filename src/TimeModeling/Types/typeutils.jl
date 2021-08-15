@@ -1,26 +1,62 @@
 
 
-function eval_op(a, b, op)
-    c = typeof(a) <: joAbstractLinearOperator ? deepcopy(a) : deepcopy(b)
-    for j=1:c.nsrc
-        try
-            c.data[j] = op(getattri(a, :data, j), getattri(b, :data, j))
-        catch e
-            broadcast!(op, c.data[j], getattri(a, :data, j), getattri(b, :data, j))
+for JT in [judiVector, judiWeights, judiWavefield]
+    @eval function eval_op(a::$JT, b::$JT, op)
+        c = deepcopy(a)
+        for j=1:c.nsrc
+            broadcast!(op, c.data[j], a.data[j], b.data[j])
         end
+        return c
     end
-    return c
-end
 
-function eval_op_ip(a, b, op)
-    # Needed because julia 1.1 has a different definition of these two
-    op == ldiv! && (return lmul!(1f0/a, b))
-    op == rdiv! && (return rmul!(a, 1f0/b))
-    #apply in place op
-    for j=1:getattr(a, :nsrc, getattr(b, :nsrc))
-        op(getattri(a, :data, j), getattri(b, :data, j))
+    @eval function eval_op(a::T, b::$JT, op) where {T<:Number}
+        c = deepcopy(b)
+        for j=1:c.nsrc
+            broadcast!(op, c.data[j], a, b.data[j])
+        end
+        return c
     end
-    a
+
+    @eval function eval_op(a::$JT, b::T, op) where {T<:Number}
+        c = deepcopy(a)
+        for j=1:c.nsrc
+            broadcast!(op, c.data[j], a.data[j], b)
+        end
+        return c
+    end
+
+    @eval function eval_op_ip(a::$JT, b::T, op) where {T<:Number}
+        # Needed because julia 1.1 has a different definition of these two
+        op == ldiv! && (return lmul!(1f0/a, b))
+        op == rdiv! && (return rmul!(a, 1f0/b))
+        #apply in place op
+        for j=1:a.nsrc
+            op(a.data[j], b)
+        end
+        a
+    end
+
+    @eval function eval_op_ip(a::T, b::$JT, op) where {T<:Number}
+        # Needed because julia 1.1 has a different definition of these two
+        op == ldiv! && (return lmul!(1f0/a, b))
+        op == rdiv! && (return rmul!(a, 1f0/b))
+        #apply in place op
+        for j=1:b.nsrc
+            op(a, b.data[j])
+        end
+        a
+    end
+
+    @eval function eval_op_ip(a::$JT, b::$JT, op) where {T<:Number}
+        # Needed because julia 1.1 has a different definition of these two
+        op == ldiv! && (return lmul!(1f0/a, b))
+        op == rdiv! && (return rmul!(a, 1f0/b))
+        #apply in place op
+        for j=1:b.nsrc
+            op(a.data[j], b.data[j])
+        end
+        a
+    end
 end
 
 function matmulT(a::AbstractArray{T, 2}, b) where T
