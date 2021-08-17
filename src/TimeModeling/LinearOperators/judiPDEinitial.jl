@@ -72,20 +72,28 @@ conj(A::judiPDEinitial{DDT,RDT}) where {DDT,RDT} =
 
 # transpose(judiPDEinitial)
 transpose(A::judiPDEinitial{DDT,RDT}) where {DDT,RDT} =
-    judiPDEinitial{DDT,RDT}("Proj*F'*Proj'",A.n,A.m,A.info,A.model,A.recGeometry,A.options,
+    judiPDEinitial{DDT,RDT}("iv*F'*Proj'",A.n,A.m,A.info,A.model,A.recGeometry,A.options,
         A.fop_T,
         A.fop
         )
 
 # adjoint(judiPDEinitial)
 adjoint(A::judiPDEinitial{DDT,RDT}) where {DDT,RDT} =
-    judiPDEinitial{DDT,RDT}("Proj*F'*Proj'",A.n,A.m,A.info,A.model,A.recGeometry,A.options,
+    judiPDEinitial{DDT,RDT}("iv*F'*Proj'",A.n,A.m,A.info,A.model,A.recGeometry,A.options,
         A.fop_T,
         A.fop
         )
 
 ############################################################
 ## overloaded Base *(...judiPDEinitial...)
+
+# *(judiPDEinitial,vec)
+function *(A::judiPDEinitial{ADDT,ARDT}, v::AbstractVector{Float32}) where {ADDT,ARDT}
+    A.n == size(v,1) || throw(judiPDEinitialException("Shape mismatch: A:$(size(A)), v: $(size(v))"))
+    V = A.fop(v)
+    jo_check_type_match(ARDT,eltype(V),join(["RDT from *(judiPDEinitial,vec):",A.name,typeof(A),eltype(V)]," / "))
+    return V
+end
 
 #*(judiPDEinitial,judiInitialValue)
 function *(A::judiPDEinitial{ADDT,ARDT},v::judiInitialValue{vDT}) where {ADDT,ARDT,vDT}
@@ -99,9 +107,9 @@ end
 # *(judiPDEinitial,judiVector)
 function *(A::judiPDEinitial{ADDT,ARDT},v::judiVector{vDT, AT}) where {ADDT,ARDT,vDT, AT}
     A.n == size(v,1) || throw(judiPDEinitialException("Shape mismatch: A:$(size(A)), v: $(size(v))"))
-    jo_check_type_match(ADDT,vDT,join(["DDT for *(judiPDEinitial,judiWeights):",A.name,typeof(A),vDT]," / "))
+    jo_check_type_match(ADDT,vDT,join(["DDT for *(judiPDEinitial,judiVector):",A.name,typeof(A),vDT]," / "))
     V = A.fop(v)
-    jo_check_type_match(ARDT,eltype(V),join(["RDT from *(judiPDEinitial,judiWeights):",A.name,typeof(A),eltype(V)]," / "))
+    jo_check_type_match(ARDT,eltype(V),join(["RDT from *(judiPDEinitial,judiVector):",A.name,typeof(A),eltype(V)]," / "))
     return V
 end
 
@@ -110,7 +118,7 @@ end
 
 # *(num,judiPDEinitial)
 function *(a::Number,A::judiPDEinitial{ADDT,ARDT}) where {ADDT,ARDT}
-    return judiPDEinitial{ADDT,ARDT}("(N*"*A.name*")",A.m,A.n,A.info,A.model,A.wavelet,A.recGeometry,A.options,
+    return judiPDEinitial{ADDT,ARDT}("(N*"*A.name*")",A.m,A.n,A.info,A.model,A.recGeometry,A.options,
         v1 -> jo_convert(ARDT,a, false) * A.fop(v1),
         v2 -> jo_convert(ARDT,a, false) * A.fop_T(v2)
         )

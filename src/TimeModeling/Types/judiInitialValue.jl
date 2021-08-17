@@ -48,3 +48,34 @@ function judiInitialValue(firstValue::Array, secondValue::Array; vDT::DataType=F
     m = prod(size(firstValue))
     return judiInitialValue{vDT}("inital value source",m,n,firstValue,secondValue)
 end
+
+
+############################################################
+
+# *(joLinearFunction, judiInitialValue)
+function *(A::joLinearFunction{ADDT,ARDT},v::judiInitialValue{avDT}) where {ADDT, ARDT, avDT}
+    A.n == size(v,1) || throw(judiInitialValueException("Shape mismatch: A:$((A.m, A.n)), v: $(size(v))"))
+    jo_check_type_match(ADDT,avDT,join(["DDT for *(joLinearFunction,judiInitialValue):",A.name,typeof(A),avDT]," / "))
+    V = A.fop(v)
+    jo_check_type_match(ARDT,eltype(V),join(["RDT from *(joLinearFunction,judiInitialValue):",A.name,typeof(A),eltype(V)]," / "))
+    return V
+end
+
+# *(joLinearOperator, judiInitialValue)
+function *(A::joLinearOperator{ADDT,ARDT},v::judiInitialValue{avDT}) where {ADDT, ARDT, avDT}
+    A.n == size(v,1) || throw(judiInitialValueException("Shape mismatch: A:$((A.m, A.n)), v: $(size(v))"))
+    jo_check_type_match(ADDT,avDT,join(["DDT for *(joLinearFunction,judiInitialValue):",A.name,typeof(A),avDT]," / "))
+    V = A.fop(v)
+    jo_check_type_match(ARDT,eltype(V),join(["RDT from *(joLinearFunction,judiInitialValue):",A.name,typeof(A),eltype(V)]," / "))
+    return V
+end
+
+
+# *(number, judiInitialValue)
+function *(a::Number,v::judiInitialValue{avDT}) where {avDT}
+    v.firstValue = v.firstValue*a
+    v.secondValue = v.secondValue*a
+    return v
+end
+
+
