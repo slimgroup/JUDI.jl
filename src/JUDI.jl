@@ -40,7 +40,7 @@ import PyCall.array2py
 # Set python paths
 const pm = PyNULL()
 const ac = PyNULL()
-
+ 
 function __init__()
     pushfirst!(PyVector(pyimport("sys")."path"), joinpath(JUDIPATH, "pysource"))
     copy!(pm, pyimport("models"))
@@ -49,12 +49,5 @@ end
 
 # JUDI time modeling
 include("TimeModeling/TimeModeling.jl")
-
-# # Backward compatibility for JUDI
-module TimeModeling
-    using Reexport
-    @reexport using ..JUDI
-    Base.@warn "JUDI.TimeModeling is deprecated, use `using JUDI` instead"
-end
 
 end

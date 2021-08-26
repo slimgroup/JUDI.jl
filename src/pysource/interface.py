@@ -528,7 +528,7 @@ def J_adjoint_freq(model, src_coords, wavelet, rec_coords, recin, space_order=8,
     """
     rec, u, _ = op_fwd_J[born_fwd](model, src_coords, rec_coords, wavelet, save=False,
                                    space_order=space_order, freq_list=freq_list,
-                                   ws=ws, dft_sub=dft_sub, nlind=nlind)
+                                   isic=isic, ws=ws, dft_sub=dft_sub, nlind=nlind)
     # Residual and gradient
     if not is_residual:
         if nlind:
@@ -584,7 +584,7 @@ def J_adjoint_standard(model, src_coords, wavelet, rec_coords, recin, space_orde
     """
     rec, u, _ = op_fwd_J[born_fwd](model, src_coords, rec_coords, wavelet, save=True,
                                    ws=ws, space_order=space_order,
-                                   t_sub=t_sub, nlind=nlind)
+                                   isic=isic, t_sub=t_sub, nlind=nlind)
     # Residual and gradient
     if not is_residual:
         if nlind:
@@ -646,7 +646,7 @@ def J_adjoint_checkpointing(model, src_coords, wavelet, rec_coords, recin, space
     # Optimal checkpointing
     op_f, u, rec_g = op_fwd_J[born_fwd](model, src_coords, rec_coords, wavelet,
                                         space_order=space_order, return_op=True,
-                                        nlind=nlind, ws=ws)
+                                        isic=isic, nlind=nlind, ws=ws)
     op, g, v = gradient(model, recin, rec_coords, u, space_order=space_order,
                         return_op=True, isic=isic)
 
@@ -659,7 +659,7 @@ def J_adjoint_checkpointing(model, src_coords, wavelet, rec_coords, recin, space
     # Op arguments
     uk = {uu.name: uu for uu in as_tuple(u)}
     vk = {**uk, **{vv.name: vv for vv in as_tuple(v)}}
-    uk.update({'rcv%s' % as_tuple(u)[0].name: as_tuple(rec_g)[0]})
+    uk.update({r.name: r for r in as_tuple(rec_g)})
     vk.update({'src%s' % as_tuple(v)[0].name: rec})
     # Wrapped ops
     wrap_fw = CheckpointOperator(op_f, m=model.m, **uk)

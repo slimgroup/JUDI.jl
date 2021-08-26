@@ -1,4 +1,4 @@
-# 2D FWI gradient test with 4 sources
+# 2D FWI gradient test with 1 source
 # The receiver positions and the source wavelets are the same for each of the four experiments.
 # Author: Philipp Witte, pwitte@eos.ubc.ca
 # Date: January 2017

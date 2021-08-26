@@ -13,7 +13,7 @@ python = PyCall.pyprogramname
 cmd = Cmd([python, "-m", "pip", "install", "-U", "--user", "devito>=4.4"])
 
 try
-    dv_ver = split(pk.get_distribution("devito").versionn, "+")[1]
+    dv_ver = split(pk.get_distribution("devito").version, "+")[1]
     if cmp(dv_ver, "4.4") < 0
         @info "Devito  version too low, updating to >=4.4"
         run(cmd)
