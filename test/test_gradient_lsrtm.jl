@@ -94,7 +94,7 @@ end
 cases = [(true, false, true), (false, false, true), (true, true, false), (true, false, false), (false, true, false), (false, false, false)]	# DFT and optimal_checkpointing normally don't co-exist
 @testset "LSRTM gradient linear algebra test with $(nlayer) layers and tti $(tti) and freesurface $(fs) and isic $(isic) and optimal_checkpointing $(optchk) and DFT $(dft)" for (isic,optchk,dft) = cases
 
-	ftol = (fs||dft) ? 1f-2 : 1f-3
+	ftol = 5f-4
 	freq = dft ? [[2.5, 4.5],[3.5, 5.5],[10.0, 15.0], [30.0, 32.0]] : []
 	J.options.free_surface = fs
 	J.options.isic = isic
@@ -106,6 +106,7 @@ cases = [(true, false, true), (false, false, true), (true, true, false), (true, 
 	Jm0_1 = 0.5f0 * norm(d_res)^2f0
 	grad_1 = J'*d_res
 	
+	opt = J.options
 	Jm0, grad = lsrtm_objective(model0, q, dobs, dm1; options=opt, nlind=true)
 	Jm01, grad1 = lsrtm_objective(model0, q, dobs-dobs0, dm1; options=opt, nlind=false)
 

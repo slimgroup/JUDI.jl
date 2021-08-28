@@ -26,3 +26,15 @@ function fwi_objective(model::Model, source::judiVector, dObs::judiVector; optio
     # first value corresponds to function value, the rest to the gradient
     return obj, gradient
 end
+
+function fwi_objective(model::Array{Model,1}, source::Array{judiVector{T,Array{T,2}},1}, dObs::Array{judiVector{T,Array{T,2}},1}; options=Options()) where T
+# fwi_objective function for multiple sources and multiple vintages. The function distributes the sources and the input data amongst the available workers.
+
+    results = judipmap((m, q, d) -> fwi_objective(m, q, d; options=options), model, source, dObs)
+
+    obj = sum([results[i][1] for i = 1:length(results)])
+    gradient = [results[i][2] for i = 1:length(results)]
+
+    # first value corresponds to function value, the rest to the gradient
+    return obj, gradient
+end

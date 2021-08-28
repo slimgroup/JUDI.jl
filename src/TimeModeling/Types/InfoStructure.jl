@@ -5,7 +5,7 @@
 
 const IntNum = Union{Integer, Tuple{Integer,Integer}, Tuple{Integer,Integer,Integer}}
 
-export Info, compareInfo
+export Info, compareInfo, subsample
 
 # Object for velocity/slowness models
 mutable struct Info
@@ -50,4 +50,8 @@ function compareInfo(info_A, info_B)
     else
         return false
     end
+end
+# Subsample Info
+function subsample(info::Info, srcnum)
+    return Info(info.n, length(srcnum), info.nt[srcnum])
 end
