@@ -21,7 +21,7 @@ FFTW = "1"
 PyCall = "1.18, 1.90, 1.91, 1.62"
 Dierckx = "0.4, 0.5"
 DSP = "0.6, 0.7"
-Reexport = "1"
+Reexport = "0.2, 1"
 SegyIO = "0.7"
 
 [extras]
