@@ -27,3 +27,15 @@ function lsrtm_objective(model::Model, source::judiVector, dObs::judiVector, dm;
     # first value corresponds to function value, the rest to the gradient
     return obj, gradient
 end
+
+function lsrtm_objective(model::Array{Model,1}, source::Array{judiVector{T,Array{T,2}},1}, dObs::Array{judiVector{T,Array{T,2}},1}, dm::Union{Array{Array{T,1},1}, Array{PhysicalParameter{T},1}}; options=Options(), nlind=false) where T
+# lsrtm_objective function for multiple sources and multiple vintages. The function distributes the sources and the input data amongst the available workers.
+
+    results = judipmap((m, q, d, d_m) -> lsrtm_objective(m, q, d, d_m; options=options, nlind=nlind), model, source, dObs, dm)
+
+    obj = sum([results[i][1] for i = 1:length(results)])
+    gradient = [results[i][2] for i = 1:length(results)]
+
+    # first value corresponds to function value, the rest to the gradient
+    return obj, gradient
+end

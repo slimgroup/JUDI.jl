@@ -3,6 +3,11 @@ export fwi_objective
 
 function fwi_objective(model_full::Model, source::judiVector, dObs::judiVector, options::Options)
 # Setup time-domain linear or nonlinear foward and adjoint modeling and interface to OPESCI/devito
+
+    # assert this is for single source LSRTM
+    @assert source.nsrc == 1 "Multiple sources are used in a single-source fwi_objective"
+    @assert dObs.nsrc == 1 "Multiple-source data is used in a single-source fwi_objective"
+
     # Load full geometry for out-of-core geometry containers
     dObs.geometry = Geometry(dObs.geometry)
     source.geometry = Geometry(source.geometry)

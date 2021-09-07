@@ -1,7 +1,12 @@
 
 export lsrtm_objective
 
-function lsrtm_objective(model_full::Model, source::judiVector, dObs::judiVector, dm, options::Options; nlind=false)
+function lsrtm_objective(model_full::Model, source::judiVector, dObs::judiVector, dm::Union{Array, PhysicalParameter}, options::Options; nlind=false)
+
+    # assert this is for single source LSRTM
+    @assert source.nsrc == 1 "Multiple sources are used in a single-source lsrtm_objective"
+    @assert dObs.nsrc == 1 "Multiple-source data is used in a single-source lsrtm_objective"
+
     # Load full geometry for out-of-core geometry containers
     dObs.geometry = Geometry(dObs.geometry)
     source.geometry = Geometry(source.geometry)
