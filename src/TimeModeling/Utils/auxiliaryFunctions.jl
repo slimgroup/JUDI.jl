@@ -743,5 +743,5 @@ vec(::Nothing) = nothing
 SincInterpolation(Y::Array{T, 2}, S, Up) where T<:Real = sinc.( (Up .- S') ./ (S[2] - S[1]) ) * Y
 
 subsample(::Nothing, i) = nothing
-subsample(a::Array{Array{T, N}, 1}, i::Int64) where {T, N} = a[i]
+subsample(a::Array{Array{T, N}, 1}, i) where {T, N} = a[i]
 subsample(a::Array{SeisCon,1}, i::Int64) = a[i]

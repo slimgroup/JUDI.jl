@@ -97,6 +97,9 @@ datapath = joinpath(dirname(pathof(JUDI)))*"/../data/"
     src_geometry_sub = subsample(src_geometry_ic, 1)
     @test isequal(typeof(src_geometry_sub), GeometryIC{Float32})
     @test isequal(length(src_geometry_sub.xloc), 1)
+    src_geometry_sub = subsample(src_geometry_ic, 1:1)
+    @test isequal(typeof(src_geometry_sub), GeometryIC{Float32})
+    @test isequal(length(src_geometry_sub.xloc), 1)
 
     inds = nsrc > 1 ? (1:nsrc) : 1
     src_geometry_sub = subsample(src_geometry_ic, inds)
