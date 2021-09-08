@@ -11,7 +11,7 @@ RUN apt-get install -y python3 python3-dev python3-pip
 
 # Install devito
 RUN pip3 install --upgrade pip
-RUN pip3 install --user git+https://github.com/devitocodes/devito.git
+RUN pip3 install --user devito
 
 # Devito requirements
 RUN pip3 install --user jupyter matplotlib
@@ -50,11 +50,6 @@ RUN julia -e 'using JOLI, SegyIO, Images, PyCall, Distributed, JUDI.TimeModeling
 # Install and build IJulia
 ENV JUPYTER="/root/.local/bin/jupyter"
 RUN julia -e 'using Pkg; Pkg.add("IJulia")'
-
-# Add JUDI examples
-ADD ./data /app/judi/data
-ADD ./test /app/judi/test
-ADD ./examples /app/judi/examples
 
 RUN apt clean all
 

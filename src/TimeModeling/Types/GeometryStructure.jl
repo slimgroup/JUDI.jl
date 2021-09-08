@@ -293,6 +293,7 @@ Geometry(::Nothing) = nothing
 # Subsample in-core geometry structure
 function subsample(geometry::GeometryIC,srcnum)
     if length(srcnum)==1
+        srcnum = srcnum[1]
         geometry = Geometry(geometry.xloc[srcnum], geometry.yloc[srcnum], geometry.zloc[srcnum];
                             dt=geometry.dt[srcnum],t=geometry.t[srcnum],nsrc=1)
     else

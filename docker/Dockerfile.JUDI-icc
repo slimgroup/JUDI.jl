@@ -1,0 +1,67 @@
+FROM ubuntu:20.04
+
+ENV DEBIAN_FRONTEND=noninteractive 
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        build-essential ca-certificates wget openssh-client openssh-server
+
+# Required application packages
+RUN apt-get install -y gfortran python3 python3-pip && \
+    apt-get install -y git wget curl vim htop hdf5-tools gcc-8 g++8 gzip
+
+# Install rclone
+RUN apt-get install -y unzip && curl https://rclone.org/install.sh | bash
+
+# Install Julia
+RUN wget "https://julialang-s3.julialang.org/bin/linux/x64/1.6/julia-1.6.1-linux-x86_64.tar.gz" && \
+    tar -xvzf julia-1.6.1-linux-x86_64.tar.gz && \
+    rm -rf julia-1.6.1-linux-x86_64.tar.gz && \
+    ln -s /julia-1.6.1/bin/julia /usr/local/bin/julia
+
+# Install requirements
+RUN pip3 install -r https://raw.githubusercontent.com/microsoft/AzureClusterlessHPC.jl/main/pyrequirements.txt
+
+# Add julia packages and registry
+RUN julia -e 'using Pkg; Pkg.update()' && \
+    julia -e 'using Pkg; Pkg.Registry.add(RegistrySpec(url="https://Github.com/slimgroup/SLIMregistryJL.git"))' && \
+    julia -e 'using Pkg; Pkg.add(["JOLI", "JUDI", "SegyIO", "JLD2", "Images", "PyCall", "HDF5", "PyPlot", "TimeProbeSeismic"])' && \
+    julia -e 'using Pkg; Pkg.add(url="https://github.com/microsoft/AzureClusterlessHPC.jl")'
+
+# Configure PyCall
+RUN julia -e 'using Pkg; ENV["PYTHON"]="/usr/bin/python3"; Pkg.build("PyCall")'
+
+# Build and precompile packages
+RUN julia -e 'using Pkg;  Pkg.build("JUDI")' && \
+    julia -e 'using PyCall, AzureClusterlessHPC, JUDI, SegyIO, JOLI, PyPlot, Images, JLD2, HDF5'
+
+# Make sure julia directory is accessible
+RUN chmod -R 777 /root/.julia
+
+# Install intel hpc toolkit
+RUN cd /tmp && \
+    apt install -y software-properties-common gnupg && \
+    wget https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB && \
+    apt-key add GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB && \
+    rm GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB
+
+RUN add-apt-repository "deb https://apt.repos.intel.com/oneapi all main" && \
+    apt update && \
+    apt install -y intel-oneapi-compiler-dpcpp-cpp-and-cpp-classic
+
+# Environment variables
+ENV JULIA_DEPOT_PATH="/root/.julia" \
+    PYTHONPATH="/usr/local/lib/python3.8/dist-packages" \
+    DEVITO_ARCH="icc" \
+    DEVITO_LANGUAGE="openmp" \
+    OMP_NUM_THREADS="2" \
+    DEVITO_LOGGING="DEBUG"
+
+# clean
+RUN rm -rf /var/lib/apt/lists/* \
+	&& apt-get clean
+
+ADD entry_icc.sh entry_icc.sh
+RUN chmod +x entry_icc.sh
+ENTRYPOINT ["/entry_icc.sh"]
+
