@@ -39,7 +39,6 @@ function twri_objective(model_full::Model, source::judiVector, dObs::judiVector,
                                alpha_op=optionswri.comp_alpha, w_fun=optionswri.weight_fun,
                                freq_list=freqs, wfilt=wfilt)
 
-
     if (optionswri.params in [:m, :all])
         gradm = remove_padding(gradm, modelPy.padsizes; true_adjoint=options.sum_padding)
         options.limit_m==true && (gradm = extend_gradient(model_full, model, gradm))
@@ -49,7 +48,7 @@ function twri_objective(model_full::Model, source::judiVector, dObs::judiVector,
         grady = judiVector(dObs.geometry, grady)
     end
 
-    return filter_out(obj, gradm, grady)
+    return filter_out([obj], gradm, grady)
 end
 
 

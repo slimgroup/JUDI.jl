@@ -2,7 +2,6 @@
 export lsrtm_objective
 
 function lsrtm_objective(model_full::Model, source::judiVector, dObs::judiVector, dm::Union{Array, PhysicalParameter}, options::Options; nlind=false)
-
     # assert this is for single source LSRTM
     @assert source.nsrc == 1 "Multiple sources are used in a single-source lsrtm_objective"
     @assert dObs.nsrc == 1 "Multiple-source data is used in a single-source lsrtm_objective"
@@ -56,5 +55,5 @@ function lsrtm_objective(model_full::Model, source::judiVector, dObs::judiVector
         argout2 = extend_gradient(model_full, model, argout2)
     end
 
-    return argout1, argout2
+    return [argout1], argout2
 end
