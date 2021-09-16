@@ -21,7 +21,7 @@ import Base.*, Base./, Base.+, Base.-
 import Base.copy!, Base.copy
 import Base.sum, Base.ndims, Base.reshape, Base.fill!, Base.axes, Base.dotview
 import Base.eltype, Base.length, Base.size, Base.iterate, Base.show, Base.display, Base.showarg
-import Base.maximum, Base.minimum
+import Base.maximum, Base.minimum, Base.push!
 import Base.Broadcast.broadcasted, Base.BroadcastStyle, Base.Broadcast.DefaultArrayStyle, Base.Broadcast, Base.broadcast!
 import Base.getindex, Base.setindex!, Base.firstindex, Base.lastindex
 import Base.similar, Base.isapprox, Base.isequal

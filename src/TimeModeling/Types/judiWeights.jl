@@ -137,6 +137,13 @@ function vcat(ai::Vararg{judiWeights{avDT}, N}) where {avDT, N}
     return judiWeights{avDT}(a.name,m,n,nsrc,weights)
 end
 
+
+function push!(a::judiWeights{T}, b::judiWeights{T}) where T
+	append!(a.weights, b.weights)
+	a.m += b.m
+	a.nsrc += b.nsrc
+end
+
 # dot product
 function dot(a::judiWeights{avDT}, b::judiWeights{bvDT}) where {avDT, bvDT}
 # Dot product for data containers

@@ -24,7 +24,7 @@ include("Utils/auxiliaryFunctions.jl")
 
 #############################################################################
 # PDE solvers
-include("Modeling/utils.jl") # Modeling functions utilities
+include("Modeling/distributed.jl") # Modeling functions utilities
 include("Modeling/python_interface.jl")  # forward/adjoint linear/nonlinear modeling
 include("Modeling/time_modeling_serial.jl")  # forward/adjoint linear/nonlinear modeling
 include("Modeling/time_modeling_parallel.jl")    # parallelization for modeling

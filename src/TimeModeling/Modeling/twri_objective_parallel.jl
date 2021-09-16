@@ -3,6 +3,7 @@
 #
 export TWRIOptions
 
+red_funcs = Dict(:m => (sum!, sum!), :y => (vcat!, sum!), :all => (sum!, vcat!, sum!), nothing => (sum!,))
 """
     twri_objective(model, source, dobs; options=Options(), optionswri=TWRIOptions())
 
@@ -19,25 +20,11 @@ Example
 function twri_objective(model::Model, source::judiVector, dObs::judiVector, y::Union{judiVector, Nothing};
                         options=Options(), optionswri=TWRIOptions())
 # fwi_objective function for multiple sources. The function distributes the sources and the input data amongst the available workers.
+    red_op! = red_funcs(optionswri.params)
 
-    results = judipmap(j -> twri_objective(model, source[j], dObs[j], subsample(y, j), subsample(options,j), subsample(optionswri,j)), 1:dObs.nsrc)
+    results = judipmap(j -> twri_objective(model, source[j], dObs[j], subsample(y, j), subsample(options,j), subsample(optionswri,j)), 1:dObs.nsrc, red_op!...)
 
-    # Collect and reduce gradients
-    objective = results[1][1]
-    gradientm = results[1][2]
-    gradienty = results[1][3]
-
-    for j=2:dObs.nsrc
-        ~isnothing(gradientm) && (gradientm .+= results[j][2])
-        ~isnothing(gradienty) && (gradienty = [gradienty; results[j][3]])
-        objective += results[j][1]
-    end
-
-    # first value corresponds to function value, the rest to the gradient
-    optionswri.params == :m && return objective, gradientm
-    optionswri.params == :y && return objective, gradienty
-    optionswri.params == :all && return objective, gradientm, gradienty
-    return objective
+    return results
 end
 
 # TWRI options

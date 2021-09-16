@@ -19,12 +19,8 @@ Example
 function lsrtm_objective(model::Model, source::judiVector, dObs::judiVector, dm; options=Options(), nlind=false)
 # lsrtm_objective function for multiple sources. The function distributes the sources and the input data amongst the available workers.
 
-    results = judipmap(j -> lsrtm_objective(model, source[j], dObs[j], dm, subsample(options, j); nlind=nlind), 1:dObs.nsrc)
+    obj, gradient = judipmap(j -> lsrtm_objective(model, source[j], dObs[j], dm, subsample(options, j); nlind=nlind), 1:dObs.nsrc, sum!)
 
-    # Collect and reduce gradients
-    obj, gradient = reduce((x, y) -> x .+ y, results)
-
-    # first value corresponds to function value, the rest to the gradient
     return obj, gradient
 end
 
