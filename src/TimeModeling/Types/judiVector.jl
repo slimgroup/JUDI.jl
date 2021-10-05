@@ -437,7 +437,7 @@ function judiVector_to_SeisBlock(d::judiVector{avDT, AT}, q::judiVector{avDT, QT
         # set headers
         set_header!(blocks[j], "GroupX", convert(Array{Integer,1},round.(d.geometry.xloc[j]*1f3)))
         if length(d.geometry.yloc[j]) == 1
-            set_header!(blocks[j], "GroupY", Int(round(d.geometry.yloc[j]*1f3)))
+            set_header!(blocks[j], "GroupY", Int(round.(d.geometry.yloc[j]*1f3)))
         else
             set_header!(blocks[j], "GroupY", convert(Array{Integer,1},round.(d.geometry.yloc[j]*1f3)))
         end
