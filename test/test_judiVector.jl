@@ -213,6 +213,10 @@ ftol = 1e-6
     q1 = judiVector(q_block)
     @test isapprox(q1, q)
 
+    block_2d = judiVector_to_SeisBlock(d_obs, q)
+    d_obs1 = judiVector(block_2d)
+    @test isapprox(d_obs1.data, d_obs.data)
+
     # Time interpolation (inplace)
     dt_orig = 2f0
     dt_new = 1f0

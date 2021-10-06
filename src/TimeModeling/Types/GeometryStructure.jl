@@ -180,11 +180,12 @@ function Geometry(data::SegyIO.SeisBlock; key="source", segy_depth_key="")
         traces = findall(src .== unique(src)[j])
         if key=="source"    # assume same source location for all traces within one shot record
             xloc[j] = convert(gt, xloc_full[traces][1:1])
-            yloc[j] = convert(gt,yloc_full[traces][1:1])
-            zloc[j] = abs.(convert(gt,zloc_full[traces][1:1]))
+            yloc[j] = convert(gt, yloc_full[traces][1:1])
+            zloc[j] = abs.(convert(gt, zloc_full[traces][1:1]))
         else
             xloc[j] = convert(gt, xloc_full[traces])
             yloc[j] = convert(gt, yloc_full[traces])
+            (norm(yloc_full) == 0) && (yloc[j] = [0f0])
             zloc[j] = abs.(convert(gt, zloc_full[traces]))
         end
         dt[j] = Float32(dt_full/1f3)
@@ -269,14 +270,18 @@ function Geometry(geometry::GeometryOOC)
     for j=1:nsrc
 
         header = read_con_headers(geometry.container[j], params, 1)
+        xloc_full = get_header(header, params[1])
+        yloc_full = get_header(header, params[2])
+        zloc_full = get_header(header, params[3])
         if geometry.key=="source"
-            xloc[j] = convert(gt, get_header(header, params[1])[1])
-            yloc[j] = convert(gt, get_header(header, params[2])[1])
-            zloc[j] = abs.(convert(gt,get_header(header, params[3])[1]))
+            xloc[j] = convert(gt, xloc_full[1])
+            yloc[j] = convert(gt, yloc_full[1])
+            zloc[j] = abs.(convert(gt,zloc_full[1]))
         else
-            xloc[j] = convert(gt, get_header(header, params[1]))
-            yloc[j] = convert(gt, get_header(header, params[2]))
-            zloc[j] = abs.(convert(gt, get_header(header, params[3])))
+            xloc[j] = convert(gt, xloc_full)
+            yloc[j] = convert(gt, yloc_full)
+            (norm(yloc_full) == 0) && (yloc[j] = [0f0])
+            zloc[j] = abs.(convert(gt, zloc_full))
         end
         dt[j] = get_header(header, params[4])[1]/1f3
         nt[j] = convert(Integer, get_header(header, params[5])[1])
