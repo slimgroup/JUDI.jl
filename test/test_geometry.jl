@@ -47,9 +47,9 @@ datapath = joinpath(dirname(pathof(JUDI)))*"/../data/"
 
     @test isequal(typeof(src_geometry), GeometryIC{Float32})
     @test isequal(typeof(rec_geometry), GeometryIC{Float32})
-    @test isequal(get_header(block, "SourceSurfaceElevation")[1], src_geometry.zloc[1])
+    @test isequal(get_header(block, "SourceSurfaceElevation")[1], src_geometry.zloc[1][1])
     @test isequal(get_header(block, "RecGroupElevation")[1], rec_geometry.zloc[1][1])
-    @test isequal(get_header(block, "SourceX")[1], src_geometry.xloc[1])
+    @test isequal(get_header(block, "SourceX")[1], src_geometry.xloc[1][1])
     @test isequal(get_header(block, "GroupX")[1], rec_geometry.xloc[1][1])
 
     # Set up geometry summary from out-of-core data container
