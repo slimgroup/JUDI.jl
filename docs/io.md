@@ -39,7 +39,13 @@ To write a `judiVector` as a SEG-Y file, we need a `judiVector` containing the r
 block = judiVector_to_SeisBlock(d_obs, q)
 ```
 
-where `d_obs` and `q` are `judiVectors` for receiver and source data respectively. Next, we can write a SEG-Y file from a `SegyIO block`:
+where `d_obs` and `q` are `judiVectors` for receiver and source data respectively. To save only the source `q`, we can do
+
+```julia
+block = src_to_SeisBlock(q)
+```
+
+Next, we can write a SEG-Y file from a `SegyIO block`:
 
 ```julia
 segy_write("new_file.segy", block)  # writes a SEG-Y file called new_file.segy

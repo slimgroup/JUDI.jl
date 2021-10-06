@@ -465,32 +465,14 @@ function judiVector_to_SeisBlock(d::judiVector{avDT, AT}, q::judiVector{avDT, QT
     return fullblock
 end
 
-function write_shot_record(srcGeometry, srcData, recGeometry, recData,options)
-    q = judiVector(srcGeometry, srcData)
-    d = judiVector(recGeometry, recData)
-    pos = [srcGeometry.xloc[1][1], srcGeometry.yloc[1][1],  srcGeometry.zloc[1][1]]
-    pos = join(["_"*string(trunc(p; digits=2)) for p in pos])
-    file = join([string(options.file_name), pos,".segy"])
-    block_out = judiVector_to_SeisBlock(d, q)
-    segy_write(join([options.file_path,"/",file]), block_out)
-    container = scan_file(join([options.file_path,"/",file]),
-                          ["GroupX", "GroupY", "dt", "SourceSurfaceElevation", "RecGroupElevation"];
-                          chunksize=256)
-    return container
-end
+# Create SeisBlock from a single judiVector (source)
+function src_to_SeisBlock(q::judiVector{avDT, QT};
+                                 source_depth_key="SourceSurfaceElevation",
+                                 receiver_depth_key="RecGroupElevation") where {avDT, QT}
 
-
-function time_resample!(x::judiVector, dt_new; order=2)
-    x.m = 0
-    for j=1:x.nsrc
-        dataInterp, geom = time_resample(x.data[j], subsample(x.geometry, j), dt_new)
-        x.data[j] = dataInterp
-        x.geometry.dt[j] = dt_new
-        x.geometry.nt[j] = geom.nt[1]
-        x.geometry.t[j] = geom.t[1]
-        x.m += prod(size(dataInterp))
-    end
-    return x
+    return judiVector_to_SeisBlock(q, q;
+        source_depth_key=source_depth_key,
+        receiver_depth_key=receiver_depth_key)
 end
 
 function time_resample(x::judiVector, dt_new; order=2)
