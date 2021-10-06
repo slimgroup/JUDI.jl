@@ -209,6 +209,10 @@ ftol = 1e-6
     @test isequal(get_header(block, "ns"), get_header(block_out, "ns"))
     @test isequal(get_header(block, "dt"), get_header(block_out, "dt"))
 
+    q_block = src_to_SeisBlock(q)
+    q1 = judiVector(q_block)
+    @test isapprox(q1, q)
+
     # Time interpolation (inplace)
     dt_orig = 2f0
     dt_new = 1f0
