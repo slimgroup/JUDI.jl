@@ -5,7 +5,7 @@
 # Authors: Philipp Witte (pwitte@eos.ubc.ca), Henryk Modzelewski (hmodzelewski@eos.ubc.ca)
 # Date: January 2017
 
-export judiVector, judiVectorException, subsample, judiVector_to_SeisBlock
+export judiVector, judiVectorException, subsample, judiVector_to_SeisBlock, src_to_SeisBlock
 export time_resample, time_resample!, judiTimeInterpolation
 export write_shot_record, get_data, convert_to_array, rebuild_jv
 
