@@ -155,7 +155,7 @@ function Geometry(data::SegyIO.SeisBlock; key="source", segy_depth_key="")
     if key=="source"
         isempty(segy_depth_key) && (segy_depth_key="SourceSurfaceElevation")
         params = ["SourceX","SourceY",segy_depth_key]
-        gt = Float32
+        gt = Array{Float32, 1}
     elseif key=="receiver"
         isempty(segy_depth_key) && (segy_depth_key="RecGroupElevation")
         params = ["GroupX","GroupY",segy_depth_key]
@@ -179,9 +179,9 @@ function Geometry(data::SegyIO.SeisBlock; key="source", segy_depth_key="")
     for j=1:nsrc
         traces = findall(src .== unique(src)[j])
         if key=="source"    # assume same source location for all traces within one shot record
-            xloc[j] = convert(gt, xloc_full[traces][1])
-            yloc[j] = convert(gt,yloc_full[traces][1])
-            zloc[j] = abs.(convert(gt,zloc_full[traces][1]))
+            xloc[j] = convert(gt, xloc_full[traces][1:1])
+            yloc[j] = convert(gt,yloc_full[traces][1:1])
+            zloc[j] = abs.(convert(gt,zloc_full[traces][1:1]))
         else
             xloc[j] = convert(gt, xloc_full[traces])
             yloc[j] = convert(gt, yloc_full[traces])
