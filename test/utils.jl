@@ -63,9 +63,9 @@ Sets up a simple 2D acquisition for the wave equation operators tests
 function setup_geom(model; nsrc=1, tn=1500f0)
     ## Set up receiver geometry
     nxrec = model.n[1] - 2
-    xrec = collect(range(model.d[1], stop=(model.n[1]-2)*model.d[1], length=nxrec))
-    yrec = collect(range(0f0, stop=0f0, length=nxrec))
-    zrec = collect(range(50f0, stop=50f0, length=nxrec))
+    xrec = range(model.d[1], stop=(model.n[1]-2)*model.d[1], length=nxrec)
+    yrec = 0f0
+    zrec = range(50f0, stop=50f0, length=nxrec)
 
     # receiver sampling and recording time
     T = tn   # receiver recording time [ms]
