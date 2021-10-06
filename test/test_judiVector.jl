@@ -198,7 +198,7 @@ ftol = 1e-6
 
     # Conversion to SegyIO.Block
     src_geometry = Geometry(block; key="source", segy_depth_key="SourceSurfaceElevation")
-    wavelet = randn(Float32, src_geometry.nt[1], 1)
+    wavelet = randn(Float32, src_geometry.nt[1])
     q = judiVector(src_geometry, wavelet)
     block_out =  judiVector_to_SeisBlock(d_block, q; source_depth_key="SourceSurfaceElevation", receiver_depth_key="RecGroupElevation")
 

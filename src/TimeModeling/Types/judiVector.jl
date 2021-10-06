@@ -98,11 +98,11 @@ function judiVector(geometry::Geometry, data::Array{T, N}) where {T, N}
             m += length(geometry.xloc[j])*geometry.nt[j]
         end
     end
-    dataCell = Array{Array{T, N}, 1}(undef, nsrc)
+    dataCell = Array{Array{T, 2}, 1}(undef, nsrc)
     for j=1:nsrc
-        dataCell[j] = deepcopy(data)
+        dataCell[j] = ((N == 1) ? reshape(data, length(data), 1) : deepcopy(data))
     end
-    return judiVector{T, Array{T, N}}("Seismic data vector", m, n, nsrc, geometry, dataCell)
+    return judiVector{T, Array{T, 2}}("Seismic data vector", m, n, nsrc, geometry, dataCell)
 end
 
 # constructor if data is passed as a cell array
