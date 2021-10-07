@@ -20,6 +20,11 @@ ftol = 1e-6
     info = example_info(nsrc=nsrc)
     dsize = (nsrc*nrec*ns, 1)
     rec_geometry = example_rec_geometry(nsrc=nsrc, nrec=nrec)
+    for i = 1:nsrc
+        rec_geometry.xloc[i] = round.(rec_geometry.xloc[i], digits=3)
+        rec_geometry.yloc[i] = round.(rec_geometry.yloc[i], digits=3)
+        rec_geometry.zloc[i] = round.(rec_geometry.zloc[i], digits=3)
+    end
     data = randn(Float32, ns, nrec)
     d_obs = judiVector(rec_geometry, data)
     @test typeof(d_obs) == judiVector{Float32, Array{Float32, 2}}
@@ -200,7 +205,7 @@ ftol = 1e-6
     src_geometry = Geometry(block; key="source", segy_depth_key="SourceSurfaceElevation")
     wavelet = randn(Float32, src_geometry.nt[1])
     q = judiVector(src_geometry, wavelet)
-    block_out =  judiVector_to_SeisBlock(d_block, q; source_depth_key="SourceSurfaceElevation", receiver_depth_key="RecGroupElevation")
+    block_out = judiVector_to_SeisBlock(d_block, q; source_depth_key="SourceSurfaceElevation", receiver_depth_key="RecGroupElevation")
 
     @test isapprox(block.data, block_out.data)
     @test isapprox(get_header(block, "SourceX"), get_header(block_out, "SourceX"); rtol=1f-6)
@@ -215,7 +220,7 @@ ftol = 1e-6
 
     block_2d = judiVector_to_SeisBlock(d_obs, q)
     d_obs1 = judiVector(block_2d)
-    @test isapprox(d_obs1.data, d_obs.data)
+    @test isapprox(d_obs1, d_obs)
 
     # Time interpolation (inplace)
     dt_orig = 2f0
