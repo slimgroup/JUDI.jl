@@ -7,10 +7,7 @@
 
 datapath = joinpath(dirname(pathof(JUDI)))*"/../data/"
 
-@testset "Geometry Unit Test with $(nsrc) sources" for nsrc=[1, 2]
-
-    # Number of sources
-    nsrc = 2
+@testset "Geometry Unit Test with $(nsrc) sources" for nsrc=[2]
 
     # Constructor if nt is not passed
     xsrc = convertToCell(range(100f0, stop=1100f0, length=nsrc))
