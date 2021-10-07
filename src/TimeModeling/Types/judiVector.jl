@@ -83,9 +83,8 @@ wavelets or a single wavelet as an array):
     dobs = judiVector(seis_container; segy_depth_key="RecGroupElevation")
 
 """
-function judiVector(geometry::Geometry, data::Array{T, N}) where {T, N}
+function judiVector(geometry::Geometry, data::Array{T, 2}) where {T, N}
     T == Float32 || (data = tof32(data))
-    N < 3 || throw(judiVectorException("Only 1D (trace) and 2D (record) input data supported"))
     # length of vector
     n = 1
     if typeof(geometry) == GeometryOOC
@@ -100,9 +99,13 @@ function judiVector(geometry::Geometry, data::Array{T, N}) where {T, N}
     end
     dataCell = Array{Array{T, 2}, 1}(undef, nsrc)
     for j=1:nsrc
-        dataCell[j] = ((N == 1) ? reshape(data, length(data), 1) : deepcopy(data))
+        dataCell[j] = deepcopy(data)
     end
     return judiVector{T, Array{T, 2}}("Seismic data vector", m, n, nsrc, geometry, dataCell)
+end
+
+function judiVector(geometry::Geometry, data::Array{T, 1}) where {T, N}
+    return judiVector(geometry, reshape(data, length(data),1))
 end
 
 # constructor if data is passed as a cell array
@@ -244,7 +247,7 @@ function judiVector(data::Array{SegyIO.SeisCon,1}; segy_depth_key="RecGroupEleva
 end
 
 # contructor for out-of-core data container from cell array of containers and given geometry
-function judiVector(geometry::Geometry, data::Array{SegyIO.SeisCon})
+function judiVector(geometry::Geometry, data::Array{SegyIO.SeisCon, 1})
     # length of data vector
     nsrc = length(data)
     numTraces = 0
