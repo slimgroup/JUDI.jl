@@ -29,14 +29,13 @@ mutable struct judiPDEfullException <: Exception
     msg :: String
 end
 
-
 ############################################################
 ## Constructor
 
 # Set up info structure for linear operators
 function judiModeling(model::Model, srcGeometry::Geometry, recGeometry::Geometry; options=Options(), DDT::DataType=Float32, RDT::DataType=DDT)
     ntComp = get_computational_nt(srcGeometry, recGeometry, model)
-    info = Info(prod(model.n), length(srcGeometry.xloc), ntComp)
+    info = Info(prod(model.n), get_nsrc(srcGeometry), ntComp)
     return judiModeling(info, model, srcGeometry, recGeometry; options=options, DDT=DDT, RDT=RDT)
 end
 
@@ -45,19 +44,7 @@ function judiModeling(info::Info,model::Model, srcGeometry::Geometry, recGeometr
     (DDT == Float32 && RDT == Float32) || throw(judiPDEfullException("Domain and range types not supported"))
 
     # Determine dimensions
-    if typeof(recGeometry) == GeometryOOC
-        m = sum(recGeometry.nsamples)
-    else
-        m = 0
-        for j=1:info.nsrc m += length(recGeometry.xloc[j])*recGeometry.nt[j] end
-
-    end
-    if typeof(srcGeometry) == GeometryOOC
-        n = sum(srcGeometry.nsamples)
-    else
-        n = 0
-        for j=1:info.nsrc n += length(srcGeometry.xloc[j])*srcGeometry.nt[j] end
-    end
+    m, n = n_samples(recGeometry, info), n_samples(srcGeometry, info)
 
     srcnum = 1:info.nsrc
 

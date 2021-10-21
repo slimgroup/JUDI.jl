@@ -55,7 +55,7 @@ function judiJacobian(F::judiPDEfull, source::judiVector; DDT::DataType=Float32,
 # JOLI wrapper for nonlinear forward modeling
     compareGeometry(F.srcGeometry, source.geometry) == true || judiJacobianException("Source geometry mismatch")
     (DDT == Float32 && RDT == Float32) || throw(judiJacobianException("Domain and range types not supported"))
-    m = typeof(F.recGeometry) == GeometryOOC ? sum(F.recGeometry.nsamples) : sum([length(F.recGeometry.xloc[j])*F.recGeometry.nt[j] for j=1:source.nsrc])
+    m = n_samples(F.recGeometry, F.info)
     n = F.info.n
 
     isnothing(options) && (options = F.options)
@@ -129,8 +129,7 @@ function subsample(J::judiJacobian{ADDT,ARDT}, srcnum) where {ADDT,ARDT}
     recGeometry = subsample(J.recGeometry, srcnum)
     nsrc = typeof(srcnum) <: Int ? 1 : length(srcnum)
     info = Info(J.info.n, nsrc, J.info.nt[srcnum])
-    m = typeof(recGeometry) == GeometryOOC ? sum(recGeometry.nsamples) : sum([length(recGeometry.xloc[j])*recGeometry.nt[j] for j=1:nsrc])
-
+    m = n_samples(recGeometry, info)
     return judiJacobian(J; m=m, info=info, source=J.source[srcnum],geom=recGeometry, opt=subsample(J.options, srcnum))
 end
 

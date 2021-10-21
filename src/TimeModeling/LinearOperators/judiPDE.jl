@@ -54,12 +54,7 @@ end
 function judiPDE(name::String,info::Info,model::Model, geometry::Geometry; options=Options(), DDT::DataType=Float32, RDT::DataType=DDT)
 # JOLI wrapper for nonlinear forward modeling
     (DDT == Float32 && RDT == Float32) || throw(judiPDEexception("Domain and range types not supported"))
-    if typeof(geometry) == GeometryOOC
-        m = sum(geometry.nsamples)
-    else
-        m = 0
-        for j=1:info.nsrc m += length(geometry.xloc[j])*geometry.nt[j] end
-    end
+    m = n_samples(geometry, info)
     n = info.n * sum(info.nt)
     srcnum = 1:info.nsrc
 
@@ -72,12 +67,7 @@ end
 function judiPDEadjoint(name::String,info::Info,model::Model, geometry::Geometry; options=Options(), DDT::DataType=Float32, RDT::DataType=DDT)
 # JOLI wrapper for nonlinear forward modeling
     (DDT == Float32 && RDT == Float32) || throw(judiPDEadjointException("Domain and range types not supported"))
-    if typeof(geometry) == GeometryOOC
-        m = sum(geometry.nsamples)
-    else
-        m = 0
-        for j=1:info.nsrc m += length(geometry.xloc[j])*geometry.nt[j] end
-    end
+    m = n_samples(geometry, info)
     n = info.n * sum(info.nt)
 
     srcnum = 1:info.nsrc

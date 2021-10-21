@@ -31,7 +31,6 @@ function twri_objective(model::Model, source::judiVector, dObs::judiVector, y::U
         ~isnothing(gradientm) && (gradientm .+= results[j][2])
         ~isnothing(gradienty) && (gradienty = [gradienty; results[j][3]])
         objective += results[j][1]
-        results[j] = []
     end
 
     # first value corresponds to function value, the rest to the gradient

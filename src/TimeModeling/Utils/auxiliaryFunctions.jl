@@ -346,7 +346,7 @@ and receiver geometries of type `Geometry` and `model` is the model structure of
 """
 function get_computational_nt(srcGeometry, recGeometry, model::Model; dt=nothing)
     # Determine number of computational time steps
-    if typeof(srcGeometry) == GeometryOOC
+    if typeof(srcGeometry) <: GeometryOOC
         nsrc = length(srcGeometry.container)
     else
         nsrc = length(srcGeometry.xloc)
@@ -372,7 +372,7 @@ and receiver geometries of type `Geometry` and `model` is the model structure of
 """
 function get_computational_nt(Geometry, model::Model; dt=nothing)
     # Determine number of computational time steps
-    if typeof(Geometry) == GeometryOOC
+    if typeof(Geometry) <: GeometryOOC
         nsrc = length(Geometry.container)
     else
         nsrc = length(Geometry.xloc)
