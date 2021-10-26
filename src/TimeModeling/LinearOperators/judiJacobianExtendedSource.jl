@@ -51,14 +51,8 @@ function judiJacobian(F::judiPDEextended, weights::Union{judiWeights, Array}; DD
 # JOLI wrapper for nonlinear forward modeling w/ extended source
 
     (DDT == Float32 && RDT == Float32) || throw(judiJacobianExQException("Domain and range types not supported"))
-    if typeof(F.recGeometry) == GeometryOOC
-        m = sum(F.recGeometry.nsamples)
-    else
-        m = 0
-        for j=1:F.info.nsrc m += length(F.recGeometry.xloc[j])*F.recGeometry.nt[j] end
-    end
+    m = n_samples(F.recGeometry, F.info)
     n = F.info.n
-    srcnum = 1:F.info.nsrc
 
     weights = process_input_data(weights, F.model, F.info)  # extract cell array
 
@@ -75,7 +69,7 @@ function subsample(J::judiJacobianExQ{ADDT,ARDT}, srcnum) where {ADDT,ARDT}
     recGeometry = subsample(J.recGeometry,srcnum)
     nsrc = typeof(srcnum) <: Int ? 1 : length(srcnum)
     info = Info(J.info.n, nsrc, J.info.nt[srcnum])
-    m = typeof(recGeometry) == GeometryOOC ? sum(recGeometry.nsamples) : sum([length(recGeometry.xloc[j])*recGeometry.nt[j] for j=1:nsrc])
+    m = n_samples(recGeometry, info)
 
     opt = subsample(J.options, srcnum)
     nsrc == 1 && (srcnum = srcnum:srcnum)
