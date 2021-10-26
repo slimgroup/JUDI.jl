@@ -19,7 +19,7 @@ function fwi_objective(model::Model, source::judiVector, dObs::judiVector; optio
 # fwi_objective function for multiple sources. The function distributes the sources and the input data amongst the available workers.
 
     obj, gradient = judipmap(j -> fwi_objective(model, source[j], dObs[j], subsample(options, j)), 1:dObs.nsrc, sum!)
-    return obj[1], gradient
+    return obj, gradient
 end
 
 function fwi_objective(model::Array{Model,1}, source::Array{judiVector{T,Array{T,2}},1}, dObs::Array{judiVector{T,Array{T,2}},1}; options=Options()) where T

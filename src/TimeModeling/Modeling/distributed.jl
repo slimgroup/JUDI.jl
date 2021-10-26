@@ -1,18 +1,24 @@
-# Get number of source from list of args
-function get_nsrc(args::Vararg{Any, N}) where N
-    nsrcs = 0
+# Multi-case defaults
+function n_exp(args::Vararg)
+    nexp = 1
     for a ∈ args
-        try
-            nsrc = a.nsrc
-        catch e
-            nsrc = 0
-        end
-        (nsrc == nsrcs || nsrcs == 0) || throw(ArgumentError("Incompatible number of sources ($nsrc, $nsrcs)"))
+        nexpi = nexp(a)
+        (nexpi == nexp || nexpi == 1) || throw(ArgumentError("Incompatible number of experiments"))
+        nexp = nexpi
     end
+    nexp
 end
 
-#### Parallelization
+for T in [Model, judiVector, PhysicalParameter, judiWeights, judiWavefield, Options]
+    @eval begin
+        nexp(::$T) = 1
+        nexp(v::Vector{$T}) = length(v)
+    end
+    nexp(v::AbstractArray{T, N}) where {T<:Number, N} = 1
+end
+nexp(::Nothing) = 1
 
+#### Parallelization
 function judipmap(func, iter, reduceop!::Vararg{Function, N}; kw...) where N
     length(iter) == 1 && (return func(iter[1]))
     # worker pool
@@ -20,7 +26,7 @@ function judipmap(func, iter, reduceop!::Vararg{Function, N}; kw...) where N
     # Make it retyr if fails
     rfunc = retry(func, delays=ExponentialBackOff(n=3))
     # Future results
-    results = Array{Future}(undef, length(iter))
+    results = Vector{Future}(undef, length(iter))
     # Submit all tasks, asynchronously
     @sync begin
         for i ∈ iter
@@ -35,7 +41,7 @@ end
 function judipmap(func, models::Array{Model, 1}, args::Vararg{Array, N}) where N
     # Future results
     nmodel = length(models)
-    argout = Array{Any}(undef, nmodel)
+    argout = Vector{Any}(undef, nmodel)
     @sync begin
         for (mi, ai) in enumerate(zip(models, args...))
             @async argout[mi] = func(ai...)
@@ -58,8 +64,9 @@ The above copyright notice and this permission notice shall be included in all c
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
 
-@inline sum!(x::Tuple, y::Tuple) = begin for i=1:length(x) x[i] .+= y[i] end; nothing end
+@inline sum!(x::Tuple, y::Tuple) = begin for i=1:length(x) sum!(x[i], y[i]) end; nothing end
 @inline sum!(x, y) = begin x .+= y; nothing end
+@inline sum!(x::T, y) where {T<:Number} = begin x += y; nothing end
 @inline vcat!(x, y) = begin push!(x, y); nothing end
 
 @inline apply_op!(x, y, op!::Function) = op!(x, y)
@@ -75,12 +82,16 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
     nothing
 end
 
+safe_gc() = try Base.GC.gc(); catch; gc() end
+
 # Local reducttion function
 function local_reduce!(my_future::Future, other_future::Future,
                        op!::Vararg{Function, N}) where N
     y = remotecall_fetch(fetch, other_future.where, other_future)
     x = fetch(my_future)
     apply_op!(x, y, op!...)
+    # Force GC since julia parallel still has issues with it
+    y=1;safe_gc(); remotecall(safe_gc, other_future.where);
     nothing
 end
 

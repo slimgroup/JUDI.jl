@@ -21,7 +21,7 @@ function lsrtm_objective(model::Model, source::judiVector, dObs::judiVector, dm;
 
     obj, gradient = judipmap(j -> lsrtm_objective(model, source[j], dObs[j], dm, subsample(options, j); nlind=nlind), 1:dObs.nsrc, sum!)
 
-    return obj[1], gradient
+    return obj, gradient
 end
 
 function lsrtm_objective(model::Array{Model,1}, source::Array{judiVector{T,Array{T,2}},1}, dObs::Array{judiVector{T,Array{T,2}},1}, dm::Union{Array{Array{T,1},1}, Array{PhysicalParameter{T},1}}; options=Options(), nlind=false) where T

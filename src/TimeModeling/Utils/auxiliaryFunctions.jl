@@ -196,6 +196,7 @@ function extend_gradient(model_full::Model, model::Model, gradient::Union{Array,
     # Extend gradient back to full model size
     ndim = length(model.n)
     full_gradient = similar(gradient, model_full)
+    fill!(full_gradient, 0)
     nx_start = Int(Float32(Float32(model.o[1] - model_full.o[1]) ÷ model.d[1])) + 1
     nx_end = nx_start + model.n[1] - 1
     if ndim == 2

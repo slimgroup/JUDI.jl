@@ -56,5 +56,5 @@ function fwi_objective(model_full::Model, source::judiVector, dObs::judiVector, 
     if options.limit_m==true
         argout2 = extend_gradient(model_full, model, argout2)
     end
-    return [argout1], argout2
+    return argout1, argout2
 end

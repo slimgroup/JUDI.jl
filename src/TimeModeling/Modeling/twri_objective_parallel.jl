@@ -24,7 +24,7 @@ function twri_objective(model::Model, source::judiVector, dObs::judiVector, y::U
 
     results = judipmap(j -> twri_objective(model, source[j], dObs[j], subsample(y, j), subsample(options,j), subsample(optionswri,j)), 1:dObs.nsrc, red_op!...)
 
-    return results[1][1], results[2:end]...
+    return results[1], results[2:end]...
 end
 
 # TWRI options
