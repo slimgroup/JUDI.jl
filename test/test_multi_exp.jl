@@ -29,11 +29,31 @@ F2 = judiModeling(info2, model, srcGeometry2, recGeometry2; options=opt)
 dobs1 = F1*q1
 dobs2 = F2*q2
 
+# Perturbations
+dm1 = 2f0*circshift(dm, 10)
+dm2 = 2f0*circshift(dm, 30)
+
+
+@testset "Multi-experiment arg processing" begin
+    for (nm, m) in zip([1, 2], [model0, [model0, model0]])
+        for (nq, q) in zip([1, 2], [q1, [q1, q2]])
+            for (nd, d) in zip([1, 2], [dobs1, [dobs1, dobs2]])
+                for dmloc in [dm1, dm1[:]]
+                    for (ndm, dm) in zip([1, 2], [dmloc, [dmloc, dmloc]])
+                        args = m, q, d, dm
+                        @test JUDI.get_nexp(args...) == maximum((nm, nq, nd, ndm))
+                        @test all(JUDI.get_exp(1, args...) .== (model0, q1, dobs1, dmloc))
+                    end
+                end
+            end
+        end
+    end
+end
+
+
 @testset "FWI/LSRTM objective multi-level parallelization test with $(nlayer) layers and tti $(tti) and freesurface $(fs)" begin
     
     ftol = 1f-5
-    dm1 = 2f0*circshift(dm, 10)
-    dm2 = 2f0*circshift(dm, 30)
 
     Jm0, grad = lsrtm_objective([model0, model0], [q1, q2], [dobs1, dobs2], [dm1, dm2]; options=opt, nlind=true)
     Jm01, grad1 = lsrtm_objective(model0, q1, dobs1, dm1; options=opt, nlind=true)
@@ -50,4 +70,3 @@ dobs2 = F2*q2
     @test isapprox(_grad2, _grad[2]; rtol=ftol)
 
 end
-

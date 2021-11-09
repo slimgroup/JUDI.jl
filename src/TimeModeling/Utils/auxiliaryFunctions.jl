@@ -171,10 +171,10 @@ function limit_model_to_receiver_area(srcGeometry::Geometry, recGeometry::Geomet
         typeof(v) <: AbstractArray && (model.params[p] = v[inds...])
     end
 
-    println("N old $(model.n)")
+    judilog("N old $(model.n)")
     model.n = model.m.n
     model.o = model.m.o
-    println("N new $(model.n)")
+    judilog("N new $(model.n)")
     isnothing(pert) && (return model, nothing)
 
     pert = reshape(pert, n_orig)[inds...]

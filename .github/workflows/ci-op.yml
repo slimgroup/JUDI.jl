@@ -38,7 +38,7 @@ jobs:
             omp: 1
 
           - os: ubuntu-latest
-            version: '1.1'
+            version: '1.7'
             op: "ISO_OP_FS"
             omp: 2
 
@@ -55,8 +55,9 @@ jobs:
         if : runner.os == 'macOS'
         run : brew install gcc@9
 
-      - name : Check GCC
-        run : gcc --version
+      - name: Set julia python
+        run: |
+          PYTHON=$(which python3) julia -e 'using Pkg;Pkg.add("PyCall");Pkg.build("PyCall")'
 
       - name: Setup julia
         uses: julia-actions/setup-julia@v1

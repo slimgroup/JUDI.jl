@@ -24,18 +24,13 @@ include("Utils/auxiliaryFunctions.jl")
 
 #############################################################################
 # PDE solvers
-include("Modeling/distributed.jl") # Modeling functions utilities
 include("Modeling/python_interface.jl")  # forward/adjoint linear/nonlinear modeling
 include("Modeling/time_modeling_serial.jl")  # forward/adjoint linear/nonlinear modeling
-include("Modeling/time_modeling_parallel.jl")    # parallelization for modeling
 include("Modeling/extended_source_interface_serial.jl")  # forward/adjoint linear/nonlinear modeling w/ extended source
-include("Modeling/extended_source_interface_parallel.jl")    # parallelization for modeling w/ extended source
 include("Modeling/fwi_objective_serial.jl")  # FWI objective function value and gradient
-include("Modeling/fwi_objective_parallel.jl")    # parallelization for FWI gradient
 include("Modeling/lsrtm_objective_serial.jl")  # LSRTM objective function value and gradient
-include("Modeling/lsrtm_objective_parallel.jl")    # parallelization for LSRTM gradient
-include("Modeling/twri_objective_parallel.jl")    # parallelization for TWRI gradient
 include("Modeling/twri_objective_serial.jl")  # TWRI objective function value and gradient
+include("Modeling/distributed.jl") # Modeling functions utilities
 
 #############################################################################
 # Linear operators

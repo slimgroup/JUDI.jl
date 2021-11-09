@@ -39,7 +39,11 @@ m0 = model0.m
 
     # Nonlinear modeling
     dobs = A0*w
+    wa = adjoint(A0)*dobs
+    @test typeof(dobs) == Vector{Float32}
+    @test typeof(wa) == Vector{Float32}
     dD = J*dm
+    @test typeof(dD) == Vector{Float32}
 
     # Jacobian test
     maxiter = 6
@@ -51,6 +55,7 @@ m0 = model0.m
 
         A.model.m = m0 + h*dm
         dpred = A*w
+        @test typeof(dpred) == Vector{Float32}
 
         err1[j] = norm(dpred - dobs)
         err2[j] = norm(dpred - dobs - h*dD)

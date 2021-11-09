@@ -106,7 +106,7 @@ function vcat(ai::Vararg{judiWavefield{avDT}, N}) where {avDT, N}
 end
 
 function push!(a::judiWavefield{T}, b::judiWavefield{T}) where T
-	append(a.data, b.data)
+	append!(a.data, b.data)
 	a.m += b.m
 	a.info.nsrc += b.info.nsrc
 end

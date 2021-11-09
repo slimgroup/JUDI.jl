@@ -6,7 +6,7 @@
 __precompile__()
 module JUDI
 
-export JUDIPATH
+export JUDIPATH, set_verbosity
 JUDIPATH = dirname(pathof(JUDI))
 
 # Dependencies
@@ -40,12 +40,21 @@ import PyCall.array2py
 # Set python paths
 const pm = PyNULL()
 const ac = PyNULL()
- 
+
+# Constants
+_worker_pool = default_worker_pool
+_TFuture = Future
+_verbose = false
+
+set_verbosity(x::Bool) = begin global _verbose = x; end
+judilog(msg) = _verbose ? println(msg) : nothing
+
 function __init__()
     pushfirst!(PyVector(pyimport("sys")."path"), joinpath(JUDIPATH, "pysource"))
     copy!(pm, pyimport("models"))
     copy!(ac, pyimport("interface"))
 end
+
 
 # JUDI time modeling
 include("TimeModeling/TimeModeling.jl")
