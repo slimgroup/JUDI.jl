@@ -2,62 +2,62 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://slimgroup.github.io/JUDI.jl/</loc>
-         <lastmod>2021-10-26</lastmod>
+         <lastmod>2021-12-02</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://slimgroup.github.io/JUDI.jl/about/</loc>
-         <lastmod>2021-10-26</lastmod>
+         <lastmod>2021-12-02</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://slimgroup.github.io/JUDI.jl/abstract_vectors/</loc>
-         <lastmod>2021-10-26</lastmod>
+         <lastmod>2021-12-02</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://slimgroup.github.io/JUDI.jl/data_structures/</loc>
-         <lastmod>2021-10-26</lastmod>
+         <lastmod>2021-12-02</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://slimgroup.github.io/JUDI.jl/helper/</loc>
-         <lastmod>2021-10-26</lastmod>
+         <lastmod>2021-12-02</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://slimgroup.github.io/JUDI.jl/io/</loc>
-         <lastmod>2021-10-26</lastmod>
+         <lastmod>2021-12-02</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://slimgroup.github.io/JUDI.jl/linear_operators/</loc>
-         <lastmod>2021-10-26</lastmod>
+         <lastmod>2021-12-02</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://slimgroup.github.io/JUDI.jl/preconditioners/</loc>
-         <lastmod>2021-10-26</lastmod>
+         <lastmod>2021-12-02</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://slimgroup.github.io/JUDI.jl/pysource/</loc>
-         <lastmod>2021-10-26</lastmod>
+         <lastmod>2021-12-02</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://slimgroup.github.io/JUDI.jl/tutorials/</loc>
-         <lastmod>2021-10-26</lastmod>
+         <lastmod>2021-12-02</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://slimgroup.github.io/JUDI.jl/tutorials/fwi_example_NLopt/</loc>
-         <lastmod>2021-10-26</lastmod>
+         <lastmod>2021-12-02</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://slimgroup.github.io/JUDI.jl/tutorials/judi_leading_edge_tutorial/</loc>
-         <lastmod>2021-10-26</lastmod>
+         <lastmod>2021-12-02</lastmod>
          <changefreq>daily</changefreq>
     </url>
 </urlset>
