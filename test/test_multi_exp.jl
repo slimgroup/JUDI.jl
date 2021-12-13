@@ -48,6 +48,10 @@ dm2 = 2f0*circshift(dm, 30)
             end
         end
     end
+
+    @test_throws ArgumentError JUDI.get_nexp([model0, model0], [dobs1, dobs2, dobs1])
+    @test_throws ArgumentError JUDI.get_nexp([model0, model0], [dobs1, dobs2], [dm1, dm2, dm1])
+    @test_throws ArgumentError JUDI.get_nexp(model0, [dobs1, dobs2], [dm1, dm2, dm1])
 end
 
 

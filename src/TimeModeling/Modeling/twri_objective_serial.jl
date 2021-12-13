@@ -25,15 +25,15 @@ Options structure for TWRI.
 
 `grad_corr`: Whether to add the gradient correction J'(m0, q)*∇_y
 
-`comp_alpha`: WHether to compute optimal alpha (alpha=1 if not)
+`comp_alpha`: Whether to compute optimal alpha (alpha=1 if not)
 
 `weight_fun`: Whether to apply focusing/weighting function to F(m0)'*y and its norm
 
-`eps`: Epsilon (moise level) value (default=0)
+`eps`: Epsilon (noise level) value (default=0)
 
 `Invq`: How to compute F'Y, either as full field or as a rank 1 approximation `w(t)*q(x)` using the source wavelet for w
 
-`param`: WHich gradient to compute. Choices are `nothing` (objective only), `:m`, `:y` or `:all`
+`param`: Which gradient to compute. Choices are `nothing` (objective only), `:m`, `:y` or `:all`
 
 Constructor
 ==========

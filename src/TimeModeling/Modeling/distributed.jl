@@ -4,7 +4,7 @@ for func in _parallel_functions
     @eval $func(args...; kwargs...) = task_distributed($func, _worker_pool(), args...; kwargs...)
 end
 
-# Find number of number of experiments
+# Find number of experiments
 """
     _get_nexp(x)
 
@@ -21,16 +21,16 @@ end
 
 Get number of experiments given a list of arguments. By default we have only one experiment unless we input
 a Vector of judiType such as [model, model] to compute gradient for different cases at once.
-All arguments can only be either a Vecotr of size `n` or a basic type. Basic type are conisdered common 
+All arguments can only be either a Vector of size `n` or a basic type. Basic type are conisdered common 
 to all `n` experiments. For Example
 
     VALID: get_nexp(([model1, model2], dobs)...) = 2 (compute a function for common data and two different models)
     INVALID:  get_nexp(([model1, model2], [dobs, dobs, dobs])...) 
 """
 function get_nexp(args...)
-    all_n = [_get_nexp(a) for a ∈ args]
-    length(unique(all_n)) < 3 || throw(ArgumentError("Incompatible number of experiments in arguments"))
-    return maximum(all_n)
+    n_exp = setdiff([_get_nexp(a) for a ∈ args], 1)
+    length(n_exp) < 2 || throw(ArgumentError("Incompatible number of experiments in arguments"))
+    return max(n_exp..., 1)
 end
 
 # Filter arguments for given task
@@ -122,7 +122,7 @@ function task_distributed(func, pool, args...; kwargs...)
     # Get number of experiments
     nexp = get_nexp(args...)
     judilog("Running $(func) for $(nexp) experiments")
-    # Make it retyr if fails
+    # Make it retry if fails
     rfunc = retry(func, pool, delays=ExponentialBackOff(n=3))
     # Allocate results
     out = Vector{Any}(undef, nexp)
@@ -135,7 +135,7 @@ function task_distributed(func, pool, args...; kwargs...)
             # Get options
             opt = findfirst(x -> typeof(x) <: Options, args_e)
             opt = args_e[opt]
-            # ALlocate Future results
+            # Allocate Future results
             res_e = Vector{_TFuture}(undef, length(iter))
             judilog("Running experiment $e out of $(nexp) with $(length(iter)) sources")
             flush(stdout)
@@ -184,7 +184,7 @@ safe_gc() = try Base.GC.gc(); catch; gc() end
     local_reduce!(future, other)
 
 Reduce `other` future into local `future`. This is perform remotely on the julia worker
-`futue.where`.
+`future.where`.
 """
 function local_reduce!(my_future::_TFuture, other_future::_TFuture)
     y = remotecall_fetch(fetch, other_future.where, other_future)
@@ -199,7 +199,7 @@ end
     reduce_level!(futures, nleaf)
 
 Reduce one level of the reduction tree consisting of `nleaf` futures. Each `leaf`
-reduces into itself `futures[i_nleaf`.
+reduces into itself `futures[i]`.
 """
 function reduce_level!(futures::Vector{_TFuture}, nleaf::Int)
     nleaf == 0 && return
