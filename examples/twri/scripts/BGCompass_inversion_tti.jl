@@ -6,7 +6,7 @@
 
 ### Module loading
 using LinearAlgebra, Dates, Distributed, Images, Random
-using JUDI, JUDI.TimeModeling, JUDI.SLIM_optim, JLD2
+using JUDI, JUDI.SLIM_optim, JLD2
 
 R = Float32
 ### Load synthetic data

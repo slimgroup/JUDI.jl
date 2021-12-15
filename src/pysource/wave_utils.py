@@ -271,7 +271,7 @@ def sub_time(time, factor, dt=1, freq=None):
     if factor == 1:
         return time, factor
     elif freq is not None:
-        factor = factor or np.max(1, int(1 / (dt*4*np.max(freq))))
+        factor = factor or np.max([1, int(1 / (dt*4*np.max(freq)))])
         return ConditionalDimension(name='tsave', parent=time, factor=factor), factor
     elif factor is not None:
         return ConditionalDimension(name='tsave', parent=time, factor=factor), factor
