@@ -345,3 +345,14 @@ isequal(geometry_A::GeometryOOC, geometry_B::GeometryOOC) = compareGeometry(geom
 
 compareGeometry(geometry_A::GeometryOOC, geometry_B::Geometry) = true
 compareGeometry(geometry_A::Geometry, geometry_B::GeometryOOC) = true
+
+for G in [GeometryOOC, GeometryIC]
+    @eval function push!(G1::$G, G2::$G)
+        for k in fieldnames($G)
+            pushfield!(getfield(G1, k), getfield(G2, k))
+        end
+    end
+end
+
+pushfield!(a::Array, b::Array) = append!(a, b)
+pushfield!(a, b) = nothing

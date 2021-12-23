@@ -339,6 +339,14 @@ function vcat(ai::Vararg{judiVector{avDT, AT}, N}) where {avDT, AT, N}
     return judiVector{avDT, AT}(a.name, m, n, nsrc, geometry, data)
 end
 
+# push!
+function push!(a::judiVector{T, mT}, b::judiVector{T, mT}) where {T, mT}
+    append!(a.data, b.data)
+    a.nsrc += b.nsrc
+    a.m += b.m
+    push!(a.geometry, b.geometry)
+end
+
 # dot product
 function dot(a::judiVector{avDT, AT}, b::judiVector{bvDT, AT}) where {avDT, bvDT, AT}
 # Dot product for data containers

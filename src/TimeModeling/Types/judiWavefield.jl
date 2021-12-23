@@ -105,6 +105,12 @@ function vcat(ai::Vararg{judiWavefield{avDT}, N}) where {avDT, N}
 	return judiWavefield{avDT}("judiWavefield",info.n * sum(info.nt), 1, info, a.dt ,data)
 end
 
+function push!(a::judiWavefield{T}, b::judiWavefield{T}) where T
+	append!(a.data, b.data)
+	a.m += b.m
+	a.info.nsrc += b.info.nsrc
+end
+
 # DFT operator for wavefields, acts along time dimension
 function fft_wavefield(x_in,mode)
 	nsrc = x_in.info.nsrc

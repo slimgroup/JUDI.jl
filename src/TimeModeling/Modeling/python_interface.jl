@@ -18,8 +18,6 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Geometry
     if options.save_data_to_disk
         container = write_shot_record(srcGeometry, srcData, recGeometry, dOut, options)
         return judiVector(container)
-    elseif options.return_array == true
-        return vec(dOut)
     else
         return judiVector{Float32, Array{Float32, 2}}("F*q", prod(size(dOut)), 1, 1, recGeometry, [dOut])
     end
@@ -41,11 +39,7 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Geometry
     qOut = time_resample(qOut,dtComp,srcGeometry)
 
     # Output adjoint data as judiVector
-    if options.return_array == true
-        return vec(qOut)
-    else
-        return judiVector{Float32, Array{Float32, 2}}("F'*d", prod(size(qOut)), 1, 1, srcGeometry, [qOut])
-    end
+    return judiVector{Float32, Array{Float32, 2}}("F'*d", prod(size(qOut)), 1, 1, srcGeometry, [qOut])
 end
 
 # u = F*Ps'*q
@@ -95,11 +89,7 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Nothing,
     dOut = pycall(ac."forward_wf_src", Array{Float32,2}, modelPy, srcData, rec_coords, space_order=options.space_order)
     dOut = time_resample(dOut,dtComp,recGeometry)
 
-    if options.return_array == true
-        return vec(dOut)
-    else
-        return judiVector{Float32, Array{Float32, 2}}("F*u", prod(size(dOut)), 1, 1, recGeometry, [dOut])
-    end
+    return judiVector{Float32, Array{Float32, 2}}("F*u", prod(size(dOut)), 1, 1, recGeometry, [dOut])
 end
 
 # q_ad = Ps*F'*v
@@ -116,11 +106,7 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Geometry
     qOut = time_resample(qOut,dtComp,srcGeometry)
 
     # Output adjoint data as judiVector
-    if options.return_array == true
-        return vec(qOut)
-    else
-        return judiVector{Float32, Array{Float32, 2}}("F'*d", prod(size(qOut)), 1, 1, srcGeometry, [qOut])
-    end
+    return judiVector{Float32, Array{Float32, 2}}("F'*d", prod(size(qOut)), 1, 1, srcGeometry, [qOut])
 end
 
 # u_out = F*u_in
@@ -171,8 +157,6 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Geometry
     if options.save_data_to_disk
         container = write_shot_record(srcGeometry,srcData,recGeometry,dOut,options)
         return judiVector(container)
-    elseif options.return_array == true
-        return vec(dOut)
     else
         return judiVector{Float32, Array{Float32, 2}}("J*dm", prod(size(dOut)), 1, 1, recGeometry, [dOut])
     end
@@ -199,11 +183,7 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Geometry
 
     # Remove PML and return gradient as Array
     grad = remove_padding(grad, modelPy.padsizes; true_adjoint=options.sum_padding)
-    if options.return_array == true
-        return vec(grad)
-    else
-        return PhysicalParameter(grad, model.d, model.o)
-    end
+    return PhysicalParameter(grad, model.d, model.o)
 end
 
 
@@ -227,11 +207,7 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcData::Array, recGe
     dOut = time_resample(dOut,dtComp,recGeometry)
 
     # Output shot record as judiVector
-    if options.return_array == true
-        return vec(dOut)
-    else
-        return judiVector{Float32, Array{Float32, 2}}("F*w", prod(size(dOut)), 1, 1, recGeometry, [dOut])
-    end
+    return judiVector{Float32, Array{Float32, 2}}("F*w", prod(size(dOut)), 1, 1, recGeometry, [dOut])
 end
 
 # dw = Pw*F'*Pr'*d_obs - adjoint modeling w/ extended source
@@ -254,11 +230,7 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcData::Array, recGe
     if options.free_surface
         selectdim(wOut, modelPy.dim, 1) .= 0f0
     end
-    if options.return_array == true
-        return vec(wOut)
-    else
-        return judiWeights{Float32}("Pw*F'*d",prod(size(wOut)), 1, 1, [wOut])
-    end
+    return judiWeights{Float32}("Pw*F'*d",prod(size(wOut)), 1, 1, [wOut])
 end
 
 # Jacobian of extended source modeling: d_lin = J*dm
@@ -279,11 +251,7 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcData::Array, recGe
     dOut = time_resample(dOut,dtComp,recGeometry)
 
     # Output linearized shot records as judiVector
-    if options.return_array == true
-        return vec(dOut)
-    else
-        return judiVector{Float32, Array{Float32, 2}}("Je*dm", prod(size(dOut)), 1, 1, recGeometry, [dOut])
-    end
+    return judiVector{Float32, Array{Float32, 2}}("Je*dm", prod(size(dOut)), 1, 1, recGeometry, [dOut])
 end
 
 # Adjoint Jacobian of extended source modeling: dm = J'*d_lin
@@ -304,9 +272,5 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcData::Array, recGe
                   dft_sub=options.dft_subsampling_factor[1])
     # Remove PML and return gradient as Array
     grad = remove_padding(grad, modelPy.padsizes; true_adjoint=options.sum_padding)
-    if options.return_array == true
-        return vec(grad)
-    else
-        return PhysicalParameter(grad, model.d, model.o)
-    end
+    return PhysicalParameter(grad, model.d, model.o)
 end

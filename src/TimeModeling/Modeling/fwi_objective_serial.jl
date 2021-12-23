@@ -1,6 +1,8 @@
 
 export fwi_objective
 
+fwi_objective(model_full::Model, source::judiVector, dObs::judiVector) = fwi_objective(model_full, source, dObs, Options())
+
 function fwi_objective(model_full::Model, source::judiVector, dObs::judiVector, options::Options)
 # Setup time-domain linear or nonlinear foward and adjoint modeling and interface to OPESCI/devito
 

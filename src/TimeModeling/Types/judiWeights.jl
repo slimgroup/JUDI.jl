@@ -42,7 +42,7 @@ Construct vector cell array of weights. The `weights` keyword\\
 can also be a single (non-cell) array, in which case the weights are the same for all source positions:
     judiWeights(weights; nsrc=1)
 """
-function judiWeights(weights::Array{T, N}; nsrc=1, vDT::DataType=Float32) where {T, N}
+function judiWeights(weights::Array{T, N}; nsrc=1, vDT::DataType=Float32) where {T<:Real, N}
     (T != vDT) && (weights = convert(Array{vDT},weights))
     # length of vector
     n = 1
@@ -52,9 +52,12 @@ function judiWeights(weights::Array{T, N}; nsrc=1, vDT::DataType=Float32) where 
 end
 
 # constructor if weights are passed as a cell array
-function judiWeights(weights::Array{Array{T, N},1}; vDT::DataType=Float32) where {T, N}
+judiWeights(weights::Vector{Array}; vDT::DataType=Float32) =
+    judiWeights(convert.(Array{vDT, length(size(weights[1]))}, weights); vDT=vDT)
+
+function judiWeights(weights::Vector{Array{T, N}}; vDT::DataType=Float32) where {T<:Number, N}
     nsrc = length(weights)
-    (T != vDT) &&  (weights = convert.(Array{vDT, N}, weights))
+    weights = convert.(Array{vDT, N}, weights)
     # length of vector
     n = 1
     m = prod(size(weights[1]))*nsrc
@@ -135,6 +138,13 @@ function vcat(ai::Vararg{judiWeights{avDT}, N}) where {avDT, N}
     nsrc = a.nsrc + b.nsrc
     weights = vcat(a.weights, b.weights)
     return judiWeights{avDT}(a.name,m,n,nsrc,weights)
+end
+
+
+function push!(a::judiWeights{T}, b::judiWeights{T}) where T
+	append!(a.weights, b.weights)
+	a.m += b.m
+	a.nsrc += b.nsrc
 end
 
 # dot product

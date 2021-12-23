@@ -34,7 +34,7 @@ devito = ["test_linearity.jl",
           "test_jacobian_extended.jl",
           "test_gradient_fwi.jl",
           "test_gradient_lsrtm.jl",
-          "test_parallel.jl"]
+          "test_multi_exp.jl"]
         #   "test_gradient_twri.jl"]
 
 extras = ["test_modeling.jl", "test_basics.jl", "test_linear_algebra.jl"]
@@ -43,6 +43,7 @@ extras = ["test_modeling.jl", "test_basics.jl", "test_linear_algebra.jl"]
 if GROUP == "JUDI" || GROUP == "All"
     for t=base
         @time include(t)
+        try Base.GC.gc(); catch; gc() end
     end
 end
 
@@ -52,6 +53,7 @@ if GROUP == "BASICS" || GROUP == "All"
     VERSION >= v"1.5" && push!(Base.ARGS, "-p 2")
     for t=extras
         @time include(t)
+        @everywhere try Base.GC.gc(); catch; gc() end
     end
 end
 
@@ -62,6 +64,7 @@ if GROUP == "ISO_OP" || GROUP == "All"
     VERSION >= v"1.5" && push!(Base.ARGS, "-p 2")
     for t=devito
         @time include(t)
+        @everywhere try Base.GC.gc(); catch; gc() end
     end
 end
 
@@ -71,6 +74,7 @@ if GROUP == "ISO_OP_FS" || GROUP == "All"
     push!(Base.ARGS, "--fs")
     for t=devito
         @time include(t)
+        try Base.GC.gc(); catch; gc() end
     end
 end
 
@@ -81,6 +85,7 @@ if GROUP == "TTI_OP" || GROUP == "All"
     push!(Base.ARGS, "--tti")
     for t=devito
         @time include(t)
+        try Base.GC.gc(); catch; gc() end
     end
 end
 
@@ -91,5 +96,6 @@ if GROUP == "TTI_OP_FS" || GROUP == "All"
     push!(Base.ARGS, "--fs")
     for t=devito
         @time include(t)
+        try Base.GC.gc(); catch; gc() end
     end
 end
