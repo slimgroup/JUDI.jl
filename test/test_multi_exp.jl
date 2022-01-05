@@ -3,6 +3,22 @@
 # Ziyi Yin, ziyi.yin@gatech.edu
 # August 2021
 
+@testset "test reduction from distributed tasks" begin
+    function judiWeightsConst(i::Int)
+        return judiWeights(i*ones(Float32,10*i,10*i))
+    end
+    f = Vector{Future}(undef, 6)
+    for i = 1:6
+        f[i] = @spawn judiWeightsConst(i)
+    end
+    using JUDI:reduce!
+    w = reduce!(f)
+    @info "test if stacking follows the correct order through reduction"
+    for i = 1:6
+        @test w.data[i] == i*ones(Float32,10*i,10*i)
+    end
+end
+
 parsed_args = parse_commandline()
 
 nlayer = parsed_args["nlayer"]
