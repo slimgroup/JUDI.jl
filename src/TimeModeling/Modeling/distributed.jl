@@ -203,9 +203,10 @@ reduces into itself `futures[i]`.
 """
 function reduce_level!(futures::Vector{_TFuture}, nleaf::Int)
     nleaf == 0 && return
-    @sync for i = 1:nleaf
-        @async remotecall_fetch(local_reduce!, futures[i].where, futures[i], futures[nleaf+i])
+    @sync for i = 1:2:2*nleaf
+        @async remotecall_fetch(local_reduce!, futures[i].where, futures[i], futures[i+1])
     end
+    deleteat!(futures, 2:2:2*nleaf)
 end
 
 """
@@ -228,16 +229,15 @@ function reduce!(futures::Vector{_TFuture})
     M = length(futures)
     L = round(Int,log2(prevpow(2,M)))
     m = 2^L
-    # reminder
+    # remainder
     R = M - m
-
-    # Reduce the reminder
+    
+    # Reduce the remainder
     reduce_level!(futures, R)
 
     # Binary tree reduction
     for l = L:-1:1
-        m = 2^(l-1)
-        reduce_level!(futures, m)
+        reduce_level!(futures, 2^(l-1))
     end
     fetch(futures[myid()])
 end
