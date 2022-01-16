@@ -39,6 +39,8 @@ devito = ["test_linearity.jl",
 
 extras = ["test_modeling.jl", "test_basics.jl", "test_linear_algebra.jl"]
 
+issues = ["test_issues.jl"]
+
 # Basic JUDI objects tests, no Devito
 if GROUP == "JUDI" || GROUP == "All"
     for t=base
@@ -97,5 +99,15 @@ if GROUP == "TTI_OP_FS" || GROUP == "All"
     for t=devito
         @time include(t)
         try Base.GC.gc(); catch; gc() end
+    end
+end
+
+# Test resolved issues
+if GROUP == "ISSUES" || GROUP == "All"
+    println("JUDI resolved issues tests")
+    VERSION >= v"1.5" && push!(Base.ARGS, "-p 2")
+    for t=issues
+        @time include(t)
+        @everywhere try Base.GC.gc(); catch; gc() end
     end
 end
