@@ -41,6 +41,11 @@ jobs:
             version: '1.7'
             op: "ISO_OP_FS"
             omp: 2
+          
+          - os: ubuntu-latest
+            version: '1.7'
+            op: "ISSUES"
+            omp: 2
 
           - os: ubuntu-latest
             version: '1.6'

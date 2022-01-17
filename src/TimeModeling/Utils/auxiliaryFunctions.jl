@@ -425,12 +425,12 @@ Parameters:
 * `y`: Y coordinates.
 * `z`: Z coordinates.
 """
-function setup_3D_grid(xrec::Array{Array{T, 1}, 1},yrec::Array{Array{T, 1},1},zrec::Array{T, 1}) where T<:Real
+function setup_3D_grid(xrec::Vector{<:AbstractVector{T}},yrec::Vector{<:AbstractVector{T}},zrec::AbstractVector{T}) where T<:Real
     # Take input 1d x and y coordinate vectors and generate 3d grid. Input are cell arrays
     nsrc = length(xrec)
-    xloc = Array{Array{T}, 1}(undef, nsrc)
-    yloc = Array{Array{T}, 1}(undef, nsrc)
-    zloc = Array{Array{T}, 1}(undef, nsrc)
+    xloc = Vector{Array{T}}(undef, nsrc)
+    yloc = Vector{Array{T}}(undef, nsrc)
+    zloc = Vector{Array{T}}(undef, nsrc)
     for i=1:nsrc
         nxrec = length(xrec[i])
         nyrec = length(yrec[i])
@@ -464,7 +464,7 @@ Parameters:
 * `y`: Y coordinates.
 * `z`: Z coordinate.
 """
-function setup_3D_grid(xrec::Array{T, 1},yrec::Array{T,1}, zrec::T) where T<:Real
+function setup_3D_grid(xrec::AbstractVector{T},yrec::AbstractVector{T}, zrec::T) where T<:Real
 # Take input 1d x and y coordinate vectors and generate 3d grid. Input are arrays/ranges
     nxrec = length(xrec)
     nyrec = length(yrec)
@@ -485,6 +485,10 @@ function setup_3D_grid(xrec::Array{T, 1},yrec::Array{T,1}, zrec::T) where T<:Rea
 end
 
 setup_3D_grid(xrec, yrec, zrec) = setup_3D_grid(tof32(xrec), tof32(yrec), tof32(zrec))
+function setup_3D_grid(xrec::Vector{Any}, yrec::Vector{Any}, zrec::Vector{Any})
+    xrec, yrec, zrec = convert(Vector{typeof(xrec[1])},xrec), convert(Vector{typeof(yrec[1])}, yrec), convert(Vector{typeof(zrec[1])},zrec)
+    setup_3D_grid(xrec, yrec, zrec)
+end
 
 """
     time_resample(data, geometry_in, dt_new)
