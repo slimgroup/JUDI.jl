@@ -34,6 +34,7 @@ include("Modeling/distributed.jl") # Modeling functions utilities
 
 #############################################################################
 # Linear operators
+include("LinearOperators/abstract_types.jl") # Base abstract type
 include("LinearOperators/judiRHS.jl")   # sparse RHS (point source(s))
 include("LinearOperators/judiExtendedSource.jl")   # sparse RHS (point source(s))
 include("LinearOperators/judiModeling.jl")  # nonlinear modeling operator F (no projection operators)
@@ -43,7 +44,6 @@ include("LinearOperators/judiPDEfull.jl")   # modeling operator with source and 
 include("LinearOperators/judiPDEextended.jl")   # modeling operator for extended sources
 include("LinearOperators/judiPDE.jl")   # modeling operator with lhs projection only: P*F
 include("LinearOperators/judiJacobian.jl")  # linearized modeling operator J
-include("LinearOperators/judiJacobianExtendedSource.jl")  # Jacobian of extended source modeling operator
 
 #############################################################################
 # Preconditioners and optimization
@@ -53,8 +53,7 @@ include("Utils/seismic_preconditioners.jl")
 # Utility types
 const SourceTypes = Union{judiVector, Tuple{judiWeights, judiLRWF}}
 # PDE types are callable w.r.t non-linear parameters, i.e F(model) or F(;m=m, epsilon=new_epsilon)
-const pde_types = Union{judiModeling, judiModelingAdjoint, judiPDEfull, judiPDE, judiPDEadjoint,
-                        judiJacobian, judiJacobianExQ, judiPDEextended}
+const pde_types = Union{judiModeling, judiPDEfull, judiPDE, judiJacobian, judiJacobianExQ, judiPDEextended}
 
 
 if VERSION>v"1.2"

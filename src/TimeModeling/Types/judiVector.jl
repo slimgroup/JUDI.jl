@@ -264,6 +264,9 @@ transpose(a::judiVector{vDT, AT}) where {vDT, AT} =
 adjoint(a::judiVector{vDT, AT}) where {vDT, AT} =
         judiVector{vDT, AT}(""*a.name*".'",a.n,a.m,a.nsrc,a.geometry,a.data)
 
+jo_convert(::Type{T}, jv::judiVector{T, Array{T, N}}, ::Bool) where {T, N} = jv
+jo_convert(::Type{T}, jv::judiVector{vT, Array{vT, N}}, B::Bool) where {T, vT, N} = 
+    judiVector{T, Array{T, N}}(jv.name, jv.m, jv.n, jv.nsrc, jv.geometry, jo_convert(T, jv.data, B))
 ##########################################################
 
 # Overload needed base function for SegyIO objects

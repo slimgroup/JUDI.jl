@@ -82,6 +82,10 @@ transpose(A::judiWavefield{vDT}) where vDT =
 # adjoint(jo)
 adjoint(A::judiWavefield{vDT}) where vDT = conj(transpose(A))
 
+
+jo_convert(::Type{T}, jw::judiWavefield{T}, ::Bool) where {T} = jw
+jo_convert(::Type{T}, jw::judiWavefield{vT}, B::Bool) where {T, vT} = 
+	judiWavefield{T}(jw.name, jw.m, jw.n, jv.info, jv.dt, jo_convert(T, jw.data, B))
 ####################################################################
 
 function vcat(ai::Vararg{judiWavefield{avDT}, N}) where {avDT, N}

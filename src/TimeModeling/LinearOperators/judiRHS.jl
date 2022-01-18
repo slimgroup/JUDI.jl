@@ -5,23 +5,17 @@
 # Authors: Philipp Witte (pwitte@eos.ubc.ca), Henryk Modzelewski (hmodzelewski@eos.ubc.ca)
 # Date: January 2017
 
-export judiRHS, judiRHSexception
+export judiRHS
 
 ############################################################
 
-struct judiRHS{vDT<:Number} <: joAbstractLinearOperator{vDT,vDT}
-    name::String
+struct judiRHS{D} <: judiAbstractLinearOperator{D,D}
     m::Integer
     n::Integer
     info::Info
     geometry::Geometry
     data
 end
-
-mutable struct judiRHSexception <: Exception
-    msg :: String
-end
-
 
 ############################################################
 
@@ -56,27 +50,12 @@ seismic vectors of type `judiVector`, then a `judiRHS` vector can be created as 
 
 """
 function judiRHS(info, geometry, data;vDT::DataType=Float32)
-    vDT == Float32 || throw(judiRHSexception("Domain type not supported"))
+    vDT == Float32 || throw(judiLinearException("Domain type not supported"))
     # length of vector
     m = info.n * sum(info.nt)
     n = 1
-    return judiRHS{Float32}("judiRHS",m,n,info,geometry,data)
+    return judiRHS{Float32}(m,n,info,geometry,data)
 end
-
-####################################################################
-## overloaded Base functions
-
-# conj(jo)
-conj(A::judiRHS{vDT}) where vDT =
-    judiRHS{vDT}("conj("*A.name*")",A.m,A.n,A.info,A.geometry,A.data)
-
-# transpose(jo)
-transpose(A::judiRHS{vDT}) where vDT =
-    judiRHS{vDT}(""*A.name*".'",A.n,A.m,A.info,A.geometry,A.data)
-
-# adjoint(jo)
-adjoint(A::judiRHS{vDT}) where vDT =
-    judiRHS{vDT}(""*A.name*"'",A.n,A.m,A.info,A.geometry,A.data)
 
 ####################################################################
 
@@ -84,11 +63,11 @@ adjoint(A::judiRHS{vDT}) where vDT =
 function +(A::judiRHS{avDT}, B::judiRHS{bvDT}) where {avDT, bvDT}
 
     # Error checking
-    size(A) == size(B) || throw(judiRHSexception("Shape mismatch: A:$(size(A)), B: $(size(B))"))
-    compareInfo(A.info, B.info) == true || throw(judiRHSexception("info mismatch"))
-    isequal(A.geometry.nt,B.geometry.nt) == true || throw(judiRHSexception("sample number mismatch"))
-    isequal(A.geometry.dt,B.geometry.dt) == true || throw(judiRHSexception("sample interval mismatch"))
-    isequal(A.geometry.t,B.geometry.t) == true || throw(judiRHSexception("recording time mismatch"))
+    size(A) == size(B) || throw(judiLinearException("Shape mismatch: A:$(size(A)), B: $(size(B))"))
+    compareInfo(A.info, B.info) == true || throw(judiLinearException("info mismatch"))
+    isequal(A.geometry.nt,B.geometry.nt) == true || throw(judiLinearException("sample number mismatch"))
+    isequal(A.geometry.dt,B.geometry.dt) == true || throw(judiLinearException("sample interval mismatch"))
+    isequal(A.geometry.t,B.geometry.t) == true || throw(judiLinearException("recording time mismatch"))
 
     # Size
     m = A.info.n * sum(A.info.nt)
@@ -109,18 +88,18 @@ function +(A::judiRHS{avDT}, B::judiRHS{bvDT}) where {avDT, bvDT}
     geometry = GeometryIC{Float32}(xloc,yloc,zloc,dt,nt,t)
     nvDT = promote_type(avDT,bvDT)
 
-    return judiRHS{nvDT}("judiRHS",m,n,A.info,geometry,data)
+    return judiRHS{nvDT}(m,n,A.info,geometry,data)
 end
 
 # -(judiRHS,judiRHS)
 function -(A::judiRHS{avDT}, B::judiRHS{bvDT}) where {avDT, bvDT}
 
     # Error checking
-    size(A) == size(B) || throw(judiRHSexception("Shape mismatch: A:$(size(A)), B: $(size(B))"))
-    compareInfo(A.info, B.info) == true || throw(judiRHSexception("info mismatch"))
-    isequal(A.geometry.nt,B.geometry.nt) == true || throw(judiRHSexception("sample number mismatch"))
-    isequal(A.geometry.dt,B.geometry.dt) == true || throw(judiRHSexception("sample interval mismatch"))
-    isequal(A.geometry.t,B.geometry.t) == true || throw(judiRHSexception("recording time mismatch"))
+    size(A) == size(B) || throw(judiLinearException("Shape mismatch: A:$(size(A)), B: $(size(B))"))
+    compareInfo(A.info, B.info) == true || throw(judiLinearException("info mismatch"))
+    isequal(A.geometry.nt,B.geometry.nt) == true || throw(judiLinearException("sample number mismatch"))
+    isequal(A.geometry.dt,B.geometry.dt) == true || throw(judiLinearException("sample interval mismatch"))
+    isequal(A.geometry.t,B.geometry.t) == true || throw(judiLinearException("recording time mismatch"))
 
     # Size
     m = A.info.n * sum(A.info.nt)
@@ -141,10 +120,10 @@ function -(A::judiRHS{avDT}, B::judiRHS{bvDT}) where {avDT, bvDT}
     geometry = GeometryIC{Float32}(xloc,yloc,zloc,dt,nt,t)
     nvDT = promote_type(avDT,bvDT)
 
-    return judiRHS{nvDT}("judiRHS",m,n,A.info,geometry,data)
+    return judiRHS{nvDT}(m,n,A.info,geometry,data)
 end
 
-function subsample(a::judiRHS{avDT},srcnum) where avDT
+function subsample(a::judiRHS{avDT}, srcnum) where avDT
     info = Info(a.info.n, length(srcnum), a.info.nt[srcnum])
     geometry = subsample(a.geometry,srcnum)     # Geometry of subsampled data container
     return judiRHS(info,geometry,a.data[srcnum];vDT=avDT)

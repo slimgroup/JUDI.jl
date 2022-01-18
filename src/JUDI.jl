@@ -27,12 +27,16 @@ import Base.getindex, Base.setindex!, Base.firstindex, Base.lastindex
 import Base.similar, Base.isapprox, Base.isequal
 import Base.materialize!, Base.materialize
 import Base.promote_shape, Base.diff, Base.cumsum, Base.cumsum!
+import Base.getproperty
 
 # Import Linear Lagebra functions to dispatch on JUDI types
 import LinearAlgebra.transpose, LinearAlgebra.conj, LinearAlgebra.vcat, LinearAlgebra.adjoint
 import LinearAlgebra.vec, LinearAlgebra.dot, LinearAlgebra.norm, LinearAlgebra.abs
 import LinearAlgebra.rmul!, LinearAlgebra.lmul!, LinearAlgebra.rdiv!, LinearAlgebra.ldiv!
 import LinearAlgebra.mul!, Base.isfinite
+
+# JOLI
+import JOLI: jo_convert
 
 # Import pycall array to python for easy plotting
 import PyCall.array2py

@@ -6,25 +6,18 @@
 # Date: January 2017
 # Updated: March 2021, Mathias Louboutin (mlouboutin3@gatech.edu)
 
-export judiLRWF, judiLRWFexception
+export judiLRWF
 
 ############################################################
 
 # Type for linear operator representing  Pr*A(m)^-1*Ps,
 # i.e. it includes source and receiver projections
-struct judiLRWF{DDT<:Number,RDT<:Number} <: joAbstractLinearOperator{DDT,RDT}
-    name::String
+struct judiLRWF{D<:Number, R<:Number} <: judiAbstractLinearOperator{D,R}
     m::Integer
     n::Integer
     info::Info
     wavelet
 end
-
-
-mutable struct judiLRWFexception <: Exception
-    msg :: String
-end
-
 
 ############################################################
 ## Constructor
@@ -41,60 +34,28 @@ Examples
     dw = Pw*F'*Pr'*dobs
 """
 function judiLRWF(info::Info, data::Array{T, N}; DDT::DataType=Float32, RDT::DataType=DDT) where {T, N}
-    (DDT == Float32 && RDT == Float32 && T == Float32) || throw(judiProjectionException("Domain and range types not supported"))
+    (DDT == Float32 && RDT == Float32 && T == Float32) || throw(judiLinearException("Domain and range types not supported"))
     m = info.n * info.nsrc
     n = info.n * sum(info.nt)
     wavelet = Array{Array{DDT, N}, 1}(undef, info.nsrc)
     for j=1:info.nsrc
         wavelet[j] = data
     end
-    return judiLRWF{Float32,Float32}("restriction operator",m,n,info,wavelet)
+    return judiLRWF{Float32,Float32}(m,n,info,wavelet)
 end
 
 
 function judiLRWF(info::Info, wavelet::Array{Array{T, N}, 1}; DDT::DataType=Float32, RDT::DataType=DDT) where {T, N}
-    (DDT == Float32 && RDT == Float32 && T == Float32) || throw(judiProjectionException("Domain and range types not supported"))
+    (DDT == Float32 && RDT == Float32 && T == Float32) || throw(judiLinearException("Domain and range types not supported"))
     m = info.n * info.nsrc
     n = info.n * sum(info.nt)
-    return judiLRWF{Float32,Float32}("restriction operator",m,n,info,wavelet)
+    return judiLRWF{Float32,Float32}(m,n,info,wavelet)
 end
-
-
 
 ############################################################
-## overloaded Base functions
-
-# conj(judiProjection)
-conj(A::judiLRWF{DDT,RDT}) where {DDT,RDT} =
-    judiLRWF{DDT,RDT}("conj("*A.name*")",A.m,A.n,A.info,A.wavelet)
-
-# transpose(judiProjection)
-transpose(A::judiLRWF{DDT,RDT}) where {DDT,RDT} =
-    judiLRWF{DDT,RDT}("injection operator",A.n,A.m,A.info,A.wavelet)
-
-adjoint(A::judiLRWF{DDT,RDT}) where {DDT,RDT} =
-    judiLRWF{DDT,RDT}("injection operator",A.n,A.m,A.info,A.wavelet)
-
-############################################################
-## overloaded Base *(...judiProjection...)
-
-# *(judiLRWF, judiWeights)
-function *(A::judiLRWF{ADDT,ARDT}, v::judiWeights{vDT}) where {ADDT,ARDT,vDT}
-    A.n == size(v,1) || throw(judiLRWFexception("Shape mismatch: A:$(size(A)), v: $(size(v))"))
-    jo_check_type_match(ADDT,vDT,join(["DDT for *(judiLRWF,judiWeights):",A.name,typeof(A),vDT]," / "))
-    V = judiExtendedSource(A.info,A.wavelet,v.weights)
-    jo_check_type_match(ARDT,eltype(V),join(["RDT from *(judiLRWF,judiWeights):",A.name,typeof(A),eltype(V)]," / "))
-    return V
-end
-
-# *(judiLRWF, vec)
-function *(A::judiLRWF{ADDT,ARDT}, v::AbstractVector{vDT}) where {ADDT,ARDT,vDT}
-    A.n == size(v, 1) || throw(judiLRWFexception("Shape mismatch: A:$(size(A)), v: $(size(v))"))
-    jo_check_type_match(ADDT,vDT,join(["DDT for *(judiLRWF,AbstractVector):",A.name,typeof(A),vDT]," / "))
-    V = judiExtendedSource(A.info,A.wavelet, v)
-    jo_check_type_match(ARDT,eltype(V),join(["RDT from *(judiLRWF,AbstractVector):",A.name,typeof(A),eltype(V)]," / "))
-    return V
-end
+judi_adjoint(A::judiLRWF{ADDT,ARDT}, v::judiWeights{vDT}) where {ADDT,ARDT,vDT} = judiExtendedSource(A.info,A.wavelet,v.weights)
+judi_adjoint(A::judiLRWF{ADDT,ARDT}, v::AbstractArray{vDT, N}) where {ADDT,ARDT,vDT, N} = judiExtendedSource(A.info,A.wavelet, v)
+*(A::jAdjoint{<:judiLRWF, D, R}, v::Vector{D}) where {D, R} = judiExtendedSource(A.info, A.wavelet, v)
 
 ############################################################
 ## Additional overloaded functions

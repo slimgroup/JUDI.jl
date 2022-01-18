@@ -5,25 +5,18 @@
 # Authors: Philipp Witte (pwitte@eos.ubc.ca), Henryk Modzelewski (hmodzelewski@eos.ubc.ca)
 # Date: January 2017
 
-export judiProjection, judiProjectionException
+export judiProjection
 
 ############################################################
 
 # Type for linear operator representing  Pr*A(m)^-1*Ps,
 # i.e. it includes source and receiver projections
-struct judiProjection{DDT<:Number,RDT<:Number} <: joAbstractLinearOperator{DDT,RDT}
-    name::String
+struct judiProjection{D<:Number,R<:Number} <: judiAbstractLinearOperator{D,R}
     m::Integer
     n::Integer
     info::Info
     geometry::Geometry
 end
-
-
-mutable struct judiProjectionException <: Exception
-    msg :: String
-end
-
 
 ############################################################
 ## Constructor
@@ -47,62 +40,19 @@ Examples
 
 """
 function judiProjection(info::Info, geometry::Geometry; DDT::DataType=Float32, RDT::DataType=DDT)
-    (DDT == Float32 && RDT == Float32) || throw(judiProjectionException("Domain and range types not supported"))
+    (DDT == Float32 && RDT == Float32) || throw(judiLinearException("Domain and range types not supported"))
     m = n_samples(geometry, info)
     n = info.n * sum(info.nt)
 
-    return judiProjection{Float32,Float32}("restriction operator",m,n,info,geometry)
+    return judiProjection{Float32,Float32}(m,n,info,geometry)
 end
-
-
-############################################################
-## overloaded Base functions
-
-# conj(judiProjection)
-conj(A::judiProjection{DDT,RDT}) where {DDT,RDT} =
-    judiProjection{DDT,RDT}("conj("*A.name*")",A.m,A.n,A.info,A.geometry)
-
-# transpose(judiProjection)
-transpose(A::judiProjection{DDT,RDT}) where {DDT,RDT} =
-    judiProjection{DDT,RDT}("injection operator",A.n,A.m,A.info,A.geometry)
-
-adjoint(A::judiProjection{DDT,RDT}) where {DDT,RDT} =
-    judiProjection{DDT,RDT}("injection operator",A.n,A.m,A.info,A.geometry)
 
 ############################################################
 ## overloaded Base *(...judiProjection...)
-
-# *(judiProjection,judiVector)
-function *(A::judiProjection{ADDT,ARDT},v::judiVector{vDT, AT}) where {ADDT,ARDT,vDT, AT}
-    A.n == size(v,1) || throw(judiProjectionException("Shape mismatch: A:$(size(A)), v: $(size(v))"))
-    compareGeometry(A.geometry,v.geometry) == true || throw(judiProjectionException("geometry mismatch"))
-    jo_check_type_match(ADDT,vDT,join(["DDT for *(judiProjection,judiVector):",A.name,typeof(A),vDT]," / "))
-    V = judiRHS(A.info,v.geometry,v.data)
-    jo_check_type_match(ARDT,eltype(V),join(["RDT from *(judiProjection,judiVector):",A.name,typeof(A),eltype(V)]," / "))
-    return V
-end
-
-# *(judiProjection,vec)
-function *(A::judiProjection{ADDT,ARDT}, v::AbstractVector{vDT}) where {ADDT,ARDT,vDT}
-    A.n == size(v,1) || throw(judiProjectionException("Shape mismatch: A:$(size(A)), v: $(size(v))"))
-    jo_check_type_match(ADDT,vDT,join(["DDT for *(judiProjection,AbstractVector):",A.name,typeof(A),vDT]," / "))
-    V = judiRHS(A.info,A.geometry, process_input_data(v, A.geometry, A.info))
-    jo_check_type_match(ARDT,eltype(V),join(["RDT from *(judiProjection,AbstractVector):",A.name,typeof(A),eltype(V)]," / "))
-    return V
-end
-
-# *(judiProjection, judiModeling)
-function *(A::judiProjection{CDT,ARDT}, B::judiModeling{BDDT,CDT}) where {ARDT,BDDT,CDT}
-    A.n == size(B,1) || throw(judiProjectionException("Shape mismatch: A:$(size(A)), B: $(size(B))"))
-    compareInfo(A.info, B.info) == true || throw(judiProjectionException("info mismatch"))
-    return judiPDE("judiProjection*judiModeling",B.info,B.model,A.geometry;options=B.options,DDT=CDT,RDT=ARDT)
-end
-
-function *(A::judiProjection{CDT,ARDT}, B::judiModelingAdjoint{BDDT,CDT}) where {ARDT,BDDT,CDT}
-    A.n == size(B,1) || throw(judiProjectionException("Shape mismatch: A:$(size(A)), B: $(size(B))"))
-    compareInfo(A.info, B.info) == true || throw(judiProjectionException("info mismatch"))
-    return judiPDEadjoint("judiProjection*judiModelingAdjoint",B.info,B.model,A.geometry;options=B.options,DDT=CDT,RDT=ARDT)
-end
+judi_adjoint(A::judiProjection{ADDT,ARDT}, v::judiVector{vDT, AT}) where {ADDT,ARDT,vDT, AT} = judiRHS(A.info, v.geometry, v.data)
+judi_adjoint(A::judiProjection{ADDT,ARDT}, v::AbstractVector{vDT}) where {ADDT,ARDT,vDT} = judiRHS(A.info, A.geometry, process_input_data(v, A.geometry, A.info))
+*(A::judiProjection{D,R}, B::judiModeling{R, R}) where {D, R} = judiPDE(B.info,B.model,A.geometry;options=B.options,DDT=D,RDT=R)
+*(A::judiProjection{D,R}, B::jAdjoint{<:judiModeling, D, R}) where {D, R} = adjoint(judiPDE(B.J.info,B.J.model,A.geometry;options=B.J.options,DDT=D,RDT=R))
 
 ############################################################
 ## Additional overloaded functions

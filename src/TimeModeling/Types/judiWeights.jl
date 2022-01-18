@@ -79,6 +79,10 @@ transpose(a::judiWeights{vDT}) where vDT =
 adjoint(a::judiWeights{vDT}) where vDT =
         judiWeights{vDT}(""*a.name*".'",a.n,a.m,a.nsrc,a.weights)
 
+jo_convert(::Type{T}, jw::judiWeights{T}, ::Bool) where {T} = jw
+jo_convert(::Type{T}, jw::judiWeights{vT}, B::Bool) where {T, vT} = 
+	judiWavefield{T}(jw.name, jw.m, jw.n, jv.nsrc, jo_convert(T, jw.weights, B))
+
 ##########################################################
 # *(joLinearFunction, judiWeights)
 function *(A::joLinearFunction{ADDT,ARDT},v::judiWeights{avDT}) where {ADDT, ARDT, avDT}
