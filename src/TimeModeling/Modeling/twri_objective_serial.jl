@@ -1,5 +1,66 @@
 
-export twri_objective
+export twri_objective, TWRIOptions
+
+
+# TWRI options
+mutable struct TWRIOptions
+    grad_corr::Bool
+    comp_alpha::Bool
+    weight_fun
+    eps
+    params
+    Invq::String
+end
+
+"""
+    TWRIOptions
+        grad_corr::Bool
+        comp_alpha::Bool
+        weight_fun
+        eps
+        params::Symbol
+        Invq::String
+
+Options structure for TWRI.
+
+`grad_corr`: Whether to add the gradient correction J'(m0, q)*∇_y
+
+`comp_alpha`: Whether to compute optimal alpha (alpha=1 if not)
+
+`weight_fun`: Whether to apply focusing/weighting function to F(m0)'*y and its norm
+
+`eps`: Epsilon (noise level) value (default=0)
+
+`Invq`: How to compute F'Y, either as full field or as a rank 1 approximation `w(t)*q(x)` using the source wavelet for w
+
+`param`: Which gradient to compute. Choices are `nothing` (objective only), `:m`, `:y` or `:all`
+
+Constructor
+==========
+
+All arguments are optional keyword arguments with the following default values:
+
+TWRIOptions(;grad_corr=false, comp_alpha=true, weight_fun=nothing, eps=0, params=:m)
+"""
+
+TWRIOptions(;grad_corr=false, comp_alpha=true,
+            weight_fun=nothing, eps=0, params=:m, Invq="standard")=
+            TWRIOptions(grad_corr, comp_alpha, weight_fun, eps, params, Invq)
+
+
+function subsample(opt::TWRIOptions, srcnum::Int)
+    eloc = length(opt.eps) == 1 ? opt.eps : opt.eps[srcnum]
+    return TWRIOptions(opt.grad_corr, opt.comp_alpha, opt.weight_fun, eloc, opt.params, opt.Invq)
+end
+
+twri_objective(model_full::Model, source::judiVector, dObs::judiVector, y::Union{judiVector, Nothing}) = 
+    twri_objective(model_full, source, dObs, y, Options(), TWRIOptions())
+twri_objective(model_full::Model, source::judiVector, dObs::judiVector, y::Union{judiVector, Nothing}, opt::Options) =
+    twri_objective(model_full, source, dObs, y, opt, TWRIOptions())
+twri_objective(model_full::Model, source::judiVector, dObs::judiVector, y::Union{judiVector, Nothing}, opt::TWRIOptions) =
+    twri_objective(model_full, source, dObs, y, Options(), opt)
+twri_objective(model_full::Model, source::judiVector, dObs::judiVector, y::Union{judiVector, Nothing}, twri_opt::TWRIOptions, opt::Options) =
+    twri_objective(model_full, source, dObs, y, opt, twri_opt)
 
 function twri_objective(model_full::Model, source::judiVector, dObs::judiVector, y::Union{judiVector, Nothing},
                         options::Options, optionswri::TWRIOptions)
@@ -48,7 +109,7 @@ function twri_objective(model_full::Model, source::judiVector, dObs::judiVector,
         grady = judiVector(dObs.geometry, grady)
     end
 
-    return obj, gradm, grady
+    return filter_out(obj, gradm, grady)
 end
 
 
@@ -61,3 +122,8 @@ function filter_w(qIn, dt, freqs)
     qfilt = DFT'*R'*R*DFT*qIn
     return qfilt, freqs
 end
+
+filter_out(obj, ::Nothing, ::Nothing) = obj
+filter_out(obj, m, ::Nothing) = obj, m
+filter_out(obj, ::Nothing, y) = obj, y
+filter_out(obj, m, y) = obj, m, y

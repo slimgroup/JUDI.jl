@@ -24,7 +24,7 @@ function extended_source_modeling(model_full::Model, srcData, recGeometry, recDa
     # Remove receivers outside the modeling domain (otherwise leads to segmentation faults)
     recGeometry, recData = remove_out_of_bounds_receivers(recGeometry, recData, model)
 
-    isnothing(weights) ? nothing : weights = pad_array(weights[1], pad_sizes(model, options; so=0); mode=:zeros)
+    isnothing(weights) ? nothing : weights = pad_array(weights, pad_sizes(model, options; so=0); mode=:zeros)
     # Devito interface
     argout = devito_interface(modelPy, model, srcData, recGeometry, recData, weights, dm, options)
 

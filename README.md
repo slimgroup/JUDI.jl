@@ -9,6 +9,15 @@
 
 JUDI is a framework for large-scale seismic modeling and inversion and designed to enable rapid translations of algorithms to fast and efficient code that scales to industry-size 3D problems. The focus of the package lies on seismic modeling as well as PDE-constrained optimization such as full-waveform inversion (FWI) and imaging (LS-RTM). Wave equations in JUDI are solved with [Devito](https://www.devitoproject.org), a Python domain-specific language for automated finite-difference (FD) computations. JUDI's modeling operators can also be used as layers in (convolutional) neural networks to implement physics-augmented deep learning algorithms. For this, check out JUDI's deep learning extension [JUDI4Flux](https://github.com/slimgroup/JUDI4Flux.jl).
 
+## Interact and contribute
+
+We gladly welcome and encorage contributions from the community to improve our software and its usability. Feel free to:
+
+- Open [issues](https://github.com/slimgroup/JUDI.jl/issues) for bugs
+- Start [discussions](https://github.com/slimgroup/JUDI.jl/discussions) to interat with the developper and ask any questions
+- Open [PR](https://github.com/slimgroup/JUDI.jl/pulls) for bug fixes and improvements
+
+
 ## FAQ
 
 You can find an FAQ with answers to issues at [FAQ](https://github.com/slimgroup/JUDI.jl/wiki/FAQ)
@@ -46,16 +55,19 @@ export DEVITO_PLATFORM=nvidiaX
 If you do not want to install JUDI, you can run JUDI as a docker image. The first possibility is to run the docker container as a Jupyter notebook:
 
 ```
-docker run -p 8888:8888 philippwitte/judi:v1.5
+docker run -p 8888:8888 mloubout/judi-base:1.0
 ```
 
 This command downloads the image and launches a container. You will see a link that you can copy-past to your browser to access the notebooks. Alternatively, you can run a bash session, in which you can start a regular interactive Julia session and run the example scripts. Download/start the container as a bash session with:
 
 ```
-docker run -it philippwitte/judi:v1.5 /bin/bash
+docker run -it mloubout/judi-base:1.0 /bin/bash
 ```
 
 Inside the container, all examples are located in the directory `/app/judi/examples/scripts`.
+
+
+Additionaly, we provide two runtime docker images `mloubout/judi-cpu:1.4.3` and `mloubout/judi-gpu:1.0` that provide runtime (bash session) containers with additional librairies and compilers installed (`icc`, `nvcc`). These image do not offer  jupyter notebook as they are designed to be used as remote image for HPC (i.e [JUDI4Cloud.jl](https://github.com/slimgroup/JUDI4Cloud.jl)). The image `mloubout/judi-cpu:1.4.3` is recommended to be used with [JUDI4Cloud.jl](https://github.com/slimgroup/JUDI4Cloud.jl).
 
 ## Testing
 

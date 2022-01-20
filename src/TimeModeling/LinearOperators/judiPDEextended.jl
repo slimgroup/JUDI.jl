@@ -38,13 +38,7 @@ function judiPDEextended(info::Info,model::Model, wavelet::Array, recGeometry::G
     (DDT == Float32 && RDT == Float32) || throw(judiPDEextendedException("Domain and range types not supported"))
 
     # Determine dimensions
-    if typeof(recGeometry) == GeometryOOC
-        m = sum(recGeometry.nsamples)
-    else
-        m = 0
-        for j=1:info.nsrc m += length(recGeometry.xloc[j])*recGeometry.nt[j] end
-
-    end
+    m = n_samples(recGeometry, info)
     n = info.n * info.nsrc
 
     srcnum = 1:info.nsrc

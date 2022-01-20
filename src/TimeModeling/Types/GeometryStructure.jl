@@ -3,7 +3,7 @@
 # Date: January 2017
 #
 
-export Geometry, compareGeometry, GeometryIC, GeometryOOC
+export Geometry, compareGeometry, GeometryIC, GeometryOOC, get_nsrc, n_samples
 
 abstract type Geometry end
 
@@ -29,6 +29,15 @@ mutable struct GeometryOOC{T} <: Geometry
     key::String
     segy_depth_key::String
 end
+
+######################## shapes easy access ################################
+get_nsrc(g::GeometryIC) = length(g.xloc)
+get_nsrc(g::GeometryOOC) = length(g.container)
+
+n_samples(g::GeometryOOC, ::Info) = sum(g.nsamples)
+n_samples(g::GeometryIC, info::Info) = sum([length(g.xloc[j])*g.nt[j] for j=1:info.nsrc])
+n_samples(g::GeometryOOC, ::Integer) = sum(g.nsamples)
+n_samples(g::GeometryIC, nsrc::Integer) = sum([length(g.xloc[j])*g.nt[j] for j=1:nsrc])
 
 ################################################ Constructors ####################################################################
 
@@ -341,3 +350,14 @@ isequal(geometry_A::GeometryOOC, geometry_B::GeometryOOC) = compareGeometry(geom
 
 compareGeometry(geometry_A::GeometryOOC, geometry_B::Geometry) = true
 compareGeometry(geometry_A::Geometry, geometry_B::GeometryOOC) = true
+
+for G in [GeometryOOC, GeometryIC]
+    @eval function push!(G1::$G, G2::$G)
+        for k in fieldnames($G)
+            pushfield!(getfield(G1, k), getfield(G2, k))
+        end
+    end
+end
+
+pushfield!(a::Array, b::Array) = append!(a, b)
+pushfield!(a, b) = nothing

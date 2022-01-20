@@ -46,20 +46,9 @@ Examples
     qad = Ps*F'*Pr'*dobs
 
 """
-function judiProjection(info::Info, geometry::GeometryIC; DDT::DataType=Float32, RDT::DataType=DDT)
+function judiProjection(info::Info, geometry::Geometry; DDT::DataType=Float32, RDT::DataType=DDT)
     (DDT == Float32 && RDT == Float32) || throw(judiProjectionException("Domain and range types not supported"))
-    m = 0
-    for j=1:length(geometry.xloc)
-        m += length(geometry.xloc[j])*geometry.nt[j]
-    end
-    n = info.n * sum(info.nt)
-
-    return judiProjection{Float32,Float32}("restriction operator",m,n,info,geometry)
-end
-
-function judiProjection(info::Info, geometry::GeometryOOC; DDT::DataType=Float32, RDT::DataType=DDT)
-    (DDT == Float32 && RDT == Float32) || throw(judiProjectionException("Domain and range types not supported"))
-    m = sum(geometry.nsamples)
+    m = n_samples(geometry, info)
     n = info.n * sum(info.nt)
 
     return judiProjection{Float32,Float32}("restriction operator",m,n,info,geometry)
@@ -106,24 +95,12 @@ end
 function *(A::judiProjection{CDT,ARDT}, B::judiModeling{BDDT,CDT}) where {ARDT,BDDT,CDT}
     A.n == size(B,1) || throw(judiProjectionException("Shape mismatch: A:$(size(A)), B: $(size(B))"))
     compareInfo(A.info, B.info) == true || throw(judiProjectionException("info mismatch"))
-    if typeof(A.geometry) == GeometryOOC
-        m = sum(A.geometry.nsamples)
-    else
-        m = 0; for j=1:B.info.nsrc m+= length(A.geometry.xloc[j])*A.geometry.nt[j] end
-    end
-    n = B.info.n * sum(B.info.nt)
     return judiPDE("judiProjection*judiModeling",B.info,B.model,A.geometry;options=B.options,DDT=CDT,RDT=ARDT)
 end
 
 function *(A::judiProjection{CDT,ARDT}, B::judiModelingAdjoint{BDDT,CDT}) where {ARDT,BDDT,CDT}
     A.n == size(B,1) || throw(judiProjectionException("Shape mismatch: A:$(size(A)), B: $(size(B))"))
     compareInfo(A.info, B.info) == true || throw(judiProjectionException("info mismatch"))
-    if typeof(A.geometry) == GeometryOOC
-        m = sum(A.geometry.nsamples)
-    else
-        m = 0; for j=1:B.info.nsrc m+= length(A.geometry.xloc[j])*A.geometry.nt[j] end
-    end
-    n = B.info.n * sum(B.info.nt)
     return judiPDEadjoint("judiProjection*judiModelingAdjoint",B.info,B.model,A.geometry;options=B.options,DDT=CDT,RDT=ARDT)
 end
 

@@ -25,7 +25,7 @@ jobs:
       fail-fast: false
 
       matrix:
-        version: ['1.1', '1.2', '1.3', '1.4', '1.5', '1.6']
+        version: ['1.2', '1.3', '1.4', '1.5', '1.6', '1.7']
         os: [ubuntu-latest]
         include:
           - version: 1.3
@@ -47,6 +47,10 @@ jobs:
       - name: Instal gcc
         if: runner.os == 'macOS'
         run: brew install gcc@7
+
+      - name: Set julia python
+        run: |
+          PYTHON=$(which python3) julia -e 'using Pkg;Pkg.add("PyCall");Pkg.build("PyCall")'
 
       - name: Build JUDI
         uses: julia-actions/julia-buildpkg@latest

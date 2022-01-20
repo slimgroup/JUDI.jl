@@ -21,9 +21,13 @@ def divs(func, so_fact=1, side=-1):
     GrDivergenceadient shifted by half a grid point, only to be used in combination
     with grads.
     """
-    so = func.space_order // so_fact
-    return sum([getattr(func[i], 'd%s' % d.name)(x0=d + side * d.spacing/2, fd_order=so)
-                for i, d in enumerate(func.space_dimensions)])
+    res = 0
+    zfd = lambda *ar, **kw: 0
+    for i, d in enumerate(func.space_dimensions):
+        so = getattr(func[i], 'space_order', 0) // so_fact
+        res += getattr(func[i], 'd%s' % d.name, zfd)(x0=d+side*d.spacing/2, fd_order=so)
+
+    return res
 
 
 def laplacian(v, irho):

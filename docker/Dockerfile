@@ -32,20 +32,11 @@ RUN wget --no-check-certificate "https://julialang-s3.julialang.org/bin/linux/x6
 # Manually install unregistered packages and JUDI
 RUN julia -e 'using Pkg;Pkg.update()'
 RUN julia -e 'using Pkg;Pkg.Registry.add(RegistrySpec(url="https://Github.com/slimgroup/SLIMregistryJL.git"))'
-RUN julia -e 'using Pkg;Pkg.develop("SegyIO"); Pkg.develop("JOLI");Pkg.develop("JUDI");Pkg.develop("SlimOptim")'
 
-RUN julia -e 'using Pkg; Pkg.add("NLopt")' && \
-    julia -e 'using Pkg; Pkg.add("IterativeSolvers")' && \
-    julia -e 'using Pkg; Pkg.add("JLD"); Pkg.add("JLD2")' && \
-    julia -e 'using Pkg; Pkg.add("HDF5")' && \
-    julia -e 'using Pkg; Pkg.add("PyPlot")' && \
-    julia -e 'using Pkg; Pkg.add("PyCall")' && \
-    julia -e 'using Pkg; Pkg.add("Distributed")' && \
-    julia -e 'using Pkg; Pkg.add("Images")'
+RUN for pkg in "SegyIO" "JOLI" "JUDI" "SlimOptim" "InvertibleNetworks" "JUDI4Flux" "JOLI4Flux"; do julia -e "using Pkg;Pkg.develop(\"$pkg\");using $pkg"; done
+RUN for pkg in "LineSearches" "Optim" "DSP" "Dierckx" "NLopt" "FFTW" "SetIntersectionProjection" "IterativeSolvers" "JLD" "Flux" "Zygote" "JLD2" "HDF5" "PyPlot" "PyCall" "Distributed" "Images"; do julia -e "using Pkg;Pkg.add(\"$pkg\"); using $pkg"; done
 
 RUN PYTHON=$(which python3) julia -e 'using Pkg; Pkg.build("PyCall")'
-# Precompiler packages
-RUN julia -e 'using JOLI, SegyIO, Images, PyCall, Distributed, JUDI.TimeModeling, SlimOptim, JLD2, HDF5'
 
 # Install and build IJulia
 ENV JUPYTER="/root/.local/bin/jupyter"

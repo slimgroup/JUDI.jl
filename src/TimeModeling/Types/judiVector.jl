@@ -83,25 +83,18 @@ wavelets or a single wavelet as an array):
     dobs = judiVector(seis_container; segy_depth_key="RecGroupElevation")
 
 """
-function judiVector(geometry::Geometry, data::Array{T, 2}) where {T, N}
+function judiVector(geometry::Geometry, data::Array{T, N}) where {T, N}
     T == Float32 || (data = tof32(data))
     # length of vector
     n = 1
-    if typeof(geometry) == GeometryOOC
-        nsrc = length(geometry.container)
-        m = sum(geometry.nsamples)
-    else
-        nsrc = length(geometry.xloc)
-        m = 0
-        for j=1:nsrc
-            m += length(geometry.xloc[j])*geometry.nt[j]
-        end
-    end
-    dataCell = Array{Array{T, 2}, 1}(undef, nsrc)
+    nsrc = get_nsrc(geometry)
+    m = n_samples(geometry, nsrc)
+
+    dataCell = Array{Array{T, N}, 1}(undef, nsrc)
     for j=1:nsrc
         dataCell[j] = deepcopy(data)
     end
-    return judiVector{T, Array{T, 2}}("Seismic data vector", m, n, nsrc, geometry, dataCell)
+    return judiVector{T, Array{T, N}}("Seismic data vector", m, n, nsrc, geometry, dataCell)
 end
 
 function judiVector(geometry::Geometry, data::Array{T, 1}) where {T, N}
@@ -113,16 +106,9 @@ function judiVector(geometry::Geometry, data::Array{Array{T, N}, 1}) where {T, N
     T == Float32 || (data = tof32.(data))
 
     # length of vector
-    if typeof(geometry) == GeometryOOC
-        nsrc = length(geometry.container)
-        m = sum(geometry.nsamples)
-    else
-        nsrc = length(geometry.xloc)
-        m = 0
-        for j=1:nsrc
-            m += length(geometry.xloc[j])*geometry.nt[j]
-        end
-    end
+    nsrc = get_nsrc(geometry)
+    m = n_samples(geometry, nsrc)
+
     n = 1
     return judiVector{T, Array{T, N}}("Seismic data vector",m,n,nsrc,geometry,data)
 end
@@ -285,6 +271,7 @@ adjoint(a::judiVector{vDT, AT}) where {vDT, AT} =
 
 # Overload needed base function for SegyIO objects
 vec(x::SegyIO.SeisCon) = vec(x[1].data)
+abs(x::SegyIO.IBMFloat32) = abs(Float32(x))
 
 ##########################################################
 
@@ -353,6 +340,14 @@ function vcat(ai::Vararg{judiVector{avDT, AT}, N}) where {avDT, AT, N}
     end
 
     return judiVector{avDT, AT}(a.name, m, n, nsrc, geometry, data)
+end
+
+# push!
+function push!(a::judiVector{T, mT}, b::judiVector{T, mT}) where {T, mT}
+    append!(a.data, b.data)
+    a.nsrc += b.nsrc
+    a.m += b.m
+    push!(a.geometry, b.geometry)
 end
 
 # dot product
@@ -425,8 +420,8 @@ function judiVector_to_SeisBlock(d::judiVector{avDT, AT}, q::judiVector{avDT, QT
                                  source_depth_key="SourceSurfaceElevation",
                                  receiver_depth_key="RecGroupElevation") where {avDT, AT, QT}
 
-    typeof(d.geometry) == GeometryOOC && (d.geometry = Geometry(d.geometry))
-    typeof(q.geometry) == GeometryOOC && (q.geometry = Geometry(q.geometry))
+    typeof(d.geometry) <: GeometryOOC && (d.geometry = Geometry(d.geometry))
+    typeof(q.geometry) <: GeometryOOC && (q.geometry = Geometry(q.geometry))
 
     blocks = Array{Any}(undef, d.nsrc)
     count = 0
@@ -683,7 +678,7 @@ function get_data(x::judiVector{T, SeisCon}) where T
     return judiVector(rec_geometry, shots)
 end
 
-get_data(x::judiVector{T, Array{Float32, 2}}) where T = judiVector(Geometry(x.geometry), x.data)
+get_data(x::judiVector{T, Array{Float32, 2}}) where T = x
 
 function convert_to_array(x::judiVector)
     y = vec(x.data[1])
