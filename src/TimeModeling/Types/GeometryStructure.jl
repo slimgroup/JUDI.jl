@@ -161,23 +161,22 @@ end
 function Geometry(data::SegyIO.SeisBlock; key="source", segy_depth_key="")
     src = get_header(data,"FieldRecord")
     nsrc = length(unique(src))
+    gt = Vector{Float32}
     if key=="source"
         isempty(segy_depth_key) && (segy_depth_key="SourceSurfaceElevation")
         params = ["SourceX","SourceY",segy_depth_key]
-        gt = Array{Float32, 1}
     elseif key=="receiver"
         isempty(segy_depth_key) && (segy_depth_key="RecGroupElevation")
         params = ["GroupX","GroupY",segy_depth_key]
-        gt = Array{Float32, 1}
     else
         throw("Specified keyword not supported")
     end
-    xloc = Array{gt, 1}(undef, nsrc)
-    yloc = Array{gt, 1}(undef, nsrc)
-    zloc = Array{gt, 1}(undef, nsrc)
-    dt = Array{Float32}(undef, nsrc)
-    nt = Array{Integer}(undef, nsrc)
-    t = Array{Float32}(undef, nsrc)
+    xloc = Vector{gt}(undef, nsrc)
+    yloc = Vector{gt}(undef, nsrc)
+    zloc = Vector{gt}(undef, nsrc)
+    dt = Vector{Float32}(undef, nsrc)
+    nt = Vector{Integer}(undef, nsrc)
+    t = Vector{Float32}(undef, nsrc)
 
     xloc_full = get_header(data, params[1])
     yloc_full = get_header(data, params[2])

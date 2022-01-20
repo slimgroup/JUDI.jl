@@ -97,12 +97,12 @@ function judiVector(geometry::Geometry, data::Array{T, N}) where {T, N}
     return judiVector{T, Array{T, N}}("Seismic data vector", m, n, nsrc, geometry, dataCell)
 end
 
-function judiVector(geometry::Geometry, data::Array{T, 1}) where {T, N}
+function judiVector(geometry::Geometry, data::Vector{T}) where {T, N}
     return judiVector(geometry, reshape(data, length(data),1))
 end
 
 # constructor if data is passed as a cell array
-function judiVector(geometry::Geometry, data::Array{Array{T, N}, 1}) where {T, N}
+function judiVector(geometry::Geometry, data::Vector{Array{T, N}}) where {T, N}
     T == Float32 || (data = tof32.(data))
 
     # length of vector
@@ -233,7 +233,7 @@ function judiVector(data::Array{SegyIO.SeisCon,1}; segy_depth_key="RecGroupEleva
 end
 
 # contructor for out-of-core data container from cell array of containers and given geometry
-function judiVector(geometry::Geometry, data::Array{SegyIO.SeisCon, 1})
+function judiVector(geometry::Geometry, data::Vector{SegyIO.SeisCon})
     # length of data vector
     nsrc = length(data)
     numTraces = 0
