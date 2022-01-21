@@ -17,6 +17,15 @@
     for i = 1:6
         @test w.data[i] == i*ones(Float32,10*i,10*i)
     end
+
+    # Test objective function
+    f1 = @spawn (Ref{Float32}(1f0), randn(10))
+    f2 = @spawn (Ref{Float32}(2f0), randn(10))
+    JUDI.local_reduce!(f1, f2)
+    res = fetch(f1)
+    @test res[1][] == 3f0
+    res = as_vec(res)
+    @test res[1] == 3f0
 end
 
 parsed_args = parse_commandline()

@@ -109,7 +109,7 @@ function twri_objective(model_full::Model, source::judiVector, dObs::judiVector,
         grady = judiVector(dObs.geometry, grady)
     end
 
-    return filter_out(obj, gradm, grady)
+    return filter_out(Ref{Float32}(obj), gradm, grady)
 end
 
 

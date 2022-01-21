@@ -13,7 +13,7 @@ n,d,o,m0 = read(h5open("../../data/overthrust_model.h5","r"), "n", "d", "o", "m0
 model0 = Model((n[1],n[2]), (d[1],d[2]), (o[1],o[2]), m0)
 
 # Bound constraints
-v0 = sqrt.(1f0 ./ model0.m)
+v0 = sqrt.(1f0 ./ m0)
 
 # Load data
 block = segy_read("../../data/overthrust_shot_records.segy")
@@ -89,7 +89,7 @@ options.rho_ini = ones(length(TD_OP))*10.0
 
 proj_intersection = x-> PARSDMM(x, AtA, TD_OP, set_Prop, P_sub, model0, options)  
 
-function prj(input)
+function proj(input)
     input = Float32.(input)
     (x,dummy1,dummy2,dymmy3) = proj_intersection(vec(input.data))
     return reshape(x, model0.n)
