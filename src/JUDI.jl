@@ -55,8 +55,17 @@ function __init__()
     copy!(ac, pyimport("interface"))
 end
 
-
 # JUDI time modeling
 include("TimeModeling/TimeModeling.jl")
+
+module TimeModeling
+    using ..JUDI
+    # Define backward compatible types so that old JLD files load properly
+    # Old JLD file expected to be arrays, SeisCon are expected to be read and built
+    # from SEGY files
+    const judiVector{T} = JUDI.judiVector{T, Matrix{T}} where T
+    const GeometryIC = JUDI.GeometryIC{Float32}
+    const GeometryOOC = JUDI.GeometryOOC{Float32}
+end
 
 end

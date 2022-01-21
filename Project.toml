@@ -1,7 +1,7 @@
 name = "JUDI"
 uuid = "f3b833dc-6b2e-5b9c-b940-873ed6319979"
 authors = ["Philipp Witte, Mathias Louboutin"]
-version = "2.6.3"
+version = "2.6.4"
 
 [deps]
 DSP = "717857b8-e6f2-59f4-9121-6e50c889abd2"
@@ -15,19 +15,20 @@ Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
 SegyIO = "157a0f19-4d44-4de5-a0d0-07e2f0ac4dfa"
 
 [compat]
-julia = "1"
-JOLI = "0.7"
-FFTW = "1"
-PyCall = "1.18, 1.90, 1.91, 1.62"
-Dierckx = "0.4, 0.5"
 DSP = "0.6, 0.7"
+Dierckx = "0.4, 0.5"
+FFTW = "1"
+JOLI = "0.7"
+PyCall = "1.18, 1.90, 1.91, 1.62"
 Reexport = "0.2, 1"
 SegyIO = "0.7"
+julia = "1"
 
 [extras]
 ArgParse = "c7e460c6-2fb9-53a9-8c5b-16f535851c63"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
 
 [targets]
-test = ["Test", "ArgParse", "Printf"]
+test = ["Test", "ArgParse", "Printf", "JLD2"]
