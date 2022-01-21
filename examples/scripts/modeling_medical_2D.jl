@@ -34,9 +34,9 @@ dtR = 0.2f0    # receiver sampling interval [ms]
 recGeometry = Geometry(xrec, yrec, zrec; dt=dtR, t=timeR, nsrc=nsrc)
 
 ## Set up source geometry (cell array with source locations for each shot)
-xsrc = convertToCell([d[1]*61])
-ysrc = convertToCell([0f0])
-zsrc = convertToCell([d[1]])
+xsrc = d[1]*61
+ysrc = 0f0
+zsrc = d[1]
 
 # source sampling and number of time steps
 timeS = 250f0     # ms
@@ -48,6 +48,7 @@ srcGeometry = Geometry(xsrc, ysrc, zsrc; dt=dtS, t=timeS)
 # setup wavelet
 f0 = .05  # kHz
 wavelet = ricker_wavelet(timeS, dtS, f0)
+@show size(wavelet)
 q = judiVector(srcGeometry, wavelet)
 
 # Set up info structure for linear operators

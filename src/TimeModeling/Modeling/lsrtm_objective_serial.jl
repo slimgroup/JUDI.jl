@@ -61,5 +61,5 @@ function lsrtm_objective(model_full::Model, source::judiVector, dObs::judiVector
         argout2 = extend_gradient(model_full, model, argout2)
     end
 
-    return Ref{Float32}(argout1), argout2
+    return Ref{Float32}(argout1),  PhysicalParameter(argout2, model_full.d, model_full.o)
 end

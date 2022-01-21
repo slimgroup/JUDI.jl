@@ -307,7 +307,7 @@ and central frequency `f0` (in kHz).
 function ricker_wavelet(tmax, dt, f0; t0=nothing)
     R = typeof(dt)
     isnothing(t0) ? t0 = R(0) : tmax = R(tmax - t0)
-    nt = Int(tmax ÷ dt) + 1
+    nt = floor(Int, tmax / dt) + 1
     t = range(t0, stop=tmax, length=nt)
     r = (pi * f0 * (t .- 1 / f0))
     q = zeros(Float32,nt,1)

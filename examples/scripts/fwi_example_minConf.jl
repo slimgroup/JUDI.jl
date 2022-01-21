@@ -52,11 +52,11 @@ function objective_function(x)
 end
 
 # Bound projection
-ProjBound(x) = median([mmin x mmax]; dims=2)
+proj(x) = reshape(median([vec(mmin) vec(x) vec(mmax)]; dims=2),model0.n)
 
 # FWI with SPG
 options = spg_options(verbose=3, maxIter=fevals, memory=3)
-sol = spg(objective_function, vec(model0.m), ProjBound, options)
+sol = spg(objective_function, vec(model0.m), proj, options)
 
 # Plot result
 imshow(reshape(sqrt.(1f0 ./ sol.sol), model0.n)', extent=[0, 10, 3, 0])

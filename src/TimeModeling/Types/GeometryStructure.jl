@@ -140,7 +140,7 @@ function Geometry(xloc::Array{Array{T, 1},1}, yloc::CoordT, zloc::Array{Array{T,
     tCell = typeof(t) <: Real ? [T(t) for j=1:nsrc] : T.(t)
 
     # Calculate number of time steps
-    ntCell = typeof(t) <: Real ? [Int(t ÷ dt) + 1 for j=1:nsrc] : Int(tCell .÷ dtCell) .+ 1
+    ntCell = typeof(t) <: Real ? [floor(Int, t / dt) + 1 for j=1:nsrc] : floor.(Int, tCell ./ dtCell) .+ 1
     return GeometryIC{T}(xloc, yloc, zloc, dtCell, ntCell, tCell)
 end
 
@@ -150,7 +150,7 @@ function Geometry(xloc::Array{T, 1}, yloc::CoordT, zloc::Array{T, 1}; dt=[], t=[
     ylocCell = [yloc for j=1:nsrc]
     zlocCell = [zloc for j=1:nsrc]
     dtCell = [T(dt) for j=1:nsrc]
-    ntCell = [Int(t÷dt)+1 for j=1:nsrc]
+    ntCell = [floor(Int, t/dt)+1 for j=1:nsrc]
     tCell = [T(t) for j=1:nsrc]
     return GeometryIC{T}(xlocCell, ylocCell, zlocCell, dtCell, ntCell, tCell)
 end
