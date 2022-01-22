@@ -12,7 +12,7 @@ on:
 
 jobs:
   test:
-    name: ${{ matrix.op }} on Julia ${{ matrix.version }} - ${{ matrix.os }}
+    name: JUDI example on Julia ${{ matrix.version }}
     runs-on: ${{ matrix.os }}
     env:
       DEVITO_ARCH: gcc-9
@@ -20,7 +20,7 @@ jobs:
       DEVITO_BACKEND: "core"
       DEVITO_LOGGING: "ERROR"
       OMP_NUM_THREADS: ${{ matrix.omp }}
-      NITER: 2
+      NITER: 1
 
     strategy:
       fail-fast: false
@@ -48,15 +48,15 @@ jobs:
           version: "${{ matrix.version }}"
           arch: x64
 
+      - name: Build JUDI
+        uses: julia-actions/julia-buildpkg@latest
+
       - name: Install packages
         run: |
           julia -e 'using Pkg;Pkg.add(["NLopt", "JOLI", "PyPlot", "IterativeSolvers", "SlimOptim", "HDF5", "SegyIO", "SetIntersectionProjection"])'
           julia -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd()))'
 
-      - name: Run examples
+      - name: Run base examples
         working-directory: examples/scripts
         run: |
-          for f in *.jl; do
-            echo "Running $f"
-            julia -p 2 $f
-          done
+          julia -p 2 -e 'for f in filter!(e->e≠"runall.jl", readdir(".")); include(f); end'

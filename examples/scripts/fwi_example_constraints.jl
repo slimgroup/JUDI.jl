@@ -1,11 +1,12 @@
 # 2D FWI on Overthrust model using minConf library
-# Author: Philipp Witte, pwitte@eoas.ubc.ca
+# Authors: 
+# Philipp Witte, pwitte@eoas.ubc.ca
 # Date: December 2017
-#
+# Mathias Louboutin, mlouboutin3@gatech.edu
+# Date: January 2022
 
-using Statistics, Random, Pkg
-using LinearAlgebra
-using JUDI, SlimOptim, HDF5, SegyIO, PyPlot, FFTW
+using Statistics, Random, LinearAlgebra
+using JUDI, SlimOptim, HDF5, SegyIO, PyPlot
 using SetIntersectionProjection
 
 # Load starting model
@@ -27,7 +28,7 @@ q = judiVector(src_geometry,wavelet)
 ############################### FWI ###########################################
 
 # Optimization parameters
-niterations = get(ENV, "NITER", 10)
+niterations = parse(Int, get(ENV, "NITER", "10"))
 batchsize = 10
 fhistory_SGD = zeros(Float32,niterations)
 
@@ -50,7 +51,6 @@ options.rho_ini=[1.0f0]
 
 set_zero_subnormals(true)
 BLAS.set_num_threads(2)
-FFTW.set_num_threads(2)
 options.parallel=false
 options.feasibility_only = false
 options.zero_ini_guess=true

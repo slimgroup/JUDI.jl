@@ -34,7 +34,7 @@ q = judiVector(src_geometry,wavelet)
 
 
 # Optimization parameters
-fevals = get(ENV, "NITER", 10)
+fevals = parse(Int, get(ENV, "NITER", "10"))
 batchsize = 8
 
 # Objective function for minConf library
@@ -59,6 +59,6 @@ options = spg_options(verbose=3, maxIter=fevals, memory=3)
 sol = spg(objective_function, vec(model0.m), proj, options)
 
 # Plot result
-imshow(reshape(sqrt.(1f0 ./ sol.sol), model0.n)', extent=[0, 10, 3, 0])
+imshow(reshape(sqrt.(1f0 ./ sol.x), model0.n)', extent=[0, 10, 3, 0])
 xlabel("Lateral position [km]")
 ylabel("Depth [km]")

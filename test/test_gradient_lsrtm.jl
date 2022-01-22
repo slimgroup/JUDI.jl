@@ -110,9 +110,9 @@ cases = [(true, false, true), (false, false, true), (true, true, false), (true, 
 	Jm0, grad = lsrtm_objective(model0, q, dobs, dm1; options=opt, nlind=true)
 	Jm01, grad1 = lsrtm_objective(model0, q, dobs-dobs0, dm1; options=opt, nlind=false)
 
-	@test isapprox(vec(grad), vec(grad_1.data); rtol=ftol)
+	@test isapprox(grad, grad_1; rtol=ftol)
 	@test isapprox(Jm0, Jm0_1; rtol=ftol)
-	@test isapprox(vec(grad), vec(grad1); rtol=ftol)
+	@test isapprox(grad, grad1; rtol=ftol)
 	@test isapprox(Jm0, Jm01; rtol=ftol)
 			
 end

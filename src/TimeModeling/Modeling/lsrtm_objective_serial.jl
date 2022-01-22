@@ -2,10 +2,10 @@
 export lsrtm_objective
 
 # Other potential calls
-lsrtm_objective(model_full::Model, source::judiVector, dObs::judiVector, dm::Union{Array, PhysicalParameter}, nlind::Bool, options::Options) = lsrtm_objective(model_full, source, dObs, dm; options=options, nlind=nlind)
-lsrtm_objective(model_full::Model, source::judiVector, dObs::judiVector, dm::Union{Array, PhysicalParameter}, options::Options) = lsrtm_objective(model_full, source, dObs, dm; options=options, nlind=false)
+lsrtm_objective(model_full::Model, source::judiVector, dObs::judiVector, dm::Union{Array, PhysicalParameter}, nlind::Bool, options::Options) = lsrtm_objective(model_full, source, dObs, dm, options, nlind)
+lsrtm_objective(model_full::Model, source::judiVector, dObs::judiVector, dm::Union{Array, PhysicalParameter}, options::Options) = lsrtm_objective(model_full, source, dObs, dm, options, false)
 lsrtm_objective(model_full::Model, source::judiVector, dObs::judiVector, dm::Union{Array, PhysicalParameter}) = lsrtm_objective(model_full, source, dObs, dm; options=Options(), nlind=false)
-lsrtm_objective(model_full::Model, source::judiVector, dObs::judiVector, dm::Union{Array, PhysicalParameter}, nlind::Bool) = lsrtm_objective(model_full, source, dObs, dm; options=Options(),nlind=nlind)
+lsrtm_objective(model_full::Model, source::judiVector, dObs::judiVector, dm::Union{Array, PhysicalParameter}, nlind::Bool) = lsrtm_objective(model_full, source, dObs, dm, Options(), nlind)
 
 
 function lsrtm_objective(model_full::Model, source::judiVector, dObs::judiVector, dm::Union{Array, PhysicalParameter}, options::Options, nlind::Bool)

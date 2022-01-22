@@ -34,9 +34,9 @@ q = judiVector(src_geometry,wavelet)
 F0 = judiModeling(deepcopy(model0), src_geometry, d_obs.geometry)
 
 # Optimization parameters
-niterations = get(ENV, "NITER", 10)
+niterations = parse(Int, get(ENV, "NITER", "10"))
 batchsize = 16
-fhistory_SGD = zeros(Float32,niterations)
+fhistory_SGD = zeros(Float32, niterations)
 
 # Projection operator for bound constraints
 proj(x) = reshape(median([vec(mmin) vec(x) vec(mmax)]; dims=2),model0.n)
