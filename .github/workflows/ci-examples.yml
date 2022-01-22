@@ -48,12 +48,9 @@ jobs:
           version: "${{ matrix.version }}"
           arch: x64
 
-      - name: Build JUDI
-        uses: julia-actions/julia-buildpkg@latest
-
-      - name: Install misc packages
+      - name: Install packages
         run: |
-          julia -e 'using Pkg;Pkg.add(["NLopt", "PyPlot", "IterativeSolvers", "SlimOptim", "HDF5", "SegyIO", "SetIntersectionProjection"])'
+          julia -e 'using Pkg;Pkg.add(["NLopt", "JOLI", "PyPlot", "IterativeSolvers", "SlimOptim", "HDF5", "SegyIO", "SetIntersectionProjection"])'
           julia -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd()))'
 
       - name: Run examples
