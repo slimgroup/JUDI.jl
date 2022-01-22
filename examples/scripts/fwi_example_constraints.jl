@@ -27,7 +27,7 @@ q = judiVector(src_geometry,wavelet)
 ############################### FWI ###########################################
 
 # Optimization parameters
-niterations = 10
+niterations = get(ENV, "NITER", 10)
 batchsize = 10
 fhistory_SGD = zeros(Float32,niterations)
 

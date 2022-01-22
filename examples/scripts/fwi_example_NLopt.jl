@@ -59,5 +59,5 @@ end
 opt = Opt(:LD_LBFGS, prod(model0.n))
 lower_bounds!(opt, mmin); upper_bounds!(opt, mmax)
 min_objective!(opt, f!)
-maxeval!(opt, 10)
+maxeval!(opt, get(ENV, "NITER", 10))
 (minf, minx, ret) = optimize(opt, vec(model0.m.data))

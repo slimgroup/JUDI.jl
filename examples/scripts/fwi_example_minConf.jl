@@ -34,7 +34,7 @@ q = judiVector(src_geometry,wavelet)
 
 
 # Optimization parameters
-fevals = 16
+fevals = get(ENV, "NITER", 10)
 batchsize = 8
 
 # Objective function for minConf library

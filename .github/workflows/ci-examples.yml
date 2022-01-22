@@ -1,0 +1,65 @@
+name: CI-examples
+
+on: 
+  # Trigger the workflow on push to master or pull request
+  # to be merged in master
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  test:
+    name: ${{ matrix.op }} on Julia ${{ matrix.version }} - ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    env:
+      DEVITO_ARCH: gcc-9
+      DEVITO_LANGUAGE: "openmp"
+      DEVITO_BACKEND: "core"
+      DEVITO_LOGGING: "ERROR"
+      OMP_NUM_THREADS: ${{ matrix.omp }}
+      NITER: 2
+
+    strategy:
+      fail-fast: false
+
+      matrix:
+        os: [ubuntu-latest]
+        omp: [2]
+        version: [1.6, 1.7]
+
+    steps:
+      - name: Checkout JUDI
+        uses: actions/checkout@v2
+
+      - name: Install GCC 9
+        if : runner.os == 'macOS'
+        run : brew install gcc@9
+
+      - name: Set julia python
+        run: |
+          PYTHON=$(which python3) julia -e 'using Pkg;Pkg.add("PyCall");Pkg.build("PyCall")'
+
+      - name: Setup julia
+        uses: julia-actions/setup-julia@v1
+        with:
+          version: "${{ matrix.version }}"
+          arch: x64
+
+      - name: Build JUDI
+        uses: julia-actions/julia-buildpkg@latest
+
+      - name: Install misc packages
+        run: |
+          julia -e 'using Pkg;Pkg.add(["NLopt", "PyPlot", "IterativeSolvers", "SlimOptim", "HDF5", "SegyIO", "SetIntersectionProjection"])'
+          julia -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd()))'
+
+      - name: Run examples
+        working-directory: examples/scripts
+        run: |
+          for f in *.jl; do
+            echo "Running $f"
+            julia -p 2 $f
+          done

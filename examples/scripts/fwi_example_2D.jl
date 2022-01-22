@@ -34,7 +34,7 @@ q = judiVector(src_geometry,wavelet)
 F0 = judiModeling(deepcopy(model0), src_geometry, d_obs.geometry)
 
 # Optimization parameters
-niterations = 10
+niterations = get(ENV, "NITER", 10)
 batchsize = 16
 fhistory_SGD = zeros(Float32,niterations)
 
