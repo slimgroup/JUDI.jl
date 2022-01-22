@@ -30,7 +30,7 @@ model = Model(n, d, o, m)
 # Receiver geometry
 nxrec = 120
 nyrec = 100
-xrec = range(50f0, stop=1150f0, length=nxrec)
+xrec = range(50f0, stop=950f0, length=nxrec)
 yrec = range(100f0, stop=900f0, length=nyrec)
 zrec = 50f0
 

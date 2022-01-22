@@ -118,7 +118,7 @@ for j=1:niterations
     step, fval = ls(ϕ, 1f0, fval, dot(gradient, p))
 
     # Update model and bound projection
-    model0.m = proj(model0.m .+ step .* p)
+    model0.m .= proj(model0.m .+ step .* p)
 end
 
 figure(); imshow(sqrt.(1f0./adjoint(model0.m))); title("FWI with SPG")

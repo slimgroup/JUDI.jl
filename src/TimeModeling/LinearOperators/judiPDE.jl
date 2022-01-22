@@ -152,7 +152,7 @@ function *(A::judiPDE{ADDT,ARDT},v::judiWavefield{vDT}) where {ADDT,ARDT,vDT}
 	jo_check_type_match(ADDT,vDT,join(["DDT for *(judiPDE,judiWavefield):",A.name,typeof(A),vDT]," / "))
 	args = (nothing,v.data,A.geometry,nothing,nothing)
 	V = A.fop(args)
-	jo_check_type_match(ARDT,eltype(V),join(["RDT from *(judiPDE,judiVector):",A.name,typeof(A),eltype(V)]," / "))
+	jo_check_type_match(ARDT,eltype(V),join(["RDT from *(judiPDE,judiWavefield):",A.name,typeof(A),eltype(V)]," / "))
 	return V
 end
 
@@ -161,7 +161,7 @@ function *(A::judiPDEadjoint{ADDT,ARDT},v::judiWavefield{vDT}) where {ADDT,ARDT,
 	jo_check_type_match(ADDT,vDT,join(["DDT for *(judiPDE,judiWavefield):",A.name,typeof(A),vDT]," / "))
 	args = (A.geometry,nothing,nothing,v.data,nothing)
 	V = A.fop(args)
-	jo_check_type_match(ARDT,eltype(V),join(["RDT from *(judiPDE,judiVector):",A.name,typeof(A),eltype(V)]," / "))
+	jo_check_type_match(ARDT,eltype(V),join(["RDT from *(judiPDE,judiWavefield):",A.name,typeof(A),eltype(V)]," / "))
 	return V
 end
 

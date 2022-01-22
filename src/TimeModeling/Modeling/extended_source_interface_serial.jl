@@ -27,7 +27,6 @@ function extended_source_modeling(model_full::Model, srcData, recGeometry, recDa
     isnothing(weights) ? nothing : weights = pad_array(weights, pad_sizes(model, options; so=0); mode=:zeros)
     # Devito interface
     argout = devito_interface(modelPy, model, srcData, recGeometry, recData, weights, dm, options)
-
     # Extend gradient back to original model size
     if op=='J' && mode==-1 && options.limit_m==true
         argout = extend_gradient(model_full, model, argout)

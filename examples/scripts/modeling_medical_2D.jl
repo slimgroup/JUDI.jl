@@ -48,7 +48,6 @@ srcGeometry = Geometry(xsrc, ysrc, zsrc; dt=dtS, t=timeS)
 # setup wavelet
 f0 = .05  # kHz
 wavelet = ricker_wavelet(timeS, dtS, f0)
-@show size(wavelet)
 q = judiVector(srcGeometry, wavelet)
 
 # Set up info structure for linear operators
