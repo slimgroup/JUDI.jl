@@ -485,6 +485,7 @@ function setup_3D_grid(xrec::AbstractVector{T},yrec::AbstractVector{T}, zrec::T)
 end
 
 setup_3D_grid(xrec, yrec, zrec) = setup_3D_grid(tof32(xrec), tof32(yrec), tof32(zrec))
+
 function setup_3D_grid(xrec::Vector{Any}, yrec::Vector{Any}, zrec::Vector{Any})
     xrec, yrec, zrec = convert(Vector{typeof(xrec[1])},xrec), convert(Vector{typeof(yrec[1])}, yrec), convert(Vector{typeof(zrec[1])},zrec)
     setup_3D_grid(xrec, yrec, zrec)

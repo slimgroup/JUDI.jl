@@ -1,4 +1,4 @@
-
+using JLD2
 
 @testset "Test issue #83" begin
     nxrec = 120
@@ -17,4 +17,17 @@
         @test all(y3d[s:e] .== yrec[k])
     end
     @test all(z3d .== zrec)
+end
+
+@testset "Test backward comp issue" begin
+    datapath = joinpath(dirname(pathof(JUDI)))*"/../data/"
+
+    # Load file with old judiVector type and julia <1.7 StepRangeLen
+    @load "$(datapath)backward_comp.jld" dat model_true
+
+    @test typeof(dat) == judiVector{Float32, Matrix{Float32}}
+    @test typeof(dat.geometry) == GeometryIC{Float32}
+    @test typeof(dat.geometry.xloc) == Vector{Vector{Float32}}
+    @test typeof(model_true) == Model
+    @test typeof(model_true.m) == PhysicalParameter{Float32}
 end

@@ -7,7 +7,8 @@ export Geometry, compareGeometry, GeometryIC, GeometryOOC, get_nsrc, n_samples
 
 abstract type Geometry end
 
-const CoordT = Union{Array{T, 1}, Array{Array{T, 1}, 1}} where T
+const CoordT = Union{Array{T, 1}, Array{Array{T, 1}, 1}} where T<:Number
+(::Type{CoordT})(x::Vector{Any}) = rebuild_maybe_jld(x)
 
 # In-core geometry structure for seismic header information
 mutable struct GeometryIC{T} <: Geometry
@@ -153,7 +154,6 @@ function Geometry(xloc::Array{T, 1}, yloc::CoordT, zloc::Array{T, 1}; dt=[], t=[
     tCell = [T(t) for j=1:nsrc]
     return GeometryIC{T}(xlocCell, ylocCell, zlocCell, dtCell, ntCell, tCell)
 end
-
 
 ################################################ Constructors from SEGY data  ####################################################
 

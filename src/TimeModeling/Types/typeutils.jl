@@ -131,3 +131,17 @@ end
 function vcat(a::Array{T, 1}) where T<:Union{judiVector, judiWeights, judiWavefield}
     return vcat(a...)
 end
+
+
+##### Rebuild bad vector
+
+function rebuild_maybe_jld(x::Vector{Any})
+    try
+        return tof32(x)
+    catch e
+        if hasproperty(x[1], :offset)
+            return [Float32.(StepRangeLen(xi.ref, xi.step, xi.len, xi.offset)) for xi in x]
+        end
+        return x
+    end
+end
