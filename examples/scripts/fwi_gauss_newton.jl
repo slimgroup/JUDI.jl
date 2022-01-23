@@ -11,7 +11,7 @@ n,d,o,m0 = read(h5open("../../data/overthrust_model.h5","r"), "n", "d", "o", "m0
 model0 = Model((n[1],n[2]), (d[1],d[2]), (o[1],o[2]), m0)
 
 # Bound constraints
-v0 = sqrt.(1 ./ model0.m)
+v0 = sqrt.(1 ./ m0)
 vmin = ones(Float32,model0.n) .* 1.3f0
 vmax = ones(Float32,model0.n) .* 6.5f0
 vmin[:,1:21] .= v0[:,1:21]   # keep water column fixed
@@ -41,8 +41,8 @@ F = judiModeling(info,model0)
 J = judiJacobian(Pr*F*Ps',q)
 
 # Optimization parameters
-maxiter = 10
-maxiter_GN = 5
+maxiter = parse(Int, get(ENV, "NITER", "10"))
+maxiter_GN = parse(Int, get(ENV, "NITER", "5"))
 fhistory_GN = zeros(Float32,maxiter)
 proj(x) = reshape(median([vec(mmin) vec(x) vec(mmax)]; dims=2),model0.n)
 

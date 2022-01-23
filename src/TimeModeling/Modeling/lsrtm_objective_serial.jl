@@ -1,9 +1,10 @@
 
 export lsrtm_objective
 
+# Other potential calls
 lsrtm_objective(model_full::Model, source::judiVector, dObs::judiVector, dm::Union{Array, PhysicalParameter}, nlind::Bool, options::Options) = lsrtm_objective(model_full, source, dObs, dm, options, nlind)
 lsrtm_objective(model_full::Model, source::judiVector, dObs::judiVector, dm::Union{Array, PhysicalParameter}, options::Options) = lsrtm_objective(model_full, source, dObs, dm, options, false)
-lsrtm_objective(model_full::Model, source::judiVector, dObs::judiVector, dm::Union{Array, PhysicalParameter}) = lsrtm_objective(model_full, source, dObs, dm, Options(), false)
+lsrtm_objective(model_full::Model, source::judiVector, dObs::judiVector, dm::Union{Array, PhysicalParameter}) = lsrtm_objective(model_full, source, dObs, dm; options=Options(), nlind=false)
 lsrtm_objective(model_full::Model, source::judiVector, dObs::judiVector, dm::Union{Array, PhysicalParameter}, nlind::Bool) = lsrtm_objective(model_full, source, dObs, dm, Options(), nlind)
 
 
@@ -61,5 +62,5 @@ function lsrtm_objective(model_full::Model, source::judiVector, dObs::judiVector
         argout2 = extend_gradient(model_full, model, argout2)
     end
 
-    return argout1, argout2
+    return Ref{Float32}(argout1),  PhysicalParameter(argout2, model_full.d, model_full.o)
 end

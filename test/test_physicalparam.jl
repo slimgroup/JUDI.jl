@@ -122,7 +122,7 @@ ftol = 1f-5
     w = PhysicalParameter(randn(Float32, n...), d, o)
     a = .5f0 + rand(Float32)
     b = .5f0 + rand(Float32)
-    c2 = randn(size(v, 1), size(v,1))
+    c2 = randn(size(v, 1), size(v, 1))
 
     @test isapprox(u + (v + w), (u + v) + w; rtol=ftol)
     @test isapprox(u + v, v + u; rtol=ftol)

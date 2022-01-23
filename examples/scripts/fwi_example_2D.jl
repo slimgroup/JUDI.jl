@@ -11,9 +11,9 @@ n,d,o,m0 = read(h5open("../../data/overthrust_model.h5","r"), "n", "d", "o", "m0
 model0 = Model((n[1],n[2]), (d[1],d[2]), (o[1],o[2]), m0)
 
 # Bound constraints
-v0 = sqrt.(1f0 ./ model0.m)
-vmin = ones(Float32,model0.n) .* 1.3f0
-vmax = ones(Float32,model0.n) .* 6.5f0
+v0 = sqrt.(1f0 ./ m0)
+vmin = ones(Float32, model0.n) .* 1.3f0
+vmax = ones(Float32, model0.n) .* 6.5f0
 vmin[:,1:21] .= v0[:,1:21]   # keep water column fixed
 vmax[:,1:21] .= v0[:,1:21]
 
@@ -34,9 +34,9 @@ q = judiVector(src_geometry,wavelet)
 F0 = judiModeling(deepcopy(model0), src_geometry, d_obs.geometry)
 
 # Optimization parameters
-niterations = 10
+niterations = parse(Int, get(ENV, "NITER", "10"))
 batchsize = 16
-fhistory_SGD = zeros(Float32,niterations)
+fhistory_SGD = zeros(Float32, niterations)
 
 # Projection operator for bound constraints
 proj(x) = reshape(median([vec(mmin) vec(x) vec(mmax)]; dims=2),model0.n)
@@ -47,7 +47,7 @@ for j=1:niterations
 
     # get fwi objective function value and gradient
     i = randperm(d_obs.nsrc)[1:batchsize]
-    fval, gradient = fwi_objective(model0,q[i],d_obs[i])
+    fval, gradient = fwi_objective(model0, q[i], d_obs[i])
     p = -gradient/norm(gradient, Inf)
     
     println("FWI iteration no: ",j,"; function value: ",fval)
@@ -57,9 +57,10 @@ for j=1:niterations
     function ϕ(α)
         F0.model.m .= proj(model0.m .+ α * p)
         misfit = .5*norm(F0[i]*q[i] - d_obs[i])^2
+        @show α, misfit
         return misfit
     end
-    step, fval = ls(ϕ, 1f0, fval, dot(gradient, p))
+    step, fval = ls(ϕ, 1f-1, fval, dot(gradient, p))
 
     # Update model and bound projection
     model0.m .= proj(model0.m .+ step .* p)

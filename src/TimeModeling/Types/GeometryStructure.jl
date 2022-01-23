@@ -7,7 +7,8 @@ export Geometry, compareGeometry, GeometryIC, GeometryOOC, get_nsrc, n_samples
 
 abstract type Geometry end
 
-const CoordT = Union{Array{T, 1}, Array{Array{T, 1}, 1}} where T
+const CoordT = Union{Array{T, 1}, Array{Array{T, 1}, 1}} where T<:Number
+(::Type{CoordT})(x::Vector{Any}) = rebuild_maybe_jld(x)
 
 # In-core geometry structure for seismic header information
 mutable struct GeometryIC{T} <: Geometry
@@ -139,7 +140,7 @@ function Geometry(xloc::Array{Array{T, 1},1}, yloc::CoordT, zloc::Array{Array{T,
     tCell = typeof(t) <: Real ? [T(t) for j=1:nsrc] : T.(t)
 
     # Calculate number of time steps
-    ntCell = typeof(t) <: Real ? [Int(t ÷ dt) + 1 for j=1:nsrc] : Int(tCell .÷ dtCell) .+ 1
+    ntCell = typeof(t) <: Real ? [floor(Int, t / dt) + 1 for j=1:nsrc] : floor.(Int, tCell ./ dtCell) .+ 1
     return GeometryIC{T}(xloc, yloc, zloc, dtCell, ntCell, tCell)
 end
 
@@ -149,11 +150,10 @@ function Geometry(xloc::Array{T, 1}, yloc::CoordT, zloc::Array{T, 1}; dt=[], t=[
     ylocCell = [yloc for j=1:nsrc]
     zlocCell = [zloc for j=1:nsrc]
     dtCell = [T(dt) for j=1:nsrc]
-    ntCell = [Int(t÷dt)+1 for j=1:nsrc]
+    ntCell = [floor(Int, t/dt)+1 for j=1:nsrc]
     tCell = [T(t) for j=1:nsrc]
     return GeometryIC{T}(xlocCell, ylocCell, zlocCell, dtCell, ntCell, tCell)
 end
-
 
 ################################################ Constructors from SEGY data  ####################################################
 
