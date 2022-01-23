@@ -1,14 +1,14 @@
 
 export fwi_objective
 
-fwi_objective(model_full::Model, source::judiVector, dObs::judiVector) = fwi_objective(model_full, source, dObs, Options())
+fwi_objective(model_full::Model, source::judiVector, dObs::judiVector) = fwi_objective(model_full, source, dObs; options=Options())
 
 function fwi_objective(model_full::Model, source::judiVector, dObs::judiVector, options::Options)
 # Setup time-domain linear or nonlinear foward and adjoint modeling and interface to OPESCI/devito
 
     # assert this is for single source LSRTM
     @assert source.nsrc == 1 "Multiple sources are used in a single-source fwi_objective"
-    @assert dObs.nsrc == 1 "Multiple-source data is used in a single-source fwi_objective"
+    @assert dObs.nsrc == 1 "Multiple-source data is used in a single-source fwi_objective"    
 
     # Load full geometry for out-of-core geometry containers
     dObs.geometry = Geometry(dObs.geometry)
@@ -58,5 +58,5 @@ function fwi_objective(model_full::Model, source::judiVector, dObs::judiVector, 
     if options.limit_m==true
         argout2 = extend_gradient(model_full, model, argout2)
     end
-    return argout1, argout2
+    return Ref{Float32}(argout1), PhysicalParameter(argout2, model_full.d, model_full.o)
 end

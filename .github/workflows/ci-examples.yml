@@ -1,4 +1,4 @@
-name: CI-operators
+name: CI-examples
 
 on: 
   # Trigger the workflow on push to master or pull request
@@ -12,7 +12,7 @@ on:
 
 jobs:
   test:
-    name: ${{ matrix.op }} on Julia ${{ matrix.version }} - ${{ matrix.os }}
+    name: JUDI example on Julia ${{ matrix.version }}
     runs-on: ${{ matrix.os }}
     env:
       DEVITO_ARCH: gcc-9
@@ -20,27 +20,15 @@ jobs:
       DEVITO_BACKEND: "core"
       DEVITO_LOGGING: "ERROR"
       OMP_NUM_THREADS: ${{ matrix.omp }}
-      GROUP: ${{ matrix.op }}
+      NITER: 1
 
     strategy:
       fail-fast: false
 
       matrix:
         os: [ubuntu-latest]
-        op: ["ISO_OP", "ISO_OP_FS", "TTI_OP", "TTI_OP_FS", "BASICS"]
-        version: ['1.6', '1.7']
         omp: [2]
-  
-        include:
-          - os: macos-latest
-            version: '1.6'
-            op: "BASICS"
-            omp: 1
-
-          - os: macos-latest
-            version: '1.7'
-            op: "ISO_OP_FS"
-            omp: 1
+        version: [1.6, 1.7]
 
     steps:
       - name: Checkout JUDI
@@ -57,16 +45,18 @@ jobs:
       - name: Setup julia
         uses: julia-actions/setup-julia@v1
         with:
-          version: ${{ matrix.version }}
+          version: "${{ matrix.version }}"
           arch: x64
 
       - name: Build JUDI
         uses: julia-actions/julia-buildpkg@latest
 
-      - name: Run tests
-        uses: julia-actions/julia-runtest@latest
+      - name: Install packages
+        run: |
+          julia -e 'using Pkg;Pkg.add(["NLopt", "JOLI", "PyPlot", "IterativeSolvers", "SlimOptim", "HDF5", "SegyIO", "SetIntersectionProjection"])'
+          julia -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd()))'
 
-      - uses: julia-actions/julia-processcoverage@v1
-      - uses: codecov/codecov-action@v1
-        with:
-          file: lcov.info
+      - name: Run base examples
+        working-directory: examples/scripts
+        run: |
+          julia -p 2 -e 'for f in filter!(e->e≠"runall.jl", readdir(".")); include(f); end'

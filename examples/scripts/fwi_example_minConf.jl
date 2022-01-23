@@ -11,7 +11,7 @@ n,d,o,m0 = read(h5open("../../data/overthrust_model.h5","r"), "n", "d", "o", "m0
 model0 = Model((n[1],n[2]), (d[1],d[2]), (o[1],o[2]), m0)
 
 # Bound constraints
-v0 = sqrt.(1f0 ./ model0.m)
+v0 = sqrt.(1f0 ./ m0)
 vmin = ones(Float32,model0.n) .* 1.3f0
 vmax = ones(Float32,model0.n) .* 6.5f0
 vmin[:,1:21] .= v0[:,1:21]   # keep water column fixed
@@ -34,7 +34,7 @@ q = judiVector(src_geometry,wavelet)
 
 
 # Optimization parameters
-fevals = 16
+fevals = parse(Int, get(ENV, "NITER", "10"))
 batchsize = 8
 
 # Objective function for minConf library
@@ -52,13 +52,13 @@ function objective_function(x)
 end
 
 # Bound projection
-ProjBound(x) = median([mmin x mmax]; dims=2)
+proj(x) = reshape(median([vec(mmin) vec(x) vec(mmax)]; dims=2),model0.n)
 
 # FWI with SPG
 options = spg_options(verbose=3, maxIter=fevals, memory=3)
-sol = spg(objective_function, vec(model0.m), ProjBound, options)
+sol = spg(objective_function, vec(model0.m), proj, options)
 
 # Plot result
-imshow(reshape(sqrt.(1f0 ./ sol.sol), model0.n)', extent=[0, 10, 3, 0])
+imshow(reshape(sqrt.(1f0 ./ sol.x), model0.n)', extent=[0, 10, 3, 0])
 xlabel("Lateral position [km]")
 ylabel("Depth [km]")

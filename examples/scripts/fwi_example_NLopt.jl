@@ -11,7 +11,7 @@ n,d,o,m0 = read(h5open("../../data/overthrust_model.h5","r"), "n", "d", "o", "m0
 model0 = Model((n[1],n[2]), (d[1],d[2]), (o[1],o[2]), m0)
 
 # Bound constraints
-v0 = sqrt.(1f0 ./ model0.m)
+v0 = sqrt.(1f0 ./m0)
 vmin = ones(Float32, model0.n) .* 1.3f0
 vmax = ones(Float32, model0.n) .* 6.5f0
 
@@ -59,5 +59,5 @@ end
 opt = Opt(:LD_LBFGS, prod(model0.n))
 lower_bounds!(opt, mmin); upper_bounds!(opt, mmax)
 min_objective!(opt, f!)
-maxeval!(opt, 10)
+maxeval!(opt, parse(Int, get(ENV, "NITER", "10")))
 (minf, minx, ret) = optimize(opt, vec(model0.m.data))

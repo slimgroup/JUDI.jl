@@ -85,9 +85,9 @@ end
 # *(judiProjection,vec)
 function *(A::judiProjection{ADDT,ARDT}, v::AbstractVector{vDT}) where {ADDT,ARDT,vDT}
     A.n == size(v,1) || throw(judiProjectionException("Shape mismatch: A:$(size(A)), v: $(size(v))"))
-    jo_check_type_match(ADDT,vDT,join(["DDT for *(judiProjection,judiVector):",A.name,typeof(A),vDT]," / "))
+    jo_check_type_match(ADDT,vDT,join(["DDT for *(judiProjection,AbstractVector):",A.name,typeof(A),vDT]," / "))
     V = judiRHS(A.info,A.geometry, process_input_data(v, A.geometry, A.info))
-    jo_check_type_match(ARDT,eltype(V),join(["RDT from *(judiProjection,judiVector):",A.name,typeof(A),eltype(V)]," / "))
+    jo_check_type_match(ARDT,eltype(V),join(["RDT from *(judiProjection,AbstractVector):",A.name,typeof(A),eltype(V)]," / "))
     return V
 end
 

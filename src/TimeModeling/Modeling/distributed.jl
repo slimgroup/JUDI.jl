@@ -105,6 +105,8 @@ gather_nexp(x) = (sum(x[i][1] for i in 1:length(x)), [x[i][2] for i in 1:length(
 Vectorizes output when `return_array` is set to `true`.
 """
 as_vec(x, ::Val) = x
+as_vec(x::Tuple, v::Val) = tuple((as_vec(xi, v) for xi in x)...)
+as_vec(x::Ref, ::Val) = x[]
 as_vec(x::PhysicalParameter, ::Val{true}) = vec(x.data)
 for T in [judiVector, judiWeights, judiWavefield]
     @eval as_vec(x::$T, ::Val{true}) = vcat([vec(x.data[i]) for i=1:length(x.data)]...)
@@ -161,7 +163,7 @@ for T in [judiVector, judiWeights, judiWavefield]
     @eval @inline single_reduce!(x::$T, y) = begin push!(x, y); nothing end
 end
 
-@inline single_reduce!(x::T, y) where {T<:Number} = begin x += y; nothing end
+@inline single_reduce!(x::Ref, y::Ref) where {T<:Number} = begin x[] += y[]; nothing end
 
 @inline function single_reduce!(x::Tuple, y::Tuple)
     nx = length(x)

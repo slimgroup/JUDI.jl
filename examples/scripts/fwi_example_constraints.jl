@@ -1,11 +1,12 @@
 # 2D FWI on Overthrust model using minConf library
-# Author: Philipp Witte, pwitte@eoas.ubc.ca
+# Authors: 
+# Philipp Witte, pwitte@eoas.ubc.ca
 # Date: December 2017
-#
+# Mathias Louboutin, mlouboutin3@gatech.edu
+# Date: January 2022
 
-using Statistics, Random, Pkg
-using LinearAlgebra
-using JUDI, SlimOptim, HDF5, SegyIO, PyPlot, FFTW
+using Statistics, Random, LinearAlgebra
+using JUDI, SlimOptim, HDF5, SegyIO, PyPlot
 using SetIntersectionProjection
 
 # Load starting model
@@ -13,7 +14,7 @@ n,d,o,m0 = read(h5open("../../data/overthrust_model.h5","r"), "n", "d", "o", "m0
 model0 = Model((n[1],n[2]), (d[1],d[2]), (o[1],o[2]), m0)
 
 # Bound constraints
-v0 = sqrt.(1f0 ./ model0.m)
+v0 = sqrt.(1f0 ./ m0)
 
 # Load data
 block = segy_read("../../data/overthrust_shot_records.segy")
@@ -27,7 +28,7 @@ q = judiVector(src_geometry,wavelet)
 ############################### FWI ###########################################
 
 # Optimization parameters
-niterations = 10
+niterations = parse(Int, get(ENV, "NITER", "10"))
 batchsize = 10
 fhistory_SGD = zeros(Float32,niterations)
 
@@ -50,7 +51,6 @@ options.rho_ini=[1.0f0]
 
 set_zero_subnormals(true)
 BLAS.set_num_threads(2)
-FFTW.set_num_threads(2)
 options.parallel=false
 options.feasibility_only = false
 options.zero_ini_guess=true
@@ -89,7 +89,7 @@ options.rho_ini = ones(length(TD_OP))*10.0
 
 proj_intersection = x-> PARSDMM(x, AtA, TD_OP, set_Prop, P_sub, model0, options)  
 
-function prj(input)
+function proj(input)
     input = Float32.(input)
     (x,dummy1,dummy2,dymmy3) = proj_intersection(vec(input.data))
     return reshape(x, model0.n)
@@ -118,7 +118,7 @@ for j=1:niterations
     step, fval = ls(ϕ, 1f0, fval, dot(gradient, p))
 
     # Update model and bound projection
-    model0.m = proj(model0.m .+ step .* p)
+    model0.m .= proj(model0.m .+ step .* p)
 end
 
 figure(); imshow(sqrt.(1f0./adjoint(model0.m))); title("FWI with SPG")
