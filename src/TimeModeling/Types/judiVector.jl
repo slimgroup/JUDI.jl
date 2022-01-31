@@ -85,6 +85,7 @@ wavelets or a single wavelet as an array):
 """
 function judiVector(geometry::Geometry, data::Array{T, N}) where {T, N}
     T == Float32 || (data = tof32(data))
+    N < 3 || throw(judiVectorException("Only 1D (trace) and 2D (record) input data supported"))
     # length of vector
     n = 1
     nsrc = get_nsrc(geometry)
@@ -97,7 +98,7 @@ function judiVector(geometry::Geometry, data::Array{T, N}) where {T, N}
     return judiVector{T, Array{T, N}}("Seismic data vector", m, n, nsrc, geometry, dataCell)
 end
 
-function judiVector(geometry::Geometry, data::Vector{T}) where {T, N}
+function judiVector(geometry::Geometry, data::Vector{T}) where T
     return judiVector(geometry, reshape(data, length(data),1))
 end
 
