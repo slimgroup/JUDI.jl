@@ -93,24 +93,21 @@ function twri_objective(model_full::Model, source::judiVector, dObs::judiVector,
 
     ~isempty(options.frequencies) ? freqs = options.frequencies : freqs = nothing
     ~isempty(options.frequencies) ? (wfilt, freqs) =  filter_w(qIn, dtComp, freqs) : wfilt = nothing
-    obj, gradm, grady = pycall(ac."wri_func", PyObject,
+    f, gm, gy, Iu, Iv = pycall(ac."wri_func", PyObject,
                                modelPy, src_coords, qIn, rec_coords, dObserved, Y,
                                t_sub=options.subsampling_factor, space_order=options.space_order,
                                grad=optionswri.params, grad_corr=optionswri.grad_corr, eps=optionswri.eps,
                                alpha_op=optionswri.comp_alpha, w_fun=optionswri.weight_fun,
                                freq_list=freqs, wfilt=wfilt)
 
-    if (optionswri.params in [:m, :all])
-        gradm = remove_padding(gradm, modelPy.padsizes; true_adjoint=options.sum_padding)
-        options.limit_m==true && (gradm = extend_gradient(model_full, model, gradm))
-        gradm =  PhysicalParameter(gradm, model_full.d, model_full.o)
-    end
+    gm = phys_out(gm, modelPy, model, options)
+    Iu, Iv = illum_out((Iu, Iv), modelPy, model, options)
     if ~isnothing(grady)
         grady = time_resample(grady, dtComp, dObs.geometry)
         grady = judiVector(dObs.geometry, grady)
     end
-
-    return filter_out(Ref{Float32}(obj), gradm, grady)
+    argout = filter(i-> ~isnothing(i), (Ref{Float32}(obj), gradm, grady, Iu, Iv))
+    return post_process(argout, model_full, model)
 end
 
 
@@ -124,7 +121,3 @@ function filter_w(qIn, dt, freqs)
     return qfilt, freqs
 end
 
-filter_out(obj, ::Nothing, ::Nothing) = obj
-filter_out(obj, m, ::Nothing) = obj, m
-filter_out(obj, ::Nothing, y) = obj, y
-filter_out(obj, m, y) = obj, m, y

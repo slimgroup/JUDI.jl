@@ -9,11 +9,7 @@ function time_modeling(model_full::Model, srcGeometry, srcData, recGeometry, rec
 
     # Reutrn directly for J*0
     if op=='J' && mode == 1
-        if norm(dm) == 0 && options.return_array == false
-            return judiVector(recGeometry, zeros(Float32, recGeometry.nt[1], length(recGeometry.xloc[1])))
-        elseif norm(dm) == 0 && options.return_array == true
-            return vec(zeros(Float32, recGeometry.nt[1], length(recGeometry.xloc[1])))
-        end
+        return judiVector(recGeometry, zeros(Float32, recGeometry.nt[1], length(recGeometry.xloc[1])))
     end
 
     # limit model to area with sources/receivers
@@ -35,12 +31,8 @@ function time_modeling(model_full::Model, srcGeometry, srcData, recGeometry, rec
 
     # Devito interface
     argout = devito_interface(modelPy, model, srcGeometry, srcData, recGeometry, recData, dm, options)
-    # Extend gradient back to original model size
-    if op=='J' && mode==-1 && options.limit_m==true
-        argout = extend_gradient(model_full, model, argout)
-    end
 
-    return argout
+    return post_process(argout, model, model_full)
 end
 
 # Function instance without options

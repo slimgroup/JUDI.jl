@@ -1,10 +1,10 @@
 from devito import Eq, solve
 
-from wave_utils import freesurface
+from wave_utils import freesurface, illum
 from FD_utils import laplacian, sa_tti
 
 
-def wave_kernel(model, u, fw=True, q=None):
+def wave_kernel(model, u, fw=True, q=None, noillum=False):
     """
     Pde kernel corresponding the the model for the input wavefield
 
@@ -23,6 +23,11 @@ def wave_kernel(model, u, fw=True, q=None):
         pde = tti_kernel(model, u[0], u[1], fw=fw, q=q)
     else:
         pde = acoustic_kernel(model, u, fw, q=q)
+
+    if not noillum:
+        eqI, I = illum(u)
+        return pde + eqI, I
+
     return pde
 
 

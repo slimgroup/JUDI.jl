@@ -8,10 +8,8 @@ const RealTuple = Union{Tuple{Real,Real}, Tuple{Real,Real,Real},Array{Float64,1}
 
 export Model, PhysicalParameter, get_dt
 
-
 ###################################################################################################
 # PhysicalParameter abstract vector
-
 """
     PhysicalParameter
         n::IntTuple
@@ -240,6 +238,16 @@ mul!(x::Array, F::Union{joAbstractLinearOperator, joLinearFunction, Array}, y::P
 # For ploting
 array2py(p::PhysicalParameter{vDT}, i::Int64, I::CartesianIndex{N}) where {vDT, N} = array2py(p.data, i, I)
 
+
+
+########### New type for illumination for easy filter
+
+struct Illum
+    p::PhysicalParameter
+    name::String
+end
+
+
 ###################################################################################################
 # Isotropic acoustic
 
@@ -292,6 +300,7 @@ mutable struct Model
     o::RealTuple
     nb::Integer # number of absorbing boundaries points on each side
     params::Dict
+    illums::Dict
 end
 
 ###################################################################################################
@@ -305,8 +314,9 @@ function Model(n::IntTuple, d::RealTuple, o::RealTuple, m;
     for (name, val)=zip([:rho, :epsilon, :delta, :theta, :phi], [rho, epsilon, delta, theta, phi])
         ~isnothing(val) && (params[name] = PhysicalParameter(Float32.(val), n, d, o))
     end
-    
-    return Model(n, d, o, nb, params)
+    illums = Dict("u" => PhysicalParameter(ones(Float32, n), n, d, o),
+                  "v" => PhysicalParameter(ones(Float32, n), n, d, o))
+    return Model(n, d, o, nb, params, illums)
 end
 
 function Model(n::IntTuple, d::RealTuple, o::RealTuple, m, rho; nb=40)
@@ -319,7 +329,7 @@ getindex(m::Model, sym::Symbol) = m.params[sym]
 Base.setproperty!(m::Model, s::Symbol, p::PhysicalParameter{Float32}) = (m.params[s] = p)
 
 function Base.getproperty(obj::Model, sym::Symbol)
-    if sym == :params
+    if sym ∈ [:params, :illums]
         return getfield(obj, sym)
     elseif sym in keys(obj.params)
         return obj.params[sym]
@@ -331,3 +341,57 @@ end
 
 similar(x::PhysicalParameter{vDT}, m::Model) where {vDT} = PhysicalParameter(m.n, m.d, m.o; vDT=vDT)
 similar(x::Array, m::Model) where {vDT} = similar(x, m.n)
+
+ndims(m::Model) = ndims(m.m.data)
+
+
+"""
+    get_models(args...)
+
+Filter input arguments for models
+"""
+function get_models(args...)
+    out = filter(i -> ~isnothing(i), collect(_get_models(a) for a in args))
+    length(out) == 0 && (return nothing)
+    length(out) == 1 && (return out[1])
+    return out
+end 
+
+"""
+    _get_exp(x, i)
+
+Filter input `x`` for experiment number `i`. Returns `x` is a constant not depending on experiment.
+"""
+_get_models(x) = nothing
+_get_models(x::Model) = x
+_get_models(x::Vector{Model}) = x
+
+
+process_illum(args, ::Nothing) = args
+
+function process_illum(argout, model, ::Val{1})
+    illums = filter(i -> typeof(i) <: Illum, argout[1])
+    update_illum!(model, illums)
+    others = filter(i -> ~(typeof(i) <: Illum), argout[1])
+    return [others...]
+end
+
+function process_illum(argout, models, ::Val{N}) where N
+    illums = filter(i -> typeof(i) <: Vector{Illum}, argout)
+    # Check correct size
+    @assert length(illums) == N
+    for (i, m) ∈ zip(illums, models)
+        update_illum!(m, i)
+    end
+    others = filter(i -> ~(typeof(i) <:  Vector{Illum}), argout)
+    return others
+end
+
+update_illum!(model::Model, i::Illum) = begin model.illums[i.name] .= i.p; nothing end
+
+function update_illum!(model::Model, i::Tuple)
+    for is ∈ i
+        model.illums[is.name] .= is.p
+    end
+    nothing
+end

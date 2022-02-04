@@ -303,3 +303,16 @@ def weighted_norm(u, weight=None):
     n_s = [Inc(norm_vy2[0], norm_vy2_t / w**2)]
     # Return norm object and expr
     return norm_vy2, (n_t, n_s)
+
+
+def illum(u):
+    """
+    Illumination of the wavefield `u` as the 2 norm squared of `u` over time.
+
+    Parameters
+    ----------
+    u: TimeFunction or Tuple of TimeFunction
+    """
+    u0 = as_tuple(u)
+    I = Function(name="I%s" % u0[0].name, grid=u0[0].grid, space_order=0)
+    return [Inc(I, sum(u0)*sum(u0))], I

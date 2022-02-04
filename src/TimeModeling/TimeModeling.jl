@@ -44,6 +44,7 @@ include("LinearOperators/judiPDEextended.jl")   # modeling operator for extended
 include("LinearOperators/judiPDE.jl")   # modeling operator with lhs projection only: P*F
 include("LinearOperators/judiJacobian.jl")  # linearized modeling operator J
 include("LinearOperators/judiJacobianExtendedSource.jl")  # Jacobian of extended source modeling operator
+include("LinearOperators/judiPseudoInvHessian.jl")  # Jacobian of extended source modeling operator
 
 #############################################################################
 # Preconditioners and optimization

@@ -35,7 +35,7 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     q = extented_src(model, ws, wavelet, q=q)
 
     # Set up PDE expression and rearrange
-    pde = wave_kernel(model, u, q=q)
+    pde, I = wave_kernel(model, u, q=q)
 
     # Setup source and receiver
     geom_expr, _, rcv = src_rec(model, u, src_coords=src_coords, nt=nt,
@@ -51,12 +51,12 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
                   opt=opt_op(model))
     op.cfunction
     if return_op:
-        return op, u, rcv
+        return op, u, I, rcv
 
     summary = op()
 
     # Output
-    return rcv, dft_modes or (u_save if t_sub > 1 else u), summary
+    return rcv, dft_modes or (u_save if t_sub > 1 else u), I, summary
 
 
 def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0, dft_sub=None,
@@ -73,7 +73,7 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0, dft_sub=None,
     v = wavefield(model, space_order, save=save, nt=nt, fw=False)
 
     # Set up PDE expression and rearrange
-    pde = wave_kernel(model, v, q=q, fw=False)
+    pde, I = wave_kernel(model, v, q=q, fw=False)
 
     # On-the-fly Fourier
     dft, dft_modes = otf_dft(v, freq_list, model.critical_dt, factor=dft_sub)
@@ -102,10 +102,10 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0, dft_sub=None,
 
     # Output
     if wsrc:
-        return wsrc, summary
+        return wsrc, I, summary
     if norm_v:
-        return rcv, dft_modes or v, norm_v.data[0], summary
-    return rcv, v, summary
+        return rcv, dft_modes or v, I, norm_v.data[0], summary
+    return rcv, v, I, summary
 
 
 def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8,
@@ -118,7 +118,7 @@ def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8,
     v = wavefield(model, space_order, fw=False)
 
     # Set up PDE expression and rearrange
-    pde = wave_kernel(model, v, fw=False)
+    pde, I = wave_kernel(model, v, fw=False)
 
     # Setup source and receiver
     geom_expr, _, _ = src_rec(model, v, src_coords=rcv_coords,
@@ -141,12 +141,12 @@ def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8,
                       opt='advanced')
         op.cfunction
     if return_op:
-        return op, gradm, v
+        return op, gradm, v, I
 
     summary = op()
 
     # Output
-    return gradm, summary
+    return gradm, I, summary
 
 
 def born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
@@ -170,11 +170,11 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     q = extented_src(model, ws, wavelet, q=q)
 
     # Set up PDE expression and rearrange
-    pde = wave_kernel(model, u, q=q)
+    pde, I = wave_kernel(model, u, q=q)
     if model.dm == 0:
         pdel = []
     else:
-        pdel = wave_kernel(model, ul, q=lin_src(model, u, isic=isic))
+        pdel = wave_kernel(model, ul, q=lin_src(model, u, isic=isic), noillum=True)
     # Setup source and receiver
     geom_expr, _, rcvnl = src_rec(model, u, rec_coords=rcv_coords if nlind else None,
                                   src_coords=src_coords, wavelet=wavelet)
@@ -191,12 +191,12 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     op.cfunction
     outrec = (rcvl, rcvnl) if nlind else rcvl
     if return_op:
-        return op, u, outrec
+        return op, u, I, outrec
 
     summary = op()
 
     # Output
-    return outrec, dft_modes or (u_save if t_sub > 1 else u), summary
+    return outrec, dft_modes or (u_save if t_sub > 1 else u), I, summary
 
 
 # Forward propagation
@@ -217,7 +217,7 @@ def forward_grad(model, src_coords, rcv_coords, wavelet, v, space_order=8,
     q = extented_src(model, ws, wavelet, q=q)
 
     # Set up PDE expression and rearrange
-    pde = wave_kernel(model, u, q=q)
+    pde = wave_kernel(model, u, q=q, noillum=True)
 
     # Setup source and receiver
     geom_expr, _, rcv = src_rec(model, u, src_coords=src_coords, nt=nt,

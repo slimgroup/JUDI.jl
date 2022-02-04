@@ -97,7 +97,7 @@ for multiple experiments.
 filter_exp(x, ::Val{1}) = x[1]
 filter_exp(x, ::Val) = gather_nexp(x)
 
-gather_nexp(x) = (sum(x[i][1] for i in 1:length(x)), [x[i][2] for i in 1:length(x)])
+gather_nexp(x) = (sum(x[i][1] for i in 1:length(x)), [x[i][k] for i in 1:length(x)] for k in 2:length(x[1]))
 
 """
     as_vec(x, ::Val{Bool})
@@ -147,8 +147,10 @@ function task_distributed(func, pool, args...; kwargs...)
             @async out[e] = as_vec(reduce!(res_e), Val(opt.return_array))
         end
     end
-
-    return filter_exp(out, Val(nexp))
+ 
+    out = process_illum(out, get_models(args...), Val(nexp))
+    out = filter_exp(out, Val(nexp))
+    return out
 end
 
 
@@ -158,6 +160,7 @@ end
 Inplace reduction of y into x.
 """
 @inline single_reduce!(x, y) = begin x .+= y; nothing end
+@inline single_reduce!(x::Illum, y::Illum) = single_reduce!(x.p, y.p)
 
 for T in [judiVector, judiWeights, judiWavefield]
     @eval @inline single_reduce!(x::$T, y) = begin push!(x, y); nothing end

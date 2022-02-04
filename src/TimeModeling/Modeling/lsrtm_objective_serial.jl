@@ -39,28 +39,19 @@ function lsrtm_objective(model_full::Model, source::judiVector, dObs::judiVector
     rec_coords = setup_grid(dObs.geometry, model.n)    # shifts rec coordinates by origin
 
     if options.optimal_checkpointing == true
-        argout1, argout2 = pycall(ac."J_adjoint_checkpointing", Tuple{Float32,  Array{Float32, modelPy.dim}},
-                                  modelPy, src_coords, qIn,
+        f, im, Iu, Iv = pycall(ac."J_adjoint_checkpointing", fg_I_I(model), modelPy, src_coords, qIn,
                                   rec_coords, dObserved, is_residual=false, return_obj=true,
                                   t_sub=options.subsampling_factor, space_order=options.space_order,
                                   born_fwd=true, nlind=nlind, isic=options.isic)
-    elseif ~isempty(options.frequencies)
-        argout1, argout2 = pycall(ac."J_adjoint_freq", Tuple{Float32, Array{Float32, modelPy.dim}},
-                                  modelPy, src_coords, qIn,
-                                  rec_coords, dObserved, is_residual=false, return_obj=true, nlind=nlind,
-                                  freq_list=options.frequencies, t_sub=options.subsampling_factor,
-                                  space_order=options.space_order, born_fwd=true, isic=options.isic)
     else
-        argout1, argout2 = pycall(ac."J_adjoint_standard", Tuple{Float32, Array{Float32, modelPy.dim}},
-                                  modelPy, src_coords, qIn,
-                                  rec_coords, dObserved, is_residual=false, return_obj=true,
-                                  t_sub=options.subsampling_factor, space_order=options.space_order,
-                                  isic=options.isic, born_fwd=true, nlind=nlind)
+        save = isempty(options.frequencies)
+        f, im, Iu, Iv = pycall(ac."J_adjoint_standard", fg_I_I(model), modelPy, src_coords, qIn,
+                               rec_coords, dObserved, is_residual=false, return_obj=true, save=save,
+                               t_sub=options.subsampling_factor, space_order=options.space_order,
+                               freq_list=options.frequencies, dft_sub=options.dft_subsampling_factor,
+                               isic=options.isic, born_fwd=true, nlind=nlind)
     end
-    argout2 = remove_padding(argout2, modelPy.padsizes; true_adjoint=options.sum_padding)
-    if options.limit_m==true
-        argout2 = extend_gradient(model_full, model, argout2)
-    end
-
-    return Ref{Float32}(argout1),  PhysicalParameter(argout2, model_full.d, model_full.o)
+    im = phys_out(im, modelPy, model, options)
+    Iu, Iv = illum_out((Iu, Iv), modelPy, model, options)
+    return post_process((Ref{Float32}(f), im, Iu, Iv), model_full, model)
 end
