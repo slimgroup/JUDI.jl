@@ -3,8 +3,8 @@
 # Date: January 2017
 #
 
-const IntTuple = Union{Tuple{Integer,Integer}, Tuple{Integer,Integer,Integer},Array{Int64,1},Array{Int32,1}}
-const RealTuple = Union{Tuple{Real,Real}, Tuple{Real,Real,Real},Array{Float64,1},Array{Float32,1}}
+const IntTuple = Union{Tuple{Integer,Integer}, Tuple{Integer,Integer,Integer}}
+const RealTuple = Union{Tuple{Real,Real}, Tuple{Real,Real,Real}}
 
 export Model, PhysicalParameter, get_dt
 
@@ -305,6 +305,7 @@ end
 
 ###################################################################################################
 # Constructors
+Model(n, d, o, m; kw...) = Model(tuple(n...), tuple(d...), tuple(o...), m, kw...)
 
 function Model(n::IntTuple, d::RealTuple, o::RealTuple, m;
                epsilon=nothing, delta=nothing, theta=nothing,
@@ -366,24 +367,18 @@ _get_models(x) = nothing
 _get_models(x::Model) = x
 _get_models(x::Vector{Model}) = x
 
-
 process_illum(args, ::Nothing) = args
 
-function process_illum(argout, model, ::Val{1})
-    illums = filter(i -> typeof(i) <: Illum, argout[1])
-    update_illum!(model, illums)
-    others = filter(i -> ~(typeof(i) <: Illum), argout[1])
-    return [others...]
-end
+process_illum(argout, model::Model, v::Val{N}) where N = process_illum(argout, [model for i=1:N], v)
 
 function process_illum(argout, models, ::Val{N}) where N
-    illums = filter(i -> typeof(i) <: Vector{Illum}, argout)
-    # Check correct size
-    @assert length(illums) == N
-    for (i, m) ∈ zip(illums, models)
-        update_illum!(m, i)
+    others = Vector{Any}(undef, N)
+    for i=1:N
+        illums = filter(ar -> typeof(ar) <: Illum, argout[i])
+        update_illum!(models[i], illums)
+        o = filter(ar -> ~(typeof(ar) <: Illum), argout[i])
+        others[i] = length(o) == 1 ? o[1] : o
     end
-    others = filter(i -> ~(typeof(i) <:  Vector{Illum}), argout)
     return others
 end
 

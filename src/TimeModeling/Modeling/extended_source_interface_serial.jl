@@ -10,10 +10,10 @@ function extended_source_modeling(model_full::Model, srcData, recGeometry, recDa
 
     # Set up Python model structure
     modelPy = devito_model(model, options; dm=dm)
-    if op=='J' && mode == 1
-        judiVector(recGeometry, zeros(Float32, recGeometry.nt[1], length(recGeometry.xloc[1])))
+    if op=='J' && mode == 1 && norm(dm) == 0
+        I = Illum(0 .* model.m .+ 1, "u")
+        return (judiVector(recGeometry, zeros(Float32, recGeometry.nt[1], length(recGeometry.xloc[1]))), I)
     end
-
     # Load shot record if stored on disk
     typeof(recData) == SegyIO.SeisCon && (recData = convert(Array{Float32,2}, recData[1].data))
 

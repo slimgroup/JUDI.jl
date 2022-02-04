@@ -26,7 +26,7 @@ def wave_kernel(model, u, fw=True, q=None, noillum=False):
 
     if not noillum:
         eqI, I = illum(u)
-        return pde + eqI, I
+        return eqI + pde, I
 
     return pde
 

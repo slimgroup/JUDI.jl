@@ -41,12 +41,13 @@ function fwi_objective(model_full::Model, source::judiVector, dObs::judiVector, 
                               rec_coords, dObserved, is_residual=false, return_obj=true, isic=options.isic,
                               t_sub=options.subsampling_factor, space_order=options.space_order)
     else
+        length(options.frequencies) == 0 ? freqs = nothing : freqs = options.frequencies
         f, g, Iu, Iv = pycall(ac."J_adjoint_standard", fg_I_I(model), modelPy, src_coords, qIn, rec_coords, dObserved,
-                              is_residual=false, return_obj=true, save=isempty(options.frequencies),
+                              is_residual=false, return_obj=true, save=isnothing(freqs),
                               t_sub=options.subsampling_factor, space_order=options.space_order,
-                              isic=options.isic, freq_list=options.frequencies, dft_sub=options.dft_subsampling_factor)
+                              isic=options.isic, freq_list=freqs, dft_sub=options.dft_subsampling_factor)
     end
     g = phys_out(g, modelPy, model, options)
     Iu, Iv = illum_out((Iu, Iv), modelPy, model, options)
-    return post_process((fRef{Float32}(f), g, Iu, Iv), model_full, model)
+    return post_process((Ref{Float32}(f), g, Iu, Iv), model_full, model)
 end

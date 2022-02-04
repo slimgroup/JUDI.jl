@@ -53,7 +53,9 @@ jobs:
 
       - name: Install packages
         run: |
-          julia -e 'using Pkg;Pkg.add(["NLopt", "JOLI", "PyPlot", "IterativeSolvers", "SlimOptim", "HDF5", "SegyIO", "SetIntersectionProjection"])'
+          julia -e 'using Pkg;Pkg.add(["NLopt", "JOLI", "PyPlot", "IterativeSolvers", "SlimOptim"])'
+          julia -e 'using Pkg;Pkg.add(["HDF5", "SegyIO", "SetIntersectionProjection"])'
+          julia -e 'using Pkg;Pkg.add(url="https://github.com/slimgroup/SlimPlotting.jl")'
           julia -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd()))'
 
       - name: Run base examples

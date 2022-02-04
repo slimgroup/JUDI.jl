@@ -20,12 +20,12 @@ function phys_out(p::Array{T, N}, modelPy::PyObject, model::Model, options::Opti
 end
 phys_out(x::Nothing, args...) = x
 illum_out(p::Array{T, N}, name, modelPy::PyObject, model::Model, options::Options) where {T, N} = Illum(phys_out(p, modelPy, model, options), name)
-illum_out(p::Tuple{Matrix, Matrix}, args...) =(illum_out(p[1], "u", args...), illum_out(p[2], "v", args...))
+illum_out(p::Tuple{Array{T, N}, Array{T, N}}, args...) where {T, N} =(illum_out(p[1], "u", args...), illum_out(p[2], "v", args...))
 
 post_process(x::Tuple, model_full, model) = tuple((post_process(xi, model_full, model) for xi in x)...)
 post_process(x, model_full, model) = x
-post_process(x::PhysicalParameter, mf, m) = mf == m ? x : extend_gradient(x, mf, m)
-post_process(x::Illum, mf, m) = mf == m ? x : Illum(extend_gradient(x.p, mf, m), x.name)
+post_process(x::PhysicalParameter, mf, m) = mf == m ? x : extend_gradient(mf, m, x)
+post_process(x::Illum, mf, m) = mf == m ? x : Illum(extend_gradient(mf, m, x.p), x.name)
 
 
 # d_obs = Pr*F*Ps'*q
@@ -222,7 +222,7 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcData::Array, recGe
     dOut = time_resample(dOut,dtComp,recGeometry)
     dOut = rec_out(dOut, recGeometry, nothing, nothing, options, Val(false))
     # Output shot record as judiVector
-    return dOut, phys_out(Iu, "u", modelPy, model, options)
+    return dOut, illum_out(Iu, "u", modelPy, model, options)
 end
 
 # dw = Pw*F'*Pr'*d_obs - adjoint modeling w/ extended source
@@ -245,7 +245,7 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcData::Array, recGe
     if options.free_surface
         selectdim(wOut, modelPy.dim, 1) .= 0f0
     end
-    return judiWeights{Float32}("Pw*F'*d",prod(size(wOut)), 1, 1, [wOut]), phys_out(Iv, "v", modelPy, model, options)
+    return judiWeights{Float32}("Pw*F'*d",prod(size(wOut)), 1, 1, [wOut]), illum_out(Iv, "v", modelPy, model, options)
 end
 
 # Jacobian of extended source modeling: d_lin = J*dm
@@ -266,7 +266,7 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcData::Array, recGe
     dOut = time_resample(dOut,dtComp,recGeometry)
     dOut = rec_out(dOut, recGeometry, nothing, nothing, options, Val(false))
     # Output linearized shot records as judiVector
-    return dOut, phys_out(Iu, "u", modelPy, model, options)
+    return dOut, illum_out(Iu, "u", modelPy, model, options)
 end
 
 # Adjoint Jacobian of extended source modeling: dm = J'*d_lin

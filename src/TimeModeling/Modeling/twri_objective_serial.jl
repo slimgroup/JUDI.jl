@@ -102,11 +102,11 @@ function twri_objective(model_full::Model, source::judiVector, dObs::judiVector,
 
     gm = phys_out(gm, modelPy, model, options)
     Iu, Iv = illum_out((Iu, Iv), modelPy, model, options)
-    if ~isnothing(grady)
-        grady = time_resample(grady, dtComp, dObs.geometry)
-        grady = judiVector(dObs.geometry, grady)
+    if ~isnothing(gy)
+        gy = time_resample(gy, dtComp, dObs.geometry)
+        gy = judiVector(dObs.geometry, gy)
     end
-    argout = filter(i-> ~isnothing(i), (Ref{Float32}(obj), gradm, grady, Iu, Iv))
+    argout = filter(i-> ~isnothing(i), (Ref{Float32}(f), gm, gy, Iu, Iv))
     return post_process(argout, model_full, model)
 end
 

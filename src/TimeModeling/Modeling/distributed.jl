@@ -49,7 +49,7 @@ end
 
 Filter input arguments and keyword arguments for experiment number `i`.
 """
-get_exp(i, args...; kwargs...) = (_get_exp(a, i) for a in (args..., kwargs.data...))
+get_exp(i, args...; kwargs...) = (_get_exp(a, i) for a in (args..., values(kwargs)...))
 
 # Find task iterator (number of sources and indices)
 """
@@ -97,7 +97,7 @@ for multiple experiments.
 filter_exp(x, ::Val{1}) = x[1]
 filter_exp(x, ::Val) = gather_nexp(x)
 
-gather_nexp(x) = (sum(x[i][1] for i in 1:length(x)), [x[i][k] for i in 1:length(x)] for k in 2:length(x[1]))
+gather_nexp(x) = (sum(x[i][1] for i in 1:length(x)), [x[i][2] for i in 1:length(x)])
 
 """
     as_vec(x, ::Val{Bool})
@@ -147,7 +147,6 @@ function task_distributed(func, pool, args...; kwargs...)
             @async out[e] = as_vec(reduce!(res_e), Val(opt.return_array))
         end
     end
- 
     out = process_illum(out, get_models(args...), Val(nexp))
     out = filter_exp(out, Val(nexp))
     return out

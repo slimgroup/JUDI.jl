@@ -8,8 +8,9 @@ function time_modeling(model_full::Model, srcGeometry, srcData, recGeometry, rec
     srcGeometry = Geometry(srcGeometry)
 
     # Reutrn directly for J*0
-    if op=='J' && mode == 1
-        return judiVector(recGeometry, zeros(Float32, recGeometry.nt[1], length(recGeometry.xloc[1])))
+    if op=='J' && mode == 1 && norm(dm) == 0
+        I = Illum(0 .* model_full.m .+ 1, "u")
+        return (judiVector(recGeometry, zeros(Float32, recGeometry.nt[1], length(recGeometry.xloc[1]))), I)
     end
 
     # limit model to area with sources/receivers

@@ -44,11 +44,12 @@ function lsrtm_objective(model_full::Model, source::judiVector, dObs::judiVector
                                   t_sub=options.subsampling_factor, space_order=options.space_order,
                                   born_fwd=true, nlind=nlind, isic=options.isic)
     else
-        save = isempty(options.frequencies)
+        length(options.frequencies) == 0 ? freqs = nothing : freqs = options.frequencies
+        save = isnothing(freqs)
         f, im, Iu, Iv = pycall(ac."J_adjoint_standard", fg_I_I(model), modelPy, src_coords, qIn,
                                rec_coords, dObserved, is_residual=false, return_obj=true, save=save,
                                t_sub=options.subsampling_factor, space_order=options.space_order,
-                               freq_list=options.frequencies, dft_sub=options.dft_subsampling_factor,
+                               freq_list=freqs, dft_sub=options.dft_subsampling_factor,
                                isic=options.isic, born_fwd=true, nlind=nlind)
     end
     im = phys_out(im, modelPy, model, options)

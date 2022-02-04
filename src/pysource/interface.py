@@ -297,7 +297,8 @@ def adjoint_wf_src(model, u, src_coords, space_order=8):
         wf_src._data = u._data
     else:
         wf_src.data[:] = u[:]
-    rec, _, I, _ = adjoint(model, None, src_coords, None, space_order=space_order, q=wf_src)
+    rec, _, I, _ = adjoint(model, None, src_coords, None,
+                           space_order=space_order, q=wf_src)
     return rec.data, I.data
 
 
@@ -422,6 +423,7 @@ def grad_fwi(model, recin, rec_coords, u, space_order=8):
     g, I, _ = gradient(model, recin, rec_coords, u, space_order=space_order)
     return g.data, I.data
 
+
 def J_adjoint(model, src_coords, wavelet, rec_coords, recin, space_order=8,
               checkpointing=False, n_checkpoints=None, t_sub=1,
               maxmem=None, freq_list=[], dft_sub=None, isic=False, ws=None):
@@ -536,7 +538,7 @@ def J_adjoint_standard(model, src_coords, wavelet, rec_coords, recin, space_orde
     g, Iv, _ = gradient(model, recin, rec_coords, u, space_order=space_order, isic=isic,
                         freq=freq_list, dft_sub=dft_sub)
     if return_obj:
-        return .5*model.critical_dt*np.linalg.norm(recin)**2, g.data
+        return .5*model.critical_dt*np.linalg.norm(recin)**2, g.data, Iu.data, Iv.data
     return g.data, Iu.data, Iv.data
 
 
@@ -601,12 +603,15 @@ def J_adjoint_checkpointing(model, src_coords, wavelet, rec_coords, recin, space
     # Op arguments
     uk = {uu.name: uu for uu in as_tuple(u)}
     vk = {**uk, **{vv.name: vv for vv in as_tuple(v)}}
+    # recs args
     uk.update({r.name: r for r in as_tuple(rec_g)})
     vk.update({'src%s' % as_tuple(v)[0].name: rec})
+    # Illum args
+    uk.update({Iu.name: Iu})
+    vk.update({Iv.name: Iv})
     # Wrapped ops
-    wrap_fw = CheckpointOperator(op_f, Iu=Iu, m=model.m, **uk)
-    wrap_rev = CheckpointOperator(op, Iv=Iv, m=model.m, **vk)
-
+    wrap_fw = CheckpointOperator(op_f, m=model.m, **uk)
+    wrap_rev = CheckpointOperator(op, m=model.m, **vk)
     # Run forward
     wrp = Revolver(cp, wrap_fw, wrap_rev, n_checkpoints, nt-2)
     wrp.apply_forward()
@@ -624,7 +629,7 @@ def J_adjoint_checkpointing(model, src_coords, wavelet, rec_coords, recin, space
     wrp.apply_reverse()
 
     if return_obj:
-        return .5*model.critical_dt*norm(rec)**2, g.data
+        return .5*model.critical_dt*norm(rec)**2, g.data, Iu.data, Iv.data
     return g.data, Iu.data, Iv.data
 
 
@@ -655,7 +660,7 @@ def wri_func(model, src_coords, wavelet, rec_coords, recin, yin, space_order=8,
         ydat = yin
 
     # Compute wavefield vy = adjoint(F(m0))*y and norm on the fly
-    srca, v, norm_v, Iv, _ = adjoint(model, ydat, src_coords, rec_coords,
+    srca, v, Iv, norm_v, _ = adjoint(model, ydat, src_coords, rec_coords,
                                      norm_v=True, w_fun=w_fun, freq_list=freq_list,
                                      save=not (grad is None or dft))
     c1 = 1 / (recin.shape[1])
