@@ -10,7 +10,7 @@ export JUDIPATH, set_verbosity
 JUDIPATH = dirname(pathof(JUDI))
 
 # Dependencies
-using LinearAlgebra
+using LinearAlgebra, Random
 using Distributed
 using DSP, FFTW, Dierckx
 using PyCall
