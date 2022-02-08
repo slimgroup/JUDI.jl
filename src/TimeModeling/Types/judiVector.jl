@@ -5,7 +5,7 @@
 # Authors: Philipp Witte (pwitte@eos.ubc.ca), Henryk Modzelewski (hmodzelewski@eos.ubc.ca)
 # Date: January 2017
 
-export judiVector, judiVectorException, subsample, judiVector_to_SeisBlock
+export judiVector, judiVectorException, subsample, judiVector_to_SeisBlock, src_to_SeisBlock
 export time_resample, time_resample!, judiTimeInterpolation
 export write_shot_record, get_data, convert_to_array, rebuild_jv
 
@@ -430,16 +430,16 @@ function judiVector_to_SeisBlock(d::judiVector{avDT, AT}, q::judiVector{avDT, QT
         traceNumbers = convert(Array{Integer,1},count+1:count+numTraces)
 
         # set headers
-        set_header!(blocks[j], "GroupX", convert(Array{Integer,1},round.(d.geometry.xloc[j]*1f3)))
+        set_header!(blocks[j], "GroupX", Int.(round.(d.geometry.xloc[j]*1f3)))
         if length(d.geometry.yloc[j]) == 1
-            set_header!(blocks[j], "GroupY", Int(round(d.geometry.yloc[j]*1f3)))
+            set_header!(blocks[j], "GroupY", Int(round(d.geometry.yloc[j][1]*1f3)))
         else
             set_header!(blocks[j], "GroupY", convert(Array{Integer,1},round.(d.geometry.yloc[j]*1f3)))
         end
-        set_header!(blocks[j], receiver_depth_key, convert(Array{Integer,1},round.(d.geometry.zloc[j]*1f3)))
-        set_header!(blocks[j], "SourceX", Int(round.(q.geometry.xloc[j][1]*1f3)))
-        set_header!(blocks[j], "SourceY", Int(round.(q.geometry.yloc[j][1]*1f3)))
-        set_header!(blocks[j], source_depth_key, Int(round.(q.geometry.zloc[j][1]*1f3)))
+        set_header!(blocks[j], receiver_depth_key, Int.(round.(d.geometry.zloc[j]*1f3)))
+        set_header!(blocks[j], "SourceX", Int.(round.(q.geometry.xloc[j][1]*1f3)))
+        set_header!(blocks[j], "SourceY", Int.(round.(q.geometry.yloc[j][1]*1f3)))
+        set_header!(blocks[j], source_depth_key, Int.(round.(q.geometry.zloc[j][1]*1f3)))
 
         set_header!(blocks[j], "dt", Int(d.geometry.dt[j]*1f3))
         set_header!(blocks[j], "FieldRecord",j)
@@ -458,6 +458,15 @@ function judiVector_to_SeisBlock(d::judiVector{avDT, AT}, q::judiVector{avDT, QT
         blocks[j] = []
     end
     return fullblock
+end
+
+function src_to_SeisBlock(q::judiVector{avDT, QT};
+                                 source_depth_key="SourceSurfaceElevation",
+                                 receiver_depth_key="RecGroupElevation") where {avDT, QT}
+
+    return judiVector_to_SeisBlock(q, q;
+        source_depth_key=source_depth_key,
+        receiver_depth_key=receiver_depth_key)
 end
 
 function write_shot_record(srcGeometry, srcData, recGeometry, recData,options)
