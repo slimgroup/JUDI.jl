@@ -155,7 +155,10 @@ src_geometry = Geometry(block; key=&quot;source&quot;, segy_depth_key=&quot;Sour
 <p>To write a <code>judiVector</code> as a SEG-Y file, we need a <code>judiVector</code> containing the receiver data and geometry, as well as a <code>judiVector</code> with the source coordinates. From the <code>judiVectors</code>, we first create a <code>SegyIO</code> block:</p>
 <pre><code class="language-julia">block = judiVector_to_SeisBlock(d_obs, q)
 </code></pre>
-<p>where <code>d_obs</code> and <code>q</code> are <code>judiVectors</code> for receiver and source data respectively. Next, we can write a SEG-Y file from a <code>SegyIO block</code>:</p>
+<p>where <code>d_obs</code> and <code>q</code> are <code>judiVectors</code> for receiver and source data respectively. To save only the source <code>q</code>, we can do</p>
+<pre><code class="language-julia">block = src_to_SeisBlock(q)
+</code></pre>
+<p>Next, we can write a SEG-Y file from a <code>SegyIO block</code>:</p>
 <pre><code class="language-julia">segy_write(&quot;new_file.segy&quot;, block)  # writes a SEG-Y file called new_file.segy
 </code></pre>
 <h2 id="reading-out-of-core-seg-y-files">Reading out-of-core SEG-Y files</h2>
