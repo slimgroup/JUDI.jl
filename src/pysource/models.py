@@ -435,6 +435,4 @@ class Model(GenericModel):
         """
         Map between spacing symbols and their values for each `SpaceDimension`.
         """
-        sp_map = self.grid.spacing_map
-        sp_map.update({self.grid.time_dim.spacing: self.critical_dt})
-        return sp_map
+        return self.grid.spacing_map

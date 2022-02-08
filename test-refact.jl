@@ -66,11 +66,15 @@ Pr = judiProjection(recGeometry)
 F = judiModeling(model; options=opt)
 F0 = judiModeling(model0; options=opt)
 Ps = judiProjection(srcGeometry)
-
-# Nonlinear modeling
-dobs = Pr*F*adjoint(Ps)*q
-@time dobs = Pr*F*adjoint(Ps)*q
-
 FFull = Pr*F*adjoint(Ps)
 
-qadj = adjoint(FFull)*dobs;
+J = judiJacobian(Pr*F0*adjoint(Ps), q)
+
+# Nonlinear modeling
+@time dobs = Pr*F*adjoint(Ps)*q
+
+@time dlin = J*dm;
+
+@time qadj = adjoint(FFull)*dobs;
+
+@time rtm = J'*dlin;

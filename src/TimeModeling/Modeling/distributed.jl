@@ -189,11 +189,10 @@ Reduce `other` future into local `future`. This is perform remotely on the julia
 `future.where`.
 """
 function local_reduce!(my_future::_TFuture, other_future::_TFuture)
-    y = remotecall_fetch(fetch, other_future.where, other_future)
+    y = fetch(other_future)
     x = fetch(my_future)
     single_reduce!(x, y)
-    # Force GC since julia parallel still has issues with it
-    y=1;safe_gc(); remotecall(safe_gc, other_future.where);
+    y = []
     nothing
 end
 
@@ -206,7 +205,7 @@ reduces into itself `futures[i]`.
 function reduce_level!(futures::Vector{_TFuture}, nleaf::Int)
     nleaf == 0 && return
     @sync for i = 1:2:2*nleaf
-        @async remotecall_fetch(local_reduce!, futures[i].where, futures[i], futures[i+1])
+        @async remotecall(local_reduce!, futures[i].where, futures[i], futures[i+1])
     end
     deleteat!(futures, 2:2:2*nleaf)
 end

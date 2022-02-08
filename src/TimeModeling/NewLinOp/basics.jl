@@ -8,12 +8,16 @@ struct AbstractSize{N}
     dims::NTuple{N, AbstractDim}
 end
 
-Base.repr(D::AbstractDim) = D.name
-Base.repr(D::AbstractSize) = join(repr.(D.dims), " x ")
+getindex(S::AbstractSize, I...) = AbstractSize(S.dims[I...])
 
-const _time_space = (AbstractDim(:time), AbstractDim(:n_x), AbstractDim(:n_y), AbstractDim(:n_z))
-const _rec_space = AbstractSize((AbstractDim(:time), AbstractDim(:n_rec)))
-time_space_size(N::Integer) = AbstractSize(_time_space[1:N+1])
+Base.repr(D::AbstractDim) = D.name
+Base.repr(D::AbstractSize) = "($(join(repr.(D.dims), " x ")))"
+
+const _time_space = AbstractSize((AbstractDim(:s), AbstractDim(:time), AbstractDim(:n_x), AbstractDim(:n_y), AbstractDim(:n_z)))
+const _space = AbstractSize((AbstractDim(:n_x), AbstractDim(:n_y), AbstractDim(:n_z)))
+const _rec_space = AbstractSize((AbstractDim(:s), AbstractDim(:time), AbstractDim(:r)))
+time_space_size(N::Integer) = _time_space[1:N+2]
+space_size(N::Integer) = _space[1:N]
 
 const _used_id = []
 
