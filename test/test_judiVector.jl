@@ -209,6 +209,16 @@ ftol = 1e-6
     @test isequal(get_header(block, "ns"), get_header(block_out, "ns"))
     @test isequal(get_header(block, "dt"), get_header(block_out, "dt"))
 
+    block_obs =  judiVector_to_SeisBlock(d_obs, q; source_depth_key="SourceSurfaceElevation", receiver_depth_key="RecGroupElevation")
+    d_obs1 = judiVector(block_obs)
+    @test isapprox(d_obs1.data, d_obs.data)
+
+    block_q = src_to_SeisBlock(q)
+    q_1 = judiVector(block_q)
+    for i = 1:nsrc
+        vec(q_1.data[i]) == vec(q.data[i])
+    end
+
     # Time interpolation (inplace)
     dt_orig = 2f0
     dt_new = 1f0
