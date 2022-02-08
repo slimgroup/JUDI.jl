@@ -520,6 +520,32 @@ function time_resample(data::AbstractArray{Float32, N}, geometry_in::Geometry, d
     end
 end
 
+
+"""
+    time_resample(data, dt_in, dt_new)
+
+Resample the input data with sinc interpolation from the current time sampling dt_in to the 
+new time sampling `dt_new`.
+
+Parameters
+* `data`: Data to be reampled. If data is a matrix, resamples each column.
+* `dt_in`: Time sampling of input
+* `dt_new`: New time sampling rate to interpolate onto.
+"""
+function time_resample(data::Array, dt_in::T1, dt_new::T2) where {T1<:Real, T2<:Real}
+
+    if dt_new==dt_in
+        return data
+    else
+        nt = size(data, 1)
+        timeAxis = 0:dt_in:(nt-1)*dt_in
+        timeInterp = 0:dt_new:(nt-1)*dt_in
+        dataInterp = Float32.(SincInterpolation(data, timeAxis, timeInterp))
+        return dataInterp
+    end
+end
+
+
 """
     time_resample(data, dt_in, geometry_in)
 

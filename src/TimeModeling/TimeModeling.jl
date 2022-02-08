@@ -46,7 +46,8 @@ include("Modeling/distributed.jl") # Modeling functions utilities
 # include("LinearOperators/judiJacobian.jl")  # linearized modeling operator J
 include("NewLinOp/basics.jl")
 include("NewLinOp/lazy.jl")
-include("NewLinOp/propagators.jl")
+include("NewLinOp/operators.jl")
+include("NewLinOp/propagation.jl")
 
 #############################################################################
 # Preconditioners and optimization

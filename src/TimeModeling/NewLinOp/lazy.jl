@@ -1,8 +1,8 @@
 export judiProjection
 # Base abstract type
-abstract type judiNoopOperator{D, R} <: joAbstractLinearOperator{D, R} end
+abstract type judiNoopOperator{D} <: joAbstractLinearOperator{D, D} end
 
-struct judiProjection{D} <: judiNoopOperator{D, D}
+struct judiProjection{D} <: judiNoopOperator{D}
     name::String
     m::AbstractSize
     n::AbstractSize
@@ -10,3 +10,4 @@ struct judiProjection{D} <: judiNoopOperator{D, D}
 end
 
 judiProjection(G::Geometry) = judiProjection{Float32}("Projection", _rec_space, time_space_size(2), G)
+adjoint(P::judiNoopOperator{D}) where D = jAdjoint(P)

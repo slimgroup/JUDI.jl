@@ -69,3 +69,8 @@ Ps = judiProjection(srcGeometry)
 
 # Nonlinear modeling
 dobs = Pr*F*adjoint(Ps)*q
+@time dobs = Pr*F*adjoint(Ps)*q
+
+FFull = Pr*F*adjoint(Ps)
+
+qadj = adjoint(FFull)*dobs;

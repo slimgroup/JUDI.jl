@@ -44,6 +44,7 @@ import PyCall.array2py
 # Set python paths
 const pm = PyNULL()
 const ac = PyNULL()
+const we = PyNULL()
 
 # Constants
 _worker_pool = default_worker_pool
@@ -57,6 +58,8 @@ function __init__()
     pushfirst!(PyVector(pyimport("sys")."path"), joinpath(JUDIPATH, "pysource"))
     copy!(pm, pyimport("models"))
     copy!(ac, pyimport("interface"))
+    copy!(we, pyimport("wavesolver"))
+
 end
 
 # JUDI time modeling
