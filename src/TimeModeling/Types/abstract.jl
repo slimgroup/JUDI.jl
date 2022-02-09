@@ -53,9 +53,13 @@ vec(x::judiMultiSourceVector) = vcat(vec.(x.data)...)
 (msv::judiMultiSourceVector{T})(x::Vector{T}) where {T<:Array} = begin y = deepcopy(msv); copyto!(y.data, x); return y end
 
 function *(J::joAbstractLinearOperator, x::judiMultiSourceVector{vDT}) where vDT
-    outvec = J*vec(x)
-    outdata = try reshape(outvec, x.data[1].shape, x.nsrc) catch; outvec end
-    return x(outdata)
+    try
+        return J.fop(x)
+    catch 
+        J*vec(x)
+        outdata = try reshape(outvec, x.data[1].shape, x.nsrc) catch; outvec end
+        return x(outdata)
+    end
 end
 
 function norm(a::judiMultiSourceVector{T}, p::Real=2) where T

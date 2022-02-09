@@ -28,11 +28,30 @@ for func ∈ [:lmul!, :rmul!, :rdiv!, :ldiv!]
     end
 end
 
+struct MultiSourceBroadcasted <: Base.AbstractBroadcasted
+    bval
+    data
+    op
+end
+
+function materialize(bc::MultiSourceBroadcasted)
+    ms = similar(bc.data)
+    for i=1:ms.nsrc
+        ms.data[i] = materialize(broadcasted(bc.op, bc.bval, bc.data.data[i]))
+    end
+    ms
+end
+
+function materialize!(ms::judiMultiSourceVector, bc::MultiSourceBroadcasted)
+    for i=1:ms.nsrc
+        broadcast!(bc.op, ms.data[i], bc.bval, bc.data.data[i])
+    end
+    nothing
+end
+
 for op ∈ [:+, :-, :*, :/]
     @eval begin
-        broadcast($op, x, ms::judiMultiSourceVector) = broadcast($op, x, ms.data)
-        broadcast($op, ms::judiMultiSourceVector, x) = broadcast($op, ms.data, x)
-        broadcast!($op, out::judiMultiSourceVector, x, ms::judiMultiSourceVector) = broadcast!($op, out.data, x, ms.data)
-        broadcast!($op, out::judiMultiSourceVector, ms::judiMultiSourceVector, x) = broadcast!($op, out.data, ms.data, x)
-    end
+        broadcasted(::typeof($op), x, ms::judiMultiSourceVector) = MultiSourceBroadcasted(x, ms, $op)
+        broadcasted(::typeof($op), ms::judiMultiSourceVector, x) = MultiSourceBroadcasted(x, ms, $op)
+    end 
 end

@@ -25,7 +25,7 @@ import Base.maximum, Base.minimum, Base.push!
 import Base.Broadcast.broadcasted, Base.BroadcastStyle, Base.Broadcast.DefaultArrayStyle, Base.Broadcast, Base.broadcast!
 import Base.getindex, Base.setindex!, Base.firstindex, Base.lastindex
 import Base.similar, Base.isapprox, Base.isequal
-import Base.materialize!, Base.materialize
+import Base.materialize!, Base.materialize, Base.Broadcast.instantiate
 import Base.promote_shape, Base.diff, Base.cumsum, Base.cumsum!
 import Base.getproperty, Base.unsafe_convert
 

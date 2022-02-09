@@ -280,8 +280,8 @@ ftol = 1e-6
 
     @test firstindex(d_obs) == 1
     @test lastindex(d_obs) == nsrc
-    @test axes(d_obs) == Base.OneTo(nsrc)
-    @test ndims(d_obs) == 2
+    @test axes(d_obs) == (Base.OneTo(nsrc),)
+    @test ndims(d_obs) == 1
 
     d0[1] = d_obs.data[1]
     @test isapprox(d0.data[1], d_obs.data[1])

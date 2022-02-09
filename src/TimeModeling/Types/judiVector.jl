@@ -135,8 +135,8 @@ time_sampling(jv::judiVector) = jv.geometry.dt
 # JOLI conversion
 jo_convert(::Type{T}, jv::judiVector{T, Array{T, N}}, ::Bool) where {T<:Real, N} = jv
 jo_convert(::Type{T}, jv::judiVector{vT, Array{vT, N}}, B::Bool) where {T<:Real, vT, N} = judiVector{T, Array{T, N}}(jv.nsrc, jv.geometry, jo_convert.(T, jv.data, B))
-zero(::Type{T}, v::judiVector{vT, AT}) where {T, vT, AT<:Array} = judiVector{T, AT}(v.nsrc, v.geometry, Vector{Array{T, 2}}(undef, v.nsrc))
-zero(::Type{T}, v::judiVector{vT, SegyIO.SeisCon}) where {T, vT} = judiVector{T, SegyIO.SeisCon}(v.nsrc, v.geometry, Vector(SegyIO.SeCison)(undef, v.nsrc))
+zero(::Type{T}, v::judiVector{vT, AT}) where {T, vT, AT<:Array} = judiVector{T, AT}(v.nsrc, deepcopy(v.geometry), Vector{Array{T, 2}}(undef, v.nsrc))
+zero(::Type{T}, v::judiVector{vT, SegyIO.SeisCon}) where {T, vT} = judiVector{T, SegyIO.SeisCon}(v.nsrc, deepcopy(v.geometry), Vector(SegyIO.SeCison)(undef, v.nsrc))
 
 ##########################################################
 
@@ -254,14 +254,12 @@ end
 
 
 function time_resample!(x::judiVector, dt_new; order=2)
-    x.m = 0
     for j=1:x.nsrc
         dataInterp, geom = time_resample(x.data[j], subsample(x.geometry, j), dt_new)
         x.data[j] = dataInterp
         x.geometry.dt[j] = dt_new
         x.geometry.nt[j] = geom.nt[1]
         x.geometry.t[j] = geom.t[1]
-        x.m += prod(size(dataInterp))
     end
     return x
 end
@@ -276,15 +274,7 @@ function judiTimeInterpolation(geometry::Geometry, dt_coarse, dt_fine)
 # Time interpolation as a linear operator (copies input data)
 
     nsrc = length(geometry.xloc)
-    m = 0
-    n = 0
-    for j=1:nsrc
-        nt_coarse = Int(trunc(geometry.t[j]/dt_coarse + 1))
-        nt_fine = Int(trunc(geometry.t[j]/dt_fine + 1))
-        n += length(geometry.xloc[j])*nt_coarse
-        m += length(geometry.xloc[j])*nt_fine
-    end
-    I = joLinearFunctionFwd_T(m,n,
+    I = joLinearFunctionFwd_T(nsrc, nsrc,
                               v -> time_resample(v, dt_fine),
                               w -> time_resample(w, dt_coarse),
                               Float32,Float32,name="Time resampling")
