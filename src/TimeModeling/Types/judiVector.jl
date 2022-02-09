@@ -12,13 +12,10 @@ export write_shot_record, get_data, convert_to_array, rebuild_jv
 ############################################################
 
 # structure for seismic data as an abstract vector
-mutable struct judiVector{vDT<:Number, AT} <: joAbstractLinearOperator{vDT,vDT}
-    name::String
-    m::Integer
-    n::Integer
+mutable struct judiVector{T, AT} <: judiMultiSourceVector{AT}
     nsrc::Integer
     geometry::Geometry
-    data::Array{AT, 1}
+    data::Vector{AT}
 end
 
 mutable struct judiVectorException <: Exception
@@ -31,10 +28,6 @@ end
 
 """
     judiVector
-        name::String
-        m::Integer
-        n::Integer
-        nsrc::Integer
         geometry::Geometry
         data
 
@@ -86,28 +79,21 @@ wavelets or a single wavelet as an array):
 function judiVector(geometry::Geometry, data::Array{T, N}) where {T, N}
     T == Float32 || (data = tof32(data))
     N < 3 || throw(judiVectorException("Only 1D (trace) and 2D (record) input data supported"))
-    # length of vector
-    n = 1
     nsrc = get_nsrc(geometry)
-    m = n_samples(geometry, nsrc)
-
     dataCell = Array{Array{T, N}, 1}(undef, nsrc)
     for j=1:nsrc
         dataCell[j] = deepcopy(data)
     end
-    return judiVector{T, Array{T, N}}("Seismic data vector", m, n, nsrc, geometry, dataCell)
+    return judiVector{T, Array{T, N}}(nsrc, geometry, dataCell)
 end
 
 # constructor if data is passed as a cell array
-function judiVector(geometry::Geometry, data::Array{Array{T, N}, 1}) where {T, N}
+function judiVector(geometry::Geometry, data::Vector{Array{T, N}}) where {T, N}
     T == Float32 || (data = tof32.(data))
-
-    # length of vector
-    nsrc = get_nsrc(geometry)
-    m = n_samples(geometry, nsrc)
-
-    n = 1
-    return judiVector{T, Array{T, N}}("Seismic data vector",m,n,nsrc,geometry,data)
+    nsrcd = length(data)
+    nsrcg = get_nsrc(geometry)
+    nsrcd == nsrcg || throw(judiVectorException("Number of sources in geometry and data don't match $(nsrcd) != $(nsrcg)"))
+    return judiVector{T, Array{T, N}}(nsrc, geometry, data)
 end
 
 
@@ -116,157 +102,66 @@ end
 
 # contructor for in-core data container
 function judiVector(data::SegyIO.SeisBlock; segy_depth_key="RecGroupElevation")
-    # length of data vector
-    src = get_header(data,"FieldRecord")
-    nsrc = length(unique(src))
-
-    numTraces = get_header(data,"TraceNumber")[end] - get_header(data,"TraceNumber")[1] + 1
-    numSamples = get_header(data,"ns")[end]
-    m = numTraces*numSamples
-    n = 1
-
-    # extract geometry from data container
     geometry = Geometry(data; key="receiver", segy_depth_key=segy_depth_key)
-
-    # fill data vector with pointers to data location
-    dataCell = Array{Array{Float32, 2}, 1}(undef, nsrc)
-    for j=1:nsrc
-        traces = findall(src .== unique(src)[j])
-        dataCell[j] = convert(Array{Float32, 2}, data.data[:,traces])
-    end
-
-    return judiVector{Float32, Array{Float32, 2}}("Julia seismic data container",m,n,nsrc,geometry,dataCell)
+    return judiVector(geometry, data)
 end
 
 # contructor for in-core data container and given geometry
 function judiVector(geometry::Geometry, data::SegyIO.SeisBlock)
-
     # length of data vector
     src = get_header(data,"FieldRecord")
     nsrc = length(unique(src))
-
-    numTraces = get_header(data,"TraceNumber")[end] - get_header(data,"TraceNumber")[1] + 1
-    numSamples = get_header(data,"ns")[end]
-    m = numTraces*numSamples
-    n = 1
-
     # fill data vector with pointers to data location
-    dataCell = Array{Array{Float32, 2}, 1}(undef, nsrc)
+    dataCell = Vector{Array{Float32, 2}}(undef, nsrc)
     for j=1:nsrc
         traces = findall(src .== unique(src)[j])
         dataCell[j] = convert(Array{Float32, 2}, data.data[:,traces])
     end
-
-    return judiVector{Float32, Array{Float32, 2}}("Julia seismic data container",m,n,nsrc,geometry,dataCell)
+    return judiVector{Float32, Array{Float32, 2}}(nsrc, geometry, dataCell)
 end
 
 # contructor for out-of-core data container from single container
 function judiVector(data::SegyIO.SeisCon; segy_depth_key="RecGroupElevation")
-    # length of data vector
-    nsrc = length(data)
-    numTraces = 0
-    for j=1:nsrc
-        numTraces += Int((data.blocks[j].endbyte - data.blocks[j].startbyte)/(240 + data.ns*4))
-    end
-    m = numTraces*data.ns
-    n = 1
-
     # extract geometry from data container
     geometry = Geometry(data; key="receiver", segy_depth_key=segy_depth_key)
-
-    # fill data vector with pointers to data location
-    dataCell = Array{SegyIO.SeisCon}(undef, nsrc)
-    for j=1:nsrc
-        dataCell[j] = split(data,j)
-    end
-
-    return judiVector{Float32, SegyIO.SeisCon}("Julia seismic data container",m,n,nsrc,geometry,dataCell)
+    return judiVector(geometry, data)
 end
 
 # contructor for single out-of-core data container and given geometry
-function judiVector(geometry::Geometry, data::SegyIO.SeisCon; vDT::DataType=Float32)
-    vDT == Float32 || throw(judiVectorException("Domain and range types not supported"))
-
+function judiVector(geometry::Geometry, data::SegyIO.SeisCon)
     # length of data vector
     nsrc = length(data)
-    numTraces = 0
-    for j=1:nsrc
-        numTraces += Int((data.blocks[j].endbyte - data.blocks[j].startbyte)/(240 + data.ns*4))
-    end
-    m = numTraces*data.ns
-    n = 1
-
     # fill data vector with pointers to data location
-    dataCell = Array{SegyIO.SeisCon}(undef, nsrc)
+    dataCell = Vector{SegyIO.SeisCon}(undef, nsrc)
     for j=1:nsrc
         dataCell[j] = split(data,j)
     end
-
-    return judiVector{Float32, SegyIO.SeisCon}("Julia seismic data container",m,n,nsrc,geometry,dataCell)
+    return judiVector{Float32, SegyIO.SeisCon}(nsrc, geometry,dataCell)
 end
 
 # contructor for out-of-core data container from cell array of containers
-function judiVector(data::Array{SegyIO.SeisCon,1}; segy_depth_key="RecGroupElevation")
-
-    # length of data vector
-    nsrc = length(data)
-    numTraces = 0
-    for j=1:nsrc
-        numTraces += Int((data[j].blocks[1].endbyte - data[j].blocks[1].startbyte)/(240 + data[j].ns*4))
-    end
-    m = numTraces*data[1].ns    # SEGY requires same number of samples for every trace
-    n = 1
-
+function judiVector(data::Vector{SegyIO.SeisCon}; segy_depth_key="RecGroupElevation")
     # extract geometry from data container
     geometry = Geometry(data; key="receiver", segy_depth_key=segy_depth_key)
-
-    # fill data vector with pointers to data location
-    dataCell = Array{SegyIO.SeisCon}(undef, nsrc)
-    for j=1:nsrc
-        dataCell[j] = data[j]
-    end
-
-    return judiVector{Float32, SegyIO.SeisCon}("Julia seismic data container",m,n,nsrc,geometry,dataCell)
+    return judiVector(geometry, data)
 end
 
 # contructor for out-of-core data container from cell array of containers and given geometry
-function judiVector(geometry::Geometry, data::Array{SegyIO.SeisCon})
+function judiVector(geometry::Geometry, data::Vector{SegyIO.SeisCon})
     # length of data vector
     nsrc = length(data)
-    numTraces = 0
-    for j=1:nsrc
-        numTraces += Int((data[j].blocks[1].endbyte - data[j].blocks[1].startbyte)/(240 + data[j].ns*4))
-    end
-    m = numTraces*data[1].ns
-    n = 1
-
-    # fill data vector with pointers to data location
-    dataCell = Array{SegyIO.SeisCon}(undef, nsrc)
-    for j=1:nsrc
-        dataCell[j] = data[j]
-    end
-
-    return judiVector{Float32, SegyIO.SeisCon}("Julia seismic data container",m,n,nsrc,geometry,dataCell)
+    return judiVector{Float32, SegyIO.SeisCon}(nsrc, geometry, data)
 end
 
 ############################################################
+## overloaded multi_source functions
+time_sampling(jv::judiVector) = jv.geometry.dt
+############################################################
 ## overloaded Base functions
-
-# conj(jo)
-conj(a::judiVector{vDT, AT}) where {vDT, AT} =
-    judiVector{vDT, AT}("conj("*a.name*")",a.m,a.n,a.nsrc,a.geometry,a.data)
-
-# transpose(jo)
-transpose(a::judiVector{vDT, AT}) where {vDT, AT} =
-    judiVector{vDT, AT}(""*a.name*".'",a.n,a.m,a.nsrc,a.geometry,a.data)
-
-# adjoint(jo)
-adjoint(a::judiVector{vDT, AT}) where {vDT, AT} =
-        judiVector{vDT, AT}(""*a.name*".'",a.n,a.m,a.nsrc,a.geometry,a.data)
+conj(a::judiVector{T, AT}) where {T, AT} = judiVector{T, AT}(a.nsrc, a.geometry, conj(dataCell))
 
 jo_convert(::Type{T}, jv::judiVector{T, Array{T, N}}, ::Bool) where {T, N} = jv
-jo_convert(::Type{T}, jv::judiVector{vT, Array{vT, N}}, B::Bool) where {T, vT, N} = 
-    judiVector{T, Array{T, N}}(jv.name, jv.m, jv.n, jv.nsrc, jv.geometry, jo_convert(T, jv.data, B))
+jo_convert(::Type{T}, jv::judiVector{vT, Array{vT, N}}, B::Bool) where {T, vT, N} = judiVector{T, Array{T, N}}(jv.nsrc, jv.geometry, jo_convert(T, jv.data, B))
 ##########################################################
 
 # Overload needed base function for SegyIO objects
@@ -295,62 +190,11 @@ for ipop=[:lmul!, :rmul!, :rdiv!, :ldiv!]
     end
 end
 
-# *(joLinearFunction, judiVector)
-function *(A::joLinearFunction{ADDT,ARDT},v::judiVector{avDT, AT}) where {ADDT, ARDT, avDT, AT}
-    A.n == size(v,1) || throw(judiVectorException("Shape mismatch: A:$((A.m, A.n)), v: $(size(v))"))
-    jo_check_type_match(ADDT,avDT,join(["DDT for *(joLinearFunction,judiVector):",A.name,typeof(A),avDT]," / "))
-    V = A.fop(v)
-    jo_check_type_match(ARDT,eltype(V),join(["RDT from *(joLinearFunction,judiVector):",A.name,typeof(A),eltype(V)]," / "))
-    return V
-end
-
-# *(joLinearOperator, judiVector)
-function *(A::joLinearOperator{ADDT,ARDT},v::judiVector{avDT, AT}) where {ADDT, ARDT, avDT, AT}
-    A.n == size(v,1) || throw(judiVectorException("Shape mismatch: A:$((A.m, A.n)), v: $(size(v))"))
-    jo_check_type_match(ADDT,avDT,join(["DDT for *(joLinearFunction,judiVector):",A.name,typeof(A),avDT]," / "))
-    V = A.fop(v)
-    jo_check_type_match(ARDT,eltype(V),join(["RDT from *(joLinearFunction,judiVector):",A.name,typeof(A),eltype(V)]," / "))
-    return V
-end
-
-# vcat
-function vcat(ai::Vararg{judiVector{avDT, AT}, N}) where {avDT, AT, N}
-    N == 1 && (return ai[1])
-    N > 2 && (return vcat(ai[1], vcat(ai[2:end]...)))
-    a, b = ai
-    typeof(a.geometry) == typeof(b.geometry) || throw(judiVectorException("Geometry type mismatch"))
-    m = a.m + b.m
-    n = 1
-    nsrc = a.nsrc + b.nsrc
-
-    data = vcat(a.data, b.data)
-
-    if AT == SegyIO.SeisCon
-        nsamples = vcat(a.geometry.nsamples, b.geometry.nsamples)
-    else
-        xloc = vcat(a.geometry.xloc, b.geometry.xloc)
-        yloc = vcat(a.geometry.yloc, b.geometry.yloc)
-        zloc = vcat(a.geometry.zloc, b.geometry.zloc)
-    end
-
-    dt = vcat(a.geometry.dt, b.geometry.dt)
-    nt = vcat(a.geometry.nt, b.geometry.nt)
-    t = vcat(a.geometry.t, b.geometry.t)
-
-    if AT == SegyIO.SeisCon
-        geometry = GeometryOOC{Float32}(data,dt,nt,t,nsamples,a.geometry.key,a.geometry.segy_depth_key)
-    else
-        geometry = GeometryIC{Float32}(xloc, yloc, zloc, dt, nt, t)
-    end
-
-    return judiVector{avDT, AT}(a.name, m, n, nsrc, geometry, data)
-end
-
 # push!
 function push!(a::judiVector{T, mT}, b::judiVector{T, mT}) where {T, mT}
+    typeof(a.geometry) == typeof(b.geometry) || throw(judiVectorException("Geometry type mismatch"))
     append!(a.data, b.data)
     a.nsrc += b.nsrc
-    a.m += b.m
     push!(a.geometry, b.geometry)
 end
 
@@ -377,7 +221,6 @@ function norm(a::judiVector{avDT, AT}, p::Real=2) where {avDT, AT}
     end
     return x^(1.f0/p)
 end
-
 
 # abs
 function abs(a::judiVector{avDT, AT}) where {avDT, AT}
@@ -412,12 +255,10 @@ Examples
     Jsub = subsample(J,[10,20])
 
 """
-function subsample(a::judiVector{avDT, AT},srcnum) where {avDT, AT}
+function subsample(a::judiVector{avDT, AT}, srcnum) where {avDT, AT}
     geometry = subsample(a.geometry,srcnum)     # Geometry of subsampled data container
-    return judiVector(geometry,a.data[srcnum])
+    return judiVector(geometry, a.data[srcnum])
 end
-
-getindex(x::judiVector,a) = subsample(x,a)
 
 # Create SeisBlock from judiVector container to write to file
 function judiVector_to_SeisBlock(d::judiVector{avDT, AT}, q::judiVector{avDT, QT};
@@ -531,39 +372,8 @@ end
 
 ####################################################################################################
 # Indexing
-
-setindex!(x::judiVector, y, i) = x.data[i][:] = y
-
-firstindex(x::judiVector) = 1
-
-lastindex(x::judiVector) = x.nsrc
-
-axes(x::judiVector) = Base.OneTo(x.nsrc)
-
-ndims(x::judiVector) = length(size(x))
-
-similar(x::judiVector) = 0f0*x
-
-similar(x::judiVector, element_type::DataType, dims::Union{AbstractUnitRange, Integer}...) = 0f0*x
-
-function fill!(x::judiVector{vDT, AT}, val) where {vDT, AT}
-    for j=1:length(x.data)
-        fill!(x.data[j], val)
-    end
-end
-
-function sum(x::judiVector)
-    s = 0f0
-    for j=1:length(x.data)
-        s += sum(vec(x.data[j]))
-    end
-    return s
-end
-
-Base.IteratorSize(d::judiVector) = Base.SizeUnknown()
-isfinite(v::judiVector) = all(all(isfinite.(v.data[i])) for i=1:v.nsrc)
-iterate(S::judiVector, state::Integer=1) = state > S.nsrc ? nothing : (S.data[state], state+1)
-
+getindex(jv::judiVector{T, AT}, i::Integer) where {T, AT} =  judiVector{T, AT}(1, jv.geometry[i], jv.data[i])
+setindex!(jv::judiVector{T, AT}, v::AT, i::Integer) where {T, AT} = begin jv.data[i] .= v; nothing end;
 ####################################################################################################
 
 # Integration/differentiation of shot records
@@ -594,84 +404,6 @@ function diff(x::judiVector;dims=1)
     return y
 end
 
-####################################################################################################
-
-BroadcastStyle(::Type{judiVector}) = Base.Broadcast.DefaultArrayStyle{1}()
-
-ndims(::Type{judiVector{Float32, Array{Float32, 2}}}) = 1
-
-### +/- ####
-broadcasted(::typeof(+), x::judiVector, y::judiVector) = x + y
-broadcasted(::typeof(-), x::judiVector, y::judiVector) = x - y
-
-broadcasted(::typeof(+), x::judiVector, y::Number) = x + y
-broadcasted(::typeof(-), x::judiVector, y::Number) = x - y
-
-broadcasted(::typeof(+), x::Number, y::judiVector) = x + y
-broadcasted(::typeof(-), x::Number, y::judiVector) = x - y
-
-### * ####
-function broadcasted(::typeof(*), x::judiVector, y::judiVector)
-    size(x) == size(y) || throw(judiVectorException("Size mismatch: x:$(size(x)), y:$(size(y))"))
-    compareGeometry(x.geometry, y.geometry) == 1 || throw(judiVectorException("Geometry mismatch"))
-    typeof(x.data[1]) == SeisCon && throw("Addition for OOC judiVectors not supported.")
-    typeof(y.data[1]) == SeisCon && throw("Addition for OOC judiVectors not supported.")
-    z = deepcopy(x)
-    for j=1:length(x.data)
-        z.data[j] = x.data[j] .* y.data[j]
-    end
-    return z
-end
-
-function broadcasted(::typeof(*), x::judiVector, y::Number)
-    z = deepcopy(x)
-    for j=1:length(x.data)
-        z.data[j] .*= y
-    end
-    return z
-end
-
-broadcasted(::typeof(*), x::Number, y::judiVector) = broadcasted(*, y, x)
-
-### / ####
-function broadcasted(::typeof(/), x::judiVector, y::judiVector)
-    size(x) == size(y) || throw(judiVectorException("Size mismatch: x:$(size(x)), y:$(size(y))"))
-    compareGeometry(x.geometry, y.geometry) == 1 || throw(judiVectorException("geometry mismatch"))
-    typeof(x.data[1]) == SeisCon && throw("Addition for OOC judiVectors not supported.")
-    typeof(y.data[1]) == SeisCon && throw("Addition for OOC judiVectors not supported.")
-    z = deepcopy(x)
-    for j=1:length(x.data)
-        z.data[j] = x.data[j] ./ y.data[j]
-    end
-    return z
-end
-
-broadcasted(::typeof(/), x::judiVector, y::Number) = broadcasted(*, x, 1/y)
-
-# Materialize for broadcasting
-function materialize!(x::judiVector, y::judiVector)
-    for j=1:length(x.data)
-        x.data[j] .= y.data[j]
-    end
-end
-
-function broadcast!(identity, x::judiVector, y::judiVector)
-    copy!(x,y)
-end
-
-function broadcasted(identity, x::judiVector)
-    return x
-end
-
-
-function copy!(x::judiVector, y::judiVector)
-    for j=1:x.nsrc
-        x.data[j] .= y.data[j]
-    end
-    x.geometry = deepcopy(y.geometry)
-end
-
-copy(x::judiVector) = 1f0 * x
 
 function get_data(x::judiVector{T, SeisCon}) where T
     shots = Array{Array{Float32, 2}, 1}(undef, x.nsrc)
@@ -684,24 +416,9 @@ end
 
 get_data(x::judiVector{T, Array{Float32, 2}}) where T = x
 
-function convert_to_array(x::judiVector)
-    y = vec(x.data[1])
-    if x.nsrc > 1
-        for j=2:x.nsrc
-            y = [y; vec(x.data[j])]
-        end
-    end
-    return y
-end
+convert_to_array(x::judiVector) = vcat(vec.(x.data)...)
 
-function isapprox(x::judiVector, y::judiVector; rtol::Real=sqrt(eps()), atol::Real=0)
-    compareGeometry(x.geometry, y.geometry) == 1 || throw(judiVectorException("Geometry mismatch"))
-    isapprox(x.data, y.data; rtol=rtol, atol=atol)
-end
-
-
-############################################################
-
+## in place
 function A_mul_B!(x::judiWeights, F::Union{joAbstractLinearOperator, joLinearFunction}, y::judiVector)
     F.m == size(y, 1) ? z = adjoint(F)*y : z = F*y
     for j=1:length(x.weights)
@@ -740,13 +457,13 @@ mul!(x::judiVector, F::Union{joAbstractLinearOperator, joLinearFunction}, y::jud
 mul!(x::Union{Array, PhysicalParameter}, J::Union{joAbstractLinearOperator, joLinearFunction}, y::judiVector) = A_mul_B!(x, J, y)
 mul!(x::judiVector, J::Union{joAbstractLinearOperator, joLinearFunction}, y::Union{Array, PhysicalParameter}) = A_mul_B!(x, J, y)
 
-# Rebuild for backward compatinility
-convgeom(x) = GeometryIC{Float32}([getfield(x.geometry, s) for s=fieldnames(GeometryIC)]...)
-convdata(x) = convert(Array{Array{Float32, 2}, 1}, x.data)
-
 """
     reuild_jv(v)
 rebuild a judiVector from previous version type or JLD2 reconstructed type
 """
 rebuild_jv(v::judiVector{T, AT}) where {T, AT} = v
 rebuild_jv(v) = judiVector(convgeom(v), convdata(v))
+
+# Rebuild for backward compatinility
+convgeom(x) = GeometryIC{Float32}([getfield(x.geometry, s) for s=fieldnames(GeometryIC)]...)
+convdata(x) = convert(Array{Array{Float32, 2}, 1}, x.data)

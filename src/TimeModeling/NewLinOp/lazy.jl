@@ -1,4 +1,10 @@
 export judiProjection
+
+# Lazy adjoint like in LinearAlgebra
+struct jAdjoint{T}
+    op::T
+end
+
 # Base abstract type
 abstract type judiNoopOperator{D} <: joAbstractLinearOperator{D, D} end
 
@@ -11,5 +17,6 @@ end
 
 judiProjection(G::Geometry) = judiProjection{Float32}("Projection", _rec_space, time_space_size(2), G)
 adjoint(P::judiNoopOperator{D}) where D = jAdjoint(P)
+transpose(P::judiNoopOperator{D}) where D = jAdjoint(P)
 
 display(P::judiProjection{D}) where {D, O} = println("JUDI projection operator $(repr(P.n)) -> $(repr(P.m))")

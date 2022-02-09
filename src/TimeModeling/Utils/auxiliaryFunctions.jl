@@ -629,21 +629,21 @@ function select_frequencies(q_dist; fmin=0f0, fmax=Inf, nf=1)
 end
 
 """
-    process_input_data(input, geometry, info)
+    process_input_data(input, geometry, nsrc)
 
 Preprocesses input Array into an Array of Array for modeling
 
 Parameters:
 * `input`: Input to preprocess.
 * `geometry`: Geometry containing physical parameters.
-* `info`: Infor structure.
+* `nsrc`: Number of sources
 """
-function process_input_data(input::Array{Float32}, geometry::Geometry, info::Info)
+function process_input_data(input::Array{Float32}, geometry::Geometry)
     # Input data is pure Julia array: assume fixed no.
     # of receivers and reshape into data cube nt x nrec x nsrc
     nt = Int(geometry.nt[1])
     nrec = length(geometry.xloc[1])
-    nsrc = info.nsrc
+    nsrc = length(geometry.xloc)
     data = reshape(input, nt, nrec, nsrc)
     dataCell = Array{Array{Float32, 2}, 1}(undef, nsrc)
     for j=1:nsrc
@@ -653,29 +653,30 @@ function process_input_data(input::Array{Float32}, geometry::Geometry, info::Inf
 end
 
 """
-    process_input_data(input, model, info)
+    process_input_data(input, model, nsrc)
 
 Preprocesses input Array into an Array of Array for modeling
 
 Parameters:
 * `input`: Input to preprocess.
 * `model`: Model containing physical parameters.
-* `info`: Infor structure.
+* `nscr`: Number of sources
 """
-function process_input_data(input::Array{Float32, N}, model::Model, info::Info) where N
+function process_input_data(input::Array{Float32}, model::Model, nsrc::Integer)
     ndims = length(model.n)
-    dataCell = Array{Array{Float32, ndims}, 1}(undef, info.nsrc)
-    input = reshape(input, model.n..., info.nsrc)
-    inds = [Colon() for i=1:length(model.n)]
-    for j=1:info.nsrc
-        dataCell[j] = input[inds..., j]
+    dataCell = Array{Array{Float32, ndims}, 1}(undef, nsrc)
+
+    input = reshape(input, model.n..., nsrc)
+    nd = ndims(input)
+    for j=1:nsrc
+        dataCell[j] = selectdim(input, nd, j)
     end
     return dataCell
 end
 
-process_input_data(input::judiVector, ::Geometry, ::Info) = input.data
-process_input_data(input::judiVector, ::Info) = input.data
-process_input_data(input::judiWeights, ::Model, ::Info) = input.weights
+process_input_data(input::judiVector, ::Geometry) = input.data
+process_input_data(input::judiVector) = input.data
+process_input_data(input::judiWeights, ::Model) = input.weights
 
 """
     reshape(x::Array{Float32, 1}, geometry::Geometry)

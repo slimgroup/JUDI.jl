@@ -27,7 +27,3 @@ function make_id()::Symbol
     push!(_used_id, new_id)
     return new_id
 end
-
-struct jAdjoint{T}
-    op::T
-end

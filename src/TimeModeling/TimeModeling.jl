@@ -6,7 +6,6 @@
 #############################################################################
 # Containers
 include("Types/ModelStructure.jl")    # model container
-include("Types/InfoStructure.jl") # basic information required by all operators
 include("Types/GeometryStructure.jl") # source or receiver setup, recording time and sampling
 include("Types/OptionsStructure.jl")
 

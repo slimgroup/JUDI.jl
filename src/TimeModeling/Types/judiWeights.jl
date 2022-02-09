@@ -12,17 +12,15 @@ export judiWeights, judiWeightsException, subsample
 ############################################################
 
 # structure for seismic data as an abstract vector
-mutable struct judiWeights{vDT<:Number} <: joAbstractLinearOperator{vDT,vDT}
-    name::String
-    m::Integer
-    n::Integer
+mutable struct judiWeights{T<:Number} <: judiMultiSourceVector{T}
     nsrc::Integer
-    weights
+    data::Vector{Array{T, N}} where N
 end
 
 mutable struct judiWeightsException <: Exception
     msg :: String
 end
+
 
 ############################################################
 
@@ -30,10 +28,6 @@ end
 
 """
     judiWeights
-        name::String
-        m::Integer
-        n::Integer
-        nsrc::Integer
         weights
 Abstract vector for weighting an extended source, which is injected at every grid point, as weighted by this vector.
 Constructors
@@ -45,10 +39,8 @@ can also be a single (non-cell) array, in which case the weights are the same fo
 function judiWeights(weights::Array{T, N}; nsrc=1, vDT::DataType=Float32) where {T<:Real, N}
     (T != vDT) && (weights = convert(Array{vDT},weights))
     # length of vector
-    n = 1
-    m = prod(size(weights))*nsrc
     weightsCell = [deepcopy(weights) for j=1:nsrc]
-    return judiWeights{vDT}("Extended source weights",m,n,nsrc,weightsCell)
+    return judiWeights{vDT}(nsrc, weightsCell)
 end
 
 # constructor if weights are passed as a cell array
@@ -58,42 +50,34 @@ judiWeights(weights::Vector{Array}; vDT::DataType=Float32) =
 function judiWeights(weights::Vector{Array{T, N}}; vDT::DataType=Float32) where {T<:Number, N}
     nsrc = length(weights)
     weights = convert.(Array{vDT, N}, weights)
-    # length of vector
-    n = 1
-    m = prod(size(weights[1]))*nsrc
-    return judiWeights{vDT}("Extended source weights",m,n,nsrc,weights)
+    return judiWeights{vDT}(nsrc, weights)
 end
 
 ############################################################
 ## overloaded Base functions
 
-# conj(jo)
-conj(a::judiWeights{vDT}) where vDT =
-    judiWeights{vDT}("conj("*a.name*")",a.m,a.n,a.nsrc,a.weights)
-
-# transpose(jo)
-transpose(a::judiWeights{vDT}) where vDT =
-    judiWeights{vDT}(""*a.name*".'",a.n,a.m,a.nsrc,a.weights)
-
-# adjoint(jo)
-adjoint(a::judiWeights{vDT}) where vDT =
-        judiWeights{vDT}(""*a.name*".'",a.n,a.m,a.nsrc,a.weights)
+conj(a::judiWeights{vDT}) where vDT = judiWeights{vDT}(a.nsrc, conj(a.weights))
+transpose(a::judiWeights{vDT}) where vDT = a
+adjoint(a::judiWeights{vDT}) where vDT = transpose(conj(a))
 
 jo_convert(::Type{T}, jw::judiWeights{T}, ::Bool) where {T} = jw
 jo_convert(::Type{T}, jw::judiWeights{vT}, B::Bool) where {T, vT} = 
-	judiWavefield{T}(jw.name, jw.m, jw.n, jv.nsrc, jo_convert(T, jw.weights, B))
+	judiWavefield{T}(jv.nsrc, jo_convert(T, jw.weights, B))
 
 ##########################################################
+function as_cell(V::Vector{T}, n, nblock::Integer) where T
+    cells = Vector{Array{T, length(n)}}(undef, nblock)
+    for i=1:nblock
+        cells[i] = reshape(V[:, i], n)
+    end
+    cells
+end
+
 # *(joLinearFunction, judiWeights)
 function *(A::joLinearFunction{ADDT,ARDT},v::judiWeights{avDT}) where {ADDT, ARDT, avDT}
-    A.n == size(v,1) || throw(judiWeightsException("Shape mismatch: A:$(size(A)), v: $(size(v))"))
-    jo_check_type_match(ADDT,avDT,join(["DDT for *(joLinearFunction,judiWeights):",A.name,typeof(A),avDT]," / "))
-    # Evaluate as mat-mat over the weights
     n = size(v.weights[1])
-    V = A.fop(vcat([vec(v.weights[i]) for i=1:v.nsrc]...))
-    jo_check_type_match(ARDT,eltype(V),join(["RDT from *(joLinearFunction,judiWeights):",A.name,typeof(A),eltype(V)]," / "))
-    m = length(V)
-    return judiWeights{avDT}("Extended source weights", m, 1, v.nsrc, [reshape(V[:, i], n) for i=1:length(v.weights)])
+    V = as_cell(A * vcat(vec.(v.weights)...), n, v.nsrc)
+    return judiWeights{avDT}(v.nsrc, V)
 end
 
 # *(joLinearOperator, judiWeights)
@@ -132,61 +116,9 @@ function *(A::joCoreBlock{ADDT,ARDT}, v::judiWeights{avDT}) where {ADDT, ARDT, a
     return vcat(V...)
 end
 
-# vcat
-function vcat(ai::Vararg{judiWeights{avDT}, N}) where {avDT, N}
-    N == 1 && (return ai[1])
-    N > 2 && (return vcat(ai[1], vcat(ai[2:end]...)))
-    a, b = ai
-    m = a.m + b.m
-    n = 1
-    nsrc = a.nsrc + b.nsrc
-    weights = vcat(a.weights, b.weights)
-    return judiWeights{avDT}(a.name,m,n,nsrc,weights)
-end
-
-
 function push!(a::judiWeights{T}, b::judiWeights{T}) where T
 	append!(a.weights, b.weights)
-	a.m += b.m
 	a.nsrc += b.nsrc
-end
-
-# dot product
-function dot(a::judiWeights{avDT}, b::judiWeights{bvDT}) where {avDT, bvDT}
-# Dot product for data containers
-    size(a) == size(b) || throw(judiWeightsException("dimension mismatch"))
-    dotprod = 0f0
-    for j=1:a.nsrc
-        dotprod += dot(vec(a.weights[j]), vec(b.weights[j]))
-    end
-    return dotprod
-end
-
-# norm
-function norm(a::judiWeights{avDT}, p::Real=2) where avDT
-    if p == Inf
-        return max([maximum(abs.(a.weights[i])) for i=1:a.nsrc]...)
-    end
-    x = 0.f0
-    for j=1:a.nsrc
-        x += sum(abs.(vec(a.weights[j])).^p)
-    end
-    return x^(1.f0/p)
-end
-
-#maximum
-maximum(a::judiWeights{avDT}) where avDT =   max([maximum(a.weights[i]) for i=1:a.nsrc]...)
-
-#minimum
-minimum(a::judiWeights{avDT}) where avDT =   min([minimum(a.weights[i]) for i=1:a.nsrc]...)
-
-# abs
-function abs(a::judiWeights{avDT}) where avDT
-    b = deepcopy(a)
-    for j=1:a.nsrc
-        b.weights[j] = abs.(a.weights[j])
-    end
-    return b
 end
 
 # Subsample weights container
@@ -204,110 +136,10 @@ Examples
 (3) Extract Jacobian for shots 10 and 20:
     Jsub = subsample(J,[10,20])
 """
-function subsample(a::judiWeights{avDT},srcnum) where avDT
-    srcnum > a.nsrc ? sub = 0 : sub = judiWeights(a.weights[srcnum];vDT=avDT)
-    return sub
-end
-
-length(x::judiWeights) = x.m
+subsample(a::judiWeights{avDT}, srcnum) where avDT = judiWeights(a.weights[srcnum];vDT=avDT)
 
 getindex(x::judiWeights, a::Integer) = subsample(x,a)
-
 setindex!(x::judiWeights, y, i) = x.weights[i][:] = y
-
-firstindex(x::judiWeights) = 1
-
-lastindex(x::judiWeights) = x.nsrc
-
-axes(x::judiWeights) = Base.OneTo(x.nsrc)
-
-ndims(x::judiWeights) = length(size(x))
-
-copy(x::judiWeights) = judiWeights{Float32}("Extended source weights", x.m, x.n, x.nsrc, x.weights)
-
-similar(x::judiWeights) = judiWeights{Float32}("Extended source weights", x.m, x.n, x.nsrc, 0f0 * x.weights)
-
-similar(x::judiWeights, element_type::DataType, dims::Union{AbstractUnitRange, Integer}...) = similar(x)
-
-isfinite(x::judiWeights) = all(all(isfinite.(x.weights[i])) for i=1:length(x.weights))
-
-iterate(S::judiWeights, state::Integer=1) = state > length(S.weights) ? nothing : (S.weights[state], state+1)
-
-####################################################################################################
-
-BroadcastStyle(::Type{judiWeights}) = Base.Broadcast.DefaultArrayStyle{1}()
-
-ndims(::Type{judiWeights{Float32}}) = 1
-
-### +/- ####
-broadcasted(::typeof(+), x::judiWeights, y::judiWeights) = x + y
-broadcasted(::typeof(-), x::judiWeights, y::judiWeights) = x - y
-
-broadcasted(::typeof(+), x::judiWeights, y::Number) = x + y
-broadcasted(::typeof(-), x::judiWeights, y::Number) = x - y
-
-broadcasted(::typeof(+), x::Number, y::judiWeights) = x + y
-broadcasted(::typeof(-), x::Number, y::judiWeights) = x - y
-
-### * ####
-function broadcasted(::typeof(*), x::judiWeights, y::judiWeights)
-    size(x) == size(y) || throw(judiWeightsException("dimension mismatch"))
-    z = deepcopy(x)
-    for j=1:length(x.weights)
-        z.weights[j] = x.weights[j] .* y.weights[j]
-    end
-    return z
-end
-
-function broadcasted(::typeof(*), x::judiWeights, y::Number)
-    z = deepcopy(x)
-    for j=1:length(x.weights)
-        z.weights[j] .*= y
-    end
-    return z
-end
-
-broadcasted(::typeof(*), x::Number, y::judiWeights) = broadcasted(*, y, x)
-
-### / ####
-function broadcasted(::typeof(/), x::judiWeights, y::judiWeights)
-    size(x) == size(y) || throw(judiWeightsException("dimension mismatch"))
-    z = deepcopy(x)
-    for j=1:length(x.weights)
-        z.weights[j] = x.weights[j] ./ y.weights[j]
-    end
-    return z
-end
-
-broadcasted(::typeof(/), x::judiWeights, y::Number) = broadcasted(*, x, 1/y)
-
-# Materialize for broadcasting
-function materialize!(x::judiWeights, y::judiWeights)
-    for j=1:length(x.weights)
-        x.weights[j] .= y.weights[j]
-    end
-    return x
-end
-
-function broadcast!(identity, x::judiWeights, y::judiWeights)
-    size(x) == size(y) || throw(judiWeightsException("dimension mismatch"))
-    copy!(x,y)
-end
-
-function broadcasted(identity, x::judiWeights)
-    return x
-end
-
-function copy!(x::judiWeights, y::judiWeights)
-    size(x) == size(y) || throw(judiWeightsException("dimension mismatch"))
-    for j=1:x.nsrc
-        x.weights[j] = y.weights[j]
-    end
-end
-
-function isapprox(x::judiWeights, y::judiWeights; rtol::Real=sqrt(eps()), atol::Real=0)
-    isapprox(x.weights, y.weights; rtol=rtol, atol=atol)
-end
 
 ############################################################
 

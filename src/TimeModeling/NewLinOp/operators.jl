@@ -8,6 +8,7 @@ display(P::judiPropagator{D, O}) where {D, O} = println("JUDI $(operator(P)) pro
 const adjoint_map = Dict(:forward => :adjoint, :adjoint => :forward, :born => :adjoint_born, :adjoint_born => :born)
 
 adjoint(s::Symbol) = adjoint_map[s]
+transpose(F::judiPropagator) = adjoint(F)
 
 # Base PDE type
 struct judiModeling{D, O} <: judiPropagator{D, O}
