@@ -22,6 +22,8 @@ mutable struct judiWeightsException <: Exception
 end
 
 
+# Bypass mismatch in naming and fields for backward compat
+Base.getproperty(obj::judiWeights, sym::Symbol) = sym == :weights ? getfield(obj, :data) : getfield(obj, sym)
 ############################################################
 
 ## outer constructors
@@ -54,29 +56,15 @@ function judiWeights(weights::Vector{Array{T, N}}; vDT::DataType=Float32) where 
 end
 
 ############################################################
-## overloaded Base functions
-
-conj(a::judiWeights{vDT}) where vDT = judiWeights{vDT}(a.nsrc, conj(a.weights))
-transpose(a::judiWeights{vDT}) where vDT = a
-adjoint(a::judiWeights{vDT}) where vDT = transpose(conj(a))
-
-jo_convert(::Type{T}, jw::judiWeights{T}, ::Bool) where {T} = jw
-jo_convert(::Type{T}, jw::judiWeights{vT}, B::Bool) where {T, vT} = 
-	judiWavefield{T}(jv.nsrc, jo_convert(T, jw.weights, B))
-
-##########################################################
-function as_cell(V::Vector{T}, n, nblock::Integer) where T
-    cells = Vector{Array{T, length(n)}}(undef, nblock)
-    for i=1:nblock
-        cells[i] = reshape(V[:, i], n)
-    end
-    cells
-end
+# JOLI conversion
+jo_convert(::Type{T}, jw::judiWeights{T}, ::Bool) where {T<:Real} = jw
+jo_convert(::Type{T}, jw::judiWeights{vT}, B::Bool) where {T<:Real, vT} = judiWavefield{T}(jv.nsrc, jo_convert.(T, jw.weights, B))
+zero(::Type{T}, v::judiWeights{vT}) where {T, vT} = judiWeights{T}(v.nsrc, v.dt, Vector{Array{T, ndims(v.data[1])}}(undef, v.nsrc))
 
 # *(joLinearFunction, judiWeights)
 function *(A::joLinearFunction{ADDT,ARDT},v::judiWeights{avDT}) where {ADDT, ARDT, avDT}
     n = size(v.weights[1])
-    V = as_cell(A * vcat(vec.(v.weights)...), n, v.nsrc)
+    V = as_cell(A * vec(v), n, v.nsrc)
     return judiWeights{avDT}(v.nsrc, V)
 end
 
@@ -137,9 +125,6 @@ Examples
     Jsub = subsample(J,[10,20])
 """
 subsample(a::judiWeights{avDT}, srcnum) where avDT = judiWeights(a.weights[srcnum];vDT=avDT)
-
-getindex(x::judiWeights, a::Integer) = subsample(x,a)
-setindex!(x::judiWeights, y, i) = x.weights[i][:] = y
 
 ############################################################
 

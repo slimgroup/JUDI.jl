@@ -690,6 +690,18 @@ function reshape(x::Array{Float32, 1}, geometry::Geometry)
     return reshape(x, nt, nrec, nsrc)
 end
 
+"""
+    reshape(V::Vector{T}, n::Tuple, nblock::Integer)
+
+Reshapes input vector into a `Vector{Array{T, N}}` of length `nblock` with each subarray of size `n`
+"""
+function reshape(V::Vector{T}, n::Dims, nblock::Integer) where T
+    cells = Vector{Array{T, length(n)}}(undef, nblock)
+    for i=1:nblock
+        cells[i] = reshape(V[:, i], n)
+    end
+    cells
+end
 
 """
     transducer(q, d, r, theta)

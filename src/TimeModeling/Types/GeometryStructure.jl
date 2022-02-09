@@ -308,13 +308,14 @@ Geometry(geometry::GeometryIC) = geometry
 Geometry(::Nothing) = nothing
 
 ###########################################################################################################################################
+getindex(g::Geometry, I) = subsample(g, I)
 
 # Subsample in-core geometry structure
-function subsample(geometry::GeometryIC,srcnum)
-    if length(srcnum)==1
+function subsample(geometry::GeometryIC, srcnum)
+    if length(srcnum) == 1
         srcnum = srcnum[1]
         geometry = Geometry(geometry.xloc[srcnum], geometry.yloc[srcnum], geometry.zloc[srcnum];
-                            dt=geometry.dt[srcnum],t=geometry.t[srcnum],nsrc=1)
+                            dt=geometry.dt[srcnum],t=geometry.t[srcnum], nsrc=1)
     else
         geometry = Geometry(geometry.xloc[srcnum], geometry.yloc[srcnum], geometry.zloc[srcnum],
                             geometry.dt[srcnum], geometry.nt[srcnum], geometry.t[srcnum])
@@ -336,6 +337,7 @@ function compareGeometry(geometry_A::Geometry, geometry_B::Geometry)
 end
 
 isequal(geometry_A::Geometry, geometry_B::Geometry) = compareGeometry(geometry_A, geometry_B)
+isapprox(geometry_A::Geometry, geometry_B::Geometry; kw...) = compareGeometry(geometry_A, geometry_B)
 
 function compareGeometry(geometry_A::GeometryOOC, geometry_B::GeometryOOC)
     check = true

@@ -11,11 +11,12 @@ include("Types/OptionsStructure.jl")
 
 #############################################################################
 # Abstract vectors
+include("Types/abstract.jl")
+include("Types/broadcasting.jl")
 include("Types/judiWavefield.jl") # dense RHS (wavefield)
 include("Types/judiWeights.jl")    # Extended source weight vector
 include("Types/judiVector.jl")    # Julia data container
 include("Types/judiComposites.jl")    # A composite type to work with hcat/vcat of judi types
-include("Types/typeutils.jl") # dense RHS (wavefield)
 
 #############################################################################
 # Utils
@@ -33,21 +34,11 @@ include("Modeling/distributed.jl") # Modeling functions utilities
 
 #############################################################################
 # Linear operators
-# include("LinearOperators/abstract_types.jl") # Base abstract type
-# include("LinearOperators/judiRHS.jl")   # sparse RHS (point source(s))
-# include("LinearOperators/judiExtendedSource.jl")   # sparse RHS (point source(s))
-# include("LinearOperators/judiModeling.jl")  # nonlinear modeling operator F (no projection operators)
-# include("LinearOperators/judiProjection.jl")    # source/receiver projection operator
-# include("LinearOperators/judiLRWF.jl")   # low rank wavefield (point source(s))
-# include("LinearOperators/judiPDEfull.jl")   # modeling operator with source and receiver projection: P*F*P'
-# include("LinearOperators/judiPDEextended.jl")   # modeling operator for extended sources
-# include("LinearOperators/judiPDE.jl")   # modeling operator with lhs projection only: P*F
-# include("LinearOperators/judiJacobian.jl")  # linearized modeling operator J
-include("NewLinOp/basics.jl")
-include("NewLinOp/lazy.jl")
-include("NewLinOp/remote.jl")
-include("NewLinOp/operators.jl")
-include("NewLinOp/propagation.jl")
+include("LinearOperators/basics.jl")
+include("LinearOperators/lazy.jl")
+include("LinearOperators/remote.jl")
+include("LinearOperators/operators.jl")
+include("LinearOperators/propagation.jl")
 
 #############################################################################
 # Preconditioners and optimization

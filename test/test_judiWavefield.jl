@@ -17,23 +17,19 @@ ftol = 1f-6
 ################################################# test constructors ####################################################
 
 @testset "judiWavefield Unit Tests with $(nsrc) sources" for nsrc=[1, 2]
-
-    # set up judiWeights
-    info = Info(nx*ny, nsrc, nt)
-
     # Extended source weights
     wf = Array{Array{Float32, 3}, 1}(undef, nsrc)
     for j=1:nsrc
         wf[j] = randn(Float32, nt, ny, ny)
     end
-    w = judiWavefield(info, dt, wf)
+    w = judiWavefield(nsrc, dt, wf)
     w1 = similar(w) .+ 1f0
 
     @test isequal(length(w.data), nsrc)
-    @test isequal(length(w.data), info.nsrc)
-    @test isequal(w.info.nsrc, nsrc)
+    @test isequal(length(w.data), nsrc)
+    @test isequal(w.nsrc, nsrc)
     @test isequal(typeof(w.data), Array{Array{Float32, 3}, 1})
-    @test isequal(size(w), (nx*ny*nt*nsrc, 1))
+    @test isequal(size(w), (nsrc, 1))
     @test isfinite(w)
 
 #################################################### test operations ###################################################
@@ -54,7 +50,7 @@ ftol = 1f-6
     # vcat
     w_vcat = [w; w]
     @test isequal(length(w_vcat), 2*length(w))
-    @test isequal(w_vcat.info.nsrc, 2*nsrc)
+    @test isequal(w_vcat.nsrc, 2*nsrc)
     @test isequal(length(w_vcat.data), 2*nsrc)
 
     # dot, norm, abs
@@ -62,15 +58,15 @@ ftol = 1f-6
     @test isapprox(abs.(w.data[1]), abs(w).data[1]) 
 
     # Test the norm
-    d_ones = judiWavefield(info, dt, 2f0 .* ones(Float32, nt, nx, ny))
+    d_ones = judiWavefield(nsrc, dt, 2f0 .* ones(Float32, nt, nx, ny))
     @test isapprox(norm(d_ones, 2), sqrt(dt*nt*nx*ny*4*nsrc))
     @test isapprox(norm(d_ones, 1), dt*nt*nx*ny*2*nsrc)
     @test isapprox(norm(d_ones, Inf), 2)
 
     # vector space axioms
-    u = judiWavefield(info, dt, randn(Float32, nt, nx, ny))
-    v = judiWavefield(info, dt, randn(Float32, nt, nx, ny))
-    w = judiWavefield(info, dt, randn(Float32, nt, nx, ny))
+    u = judiWavefield(nsrc, dt, randn(Float32, nt, nx, ny))
+    v = judiWavefield(nsrc, dt, randn(Float32, nt, nx, ny))
+    w = judiWavefield(nsrc, dt, randn(Float32, nt, nx, ny))
     a = .5f0 + rand(Float32)
     b = .5f0 + rand(Float32)
 

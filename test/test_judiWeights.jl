@@ -23,21 +23,21 @@ ftol = 1f-6
 
     @test isequal(w.nsrc, nsrc)
     @test isequal(typeof(w.weights), Array{Array{Float32,2},1})
-    @test isequal(size(w), (weight_size_x*weight_size_y*nsrc, 1))
+    @test isequal(size(w), (nsrc,))
     @test isfinite(w)
     
     w_cell = judiWeights(convertToCell([randn(Float32,weight_size_x,weight_size_y) for i = 1:nsrc]))
 
     @test isequal(w_cell.nsrc, nsrc)
     @test isequal(typeof(w_cell.weights), Array{Array{Float32, 2},1})
-    @test isequal(size(w_cell), (weight_size_x*weight_size_y*nsrc, 1))
+    @test isequal(size(w_cell), (nsrc,))
     @test isfinite(w_cell)
     
     w_multi = judiWeights(randn(Float64,weight_size_x,weight_size_y); nsrc=3)
 
     @test isequal(w_multi.nsrc, 3)
     @test isequal(typeof(w_multi.weights), Array{Array{Float32, 2},1})
-    @test isequal(size(w_multi), (weight_size_x*weight_size_y*3, 1))
+    @test isequal(size(w_multi), (3,))
     @test isfinite(w_multi)
     @test isapprox(w_multi[1],w_multi[2])
     @test isapprox(w_multi[2],w_multi[3])
@@ -46,14 +46,14 @@ ftol = 1f-6
 
     @test isequal(w_type.nsrc, nsrc)
     @test isequal(typeof(w_type.weights), Array{Array{Float64,2},1})
-    @test isequal(size(w_type), (weight_size_x*weight_size_y*nsrc, 1))
+    @test isequal(size(w_type), (nsrc, 1))
     @test isfinite(w_type)
 
-    I2 = ones(Float32, 1, size(w, 1))
+    I2 = ones(Float32, 1, nsrc*weight_size_x*weight_size_y)
     w2 = I2*w
     @test isapprox(w2[1], sum(sum(w.weights)))
 
-    I2 = joOnes(1, size(w, 1); DDT=Float32, RDT=Float32)
+    I2 = joOnes(1, nsrc*weight_size_x*weight_size_y; DDT=Float32, RDT=Float32)
     w2 = I2*w
     @test isapprox(w2[1], sum(sum(w.weights)))
 

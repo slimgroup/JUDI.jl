@@ -142,6 +142,7 @@ setindex!(A::PhysicalParameter, v, i::Int) = (A.data[i] = v)
 # Constructiors by copy
 similar(x::PhysicalParameter{vDT}) where {vDT} = vDT(0) .* x
 copy(x::PhysicalParameter{vDT}) where {vDT} = PhysicalParameter{vDT}(x.n, x.d, x.o, x.data)
+unsafe_convert(::Type{Ptr{T}}, p::PhysicalParameter{T}) where {T} = unsafe_convert(Ptr{T}, p.data)
 
 # Equality
 isequal(A::PhysicalParameter, B::PhysicalParameter) = (A.data == B.data && A.o == B.o && A.d == B.d)
@@ -181,19 +182,19 @@ BroadcastStyle(::Type{<:PhysicalParameter}) = Broadcast.ArrayStyle{PhysicalParam
 
 function similar(bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{PhysicalParameter}}, ::Type{ElType}) where ElType
     # Scan the inputs for the ArrayAndChar:
-    A = find_aac(bc)
+    A = find_pm(bc)
     # Use the char field of A to create the output
     ElType == Bool ? Ad = similar(Array{ElType}, axes(A.data)) : Ad = similar(A.data)
     PhysicalParameter(Ad, A.d, A.o)
 end
 
-"`A = find_aac(As)` returns the first PhysicalParameter among the arguments."
-find_aac(bc::Base.Broadcast.Broadcasted) = find_aac(bc.args)
-find_aac(args::Tuple) = find_aac(find_aac(args[1]), Base.tail(args))
-find_aac(x) = x
-find_aac(::Tuple{}) = nothing
-find_aac(a::PhysicalParameter, rest) = a
-find_aac(::Any, rest) = find_aac(rest)
+"`A = find_pm(As)` returns the first PhysicalParameter among the arguments."
+find_pm(bc::Base.Broadcast.Broadcasted) = find_pm(bc.args)
+find_pm(args::Tuple) = find_pm(find_pm(args[1]), Base.tail(args))
+find_pm(x) = x
+find_pm(::Tuple{}) = nothing
+find_pm(a::PhysicalParameter, rest) = a
+find_pm(::Any, rest) = find_pm(rest)
 
 function broadcasted(f::Function, A::AbstractArray{vDT, N}, p::PhysicalParameter{RDT}) where {vDT, RDT, N}
     if size(A) != p.n

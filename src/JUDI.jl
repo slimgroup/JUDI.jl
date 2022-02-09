@@ -18,7 +18,7 @@ using JOLI, SegyIO
 
 # Import Base functions to dispatch on JUDI types
 import Base.*, Base./, Base.+, Base.-
-import Base.copy!, Base.copy, Base.copyto!
+import Base.copy!, Base.copy, Base.copyto!, Base.deepcopy
 import Base.sum, Base.ndims, Base.reshape, Base.fill!, Base.axes, Base.dotview
 import Base.eltype, Base.length, Base.size, Base.iterate, Base.show, Base.display, Base.showarg
 import Base.maximum, Base.minimum, Base.push!
@@ -27,7 +27,7 @@ import Base.getindex, Base.setindex!, Base.firstindex, Base.lastindex
 import Base.similar, Base.isapprox, Base.isequal
 import Base.materialize!, Base.materialize
 import Base.promote_shape, Base.diff, Base.cumsum, Base.cumsum!
-import Base.getproperty
+import Base.getproperty, Base.unsafe_convert
 
 # Import Linear Lagebra functions to dispatch on JUDI types
 import LinearAlgebra.transpose, LinearAlgebra.conj, LinearAlgebra.vcat, LinearAlgebra.adjoint

@@ -17,13 +17,12 @@ ftol = 1e-6
 @testset "judiVector Unit Tests with $(nsrc) sources" for nsrc=[1, 2]
 
     # set up judiVector from array
-    info = example_info(nsrc=nsrc)
-    dsize = (nsrc*nrec*ns, 1)
+    dsize = (nsrc,)
     rec_geometry = example_rec_geometry(nsrc=nsrc, nrec=nrec)
     data = randn(Float32, ns, nrec)
     d_obs = judiVector(rec_geometry, data)
     @test typeof(d_obs) == judiVector{Float32, Array{Float32, 2}}
-    @test isequal(process_input_data(d_obs, rec_geometry, info), d_obs.data)
+    @test isequal(process_input_data(d_obs, rec_geometry), d_obs.data)
 
     @test isequal(d_obs.nsrc, nsrc)
     @test isequal(typeof(d_obs.data), Array{Array{Float32, 2}, 1})
@@ -48,7 +47,7 @@ ftol = 1e-6
     # contructor for in-core data container
     block = segy_read(datapath*"unit_test_shot_records_$(nsrc).segy"; warn_user=false)
     d_block = judiVector(block; segy_depth_key="RecGroupElevation")
-    dsize = (prod(size(block.data)), 1)
+    dsize = (nsrc,)
 
     @test isequal(d_block.nsrc, nsrc)
     @test isequal(typeof(d_block.data), Array{Array{Float32, 2}, 1})

@@ -12,7 +12,7 @@ export write_shot_record, get_data, convert_to_array, rebuild_jv
 ############################################################
 
 # structure for seismic data as an abstract vector
-mutable struct judiVector{T, AT} <: judiMultiSourceVector{AT}
+mutable struct judiVector{T, AT} <: judiMultiSourceVector{T}
     nsrc::Integer
     geometry::Geometry
     data::Vector{AT}
@@ -80,7 +80,7 @@ function judiVector(geometry::Geometry, data::Array{T, N}) where {T, N}
     T == Float32 || (data = tof32(data))
     N < 3 || throw(judiVectorException("Only 1D (trace) and 2D (record) input data supported"))
     nsrc = get_nsrc(geometry)
-    dataCell = Array{Array{T, N}, 1}(undef, nsrc)
+    dataCell = Vector{Array{T, N}}(undef, nsrc)
     for j=1:nsrc
         dataCell[j] = deepcopy(data)
     end
@@ -93,17 +93,7 @@ function judiVector(geometry::Geometry, data::Vector{Array{T, N}}) where {T, N}
     nsrcd = length(data)
     nsrcg = get_nsrc(geometry)
     nsrcd == nsrcg || throw(judiVectorException("Number of sources in geometry and data don't match $(nsrcd) != $(nsrcg)"))
-    return judiVector{T, Array{T, N}}(nsrc, geometry, data)
-end
-
-
-############################################################
-# constructors from SEGY files or out-of-core containers
-
-# contructor for in-core data container
-function judiVector(data::SegyIO.SeisBlock; segy_depth_key="RecGroupElevation")
-    geometry = Geometry(data; key="receiver", segy_depth_key=segy_depth_key)
-    return judiVector(geometry, data)
+    return judiVector{T, Array{T, N}}(nsrcd, geometry, data)
 end
 
 # contructor for in-core data container and given geometry
@@ -120,13 +110,6 @@ function judiVector(geometry::Geometry, data::SegyIO.SeisBlock)
     return judiVector{Float32, Array{Float32, 2}}(nsrc, geometry, dataCell)
 end
 
-# contructor for out-of-core data container from single container
-function judiVector(data::SegyIO.SeisCon; segy_depth_key="RecGroupElevation")
-    # extract geometry from data container
-    geometry = Geometry(data; key="receiver", segy_depth_key=segy_depth_key)
-    return judiVector(geometry, data)
-end
-
 # contructor for single out-of-core data container and given geometry
 function judiVector(geometry::Geometry, data::SegyIO.SeisCon)
     # length of data vector
@@ -139,56 +122,27 @@ function judiVector(geometry::Geometry, data::SegyIO.SeisCon)
     return judiVector{Float32, SegyIO.SeisCon}(nsrc, geometry,dataCell)
 end
 
-# contructor for out-of-core data container from cell array of containers
-function judiVector(data::Vector{SegyIO.SeisCon}; segy_depth_key="RecGroupElevation")
-    # extract geometry from data container
-    geometry = Geometry(data; key="receiver", segy_depth_key=segy_depth_key)
-    return judiVector(geometry, data)
-end
-
-# contructor for out-of-core data container from cell array of containers and given geometry
-function judiVector(geometry::Geometry, data::Vector{SegyIO.SeisCon})
-    # length of data vector
-    nsrc = length(data)
-    return judiVector{Float32, SegyIO.SeisCon}(nsrc, geometry, data)
-end
+judiVector(data::SegyIO.SeisBlock; segy_depth_key="RecGroupElevation") = judiVector(Geometry(data; key="receiver", segy_depth_key=segy_depth_key), data)
+judiVector(data::SegyIO.SeisCon; segy_depth_key="RecGroupElevation")= judiVector(Geometry(data; key="receiver", segy_depth_key=segy_depth_key), data)
+judiVector(data::Vector{SegyIO.SeisCon}; segy_depth_key="RecGroupElevation") = judiVector(Geometry(data; key="receiver", segy_depth_key=segy_depth_key), data)
+judiVector(geometry::Geometry, data::Vector{SegyIO.SeisCon}) =  judiVector{Float32, SegyIO.SeisCon}(length(data), geometry, data)
 
 ############################################################
 ## overloaded multi_source functions
 time_sampling(jv::judiVector) = jv.geometry.dt
-############################################################
-## overloaded Base functions
-conj(a::judiVector{T, AT}) where {T, AT} = judiVector{T, AT}(a.nsrc, a.geometry, conj(dataCell))
 
-jo_convert(::Type{T}, jv::judiVector{T, Array{T, N}}, ::Bool) where {T, N} = jv
-jo_convert(::Type{T}, jv::judiVector{vT, Array{vT, N}}, B::Bool) where {T, vT, N} = judiVector{T, Array{T, N}}(jv.nsrc, jv.geometry, jo_convert(T, jv.data, B))
+############################################################
+# JOLI conversion
+jo_convert(::Type{T}, jv::judiVector{T, Array{T, N}}, ::Bool) where {T<:Real, N} = jv
+jo_convert(::Type{T}, jv::judiVector{vT, Array{vT, N}}, B::Bool) where {T<:Real, vT, N} = judiVector{T, Array{T, N}}(jv.nsrc, jv.geometry, jo_convert.(T, jv.data, B))
+zero(::Type{T}, v::judiVector{vT, AT}) where {T, vT, AT<:Array} = judiVector{T, AT}(v.nsrc, v.geometry, Vector{Array{T, 2}}(undef, v.nsrc))
+zero(::Type{T}, v::judiVector{vT, SegyIO.SeisCon}) where {T, vT} = judiVector{T, SegyIO.SeisCon}(v.nsrc, v.geometry, Vector(SegyIO.SeCison)(undef, v.nsrc))
+
 ##########################################################
 
 # Overload needed base function for SegyIO objects
 vec(x::SegyIO.SeisCon) = vec(x[1].data)
 abs(x::SegyIO.IBMFloat32) = abs(Float32(x))
-
-##########################################################
-convert(::Type{Matrix{T}}, x::SegyIO.SeisCon) where T = convert(Matrix{T}, x[1].data)
-convert(::Type{Matrix{T}}, x::Nothing) where T = nothing
-
-##########################################################
-
-for opo=[:+, :-, :*, :/]
-    @eval begin
-        $opo(a::judiVector{avDT, SeisCon}, ::T) where {avDT, T<:Real} = throw(DomainError(a, "Addition for OOC judiVectors not supported."))
-        $opo(::T, b::judiVector{bvDT, SeisCon}) where {bvDT, T<:Real} = throw(DomainError(b, "Addition for OOC judiVectors not supported."))
-        $opo(::judiVector{avDT, SeisCon}, b::judiVector{bvDT, SeisCon}) where {avDT, bvDT} = throw(DomainError(b, "Addition for OOC judiVectors not supported."))
-    end
-end
-
-for ipop=[:lmul!, :rmul!, :rdiv!, :ldiv!]
-    @eval begin
-        $ipop(a::judiVector{avDT, SeisCon}, ::T) where {avDT, T<:Real} = throw(DomainError(a, "Addition for OOC judiVectors not supported."))
-        $ipop(::T, b::judiVector{bvDT, SeisCon}) where {bvDT, T<:Real} = throw(DomainError(b, "Addition for OOC judiVectors not supported."))
-        $ipop(::judiVector{avDT, SeisCon}, b::judiVector{bvDT, SeisCon}) where {avDT, bvDT} = throw(DomainError(b, "Addition for OOC judiVectors not supported."))
-    end
-end
 
 # push!
 function push!(a::judiVector{T, mT}, b::judiVector{T, mT}) where {T, mT}
@@ -196,39 +150,6 @@ function push!(a::judiVector{T, mT}, b::judiVector{T, mT}) where {T, mT}
     append!(a.data, b.data)
     a.nsrc += b.nsrc
     push!(a.geometry, b.geometry)
-end
-
-# dot product
-function dot(a::judiVector{avDT, AT}, b::judiVector{bvDT, AT}) where {avDT, bvDT, AT}
-# Dot product for data containers
-    size(a) == size(b) || throw(judiVectorException("Size mismatch: a:$(size(a)) b:$(size(b))"))
-    compareGeometry(a.geometry, b.geometry) == 1 || throw(judiVectorException("Geometry mismatch"))
-    dotprod = 0f0
-    for j=1:a.nsrc
-        dotprod += a.geometry.dt[j] * dot(vec(a.data[j]),vec(b.data[j]))
-    end
-    return dotprod
-end
-
-# norm
-function norm(a::judiVector{avDT, AT}, p::Real=2) where {avDT, AT}
-    if p == Inf
-        return max([maximum(abs.(a.data[i])) for i=1:a.nsrc]...)
-    end
-    x = 0.f0
-    for j=1:a.nsrc
-        x += a.geometry.dt[j] * sum(abs.(vec(a.data[j])).^p)
-    end
-    return x^(1.f0/p)
-end
-
-# abs
-function abs(a::judiVector{avDT, AT}) where {avDT, AT}
-    b = deepcopy(a)
-    for j=1:a.nsrc
-        b.data[j] = abs.(a.data[j])
-    end
-    return b
 end
 
 # Subsample data container
@@ -370,10 +291,6 @@ function judiTimeInterpolation(geometry::Geometry, dt_coarse, dt_fine)
     return I
 end
 
-####################################################################################################
-# Indexing
-getindex(jv::judiVector{T, AT}, i::Integer) where {T, AT} =  judiVector{T, AT}(1, jv.geometry[i], jv.data[i])
-setindex!(jv::judiVector{T, AT}, v::AT, i::Integer) where {T, AT} = begin jv.data[i] .= v; nothing end;
 ####################################################################################################
 
 # Integration/differentiation of shot records
