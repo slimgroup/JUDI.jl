@@ -64,6 +64,14 @@ time_sampling(jv::judiWavefield) = (jv.dt for i=1:jv.nsrc)
 jo_convert(::Type{T}, jw::judiWavefield{T}, ::Bool) where {T<:Number} = jw
 jo_convert(::Type{T}, jw::judiWavefield{vT}, B::Bool) where {T<:Number, vT} = judiWavefield{T}(jw.nsrc, jv.dt, jo_convert.(T, jw.data, B))
 zero(::Type{T}, v::judiWavefield{vT}) where {T, vT} = judiWavefield{T}(v.nsrc, v.dt, Vector{Array{T, ndims(v.data[1])}}(undef, v.nsrc))
+
+function copy!(jv::judiWavefield, jv2::judiWavefield)
+    v.data .= jv2.data
+    jv.dt = jv2.dt
+    jv
+end
+
+copyto!(jv::judiWavefield, jv2::judiWavefield) = copy!(jv, jv2)
 ####################################################################
 
 function push!(a::judiWavefield{T}, b::judiWavefield{T}) where T

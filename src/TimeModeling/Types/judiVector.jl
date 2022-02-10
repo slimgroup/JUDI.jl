@@ -138,6 +138,14 @@ jo_convert(::Type{T}, jv::judiVector{vT, Array{vT, N}}, B::Bool) where {T<:Real,
 zero(::Type{T}, v::judiVector{vT, AT}) where {T, vT, AT<:Array} = judiVector{T, AT}(v.nsrc, deepcopy(v.geometry), Vector{Array{T, 2}}(undef, v.nsrc))
 zero(::Type{T}, v::judiVector{vT, SegyIO.SeisCon}) where {T, vT} = judiVector{T, SegyIO.SeisCon}(v.nsrc, deepcopy(v.geometry), Vector(SegyIO.SeCison)(undef, v.nsrc))
 
+function copy!(jv::judiVector, jv2::judiVector)
+    jv.geometry = deepcopy(jv2.geometry)
+    jv.data .= jv2.data
+    jv
+end
+
+copyto!(jv::judiVector, jv2::judiVector) = copy!(jv, jv2)
+
 ##########################################################
 
 # Overload needed base function for SegyIO objects

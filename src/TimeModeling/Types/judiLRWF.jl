@@ -12,58 +12,52 @@ export judiLRWF
 
 # Type for linear operator representing  Pr*A(m)^-1*Ps,
 # i.e. it includes source and receiver projections
-struct judiLRWF{D<:Number, R<:Number} <: judiAbstractLinearOperator{D,R}
-    m::Integer
-    n::Integer
-    info::Info
-    wavelet
+struct judiLRWF{T} <: judiMultiSourceVector{T}
+    nsrc::Integer
+    data
 end
+
+# Bypass mismatch in naming and fields for backward compat
+Base.getproperty(obj::judiWeights, sym::Symbol) = sym == :wavelet ? getfield(obj, :data) : getfield(obj, sym)
 
 ############################################################
 ## Constructor
 """
-    judiLRWF(info, geometry)
+    judiLRWF(nsrc, data)
 Low-rank wavefield operator which injects a wavelet q at every point of the subsurface. \\
 `info` is an `Info` structure and `wavelet` is a cell array containing the wavelet(s).
 Examples
 ========
 `F` is a modeling operator of type `judiModeling` and `w` is a weighting matrix of type `judiWeights`:
     Pr = judiProjection(info, rec_geometry)
-    Pw = judiLRWF(info, q.data)
+    Pw = judiLRWF(nsrc, q.data)
     dobs = Pr*F*Pw'*w
     dw = Pw*F'*Pr'*dobs
 """
-function judiLRWF(info::Info, data::Array{T, N}; DDT::DataType=Float32, RDT::DataType=DDT) where {T, N}
-    (DDT == Float32 && RDT == Float32 && T == Float32) || throw(judiLinearException("Domain and range types not supported"))
-    m = info.n * info.nsrc
-    n = info.n * sum(info.nt)
-    wavelet = Array{Array{DDT, N}, 1}(undef, info.nsrc)
-    for j=1:info.nsrc
+function judiLRWF(nsrc::Integer, data::Array{T, N}) where {T, N}
+    T == Float32 || throw(judiLinearException("Domain and range types not supported"))
+    wavelet = Vector{Array{T, N}}(undef, nsrc)
+    for j=1:nsrc
         wavelet[j] = data
     end
-    return judiLRWF{Float32,Float32}(m,n,info,wavelet)
+    return judiLRWF{Float32}(nsrc, wavelet)
 end
 
 
-function judiLRWF(info::Info, wavelet::Array{Array{T, N}, 1}; DDT::DataType=Float32, RDT::DataType=DDT) where {T, N}
-    (DDT == Float32 && RDT == Float32 && T == Float32) || throw(judiLinearException("Domain and range types not supported"))
-    m = info.n * info.nsrc
-    n = info.n * sum(info.nt)
-    return judiLRWF{Float32,Float32}(m,n,info,wavelet)
+function judiLRWF(nsrc::Integer, wavelet::Vector{Array{T, N}}) where {T, N}
+    T == Float32 || throw(judiLinearException("Domain and range types not supported"))
+    return judiLRWF{Float32}(nsrc, wavelet)
 end
 
+judiLRWF(wavelet::Vector{Array{T, N}}) where {T, N}) = judiLRWF(length(wavelet), wavelet)
 ############################################################
-judi_adjoint(A::judiLRWF{ADDT,ARDT}, v::judiWeights{vDT}) where {ADDT,ARDT,vDT} = judiExtendedSource(A.info,A.wavelet,v.weights)
-judi_adjoint(A::judiLRWF{ADDT,ARDT}, v::AbstractArray{vDT, N}) where {ADDT,ARDT,vDT, N} = judiExtendedSource(A.info,A.wavelet, v)
-*(A::jAdjoint{<:judiLRWF, D, R}, v::Vector{D}) where {D, R} = judiExtendedSource(A.info, A.wavelet, v)
+# JOLI conversion
+jo_convert(::Type{T}, jv::judiLRWF{T}, ::Bool) where {T<:Real} = jv
+jo_convert(::Type{T}, jv::judiLRWF{vT}, B::Bool) where {T<:Real, vT} = judiLRWF{T}(jv.nsrc, jo_convert.(T, jv.data, B))
+zero(::Type{T}, v::judiLRWF{vT}) where {T, vT} = judiLRWF{T}(v.nsrc, Vector{Array{T, ndims(v.data[1])}}(undef, v.nsrc))
 
 ############################################################
 ## Additional overloaded functions
 
 # Subsample Modeling operator
-function subsample(P::judiLRWF{ADDT,ARDT}, srcnum) where {ADDT,ARDT}
-    info = Info(P.info.n, length(srcnum), P.info.nt[srcnum])
-    return judiLRWF(info, P.wavelet[srcnum];DDT=ADDT,RDT=ARDT)
-end
-
-getindex(P::judiLRWF,a) = subsample(P,a)
+subsample(P::judiLRWF{T}, srcnum) where {T} = judiLRWF(P.data[srcnum])

@@ -105,7 +105,6 @@ ftol = 1e-6
     @test isequal(rec_geometry, d_cont.geometry)
     @test isequal(size(d_cont), dsize)
 
-
 #################################################### test operations ###################################################
 
     # conj, transpose, adjoint
@@ -154,7 +153,6 @@ ftol = 1e-6
     @test isapprox(norm(d_cont), sqrt(dot(d_cont, d_cont)))
     @test isapprox(abs.(d_block.data[1]), abs(d_block).data[1]) # need to add iterate for JUDI vector
 
-
     # vector space axioms
     u = judiVector(rec_geometry, randn(Float32, ns, nrec))
     v = judiVector(rec_geometry, randn(Float32, ns, nrec))
@@ -165,7 +163,6 @@ ftol = 1e-6
     @test isapprox(u + (v + w), (u + v) + w; rtol=ftol)
     @test isapprox(u + v, v + u; rtol=ftol)
     @test isapprox(-u, -1f0 * u; rtol=ftol)
-    #@test isapprox(u, u + 0; rtol=ftol)
     @test iszero(norm(u + u*(-1)))
     @test isapprox(a .* (b .* u), (a * b) .* u; rtol=ftol)
     @test isapprox(u, u .* 1; rtol=ftol)
@@ -291,7 +288,7 @@ ftol = 1e-6
     v = judiVector(rec_geometry, randn(Float32, ns, nrec))
     u_scale = deepcopy(u)
     v_scale = deepcopy(v)
-    
+
     u_scale .*= 2f0
     @test isapprox(u_scale, 2f0 * u; rtol=ftol)
     v_scale .+= 2f0
@@ -319,15 +316,6 @@ ftol = 1e-6
     @test isapprox(v, v_id)
     @test isapprox(v, u_id)
 
-    # broadcast scaling + addition
-    u = judiVector(rec_geometry, randn(Float32, ns, nrec))
-    v = judiVector(rec_geometry, randn(Float32, ns, nrec))
-    w = judiVector(rec_geometry, randn(Float32, ns, nrec))
-    u_add = deepcopy(u)
-    v_add = deepcopy(v)
-    w_add = deepcopy(w)
-    a = randn(Float32, 1)[1]
-
     # in-place overwrite
     u = judiVector(rec_geometry, randn(Float32, ns, nrec))
     v = judiVector(rec_geometry, randn(Float32, ns, nrec))
@@ -343,7 +331,6 @@ ftol = 1e-6
 
     @test isequal(d_zero.geometry, d_block.geometry)
     @test isequal(size(d_zero), size(d_block))
-    @test iszero(d_zero.data[1])
 
     # retrieve out-of-core data
     d_get = get_data(d_cont)
@@ -354,11 +341,9 @@ ftol = 1e-6
     @test isapprox(w1, d_obs)
     w1 = similar(d_obs)
     @test w1.nsrc == d_obs.nsrc
-    @test isapprox(w1.data, 0f0 .* d_obs.data)
     w1 .= d_obs
     @test w1.nsrc == d_obs.nsrc
     @test isapprox(w1.data, d_obs.data)
-
 
     # Test transducer
     q = judiVector(Geometry(0f0, 0f0, 0f0; dt=2, t=1000), randn(Float32, 251))

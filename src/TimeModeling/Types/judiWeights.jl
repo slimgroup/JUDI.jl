@@ -21,9 +21,9 @@ mutable struct judiWeightsException <: Exception
     msg :: String
 end
 
-
 # Bypass mismatch in naming and fields for backward compat
 Base.getproperty(obj::judiWeights, sym::Symbol) = sym == :weights ? getfield(obj, :data) : getfield(obj, sym)
+
 ############################################################
 
 ## outer constructors
@@ -60,6 +60,12 @@ end
 jo_convert(::Type{T}, jw::judiWeights{T}, ::Bool) where {T<:Real} = jw
 jo_convert(::Type{T}, jw::judiWeights{vT}, B::Bool) where {T<:Real, vT} = judiWavefield{T}(jv.nsrc, jo_convert.(T, jw.weights, B))
 zero(::Type{T}, v::judiWeights{vT}) where {T, vT} = judiWeights{T}(v.nsrc, v.dt, Vector{Array{T, ndims(v.data[1])}}(undef, v.nsrc))
+
+function copy!(jv::judiWeights, jv2::judiWeights)
+    jv.data .= jv2.data
+    jv
+end
+copyto!(jv::judiWeights, jv2::judiWeights) = copy!(jv, jv2)
 
 # *(joLinearFunction, judiWeights)
 function *(A::joLinearFunction{ADDT,ARDT},v::judiWeights{avDT}) where {ADDT, ARDT, avDT}

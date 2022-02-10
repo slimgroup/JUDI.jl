@@ -9,7 +9,7 @@ IndexStyle(::Type{<:judiMultiSourceVector}) = IndexLinear()
 
 copyto!(ms::judiMultiSourceVector, a::Vector{Array{T, N}}) where {T, N} = copyto!(ms.data, a)
 copyto!(a::Vector{Array{T, N}}, ms::judiMultiSourceVector) where {T, N} = copyto!(a, ms.data)
-copy(ms::judiMultiSourceVector{T}) where {T} = begin y = zero(T, ms); copyto!(y.data, ms.data); y end
+copy(ms::judiMultiSourceVector{T}) where {T} = begin y = zero(T, ms); y.data = deepcopy(ms.data); y end
 deepcopy(ms::judiMultiSourceVector{T}) where {T} = copy(ms)
 
 setindex!(ms::judiMultiSourceVector{T}, v::Array{T, N}, i::Integer) where {T, N} = begin ms.data[i] = v; nothing end
