@@ -29,7 +29,7 @@ ftol = 1f-6
     @test isequal(length(w.data), nsrc)
     @test isequal(w.nsrc, nsrc)
     @test isequal(typeof(w.data), Array{Array{Float32, 3}, 1})
-    @test isequal(size(w), (nsrc, 1))
+    @test isequal(size(w), (nsrc,))
     @test isfinite(w)
 
 #################################################### test operations ###################################################

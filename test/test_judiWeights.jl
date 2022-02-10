@@ -46,7 +46,7 @@ ftol = 1f-6
 
     @test isequal(w_type.nsrc, nsrc)
     @test isequal(typeof(w_type.weights), Array{Array{Float64,2},1})
-    @test isequal(size(w_type), (nsrc, 1))
+    @test isequal(size(w_type), (nsrc,))
     @test isfinite(w_type)
 
     I2 = ones(Float32, 1, nsrc*weight_size_x*weight_size_y)
@@ -85,21 +85,23 @@ ftol = 1f-6
     @test isequal(w2.nsrc, w.nsrc)
     @test firstindex(w) == 1
     @test lastindex(w) == nsrc
-    @test ndims(w) == 2
+    @test ndims(w) == 1
 
-    w2 = similar(w, Float32, 1:2)
-    @test isequal(w2.weights, 0f0.* w.weights)
+    w2 = similar(w, Float32, 1:nsrc)
     @test isequal(w2.nsrc, w.nsrc)
     @test firstindex(w) == 1
     @test lastindex(w) == nsrc
-    @test ndims(w) == 2
+    @test ndims(w) == 1
+
+    w3 = similar(w, Float32, 1)
+    @test isequal(w3.nsrc, 1)
 
     copy!(w2, w)
     @test isequal(w2.weights, w.weights)
     @test isequal(w2.nsrc, w.nsrc)
     @test firstindex(w) == 1
     @test lastindex(w) == nsrc
-    @test ndims(w) == 2
+    @test ndims(w) == 1
 
     # vcat
     w_vcat = [w; w]
@@ -169,7 +171,6 @@ ftol = 1f-6
     @test isapprox(w1, w)
     w1 = similar(w)
     @test w1.nsrc == w.nsrc
-    @test isapprox(w1.weights, 0f0 .* w.weights)
     w1 .= w
     @test w1.nsrc == w.nsrc
     @test isapprox(w1.weights, w.weights)

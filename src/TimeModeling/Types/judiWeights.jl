@@ -7,7 +7,7 @@
 
 # Updated by Ziyi Yin (ziyi.yin@gatech.edu), Nov 2020
 
-export judiWeights, judiWeightsException, subsample
+export judiWeights, subsample
 
 ############################################################
 
@@ -15,10 +15,6 @@ export judiWeights, judiWeightsException, subsample
 mutable struct judiWeights{T<:Number} <: judiMultiSourceVector{T}
     nsrc::Integer
     data::Vector{Array{T, N}} where N
-end
-
-mutable struct judiWeightsException <: Exception
-    msg :: String
 end
 
 # Bypass mismatch in naming and fields for backward compat
@@ -59,7 +55,7 @@ end
 # JOLI conversion
 jo_convert(::Type{T}, jw::judiWeights{T}, ::Bool) where {T<:Real} = jw
 jo_convert(::Type{T}, jw::judiWeights{vT}, B::Bool) where {T<:Real, vT} = judiWavefield{T}(jv.nsrc, jo_convert.(T, jw.weights, B))
-zero(::Type{T}, v::judiWeights{vT}) where {T, vT} = judiWeights{T}(v.nsrc, v.dt, Vector{Array{T, ndims(v.data[1])}}(undef, v.nsrc))
+zero(::Type{T}, v::judiWeights{vT}) where {T, vT} = judiWeights{T}(v.nsrc, T(0) .* v.data)
 
 function copy!(jv::judiWeights, jv2::judiWeights)
     jv.data .= jv2.data
@@ -67,47 +63,11 @@ function copy!(jv::judiWeights, jv2::judiWeights)
 end
 copyto!(jv::judiWeights, jv2::judiWeights) = copy!(jv, jv2)
 
-# *(joLinearFunction, judiWeights)
-function *(A::joLinearFunction{ADDT,ARDT},v::judiWeights{avDT}) where {ADDT, ARDT, avDT}
-    n = size(v.weights[1])
-    V = as_cell(A * vec(v), n, v.nsrc)
-    return judiWeights{avDT}(v.nsrc, V)
-end
-
-# *(joLinearOperator, judiWeights)
-function *(A::joAbstractLinearOperator{ADDT,ARDT}, v::judiWeights{avDT}) where {ADDT, ARDT, avDT}
-    A.name == "joDirac" && return avDT(1) .* v
-    A.name == "(N*joDirac)" && return avDT(A.fop.a) .* v
-    A.name == "adjoint(joDirac)" && return avDT(1) .* v
-    A.name == "adjoint((N*joDirac))" && return avDT(A.fop.a) .* v
-    return mulJ(A, v)
-end
-
-function mulJ(A::joAbstractLinearOperator{ADDT,ARDT}, v::judiWeights{avDT}) where {ADDT, ARDT, avDT}
-    A.n == size(v,1) || throw(judiWeightsException("Shape mismatch: A:$(size(A)), v: $(size(v))"))
-    jo_check_type_match(ADDT,avDT,join(["DDT for *(joLinearFunction,judiWeights):",A.name,typeof(A),avDT]," / "))
-    # Evaluate as mat-mat over the weights
-    n = size(v.weights[1])
-    try
-        # Mul may be defined for judiWeights
-        V = A.fop(v)
-        jo_check_type_match(ARDT,eltype(V),join(["RDT from *(joLinearFunction,judiWeights):",A.name,typeof(A),eltype(V)]," / "))
-        return V
-    catch e
-        V = A.fop(vcat([vec(v.weights[i]) for i=1:v.nsrc]...))
-        jo_check_type_match(ARDT,eltype(V),join(["RDT from *(joLinearFunction,judiWeights):",A.name,typeof(A),eltype(V)]," / "))
-        return V
-    end
-end
-
 # *(joCoreBlock, judiWeights)
 function *(A::joCoreBlock{ADDT,ARDT}, v::judiWeights{avDT}) where {ADDT, ARDT, avDT}
-    A.n == size(v,1) || throw(judiWeightsException("Shape mismatch: A:$(size(A)), v: $(size(v))"))
-    jo_check_type_match(ADDT,avDT,join(["DDT for *(joLinearFunction,judiWeights):",A.name,typeof(A),avDT]," / "))
     # Evaluate as mat-mat over the weights
-    V = collect(A.fop[i]*v for i=1:length(A.fop))
-    [jo_check_type_match(ARDT,eltype(V[i]),join(["RDT from *(joLinearFunction,judiWeights):",A.fop[i].name,typeof(A.fop[i]),eltype(V)]," / ")) for i=1:length(V)]
-    return vcat(V...)
+    V = [A.fop[i]*vec(v) for i=1:length(A.fop)]
+    return judiWeights(vcat(V...))
 end
 
 function push!(a::judiWeights{T}, b::judiWeights{T}) where T

@@ -5,7 +5,7 @@
 # Authors: Philipp Witte (pwitte@eos.ubc.ca), Henryk Modzelewski (hmodzelewski@eos.ubc.ca)
 # Date: January 2017
 
-export judiVector, judiVectorException, subsample, judiVector_to_SeisBlock, src_to_SeisBlock
+export judiVector, subsample, judiVector_to_SeisBlock
 export time_resample, time_resample!, judiTimeInterpolation
 export write_shot_record, get_data, convert_to_array, rebuild_jv
 
@@ -16,10 +16,6 @@ mutable struct judiVector{T, AT} <: judiMultiSourceVector{T}
     nsrc::Integer
     geometry::Geometry
     data::Vector{AT}
-end
-
-mutable struct judiVectorException <: Exception
-    msg :: String
 end
 
 ############################################################
@@ -78,7 +74,7 @@ wavelets or a single wavelet as an array):
 """
 function judiVector(geometry::Geometry, data::Array{T, N}) where {T, N}
     T == Float32 || (data = tof32(data))
-    N < 3 || throw(judiVectorException("Only 1D (trace) and 2D (record) input data supported"))
+    N < 3 || throw(judiMultiSourceException("Only 1D (trace) and 2D (record) input data supported"))
     nsrc = get_nsrc(geometry)
     dataCell = Vector{Array{T, N}}(undef, nsrc)
     for j=1:nsrc
@@ -92,7 +88,7 @@ function judiVector(geometry::Geometry, data::Vector{Array{T, N}}) where {T, N}
     T == Float32 || (data = tof32.(data))
     nsrcd = length(data)
     nsrcg = get_nsrc(geometry)
-    nsrcd == nsrcg || throw(judiVectorException("Number of sources in geometry and data don't match $(nsrcd) != $(nsrcg)"))
+    nsrcd == nsrcg || throw(judiMultiSourceException("Number of sources in geometry and data don't match $(nsrcd) != $(nsrcg)"))
     return judiVector{T, Array{T, N}}(nsrcd, geometry, data)
 end
 
@@ -135,9 +131,7 @@ time_sampling(jv::judiVector) = jv.geometry.dt
 # JOLI conversion
 jo_convert(::Type{T}, jv::judiVector{T, Array{T, N}}, ::Bool) where {T<:Real, N} = jv
 jo_convert(::Type{T}, jv::judiVector{vT, Array{vT, N}}, B::Bool) where {T<:Real, vT, N} = judiVector{T, Array{T, N}}(jv.nsrc, jv.geometry, jo_convert.(T, jv.data, B))
-zero(::Type{T}, v::judiVector{vT, AT}) where {T, vT, AT<:Array} = judiVector{T, AT}(v.nsrc, deepcopy(v.geometry), Vector{Array{T, 2}}(undef, v.nsrc))
-zero(::Type{T}, v::judiVector{vT, SegyIO.SeisCon}) where {T, vT} = judiVector{T, SegyIO.SeisCon}(v.nsrc, deepcopy(v.geometry), Vector(SegyIO.SeCison)(undef, v.nsrc))
-
+zero(::Type{T}, v::judiVector{vT, AT}) where {T, vT, AT} = judiVector{T, AT}(v.nsrc, deepcopy(v.geometry), T(0) .* v.data)
 function copy!(jv::judiVector, jv2::judiVector)
     jv.geometry = deepcopy(jv2.geometry)
     jv.data .= jv2.data
@@ -151,10 +145,11 @@ copyto!(jv::judiVector, jv2::judiVector) = copy!(jv, jv2)
 # Overload needed base function for SegyIO objects
 vec(x::SegyIO.SeisCon) = vec(x[1].data)
 abs(x::SegyIO.IBMFloat32) = abs(Float32(x))
+*(n::Number, s::SegyIO.SeisCon) = copy(s)
 
 # push!
 function push!(a::judiVector{T, mT}, b::judiVector{T, mT}) where {T, mT}
-    typeof(a.geometry) == typeof(b.geometry) || throw(judiVectorException("Geometry type mismatch"))
+    typeof(a.geometry) == typeof(b.geometry) || throw(judiMultiSourceException("Geometry type mismatch"))
     append!(a.data, b.data)
     a.nsrc += b.nsrc
     push!(a.geometry, b.geometry)
@@ -300,7 +295,7 @@ function cumsum(x::judiVector;dims=1)
 end
 
 function cumsum!(y::judiVector, x::judiVector;dims=1)
-    dims == 1 || dims == 2 || throw(judiVectorException("Dimension $(dims) is out of range for a 2D array"))
+    dims == 1 || dims == 2 || throw(judiMultiSourceException("Dimension $(dims) is out of range for a 2D array"))
     h = dims == 1 ? x.geometry.dt[1] : 1f0              # receiver dimension is non-dimensional
     for i = 1:x.nsrc
         cumsum!(y.data[i], x.data[i], dims=dims)
@@ -311,7 +306,7 @@ end
 
 function diff(x::judiVector;dims=1)
     # note that this is not the same as default diff in julia, the first entry stays in the diff result
-    dims == 1 || dims == 2 || throw(judiVectorException("Dimension $(dims) is out of range for a 2D array"))
+    dims == 1 || dims == 2 || throw(judiMultiSourceException("Dimension $(dims) is out of range for a 2D array"))
     y = (dims == 1 ? 1f0 / x.geometry.dt[1] : 1f0) * x        # receiver dimension is non-dimensional
     for i = 1:x.nsrc
         copy!(selectdim(y.data[i], dims, 2:size(y.data[i],dims)), diff(y.data[i],dims=dims))

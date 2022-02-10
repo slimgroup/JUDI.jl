@@ -22,8 +22,7 @@ const GROUP = get(ENV, "GROUP", "JUDI")
 
 include("utils.jl")
 
-base = ["test_abstract_vectors.jl",
-        "test_geometry.jl",
+base = ["test_geometry.jl",
         "test_judiVector.jl",
         "test_composite.jl",
         "test_judiWeights.jl",

@@ -5,18 +5,14 @@
 # Authors: Philipp Witte (pwitte@eos.ubc.ca), Henryk Modzelewski (hmodzelewski@eos.ubc.ca)
 # Date: June 2017
 
-export judiWavefield, judiWavefieldException, judiDFTwavefield, muteWavefield, dump_wavefield, fft_wavefield
+export judiWavefield, subsample
 
 ############################################################
 
 mutable struct judiWavefield{T} <: judiMultiSourceVector{T}
-	nsrc::Integer
+    nsrc::Integer
     dt::T
-	data::Vector{Array{T, N}} where N
-end
-
-mutable struct judiWavefieldException <: Exception
-	msg :: String
+    data::Vector{Array{T, N}} where N
 end
 
 ############################################################
@@ -25,6 +21,7 @@ end
 
 """
 judiWavefield
+        nsrc::Integer
         dt::Real
         data
 
@@ -40,7 +37,7 @@ time step dt:
 
 
 """
-function judiWavefield(nsrc::Integer, dt::Real, data::Union{Array, PyCall.PyObject, String};  vDT::DataType=Float32)
+function judiWavefield(nsrc::Integer, dt::Real, data::Union{Array{T, N}, PyCall.PyObject, String};  vDT::DataType=Float32) where {T<:Number, N}
 	# length of vector
 	dataCell = [vDT.(data) for j=1:nsrc]
 	return judiWavefield{vDT}(nsrc, Float32(dt), dataCell)
@@ -57,13 +54,13 @@ conj(w::judiWavefield{T}) where {T<:Complex} = judiWavefield{R}(w.nsrc, w.dt, co
 
 ############################################################
 ## overloaded multi_source functions
-time_sampling(jv::judiWavefield) = (jv.dt for i=1:jv.nsrc)
+time_sampling(jv::judiWavefield) = [jv.dt for i=1:jv.nsrc]
 
 ####################################################################
 # JOLI conversion
 jo_convert(::Type{T}, jw::judiWavefield{T}, ::Bool) where {T<:Number} = jw
 jo_convert(::Type{T}, jw::judiWavefield{vT}, B::Bool) where {T<:Number, vT} = judiWavefield{T}(jw.nsrc, jv.dt, jo_convert.(T, jw.data, B))
-zero(::Type{T}, v::judiWavefield{vT}) where {T, vT} = judiWavefield{T}(v.nsrc, v.dt, Vector{Array{T, ndims(v.data[1])}}(undef, v.nsrc))
+zero(::Type{T}, v::judiWavefield{vT}) where {T, vT} = judiWavefield{T}(v.nsrc, v.dt, T(0) .* v.data)
 
 function copy!(jv::judiWavefield, jv2::judiWavefield)
     v.data .= jv2.data
@@ -75,30 +72,30 @@ copyto!(jv::judiWavefield, jv2::judiWavefield) = copy!(jv, jv2)
 ####################################################################
 
 function push!(a::judiWavefield{T}, b::judiWavefield{T}) where T
-	append!(a.data, b.data)
-	a.info.nsrc += b.info.nsrc
+    append!(a.data, b.data)
+    a.nsrc += b.nsrc
 end
 
 # DFT operator for wavefields, acts along time dimension
 function fft_wavefield(x_in::judiWavefield{T}, mode) where T
-	nsrc = x_in.nsrc
-	nt = size(x_in.data[1], 1)
-	if mode==1
-		x = similar(x_in, Complex{Float32})
-		for i=1:nsrc
-			x.data[i] = fft(x_in.data[i], 1)/sqrt(nt)
-		end
-	elseif mode==-1
-		x = similar(x_in, Float32)
-		for i=1:nsrc
-			x.data[i] = real(ifft(x_in.data[i], 1)) * sqrt(nt)
-		end
-	end
-	return x
+    nsrc = x_in.nsrc
+    nt = size(x_in.data[1], 1)
+    if mode==1
+        x = similar(x_in, Complex{Float32})
+        for i=1:nsrc
+            x.data[i] = fft(x_in.data[i], 1)/sqrt(nt)
+        end
+    elseif mode==-1
+        data = Vector{Array{real(T), ndims(x_in.data[1])}}(undef, x_in.nsrc)
+        for i=1:nsrc
+            data[i] = real(ifft(x_in.data[i], 1)) * sqrt(nt)
+        end
+        x = judiWavefield{Float32}(x_in.nsrc, x_in.dt, data)
+    end
+    return x
 end
 
 function isapprox(x::judiWavefield, y::judiWavefield; rtol::Real=sqrt(eps()), atol::Real=0)
-    x.info.nsrc == y.info.nsrc || throw(judiVectorException("Incompatible number of sources"))
-    isapprox(x.data, y.data; rtol=rtol, atol=atol)
+    isapprox(x.data, y.data; rtol=rtol, atol=atol) && isapprox(x.dt, y.dt;rtol=rtol, atol=atol)
 end
 

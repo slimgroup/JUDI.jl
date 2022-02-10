@@ -39,15 +39,14 @@ end
         F_forward = judiModeling(info, model; options=Options())
         F_adjoint = judiModelingAdjoint(info, model; options=Options())
 
-    info = example_info(nsrc=nsrc)
-    model = example_model()
-    F_forward = judiModeling(info, model; options=Options())
-    F_adjoint = adjoint(F_forward)
+        model = example_model()
+        F_forward = judiModeling(model; options=Options())
+        F_adjoint = adjoint(F_forward)
 
-    @test F_adjoint.J == F_forward
-    @test adjoint(F_adjoint) == F_forward
-    @test isequal(typeof(F_forward), judiModeling{Float32, Float32})
-    @test isequal(typeof(F_adjoint), jAdjoint{judiModeling{Float32, Float32}, Float32, Float32})
+        @test F_adjoint.J == F_forward
+        @test adjoint(F_adjoint) == F_forward
+        @test isequal(typeof(F_forward), judiModeling{Float32, Float32})
+        @test isequal(typeof(F_adjoint), jAdjoint{judiModeling{Float32, Float32}, Float32, Float32})
 
         # get index
         @test test_getindex(F_forward, nsrc)
@@ -61,73 +60,6 @@ end
             @test isapprox(F2.model.m, a)
             @test F2.model.n == model.n
         end
-    end
-end
-
-############################################################# judiPDE ##################################################
-
-@testset "judiPDE Unit Test with $(nsrc) sources" for nsrc=[1, 2]
-    @timeit TIMEROUTPUT "judiPDE nsrc=$(nsrc)" begin
-        info = example_info(nsrc=nsrc)
-        model = example_model()
-        rec_geometry = example_rec_geometry(nsrc=nsrc)
-
-        PDE_forward = judiPDE("PDE", info, model, rec_geometry; options=Options())
-        PDE_adjoint = judiPDEadjoint("PDEadjoint", info, model, rec_geometry; options=Options())
-
-    PDE_forward = judiPDE(info, model, rec_geometry; options=Options())
-    PDE_adjoint = adjoint(PDE_forward)
-
-    @test PDE_adjoint.J == PDE_forward
-    @test adjoint(PDE_adjoint) == PDE_forward
-    @test isequal(typeof(PDE_forward), judiPDE{Float32, Float32})
-    @test isequal(typeof(PDE_adjoint), jAdjoint{judiPDE{Float32, Float32}, Float32, Float32})
-
-        # get index
-        @test test_getindex(PDE_forward, nsrc)
-        @test test_getindex(PDE_adjoint, nsrc)
-
-        # Multiplication w/ judiProjection
-        src_geometry = example_src_geometry()
-        Ps = judiProjection(info, src_geometry)
-
-    # Multiplication w/ judiProjection
-    src_geometry = example_src_geometry()
-    Ps = judiProjection(info, src_geometry)
-
-    PDE = PDE_forward*transpose(Ps)
-    @test isequal(typeof(PDE), judiPDEfull{Float32, Float32})
-    @test isequal(PDE.recGeometry, rec_geometry)
-    @test isequal(PDE.srcGeometry, src_geometry)
-
-    PDEad = PDE_adjoint*transpose(Ps)
-    @test isequal(typeof(PDEad), jAdjoint{judiPDEfull{Float32, Float32}, Float32, Float32})
-    @test isequal(PDEad.srcGeometry, rec_geometry)
-    @test isequal(PDEad.recGeometry, src_geometry)
-
-        PDEad = PDE_adjoint*transpose(Ps)
-        @test isequal(typeof(PDEad), judiPDEfull{Float32, Float32})
-        @test isequal(PDEad.srcGeometry, rec_geometry)
-        @test isequal(PDEad.recGeometry, src_geometry)
-    end
-end
-
-######################################################### judiPDEfull ##################################################
-
-@testset "judiPDEfull Unit Test with $(nsrc) sources" for nsrc=[1, 2]
-    @timeit TIMEROUTPUT "judiPDEfull nsrc=$(nsrc)" begin
-        info = example_info(nsrc=nsrc)
-        model = example_model()
-        rec_geometry = example_rec_geometry(nsrc=nsrc)
-        src_geometry = example_src_geometry(nsrc=nsrc)
-        PDE = judiModeling(info, model, src_geometry, rec_geometry; options=Options())
-
-        @test isequal(typeof(PDE), judiPDEfull{Float32, Float32})
-        @test isequal(PDE.recGeometry, rec_geometry)
-        @test isequal(PDE.srcGeometry, src_geometry)
-
-        @test test_transpose(PDE)
-        @test test_getindex(PDE, nsrc)
     end
 end
 
@@ -152,24 +84,24 @@ end
         @test isequal(size(J)[2], prod(model.n))
         @test test_transpose(J)
 
-    @test isequal(typeof(J), judiJacobian{judiVector{Float32, Vector{Float32}}, Float32, Float32})
-    @test isequal(J.recGeometry, rec_geometry)
-    @test isequal(J.source.geometry, src_geometry)
-    @test all(isequal(J.source.data[i], wavelet) for i=1:nsrc)
-    @test isequal(size(J)[2], prod(model.n))
-    @test test_transpose(J)
+        @test isequal(typeof(J), judiJacobian{judiVector{Float32, Vector{Float32}}, Float32, Float32})
+        @test isequal(J.recGeometry, rec_geometry)
+        @test isequal(J.source.geometry, src_geometry)
+        @test all(isequal(J.source.data[i], wavelet) for i=1:nsrc)
+        @test isequal(size(J)[2], prod(model.n))
+        @test test_transpose(J)
 
-    # get index
-    J_sub = J[1]
-    @test isequal(J_sub.info.nsrc, 1)
-    @test isequal(J_sub.model, J.model)
-    @test isequal(size(J_sub)[1], Int(size(J)[1]/nsrc))
+        # get index
+        J_sub = J[1]
+        @test isequal(J_sub.info.nsrc, 1)
+        @test isequal(J_sub.model, J.model)
+        @test isequal(size(J_sub)[1], Int(size(J)[1]/nsrc))
 
-    inds = nsrc > 1 ? (1:nsrc) : 1
-    J_sub = J[inds]
-    @test isequal(J_sub.info.nsrc, nsrc)
-    @test isequal(J_sub.model, J.model)
-    @test isequal(size(J_sub), size(J))
+        inds = nsrc > 1 ? (1:nsrc) : 1
+        J_sub = J[inds]
+        @test isequal(J_sub.info.nsrc, nsrc)
+        @test isequal(J_sub.model, J.model)
+        @test isequal(size(J_sub), size(J))
 
         inds = nsrc > 1 ? (1:nsrc) : 1
         J_sub = J[inds]
@@ -203,40 +135,40 @@ end
         @test isequal(size(J)[2], prod(model.n))
         @test test_transpose(J)
 
-    @test isequal(typeof(J), judiJacobianExQ{Float32, Float32})
-    @test isequal(J.recGeometry, rec_geometry)
-    for i=1:nsrc
-        @test isapprox(J.source.wavelet[i], wavelet)
-        @test isapprox(J.source.weights[i], w.weights[i])
+        @test isequal(typeof(J), judiJacobianExQ{Float32, Float32})
+        @test isequal(J.recGeometry, rec_geometry)
+        for i=1:nsrc
+            @test isapprox(J.source.wavelet[i], wavelet)
+            @test isapprox(J.source.weights[i], w.weights[i])
+        end
+        @test isequal(size(J)[2], prod(model.n))
+        @test test_transpose(J)
+
+        # get index
+        J_sub = J[1]
+        @test isequal(J_sub.info.nsrc, 1)
+        @test isequal(J_sub.model, J.model)
+        @test isapprox(J_sub.source.weights, J.source.weights[1])
+        @test isequal(size(J_sub)[1], Int(size(J)[1]/nsrc))
+
+        inds = nsrc > 1 ? (1:nsrc) : 1
+        J_sub = J[inds]
+        @test isequal(J_sub.info.nsrc, nsrc)
+        @test isequal(J_sub.model, J.model)
+        @test isapprox(J_sub.source.weights, J.source.weights[inds])
+        @test isequal(size(J_sub), size(J))
+
+        # Test Pw alone
+        P1 = subsample(Pw, 1)
+        @test isapprox(P1.wavelet, Pw[1].wavelet)
+        @test isapprox(conj(Pw).wavelet, Pw.wavelet)
+        @test size(conj(Pw)) == size(Pw)
+        @test size(transpose(Pw)) == size(Pw)[end:-1:1]
+        @test isapprox(transpose(Pw).wavelet, Pw.wavelet)
+
+        P1 = adjoint(Pw) * w
+        @test isequal(typeof(P1), judiExtendedSource{Float32})
     end
-    @test isequal(size(J)[2], prod(model.n))
-    @test test_transpose(J)
-
-    # get index
-    J_sub = J[1]
-    @test isequal(J_sub.info.nsrc, 1)
-    @test isequal(J_sub.model, J.model)
-    @test isapprox(J_sub.source.weights, J.source.weights[1])
-    @test isequal(size(J_sub)[1], Int(size(J)[1]/nsrc))
-
-    inds = nsrc > 1 ? (1:nsrc) : 1
-    J_sub = J[inds]
-    @test isequal(J_sub.info.nsrc, nsrc)
-    @test isequal(J_sub.model, J.model)
-    @test isapprox(J_sub.source.weights, J.source.weights[inds])
-    @test isequal(size(J_sub), size(J))
-
-    # Test Pw alone
-    P1 = subsample(Pw, 1)
-    @test isapprox(P1.wavelet, Pw[1].wavelet)
-    @test isapprox(conj(Pw).wavelet, Pw.wavelet)
-    @test size(conj(Pw)) == size(Pw)
-    @test size(transpose(Pw)) == size(Pw)[end:-1:1]
-    @test isapprox(transpose(Pw).wavelet, Pw.wavelet)
-
-    P1 = adjoint(Pw) * w
-    @test isequal(typeof(P1), judiExtendedSource{Float32})
-
 end
 
 
