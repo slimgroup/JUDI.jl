@@ -1,19 +1,22 @@
+function make_input(rI::judiProjection{T}, qI::judiProjection{T}, q::judiVector{T, AT}, pysolver::PyObject) where {T, AT}
+    qIn = get_source(q, convert(Float32, pysolver.dt))
+    src_coords = get_coords(qI)
+    rec_coords = get_coords(rI)
+    Dict(:save=>false, :wavelet=>qIn, :src_coords=>src_coords, :rec_coords=>rec_coords)
+end 
 
-
-function propagate(solver::Symbol, op::String, q::judiVector, recgeom::Geometry) where {T, N}
+function propagate(solver::Symbol, op::String, rI::AnyProjection{T}, qI::AnyProjection{T}, q::judiMultiSourceVector{T}) where T
     pysolver = getfield(JUDI, solver)
     op = eval(:($pysolver.$(op)))
-    # Interpolate input data to computational grid
-    dtComp = convert(Float32, pysolver.dt)
-    qIn = time_resample(q.data[1], q.geometry.dt[1], dtComp)
-    src_coords = hcat(q.geometry.xloc[1], q.geometry.zloc[1])
-    rec_coords = hcat(recgeom.xloc[1], recgeom.zloc[1])
+    # Out type
+    Tout = out_type(rI, pysolver."model".ndim)
+    # Make Options
+    prop_kw = make_input(rI, qI, q, pysolver)
     # Propagate
-    rec_data = pycall(op, Array{Float32, 2}, save=false,
-                      wavelet=qIn, src_coords=src_coords, rec_coords=rec_coords)
+    dout = pycall(op, Tout, prop_kw...)
     # create out
-    rec_data = time_resample(rec_data, dtComp, q.geometry.dt[1])
-    return judiVector{Float32, Array{Float32, 2}}("F*q", prod(size(rec_data)), 1, 1, recgeom, [rec_data])
+    dout = process_out(dout, rI, dtComp)
+    return dout
 end
 
 function propagate(solver::Symbol, op::String, q::judiVector, d::judiVector)
@@ -34,14 +37,14 @@ function propagate(solver::Symbol, op::String, q::judiVector, d::judiVector)
 end
 
 
-function *(F::judiDataPointSourceModeling, q::judiVector)
+function *(F::judiDataSourceModeling, q::judiMultiSourceVector)
     # Number of sources and init result
     nsrc = q.nsrc
     pool = default_worker_pool()
     res = Vector{Future}(undef, nsrc)
     # Make sure the model has correct values
     @sync for i=1:nsrc
-        @async res[i] = remotecall(propagate, pool, solver(F), operator(F), q[i], subsample(F.rInterpolation.geometry, i))
+        @async res[i] = remotecall(propagate, pool, solver(F), operator(F), F.rInterpolation[i], F.qInjection[i], q[i])
     end
     res = reduce!(res)
     return res

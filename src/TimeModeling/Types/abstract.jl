@@ -47,24 +47,26 @@ transpose(A::judiMultiSourceVector{vDT}) where vDT = A
 adjoint(A::judiMultiSourceVector{vDT}) where vDT = A
 
 isapprox(x::judiMultiSourceVector, y::judiMultiSourceVector; rtol::Real=sqrt(eps()), atol::Real=0) =
-    all(isapprox(getfield(x, f), getfield(x, f); rtol=rtol, atol=atol) for f in fieldnames(typeof(x)))
+    all(isapprox(getfield(x, f), getfield(y, f); rtol=rtol, atol=atol) for f in fieldnames(typeof(x)))
 
 maximum(a::judiMultiSourceVector{avDT}) where avDT = max([maximum(a.data[i]) for i=1:a.nsrc]...)
 minimum(a::judiMultiSourceVector{avDT}) where avDT = min([minimum(a.data[i]) for i=1:a.nsrc]...)
 
 vec(x::judiMultiSourceVector) = vcat(vec.(x.data)...)
-function reshape(x::judiMultiSourceVector, d::Dims, nsrc::Integer)
-    length(x) == prod(d)*nsrc || throw(judiMultiSourceException("Incompatible size"))
-    as_nd = reshape(x, d..., nsrc)
-    return [collect(selectdim(as_nd, ndims(as_nd), s)) for s=1:nsrc]
-end
 
 (msv::judiMultiSourceVector{T})(x::Vector{T}) where {T<:Real} = x
-(msv::judiMultiSourceVector{T})(x::Vector{T}) where {T<:Array} = begin y = deepcopy(msv); copyto!(y.data, x); return y end
+(msv::judiMultiSourceVector{T})(x::judiMultiSourceVector{T}) where {T} = x
+(msv::judiMultiSourceVector{mT})(x::Vector{T}) where {mT, T<:Array} = begin y = deepcopy(msv); y.data .= x; return y end
 
 function *(J::Union{Matrix{vDT}, joAbstractLinearOperator}, x::judiMultiSourceVector{vDT}) where vDT
     outvec = try J.fop(x) catch; J*vec(x) end
-    outdata = try reshape(outvec, x.data[1].shape, x.nsrc) catch; outvec end
+    outdata = try reshape(outvec, size(x.data[1]), x.nsrc) catch; outvec end
+    return x(outdata)
+end
+
+function *(J::joCoreBlock, x::judiMultiSourceVector{vDT}) where vDT
+    outvec = vcat([J.fop[i]*vec(x) for i=1:J.l]...)
+    outdata = reshape(outvec, size(x.data[1]), J.l*x.nsrc)
     return x(outdata)
 end
 
@@ -138,3 +140,7 @@ function rebuild_maybe_jld(x::Vector{Any})
         return x
     end
 end
+
+
+## Propagation
+get_source(x::judiMultiSourceVector, dtComp) = x.data[1]

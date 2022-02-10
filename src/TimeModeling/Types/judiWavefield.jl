@@ -43,7 +43,7 @@ function judiWavefield(nsrc::Integer, dt::Real, data::Union{Array{T, N}, PyCall.
 	return judiWavefield{vDT}(nsrc, Float32(dt), dataCell)
 end
 
-function judiWavefield(dt::Real, data::Union{Array{Any,1}, Array{Array{T, N}, 1}};vDT::DataType=Float32) where {T, N}
+function judiWavefield(dt::Real, data::Union{Vector{Any}, Vector{Array{T, N}}};vDT::DataType=Float32) where {T, N}
 	# length of vector
 	nsrc = length(data)
 	T != Float32 && (data = tof32.(data))
@@ -61,6 +61,7 @@ time_sampling(jv::judiWavefield) = [jv.dt for i=1:jv.nsrc]
 jo_convert(::Type{T}, jw::judiWavefield{T}, ::Bool) where {T<:Number} = jw
 jo_convert(::Type{T}, jw::judiWavefield{vT}, B::Bool) where {T<:Number, vT} = judiWavefield{T}(jw.nsrc, jv.dt, jo_convert.(T, jw.data, B))
 zero(::Type{T}, v::judiWavefield{vT}) where {T, vT} = judiWavefield{T}(v.nsrc, v.dt, T(0) .* v.data)
+(w::judiWavefield)(x::Vector{<:Array}) = judiWavefield(w.dt, x)
 
 function copy!(jv::judiWavefield, jv2::judiWavefield)
     v.data .= jv2.data

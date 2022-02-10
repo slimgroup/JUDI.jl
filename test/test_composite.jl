@@ -162,9 +162,15 @@ ftol = 1f-6
         @test isapprox(w2.components[3], d_obs)
         @test isapprox(w2.components[4], w0)
 
+        @test isapprox(w2.components[1], w0 / 2f0)
+        @test isapprox(w2.components[2], d_obs / 2f0)
+        @test isapprox(w2.components[3], d_obs)
+        @test isapprox(w2.components[4], w0)
+
         # Test joDirac pertains judiWeights structure
         
         I = joDirac(nsrc*prod(n),DDT=Float32,RDT=Float32)
+        I*w0
         @test isapprox(I*w0, w0)
         lambda = randn(Float32)
         @test isapprox(lambda*I*w0, lambda*w0)
@@ -172,7 +178,6 @@ ftol = 1f-6
         @test isapprox((lambda*I)'*w0, lambda * w0)
         
         # Test Forward and Adjoint joCoreBlock * judiVStack
-        
         J = joOnes(nsrc*prod(n),DDT=Float32,RDT=Float32)
         
         a = [I;J]*w0

@@ -695,12 +695,10 @@ end
 
 Reshapes input vector into a `Vector{Array{T, N}}` of length `nblock` with each subarray of size `n`
 """
-function reshape(V::Vector{T}, n::Dims, nblock::Integer) where T
-    cells = Vector{Array{T, length(n)}}(undef, nblock)
-    for i=1:nblock
-        cells[i] = reshape(V[:, i], n)
-    end
-    cells
+function reshape(x::Vector{T}, d::Dims, nsrc::Integer) where {T<:Number}
+    length(x) == prod(d)*nsrc || throw(judiMultiSourceException("Incompatible size"))
+    as_nd = reshape(x, d..., nsrc)
+    return [collect(selectdim(as_nd, ndims(as_nd), s)) for s=1:nsrc]
 end
 
 """

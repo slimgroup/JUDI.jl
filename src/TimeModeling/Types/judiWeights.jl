@@ -56,19 +56,13 @@ end
 jo_convert(::Type{T}, jw::judiWeights{T}, ::Bool) where {T<:Real} = jw
 jo_convert(::Type{T}, jw::judiWeights{vT}, B::Bool) where {T<:Real, vT} = judiWavefield{T}(jv.nsrc, jo_convert.(T, jw.weights, B))
 zero(::Type{T}, v::judiWeights{vT}) where {T, vT} = judiWeights{T}(v.nsrc, T(0) .* v.data)
+(w::judiWeights)(x::Vector{<:Array}) = judiWeights(x)
 
 function copy!(jv::judiWeights, jv2::judiWeights)
     jv.data .= jv2.data
     jv
 end
 copyto!(jv::judiWeights, jv2::judiWeights) = copy!(jv, jv2)
-
-# *(joCoreBlock, judiWeights)
-function *(A::joCoreBlock{ADDT,ARDT}, v::judiWeights{avDT}) where {ADDT, ARDT, avDT}
-    # Evaluate as mat-mat over the weights
-    V = [A.fop[i]*vec(v) for i=1:length(A.fop)]
-    return judiWeights(vcat(V...))
-end
 
 function push!(a::judiWeights{T}, b::judiWeights{T}) where T
 	append!(a.weights, b.weights)

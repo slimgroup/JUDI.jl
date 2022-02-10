@@ -16,6 +16,7 @@ Base.repr(D::AbstractSize) = "($(join(repr.(D.dims), " x ")))"
 const _time_space = AbstractSize((AbstractDim(:s), AbstractDim(:time), AbstractDim(:n_x), AbstractDim(:n_y), AbstractDim(:n_z)))
 const _space = AbstractSize((AbstractDim(:n_x), AbstractDim(:n_y), AbstractDim(:n_z)))
 const _rec_space = AbstractSize((AbstractDim(:s), AbstractDim(:time), AbstractDim(:r)))
+
 time_space_size(N::Integer) = _time_space[1:N+2]
 space_size(N::Integer) = _space[1:N]
 

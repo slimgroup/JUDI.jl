@@ -139,6 +139,7 @@ function copy!(jv::judiVector, jv2::judiVector)
 end
 
 copyto!(jv::judiVector, jv2::judiVector) = copy!(jv, jv2)
+get_source(jv::judiVector, dtComp) = time_resample(jv.data[1], jv.geometry.dt[1], dtComp)
 
 ##########################################################
 
