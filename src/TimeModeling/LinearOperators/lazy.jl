@@ -1,4 +1,4 @@
-export judiProjection
+export judiProjection, judiLRWF
 
 # Lazy adjoint like in LinearAlgebra
 struct jAdjoint{T}
@@ -9,8 +9,10 @@ function getproperty(jA::jAdjoint, s::Symbol)
     s == :m && (return jA.op.n)
     s == :n && (return jA.op.m)
     s == :op && (return getfield(jA, s))
-    return getfield(jA.op, s)
+    return getproperty(jA.op, s)
 end
+
+size(jA::jAdjoint) = (jA.op.n, jA.op.m)
 
 # Base abstract type
 abstract type judiNoopOperator{D} <: joAbstractLinearOperator{D, D} end
@@ -22,9 +24,10 @@ struct judiAbstractProjection{D, T} <: judiNoopOperator{D}
 end
 
 const judiProjection{D} = judiAbstractProjection{D, Geometry}
-const judiLRWF{D} = judiAbstractProjection{D, Vector{D}}
+const judiLRWF{D} = judiAbstractProjection{D, Vector{VecOrMat{D}}}
 const AnyProjection{D} = Union{judiProjection{D}, judiLRWF{D}}
 
+==(P1::judiAbstractProjection, P2::judiAbstractProjection) = P1.data == P2.data
 
 # Prettyfier for data access
 getproperty(P::judiProjection, s::Symbol) = s == :geometry ? P.data : getfield(P, s)
@@ -42,7 +45,8 @@ conj(P::judiNoopOperator{D}) where D = P
 
 display(P::judiProjection{D}) where {D, O} = println("JUDI projection operator $(repr(P.n)) -> $(repr(P.m))")
 
-getindex(P::judiAbstractProjection{D}, i) where D = judiProjection{Float32}(P.m, P.n, P.data[i])
+getindex(P::judiAbstractProjection{D}, i) where D = typeof(P)(P.m, P.n, P.data[i])
+getindex(P::judiAbstractProjection{D}, i::Integer) where D = typeof(P)(P.m, P.n, P.data[i:i])
 subsample(P::judiAbstractProjection{D}, i) where D = getindex(P, i)
 
 # Processing utilities
@@ -52,5 +56,5 @@ get_coords(P::judiLRWF{D}) where D = P.wavelet
 out_type(::judiProjection{T}, ndim) where T = Array{Float32, 2}
 out_type(::judiLRWF{T}, ndim) where T = Array{Float32, ndim}
 
-process_out(dout, rI::judiProjection, dtComp) = judiVector{Float32, Array{Float32, 2}}(1, rI.gometry, [time_resample(dout, dtComp, rI.geometry.dt[1])])
+process_out(dout, rI::judiProjection, dtComp) = judiVector{Float32, Array{Float32, 2}}(1, rI.geometry, [time_resample(dout, dtComp, rI.geometry.dt[1])])
 process_out(dout, rI::judiLRWF, dtComp) = dout

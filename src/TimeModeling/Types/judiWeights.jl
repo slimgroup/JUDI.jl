@@ -26,6 +26,7 @@ Base.getproperty(obj::judiWeights, sym::Symbol) = sym == :weights ? getfield(obj
 
 """
     judiWeights
+        nsrc
         weights
 Abstract vector for weighting an extended source, which is injected at every grid point, as weighted by this vector.
 Constructors

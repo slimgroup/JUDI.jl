@@ -17,7 +17,7 @@ using PyCall
 using JOLI, SegyIO
 
 # Import Base functions to dispatch on JUDI types
-import Base.*, Base./, Base.+, Base.-
+import Base.*, Base./, Base.+, Base.-, Base.==
 import Base.copy!, Base.copy, Base.copyto!, Base.deepcopy
 import Base.sum, Base.ndims, Base.reshape, Base.fill!, Base.axes, Base.dotview
 import Base.eltype, Base.length, Base.size, Base.iterate, Base.show, Base.display, Base.showarg
@@ -43,7 +43,6 @@ import PyCall.array2py
 
 # Set python paths
 const pm = PyNULL()
-const ac = PyNULL()
 const we = PyNULL()
 
 # Constants
@@ -57,7 +56,6 @@ judilog(msg) = _verbose ? println(msg) : nothing
 function __init__()
     pushfirst!(PyVector(pyimport("sys")."path"), joinpath(JUDIPATH, "pysource"))
     copy!(pm, pyimport("models"))
-    copy!(ac, pyimport("interface"))
     copy!(we, pyimport("wavesolver"))
 
 end

@@ -5,7 +5,7 @@
 # Authors: Philipp Witte (pwitte@eos.ubc.ca), Henryk Modzelewski (hmodzelewski@eos.ubc.ca)
 # Date: June 2017
 
-export judiWavefield, subsample
+export judiWavefield, subsample, fft_wavefield
 
 ############################################################
 

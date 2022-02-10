@@ -1,10 +1,12 @@
 # Base multi source abstract type
 abstract type judiMultiSourceVector{T} <: DenseVector{T} end
 
-
 mutable struct judiMultiSourceException <: Exception
     msg :: String
 end
+
+isequal(ms1::judiMultiSourceVector, ms2::judiMultiSourceVector) = ms1 == ms2
+==(ms1::judiMultiSourceVector, ms2::judiMultiSourceVector) = all(getfield(ms1, s) == getfield(ms2, s) for s in fieldnames(typeof(ms1)))
 
 unsafe_convert(::Type{Ptr{T}}, msv::judiMultiSourceVector{T}) where {T} = unsafe_convert(Ptr{T}, msv.data)
 
@@ -19,6 +21,7 @@ deepcopy(ms::judiMultiSourceVector{T}) where {T} = copy(ms)
 
 setindex!(ms::judiMultiSourceVector{T}, v::Array{T, N}, i::Integer) where {T, N} = begin ms.data[i] = v; nothing end
 getindex(ms::judiMultiSourceVector{T}, i) where {T} = subsample(ms, i)
+iterate(S::judiMultiSourceVector, state::Integer=1) = state > S.nsrc ? nothing : (S[state], state+1)
 
 eltype(::judiMultiSourceVector{T}) where T = T
 
@@ -66,7 +69,7 @@ end
 
 function *(J::joCoreBlock, x::judiMultiSourceVector{vDT}) where vDT
     outvec = vcat([J.fop[i]*vec(x) for i=1:J.l]...)
-    outdata = reshape(outvec, size(x.data[1]), J.l*x.nsrc)
+    outdata = try reshape(outvec, size(x.data[1]), J.l*x.nsrc); catch; outvec end
     return x(outdata)
 end
 
@@ -140,7 +143,6 @@ function rebuild_maybe_jld(x::Vector{Any})
         return x
     end
 end
-
 
 ## Propagation
 get_source(x::judiMultiSourceVector, dtComp) = x.data[1]

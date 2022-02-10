@@ -180,10 +180,12 @@ Examples
     Jsub = subsample(J,[10,20])
 
 """
-function subsample(a::judiVector{avDT, AT}, srcnum) where {avDT, AT}
-    geometry = subsample(a.geometry,srcnum)     # Geometry of subsampled data container
-    return judiVector(geometry, a.data[srcnum])
+function subsample(a::judiVector{avDT, AT}, srcnum::AbstractRange) where {avDT, AT}
+    geometry = subsample(a.geometry, srcnum)     # Geometry of subsampled data container
+    return judiVector{avDT, AT}(length(srcnum), geometry, a.data[srcnum])
 end
+
+subsample(a::judiVector, srcnum::Integer) = subsample(a, srcnum:srcnum)
 
 # Create SeisBlock from judiVector container to write to file
 function judiVector_to_SeisBlock(d::judiVector{avDT, AT}, q::judiVector{avDT, QT};

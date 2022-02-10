@@ -118,6 +118,7 @@ class WaveSolver(object):
 
     # Call
     def forward(self, save=None, wavelet=None, src_coords=None, rec_coords=None):
+
         # Number of tim-steps
         nt = wavelet.shape[0] if wavelet is not None else None
         save = nt if save else None

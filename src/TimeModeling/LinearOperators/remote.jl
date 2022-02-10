@@ -24,9 +24,11 @@ end
 
 function set_dm!(m::Model, o::Options, s::Symbol, dm::AbstractVector)
     pad = pad_sizes(m, o)
-    dm = reshape(getattr(dm, :data, dm), m.n)
+    dm = reshape(dm, m.n)
     @sync for p in workers()
         @async remotecall_wait(update_local, p, s, dm, pad)
     end
     nothing
 end
+
+set_dm!(m::Model, o::Options, s::Symbol, dm::PhysicalParameter) = set_dm!(m. o, s, dm.data)

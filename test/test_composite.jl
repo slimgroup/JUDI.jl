@@ -170,7 +170,6 @@ ftol = 1f-6
         # Test joDirac pertains judiWeights structure
         
         I = joDirac(nsrc*prod(n),DDT=Float32,RDT=Float32)
-        I*w0
         @test isapprox(I*w0, w0)
         lambda = randn(Float32)
         @test isapprox(lambda*I*w0, lambda*w0)

@@ -52,10 +52,6 @@ f0 = 0.01f0     # kHz
 wavelet = ricker_wavelet(timeS, dtS, f0)
 q = judiVector(srcGeometry, wavelet)
 
-# Set up info structure for linear operators
-ntComp = get_computational_nt(srcGeometry, recGeometry, model)
-info = Info(prod(n), nsrc, ntComp)
-
 ###################################################################################################
 
 # Write shots as segy files to disk

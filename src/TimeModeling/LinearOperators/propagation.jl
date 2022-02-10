@@ -9,13 +9,13 @@ function propagate(solver::Symbol, op::String, rI::AnyProjection{T}, qI::AnyProj
     pysolver = getfield(JUDI, solver)
     op = eval(:($pysolver.$(op)))
     # Out type
-    Tout = out_type(rI, pysolver."model".ndim)
+    Tout = out_type(rI, pysolver."model".dim)
     # Make Options
     prop_kw = make_input(rI, qI, q, pysolver)
     # Propagate
-    dout = pycall(op, Tout, prop_kw...)
+    dout = pycall(op, Tout; prop_kw...)
     # create out
-    dout = process_out(dout, rI, dtComp)
+    dout = process_out(dout, rI, pysolver.dt)
     return dout
 end
 
@@ -58,7 +58,7 @@ function *(J::judiJacobian{D, :born, FT}, dm::AbstractVector{D}) where {D, FT}
     # Make sure the model has correct values
     set_dm!(J.model, J.options, solver(J), dm)
     @sync for i=1:nsrc
-        @async res[i] = remotecall(propagate, pool, solver(J), operator(J), J.q[i], subsample(J.F.rInterpolation.geometry, i))
+        @async res[i] = remotecall(propagate, pool, solver(J), operator(J), J.F.rInterpolation[i], J.F.qInjection[i], J.q[i])
     end
     res = reduce!(res)
     return res

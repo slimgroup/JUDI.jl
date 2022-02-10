@@ -126,11 +126,14 @@ Base.dotview(m::PhysicalParameter, i) = Base.dotview(m.data, i)
 getindex(A::PhysicalParameter, i::Int) = A.data[i]
 getindex(A::PhysicalParameter, i::Colon) = A.data[:]
 
+get_step(r::StepRange) = r.step
+get_step(r) = 1
+
 function getindex(A::PhysicalParameter{T}, I::Vararg{Union{Int, BitArray, Function, StepRange{Int}, UnitRange{Int}}, N}) where {N, T}
     new_v = getindex(A.data, I...)
     length(size(new_v)) != length(A.n) && (return new_v)
     s = [i == (:) ? 0 : i[1]-1 for i=I]
-    st = [getattr(i, :step, 1) for i=I]
+    st = [get_step(i) for i=I]
     new_o = [ao+i*d for (ao, i, d)=zip(A.o, s, A.d)]
     new_d = [d*s for (d, s)=zip(A.d, st)]
     PhysicalParameter{T}(size(new_v), tuple(new_d...), tuple(new_o...), new_v)
@@ -145,7 +148,7 @@ copy(x::PhysicalParameter{vDT}) where {vDT} = PhysicalParameter{vDT}(x.n, x.d, x
 unsafe_convert(::Type{Ptr{T}}, p::PhysicalParameter{T}) where {T} = unsafe_convert(Ptr{T}, p.data)
 
 # Equality
-isequal(A::PhysicalParameter, B::PhysicalParameter) = (A.data == B.data && A.o == B.o && A.d == B.d)
+==(A::PhysicalParameter, B::PhysicalParameter) = (A.data == B.data && A.o == B.o && A.d == B.d)
 isapprox(A::PhysicalParameter, B::PhysicalParameter; kwargs...) = (isapprox(A.data, B.data) && A.o == B.o && A.d == B.d)
 isapprox(A::PhysicalParameter, B::AbstractArray; kwargs...) = isapprox(A.data, B)
 isapprox(A::AbstractArray, B::PhysicalParameter; kwargs...) = isapprox(A, B.data)

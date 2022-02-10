@@ -311,17 +311,18 @@ Geometry(::Nothing) = nothing
 getindex(g::Geometry, I) = subsample(g, I)
 
 # Subsample in-core geometry structure
-function subsample(geometry::GeometryIC, srcnum)
-    if length(srcnum) == 1
-        srcnum = srcnum[1]
-        geometry = Geometry(geometry.xloc[srcnum], geometry.yloc[srcnum], geometry.zloc[srcnum];
-                            dt=geometry.dt[srcnum],t=geometry.t[srcnum], nsrc=1)
-    else
-        geometry = Geometry(geometry.xloc[srcnum], geometry.yloc[srcnum], geometry.zloc[srcnum],
-                            geometry.dt[srcnum], geometry.nt[srcnum], geometry.t[srcnum])
-    end
+function subsample(geometry::GeometryIC{T}, srcnum::AbstractRange) where T
+    xsub = geometry.xloc[srcnum]
+    ysub = geometry.yloc[srcnum]
+    zsub = geometry.zloc[srcnum]
+    dtsub = geometry.dt[srcnum]
+    ntsub = geometry.nt[srcnum]
+    tsub = geometry.t[srcnum]
+    geometry = GeometryIC{T}(xsub, ysub, zsub, dtsub, ntsub, tsub)
     return geometry
 end
+
+subsample(geometry::GeometryIC{T}, srcnum::Integer) where T = subsample(geometry, srcnum:srcnum)
 
 # Subsample out-of-core geometry structure
 subsample(geometry::GeometryOOC, srcnum) = Geometry(geometry.container[srcnum]; key=geometry.key, segy_depth_key=geometry.segy_depth_key)
@@ -336,7 +337,7 @@ function compareGeometry(geometry_A::Geometry, geometry_B::Geometry)
     end
 end
 
-isequal(geometry_A::Geometry, geometry_B::Geometry) = compareGeometry(geometry_A, geometry_B)
+==(geometry_A::Geometry, geometry_B::Geometry) = compareGeometry(geometry_A, geometry_B)
 isapprox(geometry_A::Geometry, geometry_B::Geometry; kw...) = compareGeometry(geometry_A, geometry_B)
 
 function compareGeometry(geometry_A::GeometryOOC, geometry_B::GeometryOOC)
@@ -353,7 +354,7 @@ function compareGeometry(geometry_A::GeometryOOC, geometry_B::GeometryOOC)
     return check
 end
 
-isequal(geometry_A::GeometryOOC, geometry_B::GeometryOOC) = compareGeometry(geometry_A, geometry_B)
+==(geometry_A::GeometryOOC, geometry_B::GeometryOOC) = compareGeometry(geometry_A, geometry_B)
 
 compareGeometry(geometry_A::GeometryOOC, geometry_B::Geometry) = true
 compareGeometry(geometry_A::Geometry, geometry_B::GeometryOOC) = true
