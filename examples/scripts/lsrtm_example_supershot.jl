@@ -32,7 +32,7 @@
 # Date: Feb, 2022
 #
 
-using JUDI, JOLI, LinearAlgebra, Images, Random, Statistics, Printf
+using JUDI, JOLI, LinearAlgebra, Random, Statistics, Images
 
 # Set up model structure
 n = (100, 100)   # (x,y,z) or (x,z)
@@ -43,7 +43,7 @@ o = (0., 0.)
 v = ones(Float32,n) .+ 0.5f0
 v[:,20:end] .= 2.5f0
 v[:,50:end] .= 3.5f0
-v0 = 1f0./convert(Array{Float32,2},imfilter(1f0./v, Kernel.gaussian(2))) # smooth 1/v
+v0 = 1f0./convert(Matrix{Float32}, imfilter(1f0./v, Kernel.gaussian(2))) # smooth 1/v
 
 # Slowness squared [s^2/km^2]
 m = (1f0 ./ v).^2
@@ -202,13 +202,13 @@ for j = 1:niter
         global sumsign += sign.(g)
         tau1 = t[j]*abs.(sumsign)/j
         tau = t[j] * ones(Float32,size(C,1))
-        copyto!(view(tau, findall(flag_)), view(tau1, findall(flag_))) # use anti-chatter if pass the threshold
+        @views tau[findall(flag_)] = tau1[findall(flag_)]
 
         # update dual variable
-        global z -= t[j] * tau .* g
+        @. global z -= t[j] * tau .* g
     else
         # update dual variable
-        global z -= t[j] * g
+        @. global z -= t[j] * g
     end
 
     # estimate thresholding parameter in 1st iteration
