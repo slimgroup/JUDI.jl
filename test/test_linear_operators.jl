@@ -101,6 +101,7 @@ end
 
         # get index
         J_sub = J[1]
+        @show J_sub.F.qInjection == J.F[1].qInjection
         @test isequal(J_sub.model, J.model)
         @test isequal(J_sub.F, J.F[1])
         @test isequal(J_sub.q, q[1])
@@ -140,7 +141,7 @@ end
         # Setup operators
         Pr = judiProjection(rec_geometry)
         F = judiModeling(model)
-        Pw = judiLRWF(nsrc, wavelet)
+        Pw = judiLRWF(nsrc, rec_geometry.dt[1], wavelet)
         w = judiWeights(randn(Float32, model.n); nsrc=nsrc)
         PDE = Pr*F*Pw'
         J = judiJacobian(PDE, w)

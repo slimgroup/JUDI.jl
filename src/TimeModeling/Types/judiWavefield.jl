@@ -70,6 +70,8 @@ function copy!(jv::judiWavefield, jv2::judiWavefield)
 end
 
 copyto!(jv::judiWavefield, jv2::judiWavefield) = copy!(jv, jv2)
+
+make_input(w::judiWavefield, dtComp) = Dict(:q=>w.data[1])
 ####################################################################
 
 function push!(a::judiWavefield{T}, b::judiWavefield{T}) where T

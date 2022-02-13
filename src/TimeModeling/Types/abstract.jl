@@ -5,6 +5,8 @@ mutable struct judiMultiSourceException <: Exception
     msg :: String
 end
 
+make_input(ms::judiMultiSourceVector, dt) = throw(judiMultiSourceException("$(typeof(ms)) must implement `make_input(ms, dt)` for propagation"))
+
 isequal(ms1::judiMultiSourceVector, ms2::judiMultiSourceVector) = ms1 == ms2
 ==(ms1::judiMultiSourceVector, ms2::judiMultiSourceVector) = all(getfield(ms1, s) == getfield(ms2, s) for s in fieldnames(typeof(ms1)))
 

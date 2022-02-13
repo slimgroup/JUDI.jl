@@ -70,6 +70,7 @@ function push!(a::judiWeights{T}, b::judiWeights{T}) where T
 	a.nsrc += b.nsrc
 end
 
+make_input(w::judiWeights, dtComp) = Dict(:w=>w.data[1])
 # Subsample weights container
 """
     subsample(x,source_numbers)

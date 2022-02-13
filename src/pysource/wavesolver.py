@@ -117,7 +117,7 @@ class WaveSolver(object):
         return op
 
     # Call
-    def forward(self, save=None, wavelet=None, src_coords=None, rec_coords=None):
+    def forward(self, save=False, wavelet=None, src_coords=None, rec_coords=None):
 
         # Number of tim-steps
         nt = wavelet.shape[0] if wavelet is not None else None
@@ -136,7 +136,7 @@ class WaveSolver(object):
         self.fwd_op(save=save, wsrc=wsrc, wrec=wrec).apply(**kw)
         return rec.data
 
-    def adjoint(self, save=None, wavelet=None, src_coords=None, rec_coords=None):
+    def adjoint(self, save=False, wavelet=None, src_coords=None, rec_coords=None):
         # Number of tim-steps
         nt = wavelet.shape[0] if wavelet is not None else None
         save = nt if save else None
@@ -154,7 +154,7 @@ class WaveSolver(object):
         self.adj_op(save=save, wsrc=wsrc, wrec=wrec).apply(**kw)
         return rec.data
 
-    def born(self, save=None, wavelet=None, src_coords=None, rec_coords=None):
+    def born(self, save=False, wavelet=None, src_coords=None, rec_coords=None):
         # Number of tim-steps
         nt = wavelet.shape[0] if wavelet is not None else None
         save = nt if save else None

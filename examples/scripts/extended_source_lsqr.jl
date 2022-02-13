@@ -56,7 +56,7 @@ F = judiModeling(info, model; options=opt)
 w = judiWeights(randn(Float32, model.n))
 
 # Create operator for injecting the weights, multiplied by the provided wavelet(s)
-Pw = judiLRWF(info, wavelet)
+Pw = judiLRWF(dt, wavelet)
 
 # Model observed data w/ extended source
 lambda = 1f2

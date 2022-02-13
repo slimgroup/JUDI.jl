@@ -25,10 +25,10 @@ m0 = model0.m
     opt = Options(sum_padding=true, dt_comp=dt, return_array=true, free_surface=parsed_args["fs"], f0=f0)
 
     # Setup operators
-    Pr = judiProjection(info, recGeometry)
-    F = judiModeling(info, model; options=opt)
-    F0 = judiModeling(info, model0; options=opt)
-    Pw = judiLRWF(info, q.data[1])
+    Pr = judiProjection(recGeometry)
+    F = judiModeling(model; options=opt)
+    F0 = judiModeling(model0; options=opt)
+    Pw = judiLRWF(q.geometry.data[1], q.data[1])
 
     # Combined operators
     A = Pr*F*adjoint(Pw)

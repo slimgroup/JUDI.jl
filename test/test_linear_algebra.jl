@@ -19,7 +19,7 @@ fs =  parsed_args["fs"]
         ### Model
         model, model0, dm = setup_model(parsed_args["tti"], parsed_args["viscoacoustic"], parsed_args["nlayer"])
         wb = find_water_bottom(model.m .- maximum(model.m))
-        q, srcGeometry, recGeometry, info = setup_geom(model)
+        q, srcGeometry, recGeometry = setup_geom(model)
         dt = srcGeometry.dt[1]
         nt = length(q.data[1])
         nrec = length(recGeometry.xloc[1])
@@ -31,11 +31,11 @@ fs =  parsed_args["fs"]
         w = judiWeights(randn(Float32, model0.n))
 
         # Build operators
-        Pr = judiProjection(info, recGeometry)
-        F = judiModeling(info, model; options=opt)
-        Fa = judiModeling(info, model; options=opta)
-        Ps = judiProjection(info, srcGeometry)
-        Pw = judiLRWF(info, q.data[1])
+        Pr = judiProjection(recGeometry)
+        F = judiModeling(model; options=opt)
+        Fa = judiModeling(model; options=opta)
+        Ps = judiProjection(srcGeometry)
+        Pw = judiLRWF(q.geometry.dt[1], q.data[1])
         J = judiJacobian(Pr*F*adjoint(Ps), q)
         Jw = judiJacobian(Pr*F*adjoint(Pw), w)
 

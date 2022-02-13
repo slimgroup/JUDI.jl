@@ -5,7 +5,7 @@
 # Authors: Philipp Witte (pwitte@eos.ubc.ca), Henryk Modzelewski (hmodzelewski@eos.ubc.ca)
 # Date: January 2017
 
-export judiVector, subsample, judiVector_to_SeisBlock
+export judiVector, subsample, judiVector_to_SeisBlock, src_to_SeisBlock
 export time_resample, time_resample!, judiTimeInterpolation
 export write_shot_record, get_data, convert_to_array, rebuild_jv
 
@@ -140,7 +140,8 @@ end
 
 copyto!(jv::judiVector, jv2::judiVector) = copy!(jv, jv2)
 get_source(jv::judiVector, dtComp) = time_resample(jv.data[1], jv.geometry.dt[1], dtComp)
-
+get_coords(jv::judiVector) where D = begin g=Geometry(jv.geometry); hcat(g.xloc[1], g.zloc[1]) end
+make_input(jv::judiVector, dtComp) = Dict(:wavelet=>get_source(jv, dtComp), :src_coords=>get_coords(jv))
 ##########################################################
 
 # Overload needed base function for SegyIO objects
