@@ -368,8 +368,20 @@ end
 pushfield!(a::Array, b::Array) = append!(a, b)
 pushfield!(a, b) = nothing
 
+########## merge judiVector ###########
+
+"""
+    merge(geometry)
+
+Merge the geometry of multi-source judiVector \\
+The trace with same locations will be added, \\
+and with different locations will be appended. \\
+This merge will be largely used to generate simultaneous judiVectors with random weights.
+
+"""
+
 # merge(GeometryIC)
-function merge(geometry::GeometryIC{T})
+function merge(geometry::GeometryIC{T}) where T
 
     (norm(diff(v.geometry.dt))+norm(diff(v.geometry.nt))+norm(diff(v.geometry.t)) == 0) || throw(judiVectorException("nt/dt/t mismatch in judiVector"))
 

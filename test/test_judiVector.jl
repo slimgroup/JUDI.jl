@@ -228,8 +228,20 @@ ftol = 1e-6
             @test q_merge.data[i][:,j] == w[i,j] .* q.data[j]
         end
         @test q_merge.geometry.xloc[i] == vcat(q.geometry.xloc...)
-        @test q_merge.geometry.yloc[i] == q.geometry.yloc
+        @test q_merge.geometry.yloc[i] == q.geometry.yloc[1]
         @test q_merge.geometry.zloc[i] == vcat(q.geometry.zloc...)
+    end
+
+    # test merging of judiVector when geometries are same
+    dobs_merge = merge(d_obs, w)
+    @test dobs_merge.nsrc == 3
+    for i = 1:dobs_merge.nsrc
+        for j = 1:nsrc
+            @test dobs_merge.data[i] == sum(w[i,:] .* d_obs.data)
+        end
+        @test dobs_merge.geometry.xloc[i] == d_obs.geometry.xloc[1]
+        @test dobs_merge.geometry.yloc[i] == d_obs.geometry.yloc[1]
+        @test dobs_merge.geometry.zloc[i] == d_obs.geometry.zloc[1]
     end
     
     # Time interpolation (inplace)

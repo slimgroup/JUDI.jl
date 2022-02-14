@@ -744,7 +744,7 @@ rebuild a judiVector from previous version type or JLD2 reconstructed type
 rebuild_jv(v::judiVector{T, AT}) where {T, AT} = v
 rebuild_jv(v) = judiVector(convgeom(v), convdata(v))
 
-########## merge judiVector ###########'
+########## merge judiVector ###########
 
 """
     merge(x, weights)
@@ -794,20 +794,22 @@ function merge(v::judiVector{T, Array{T,N}}, w::AbstractVector{T}) where {T, N}
     dictmerge = mergewith(+, dict...)
     key = sort(vcat(keys(dictmerge)...), by=x->getindex(x,1))
 
-    # set geometry
     xloc = @. getindex(key, 1)
     yloc = @. getindex(key, 2)
-    if length(v.geometry.yloc[1]) == 1
-        yloc = v.geometry.yloc[1] # don't change it if 2D data
-    end
     zloc = @. getindex(key, 3)
-    geometry_merge = Geometry(xloc,yloc,zloc; dt=v.geometry.dt[1], t=v.geometry.t[1])
 
     # set data
     data_merge = Matrix{T}(undef, v.geometry.nt[1], length(xloc))
     for i = 1:length(xloc)
         @views data_merge[:, i] .= dictmerge[(xloc[i],yloc[i],zloc[i])]
     end
+
+    # set geometry
+    if length(v.geometry.yloc[1]) == 1
+        yloc = v.geometry.yloc[1] # don't change it if 2D data
+    end
+    geometry_merge = Geometry(xloc,yloc,zloc; dt=v.geometry.dt[1], t=v.geometry.t[1])
+
 
     return judiVector(geometry_merge, data_merge)
 
