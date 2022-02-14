@@ -42,6 +42,7 @@ end
 function materialize(bc::MultiSource)
     m1, m2 = materialize(bc.m1), materialize(bc.m2)
     ms = similar(find_msv((m1, m2)))
+    check_compat(m1, m2)
     for i=1:ms.nsrc
         ms.data[i] = materialize(broadcasted(bc.op, get_src(m1, i), get_src(m2, i)))
     end
@@ -50,6 +51,7 @@ end
 
 function materialize!(ms::judiMultiSourceVector, bc::MultiSource)
     m1, m2 = materialize(bc.m1), materialize(bc.m2)
+    check_compat(ms, m1, m2)
     for i=1:ms.nsrc
         broadcast!(bc.op, ms.data[i], get_src(m1, i), get_src(m2, i))
     end

@@ -32,10 +32,11 @@ function *(F::judiPropagator{T, O}, q::SourceType{T}) where {T<:Number, O}
     # Make sure the model has correct values
     set_dm!(F, q)
     # Distribute source
+    propagate(F[1], src_i(F, q, 1))
     @sync for i=1:nsrc
         @async res[i] = remotecall(propagate, pool, F[i], src_i(F, q, i))
     end
     # Reduce result
     res = reduce!(res)
-    return res
+    return as_vec(res,  Val(F.options.return_array))
 end

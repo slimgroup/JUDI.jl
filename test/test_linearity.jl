@@ -28,10 +28,10 @@ ftol = 5f-5
 @testset "Linearity test with $(nlayer) layers and tti $(tti) and viscoacoustic $(viscoacoustic) and freesurface $(fs)" begin
     @timeit TIMEROUTPUT "Linearity" begin
         # Modeling operators
-        Pr = judiProjection(info,recGeometry)
-        Ps1 = judiProjection(info,srcGeometry1)
-        Ps2 = judiProjection(info,srcGeometry2)
-        F = judiModeling(info,model; options=opt)
+        Pr = judiProjection(recGeometry)
+        Ps1 = judiProjection(srcGeometry1)
+        Ps2 = judiProjection(srcGeometry2)
+        F = judiModeling(model; options=opt)
         q2 = judiVector(srcGeometry2,q1.data[1])
 
         A1 = Pr*F*adjoint(Ps1)
@@ -168,8 +168,8 @@ end
 
         d1 = A*w
         d2 = A*x
-        d3 = Pr*F*(adjoint(Pw)*w + adjoint(Pw)*x)
-        d4 = Pr*F*(adjoint(Pw)*w - adjoint(Pw)*x)
+        d3 = A*(w+x)
+        d4 = A*(w-x)
         d5 = A*(2f0 * w)
         d6 = (2f0 * A) * w
 

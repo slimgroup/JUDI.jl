@@ -9,6 +9,7 @@ make_input(ms::judiMultiSourceVector, dt) = throw(judiMultiSourceException("$(ty
 
 isequal(ms1::judiMultiSourceVector, ms2::judiMultiSourceVector) = ms1 == ms2
 ==(ms1::judiMultiSourceVector, ms2::judiMultiSourceVector) = all(getfield(ms1, s) == getfield(ms2, s) for s in fieldnames(typeof(ms1)))
+check_compat(ms::judiMultiSourceVector...) = true
 
 unsafe_convert(::Type{Ptr{T}}, msv::judiMultiSourceVector{T}) where {T} = unsafe_convert(Ptr{T}, msv.data)
 

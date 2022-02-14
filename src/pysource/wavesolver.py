@@ -1,6 +1,7 @@
 from cached_property import cached_property
 
 from devito import TimeFunction, SparseTimeFunction, Operator, Function, Eq
+from devito.builtins import initialize_function
 from devito.tools import memoized_meth, as_tuple
 
 from kernels import acoustic_kernel
@@ -73,10 +74,8 @@ class WaveSolver(object):
 
     def update_lr(self, wt, ws, wavelet, weights):
         if weights is not None:
-            print(weights.shape)
-            ws.data[:] = weights
+            initialize_function(ws, weights, self.model.padsizes)
         if wavelet is not None:
-            print(wavelet.shape)
             wt.data[:] = wavelet[:, 0]
         return
 
@@ -172,7 +171,7 @@ class WaveSolver(object):
                   rec_coords=None, q=None, w=None, ws=None, wr=None, u=None,
                   gu=None, grad=False, lin=False):
         # Number of tim-steps
-        nt = wavelet.shape[0] if wavelet is not None else as_tuple(q)[0].shape[0]
+        nt = [qi for qi in [wavelet, q, ws, wr] if qi is not None][0].shape[0]
         save = nt if save else None
         # wavefield
         u = u or self.wavefield(fw=fw, save=save)
@@ -190,15 +189,15 @@ class WaveSolver(object):
         qsrc = self.qfull(q=qfull, nt=nt)
         self.update_q(qsrc, q)
         # Rank 1 source
-        wt, ws = self.lrsrc(esrc=esrc, nt=nt)
-        self.update_lr(wt, ws, ws, w)
+        wts, wss = self.lrsrc(esrc=esrc, nt=nt)
+        self.update_lr(wts, wss, ws, w)
         # Rank 1 rec
         wtr, wsr = self.lrsrc(esrc=erec, nt=nt, rec=True)
         self.update_lr(wtr, wsr, wr, None)
         # Gradient
         grad = self.image() if grad else None
         # kwargs
-        fields = [u, ul, src, rec, qsrc, wt, ws, wtr, wsr, gu, grad]
+        fields = [u, ul, src, rec, qsrc, wts, wss, wtr, wsr, gu, grad]
         kw = {k.name: k for k in fields if k is not None}
         kw.update({'dt': self.dt})
         op = self.nlin_op(fw=fw, save=save, wsrc=wsrc, wrec=wrec, lin=lin,
@@ -219,12 +218,13 @@ class WaveSolver(object):
         ret = self.propagate(fw=True, lin=True, **kwargs)
         return ret.data
 
-    def adjoint_born(self, wavelet=None, src_coords=None, rec_coords=None, rec_data=None):
-        nt = wavelet.shape[0] if wavelet is not None else None
+    def adjoint_born(self, wavelet=None, src_coords=None, rec_coords=None, rec_data=None,
+                     w=None, q=None, ws=None, wr=None):
+        nt = [qi for qi in [wavelet, q, ws, wr] if qi is not None][0].shape[0]
         # Forward modeling
-        u = self.wavefield(save=nt)
-        _ = self.propagate(fw=True, save=nt, wavelet=wavelet, src_coords=src_coords,
-                           rec_coords=rec_coords, u=u)
+        u = self.wavefield(fw=True, save=nt)
+        _ = self.propagate(fw=True, save=True, wavelet=wavelet, src_coords=src_coords,
+                           rec_coords=rec_coords, u=u, w=w, ws=ws, wr=wr)
         # Compute residual and compute gradient
         grad = self.propagate(fw=False, save=False, wavelet=rec_data, src_coords=rec_coords,
                               gu=u, grad=True)

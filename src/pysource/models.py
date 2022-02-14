@@ -379,7 +379,7 @@ class Model(GenericModel):
             if not isinstance(self._dm, Function):
                 self._dm = self._gen_phys_param(dm, 'dm', self.space_order)
             elif dm.shape == self.shape:
-                initialize_function(self._dm, dm, self.nbl)
+                initialize_function(self._dm, dm, self.padsizes)
             elif dm.shape == self.dm.shape:
                 self.dm.data[:] = dm[:]
             else:
@@ -414,7 +414,7 @@ class Model(GenericModel):
             if m.shape == self.m.shape:
                 self.m.data[:] = m[:]
             elif m.shape == self.shape:
-                initialize_function(self._m, m, self.nbl)
+                initialize_function(self._m, m, self.padsizes)
             else:
                 raise ValueError("Incorrect input size %s for model of size" % m.shape +
                                  " %s without or %s with padding" % (self.shape,

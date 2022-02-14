@@ -75,7 +75,7 @@ end
 
 # A propagator with measurment returns an array based on the projection
 out_type(F::judiDataSourceModeling, ndim) = out_type(F.rInterpolation, ndim)
-process_out(F::judiDataSourceModeling, dout, dt) = process_out(F.rInterpolation, dout, dt)
+process_out(F::judiDataSourceModeling, dout, dt) = process_out(F.rInterpolation, dout, dt, solver(F))
 
 ==(F1::judiDataSourceModeling, F2::judiDataSourceModeling) = (F1.F == F2.F && F1.qInjection == F2.qInjection && F1.rInterpolation == F2.rInterpolation)
 
@@ -97,7 +97,7 @@ end
 
 # A propagator with measurment returns an array based on the projection
 out_type(F::judiDataModeling, ndim) = out_type(F.rInterpolation, ndim)
-process_out(F::judiDataModeling, dout, dt) = process_out(F.rInterpolation, dout, dt)
+process_out(F::judiDataModeling, dout, dt) = process_out(F.rInterpolation, dout, dt, solver(F))
 
 ==(F1::judiDataModeling, F2::judiDataModeling) = (F1.F == F2.F && F1.rInterpolation == F2.rInterpolation)
 
@@ -120,8 +120,9 @@ end
 function make_input(J::judiJacobian{D, :adjoint_born, FT}, q::judiMultiSourceVector, pysolver::PyObject) where {D, FT, AT}
     dt = convert(Float32, pysolver.dt)
     rI_kw = make_input(J.F.rInterpolation, dt)
+    qI_kw = make_input(J.F.qInjection, dt)
     q_kw = make_input(J.q, dt)
-    Dict(rI_kw..., q_kw..., :rec_data=>get_source(q, dt))
+    Dict(rI_kw..., qI_kw..., q_kw..., :rec_data=>get_source(q, dt))
 end
 
 set_dm!(J::judiJacobian{D, :born, FT}, dm) where {D, FT} = set_dm!(J.model, J.options, solver(J), dm)
@@ -129,7 +130,7 @@ set_dm!(J::judiJacobian{D, :born, FT}, dm) where {D, FT} = set_dm!(J.model, J.op
 # A propagator with measurment returns an array based on the projection
 out_type(J::judiJacobian{D, :born, FT}, ndim) where {D, FT} = out_type(J.F.rInterpolation, ndim)
 out_type(::judiJacobian{D, :adjoint_born, FT}, ndim) where {D, FT} = Array{Float32, ndim}
-process_out(J::judiJacobian{D, :born, FT}, dout, dt) where {D, FT} = process_out(J.F.rInterpolation, dout, dt)
+process_out(J::judiJacobian{D, :born, FT}, dout, dt) where {D, FT} = process_out(J.F.rInterpolation, dout, dt, solver(J))
 
 function process_out(J::judiJacobian{D, :adjoint_born, FT}, dout, dt) where {D, FT}
     dout = remove_padding(dout, getfield(JUDI, solver(J))."model".padsizes; true_adjoint=J.options.sum_padding)

@@ -33,7 +33,7 @@ Constructors
 Construct wavefield vector from an info structure, a cell array of wavefields and the computational \\
 time step dt:
 
-    judiWavefield(info, nt, data)
+    judiWavefield(nsrc, dt, data)
 
 
 """
@@ -72,6 +72,8 @@ end
 copyto!(jv::judiWavefield, jv2::judiWavefield) = copy!(jv, jv2)
 
 make_input(w::judiWavefield, dtComp) = Dict(:q=>w.data[1])
+
+check_compat(ms::judiWavefield...) = all(y -> y.dt == first(ms).dt, ms)
 ####################################################################
 
 function push!(a::judiWavefield{T}, b::judiWavefield{T}) where T
