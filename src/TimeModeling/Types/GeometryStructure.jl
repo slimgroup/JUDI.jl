@@ -368,13 +368,35 @@ end
 pushfield!(a::Array, b::Array) = append!(a, b)
 pushfield!(a, b) = nothing
 
-# Check if the receiver geometry is replicated for each source
-# i.e. if all sources see the same receivers
-function isGeometryReplicated(geometry::Geometry)
-    for i = 1:get_nsrc(geometry)-1
-        if ~compareGeometry(subsample(geometry, i), subsample(geometry, i+1))
-            return false
+# merge(GeometryIC)
+function merge(geometry::GeometryIC{T})
+
+    (norm(diff(v.geometry.dt))+norm(diff(v.geometry.nt))+norm(diff(v.geometry.t)) == 0) || throw(judiVectorException("nt/dt/t mismatch in judiVector"))
+
+    loc = Vector{Tuple{T,T,T}}()
+    for i = get_nsrc(geometry)
+        for j = 1:length(geometry.xloc[i])
+            xloc = geometry.xloc[i][j]
+            if length(geometry.yloc[i]) == 1
+                yloc = geometry.yloc[i][1]
+            else
+                yloc = geometry.yloc[i][j]
+            end
+            zloc = geometry.zloc[i][j]
+            push!(loc, (xloc, yloc, zloc))
         end
     end
-    return true
+
+    loc_merge = sort(unique(loc))
+
+    # set geometry
+    xloc = @. getindex(loc_merge, 1)
+    yloc = @. getindex(loc_merge, 2)
+    if length(geometry.yloc[1]) == 1
+        yloc = geometry.yloc[1]
+    end
+    zloc = @. getindex(key, 3)
+
+    return Geometry(xloc,yloc,zloc; dt=v.geometry.dt[1], t=v.geometry.t[1])
+
 end

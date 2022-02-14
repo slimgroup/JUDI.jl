@@ -797,7 +797,9 @@ function merge(v::judiVector{T, Array{T,N}}, w::AbstractVector{T}) where {T, N}
     # set geometry
     xloc = @. getindex(key, 1)
     yloc = @. getindex(key, 2)
-    (norm(v.geometry.yloc) == 0) && (yloc = v.geometry.yloc) # don't change it if 2D data
+    if length(v.geometry.yloc[1]) == 1
+        yloc = v.geometry.yloc[1] # don't change it if 2D data
+    end
     zloc = @. getindex(key, 3)
     geometry_merge = Geometry(xloc,yloc,zloc; dt=v.geometry.dt[1], t=v.geometry.t[1])
 
