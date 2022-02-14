@@ -5,13 +5,13 @@
 
 export Geometry, compareGeometry, GeometryIC, GeometryOOC, get_nsrc, n_samples
 
-abstract type Geometry end
+abstract type Geometry{T} end
 
 const CoordT = Union{Array{T, 1}, Array{Array{T, 1}, 1}} where T<:Number
 (::Type{CoordT})(x::Vector{Any}) = rebuild_maybe_jld(x)
 
 # In-core geometry structure for seismic header information
-mutable struct GeometryIC{T} <: Geometry
+mutable struct GeometryIC{T} <: Geometry{T}
     xloc::CoordT  # Array of receiver positions (fixed for all experiments)
     yloc::CoordT
     zloc::CoordT
@@ -21,7 +21,7 @@ mutable struct GeometryIC{T} <: Geometry
 end
 
 # Out-of-core geometry structure, contains look-up table instead of coordinates
-mutable struct GeometryOOC{T} <: Geometry
+mutable struct GeometryOOC{T} <: Geometry{T}
     container::Array{SegyIO.SeisCon,1}
     dt::Array{T,1}
     nt::Array{Integer,1}
@@ -356,3 +356,14 @@ end
 
 pushfield!(a::Array, b::Array) = append!(a, b)
 pushfield!(a, b) = nothing
+
+# Check if the receiver geometry is replicated for each source
+# i.e. if all sources see the same receivers
+function isGeometryReplicated(geometry::Geometry)
+    for i = 1:get_nsrc(geometry)-1
+        if ~compareGeometry(subsample(geometry, i), subsample(geometry, i+1))
+            return false
+        end
+    end
+    return true
+end

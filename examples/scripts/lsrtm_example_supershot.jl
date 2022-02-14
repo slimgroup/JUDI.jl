@@ -145,7 +145,7 @@ end
 # set up computational simultaneous source experiments
 # set up source geometry
 xsrc_sim = [[q.geometry.xloc[i][1] for i = 1:nsrc] for j = 1:batchsize]
-ysrc_sim = [[0.0f0] for j = 1:batchsize]
+ysrc_sim = [[q.geometry.yloc[i][1] for i = 1:nsrc] for j = 1:batchsize]
 zsrc_sim = [[q.geometry.zloc[i][1] for i = 1:nsrc] for j = 1:batchsize]
 sim_src_geometry = Geometry(xsrc_sim, ysrc_sim, zsrc_sim; dt=q.geometry.dt[1], t=q.geometry.t[1])
 ntComp_sim = get_computational_nt(sim_src_geometry, recGeometry, model)

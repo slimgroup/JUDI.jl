@@ -219,6 +219,19 @@ ftol = 1e-6
         vec(q_1.data[i]) == vec(q.data[i])
     end
 
+    # test merging of judiVector when geometries are different
+    w = randn(Float32, 3, nsrc)
+    q_merge = merge(q, w)
+    @test q_merge.nsrc == 3
+    for i = 1:q_merge.nsrc
+        for j = 1:nsrc
+            @test q_merge.data[i][:,j] == w[i,j] .* q.data[j]
+        end
+        @test q_merge.geometry.xloc[i] == vcat(q.geometry.xloc...)
+        @test q_merge.geometry.yloc[i] == q.geometry.yloc
+        @test q_merge.geometry.zloc[i] == vcat(q.geometry.zloc...)
+    end
+    
     # Time interpolation (inplace)
     dt_orig = 2f0
     dt_new = 1f0

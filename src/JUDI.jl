@@ -27,6 +27,7 @@ import Base.getindex, Base.setindex!, Base.firstindex, Base.lastindex
 import Base.similar, Base.isapprox, Base.isequal
 import Base.materialize!, Base.materialize
 import Base.promote_shape, Base.diff, Base.cumsum, Base.cumsum!
+import Base.merge
 
 # Import Linear Lagebra functions to dispatch on JUDI types
 import LinearAlgebra.transpose, LinearAlgebra.conj, LinearAlgebra.vcat, LinearAlgebra.adjoint
