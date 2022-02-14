@@ -81,7 +81,7 @@ out_type(::judiLRWF{T}, ndim) where T = Array{Float32, ndim}
 process_out(rI::judiProjection{T}, dout, dtComp) where T = judiVector{T, Array{T, 2}}(1, rI.geometry, [time_resample(dout, dtComp, rI.geometry.dt[1])])
 process_out(rI::judiLRWF{T}, dout, dtComp) where T = judiWeights{T}(1, [dout])
 
-make_input(P::judiProjection, dtComp) = Dict(:src_coords=>get_coords(P))
-make_input(P::jAdjoint{<:judiProjection}, dtComp) = Dict(:rec_coords=>get_coords(P.op))
-make_input(P::judiLRWF, dtComp) = Dict(:wavelet=>time_resample(P.data[1], P.dt[1], dtComp))
+make_input(P::judiProjection, dtComp) = Dict(:rec_coords=>get_coords(P))
+make_input(P::jAdjoint{<:judiProjection}, dtComp) = Dict(:src_coords=>get_coords(P.op))
+make_input(P::judiLRWF, dtComp) = Dict(:wr=>time_resample(P.data[1], P.dt[1], dtComp))
 make_input(P::jAdjoint{<:judiLRWF}, dtComp) = Dict(:ws=>time_resample(P.data[1], P.dt[1], dtComp))

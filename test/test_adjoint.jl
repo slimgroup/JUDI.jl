@@ -22,7 +22,7 @@ end
 
 ### Model
 model, model0, dm = setup_model(tti, viscoacoustic, nlayer; rand_dm=true)
-q, srcGeometry, recGeometry, info, f0 = setup_geom(model; nsrc=nw)
+q, srcGeometry, recGeometry, f0 = setup_geom(model; nsrc=nw)
 dt = srcGeometry.dt[1]
 
 # testing parameters and utils
@@ -94,9 +94,9 @@ end
     @timeit TIMEROUTPUT "Extended source adjoint" begin
         opt = Options(sum_padding=true, dt_comp=dt, free_surface=parsed_args["fs"], f0=f0)
         F = judiModeling(model0, srcGeometry, recGeometry; options=opt)
-        Pr = judiProjection(info, recGeometry)
-        Fw = judiModeling(info, model0; options=opt)
-        Pw = judiLRWF(info, circshift(q.data[1], 51))
+        Pr = judiProjection(recGeometry)
+        Fw = judiModeling(model0; options=opt)
+        Pw = judiLRWF(circshift(q.data[1], 51))
         Fw = Pr*Fw*adjoint(Pw)
 
         # Extended source weights

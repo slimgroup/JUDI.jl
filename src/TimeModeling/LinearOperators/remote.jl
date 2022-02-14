@@ -22,7 +22,7 @@ function update_local(name::Symbol, dm::AbstractArray{T, N}, pad::Vector{<:NTupl
     nothing
 end
 
-function set_dm!(m::Model, o::Options, s::Symbol, dm::AbstractVector)
+function set_dm!(m::Model, o::Options, s::Symbol, dm::Array{T, N}) where {T, N}
     pad = pad_sizes(m, o)
     dm = reshape(dm, m.n)
     @sync for p in workers()
@@ -31,4 +31,4 @@ function set_dm!(m::Model, o::Options, s::Symbol, dm::AbstractVector)
     nothing
 end
 
-set_dm!(m::Model, o::Options, s::Symbol, dm::PhysicalParameter) = set_dm!(m. o, s, dm.data)
+set_dm!(m::Model, o::Options, s::Symbol, dm::PhysicalParameter) = set_dm!(m, o, s, dm.data)

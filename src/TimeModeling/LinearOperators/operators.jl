@@ -119,19 +119,22 @@ end
 
 function make_input(J::judiJacobian{D, :adjoint_born, FT}, q::judiMultiSourceVector, pysolver::PyObject) where {D, FT, AT}
     dt = convert(Float32, pysolver.dt)
-    qI_kw = make_input(J.F.qInjection, dt)
     rI_kw = make_input(J.F.rInterpolation, dt)
     q_kw = make_input(J.q, dt)
-    Dict(rI_kw..., qI_kw..., q_kw..., :rec_data=>get_source(q, dt))
+    Dict(rI_kw..., q_kw..., :rec_data=>get_source(q, dt))
 end
 
 set_dm!(J::judiJacobian{D, :born, FT}, dm) where {D, FT} = set_dm!(J.model, J.options, solver(J), dm)
 
 # A propagator with measurment returns an array based on the projection
 out_type(J::judiJacobian{D, :born, FT}, ndim) where {D, FT} = out_type(J.F.rInterpolation, ndim)
-out_type(J::judiJacobian{D, :adjoint_born, FT}, ndim) where {D, FT} = Array{Float32, ndim}
+out_type(::judiJacobian{D, :adjoint_born, FT}, ndim) where {D, FT} = Array{Float32, ndim}
 process_out(J::judiJacobian{D, :born, FT}, dout, dt) where {D, FT} = process_out(J.F.rInterpolation, dout, dt)
-process_out(J::judiJacobian{D, :adjoint_born, FT}, dout, dt) where {D, FT} = PhysicalParameter(dout, J.model.d, J.model.o)
+
+function process_out(J::judiJacobian{D, :adjoint_born, FT}, dout, dt) where {D, FT}
+    dout = remove_padding(dout, getfield(JUDI, solver(J))."model".padsizes; true_adjoint=J.options.sum_padding)
+    PhysicalParameter(dout, J.model.d, J.model.o)
+end
 
 ==(F1::judiJacobian{D, O1, FT1}, F2::judiJacobian{D, O2, FT2}) where {D, O1, O2, FT1, FT2} = (O1 == O2 && FT1 == FT2 && F1.F == F2.F && F1.q == F2.q)
 
@@ -161,7 +164,7 @@ adjoint(F::judiModeling{D, O}) where {D, O} = judiModeling{D, adjoint(O)}(F.n, F
 adjoint(F::judiDataModeling{D, O}) where {D, O} = judiPointSourceModeling{D, adjoint(O)}(adjoint(F.F), adjoint(F.rInterpolation))
 adjoint(F::judiPointSourceModeling{D, O}) where {D, O}= judiDataModeling{D, adjoint(O)}(adjoint(F.qInjection), adjoint(F.F))
 adjoint(F::judiDataSourceModeling{D, O}) where {D, O} = judiDataSourceModeling{D, adjoint(O)}(adjoint(F.qInjection), adjoint(F.F), adjoint(F.rInterpolation))
-adjoint(J::judiJacobian{D, O, FT}) where {D, O, FT} = judiJacobian{D, adjoint(O), typeof(adjoint(J.F))}(J.n, J.m, adjoint(J.F), J.q)
+adjoint(J::judiJacobian{D, O, FT}) where {D, O, FT} = judiJacobian{D, adjoint(O), FT}(J.n, J.m, J.F, J.q)
 
 # Composition
 *(F::judiModeling{D, O}, P::AdjointProjection{D}) where {D, O} = judiPointSourceModeling{D, O}(F, P)
