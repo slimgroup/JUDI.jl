@@ -1,3 +1,5 @@
+export subsample
+
 # Base multi source abstract type
 abstract type judiMultiSourceVector{T} <: DenseVector{T} end
 
@@ -9,7 +11,9 @@ make_input(ms::judiMultiSourceVector, dt) = throw(judiMultiSourceException("$(ty
 
 isequal(ms1::judiMultiSourceVector, ms2::judiMultiSourceVector) = ms1 == ms2
 ==(ms1::judiMultiSourceVector, ms2::judiMultiSourceVector) = all(getfield(ms1, s) == getfield(ms2, s) for s in fieldnames(typeof(ms1)))
-check_compat(ms::judiMultiSourceVector...) = true
+check_compat(ms::Vararg{judiMultiSourceVector, N}) where N = true
+check_compat(x::Number, ms::judiMultiSourceVector) = true
+check_compat(ms::judiMultiSourceVector, x::Number) = true
 
 unsafe_convert(::Type{Ptr{T}}, msv::judiMultiSourceVector{T}) where {T} = unsafe_convert(Ptr{T}, msv.data)
 
@@ -23,8 +27,11 @@ copy(ms::judiMultiSourceVector{T}) where {T} = begin y = zero(T, ms); y.data = d
 deepcopy(ms::judiMultiSourceVector{T}) where {T} = copy(ms)
 
 setindex!(ms::judiMultiSourceVector{T}, v::Array{T, N}, i::Integer) where {T, N} = begin ms.data[i] = v; nothing end
-getindex(ms::judiMultiSourceVector{T}, i) where {T} = subsample(ms, i)
+getindex(ms::judiMultiSourceVector{T}, i::Integer) where {T} = ms[i:i]
 iterate(S::judiMultiSourceVector, state::Integer=1) = state > S.nsrc ? nothing : (S[state], state+1)
+
+# Backward compat subsample
+subsample(ms::judiMultiSourceVector, i) = getindex(ms, i)
 
 eltype(::judiMultiSourceVector{T}) where T = T
 
@@ -43,8 +50,6 @@ fill!(x::judiMultiSourceVector, val) = fill!.(x.data, val)
 sum(x::judiMultiSourceVector) = sum(sum(x.data))
 
 isfinite(v::judiMultiSourceVector) = all(all(isfinite.(v.data[i])) for i=1:v.nsrc)
-
-subsample(v::judiMultiSourceVector, srcnum) = v[srcnum]
 
 time_sampling(ms::judiMultiSourceVector) = [1 for i=1:ms.nsrc]
 

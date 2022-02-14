@@ -1,5 +1,5 @@
 
-const SourceType{T} = Union{Vector{T}, judiMultiSourceVector{T}, PhysicalParameter{T}}
+const SourceType{T} = Union{Vector{Array{T}}, judiMultiSourceVector{T}, PhysicalParameter{T}}
 
 """
     propagate(F::judiPropagator{T, mode}, q)
@@ -13,16 +13,21 @@ function propagate(F::judiPropagator{T, O}, q::SourceType{T}) where {T, O}
     # Out type
     Tout = out_type(F, pysolver."model".dim)
     # Make Options
-    prop_kw = make_input(F, q, pysolver)
+    t1 = @elapsed prop_kw = make_input(F, q, pysolver)
+    println("Setup time $(t1) sec")
     # Propagate
-    dout = pycall(op, Tout; prop_kw...)
+    t1 = @elapsed dout = pycall(op, Tout; prop_kw...)
+    println("Call time $(t1) sec")
     # create out
-    dout = process_out(F, dout, pysolver.dt)
+    t1 = @elapsed dout = process_out(F, dout, pysolver.dt)
+    println("Postprocess time $(t1) sec")
+    println("")
     return dout
 end
 
 src_i(J::judiJacobian{T, :born, FT}, q, i) where {T, FT} = J.q[i]
 src_i(J, q, i) = q[i]
+
 
 function *(F::judiPropagator{T, O}, q::SourceType{T}) where {T<:Number, O}
     # Number of sources and init result
@@ -40,3 +45,5 @@ function *(F::judiPropagator{T, O}, q::SourceType{T}) where {T<:Number, O}
     res = reduce!(res)
     return as_vec(res,  Val(F.options.return_array))
 end
+
+*(F::judiPropagator{T, O}, q::Vector{T}) = F*process_input_data(q, F.model, nsrc(F))

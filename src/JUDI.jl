@@ -50,6 +50,9 @@ _worker_pool = default_worker_pool
 _TFuture = Future
 _verbose = false
 
+# Some usefull types
+const RangeOrVec = Union{AbstractRange, Vector}
+
 set_verbosity(x::Bool) = begin global _verbose = x; end
 judilog(msg) = _verbose ? println(msg) : nothing
 

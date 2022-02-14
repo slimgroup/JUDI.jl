@@ -5,7 +5,7 @@
 # Authors: Philipp Witte (pwitte@eos.ubc.ca), Henryk Modzelewski (hmodzelewski@eos.ubc.ca)
 # Date: January 2017
 
-export judiVector, subsample, judiVector_to_SeisBlock, src_to_SeisBlock
+export judiVector, judiVector_to_SeisBlock, src_to_SeisBlock
 export time_resample, time_resample!, judiTimeInterpolation
 export write_shot_record, get_data, convert_to_array, rebuild_jv
 
@@ -143,7 +143,7 @@ get_source(jv::judiVector, dtComp) = time_resample(jv.data[1], jv.geometry.dt[1]
 get_coords(jv::judiVector) where D = begin g=Geometry(jv.geometry); hcat(g.xloc[1], g.zloc[1]) end
 make_input(jv::judiVector, dtComp) = Dict(:wavelet=>get_source(jv, dtComp), :src_coords=>get_coords(jv))
 
-check_compat(ms::judiVector...) = all(y -> compareGeometry(y.geometry, first(ms).geometry), ms)
+check_compat(ms::Vararg{judiVector, N}) where N = all(y -> compareGeometry(y.geometry, first(ms).geometry), ms)
 ##########################################################
 
 # Overload needed base function for SegyIO objects
@@ -159,11 +159,11 @@ function push!(a::judiVector{T, mT}, b::judiVector{T, mT}) where {T, mT}
     push!(a.geometry, b.geometry)
 end
 
-# Subsample data container
+# getindex data container
 """
-    subsample(x,source_numbers)
+    getindex(x,source_numbers)
 
-Subsample seismic data vectors or matrix-free linear operators and extract the entries that correspond\\
+getindex seismic data vectors or matrix-free linear operators and extract the entries that correspond\\
 to the shot positions defined by `source_numbers`. Works for inputs of type `judiVector`, `judiModeling`, \\
 `judiProjection`, `judiJacobian`, `Geometry`, `judiRHS`, `judiPDE`, `judiPDEfull`.
 
@@ -172,23 +172,21 @@ Examples
 
 (1) Extract 2 shots from `judiVector` vector:
 
-    dsub = subsample(dobs,[1,2])
+    dsub = getindex(dobs,[1,2])
 
 (2) Extract geometry for shot location 100:
 
-    geometry_sub = subsample(dobs.geometry,100)
+    geometry_sub = getindex(dobs.geometry,100)
 
 (3) Extract Jacobian for shots 10 and 20:
 
-    Jsub = subsample(J,[10,20])
+    Jsub = getindex(J,[10,20])
 
 """
-function subsample(a::judiVector{avDT, AT}, srcnum::AbstractRange) where {avDT, AT}
-    geometry = subsample(a.geometry, srcnum)     # Geometry of subsampled data container
+function getindex(a::judiVector{avDT, AT}, srcnum::RangeOrVec) where {avDT, AT}
+    geometry = getindex(a.geometry, srcnum)     # Geometry of getindexd data container
     return judiVector{avDT, AT}(length(srcnum), geometry, a.data[srcnum])
 end
-
-subsample(a::judiVector, srcnum::Integer) = subsample(a, srcnum:srcnum)
 
 # Create SeisBlock from judiVector container to write to file
 function judiVector_to_SeisBlock(d::judiVector{avDT, AT}, q::judiVector{avDT, QT};
@@ -264,7 +262,7 @@ end
 
 function time_resample!(x::judiVector, dt_new; order=2)
     for j=1:x.nsrc
-        dataInterp, geom = time_resample(x.data[j], subsample(x.geometry, j), dt_new)
+        dataInterp, geom = time_resample(x.data[j], getindex(x.geometry, j), dt_new)
         x.data[j] = dataInterp
         x.geometry.dt[j] = dt_new
         x.geometry.nt[j] = geom.nt[1]

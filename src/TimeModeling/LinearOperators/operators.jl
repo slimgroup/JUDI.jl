@@ -17,7 +17,7 @@ end
 
 display(P::judiPropagator{D, O}) where {D, O} = println("JUDI $(operator(P)) propagator $(repr(P.n)) -> $(repr(P.m))")
 adjoint(s::Symbol) = adjoint_map[s]
-set_dm!(J::judiPropagator, dm) where {D, FT} = nothing
+set_dm!(::judiPropagator, dm) = nothing
 
 # Base PDE type
 struct judiModeling{D, O} <: judiPropagator{D, O}
@@ -31,7 +31,7 @@ end
 # A base propagator returns a wavefield
 out_type(::judiPropagator, ndim) = Array{Float32, ndim+1}
 make_input(::judiModeling, q::judiMultiSourceVector, pysolver::PyObject) = Dict(:save=>true, :q=>q.data[1])
-process_out(F::judiModeling{T, O}, dout, dt) where {T, O} = judiWavefield{T}(1, dt, [dout])
+process_out(::judiModeling{T, O}, dout, dt) where {T, O} = judiWavefield{T}(1, dt, [dout])
 
 ==(F1::judiModeling{D, O1}, F2::judiModeling{D, O2}) where {D, O1, O2} =
     (O1 == O2 && F1.model == F2.model && F1.options == F2.options && F1.solver == F2.solver)
@@ -122,7 +122,8 @@ function make_input(J::judiJacobian{D, :adjoint_born, FT}, q::judiMultiSourceVec
     rI_kw = make_input(J.F.rInterpolation, dt)
     qI_kw = make_input(J.F.qInjection, dt)
     q_kw = make_input(J.q, dt)
-    Dict(rI_kw..., qI_kw..., q_kw..., :rec_data=>get_source(q, dt))
+    rec_d = get_source(q, dt)
+    Dict(rI_kw..., qI_kw..., q_kw..., :rec_data=>rec_d)
 end
 
 set_dm!(J::judiJacobian{D, :born, FT}, dm) where {D, FT} = set_dm!(J.model, J.options, solver(J), dm)
@@ -133,7 +134,8 @@ out_type(::judiJacobian{D, :adjoint_born, FT}, ndim) where {D, FT} = Array{Float
 process_out(J::judiJacobian{D, :born, FT}, dout, dt) where {D, FT} = process_out(J.F.rInterpolation, dout, dt, solver(J))
 
 function process_out(J::judiJacobian{D, :adjoint_born, FT}, dout, dt) where {D, FT}
-    dout = remove_padding(dout, getfield(JUDI, solver(J))."model".padsizes; true_adjoint=J.options.sum_padding)
+    dout = remove_padding(dout, getfield(JUDI, solver(J))."model".padsizes;
+                          true_adjoint=J.options.sum_padding)
     PhysicalParameter(dout, J.model.d, J.model.o)
 end
 
@@ -155,7 +157,14 @@ end
 judiModeling(model::Model, src_geom::Geometry, rec_geom::Geometry; options=Options()) =
     judiProjection(rec_geom) * judiModeling(model; options=options) * adjoint(judiProjection(src_geom))
 
-judiJacobian(F::judiPropagator{D, O}, q) where {D, O} = judiJacobian{D, :born, typeof(F)}(F.m, space_size(ndims(F.model)), F, q)
+judiJacobian(F::judiPropagator{D, O}, q::judiMultiSourceVector) where {D, O} = judiJacobian{D, :born, typeof(F)}(F.m, space_size(ndims(F.model)), F, q)
+
+# Backward compat with giving weights as array. Not recommened
+function judiJacobian(F::judiComposedPropagator{D, O}, q::Array{D, N}) where {D, O, N}
+    @warn "judiWeights is recommned for judiJacobian(F, weights)"
+    nsrc = try length(F.qInjection.data) catch; length(F.rInterpolation.data) end
+    return judiJacobian(F, judiWeights(reshape(q, F.model.n); nsrc=nsrc))
+end
 
 # Adjoints
 conj(F::judiPropagator) = F
@@ -176,7 +185,20 @@ adjoint(J::judiJacobian{D, O, FT}) where {D, O, FT} = judiJacobian{D, adjoint(O)
 
 # indexing
 getindex(F::judiModeling{D, O}, i) where {D, O} = judiModeling{D, O}(F.m, F.n, F.model, F.options[i], F.solver)
-getindex(F::judiDataModeling{D, O}, i) where {D, O} = judiPointSourceModeling{D, O}(F.rInterpolation[i], F.F[i])
-getindex(F::judiPointSourceModeling{D, O}, i) where {D, O}= judiDataModeling{D, O}(F.F[i], F.qInjection[i])
+getindex(F::judiDataModeling{D, O}, i) where {D, O} = judiDataModeling{D, O}(F.rInterpolation[i], F.F[i])
+getindex(F::judiPointSourceModeling{D, O}, i) where {D, O}= judiPointSourceModeling{D, O}(F.F[i], F.qInjection[i])
 getindex(F::judiDataSourceModeling{D, O}, i) where {D, O} = judiDataSourceModeling{D, O}(F.rInterpolation[i], F.F[i], F.qInjection[i])
 getindex(J::judiJacobian{D, O, FT}, i) where {D, O, FT} = judiJacobian{D, O, FT}(J.m, J.n, J.F[i], J.q[i])
+
+##### Lazy scaling
+
+struct LazyScal
+    s::Number
+    P::judiPropagator
+end
+
+*(s::Number, P::judiPropagator) = LazyScal(s, P)
+\(P::judiPropagator, s::Number) = LazyScal(1/s, P)
+adjoint(L::LazyScal) = LazyScal(L.s, adjoint(L.P))
+
+*(L::LazyScal, x) = L.s * (L.P * x)

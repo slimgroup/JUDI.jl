@@ -308,10 +308,10 @@ Geometry(geometry::GeometryIC) = geometry
 Geometry(::Nothing) = nothing
 
 ###########################################################################################################################################
-getindex(g::Geometry, I) = subsample(g, I)
+subsample(g::Geometry, I) = getindex(g, I)
 
-# Subsample in-core geometry structure
-function subsample(geometry::GeometryIC{T}, srcnum::AbstractRange) where T
+# getindex in-core geometry structure
+function getindex(geometry::GeometryIC{T}, srcnum::RangeOrVec) where T
     xsub = geometry.xloc[srcnum]
     ysub = geometry.yloc[srcnum]
     zsub = geometry.zloc[srcnum]
@@ -322,10 +322,10 @@ function subsample(geometry::GeometryIC{T}, srcnum::AbstractRange) where T
     return geometry
 end
 
-subsample(geometry::GeometryIC{T}, srcnum::Integer) where T = subsample(geometry, srcnum:srcnum)
+getindex(geometry::GeometryIC{T}, srcnum::Integer) where T = getindex(geometry, srcnum:srcnum)
 
-# Subsample out-of-core geometry structure
-subsample(geometry::GeometryOOC, srcnum) = Geometry(geometry.container[srcnum]; key=geometry.key, segy_depth_key=geometry.segy_depth_key)
+# getindex out-of-core geometry structure
+getindex(geometry::GeometryOOC, srcnum) = Geometry(geometry.container[srcnum]; key=geometry.key, segy_depth_key=geometry.segy_depth_key)
 
 # Compare if geometries match
 function compareGeometry(geometry_A::Geometry, geometry_B::Geometry)

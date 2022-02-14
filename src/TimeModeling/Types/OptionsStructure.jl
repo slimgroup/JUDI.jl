@@ -3,7 +3,7 @@
 # Date: May 2017
 #
 
-export Options, subsample
+export Options
 
 # Object for velocity/slowness models
 mutable struct Options
@@ -132,7 +132,7 @@ Options(;space_order=8,
                  dt_comp,
                  f0)
 
-function subsample(options::Options, srcnum)
+function getindex(options::Options, srcnum)
     if isempty(options.frequencies)
         return options
     else
@@ -143,4 +143,4 @@ function subsample(options::Options, srcnum)
     end
 end
 
-getindex(options::Options, srcnum) = subsample(options, srcnum)
+subsample(options::Options, srcnum) = getindex(options, srcnum)

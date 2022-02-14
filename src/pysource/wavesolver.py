@@ -1,8 +1,6 @@
-from cached_property import cached_property
-
 from devito import TimeFunction, SparseTimeFunction, Operator, Function, Eq
-from devito.builtins import initialize_function
-from devito.tools import memoized_meth, as_tuple
+from devito.builtins.utils import nbl_to_padsize
+from devito.tools import memoized_meth
 
 from kernels import acoustic_kernel
 from sensitivity import lin_src, grad_expr
@@ -74,7 +72,8 @@ class WaveSolver(object):
 
     def update_lr(self, wt, ws, wavelet, weights):
         if weights is not None:
-            initialize_function(ws, weights, self.model.padsizes)
+            slices = nbl_to_padsize(self.model.padsizes, ws.ndim)[1]
+            ws.data[slices] = weights[:]
         if wavelet is not None:
             wt.data[:] = wavelet[:, 0]
         return
@@ -90,7 +89,7 @@ class WaveSolver(object):
     def make_rec(self, coords, nt):
         npoint = coords.shape[0]
         src = SparseTimeFunction(name="rec", grid=self.grid,
-                                 npoint=npoint, nt=nt, coordinates=coords)                 
+                                 npoint=npoint, nt=nt, coordinates=coords)         
         return src
 
     # Equation creations
@@ -101,8 +100,9 @@ class WaveSolver(object):
         return [Eq(ws, ws + self.grid.time_dim.spacing * u * wt)]
 
     def source_eq(self, u, fw=True):
+        m = self.model.m * self.model.irho
         next = u.forward if fw else u.backward
-        return self._src.inject(next, expr=self._src*self.dt**2/self.model.m)
+        return self._src.inject(next, expr=self._src*self.dt**2/m)
 
     def receiver_eq(self, u):
         return self._rec.interpolate(u)
@@ -131,11 +131,11 @@ class WaveSolver(object):
         # Time-space source
         q = self.qfull(q=qfull, nt=10) if qfull else 0
         # Rank 1 source
-        wt, ws = self.lrsrc(esrc=esrc, nt=10)
+        wts, wss = self.lrsrc(esrc=esrc, nt=10)
         # PDE with source
-        q += wt*ws if esrc else 0
+        q += wts*wss if esrc else 0
         eq = self.time_stepper(u, fw=fw, q=q)
-        eql = self.time_stepper(ul, q=self.lin_src(u)) if lin else []
+        eql = self.time_stepper(ul, fw=fw, q=self.lin_src(u)) if lin else []
         # Point source
         src = self.source_eq(u, fw=fw) if wsrc else []
         # Point receivers
@@ -145,7 +145,7 @@ class WaveSolver(object):
         lr_rec = self.lr_rec(wtr, wsr, ul if lin else u) if erec else []
         # gradient expression
         grad = self.image() if grad else None
-        v = self.wavefield(fw=not fw, save=False) if grad else None
+        v = self.wavefield(fw=not fw, save=10) if grad else None
         g_eq = self.g_expr(v, u, grad) if grad else []
         # Spacing substitutions
         subs = self.model.spacing_map

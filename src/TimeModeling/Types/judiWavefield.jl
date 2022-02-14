@@ -5,7 +5,7 @@
 # Authors: Philipp Witte (pwitte@eos.ubc.ca), Henryk Modzelewski (hmodzelewski@eos.ubc.ca)
 # Date: June 2017
 
-export judiWavefield, subsample, fft_wavefield
+export judiWavefield, fft_wavefield
 
 ############################################################
 
@@ -73,7 +73,9 @@ copyto!(jv::judiWavefield, jv2::judiWavefield) = copy!(jv, jv2)
 
 make_input(w::judiWavefield, dtComp) = Dict(:q=>w.data[1])
 
-check_compat(ms::judiWavefield...) = all(y -> y.dt == first(ms).dt, ms)
+check_compat(ms::Vararg{judiWavefield, N}) where N = all(y -> y.dt == first(ms).dt, ms)
+
+getindex(a::judiWavefield{T}, srcnum::RangeOrVec) where T = judiWeights{T}(length(srcnum), a.dt[srcnum], a.data[srcnum])
 ####################################################################
 
 function push!(a::judiWavefield{T}, b::judiWavefield{T}) where T

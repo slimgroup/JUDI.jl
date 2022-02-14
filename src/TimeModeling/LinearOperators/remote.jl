@@ -15,18 +15,16 @@ function init_solver(model::Model, options::Options)
 end
 
 # Update model on every worker
-function update_local(name::Symbol, dm::AbstractArray{T, N}, pad::Vector{<:NTuple{N, Integer}}) where {T, N}
+function update_local(name::Symbol, dm::AbstractArray{T, N}) where {T, N}
     pysolver = getfield(JUDI, name)
-    dm = pad_array(dm, pad)
     pysolver."model"."dm" = dm
     nothing
 end
 
 function set_dm!(m::Model, o::Options, s::Symbol, dm::Array{T, N}) where {T, N}
-    pad = pad_sizes(m, o)
     dm = reshape(dm, m.n)
     @sync for p in workers()
-        @async remotecall_wait(update_local, p, s, dm, pad)
+        @async remotecall_wait(update_local, p, s, dm)
     end
     nothing
 end

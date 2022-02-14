@@ -1,4 +1,4 @@
-export judiProjection, judiWavelet
+export judiProjection, judiWavelet, judiLRWF, nsrc
 
 # Base abstract type
 abstract type judiNoopOperator{D} <: joAbstractLinearOperator{D, D} end
@@ -37,7 +37,7 @@ struct judiWavelet{D} <: judiNoopOperator{D}
 end
 
 # Poorly named backward compat
-const judiLRWF{T} = judiWavelet{D}
+const judiLRWF{T} = judiWavelet{T}
 
 const Projection{D} = Union{judiProjection{D}, judiWavelet{D}}
 const AdjointProjection{D} = jAdjoint{<:Projection{D}}
@@ -57,7 +57,7 @@ judiWavelet(dt::Vector{<:Number}, w::Vector{T}) where T<:Array = judiWavelet{Flo
 judiWavelet(dt::dtT, w::Array{T, N}) where {dtT<:Number, T<:Array, N} = judiWavelet([dt for i=1:length(w)], w)
 
 # Deprecation error
-judiWavelet(nsrc::Integer, w::Array{T, N}) where {T<:Real, N} = throw(ArgumentError("Time sampling of the wavelet need to be suplied `judiWavelet(nsrc, dt, wavelet)`"))
+judiWavelet(::Integer, ::Array{T, N}) where {T<:Real, N} = throw(ArgumentError("Time sampling of the wavelet need to be suplied `judiWavelet(nsrc, dt, wavelet)`"))
 
 adjoint(P::judiNoopOperator{D}) where D = jAdjoint(P)
 transpose(P::judiNoopOperator{D}) where D = jAdjoint(P)
@@ -80,12 +80,12 @@ get_coords(P::judiWavelet{D}) where D = P.wavelet
 out_type(::judiProjection{T}, ndim) where T = Array{Float32, 2}
 out_type(::judiWavelet{T}, ndim) where T = Array{Float32, ndim}
 
-process_out(rI::judiProjection{T}, dout, dtComp, ::Symbol) where T = judiVector{T, Array{T, 2}}(1, rI.geometry, [time_resample(dout, dtComp, rI.geometry.dt[1])])
-function process_out(rI::judiWavelet{T}, dout, dtComp, solver) where T
+process_out(rI::judiProjection{T}, dout, dtComp, ::Symbol) where T = judiVector{T, Array{T, 2}}(1, rI.geometry, [time_resample(dout, dtComp, rI.geometry)])
+
+function process_out(::judiWavelet{T}, dout, dtComp, solver) where T
     we = getfield(JUDI, solver)
     padsize = we."model".padsizes
-    sum_pad = get(we."options", :sum_padding)
-    dout = remove_padding(dout, padsize; true_adjoint=sum_pad)
+    dout = remove_padding(dout, padsize)
     judiWeights{T}(1, [dout])
 end
 
@@ -93,3 +93,53 @@ make_input(P::judiProjection, dtComp) = Dict(:rec_coords=>get_coords(P))
 make_input(P::jAdjoint{<:judiProjection}, dtComp) = Dict(:src_coords=>get_coords(P.op))
 make_input(P::judiWavelet, dtComp) = Dict(:wr=>time_resample(P.data[1], P.dt[1], dtComp))
 make_input(P::jAdjoint{<:judiWavelet}, dtComp) = Dict(:ws=>time_resample(P.data[1], P.dt[1], dtComp))
+
+###### Lazy injection
+
+struct judiRHS{D} <: judiMultiSourceVector{D}
+    nsrc::Integer
+    P::jAdjoint{judiProjection{D}}
+    d::judiVector
+end
+
+*(P::jAdjoint{judiProjection{D}}, d::judiVector{D, AT}) where {D, AT} = judiRHS{D}(d.nsrc, P, d)
+getindex(rhs::judiRHS{D}, i) where D = judiRHS{D}(length(i), rhs.P[i], rhs.d[i])
+make_input(rhs::judiRHS, dtComp) = make_input(rhs.d, dtComp)
+eval(rhs::judiRHS) = rhs.d
+
+# Combination of lazy injections
+struct LazyAdd{D} <: judiMultiSourceVector{D}
+    nsrc::Integer
+    A
+    B
+    sign
+end
+
+for (op, s) in zip([:+, :-], (1, -1))
+    for T1 in [judiRHS, LazyAdd]
+        for T2 in [judiRHS, LazyAdd]
+            @eval function $(op)(r1::$(T1){D}, r2::$(T2){D}) where D
+                r1.nsrc == r2.nsrc || throw(ArgumentError("Incompatible number of source experiment"))
+                LazyAdd{D}(r1.nsrc, r1, r2, $s)
+            end
+        end
+    end
+end
+
+getindex(la::LazyAdd{D}, i::RangeOrVec) where D = LazyAdd{D}(length(i), la.A[i], la.B[i], la.sign)
+
+function eval(ls::LazyAdd{D}) where D
+    aloc = eval(ls.A)
+    bloc = eval(ls.B)
+    ga = aloc.geometry
+    gb = bloc.geometry
+    @assert (ga.nt == gb.nt && ga.dt == gb.dt && ga.t == gb.t)
+    xloc = [vcat(ga.xloc[1], gb.xloc[1])]
+    yloc = [vcat(ga.yloc[1], gb.yloc[1])]
+    zloc = [vcat(ga.zloc[1], gb.zloc[1])]
+    geom = GeometryIC{D}(xloc, yloc, zloc, ga.dt, ga.nt, ga.t)
+    data = hcat(aloc.data[1], ls.sign*bloc.data[1])
+    judiVector{D, Matrix{D}}(1, geom, [data])
+end
+
+make_input(ls::LazyAdd{D}, dtComp) where D = make_input(eval(ls), dtComp)

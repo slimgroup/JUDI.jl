@@ -7,7 +7,7 @@
 
 # Updated by Ziyi Yin (ziyi.yin@gatech.edu), Nov 2020
 
-export judiWeights, subsample
+export judiWeights
 
 ############################################################
 
@@ -71,22 +71,22 @@ function push!(a::judiWeights{T}, b::judiWeights{T}) where T
 end
 
 make_input(w::judiWeights, dtComp) = Dict(:w=>w.data[1])
-# Subsample weights container
+# getindex weights container
 """
-    subsample(x,source_numbers)
-Subsample seismic weights vectors or matrix-free linear operators and extract the entries that correspond\\
+    getindex(x,source_numbers)
+getindex seismic weights vectors or matrix-free linear operators and extract the entries that correspond\\
 to the shot positions defined by `source_numbers`. Works for inputs of type `judiWeights`, `judiModeling`, \\
 `judiProjection`, `judiJacobian`, `Geometry`, `judiRHS`, `judiPDE`, `judiPDEfull`.
 Examples
 ========
 (1) Extract 2 shots from `judiWeights` vector:
-    dsub = subsample(dobs,[1,2])
+    dsub = getindex(dobs,[1,2])
 (2) Extract geometry for shot location 100:
-    geometry_sub = subsample(dobs.geometry,100)
+    geometry_sub = getindex(dobs.geometry,100)
 (3) Extract Jacobian for shots 10 and 20:
-    Jsub = subsample(J,[10,20])
+    Jsub = getindex(J,[10,20])
 """
-subsample(a::judiWeights{avDT}, srcnum) where avDT = judiWeights(a.weights[srcnum];vDT=avDT)
+getindex(a::judiWeights{avDT}, srcnum::RangeOrVec) where avDT = judiWeights{avDT}(length(srcnum), a.data[srcnum])
 
 ############################################################
 
