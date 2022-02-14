@@ -200,6 +200,12 @@ function Geometry(data::SegyIO.SeisBlock; key="source", segy_depth_key="")
         nt[j] = convert(Integer,nt_full)
         t[j] =  Float32((nt[j]-1)*dt[j])
     end
+
+    if key == "source"
+        xloc = convertToCell(xloc)
+        yloc = convertToCell(yloc)
+        zloc = convertToCell(zloc)
+    end
     return GeometryIC{Float32}(xloc,yloc,zloc,dt,nt,t)
 end
 
@@ -291,7 +297,12 @@ function Geometry(geometry::GeometryOOC)
         nt[j] = convert(Integer, get_header(header, params[5])[1])
         t[j] =  (nt[j]-1)*dt[j]
     end
-    return  GeometryIC(xloc,yloc,zloc,dt,nt,t)
+    if geometry.key == "source"
+        xloc = convertToCell(xloc)
+        yloc = convertToCell(yloc)
+        zloc = convertToCell(zloc)
+    end
+    return GeometryIC(xloc,yloc,zloc,dt,nt,t)
 end
 
 Geometry(geometry::GeometryIC) = geometry
