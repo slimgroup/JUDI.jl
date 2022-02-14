@@ -5,13 +5,13 @@
 
 export Geometry, compareGeometry, GeometryIC, GeometryOOC, get_nsrc, n_samples
 
-abstract type Geometry end
+abstract type Geometry{T} end
 
 const CoordT = Union{Array{T, 1}, Array{Array{T, 1}, 1}} where T<:Number
 (::Type{CoordT})(x::Vector{Any}) = rebuild_maybe_jld(x)
 
 # In-core geometry structure for seismic header information
-mutable struct GeometryIC{T} <: Geometry
+mutable struct GeometryIC{T} <: Geometry{T}
     xloc::CoordT  # Array of receiver positions (fixed for all experiments)
     yloc::CoordT
     zloc::CoordT
@@ -21,7 +21,7 @@ mutable struct GeometryIC{T} <: Geometry
 end
 
 # Out-of-core geometry structure, contains look-up table instead of coordinates
-mutable struct GeometryOOC{T} <: Geometry
+mutable struct GeometryOOC{T} <: Geometry{T}
     container::Array{SegyIO.SeisCon,1}
     dt::Array{T,1}
     nt::Array{Integer,1}
@@ -200,6 +200,12 @@ function Geometry(data::SegyIO.SeisBlock; key="source", segy_depth_key="")
         nt[j] = convert(Integer,nt_full)
         t[j] =  Float32((nt[j]-1)*dt[j])
     end
+
+    if key == "source"
+        xloc = convertToCell(xloc)
+        yloc = convertToCell(yloc)
+        zloc = convertToCell(zloc)
+    end
     return GeometryIC{Float32}(xloc,yloc,zloc,dt,nt,t)
 end
 
@@ -291,7 +297,12 @@ function Geometry(geometry::GeometryOOC)
         nt[j] = convert(Integer, get_header(header, params[5])[1])
         t[j] =  (nt[j]-1)*dt[j]
     end
-    return  GeometryIC(xloc,yloc,zloc,dt,nt,t)
+    if geometry.key == "source"
+        xloc = convertToCell(xloc)
+        yloc = convertToCell(yloc)
+        zloc = convertToCell(zloc)
+    end
+    return GeometryIC(xloc,yloc,zloc,dt,nt,t)
 end
 
 Geometry(geometry::GeometryIC) = geometry
