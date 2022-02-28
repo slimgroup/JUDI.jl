@@ -29,8 +29,8 @@ function devito_model(model::Model, options::Options; dm=nothing)
     !isnothing(dm) && (dm = pad_array(reshape(getattr(dm, :data, dm), model.n), pad))
     physpar = Dict((n, pad_array(v.data, pad)) for (n, v) in model.params if n != :m)
     modelPy = pm."Model"(model.o, model.d, model.n, m, fs=options.free_surface,
-                         nbl=model.nb, space_order=options.space_order, dt=options.dt_comp, dm=dm;
-                         physpar...)
+                         nbl=model.nb, space_order=options.space_order, dt=options.dt_comp, dm=dm,
+                         abc_type=options.abc_type; physpar...)
     return modelPy
 end
 

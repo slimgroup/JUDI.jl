@@ -91,7 +91,7 @@ class GenericModel(object):
     General model class with common properties
     """
     def __init__(self, origin, spacing, shape, space_order, nbl=20,
-                 dtype=np.float32, fs=False, grid=None):
+                 dtype=np.float32, fs=False, grid=None, abc_type=False):
         self.shape = shape
         self.nbl = int(nbl)
         self.origin = tuple([dtype(o) for o in origin])
@@ -240,9 +240,9 @@ class Model(GenericModel):
     """
     def __init__(self, origin, spacing, shape, m, space_order=2, nbl=40,
                  dtype=np.float32, epsilon=None, delta=None, theta=None, phi=None,
-                 rho=1, dm=None, fs=False, **kwargs):
+                 rho=1, qp=None, dm=None, fs=False, abc_type=False, **kwargs):
         super(Model, self).__init__(origin, spacing, shape, space_order, nbl, dtype,
-                                    fs=fs, grid=kwargs.get('grid'))
+                                    fs=fs, abc_type=abc_type, grid=kwargs.get('grid'))
 
         self.scale = 1
         self._space_order = space_order
@@ -251,6 +251,13 @@ class Model(GenericModel):
         # density
         self._init_density(rho, space_order)
         self._dm = self._gen_phys_param(dm, 'dm', space_order)
+
+        # Additional parameter fields for Viscoacoustic operators
+        if qp is not None:
+            self._is_viscoacoustic = True
+            self.qp = self._gen_phys_param(qp, 'qp', space_order)
+        else:
+            self._is_viscoacoustic = False
         # Additional parameter fields for TTI operators
         self._is_tti = any(p is not None for p in [epsilon, delta, theta, phi])
         if self._is_tti:
@@ -303,6 +310,13 @@ class Model(GenericModel):
         Whether the model is TTI or isotopic
         """
         return self._is_tti
+
+    @property
+    def is_viscoacoustic(self):
+        """
+        Whether the model is TTI or isotopic
+        """
+        return self._is_viscoacoustic
 
     @property
     def _max_vp(self):

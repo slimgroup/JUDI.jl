@@ -1,10 +1,11 @@
-from devito import Eq, solve
+from devito import Eq, solve, div, grad
+from sympy import sqrt
 
 from wave_utils import freesurface
 from FD_utils import laplacian, sa_tti
 
 
-def wave_kernel(model, u, fw=True, q=None):
+def wave_kernel(model, u, fw=True, q=None, qborn=None, f0=0.015):
     """
     Pde kernel corresponding the the model for the input wavefield
 
@@ -13,14 +14,18 @@ def wave_kernel(model, u, fw=True, q=None):
     model: Model
         Physical model
     u : TimeFunction or tuple
-        wavefield (tuple if TTI)
+        wavefield (tuple if TTI or Viscoacoustic)
     fw : Bool
         Whether forward or backward in time propagation
     q : TimeFunction or Expr
         Full time-space source
+    qborn: Virtual source
+    f0 : Peak frequency
     """
     if model.is_tti:
         pde = tti_kernel(model, u[0], u[1], fw=fw, q=q)
+    elif model.is_viscoacoustic:
+        pde = SLS_2nd_order(model, u[0], u[1], fw=fw, q=q, qborn=qborn, f0=f0)
     else:
         pde = acoustic_kernel(model, u, fw, q=q)
     return pde
@@ -58,6 +63,83 @@ def acoustic_kernel(model, u, fw=True, q=None):
         pde = [Eq(u_n, stencil)]
 
     return pde
+
+
+def SLS_2nd_order(model, u1, u2, fw=True, q=None, qborn=None, f0=0.015):
+    """
+    Viscoacoustic 2nd SLS wave equation
+
+    Parameters
+    ----------
+    model: Model
+        Physical model
+    u1 : TimeFunction
+        Pressure field
+    u2 : TimeFunction
+        Attenuation Memory variable
+    fw: Bool
+        Whether forward or backward in time propagation
+    q : TimeFunction or Expr
+        Full time-space source as a tuple (one value for each component)
+    qborn: Virtual source
+    f0 : Peak frequency
+    """
+    qp, vp = model.qp, model.vp
+
+    damp = model.damp
+
+    q = q or 0
+
+    qborn = qborn or 0
+
+    b = model.irho
+
+    s = model.grid.stepping_dim.spacing
+
+    # The stress relaxation parameter
+    t_s = (sqrt(1.+1./qp**2)-1./qp)/f0
+
+    # The strain relaxation parameter
+    t_ep = 1./(f0**2*t_s)
+
+    # The relaxation time
+    tt = (t_ep/t_s)-1.
+
+    # Density
+    rho = 1. / b
+
+    # Bulk modulus
+    bm = rho * vp**2
+
+    p = u1
+    r = u2
+
+    if fw:
+
+        pde_r = r + s * (tt / t_s) * rho * div(b * grad(p, shift=.5), shift=-.5) - \
+            s * (1. / t_s) * r
+
+        u_r = Eq(r.forward, damp * pde_r)
+
+        pde_p = 2. * p - damp * p.backward + s**2 * bm * (1. + tt) * \
+            div(b * grad(p, shift=.5), shift=-.5) - s**2 * vp**2 * \
+            r.forward + s**2 * vp**2 * qborn
+
+        u_p = Eq(p.forward, damp * pde_p)
+
+        return [u_r, u_p]
+
+    else:
+
+        pde_r = r + s * (tt / t_s) * p - s * (1. / t_s) * r
+        u_r = Eq(r.backward, damp * pde_r)
+
+        pde_p = 2. * p - damp * p.forward + s**2 * vp**2 * \
+            div(b * grad((1. + tt) * rho * p, shift=.5), shift=-.5) - s**2 * vp**2 * \
+            div(b * grad(rho * r.backward, shift=.5), shift=-.5)
+        u_p = Eq(p.backward, damp * pde_p)
+
+        return [u_r, u_p]
 
 
 def tti_kernel(model, u1, u2, fw=True, q=None):

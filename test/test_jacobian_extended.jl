@@ -10,10 +10,11 @@ parsed_args = parse_commandline()
 
 nlayer = parsed_args["nlayer"]
 tti = parsed_args["tti"]
+viscoacoustic = parsed_args["viscoacoustic"]
 fs =  parsed_args["fs"]
 
 ### Model
-model, model0, dm = setup_model(parsed_args["tti"], parsed_args["nlayer"])
+model, model0, dm = setup_model(parsed_args["tti"], parsed_args["viscoacoustic"], parsed_args["nlayer"])
 q, srcGeometry, recGeometry, info = setup_geom(model)
 dt = srcGeometry.dt[1]
 m0 = model0.m

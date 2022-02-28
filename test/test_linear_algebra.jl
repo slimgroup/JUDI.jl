@@ -5,6 +5,7 @@ parsed_args = parse_commandline()
 
 nlayer = parsed_args["nlayer"]
 tti = parsed_args["tti"]
+viscoacoustic = parsed_args["viscoacoustic"]
 fs =  parsed_args["fs"]
 
 @testset "Arithmetic test with $(nlayer) layers and tti $(tti) and freesurface $(fs)" begin
@@ -16,7 +17,7 @@ fs =  parsed_args["fs"]
         @test find_water_bottom(dm2D) == 6*ones(Integer,10)
 
         ### Model
-        model, model0, dm = setup_model(parsed_args["tti"], parsed_args["nlayer"])
+        model, model0, dm = setup_model(parsed_args["tti"], parsed_args["viscoacoustic"], parsed_args["nlayer"])
         wb = find_water_bottom(model.m .- maximum(model.m))
         q, srcGeometry, recGeometry, info = setup_geom(model)
         dt = srcGeometry.dt[1]

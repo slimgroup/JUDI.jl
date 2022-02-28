@@ -2,7 +2,7 @@ import numpy as np
 from sympy import cos, sin, sign
 
 from devito import (TimeFunction, Function, Inc, DefaultDimension,
-                    Eq, ConditionalDimension, Dimension)
+                    Eq, ConditionalDimension, Dimension, NODE)
 from devito.tools import as_tuple
 from devito.symbolics import retrieve_functions, INT
 
@@ -36,6 +36,15 @@ def wavefield(model, space_order, save=False, nt=None, fw=True, name='', t_sub=1
         v = TimeFunction(name="%s2" % name, grid=model.grid, time_order=2,
                          space_order=space_order, save=None if not save else nt)
         return (u, v)
+    elif model.is_viscoacoustic:
+        name_r = "r"+name
+        u = TimeFunction(name=name, grid=model.grid, time_order=2,
+                         space_order=space_order, save=None if not save else nt,
+                         staggered=NODE)
+        r = TimeFunction(name=name_r, grid=model.grid, time_order=2,
+                         space_order=space_order, save=None if not save else nt,
+                         staggered=NODE)
+        return (u, r)
     else:
         return TimeFunction(name=name, grid=model.grid, time_order=2,
                             space_order=space_order, save=None if not save else nt)

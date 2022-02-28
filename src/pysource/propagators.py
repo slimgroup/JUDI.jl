@@ -2,7 +2,7 @@ from kernels import wave_kernel
 from geom_utils import src_rec
 from wave_utils import (wf_as_src, wavefield, otf_dft, extended_src_weights,
                         extented_src, wavefield_subsampled, weighted_norm)
-from sensitivity import grad_expr, lin_src
+from sensitivity import grad_expr, lin_src, born_q
 from utils import weight_fun, opt_op
 
 from devito import Operator, Function
@@ -10,13 +10,18 @@ from devito.tools import as_tuple
 
 
 def name(model):
-    return "tti" if model.is_tti else ""
+    if model.is_tti:
+        return "tti"
+    elif model.is_viscoacoustic:
+        return "viscoacoustic"
+    else:
+        return ""
 
 
 # Forward propagation
 def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
             q=None, return_op=False, freq_list=None, dft_sub=None,
-            ws=None, t_sub=1, **kwargs):
+            ws=None, t_sub=1, f0=0.015, **kwargs):
     """
     Low level propagator, to be used through `interface.py`
     Compute forward wavefield u = A(m)^{-1}*f and related quantities (u(xrcv))
@@ -35,7 +40,7 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     q = extented_src(model, ws, wavelet, q=q)
 
     # Set up PDE expression and rearrange
-    pde = wave_kernel(model, u, q=q)
+    pde = wave_kernel(model, u, q=q, f0=f0)
 
     # Setup source and receiver
     geom_expr, _, rcv = src_rec(model, u, src_coords=src_coords, nt=nt,
@@ -60,7 +65,7 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
 
 
 def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0, dft_sub=None,
-            save=False, ws=None, norm_v=False, w_fun=None, freq_list=None):
+            save=False, ws=None, norm_v=False, w_fun=None, freq_list=None, f0=0.015):
     """
     Low level propagator, to be used through `interface.py`
     Compute adjoint wavefield v = adjoint(F(m))*y
@@ -73,7 +78,7 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0, dft_sub=None,
     v = wavefield(model, space_order, save=save, nt=nt, fw=False)
 
     # Set up PDE expression and rearrange
-    pde = wave_kernel(model, v, q=q, fw=False)
+    pde = wave_kernel(model, v, q=q, fw=False, f0=f0)
 
     # On-the-fly Fourier
     dft, dft_modes = otf_dft(v, freq_list, model.critical_dt, factor=dft_sub)
@@ -109,7 +114,7 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0, dft_sub=None,
 
 
 def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8,
-             w=None, freq=None, dft_sub=None, isic=False):
+             w=None, freq=None, dft_sub=None, isic=False, f0=0.015):
     """
     Low level propagator, to be used through `interface.py`
     Compute the action of the adjoint Jacobian onto a residual J'* δ d.
@@ -118,7 +123,7 @@ def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8,
     v = wavefield(model, space_order, fw=False)
 
     # Set up PDE expression and rearrange
-    pde = wave_kernel(model, v, fw=False)
+    pde = wave_kernel(model, v, fw=False, f0=f0)
 
     # Setup source and receiver
     geom_expr, _, _ = src_rec(model, v, src_coords=rcv_coords,
@@ -151,7 +156,7 @@ def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8,
 
 def born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
          q=None, return_op=False, isic=False, freq_list=None, dft_sub=None,
-         ws=None, t_sub=1, nlind=False):
+         ws=None, t_sub=1, nlind=False, f0=0.015):
     """
     Low level propagator, to be used through `interface.py`
     Compute linearized wavefield U = J(m)* δ m
@@ -170,11 +175,15 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     q = extented_src(model, ws, wavelet, q=q)
 
     # Set up PDE expression and rearrange
-    pde = wave_kernel(model, u, q=q)
+    pde = wave_kernel(model, u, q=q, f0=f0)
     if model.dm == 0:
         pdel = []
     else:
-        pdel = wave_kernel(model, ul, q=lin_src(model, u, isic=isic))
+        if model.is_viscoacoustic:
+            pdel = wave_kernel(model, ul, qborn=born_q(model, u), f0=f0)
+        else:
+            pdel = wave_kernel(model, ul, q=lin_src(model, u, isic=isic))
+
     # Setup source and receiver
     geom_expr, _, rcvnl = src_rec(model, u, rec_coords=rcv_coords if nlind else None,
                                   src_coords=src_coords, wavelet=wavelet)
@@ -201,7 +210,7 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
 
 # Forward propagation
 def forward_grad(model, src_coords, rcv_coords, wavelet, v, space_order=8,
-                 q=None, ws=None, isic=False, w=None, freq=None, **kwargs):
+                 q=None, ws=None, isic=False, w=None, freq=None, f0=0.015, **kwargs):
     """
     Low level propagator, to be used through `interface.py`
     Compute forward wavefield u = A(m)^{-1}*f and related quantities (u(xrcv))
@@ -217,7 +226,7 @@ def forward_grad(model, src_coords, rcv_coords, wavelet, v, space_order=8,
     q = extented_src(model, ws, wavelet, q=q)
 
     # Set up PDE expression and rearrange
-    pde = wave_kernel(model, u, q=q)
+    pde = wave_kernel(model, u, q=q, f0=f0)
 
     # Setup source and receiver
     geom_expr, _, rcv = src_rec(model, u, src_coords=src_coords, nt=nt,

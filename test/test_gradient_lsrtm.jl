@@ -13,10 +13,11 @@ parsed_args = parse_commandline()
 
 nlayer = parsed_args["nlayer"]
 tti = parsed_args["tti"]
+viscoacoustic = parsed_args["viscoacoustic"]
 fs =  parsed_args["fs"]
 
 ### Model
-model, model0, dm = setup_model(tti, 4)
+model, model0, dm = setup_model(tti, viscoacoustic, 4)
 q, srcGeometry, recGeometry, info = setup_geom(model)
 dt = srcGeometry.dt[1]
 
@@ -107,7 +108,7 @@ cases = [(true, false, true), (false, false, true), (true, true, false), (true, 
 		d_res = dobs0 + J*dm1 - dobs
 		Jm0_1 = 0.5f0 * norm(d_res)^2f0
 		grad_1 = J'*d_res
-		
+
 		opt = J.options
 		Jm0, grad = lsrtm_objective(model0, q, dobs, dm1; options=opt, nlind=true)
 		Jm01, grad1 = lsrtm_objective(model0, q, dobs-dobs0, dm1; options=opt, nlind=false)
@@ -116,5 +117,5 @@ cases = [(true, false, true), (false, false, true), (true, true, false), (true, 
 		@test isapprox(Jm0, Jm0_1; rtol=ftol)
 		@test isapprox(grad, grad1; rtol=ftol)
 		@test isapprox(Jm0, Jm01; rtol=ftol)
-	end	
+	end
 end

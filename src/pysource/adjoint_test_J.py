@@ -2,6 +2,7 @@ import numpy as np
 from argparse import ArgumentParser
 from scipy import ndimage
 from devito import inner
+from devito.logger import info
 
 from sources import RickerSource, Receiver
 from models import Model
@@ -12,6 +13,8 @@ from propagators import forward, born, gradient
 parser = ArgumentParser(description="Adjoint test args")
 parser.add_argument("--tti", default=False, action='store_true',
                     help="Test acoustic or tti")
+parser.add_argument("--viscoacoustic", default=False, action='store_true',
+                    help="Test viscoacoustic")
 parser.add_argument("--fs", default=False, action='store_true',
                     help="Test with free surface")
 parser.add_argument('-so', dest='space_order', default=8, type=int,
@@ -21,6 +24,7 @@ parser.add_argument('-nlayer', dest='nlayer', default=3, type=int,
 
 args = parser.parse_args()
 is_tti = args.tti
+is_viscoacoustic = args.viscoacoustic
 so = args.space_order
 
 dtype = np.float32
@@ -49,6 +53,12 @@ if is_tti:
     model = Model(shape=shape, origin=origin, spacing=spacing, dtype=dtype,
                   m=m0, epsilon=.045*(v0-1.5), delta=.03*(v0-1.5),
                   fs=args.fs, rho=rho0, theta=.1*(v0-1.5), dm=dm, space_order=so)
+elif is_viscoacoustic:
+    qp0 = np.empty(shape, dtype=np.float32)
+    qp0[:] = 3.516*((v0[:]*1000.)**2.2)*10**(-6)
+    model = Model(shape=shape, origin=origin, spacing=spacing,
+                  fs=args.fs, m=m0, rho=rho0, qp=qp0, dm=dm, space_order=so,
+                  abc_type=True)
 else:
     model = Model(shape=shape, origin=origin, spacing=spacing, dtype=dtype,
                   fs=args.fs, m=m0, rho=rho0, dm=dm, space_order=so)
@@ -88,11 +98,8 @@ _, u0, _ = forward(model, src.coordinates.data, rec_t.coordinates.data,
 
 # gradient
 print("Adjoint J")
-dm_hat, _ = gradient(model, dD_hat, rec_t.coordinates.data, u0)
+dm_hat, _ = gradient(model, dD_hat, rec_t.coordinates.data, u0, f0=f1)
 
-# Adjoint test
-a = model.critical_dt * inner(dD_hat, dD_hat)
-b = inner(dm_hat, model.dm)
 
 a2 = model.critical_dt * np.dot(dD_hat.data.reshape(-1), dD_hat.data.reshape(-1))
 b2 = np.dot(dm_hat.data.reshape(-1), model.dm.data.reshape(-1))

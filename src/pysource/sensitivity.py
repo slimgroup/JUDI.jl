@@ -45,7 +45,10 @@ def grad_expr(gradm, u, v, model, w=None, freq=None, dft_sub=None, isic=False):
         eq_g = [Eq(gradm, gradm - expr, subdomain=model.grid.subdomains['nofsdomain'])]
         eq_g += freesurface(model, eq_g)
     else:
-        eq_g = [Eq(gradm, gradm - expr)]
+        if model.is_viscoacoustic:
+            eq_g = [Eq(gradm, gradm + expr)]
+        else:
+            eq_g = [Eq(gradm, gradm - expr)]
     return eq_g
 
 
@@ -62,6 +65,9 @@ def crosscorr_time(u, v, model, **kwargs):
     model: Model
         Model structure
     """
+    if model.is_viscoacoustic:
+        return u[0].dt * v[0].dt
+
     w = kwargs.get('w') or u[0].indices[0].spacing * model.irho
     return w * sum(vv.dt2 * uu for uu, vv in zip(u, v))
 
@@ -222,6 +228,25 @@ def inner_grad(u, v):
         Second wavefield
     """
     return sum([a*b for a, b in zip(grads(u, so_fact=2), grads(v, so_fact=2))])
+
+
+def born_q(model, u):
+    """
+    Source for linearized modeling
+
+    Parameters
+    ----------
+    u: TimeFunction or Tuple
+        Forward wavefield (tuple of fields for Viscoacoustic)
+    model: Model
+        Model containing the perturbation dm
+    """
+    s = model.grid.stepping_dim.spacing
+    dm = model.dm
+
+    q = -dm * (u[0].forward - 2 * u[0] + u[0].backward) / (s**2)
+
+    return q
 
 
 ic_dict = {'isic_freq': isic_freq, 'corr_freq': crosscorr_freq,

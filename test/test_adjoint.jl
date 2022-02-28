@@ -9,7 +9,8 @@ parsed_args = parse_commandline()
 
 nlayer = parsed_args["nlayer"]
 tti = parsed_args["tti"]
-fs = parsed_args["fs"]
+viscoacoustic = parsed_args["viscoacoustic"]
+fs =  parsed_args["fs"]
 
 # # Set parallel if specified
 nw = parsed_args["parallel"]
@@ -20,8 +21,8 @@ end
 @everywhere using JUDI, LinearAlgebra, Test, Distributed
 
 ### Model
-model, model0, dm = setup_model(tti, nlayer; rand_dm=true)
-q, srcGeometry, recGeometry, info = setup_geom(model; nsrc=nw)
+model, model0, dm = setup_model(parsed_args["tti"], parsed_args["viscoacoustic"], parsed_args["nlayer"]; rand_dm=true)
+q, srcGeometry, recGeometry, info, f0 = setup_geom(model; nsrc=nw)
 dt = srcGeometry.dt[1]
 
 # testing parameters and utils
@@ -45,7 +46,7 @@ function run_adjoint(F, q, y, dm; test_F=true, test_J=true)
         @printf(" <F x, y> : %2.5e, <x, F' y> : %2.5e, relative error : %2.5e \n", a, b, (a - b)/(a + b))
         adj_F = isapprox(a/(a+b), b/(a+b), atol=tol, rtol=0)
     end
-    
+
     if test_J
         # Linearized modeling
         J = judiJacobian(F, q)
@@ -65,9 +66,9 @@ test_adjoint(adj::Bool, last::Bool) = (adj || last) ? (@test adj) : (@test_skip 
 
 ###################################################################################################
 # Modeling operators
-@testset "Adjoint test with $(nlayer) layers and tti $(tti) and freesurface $(fs)" begin 
+@testset "Adjoint test with $(nlayer) layers and tti $(tti) and freesurface $(fs)" begin
     @timeit TIMEROUTPUT "Adjoint" begin
-        opt = Options(sum_padding=true, dt_comp=dt, free_surface=parsed_args["fs"])
+        opt = Options(sum_padding=true, dt_comp=dt, free_surface=parsed_args["fs"], f0=f0)
         F = judiModeling(model0, srcGeometry, recGeometry; options=opt)
 
         # Nonlinear modeling
@@ -90,34 +91,36 @@ end
 ###################################################################################################
 # Extended source modeling
 
-@testset "Extended source adjoint test with $(nlayer) layers and tti $(tti) and freesurface $(fs)" begin
-    @timeit TIMEROUTPUT "Extended source adjoint" begin
-        opt = Options(sum_padding=true, dt_comp=dt, free_surface=parsed_args["fs"])
-        F = judiModeling(model0, srcGeometry, recGeometry; options=opt)
-        Pr = judiProjection(info, recGeometry)
-        Fw = judiModeling(info, model0; options=opt)
-        Pw = judiLRWF(info, circshift(q.data[1], 51))
-        Fw = Pr*Fw*adjoint(Pw)
+if ~parsed_args["viscoacoustic"]
+    @testset "Extended source adjoint test with $(nlayer) layers and tti $(tti) and freesurface $(fs)" begin
+        @timeit TIMEROUTPUT "Extended source adjoint" begin
+            opt = Options(sum_padding=true, dt_comp=dt, free_surface=parsed_args["fs"])
+            F = judiModeling(model0, srcGeometry, recGeometry; options=opt)
+            Pr = judiProjection(info, recGeometry)
+            Fw = judiModeling(info, model0; options=opt)
+            Pw = judiLRWF(info, circshift(q.data[1], 51))
+            Fw = Pr*Fw*adjoint(Pw)
 
-        # Extended source weights
-        w = zeros(Float32, model0.n...)
-        w[141:160, 65:84] .= randn(Float32, 20, 20)
-        w = judiWeights(w; nsrc=nw)
+            # Extended source weights
+            w = zeros(Float32, model0.n...)
+            w[141:160, 65:84] .= randn(Float32, 20, 20)
+            w = judiWeights(w; nsrc=nw)
 
-        # Nonlinear modeling
-        y = F*q
+            # Nonlinear modeling
+            y = F*q
 
-        # Run test until succeeds in case of bad case
-        adj_F, adj_J = false, false
-        ntry = 0
-        while (!adj_F || !adj_J) && ntry < maxtry
-            wave_rand = (.5f0 .+ rand(Float32, size(q.data[1]))).*q.data[1]
-            q_rand = judiVector(srcGeometry, wave_rand)
+            # Run test until succeeds in case of bad case
+            adj_F, adj_J = false, false
+            ntry = 0
+            while (!adj_F || !adj_J) && ntry < maxtry
+                wave_rand = (.5f0 .+ rand(Float32, size(q.data[1]))).*q.data[1]
+                q_rand = judiVector(srcGeometry, wave_rand)
 
-            adj_F, adj_J = run_adjoint(F, q_rand, y, dm; test_F=!adj_F, test_J=!adj_J)
-            ntry +=1
-            test_adjoint(adj_F, adj_J, ntry==maxtry)
+                adj_F, adj_J = run_adjoint(F, q_rand, y, dm; test_F=!adj_F, test_J=!adj_J)
+                ntry +=1
+                test_adjoint(adj_F, adj_J, ntry==maxtry)
+            end
+            println("Adjoint test after $(ntry) tries, F: $(success_log[adj_F]), J: $(success_log[adj_J])")
         end
-        println("Adjoint test after $(ntry) tries, F: $(success_log[adj_F]), J: $(success_log[adj_J])")
     end
 end
