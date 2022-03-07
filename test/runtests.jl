@@ -9,13 +9,18 @@
 using JUDI
 using ArgParse, Test, Printf
 using SegyIO, LinearAlgebra, Distributed, JOLI
+using TimerOutputs: TimerOutputs, @timeit
+
+# Collect timing and allocations information to show in a clear way.
+const TIMEROUTPUT = TimerOutputs.TimerOutput()
+timeit_include(path::AbstractString) = @timeit TIMEROUTPUT path include(path)
 
 const GROUP = get(ENV, "GROUP", "JUDI")
 
 include("utils.jl")
 
 if endswith(GROUP, ".jl")
-    @time include(GROUP)
+    timeit_include(GROUP)
 end
 
 base = ["test_abstract_vectors.jl",
@@ -44,17 +49,24 @@ issues = ["test_issues.jl"]
 # Basic JUDI objects tests, no Devito
 if GROUP == "JUDI" || GROUP == "All"
     for t=base
-        @time include(t)
+        timeit_include(t)
         try Base.GC.gc(); catch; gc() end
+    end
+    # Test resolved issues Due to some data type incomaptibilities only test 1.7
+    if VERSION >= v"1.7"
+        for t=issues
+            timeit_include(t)
+            try Base.GC.gc(); catch; gc() end
+        end
     end
 end
 
 # Generic mdeling tests
 if GROUP == "BASICS" || GROUP == "All"
     println("JUDI generic modelling tests")
-    VERSION >= v"1.5" && push!(Base.ARGS, "-p 2")
+    VERSION >= v"1.7" && push!(Base.ARGS, "-p 2")
     for t=extras
-        @time include(t)
+        timeit_include(t)
         @everywhere try Base.GC.gc(); catch; gc() end
     end
 end
@@ -63,9 +75,9 @@ end
 if GROUP == "ISO_OP" || GROUP == "All"
     println("JUDI iso-acoustic operators tests (parallel)")
     # Basic test of LA/CG/LSQR needs
-    VERSION >= v"1.5" && push!(Base.ARGS, "-p 2")
+    VERSION >= v"1.7" && push!(Base.ARGS, "-p 2")
     for t=devito
-        @time include(t)
+        timeit_include(t)
         @everywhere try Base.GC.gc(); catch; gc() end
     end
 end
@@ -75,7 +87,7 @@ if GROUP == "ISO_OP_FS" || GROUP == "All"
     println("JUDI iso-acoustic operators with free surface tests")
     push!(Base.ARGS, "--fs")
     for t=devito
-        @time include(t)
+        timeit_include(t)
         try Base.GC.gc(); catch; gc() end
     end
 end
@@ -86,7 +98,7 @@ if GROUP == "TTI_OP" || GROUP == "All"
     # TTI tests
     push!(Base.ARGS, "--tti")
     for t=devito
-        @time include(t)
+        timeit_include(t)
         try Base.GC.gc(); catch; gc() end
     end
 end
@@ -97,17 +109,9 @@ if GROUP == "TTI_OP_FS" || GROUP == "All"
     push!(Base.ARGS, "--tti")
     push!(Base.ARGS, "--fs")
     for t=devito
-        @time include(t)
+        timeit_include(t)
         try Base.GC.gc(); catch; gc() end
     end
 end
 
-# Test resolved issues
-if GROUP == "ISSUES" || GROUP == "All"
-    println("JUDI resolved issues tests")
-    VERSION >= v"1.5" && push!(Base.ARGS, "-p 2")
-    for t=issues
-        @time include(t)
-        @everywhere try Base.GC.gc(); catch; gc() end
-    end
-end
+show(TIMEROUTPUT; compact=true, sortby=:firstexec)

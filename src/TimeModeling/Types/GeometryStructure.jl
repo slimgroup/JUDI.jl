@@ -7,7 +7,7 @@ export Geometry, compareGeometry, GeometryIC, GeometryOOC, get_nsrc, n_samples
 
 abstract type Geometry{T} end
 
-const CoordT = Union{Array{T, 1}, Array{Array{T, 1}, 1}} where T<:Number
+const CoordT = Union{Vector{T}, Vector{Vector{T}}} where T<:Number
 (::Type{CoordT})(x::Vector{Any}) = rebuild_maybe_jld(x)
 
 # In-core geometry structure for seismic header information
@@ -122,8 +122,8 @@ Geometry(xloc::CoordT, yloc::CoordT, zloc::CoordT, dt::Array{T,1}, nt::Array{Int
 
 # Fallback constructors for non standard input types 
 function Geometry(xloc, yloc, zloc; dt=[], t=[], nsrc=nothing)
-    if any(typeof(x) <: StepRangeLen for x=[xloc, yloc, zloc])
-        args = [typeof(x) <: StepRangeLen ? collect(x) : x for x=[xloc, yloc, zloc]]
+    if any(typeof(x) <: AbstractRange for x=[xloc, yloc, zloc])
+        args = [typeof(x) <: AbstractRange ? collect(x) : x for x=[xloc, yloc, zloc]]
         isnothing(nsrc) && (return Geometry(args...; dt=dt, t=t))
         return Geometry(args...; dt=dt, t=t, nsrc=nsrc)
     end

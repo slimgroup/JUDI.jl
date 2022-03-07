@@ -18,11 +18,8 @@ function extended_source_modeling(model_full::Model, srcData, recGeometry, recDa
         end
     end
 
-    # Load shot record if stored on disk
-    typeof(recData) == SegyIO.SeisCon && (recData = convert(Array{Float32,2}, recData[1].data))
-
     # Remove receivers outside the modeling domain (otherwise leads to segmentation faults)
-    recGeometry, recData = remove_out_of_bounds_receivers(recGeometry, recData, model)
+    recGeometry, recData = remove_out_of_bounds_receivers(recGeometry, to_array(recData), model)
 
     isnothing(weights) ? nothing : weights = pad_array(weights, pad_sizes(model, options; so=0); mode=:zeros)
     # Devito interface

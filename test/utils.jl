@@ -26,7 +26,7 @@ function setup_model(tti=false, nlayer=2; n=(301, 151), d=(10., 10.))
     o = (0., 0.)
     lw = n[2] ÷ nlayer
     
-    v = ones(Float32,n) .* 1.5f0
+    v = ones(Float32, n) .* 1.5f0
     vp_i = range(1.5f0, 3.5f0, length=nlayer)
     for i in range(2, nlayer, step=1)	
         v[:, (i-1)*lw+ 1:end] .= vp_i[i]  # Bottom velocity	
@@ -47,9 +47,9 @@ function setup_model(tti=false, nlayer=2; n=(301, 151), d=(10., 10.))
         model0 = Model(n, d, o, m0; epsilon=epsilon, delta=delta, theta=theta)
         model = Model(n, d, o, m; epsilon=epsilon, delta=delta, theta=theta)
     else
-        model = Model(n,d,o,m, rho0)
-        model0 = Model(n,d,o,m0,rho0)
-        @test Model(n,d,o,m0; rho=rho0).rho == model0.rho
+        model = Model(n, d, o, m, rho0)
+        model0 = Model(n, d, o, m0, rho0)
+        @test Model(n, d, o, m0; rho=rho0).rho == model0.rho
     end
     dm = model.m - model0.m
     return model, model0, dm

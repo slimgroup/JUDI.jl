@@ -147,7 +147,7 @@ def extended_src_weights(model, wavelet, v):
     wavelett = Function(name='wf_src', dimensions=(time,), shape=(nt,))
     wavelett.data[:] = wavelet[:, 0]
     wf = v[0] + v[1] if model.is_tti else v
-    return w_out, [Eq(w_out, w_out + time.spacing * wf * wavelett)]
+    return w_out, [Inc(w_out, time.spacing * wf * wavelett)]
 
 
 def freesurface(model, eq):

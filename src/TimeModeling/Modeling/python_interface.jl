@@ -28,7 +28,7 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Geometry
 
     # Interpolate input data to computational grid
     dtComp = get_dt(model; dt=options.dt_comp)
-    dIn = time_resample(recData,recGeometry,dtComp)[1]
+    dIn = time_resample(recData, recGeometry, dtComp)[1]
 
     # Set up coordinates with devito dimensions
     src_coords = setup_grid(srcGeometry, modelPy.shape)
@@ -64,7 +64,7 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Nothing,
 
     # Interpolate input data to computational grid
     dtComp = get_dt(model; dt=options.dt_comp)
-    dIn = time_resample(recData,recGeometry,dtComp)[1]
+    dIn = time_resample(recData, recGeometry, dtComp)[1]
 
     # Set up coordinates with devito dimensions
     rec_coords = setup_grid(recGeometry, modelPy.shape)
@@ -169,7 +169,7 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcGeometry::Geometry
     # Interpolate input data to computational grid
     dtComp = get_dt(model; dt=options.dt_comp)
     qIn = time_resample(srcData,srcGeometry,dtComp)[1]
-    dIn = time_resample(recData,recGeometry,dtComp)[1]
+    dIn = time_resample(recData, recGeometry, dtComp)[1]
 
     # Set up coordinates with devito dimensions
     src_coords = setup_grid(srcGeometry, modelPy.shape)
@@ -196,7 +196,7 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcData::Array, recGe
 
     # Interpolate input data to computational grid
     dtComp = get_dt(model; dt=options.dt_comp)
-    qIn = time_resample(srcData,recGeometry,dtComp)[1]
+    qIn = time_resample(srcData, recGeometry, dtComp)[1]
 
     # Set up coordinates with devito dimensions
     rec_coords = setup_grid(recGeometry, modelPy.shape)
@@ -215,8 +215,8 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcData::Array, recGe
 
     # Interpolate input data to computational grid
     dtComp = get_dt(model; dt=options.dt_comp)
-    dIn = time_resample(recData,recGeometry,dtComp)[1]
-    qIn = time_resample(srcData,recGeometry,dtComp)[1]
+    dIn = time_resample(recData, recGeometry, dtComp)[1]
+    qIn = time_resample(srcData, recGeometry, dtComp)[1]
 
     # Set up coordinates with devito dimensions
     rec_coords = setup_grid(recGeometry, modelPy.shape)
@@ -239,10 +239,9 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcData::Array, recGe
 
     # Interpolate input data to computational grid
     dtComp = get_dt(model; dt=options.dt_comp)
-    qIn = time_resample(srcData,recGeometry,dtComp)[1]
+    qIn = time_resample(srcData, recGeometry, dtComp)[1]
 
     # Set up coordinates with devito dimensions
-    #origin = get_origin(modelPy)
     rec_coords = setup_grid(recGeometry, modelPy.shape)
 
     # Devito call
@@ -259,8 +258,8 @@ function devito_interface(modelPy::PyCall.PyObject, model, srcData::Array, recGe
 
     # Interpolate input data to computational grid
     dtComp = get_dt(model; dt=options.dt_comp)
-    qIn = time_resample(srcData,recGeometry,dtComp)[1]
-    dIn = time_resample(recData,recGeometry,dtComp)[1]
+    qIn = time_resample(srcData, recGeometry, dtComp)[1]
+    dIn = time_resample(recData, recGeometry, dtComp)[1]
 
     # Set up coordinates with devito dimensions
     rec_coords = setup_grid(recGeometry, modelPy.shape)

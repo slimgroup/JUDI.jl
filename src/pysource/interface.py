@@ -366,7 +366,7 @@ def born_rec(model, src_coords, wavelet, rec_coords,
 def born_rec_w(model, weight, wavelet, rec_coords,
                space_order=8, isic=False):
     """
-    Linearized (Born) modeling of a point source for a model
+    Linearized (Born) modeling of an extended source for a model
     perturbation (square slowness) dm with an extended source
 
     Parameters

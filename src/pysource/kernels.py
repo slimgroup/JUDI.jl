@@ -22,7 +22,7 @@ def wave_kernel(model, u, fw=True, q=None):
     if model.is_tti:
         pde = tti_kernel(model, u[0], u[1], fw=fw, q=q)
     else:
-        pde = acoustic_kernel(model, u, fw, q=q)
+        pde = acoustic_kernel(model, u, fw=fw, q=q)
     return pde
 
 

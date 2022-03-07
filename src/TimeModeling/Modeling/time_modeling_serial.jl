@@ -27,11 +27,8 @@ function time_modeling(model_full::Model, srcGeometry, srcData, recGeometry, rec
     # Set up Python model structure
     modelPy = devito_model(model, options; dm=dm)
 
-    # Load shot record if stored on disk
-    typeof(recData) == SegyIO.SeisCon && (recData = convert(Array{Float32,2}, recData[1].data))
-
     # Remove receivers outside the modeling domain (otherwise leads to segmentation faults)
-    recGeometry, recData = remove_out_of_bounds_receivers(recGeometry, recData, model)
+    recGeometry, recData = remove_out_of_bounds_receivers(recGeometry, to_array(recData), model)
 
     # Devito interface
     argout = devito_interface(modelPy, model, srcGeometry, srcData, recGeometry, recData, dm, options)

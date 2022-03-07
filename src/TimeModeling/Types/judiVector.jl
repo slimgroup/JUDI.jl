@@ -271,6 +271,10 @@ vec(x::SegyIO.SeisCon) = vec(x[1].data)
 abs(x::SegyIO.IBMFloat32) = abs(Float32(x))
 
 ##########################################################
+to_array(x) = x
+to_array(x::SegyIO.SeisCon) = convert(Array{Float32,2}, x[1].data)
+
+##########################################################
 
 for opo=[:+, :-, :*, :/]
     @eval begin

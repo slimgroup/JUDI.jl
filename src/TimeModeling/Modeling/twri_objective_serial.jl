@@ -82,10 +82,9 @@ function twri_objective(model_full::Model, source::judiVector, dObs::judiVector,
 
     # Extrapolate input data to computational grid
     qIn = time_resample(source.data[1],source.geometry,dtComp)[1]
-    obsd = typeof(dObs.data[1]) == SegyIO.SeisCon ? convert(Array{Float32,2}, dObs.data[1][1].data) : dObs.data[1]
-    dObserved = time_resample(obsd, dObs.geometry, dtComp)[1]
+    dObserved = time_resample(to_array(dObs.data[1]), dObs.geometry, dtComp)[1]
 
-    isnothing(y) ? Y = nothing : Y = time_resample(y.data[1], y.geometry, dtComp)[1]
+    isnothing(y) ? Y = nothing : Y = time_resample(to_array(y.data[1]), y.geometry, dtComp)[1]
 
     # Set up coordinates
     src_coords = setup_grid(source.geometry, model.n)  # shifts source coordinates by origin
