@@ -20,12 +20,14 @@ args = parser.parse_args()
 is_tti = args.tti
 so = args.space_order
 
+dtype = np.float32
+
 # Model
 shape = (301, 301)
 spacing = (10., 10.)
 origin = (0., 0.)
-m = np.empty(shape, dtype=np.float32)
-rho = np.empty(shape, dtype=np.float32)
+m = np.empty(shape, dtype=dtype)
+rho = np.empty(shape, dtype=dtype)
 m[:] = 1/1.5**2  # Top velocity (background)
 rho[:] = 1.0
 m_i = np.linspace(1/1.5**2, 1/4.5**2, args.nlayer)
@@ -37,11 +39,11 @@ for i in range(1, args.nlayer):
 v = np.sqrt(1./m)
 # Set up model structures
 if is_tti:
-    model = Model(shape=shape, origin=origin, spacing=spacing,
+    model = Model(shape=shape, origin=origin, spacing=spacing, dtype=dtype,
                   m=m, epsilon=.09*(v-1.5), delta=.075*(v-1.5),
                   fs=args.fs, theta=.1*(v-1.5), rho=1, space_order=so)
 else:
-    model = Model(shape=shape, origin=origin, spacing=spacing,
+    model = Model(shape=shape, origin=origin, spacing=spacing, dtype=dtype,
                   fs=args.fs, m=m, rho=rho, space_order=so)
 
 # Time axis

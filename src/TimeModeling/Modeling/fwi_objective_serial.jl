@@ -24,11 +24,11 @@ function fwi_objective(model_full::Model, source::judiVector, dObs::judiVector, 
 
     # Set up Python model
     modelPy = devito_model(model, options)
-    dtComp = get_dt(model; dt=options.dt_comp)
+    dtComp = convert(Float32, modelPy."critical_dt")
 
     # Extrapolate input data to computational grid
     qIn = time_resample(source.data[1], source.geometry, dtComp)[1]
-    dObserved = time_resample(to_array(dObs.data[1]), dObs.geometry, dtComp)[1]
+    dObserved = time_resample(convert(Matrix{Float32}, dObs.data[1]), dObs.geometry, dtComp)[1]
 
     # Set up coordinates
     src_coords = setup_grid(source.geometry, model.n)  # shifts source coordinates by origin
@@ -36,18 +36,18 @@ function fwi_objective(model_full::Model, source::judiVector, dObs::judiVector, 
 
 
     if options.optimal_checkpointing == true
-        argout1, argout2 = pycall(ac."J_adjoint_checkpointing", Tuple{Float32, Array{Float32, modelPy.dim}},
+        argout1, argout2 = pycall(ac."J_adjoint_checkpointing", Tuple{Float32, PyArray},
                                   modelPy, src_coords, qIn,
                                   rec_coords, dObserved, is_residual=false, return_obj=true, isic=options.isic,
                                   t_sub=options.subsampling_factor, space_order=options.space_order)
     elseif ~isempty(options.frequencies)
-        argout1, argout2 = pycall(ac."J_adjoint_freq", Tuple{Float32,  Array{Float32, modelPy.dim}},
+        argout1, argout2 = pycall(ac."J_adjoint_freq", Tuple{Float32,  PyArray},
                                   modelPy, src_coords, qIn,
                                   rec_coords, dObserved, is_residual=false, return_obj=true, isic=options.isic,
                                   freq_list=options.frequencies, t_sub=options.subsampling_factor,
                                   space_order=options.space_order)
     else
-        argout1, argout2 = pycall(ac."J_adjoint_standard", Tuple{Float32,  Array{Float32, modelPy.dim}},
+        argout1, argout2 = pycall(ac."J_adjoint_standard", Tuple{Float32, PyArray},
                                   modelPy, src_coords, qIn,
                                   rec_coords, dObserved, is_residual=false, return_obj=true,
                                   t_sub=options.subsampling_factor, space_order=options.space_order,

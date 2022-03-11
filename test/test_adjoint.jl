@@ -20,7 +20,7 @@ end
 @everywhere using JUDI, LinearAlgebra, Test, Distributed
 
 ### Model
-model, model0, dm = setup_model(parsed_args["tti"], parsed_args["nlayer"])
+model, model0, dm = setup_model(parsed_args["tti"], parsed_args["nlayer"]; rand_dm=true)
 q, srcGeometry, recGeometry, info = setup_geom(model; nsrc=nw)
 dt = srcGeometry.dt[1]
 
@@ -57,7 +57,6 @@ tol = 5f-4
         dm_hat = J'*y
 
         c = dot(ld_hat, y)
-        @show norm(dm), norm(dm_hat)
         d = dot(dm_hat, dm)
         @printf(" <J x, y> : %2.5e, <x, J' y> : %2.5e, relative error : %2.5e \n", c, d, (c - d)/(c + d))
         @test isapprox(c/(c+d), d/(c+d), atol=tol, rtol=0)
@@ -65,26 +64,22 @@ tol = 5f-4
 end
 ###################################################################################################
 # Extended source modeling
-if parsed_args["tti"] && parsed_args["fs"]
-    # FS + tti leads to slightly worst (still fairly ok) accuracy
-    tol = 5f-3
-end
 
 @testset "Extended source adjoint test with $(nlayer) layers and tti $(tti) and freesurface $(fs)" begin
     @timeit TIMEROUTPUT "Extended source adjoint" begin
         opt = Options(sum_padding=true, dt_comp=dt, free_surface=parsed_args["fs"])
-        F = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
+        F = judiModeling(model0, srcGeometry, recGeometry; options=opt)
         # Nonlinear modeling
         y = F*q
 
         Pr = judiProjection(info, recGeometry)
         Fw = judiModeling(info, model0; options=opt)
-        Pw = judiLRWF(info, q.data[1])
+        Pw = judiLRWF(info, circshift(q.data[1], 51))
         Fw = Pr*Fw*adjoint(Pw)
 
         # Extended source weights
-        w = 1f0 .+ rand(Float32, model0.n...)
-        parsed_args["fs"] ? w[:, 1:2] .= 0f0 : nothing
+        w = zeros(Float32, model0.n...)
+        w[141:160, 65:84] .= randn(Float32, 20, 20)
         w = judiWeights(w; nsrc=nw)
 
         # Forward-Adjoint computation
@@ -101,9 +96,9 @@ end
         Jw = judiJacobian(Fw, w)
 
         ddw_hat = Jw*dm
-        dmw_hat = adjoint(Jw)*y
+        dmw_hat = adjoint(Jw)*dw_hat
 
-        c = dot(y, ddw_hat)
+        c = dot(dw_hat, ddw_hat)
         d = dot(dm, dmw_hat)
         @printf(" <J x, y> : %2.5e, <x, J' y> : %2.5e, relative error : %2.5e \n", c, d, (c - d)/(c + d))
         @test isapprox(c/(c+d), d/(c+d), atol=tol, rtol=0)

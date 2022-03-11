@@ -116,7 +116,7 @@ def extented_src(model, weight, wavelet, q=0):
     time = model.grid.time_dim
     nt = wavelet.shape[0]
     wavelett = Function(name='wf_src', dimensions=(time,), shape=(nt,))
-    wavelett.data[:] = wavelet[:, 0]
+    wavelett.data[:] = np.array(wavelet)[:, 0]
     source_weight = Function(name='src_weight', grid=model.grid, space_order=0)
     source_weight.data[:] = weight
     if model.is_tti:
@@ -145,7 +145,7 @@ def extended_src_weights(model, wavelet, v):
     w_out = Function(name='src_weight', grid=model.grid, space_order=0)
     time = model.grid.time_dim
     wavelett = Function(name='wf_src', dimensions=(time,), shape=(nt,))
-    wavelett.data[:] = wavelet[:, 0]
+    wavelett.data[:] = np.array(wavelet)[:, 0]
     wf = v[0] + v[1] if model.is_tti else v
     return w_out, [Inc(w_out, time.spacing * wf * wavelett)]
 

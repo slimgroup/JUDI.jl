@@ -19,10 +19,6 @@ const GROUP = get(ENV, "GROUP", "JUDI")
 
 include("utils.jl")
 
-if endswith(GROUP, ".jl")
-    timeit_include(GROUP)
-end
-
 base = ["test_abstract_vectors.jl",
         "test_geometry.jl",
         "test_judiVector.jl",
@@ -45,6 +41,11 @@ devito = ["test_linearity.jl",
 extras = ["test_modeling.jl", "test_basics.jl", "test_linear_algebra.jl"]
 
 issues = ["test_issues.jl"]
+
+# custom
+if endswith(GROUP, ".jl")
+    timeit_include(GROUP)
+end
 
 # Basic JUDI objects tests, no Devito
 if GROUP == "JUDI" || GROUP == "All"

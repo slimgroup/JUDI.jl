@@ -78,13 +78,13 @@ function twri_objective(model_full::Model, source::judiVector, dObs::judiVector,
 
     # Set up Python model structure 
     modelPy = devito_model(model, options)
-    dtComp = get_dt(model; dt=options.dt_comp)
+    dtComp = convert(Float32, modelPy."critical_dt")
 
     # Extrapolate input data to computational grid
-    qIn = time_resample(source.data[1],source.geometry,dtComp)[1]
-    dObserved = time_resample(to_array(dObs.data[1]), dObs.geometry, dtComp)[1]
+    qIn = time_resample(source.data[1], source.geometry, dtComp)[1]
+    dObserved = time_resample(convert(Matrix{Float32}, dObs.data[1]), dObs.geometry, dtComp)[1]
 
-    isnothing(y) ? Y = nothing : Y = time_resample(to_array(y.data[1]), y.geometry, dtComp)[1]
+    isnothing(y) ? Y = nothing : Y = time_resample(convert(Matrix{Float32}, y.data[1]), y.geometry, dtComp)[1]
 
     # Set up coordinates
     src_coords = setup_grid(source.geometry, model.n)  # shifts source coordinates by origin
