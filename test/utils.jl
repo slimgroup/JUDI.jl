@@ -21,12 +21,12 @@ end
 """
 Sets up a simple 2D layered model for the wave equation operators tests
 """
-function setup_model(tti=false, nlayer=2; n=(301, 151), d=(10., 10.))
+function setup_model(tti=false, nlayer=2; n=(301, 151), d=(10., 10.), rand_dm=false)
     ## Set up model structure	
     o = (0., 0.)
     lw = n[2] ÷ nlayer
     
-    v = ones(Float32,n) .* 1.5f0
+    v = ones(Float32, n) .* 1.5f0
     vp_i = range(1.5f0, 3.5f0, length=nlayer)
     for i in range(2, nlayer, step=1)	
         v[:, (i-1)*lw+ 1:end] .= vp_i[i]  # Bottom velocity	
@@ -47,14 +47,19 @@ function setup_model(tti=false, nlayer=2; n=(301, 151), d=(10., 10.))
         model0 = Model(n, d, o, m0; epsilon=epsilon, delta=delta, theta=theta)
         model = Model(n, d, o, m; epsilon=epsilon, delta=delta, theta=theta)
     else
-        model = Model(n,d,o,m, rho0)
-        model0 = Model(n,d,o,m0,rho0)
-        @test Model(n,d,o,m0; rho=rho0).rho == model0.rho
+        model = Model(n, d, o, m, rho0)
+        model0 = Model(n, d, o, m0, rho0)
+        @test Model(n, d, o, m0; rho=rho0).rho == model0.rho
     end
-    dm = model.m - model0.m
+    if rand_dm
+        dm = similar(model.m)
+        fill!(dm, 0f0)
+        dm[21:end-20, 21:end-20] .= .1f0.*randn(Float32, dm[21:end-20, 21:end-20].n)
+    else
+        dm = model.m - model0.m
+    end
     return model, model0, dm
 end
-
 
 """
 Sets up a simple 2D acquisition for the wave equation operators tests

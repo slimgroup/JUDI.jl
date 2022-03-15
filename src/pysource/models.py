@@ -1,8 +1,8 @@
 import numpy as np
-from sympy import Abs, Min, exp, sqrt
 import warnings
-from devito import (Grid, Function, SubDomain, SubDimension, Eq,
-                    Operator, mmin, initialize_function, switchconfig)
+from devito import (Grid, Function, SubDomain, SubDimension, Eq, Inc,
+                    Operator, mmin, initialize_function, switchconfig,
+                    Abs, sqrt, sin)
 from devito.tools import as_tuple
 
 
@@ -44,7 +44,7 @@ class FSDomain(SubDomain):
 
 
 @switchconfig(log_level='ERROR')
-def initialize_damp(damp, padsizes, spacing, fs=False):
+def initialize_damp(damp, padsizes, abc_type="damp", fs=False):
     """
     Initialise damping field with an absorbing boundary layer.
     Includes basic constant Q setup (not interfaced yet) and assumes that
@@ -63,28 +63,26 @@ def initialize_damp(damp, padsizes, spacing, fs=False):
         mask => 1 inside the domain and decreases in the layer
         not mask => 0 inside the domain and increase in the layer
     """
-    lqmin = np.log(.1)
-    lqmax = np.log(100)
-    w0 = 1/(10 * np.max(spacing))
-
-    z = damp.dimensions[-1]
-    eqs = [Eq(damp, 1)]
-
+    eqs = [Eq(damp, 1.0 if abc_type == "mask" else 0.0)]
     for (nbl, nbr), d in zip(padsizes, damp.dimensions):
-        if not fs or d is not z:
-            nbl = max(5, nbl - 10) if d is z else nbl
+        if not fs or d is not damp.dimensions[-1]:
+            dampcoeff = 1.5 * np.log(1.0 / 0.001) / (nbl)
             # left
             dim_l = SubDimension.left(name='abc_%s_l' % d.name, parent=d,
                                       thickness=nbl)
-            pos = Abs(dim_l - d.symbolic_min) / float(nbl)
-            eqs.append(Eq(damp.subs({d: dim_l}), Min(damp.subs({d: dim_l}), pos)))
+            pos = Abs((nbl - (dim_l - d.symbolic_min) + 1) / float(nbl))
+            val = dampcoeff * (pos - sin(2*np.pi*pos)/(2*np.pi))
+            val = -val if abc_type == "mask" else val
+            eqs += [Inc(damp.subs({d: dim_l}), val/d.spacing)]
         # right
+        dampcoeff = 1.5 * np.log(1.0 / 0.001) / (nbr)
         dim_r = SubDimension.right(name='abc_%s_r' % d.name, parent=d,
                                    thickness=nbr)
-        pos = Abs(d.symbolic_max - dim_r) / float(nbr)
-        eqs.append(Eq(damp.subs({d: dim_r}), Min(damp.subs({d: dim_r}), pos)))
+        pos = Abs((nbr - (d.symbolic_max - dim_r) + 1) / float(nbr))
+        val = dampcoeff * (pos - sin(2*np.pi*pos)/(2*np.pi))
+        val = -val if abc_type == "mask" else val
+        eqs += [Inc(damp.subs({d: dim_r}), val/d.spacing)]
 
-    eqs.append(Eq(damp, w0 / exp(lqmin + damp * (lqmax - lqmin))))
     Operator(eqs, name='initdamp')()
 
 
@@ -119,7 +117,7 @@ class GenericModel(object):
         if self.nbl != 0:
             # Create dampening field as symbol `damp`
             self.damp = Function(name="damp", grid=self.grid)
-            initialize_damp(self.damp, self.padsizes, spacing, fs=fs)
+            initialize_damp(self.damp, self.padsizes, fs=fs)
             self._physical_parameters = ['damp']
         else:
             self.damp = 1

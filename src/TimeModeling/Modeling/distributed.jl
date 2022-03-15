@@ -49,7 +49,7 @@ end
 
 Filter input arguments and keyword arguments for experiment number `i`.
 """
-get_exp(i, args...; kwargs...) = (_get_exp(a, i) for a in (args..., kwargs.data...))
+get_exp(i, args...; kwargs...) = (_get_exp(a, i) for a in (args..., values(kwargs)...))
 
 # Find task iterator (number of sources and indices)
 """

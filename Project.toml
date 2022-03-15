@@ -23,12 +23,14 @@ PyCall = "1.18, 1.90, 1.91, 1.62"
 Reexport = "0.2, 1"
 SegyIO = "0.7.7"
 julia = "1"
+TimerOutputs = "0.5"
 
 [extras]
 ArgParse = "c7e460c6-2fb9-53a9-8c5b-16f535851c63"
+JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
-JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
+TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
 
 [targets]
-test = ["Test", "ArgParse", "Printf", "JLD2"]
+test = ["Test", "ArgParse", "Printf", "JLD2", "TimerOutputs"]

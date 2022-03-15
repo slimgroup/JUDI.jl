@@ -71,5 +71,4 @@ m0 = model0.m
 
     @test isapprox(rate_1, 1.25f0; rtol=1f-2)
     @test isapprox(rate_2, 1.5625f0; rtol=1f-2)
-
 end

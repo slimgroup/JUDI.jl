@@ -27,14 +27,11 @@ function time_modeling(model_full::Model, srcGeometry, srcData, recGeometry, rec
     # Set up Python model structure
     modelPy = devito_model(model, options; dm=dm)
 
-    # Load shot record if stored on disk
-    typeof(recData) == SegyIO.SeisCon && (recData = convert(Array{Float32,2}, recData[1].data))
-
     # Remove receivers outside the modeling domain (otherwise leads to segmentation faults)
     recGeometry, recData = remove_out_of_bounds_receivers(recGeometry, recData, model)
 
     # Devito interface
-    argout = devito_interface(modelPy, model, srcGeometry, srcData, recGeometry, recData, dm, options)
+    argout = devito_interface(modelPy, srcGeometry, srcData, recGeometry, recData, dm, options)
     # Extend gradient back to original model size
     if op=='J' && mode==-1 && options.limit_m==true
         argout = extend_gradient(model_full, model, argout)

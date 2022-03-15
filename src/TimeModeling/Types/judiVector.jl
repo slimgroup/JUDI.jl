@@ -271,6 +271,10 @@ vec(x::SegyIO.SeisCon) = vec(x[1].data)
 abs(x::SegyIO.IBMFloat32) = abs(Float32(x))
 
 ##########################################################
+convert(::Type{Matrix{T}}, x::SegyIO.SeisCon) where T = convert(Matrix{T}, x[1].data)
+convert(::Type{Matrix{T}}, x::Nothing) where T = nothing
+
+##########################################################
 
 for opo=[:+, :-, :*, :/]
     @eval begin
