@@ -15,6 +15,9 @@ using TimerOutputs: TimerOutputs, @timeit
 const TIMEROUTPUT = TimerOutputs.TimerOutput()
 timeit_include(path::AbstractString) = @timeit TIMEROUTPUT path include(path)
 
+# Utilities
+const success_log = Dict(true => "SUCCESS", false => "FAILED")
+# Test set 
 const GROUP = get(ENV, "GROUP", "JUDI")
 
 include("utils.jl")
