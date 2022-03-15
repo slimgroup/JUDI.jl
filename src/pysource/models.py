@@ -1,4 +1,8 @@
 import numpy as np
+<<<<<<< HEAD
+=======
+from sympy import Abs, sqrt
+>>>>>>> inferring abc_type in models.py to avoid that carry around in options which is also unsafe for users and replacing initialize_damp by used in Devito
 import warnings
 from devito import (Grid, Function, SubDomain, SubDimension, Eq, Inc,
                     Operator, mmin, initialize_function, switchconfig,
@@ -44,7 +48,7 @@ class FSDomain(SubDomain):
 
 
 @switchconfig(log_level='ERROR')
-def initialize_damp(damp, padsizes, abc_type="damp", fs=False):
+def initialize_damp(damp, padsizes, abc_type=False, fs=False):
     """
     Initialise damping field with an absorbing boundary layer.
     Includes basic constant Q setup (not interfaced yet) and assumes that
@@ -91,7 +95,7 @@ class GenericModel(object):
     General model class with common properties
     """
     def __init__(self, origin, spacing, shape, space_order, nbl=20,
-                 dtype=np.float32, fs=False, grid=None, abc_type=False):
+                 dtype=np.float32, fs=False, grid=None):
         self.shape = shape
         self.nbl = int(nbl)
         self.origin = tuple([dtype(o) for o in origin])
@@ -115,12 +119,8 @@ class GenericModel(object):
                                  dtype=dtype, subdomains=subdomains)
 
         if self.nbl != 0:
-            # Create dampening field as symbol `damp`
-            self.damp = Function(name="damp", grid=self.grid)
-            initialize_damp(self.damp, self.padsizes, fs=fs)
             self._physical_parameters = ['damp']
         else:
-            self.damp = 1
             self._physical_parameters = []
 
     @property
@@ -240,11 +240,12 @@ class Model(GenericModel):
     """
     def __init__(self, origin, spacing, shape, m, space_order=2, nbl=40,
                  dtype=np.float32, epsilon=None, delta=None, theta=None, phi=None,
-                 rho=1, qp=None, dm=None, fs=False, abc_type=False, **kwargs):
+                 rho=1, qp=None, dm=None, fs=False, **kwargs):
         super(Model, self).__init__(origin, spacing, shape, space_order, nbl, dtype,
-                                    fs=fs, abc_type=abc_type, grid=kwargs.get('grid'))
+                                    fs=fs, grid=kwargs.get('grid'))
 
         self.scale = 1
+        self.abc_type = False
         self._space_order = space_order
         # Create square slowness of the wave as symbol `m`
         self._m = self._gen_phys_param(m, 'm', space_order)
@@ -256,6 +257,7 @@ class Model(GenericModel):
         if qp is not None:
             self._is_viscoacoustic = True
             self.qp = self._gen_phys_param(qp, 'qp', space_order)
+            self.abc_type = True
         else:
             self._is_viscoacoustic = False
         # Additional parameter fields for TTI operators
@@ -270,6 +272,14 @@ class Model(GenericModel):
             self.phi = self._gen_phys_param(phi, 'phi', space_order)
         # User provided dt
         self._dt = kwargs.get('dt')
+
+        if self.nbl != 0:
+            # Create dampening field as symbol `damp`
+            self.damp = Function(name="damp", grid=self.grid)
+            initialize_damp(self.damp, self.padsizes, spacing, abc_type=self.abc_type,
+                            fs=fs)
+        else:
+            self.damp = 1
 
     def _init_density(self, rho, so):
         """

@@ -57,8 +57,7 @@ elif is_viscoacoustic:
     qp0 = np.empty(shape, dtype=np.float32)
     qp0[:] = 3.516*((v0[:]*1000.)**2.2)*10**(-6)
     model = Model(shape=shape, origin=origin, spacing=spacing,
-                  fs=args.fs, m=m0, rho=rho0, qp=qp0, dm=dm, space_order=so,
-                  abc_type=True)
+                  fs=args.fs, m=m0, rho=rho0, qp=qp0, dm=dm, space_order=so)
 else:
     model = Model(shape=shape, origin=origin, spacing=spacing, dtype=dtype,
                   fs=args.fs, m=m0, rho=rho0, dm=dm, space_order=so)

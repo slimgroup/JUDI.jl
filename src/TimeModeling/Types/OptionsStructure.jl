@@ -9,7 +9,6 @@ export Options, subsample
 mutable struct Options
     space_order::Integer
     free_surface::Bool
-    abc_type::Bool
     limit_m::Bool
     buffer_size::Real
     save_data_to_disk::Bool
@@ -32,7 +31,6 @@ end
     Options
         space_order::Integer
         free_surface::Bool
-        abc_type::Bool
         limit_m::Bool
         buffer_size::Real
         save_rate::Real
@@ -58,8 +56,6 @@ Options structure for seismic modeling.
 `space_order`: finite difference space order for wave equation (default is 8, needs to be multiple of 4)
 
 `free_surface`: set to `true` to enable a free surface boundary condition.
-
-`abc_type`: whether the dampening is a mask or layer, (mask => true) inside the domain and decreases in the layer, (mask => false) inside the domain and increase in the layer.
 
 `limit_m`: for 3D modeling, limit modeling domain to area with receivers (saves memory)
 
@@ -99,7 +95,7 @@ Constructor
 All arguments are optional keyword arguments with the following default values:
 
     Options(;space_order=8, free_surface=false,
-            limit_m=false, abc_type=false, buffer_size=1e3,
+            limit_m=false, buffer_size=1e3,
             save_data_to_disk=false, file_path="",
             file_name="shot", sum_padding=false,
             optimal_checkpointing=false,
@@ -111,7 +107,6 @@ All arguments are optional keyword arguments with the following default values:
 """
 Options(;space_order=8,
 		 free_surface=false,
-         abc_type=false,
          limit_m=false,
 		 buffer_size=1e3,
 		 save_data_to_disk=false,
@@ -130,7 +125,6 @@ Options(;space_order=8,
          f0=0.015f0) =
 		 Options(space_order,
 		 		 free_surface,
-                 abc_type,
 		         limit_m,
 				 buffer_size,
 				 save_data_to_disk,

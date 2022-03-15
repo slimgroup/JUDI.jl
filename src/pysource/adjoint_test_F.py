@@ -50,7 +50,7 @@ elif is_viscoacoustic:
     qp[:] = 3.516*((v[:]*1000.)**2.2)*10**(-6)
     model = Model(shape=shape, origin=origin, spacing=spacing,
                   fs=args.fs, m=m, rho=rho, space_order=so,
-                  qp=qp, abc_type=True)
+                  qp=qp)
 else:
     model = Model(shape=shape, origin=origin, spacing=spacing, dtype=dtype,
                   fs=args.fs, m=m, rho=rho, space_order=so)

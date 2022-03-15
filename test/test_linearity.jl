@@ -20,8 +20,7 @@ srcGeometry2.xloc[:] .= .9*srcGeometry2.xloc[:]
 srcGeometry2.zloc[:] .= .9*srcGeometry2.zloc[:]
 dt = srcGeometry1.dt[1]
 
-parsed_args["viscoacoustic"] ? abc_type = true : abc_type = false
-opt = Options(free_surface=parsed_args["fs"], abc_type=abc_type, f0=f0)
+opt = Options(free_surface=parsed_args["fs"], f0=f0)
 ftol = 5f-5
 
 ####################### Modeling operators ##########################################
