@@ -41,8 +41,6 @@ devito = ["test_linearity.jl",
           "test_multi_exp.jl"]
         #   "test_gradient_twri.jl"]
 
-devito_viscoacoustic = ["test_linearity.jl", "test_adjoint.jl", "test_jacobian.jl"]
-
 extras = ["test_modeling.jl", "test_basics.jl", "test_linear_algebra.jl"]
 
 issues = ["test_issues.jl"]
@@ -125,7 +123,7 @@ if GROUP == "VISCO_AC_OP" || GROUP == "All"
     println("JUDI Viscoacoustic operators tests")
     # Viscoacoustic tests
     push!(Base.ARGS, "--viscoacoustic")
-    for t=devito_viscoacoustic
+    for t in ["test_linearity.jl", "test_adjoint.jl", "test_jacobian.jl"]
         @time include(t)
         try Base.GC.gc(); catch; gc() end
     end
