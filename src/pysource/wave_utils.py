@@ -85,19 +85,21 @@ def wavefield_subsampled(model, u, nt, t_sub, space_order=8):
     return wf_s, eq_save
 
 
-def wf_as_src(v, w=1, freq_list=None):
+def wf_as_src(model, v, w=1, freq_list=None):
     """
     Weighted source as a time-space wavefield
 
     Parameters
     ----------
+    model: Model
+        Physical model structure
     u: TimeFunction or Tuple
         Forward wavefield (tuple of fields for TTI or dft)
     w: Float or Expr (optional)
         Weight for the source expression (default=1)
     """
     v = idft(v, freq=freq_list) if freq_list is not None else as_tuple(v)
-    if len(v) == 2:
+    if len(v) == 2 and model.is_viscoacoustic is False:
         return (w * v[0], w * v[1])
     return w * v[0]
 
@@ -192,12 +194,14 @@ def freesurface(model, eq):
     return fs_eq
 
 
-def otf_dft(u, freq, dt, factor=None):
+def otf_dft(model, u, freq, dt, factor=None):
     """
     On the fly DFT wavefield (frequency slices) and expression
 
     Parameters
     ----------
+    model: Model
+        Physical model
     u: TimeFunction or Tuple
         Forward wavefield
     freq: Array
@@ -205,6 +209,8 @@ def otf_dft(u, freq, dt, factor=None):
     factor: int
         Subsampling factor for DFT
     """
+    if freq is not None and model.is_viscoacoustic:
+        raise ValueError("On the fly DFT wavefield (not supported yet)")
     if freq is None:
         return [], None
 

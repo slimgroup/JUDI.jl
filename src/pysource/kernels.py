@@ -5,7 +5,7 @@ from wave_utils import freesurface
 from FD_utils import laplacian, sa_tti
 
 
-def wave_kernel(model, u, fw=True, q=None, qborn=None, f0=0.015):
+def wave_kernel(model, u, fw=True, q=None, f0=0.015):
     """
     Pde kernel corresponding the the model for the input wavefield
 
@@ -19,13 +19,12 @@ def wave_kernel(model, u, fw=True, q=None, qborn=None, f0=0.015):
         Whether forward or backward in time propagation
     q : TimeFunction or Expr
         Full time-space source
-    qborn: Virtual source
     f0 : Peak frequency
     """
     if model.is_tti:
         pde = tti_kernel(model, u[0], u[1], fw=fw, q=q)
     elif model.is_viscoacoustic:
-        pde = SLS_2nd_order(model, u[0], u[1], fw=fw, q=q, qborn=qborn, f0=f0)
+        pde = SLS_2nd_order(model, u[0], u[1], fw=fw, q=q, f0=f0)
     else:
         pde = acoustic_kernel(model, u, fw, q=q)
     return pde
@@ -65,7 +64,7 @@ def acoustic_kernel(model, u, fw=True, q=None):
     return pde
 
 
-def SLS_2nd_order(model, u1, u2, fw=True, q=None, qborn=None, f0=0.015):
+def SLS_2nd_order(model, u1, u2, fw=True, q=None, f0=0.015):
     """
     Viscoacoustic 2nd SLS wave equation
 
@@ -81,7 +80,6 @@ def SLS_2nd_order(model, u1, u2, fw=True, q=None, qborn=None, f0=0.015):
         Whether forward or backward in time propagation
     q : TimeFunction or Expr
         Full time-space source as a tuple (one value for each component)
-    qborn: Virtual source
     f0 : Peak frequency
     """
     qp, vp = model.qp, model.vp
@@ -89,8 +87,6 @@ def SLS_2nd_order(model, u1, u2, fw=True, q=None, qborn=None, f0=0.015):
     damp = model.damp
 
     q = q or 0
-
-    qborn = qborn or 0
 
     b = model.irho
 
@@ -123,7 +119,7 @@ def SLS_2nd_order(model, u1, u2, fw=True, q=None, qborn=None, f0=0.015):
 
         pde_p = 2. * p - damp * p.backward + s**2 * bm * (1. + tt) * \
             div(b * grad(p, shift=.5), shift=-.5) - s**2 * vp**2 * \
-            r.forward + s**2 * vp**2 * qborn
+            r.forward + s**2 * vp**2 * q
 
         u_p = Eq(p.forward, damp * pde_p)
 
