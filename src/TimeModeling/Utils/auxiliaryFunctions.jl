@@ -22,17 +22,21 @@ Parameters
 * `options`: JUDI Options structure.
 * `dm`: Squared slowness perturbation (optional), Array or PhysicalParameter.
 """
-function devito_model(model::Model, options::Options; dm=nothing)
+function devito_model(model::Model, options::Options, dm)
     pad = pad_sizes(model, options)
     # Set up Python model structure
     m = pad_array(model[:m].data, pad)
-    !isnothing(dm) && (dm = pad_array(reshape(getattr(dm, :data, dm), model.n), pad))
+    dm = pad_array(dm, pad)
     physpar = Dict((n, pad_array(v.data, pad)) for (n, v) in model.params if n != :m)
     modelPy = pm."Model"(model.o, model.d, model.n, m, fs=options.free_surface,
                          nbl=model.nb, space_order=options.space_order, dt=options.dt_comp, dm=dm;
                          physpar...)
     return modelPy
 end
+
+devito_model(model::Model, options::Options, dm::PhysicalParameter) = devito_model(model, options, reshape(dm.data, model.n))
+devito_model(model::Model, options::Options, dm::Vector{T}) where T = devito_model(model, options, reshape(dm, model.n))
+devito_model(model::Model, options::Options) = devito_model(model, options, nothing)
 
 """
     pad_sizes(model, options; so=nothing)
@@ -78,6 +82,9 @@ function pad_array(m::Array{DT}, nb::Array{Tuple{Int64,Int64},1}; mode::Symbol=:
     padded = joKron(Ei...) * vec(m)
     return reshape(padded, new_size)
 end
+
+pad_array(::Nothing, ::Array{Tuple{Int64,Int64},1}; mode::Symbol=:border) where {DT} = nothing
+pad_array(m::Number, ::Array{Tuple{Int64,Int64},1}; mode::Symbol=:border) where {DT} = m
 
 """
     remove_padding(m, nb; true_adjoint=False)
@@ -396,24 +403,9 @@ Parameters:
 * `geometry`: Geometry containing the coordinates
 * `n`: Domain size
 """
-function setup_grid(geometry, n)
-    # 3D grid
-    if length(n)==3
-        if length(geometry.xloc[1]) > 1
-            source_coords = Array{Float32,2}([vec(geometry.xloc[1]) vec(geometry.yloc[1]) vec(geometry.zloc[1])])
-        else
-            source_coords = Array{Float32,2}([geometry.xloc[1] geometry.yloc[1] geometry.zloc[1]])
-        end
-    else
-    # 2D grid
-        if length(geometry.xloc[1]) > 1
-            source_coords = Array{Float32,2}([vec(geometry.xloc[1]) vec(geometry.zloc[1])])
-        else
-            source_coords = Array{Float32,2}([geometry.xloc[1] geometry.zloc[1]])
-        end
-    end
-    return source_coords
-end
+setup_grid(geometry, ::NTuple{3, T}) where T = hcat(geometry.xloc[1], geometry.yloc[1], geometry.zloc[1])
+setup_grid(geometry, ::NTuple{2, T}) where T = hcat(geometry.xloc[1], geometry.zloc[1])
+setup_grid(geometry, ::NTuple{1, T}) where T = geometry.xloc[1]
 
 """
     setup_3D_grid(x, y, z)
@@ -674,9 +666,11 @@ function process_input_data(input::Array{Float32}, model::Model, nsrc::Integer)
     return dataCell
 end
 
-process_input_data(input::judiVector, ::Geometry) = input.data
+process_input_data(input::Array{Float32}, model::Model) = process_input_data(input, model, length(input) ÷ prod(model.n))
+process_input_data(input::judiVector, ::Geometry) = input
 process_input_data(input::judiVector) = input.data
 process_input_data(input::judiWeights, ::Model) = input.weights
+process_input_data(input::Array, ::Array) = input
 
 """
     reshape(x::Array{Float32, 1}, geometry::Geometry)
@@ -766,10 +760,6 @@ function transducer(q::judiVector, d::Tuple, r::Number, theta)
 end
 
 ########################################### Misc defaults
-
-pad_array(m::Number, ::Array{Tuple{Int64,Int64},1}) = m
-pad_array(::Nothing, ::Array{Tuple{Int64,Int64},1}) = nothing
-
 # Vectorization of single variable (not defined in Julia)
 vec(x::Float64) = x;
 vec(x::Float32) = x;
@@ -780,6 +770,15 @@ vec(::Nothing) = nothing
 SincInterpolation(Y::AbstractMatrix{T}, S::AbstractRange{T}, Up::AbstractRange{T}) where T<:Real =
     sinc.( (Up .- S') ./ (S[2] - S[1]) ) * Y
 
-subsample(::Nothing, i) = nothing
-subsample(a::Array{Array{T, N}, 1}, i) where {T, N} = a[i]
-subsample(a::Array{SeisCon,1}, i::Int64) = a[i]
+"""
+    as_vec(x, ::Val{Bool})
+Vectorizes output when `return_array` is set to `true`.
+"""
+as_vec(x, ::Val) = x
+as_vec(x::Tuple, v::Val) = tuple((as_vec(xi, v) for xi in x)...)
+as_vec(x::Ref, ::Val) = x[]
+as_vec(x::PhysicalParameter, ::Val{true}) = vec(x.data)
+for T in [judiVector, judiWeights, judiWavefield]
+    @eval as_vec(x::$T, ::Val{true}) = vcat([vec(x.data[i]) for i=1:length(x.data)]...)
+end
+

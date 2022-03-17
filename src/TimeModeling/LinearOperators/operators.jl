@@ -1,4 +1,4 @@
-export judiModeling, judiJacobian
+export judiModeling, judiDataModeling, judiDataSourceModeling, judiPointSourceModeling, judiJacobian
 
 const adjoint_map = Dict(:forward => :adjoint, :adjoint => :forward, :born => :adjoint_born, :adjoint_born => :born)
 
@@ -6,6 +6,7 @@ const adjoint_map = Dict(:forward => :adjoint, :adjoint => :forward, :born => :a
 abstract type judiPropagator{D, O} <: joAbstractLinearOperator{D, D} end
 
 isequal(P1::judiPropagator, P2::judiPropagator) = P1 == P2
+process_input_data(::judiPropagator, data::judiMultiSourceVector) = data
 
 abstract type judiComposedPropagator{D, O} <: judiPropagator{D, O} end
 
@@ -15,9 +16,9 @@ function getproperty(C::judiComposedPropagator, s::Symbol)
     return getfield(C, s)
 end
 
-display(P::judiPropagator{D, O}) where {D, O} = println("JUDI $(operator(P)) propagator $(repr(P.n)) -> $(repr(P.m))")
+display(P::judiPropagator{D, O}) where {D, O} = println("JUDI $(operator(P)){$D} propagator $(repr(P.n)) -> $(repr(P.m))")
+show(io::IOContext, P::judiPropagator{D, O}) where {D, O} = print(io, "JUDI $(operator(P)){$D} propagator $(repr(P.n)) -> $(repr(P.m))")
 adjoint(s::Symbol) = adjoint_map[s]
-set_dm!(::judiPropagator, dm) = nothing
 
 # Base PDE type
 struct judiModeling{D, O} <: judiPropagator{D, O}
@@ -28,9 +29,8 @@ struct judiModeling{D, O} <: judiPropagator{D, O}
 end
 
 # A base propagator returns a wavefield
-out_type(::judiPropagator, ndim) = Array{Float32, ndim+1}
-make_input(::judiModeling, q::judiMultiSourceVector, pysolver::PyObject) = Dict(:save=>true, :q=>q.data[1])
-process_out(::judiModeling{T, O}, dout, dt) where {T, O} = judiWavefield{T}(1, dt, [dout])
+make_input(::judiModeling, q::SourceType) = (make_input..., nothing, nothing, nothing)
+process_input_data(F::judiModeling, q::Vector) = process_input_data(q, F.model)
 
 ==(F1::judiModeling{D, O1}, F2::judiModeling{D, O2}) where {D, O1, O2} =
     (O1 == O2 && F1.model == F2.model && F1.options == F2.options)
@@ -41,13 +41,16 @@ struct judiPointSourceModeling{D, O} <: judiComposedPropagator{D, O}
     n::AbstractSize
     F::judiModeling{D, O}
     qInjection::AdjointProjection{D}
-    judiPointSourceModeling{D, O}(F::judiModeling{D, O}, qInjection::AdjointProjection{D}) where {D, O} = new(F.m, qInjection.m, F, qInjection)
+    judiPointSourceModeling{D, O}(F::judiModeling{D, O}, qInjection::AdjointProjection{D}) where {D, O} = new(F.m, qInjection.n, F, qInjection)
 end
 
-function make_input(::judiPointSourceModeling{T}, q::judiMultiSourceVector{T}) where {T, AT}
+function make_input(F::judiPointSourceModeling{T}, q::SourceType{T}) where {T}
     srcData, srcGeom = make_input(q)
+    isnothing(srcGeom) && (srcGeom = F.qInjection.gemetry)
     return srcGeom, srcData, nothing, nothing, nothing
 end 
+
+process_input_data(F::judiPointSourceModeling, q::Vector) = process_input_data(q, F.qInjection.geometry)
 
 ==(F1::judiPointSourceModeling, F2::judiPointSourceModeling) = (F1.F == F2.F && F1.qInjection == F2.qInjection)
 
@@ -59,17 +62,16 @@ struct judiDataSourceModeling{D, O} <: judiComposedPropagator{D, O}
     F::judiModeling{D, O}
     qInjection::AdjointProjection{D}
     judiDataSourceModeling{D, O}(rInterpolation::Projection{D}, F::judiModeling{D, O}, qInjection::AdjointProjection{D}) where {D, O} =
-        new(rInterpolation.m, qInjection.m, rInterpolation, F, qInjection)
+        new(rInterpolation.m, qInjection.n, rInterpolation, F, qInjection)
 end
 
-function make_input(F::judiDataSourceModeling{T, O}, q::judiMultiSourceVector{T}) where {T, O, AT}
+function make_input(F::judiDataSourceModeling{T, O}, q::SourceType{T}) where {T, O}
     srcData, srcGeom = make_input(q)
+    isnothing(srcGeom) && (srcGeom = F.qInjection.gemetry)
     return srcGeom, srcData, F.rInterpolation.geometry, nothing, nothing
 end 
 
-# A propagator with measurment returns an array based on the projection
-out_type(F::judiDataSourceModeling, ndim) = out_type(F.rInterpolation, ndim)
-process_out(F::judiDataSourceModeling, dout, dt) = process_out(F.rInterpolation, dout, dt)
+process_input_data(F::judiDataSourceModeling, q::Vector) = process_input_data(q, F.qInjection.data)
 
 ==(F1::judiDataSourceModeling, F2::judiDataSourceModeling) = (F1.F == F2.F && F1.qInjection == F2.qInjection && F1.rInterpolation == F2.rInterpolation)
 
@@ -82,14 +84,12 @@ struct judiDataModeling{D, O} <: judiComposedPropagator{D, O}
     judiDataModeling{D, O}(rInterpolation::Projection{D}, F::judiModeling{D, O}) where {D, O} = new(rInterpolation.m, F.n, rInterpolation, F)
 end
 
-function make_input(F::judiDataModeling{T, O}, q::judiMultiSourceVector{T}) where {T, O, AT}
+function make_input(F::judiDataModeling{T, O}, q::SourceType{T}) where {T, O}
     srcData, srcGeom = make_input(q)
     return srcGeom, srcData, F.rInterpolation.geometry, nothing, nothing
 end 
 
-# A propagator with measurment returns an array based on the projection
-out_type(F::judiDataModeling, ndim) = out_type(F.rInterpolation, ndim)
-process_out(F::judiDataModeling, dout, dt) = process_out(F.rInterpolation, dout, dt)
+process_input_data(F::judiDataModeling, q::Vector) = process_input_data(q, F.model)
 
 ==(F1::judiDataModeling, F2::judiDataModeling) = (F1.F == F2.F && F1.rInterpolation == F2.rInterpolation)
 
@@ -101,33 +101,27 @@ struct judiJacobian{D, O, FT} <: judiComposedPropagator{D, O}
     q::judiMultiSourceVector
 end
 
-function make_input(J::judiJacobian{D, :born, FT}, q::judiMultiSourceVector) where {D, FT, AT}
+function make_input(J::judiJacobian{D, :born, FT}, q::dmType) where {D, FT}
     srcData, srcGeom = make_input(J.q)
     return srcGeom, srcData, J.F.rInterpolation.geometry, nothing, q
 end 
 
-function make_input(J::judiJacobian{D, :adjoint_born, FT}, q::judiMultiSourceVector) where {D, FT, AT}
+function make_input(J::judiJacobian{D, :adjoint_born, FT}, q::SourceType{D}) where {D, FT}
     srcData, srcGeom = make_input(J.q)
     recData, recGeom = make_input(q)
-    return srcGeom, srcData, recData, recGeom, nothing
+    isnothing(recGeom) && (recGeom = J.F.rInterpolation.gemetry)
+    return srcGeom, srcData, recGeom, recData, nothing
 end 
 
-# A propagator with measurment returns an array based on the projection
-out_type(J::judiJacobian{D, :born, FT}, ndim) where {D, FT} = out_type(J.F.rInterpolation, ndim)
-out_type(::judiJacobian{D, :adjoint_born, FT}, ndim) where {D, FT} = Array{Float32, ndim}
-process_out(J::judiJacobian{D, :born, FT}, dout, dt) where {D, FT} = process_out(J.F.rInterpolation, dout, dt)
-
-function process_out(J::judiJacobian{D, :adjoint_born, FT}, dout, dt) where {D, FT}
-    dout = remove_padding(dout, pad_sizes(J.model, J.options);
-                          true_adjoint=J.options.sum_padding)
-    PhysicalParameter(dout, J.model.d, J.model.o)
-end
+process_input_data(J::judiJacobian{D, :adjoint_born, FT}, q::Vector) where {D, FT} =
+    process_input_data(q, J.F.qInjection.data)
+process_input_data(::judiJacobian{D, :born, FT}, q::dmType{D}) where {D, FT} = q
 
 ==(F1::judiJacobian{D, O1, FT1}, F2::judiJacobian{D, O2, FT2}) where {D, O1, O2, FT1, FT2} = (O1 == O2 && FT1 == FT2 && F1.F == F2.F && F1.q == F2.q)
 
 operator(::judiPropagator{D, O}) where {D, O} = String(O)
 
-# Constructor
+# Constructors
 function judiModeling(model::Model; options=Options())
     D = eltype(model.m)
     m = time_space_size(ndims(model))

@@ -1,4 +1,4 @@
-export AbstractDim, AbstractSize, make_id, jAdjoint
+export AbstractDim, AbstractSize, make_id, jAdjoint, time_space_size, space_size
 
 struct AbstractDim <: Integer
     name::Symbol
@@ -9,6 +9,8 @@ struct AbstractSize{N}
 end
 
 getindex(S::AbstractSize, I...) = AbstractSize(S.dims[I...])
+==(S1::AbstractSize, S2::AbstractSize) = S1.dims == S2.dims
+==(d1::AbstractDim, d2::AbstractDim) = d1.name == d2.name
 
 Base.repr(D::AbstractDim) = D.name
 Base.repr(D::AbstractSize) = "($(join(repr.(D.dims), " x ")))"

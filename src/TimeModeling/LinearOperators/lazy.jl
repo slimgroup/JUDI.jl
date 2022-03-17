@@ -22,6 +22,8 @@ conj(jA::jAdjoint) = jA
 getindex(jA::jAdjoint{T}, i) where T = jAdjoint{T}(jA.op[i])
 ==(jA1::jAdjoint, jA2::jAdjoint) = jA1.op  == jA2.op
 
+display(P::jAdjoint) where {D, O} = println("Adjoint($(P.op))")
+
 # Projection operator 
 struct judiProjection{D} <: judiNoopOperator{D}
     m::AbstractSize
@@ -54,6 +56,7 @@ judiProjection(G::Geometry) = judiProjection{Float32}(_rec_space, time_space_siz
 judiWavelet(nsrc::Integer, dt::T, w::Array{T, N}) where {T<:Real, N} = judiWavelet{Float32}(_time_space, _space, [w for i=1:nsrc], [dt for i=1:nsrc])
 judiWavelet(dt::T, w::Array{T, N}) where {T<:Real, N} = judiWavelet(1, dt, w)
 judiWavelet(dt::Vector{<:Number}, w::Vector{T}) where T<:Array = judiWavelet{Float32}(_time_space, _space, w, dt)
+judiWavelet(dt::Vector{<:Number}, w::Vector{<:Number}) = judiWavelet{Float32}(_time_space, _space, [w for i=1:length(dt)], dt)
 judiWavelet(dt::dtT, w::Array{T, N}) where {dtT<:Number, T<:Array, N} = judiWavelet([dt for i=1:length(w)], w)
 
 # Deprecation error
@@ -89,11 +92,6 @@ function process_out(::judiWavelet{T}, dout, dtComp, solver) where T
     judiWeights{T}(1, [dout])
 end
 
-make_input(P::judiProjection, dtComp) = Dict(:rec_coords=>get_coords(P))
-make_input(P::jAdjoint{<:judiProjection}, dtComp) = Dict(:src_coords=>get_coords(P.op))
-make_input(P::judiWavelet, dtComp) = Dict(:wr=>time_resample(P.data[1], P.dt[1], dtComp))
-make_input(P::jAdjoint{<:judiWavelet}, dtComp) = Dict(:ws=>time_resample(P.data[1], P.dt[1], dtComp))
-
 ###### Lazy injection
 
 struct judiRHS{D} <: judiMultiSourceVector{D}
@@ -104,7 +102,7 @@ end
 
 *(P::jAdjoint{judiProjection{D}}, d::judiVector{D, AT}) where {D, AT} = judiRHS{D}(d.nsrc, P, d)
 getindex(rhs::judiRHS{D}, i) where D = judiRHS{D}(length(i), rhs.P[i], rhs.d[i])
-make_input(rhs::judiRHS, dtComp) = make_input(rhs.d, dtComp)
+make_input(rhs::judiRHS) = make_input(rhs.d)
 eval(rhs::judiRHS) = rhs.d
 
 # Combination of lazy injections
@@ -142,4 +140,4 @@ function eval(ls::LazyAdd{D}) where D
     judiVector{D, Matrix{D}}(1, geom, [data])
 end
 
-make_input(ls::LazyAdd{D}, dtComp) where D = make_input(eval(ls), dtComp)
+make_input(ls::LazyAdd{D}) where D = make_input(eval(ls))

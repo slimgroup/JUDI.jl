@@ -337,7 +337,10 @@ function Base.getproperty(obj::Model, sym::Symbol)
     end
 end
 
-similar(x::PhysicalParameter{vDT}, m::Model) where {vDT} = PhysicalParameter(m.n, m.d, m.o; vDT=vDT)
-similar(x::Array, m::Model) where {vDT} = similar(x, m.n)
+similar(::PhysicalParameter{vDT}, m::Model) where {vDT} = PhysicalParameter(m.n, m.d, m.o; vDT=vDT)
+similar(x::Array, m::Model) = similar(x, m.n)
 
 ndims(m::Model) = ndims(m.m.data)
+
+display(m::Model) = println("Model (n=$(m.n), d=$(m.d), o=$(m.o)) with parameters $(keys(m.params))")
+show(io::IOContext, m::Model) = print(io, "Model (n=$(m.n), d=$(m.d), o=$(m.o)) with parameters $(keys(m.params))")

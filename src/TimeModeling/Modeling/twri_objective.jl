@@ -46,20 +46,12 @@ TWRIOptions(;grad_corr=false, comp_alpha=true,
             weight_fun=nothing, eps=0, params=:m, Invq="standard")=
             TWRIOptions(grad_corr, comp_alpha, weight_fun, eps, params, Invq)
 
-
-function subsample(opt::TWRIOptions, srcnum::Int)
+function getindex(opt::TWRIOptions, srcnum::Int)
     eloc = length(opt.eps) == 1 ? opt.eps : opt.eps[srcnum]
     return TWRIOptions(opt.grad_corr, opt.comp_alpha, opt.weight_fun, eloc, opt.params, opt.Invq)
 end
 
-twri_objective(model_full::Model, source::judiVector, dObs::judiVector, y::Union{judiVector, Nothing}) = 
-    twri_objective(model_full, source, dObs, y, Options(), TWRIOptions())
-twri_objective(model_full::Model, source::judiVector, dObs::judiVector, y::Union{judiVector, Nothing}, opt::Options) =
-    twri_objective(model_full, source, dObs, y, opt, TWRIOptions())
-twri_objective(model_full::Model, source::judiVector, dObs::judiVector, y::Union{judiVector, Nothing}, opt::TWRIOptions) =
-    twri_objective(model_full, source, dObs, y, Options(), opt)
-twri_objective(model_full::Model, source::judiVector, dObs::judiVector, y::Union{judiVector, Nothing}, twri_opt::TWRIOptions, opt::Options) =
-    twri_objective(model_full, source, dObs, y, opt, twri_opt)
+subsample(opt::TWRIOptions, srcnum::Int) = getindex(opt, srcnum)
 
 """
     twri_objective(model, source, dobs; options=Options(), optionswri=TWRIOptions())
@@ -137,3 +129,31 @@ filter_out(obj, ::Nothing, ::Nothing) = obj
 filter_out(obj, m, ::Nothing) = obj, m
 filter_out(obj, ::Nothing, y) = obj, y
 filter_out(obj, m, y) = obj, m, y
+
+
+# Parallel
+"""
+    twri_objective(model, source, dobs; options=Options(), optionswri=TWRIOptions())
+Evaluate the time domain Wavefield reconstruction inversion objective function. Returns a tuple with function value and \\
+gradient(s) w.r.t to m and/or y. `model` is a `Model` structure with the current velocity model and `source` and `dobs` are the wavelets and \\
+observed data of type `judiVector`.
+Example
+=======
+    function_value, gradient = fwi_objective(model, source, dobs)
+"""
+function twri_objective(model::Model, source::judiVector, dObs::judiVector, y::Union{judiVector, Nothing};
+                        options=Options(), optionswri=TWRIOptions())
+    p = default_worker_pool()
+    twri_objective_par = remote(TimeModeling.twri_objective)
+    twri_objective = retry(twri_objective_par)
+
+    results = Vector{_TFuture}(undef, dObs.nsrc)
+    @sync for j=1:dObs.nsrc
+        isnothing(y) ? yloc = y : yloc = y[j]
+        results[j] = remotecall(twri_objective, p, model, source[j], dObs[j], yloc, options[j], optionswri[j])
+    end
+
+    # Collect and reduce gradients
+    out = as_vec(reduce!(results), Val(options.return_array))
+    return out
+end

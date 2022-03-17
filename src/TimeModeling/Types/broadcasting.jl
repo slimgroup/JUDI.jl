@@ -51,7 +51,8 @@ end
 
 function materialize!(ms::judiMultiSourceVector, bc::MultiSource)
     m1, m2 = materialize(bc.m1), materialize(bc.m2)
-    check_compat(ms, m1, m2)
+    check_compat(ms, m1)
+    check_compat(ms, m2)
     for i=1:ms.nsrc
         broadcast!(bc.op, ms.data[i], get_src(m1, i), get_src(m2, i))
     end

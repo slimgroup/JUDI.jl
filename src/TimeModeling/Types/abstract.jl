@@ -7,7 +7,8 @@ mutable struct judiMultiSourceException <: Exception
     msg :: String
 end
 
-make_input(ms::judiMultiSourceVector, dt) = throw(judiMultiSourceException("$(typeof(ms)) must implement `make_input(ms, dt)` for propagation"))
+make_input(ms::judiMultiSourceVector) = throw(judiMultiSourceException("$(typeof(ms)) must implement `make_input(ms, dt)` for propagation"))
+make_input(a::Array) = nothing, a
 
 isequal(ms1::judiMultiSourceVector, ms2::judiMultiSourceVector) = ms1 == ms2
 ==(ms1::judiMultiSourceVector, ms2::judiMultiSourceVector) = all(getfield(ms1, s) == getfield(ms2, s) for s in fieldnames(typeof(ms1)))
@@ -18,6 +19,7 @@ check_compat(ms::judiMultiSourceVector, x::Number) = true
 unsafe_convert(::Type{Ptr{T}}, msv::judiMultiSourceVector{T}) where {T} = unsafe_convert(Ptr{T}, msv.data)
 
 display(ms::judiMultiSourceVector) = println("$(typeof(ms)) wiht $(ms.nsrc) sources")
+show(io::IOContext, ms::judiMultiSourceVector) = print(io, "$(typeof(ms)) wiht $(ms.nsrc) sources")
 
 IndexStyle(::Type{<:judiMultiSourceVector}) = IndexLinear()
 

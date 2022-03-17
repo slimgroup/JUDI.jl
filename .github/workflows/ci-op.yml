@@ -4,8 +4,8 @@ on:
   # Trigger the workflow on push to master or pull request
   # to be merged in master
   push:
-    branches:
-      - master
+    # branches:
+    #   - master
   pull_request:
     branches:
       - master

@@ -3,10 +3,11 @@ export time_modeling
 
 GeomOrNot = Union{Geometry, Nothing}
 ArrayOrNot = Union{Array, Nothing}
+PhysOrNot = Union{dmType, Nothing}
 
 # Setup time-domain linear or nonlinear foward and adjoint modeling and interface to devito
 function time_modeling(model_full::Model, srcGeometry::GeomOrNot, srcData::ArrayOrNot,
-                       recGeometry::GeomOrNot, recData::ArrayOrNot, dm::ArrayOrNot, op::Symbol, options::Options)
+                       recGeometry::GeomOrNot, recData::ArrayOrNot, dm::PhysOrNot, op::Symbol, options::Options)
     # Load full geometry for out-of-core geometry containers
     recGeometry = Geometry(recGeometry)
     srcGeometry = Geometry(srcGeometry)
@@ -29,7 +30,7 @@ function time_modeling(model_full::Model, srcGeometry::GeomOrNot, srcData::Array
     end
 
     # Set up Python model structure
-    modelPy = devito_model(model, options; dm=dm)
+    modelPy = devito_model(model, options, dm)
 
     # Remove receivers outside the modeling domain (otherwise leads to segmentation faults)
     recGeometry, recData = remove_out_of_bounds_receivers(recGeometry, recData, model)

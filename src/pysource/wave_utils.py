@@ -3,6 +3,7 @@ from sympy import cos, sin, sign
 
 from devito import (TimeFunction, Function, Inc, DefaultDimension,
                     Eq, ConditionalDimension, Dimension)
+from devito.data.allocators import ExternalAllocator
 from devito.tools import as_tuple, memoized_func
 from devito.symbolics import retrieve_functions, INT
 
@@ -134,8 +135,9 @@ def extented_src(model, weight, wavelet, q=0):
     nt = wavelet.shape[0]
     wavelett = Function(name='wf_src', dimensions=(time,), shape=(nt,))
     wavelett.data[:] = np.array(wavelet)[:, 0]
-    source_weight = Function(name='src_weight', grid=model.grid, space_order=0)
-    source_weight.data[:] = weight
+    source_weight = Function(name='src_weight', grid=model.grid, space_order=0,
+                             allocator=ExternalAllocator(weight),
+                             initializer=lambda x: None)
     if model.is_tti:
         return (q[0] + source_weight * wavelett, q[1] + source_weight * wavelett)
     return q + source_weight * wavelett

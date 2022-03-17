@@ -22,7 +22,8 @@ ftol = 1e-6
     data = randn(Float32, ns, nrec)
     d_obs = judiVector(rec_geometry, data)
     @test typeof(d_obs) == judiVector{Float32, Array{Float32, 2}}
-    @test isequal(process_input_data(d_obs, rec_geometry), d_obs.data)
+    @test isequal(process_input_data(d_obs, rec_geometry), d_obs)
+    @test isequal(process_input_data(d_obs), d_obs.data)
 
     @test isequal(d_obs.nsrc, nsrc)
     @test isequal(typeof(d_obs.data), Array{Array{Float32, 2}, 1})
