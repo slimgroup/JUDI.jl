@@ -82,15 +82,9 @@ def SLS_2nd_order(model, u1, u2, fw=True, q=None, f0=0.015):
         Full time-space source as a tuple (one value for each component)
     f0 : Peak frequency
     """
-    qp, vp = model.qp, model.vp
-
-    damp = model.damp
+    qp, m, b, damp = model.qp, model.m, model.irho, model.damp
 
     q = q or 0
-
-    b = model.irho
-
-    s = model.grid.stepping_dim.spacing
 
     # The stress relaxation parameter
     t_s = (sqrt(1.+1./qp**2)-1./qp)/f0
@@ -104,36 +98,32 @@ def SLS_2nd_order(model, u1, u2, fw=True, q=None, f0=0.015):
     # Density
     rho = 1. / b
 
-    # Bulk modulus
-    bm = rho * vp**2
-
     p = u1
     r = u2
 
     if fw:
 
-        pde_r = r + s * (tt / t_s) * rho * div(b * grad(p, shift=.5), shift=-.5) - \
-            s * (1. / t_s) * r
-
-        u_r = Eq(r.forward, damp * pde_r)
-
-        pde_p = 2. * p - damp * p.backward + s**2 * bm * (1. + tt) * \
-            div(b * grad(p, shift=.5), shift=-.5) - s**2 * vp**2 * \
-            r.forward + s**2 * vp**2 * q
-
-        u_p = Eq(p.forward, damp * pde_p)
+        # Attenuation Memory variable.
+        pde_r = r.dt - (tt / t_s) * rho * div(b * grad(p, shift=.5), shift=-.5) + \
+            (1. / t_s) * r
+        u_r = Eq(r.forward, damp * solve(pde_r, r.forward))
+        # Pressure
+        pde_p = m * p.dt2 - rho * (1. + tt) * div(b * grad(p, shift=.5), shift=-.5) + \
+            r.forward - q + (1 - damp) * p.dt
+        u_p = Eq(p.forward, damp * solve(pde_p, p.forward))
 
         return [u_r, u_p]
 
     else:
 
-        pde_r = r + s * (tt / t_s) * p - s * (1. / t_s) * r
-        u_r = Eq(r.backward, damp * pde_r)
+        # Attenuation Memory variable.
+        pde_r = - r.dt.T + (tt / t_s) * p - (1. / t_s) * r
+        u_r = Eq(r.backward, damp * solve(pde_r, r.backward))
 
-        pde_p = 2. * p - damp * p.forward + s**2 * vp**2 * \
-            div(b * grad((1. + tt) * rho * p, shift=.5), shift=-.5) - s**2 * vp**2 * \
-            div(b * grad(rho * r.backward, shift=.5), shift=-.5)
-        u_p = Eq(p.backward, damp * pde_p)
+        # Pressure
+        pde_p = m * p.dt2 - div(b * grad((1. + tt) * rho * p, shift=.5), shift=-.5) + \
+            div(b * grad(rho * r.backward, shift=.5), shift=-.5) + (1 - damp) * p.dt.T
+        u_p = Eq(p.backward, damp * solve(pde_p, p.backward))
 
         return [u_r, u_p]
 

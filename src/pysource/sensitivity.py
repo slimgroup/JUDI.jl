@@ -50,10 +50,7 @@ def grad_expr(gradm, u, v, model, w=None, freq=None, dft_sub=None, isic=False):
         eq_g = [Eq(gradm, gradm - expr, subdomain=model.grid.subdomains['nofsdomain'])]
         eq_g += freesurface(model, eq_g)
     else:
-        if model.is_viscoacoustic:
-            eq_g = [Eq(gradm, gradm + expr)]
-        else:
-            eq_g = [Eq(gradm, gradm - expr)]
+        eq_g = [Eq(gradm, gradm - expr)]
     return eq_g
 
 
@@ -71,7 +68,7 @@ def crosscorr_time(u, v, model, **kwargs):
         Model structure
     """
     if model.is_viscoacoustic:
-        return u[0].dt * v[0].dt
+        return u[0].dt2 * v[0]
 
     w = kwargs.get('w') or u[0].indices[0].spacing * model.irho
     return w * sum(vv.dt2 * uu for uu, vv in zip(u, v))
@@ -198,9 +195,8 @@ def basic_src(model, u, **kwargs):
     if model.is_tti:
         return (w * u[0].dt2, w * u[1].dt2)
     if model.is_viscoacoustic:
-        s = model.grid.stepping_dim.spacing
         dm = model.dm
-        return -dm * (u[0].forward - 2 * u[0] + u[0].backward) / (s**2)
+        return -dm * u[0].dt2
     return w * u[0].dt2
 
 
