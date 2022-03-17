@@ -1,14 +1,18 @@
 
 export time_modeling
 
+GeomOrNot = Union{Geometry, Nothing}
+ArrayOrNot = Union{Array, Nothing}
+
 # Setup time-domain linear or nonlinear foward and adjoint modeling and interface to devito
-function time_modeling(model_full::Model, srcGeometry, srcData, recGeometry, recData, dm, op::Char, mode::Int64, options)
+function time_modeling(model_full::Model, srcGeometry::GeomOrNot, srcData::ArrayOrNot,
+                       recGeometry::GeomOrNot, recData::ArrayOrNot, dm::ArrayOrNot, op::Symbol, options::Options)
     # Load full geometry for out-of-core geometry containers
     recGeometry = Geometry(recGeometry)
     srcGeometry = Geometry(srcGeometry)
 
     # Reutrn directly for J*0
-    if op=='J' && mode == 1
+    if op==:born
         if norm(dm) == 0 && options.return_array == false
             return judiVector(recGeometry, zeros(Float32, recGeometry.nt[1], length(recGeometry.xloc[1])))
         elseif norm(dm) == 0 && options.return_array == true
@@ -33,7 +37,7 @@ function time_modeling(model_full::Model, srcGeometry, srcData, recGeometry, rec
     # Devito interface
     argout = devito_interface(modelPy, srcGeometry, srcData, recGeometry, recData, dm, options)
     # Extend gradient back to original model size
-    if op=='J' && mode==-1 && options.limit_m==true
+    if op==:adjoint_born && options.limit_m==true
         argout = extend_gradient(model_full, model, argout)
     end
 
@@ -41,5 +45,5 @@ function time_modeling(model_full::Model, srcGeometry, srcData, recGeometry, rec
 end
 
 # Function instance without options
-time_modeling(model::Model, srcGeometry::Geometry, srcData, recGeometry::Geometry, recData, perturbation, srcnum::Int64, op::Char, mode::Int64) =
-    time_modeling(model, srcGeometry, srcData, recGeometry, recData, perturbation, srcnum, op, mode, Options())
+time_modeling(model::Model, srcGeometry::Geometry, srcData, recGeometry::Geometry, recData, dm, op::Symbol, mode::Int64) =
+    time_modeling(model, srcGeometry, srcData, recGeometry, recData, dm, op, Options())

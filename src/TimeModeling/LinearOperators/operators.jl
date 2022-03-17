@@ -25,7 +25,6 @@ struct judiModeling{D, O} <: judiPropagator{D, O}
     n::AbstractSize
     model::Model
     options::Options
-    solver::Symbol
 end
 
 # A base propagator returns a wavefield
@@ -34,7 +33,7 @@ make_input(::judiModeling, q::judiMultiSourceVector, pysolver::PyObject) = Dict(
 process_out(::judiModeling{T, O}, dout, dt) where {T, O} = judiWavefield{T}(1, dt, [dout])
 
 ==(F1::judiModeling{D, O1}, F2::judiModeling{D, O2}) where {D, O1, O2} =
-    (O1 == O2 && F1.model == F2.model && F1.options == F2.options && F1.solver == F2.solver)
+    (O1 == O2 && F1.model == F2.model && F1.options == F2.options)
 
 # Propagator with source
 struct judiPointSourceModeling{D, O} <: judiComposedPropagator{D, O}
@@ -45,11 +44,9 @@ struct judiPointSourceModeling{D, O} <: judiComposedPropagator{D, O}
     judiPointSourceModeling{D, O}(F::judiModeling{D, O}, qInjection::AdjointProjection{D}) where {D, O} = new(F.m, qInjection.m, F, qInjection)
 end
 
-function make_input(F::judiPointSourceModeling{T}, q::judiMultiSourceVector{T}, pysolver::PyObject) where {T, AT}
-    dt = convert(Float32, pysolver.dt)
-    qI_kw = make_input(F.qInjection, dt)
-    q_kw = make_input(q, dt)
-    Dict(:save=>true, qI_kw..., q_kw...)
+function make_input(::judiPointSourceModeling{T}, q::judiMultiSourceVector{T}) where {T, AT}
+    srcData, srcGeom = make_input(q)
+    return srcGeom, srcData, nothing, nothing, nothing
 end 
 
 ==(F1::judiPointSourceModeling, F2::judiPointSourceModeling) = (F1.F == F2.F && F1.qInjection == F2.qInjection)
@@ -65,17 +62,14 @@ struct judiDataSourceModeling{D, O} <: judiComposedPropagator{D, O}
         new(rInterpolation.m, qInjection.m, rInterpolation, F, qInjection)
 end
 
-function make_input(F::judiDataSourceModeling{T, O}, q::judiMultiSourceVector{T}, pysolver::PyObject) where {T, O, AT}
-    dt = convert(Float32, pysolver.dt)
-    qI_kw = make_input(F.qInjection, dt)
-    rI_kw = make_input(F.rInterpolation, dt)
-    q_kw = make_input(q, dt)
-    Dict(rI_kw..., qI_kw..., q_kw...)
-end
+function make_input(F::judiDataSourceModeling{T, O}, q::judiMultiSourceVector{T}) where {T, O, AT}
+    srcData, srcGeom = make_input(q)
+    return srcGeom, srcData, F.rInterpolation.geometry, nothing, nothing
+end 
 
 # A propagator with measurment returns an array based on the projection
 out_type(F::judiDataSourceModeling, ndim) = out_type(F.rInterpolation, ndim)
-process_out(F::judiDataSourceModeling, dout, dt) = process_out(F.rInterpolation, dout, dt, solver(F))
+process_out(F::judiDataSourceModeling, dout, dt) = process_out(F.rInterpolation, dout, dt)
 
 ==(F1::judiDataSourceModeling, F2::judiDataSourceModeling) = (F1.F == F2.F && F1.qInjection == F2.qInjection && F1.rInterpolation == F2.rInterpolation)
 
@@ -88,16 +82,14 @@ struct judiDataModeling{D, O} <: judiComposedPropagator{D, O}
     judiDataModeling{D, O}(rInterpolation::Projection{D}, F::judiModeling{D, O}) where {D, O} = new(rInterpolation.m, F.n, rInterpolation, F)
 end
 
-function make_input(F::judiDataModeling{T, O}, q::judiMultiSourceVector{T}, pysolver::PyObject) where {T, O, AT}
-    dt = convert(Float32, pysolver.dt)
-    rI_kw = make_input(F.rInterpolation, dt)
-    q_kw = make_input(q, dt)
-    Dict(rI_kw..., q_kw...)
-end
+function make_input(F::judiDataModeling{T, O}, q::judiMultiSourceVector{T}) where {T, O, AT}
+    srcData, srcGeom = make_input(q)
+    return srcGeom, srcData, F.rInterpolation.geometry, nothing, nothing
+end 
 
 # A propagator with measurment returns an array based on the projection
 out_type(F::judiDataModeling, ndim) = out_type(F.rInterpolation, ndim)
-process_out(F::judiDataModeling, dout, dt) = process_out(F.rInterpolation, dout, dt, solver(F))
+process_out(F::judiDataModeling, dout, dt) = process_out(F.rInterpolation, dout, dt)
 
 ==(F1::judiDataModeling, F2::judiDataModeling) = (F1.F == F2.F && F1.rInterpolation == F2.rInterpolation)
 
@@ -109,40 +101,29 @@ struct judiJacobian{D, O, FT} <: judiComposedPropagator{D, O}
     q::judiMultiSourceVector
 end
 
-function make_input(J::judiJacobian{D, :born, FT}, q::judiMultiSourceVector, pysolver::PyObject) where {D, FT, AT}
-    dt = convert(Float32, pysolver.dt)
-    qI_kw = make_input(J.F.qInjection, dt)
-    rI_kw = make_input(J.F.rInterpolation, dt)
-    q_kw = make_input(q, dt)
-    Dict(rI_kw..., qI_kw..., q_kw...)
-end
+function make_input(J::judiJacobian{D, :born, FT}, q::judiMultiSourceVector) where {D, FT, AT}
+    srcData, srcGeom = make_input(J.q)
+    return srcGeom, srcData, J.F.rInterpolation.geometry, nothing, q
+end 
 
-function make_input(J::judiJacobian{D, :adjoint_born, FT}, q::judiMultiSourceVector, pysolver::PyObject) where {D, FT, AT}
-    dt = convert(Float32, pysolver.dt)
-    rI_kw = make_input(J.F.rInterpolation, dt)
-    qI_kw = make_input(J.F.qInjection, dt)
-    q_kw = make_input(J.q, dt)
-    rec_d = get_source(q, dt)
-    Dict(rI_kw..., qI_kw..., q_kw..., :rec_data=>rec_d)
-end
-
-set_dm!(J::judiJacobian{D, :born, FT}, dm) where {D, FT} = set_dm!(J.model, J.options, solver(J), dm)
+function make_input(J::judiJacobian{D, :adjoint_born, FT}, q::judiMultiSourceVector) where {D, FT, AT}
+    srcData, srcGeom = make_input(J.q)
+    recData, recGeom = make_input(q)
+    return srcGeom, srcData, recData, recGeom, nothing
+end 
 
 # A propagator with measurment returns an array based on the projection
 out_type(J::judiJacobian{D, :born, FT}, ndim) where {D, FT} = out_type(J.F.rInterpolation, ndim)
 out_type(::judiJacobian{D, :adjoint_born, FT}, ndim) where {D, FT} = Array{Float32, ndim}
-process_out(J::judiJacobian{D, :born, FT}, dout, dt) where {D, FT} = process_out(J.F.rInterpolation, dout, dt, solver(J))
+process_out(J::judiJacobian{D, :born, FT}, dout, dt) where {D, FT} = process_out(J.F.rInterpolation, dout, dt)
 
 function process_out(J::judiJacobian{D, :adjoint_born, FT}, dout, dt) where {D, FT}
-    dout = remove_padding(dout, getfield(JUDI, solver(J))."model".padsizes;
+    dout = remove_padding(dout, pad_sizes(J.model, J.options);
                           true_adjoint=J.options.sum_padding)
     PhysicalParameter(dout, J.model.d, J.model.o)
 end
 
 ==(F1::judiJacobian{D, O1, FT1}, F2::judiJacobian{D, O2, FT2}) where {D, O1, O2, FT1, FT2} = (O1 == O2 && FT1 == FT2 && F1.F == F2.F && F1.q == F2.q)
-
-solver(F::judiModeling) = F.solver
-solver(F::judiPropagator) = solver(F.F)
 
 operator(::judiPropagator{D, O}) where {D, O} = String(O)
 
@@ -150,8 +131,7 @@ operator(::judiPropagator{D, O}) where {D, O} = String(O)
 function judiModeling(model::Model; options=Options())
     D = eltype(model.m)
     m = time_space_size(ndims(model))
-    solver = init_solver(model, options)
-    return judiModeling{D, :forward}(m, m, model, options, solver)
+    return judiModeling{D, :forward}(m, m, model, options)
 end
 
 judiModeling(model::Model, src_geom::Geometry, rec_geom::Geometry; options=Options()) =
@@ -170,7 +150,7 @@ end
 conj(F::judiPropagator) = F
 transpose(F::judiPropagator) = adjoint(F)
 
-adjoint(F::judiModeling{D, O}) where {D, O} = judiModeling{D, adjoint(O)}(F.n, F.m, F.model, F.options, F.solver)
+adjoint(F::judiModeling{D, O}) where {D, O} = judiModeling{D, adjoint(O)}(F.n, F.m, F.model, F.options)
 adjoint(F::judiDataModeling{D, O}) where {D, O} = judiPointSourceModeling{D, adjoint(O)}(adjoint(F.F), adjoint(F.rInterpolation))
 adjoint(F::judiPointSourceModeling{D, O}) where {D, O}= judiDataModeling{D, adjoint(O)}(adjoint(F.qInjection), adjoint(F.F))
 adjoint(F::judiDataSourceModeling{D, O}) where {D, O} = judiDataSourceModeling{D, adjoint(O)}(adjoint(F.qInjection), adjoint(F.F), adjoint(F.rInterpolation))
@@ -184,7 +164,7 @@ adjoint(J::judiJacobian{D, O, FT}) where {D, O, FT} = judiJacobian{D, adjoint(O)
 *(F::judiDataModeling{D, O}, P::AdjointProjection{D}) where {D, O} = judiDataSourceModeling{D, O}(F.rInterpolation, F.F, P)
 
 # indexing
-getindex(F::judiModeling{D, O}, i) where {D, O} = judiModeling{D, O}(F.m, F.n, F.model, F.options[i], F.solver)
+getindex(F::judiModeling{D, O}, i) where {D, O} = judiModeling{D, O}(F.m, F.n, F.model, F.options[i])
 getindex(F::judiDataModeling{D, O}, i) where {D, O} = judiDataModeling{D, O}(F.rInterpolation[i], F.F[i])
 getindex(F::judiPointSourceModeling{D, O}, i) where {D, O}= judiPointSourceModeling{D, O}(F.F[i], F.qInjection[i])
 getindex(F::judiDataSourceModeling{D, O}, i) where {D, O} = judiDataSourceModeling{D, O}(F.rInterpolation[i], F.F[i], F.qInjection[i])

@@ -71,7 +71,7 @@ end
 
 copyto!(jv::judiWavefield, jv2::judiWavefield) = copy!(jv, jv2)
 
-make_input(w::judiWavefield, dtComp) = Dict(:q=>w.data[1])
+make_input(w::judiWavefield, dtComp) = (w.data[1], nothing)
 
 check_compat(ms::Vararg{judiWavefield, N}) where N = all(y -> y.dt == first(ms).dt, ms)
 

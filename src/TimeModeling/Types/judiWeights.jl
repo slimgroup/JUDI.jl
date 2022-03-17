@@ -70,7 +70,7 @@ function push!(a::judiWeights{T}, b::judiWeights{T}) where T
 	a.nsrc += b.nsrc
 end
 
-make_input(w::judiWeights, dtComp) = Dict(:w=>w.data[1])
+make_input(w::judiWeights, dtComp) = (w.data[1], nothing)
 # getindex weights container
 """
     getindex(x,source_numbers)

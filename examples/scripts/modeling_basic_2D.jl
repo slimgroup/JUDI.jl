@@ -57,20 +57,16 @@ f0 = 0.01f0     # kHz
 wavelet = ricker_wavelet(timeS, dtS, f0)
 q = judiVector(srcGeometry, wavelet)
 
-# Set up info structure for linear operators
-ntComp = get_computational_nt(srcGeometry, recGeometry, model)
-info = Info(prod(n), nsrc, ntComp)
-
 ###################################################################################################
 
 # Write shots as segy files to disk
 opt = Options(optimal_checkpointing=false, isic=false, subsampling_factor=2, dt_comp=1.0)
 
 # Setup operators
-Pr = judiProjection(info, recGeometry)
-F = judiModeling(info, model; options=opt)
-F0 = judiModeling(info, model0; options=opt)
-Ps = judiProjection(info, srcGeometry)
+Pr = judiProjection(recGeometry)
+F = judiModeling(model; options=opt)
+F0 = judiModeling(model0; options=opt)
+Ps = judiProjection(srcGeometry)
 J = judiJacobian(Pr*F0*adjoint(Ps), q)
 
 # Nonlinear modeling

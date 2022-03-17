@@ -1,4 +1,3 @@
-
 const SourceType{T} = Union{Vector{Array{T}}, judiMultiSourceVector{T}, PhysicalParameter{T}}
 
 """
@@ -8,34 +7,18 @@ Base propagation interfaces that calls the devito `mode` propagator (forward/adj
 with `q` as a source. The return type is infered from `F`.
 """
 function propagate(F::judiPropagator{T, O}, q::SourceType{T}) where {T, O}
-    pysolver = getfield(JUDI, solver(F))
-    op = eval(:($pysolver.$O))
-    # Out type
-    Tout = out_type(F, pysolver."model".dim)
-    # Make Options
-    t1 = @elapsed prop_kw = make_input(F, q, pysolver)
-    println("Setup time $(t1) sec")
-    # Propagate
-    t1 = @elapsed dout = pycall(op, Tout; prop_kw...)
-    println("Call time $(t1) sec")
-    # create out
-    t1 = @elapsed dout = process_out(F, dout, pysolver.dt)
-    println("Postprocess time $(t1) sec")
-    println("")
-    return dout
+    srcGeometry, srcData, recGeometry, recData, dm = make_input(F, q)
+    return time_modeling(F.model, srcGeometry, srcData, recGeometry, recData, dm, O, F.options)
 end
 
-src_i(J::judiJacobian{T, :born, FT}, q, i) where {T, FT} = J.q[i]
-src_i(J, q, i) = q[i]
-
+src_i(::judiJacobian{T, :born, FT}, q, ::Integer) where {T, FT} = q
+src_i(::judiPropagator, q, i) = q[i]
 
 function *(F::judiPropagator{T, O}, q::SourceType{T}) where {T<:Number, O}
     # Number of sources and init result
     nsrc = try q.nsrc catch; F.q.nsrc end
     pool = default_worker_pool()
     res = Vector{Future}(undef, nsrc)
-    # Make sure the model has correct values
-    set_dm!(F, q)
     # Distribute source
     propagate(F[1], src_i(F, q, 1))
     @sync for i=1:nsrc
@@ -46,4 +29,4 @@ function *(F::judiPropagator{T, O}, q::SourceType{T}) where {T<:Number, O}
     return as_vec(res,  Val(F.options.return_array))
 end
 
-*(F::judiPropagator{T, O}, q::Vector{T}) = F*process_input_data(q, F.model, nsrc(F))
+*(F::judiPropagator{T, O}, q::Vector{T}) where {T, O} = F*process_input_data(q, F.model, nsrc(F))

@@ -139,9 +139,7 @@ function copy!(jv::judiVector, jv2::judiVector)
 end
 
 copyto!(jv::judiVector, jv2::judiVector) = copy!(jv, jv2)
-get_source(jv::judiVector, dtComp) = time_resample(jv.data[1], jv.geometry.dt[1], dtComp)
-get_coords(jv::judiVector) where D = begin g=Geometry(jv.geometry); hcat(g.xloc[1], g.zloc[1]) end
-make_input(jv::judiVector, dtComp) = Dict(:wavelet=>get_source(jv, dtComp), :src_coords=>get_coords(jv))
+make_input(jv::judiVector) = (jv.data[1], jv.geometry[1])
 
 check_compat(ms::Vararg{judiVector, N}) where N = all(y -> compareGeometry(y.geometry, first(ms).geometry), ms)
 ##########################################################
