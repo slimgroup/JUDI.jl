@@ -19,7 +19,7 @@ end
 
 ### Model
 model, model0, dm = setup_model(parsed_args["tti"], parsed_args["viscoacoustic"], parsed_args["nlayer"]; n=(101, 101), d=(10., 10.))
-q, srcGeometry, recGeometry, info = setup_geom(model; nsrc=2, tn=500f0)
+q, srcGeometry, recGeometry, f0 = setup_geom(model; nsrc=2, tn=500f0)
 dt = srcGeometry.dt[1]
 
 # Modeling operators
@@ -46,10 +46,10 @@ cases = [(true, true), (true, false), (false, true), (false, false)]
 						file_name="linearized_shot_record")	# saves files as file_name_xsrc_ysrc.segy
 
 		# Setup operators
-		Pr = judiProjection(info, recGeometry)
-		F = judiModeling(info, model; options=opt)
-		F0 = judiModeling(info, model0; options=opt0)
-		Ps = judiProjection(info, srcGeometry)
+		Pr = judiProjection(recGeometry)
+		F = judiModeling(model; options=opt)
+		F0 = judiModeling(model0; options=opt0)
+		Ps = judiProjection(srcGeometry)
 
 		# Combined operator Pr*F*adjoint(Ps)
 		Ffull = judiModeling(model, srcGeometry, recGeometry)
@@ -97,10 +97,10 @@ end
 @testset "Basic judiWavefield modeling tests" begin
 	@timeit TIMEROUTPUT "Wavefield modeling" begin
 		opt = Options(dt_comp=dt)
-		F = judiModeling(info, model; options=opt)
+		F = judiModeling(model; options=opt)
 		Fa = adjoint(F)
-		Ps = judiProjection(info, srcGeometry)
-		Pr = judiProjection(info, recGeometry)
+		Ps = judiProjection(srcGeometry)
+		Pr = judiProjection(recGeometry)
 
 		# Return wavefields
 		u = F * adjoint(Ps) * q

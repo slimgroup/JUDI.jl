@@ -42,22 +42,18 @@ viscoacoustic = parsed_args["viscoacoustic"]
 fs =  parsed_args["fs"]
 
 ### Model
-model, model0, dm = setup_model(tti, parsed_args["viscoacoustic"], 4)
-q, srcGeometry, recGeometry, info, f0 = setup_geom(model; nsrc=4)
+model, model0, dm = setup_model(tti, 4)
+q, srcGeometry, recGeometry, f0 = setup_geom(model; nsrc=4)
 q1 = q[[1,4]]
 q2 = q[[2,3]]
 srcGeometry1 = subsample(srcGeometry,[1,4])
 srcGeometry2 = subsample(srcGeometry,[2,3])
 recGeometry1 = subsample(recGeometry,[1,4])
 recGeometry2 = subsample(recGeometry,[2,3])
-info1 = subsample(info,[1,4])
-info2 = subsample(info,[2,3])
-
-dt = srcGeometry.dt[1]
 
 opt = Options(sum_padding=true, free_surface=fs, f0=f0, dt_comp=dt)
-F1 = judiModeling(info1, model, srcGeometry1, recGeometry1; options=opt)
-F2 = judiModeling(info2, model, srcGeometry2, recGeometry2; options=opt)
+F1 = judiModeling(model, srcGeometry1, recGeometry1; options=opt)
+F2 = judiModeling(model, srcGeometry2, recGeometry2; options=opt)
 
 # Observed data
 dobs1 = F1*q1

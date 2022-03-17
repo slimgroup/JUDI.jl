@@ -14,8 +14,8 @@ viscoacoustic = parsed_args["viscoacoustic"]
 fs =  parsed_args["fs"]
 
 ### Model
-model, model0, dm = setup_model(parsed_args["tti"], parsed_args["viscoacoustic"], 4)
-q, srcGeometry, recGeometry, info = setup_geom(model)
+model, model0, dm = setup_model(ttio, 4)
+q, srcGeometry, recGeometry, f0 = setup_geom(model)
 dt = srcGeometry.dt[1]
 
 ###################################################################################################
@@ -32,8 +32,8 @@ dt = srcGeometry.dt[1]
 
 	# Observed data
 	opt = Options(sum_padding=true, free_surface=parsed_args["fs"])
-	F = judiModeling(info, model, srcGeometry, recGeometry; options=opt)
-	F0 = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
+	F = judiModeling(model, srcGeometry, recGeometry; options=opt)
+	F0 = judiModeling(model0, srcGeometry, recGeometry; options=opt)
 	d = F*q
 	d0 = F0*q
 	y = 2.5f0*(d0 - d)
@@ -78,8 +78,8 @@ end
 
 	# Observed data
 	opt = Options(sum_padding=true, free_surface=parsed_args["fs"])
-	F = judiModeling(info, model, srcGeometry, recGeometry; options=opt)
-	F0 = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
+	F = judiModeling(model, srcGeometry, recGeometry; options=opt)
+	F0 = judiModeling(model0, srcGeometry, recGeometry; options=opt)
 	d = F*q
 	d0 = F0*q
 	y = .1f0 * (d0 - d)

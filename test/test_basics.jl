@@ -154,12 +154,4 @@ end
             @test all(nt4 .== 1001)
         end
     end
-
-    # Test info subsampling
-    info = Info(400, 4, [50,100,150,200])
-    info1 = subsample(info, [1,3])
-    @test info1.n == info.n
-    @test info1.nsrc == 2
-    @test info1.nt == [50,150]
-
 end

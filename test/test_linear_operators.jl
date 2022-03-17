@@ -15,7 +15,7 @@ function test_transpose(Op)
 end
 
 function test_getindex(Op, nsrc)
-    # requires: Op.info.nsrc == 2
+    # requires: Op.nsrc == 2
     Op_sub = Op[1]
     @test isequal(Op_sub.model, Op.model)
     @test isequal(size(Op_sub), size(Op)) # Sizes are purely symbolic so number of sourcs don't matter
@@ -32,10 +32,9 @@ end
 
 @testset "judiModeling Unit Test with $(nsrc) sources" for nsrc=[1, 2]
     @timeit TIMEROUTPUT "judiModeling nsrc=$(nsrc)" begin
-        info = example_info(nsrc=nsrc)
         model = example_model()
-        F_forward = judiModeling(info, model; options=Options())
-        F_adjoint = judiModelingAdjoint(info, model; options=Options())
+        F_forward = judiModeling(model; options=Options())
+        F_adjoint = judiModelingAdjoint(model; options=Options())
 
         model = example_model()
         F_forward = judiModeling(model; options=Options())
@@ -68,12 +67,11 @@ end
 
 @testset "judiJacobian Unit Test with $(nsrc) sources" for nsrc=[1, 2]
     @timeit TIMEROUTPUT "judiJacobian nsrc=$(nsrc)" begin
-        info = example_info(nsrc=nsrc)
         model = example_model()
         rec_geometry = example_rec_geometry(nsrc=nsrc)
         src_geometry = example_src_geometry(nsrc=nsrc)
         wavelet = randn(Float32, src_geometry.nt[1])
-        PDE = judiModeling(info, model, src_geometry, rec_geometry; options=Options())
+        PDE = judiModeling(model, src_geometry, rec_geometry; options=Options())
         q = judiVector(src_geometry, wavelet)
 
         model = example_model()
@@ -114,7 +112,6 @@ end
 
         inds = nsrc > 1 ? (1:nsrc) : 1
         J_sub = J[inds]
-        @test isequal(J_sub.info.nsrc, nsrc)
         @test isequal(J_sub.model, J.model)
         @test isequal(size(J_sub), size(J))
     end
@@ -124,14 +121,13 @@ end
 
 @testset "judiJacobianExtended Unit Test with $(nsrc) sources" for nsrc=[1, 2]
     @timeit TIMEROUTPUT "judiJacobianExtended nsrc=$(nsrc)" begin
-        info = example_info(nsrc=nsrc)
         model = example_model()
         rec_geometry = example_rec_geometry(nsrc=nsrc)
         wavelet = randn(Float32, rec_geometry.nt[1])
         # Setup operators
-        Pr = judiProjection(info, rec_geometry)
-        F = judiModeling(info, model)
-        Pw = judiLRWF(info, wavelet)
+        Pr = judiProjection(rec_geometry)
+        F = judiModeling(model)
+        Pw = judiLRWF(wavelet)
         w = judiWeights(randn(Float32, model.n); nsrc=nsrc)
         J = judiJacobian(Pr*F*Pw', w)
 
@@ -198,7 +194,6 @@ end
 
 @testset "judiProjection Unit Test with $(nsrc) sources" for nsrc=[1, 2]
     @timeit TIMEROUTPUT "judiProjection nsrc=$(nsrc)" begin
-        info = example_info(nsrc=nsrc)
         rec_geometry = example_rec_geometry(nsrc=nsrc)
         src_geometry = example_src_geometry(nsrc=nsrc)
         wavelet = randn(Float32, src_geometry.nt[1])
@@ -218,7 +213,7 @@ end
         @test isequal(Ps.geometry, src_geometry)
 
         Pr_sub = Pr[1]
-        @test isequal(Pr_sub.info.nsrc, 1)
+        @test isequal(get_nsrc(Pr_sub.geometry), 1)
         @test isequal(size(Pr_sub), convert(Tuple{Int64, Int64}, size(Pr) ./ nsrc))
 
         Pr_sub = Pr[1]

@@ -15,7 +15,7 @@ fs =  parsed_args["fs"]
 
 ### Model
 model, model0, dm = setup_model(parsed_args["tti"], parsed_args["viscoacoustic"], parsed_args["nlayer"])
-q, srcGeometry, recGeometry, info, f0 = setup_geom(model)
+q, srcGeometry, recGeometry, f0 = setup_geom(model)
 dt = srcGeometry.dt[1]
 
 m0 = model0.m
@@ -26,10 +26,10 @@ m0 = model0.m
     opt = Options(sum_padding=true, dt_comp=dt, free_surface=parsed_args["fs"], f0=f0)
 
     # Setup operators
-    Pr = judiProjection(info, recGeometry)
-    F = judiModeling(info, model; options=opt)
-    F0 = judiModeling(info, model0; options=opt)
-    Ps = judiProjection(info, srcGeometry)
+    Pr = judiProjection(recGeometry)
+    F = judiModeling(model; options=opt)
+    F0 = judiModeling(model0; options=opt)
+    Ps = judiProjection(srcGeometry)
     J = judiJacobian(Pr*F0*adjoint(Ps), q)
 
     # Linear modeling

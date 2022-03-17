@@ -18,12 +18,12 @@ fs =  parsed_args["fs"]
 
 ### Model
 model, model0, dm = setup_model(tti, viscoacoustic, 4)
-q, srcGeometry, recGeometry, info, f0 = setup_geom(model)
+q, srcGeometry, recGeometry, f0 = setup_geom(model)
 dt = srcGeometry.dt[1]
 
 opt = Options(sum_padding=true, free_surface=fs, f0=f0)
-F = judiModeling(info, model, srcGeometry, recGeometry; options=opt)
-F0 = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
+F = judiModeling(model, srcGeometry, recGeometry; options=opt)
+F0 = judiModeling(model0, srcGeometry, recGeometry; options=opt)
 J = judiJacobian(F0, q)
 
 # Observed data
