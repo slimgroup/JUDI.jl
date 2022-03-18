@@ -66,17 +66,17 @@ cases = [(true, true), (true, false), (false, true), (false, false)]
 
 		# fwi objective function
 		f, g = fwi_objective(model0, q, d1; options=opt)
-		f, g = fwi_objective(model0, subsample(q,1), subsample(d1,1); options=opt)
+		f, g = fwi_objective(model0, getindex(q,1), getindex(d1,1); options=opt)
 
-		# Subsampling
+		# Indexing (per source)
 		for inds=[2, [1, 2]]
-			dsub = subsample(dfull, inds)
-			qsub = subsample(q, inds)
-				Fsub = subsample(F, inds)
-			Jsub = subsample(J, inds)
-			Ffullsub = subsample(Ffull, inds)
-			Pssub = subsample(Ps, inds)
-			Prsub = subsample(Pr, inds)
+			dsub = getindex(dfull, inds)
+			qsub = getindex(q, inds)
+			Fsub = getindex(F, inds)
+			Jsub = getindex(J, inds)
+			Ffullsub = getindex(Ffull, inds)
+			Pssub = getindex(Ps, inds)
+			Prsub = getindex(Pr, inds)
 			ds1 = Ffullsub*qsub 
 			ds2 = Prsub * Fsub * adjoint(Pssub) *qsub 
 			@test isapprox(ds1, get_data(ds2), rtol=ftol)
@@ -107,13 +107,22 @@ end
 
 		# Adjoint from data
 		dobs = Pr*F*u
-		v = Fa*(adjoint(Pr)*dobs)
+		v = Fa*adjoint(Pr)*dobs
 
 		a = dot(u, v)
 		b = dot(dobs, dobs)
-		@printf(" <F x, y> : %2.5e, <x, F' y> : %2.5e, relative error : %2.5e \n", b, a, a/b - 1)
-		@test isapprox(a, b, rtol=1f-4)
+		@printf(" <F x, y> : %2.5e, <x, F' y> : %2.5e, relative error : %2.5e \n", b, a, (a-b)/(a+b))
+		@test isapprox((a-b)/(a+b), 0f0, rtol=1f-4)
 
+
+		# Forward from data
+		qa = Ps*Fa*u
+		ua = F*Ps'*qa
+
+		a = dot(u, ua)
+		b = dot(qa, qa)
+		@printf(" <F x, y> : %2.5e, <x, F' y> : %2.5e, relative error : %2.5e \n", b, a, (a-b)/(a+b))
+		@test isapprox((a-b)/(a+b), 0f0, rtol=1f-4)
 
 		# Wavefields as source + return wavefields
 		u2 = F*u
@@ -121,7 +130,7 @@ end
 
 		a = dot(u2, v)
 		b = dot(v2, u)
-		@printf(" <F x, y> : %2.5e, <x, F' y> : %2.5e, relative error : %2.5e \n", a, b, a/b - 1)
-		@test isapprox(a, b, rtol=1f-4)
+		@printf(" <F x, y> : %2.5e, <x, F' y> : %2.5e, relative error : %2.5e \n", a, b, (a-b)/(a+b))
+		@test isapprox((a-b)/(a+b), 0f0, rtol=1f-4)
 	end
 end

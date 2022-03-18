@@ -32,6 +32,15 @@ jobs:
       - name: Checkout JUDI
         uses: actions/checkout@v2
 
+      - name: Cache julia install
+        uses: actions/cache@v2
+        env:
+          cache-name: cache-julia-pkgs
+        with:
+          # julia is installed in ~/.julia
+          path: ~/.julia
+          key: ${{ matrix.os }}-${{ matrix.version }}-${{ env.cache-name }}
+
       - name: Setup julia
         uses: julia-actions/setup-julia@v1
         with:

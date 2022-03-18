@@ -2,12 +2,12 @@
 export time_modeling
 
 GeomOrNot = Union{Geometry, Array, Nothing}
-ArrayOrNot = Union{Array, Nothing}
+ArrayOrNot = Union{Array, PyArray, Nothing}
 PhysOrNot = Union{dmType, Nothing}
 
 # Setup time-domain linear or nonlinear foward and adjoint modeling and interface to devito
 function time_modeling(model_full::Model, srcGeometry::GeomOrNot, srcData::ArrayOrNot,
-                       recGeometry::GeomOrNot, recData::ArrayOrNot, dm::PhysOrNot, op::Symbol, options::Options)
+                       recGeometry::GeomOrNot, recData::ArrayOrNot, dm::PhysOrNot, op::Symbol, options::JUDIOptions)
     # Load full geometry for out-of-core geometry containers
     recGeometry = Geometry(recGeometry)
     srcGeometry = Geometry(srcGeometry)

@@ -22,7 +22,7 @@ Parameters
 * `options`: JUDI Options structure.
 * `dm`: Squared slowness perturbation (optional), Array or PhysicalParameter.
 """
-function devito_model(model::Model, options::Options, dm)
+function devito_model(model::Model, options::JUDIOptions, dm)
     pad = pad_sizes(model, options)
     # Set up Python model structure
     m = pad_array(model[:m].data, pad)
@@ -34,9 +34,9 @@ function devito_model(model::Model, options::Options, dm)
     return modelPy
 end
 
-devito_model(model::Model, options::Options, dm::PhysicalParameter) = devito_model(model, options, reshape(dm.data, model.n))
-devito_model(model::Model, options::Options, dm::Vector{T}) where T = devito_model(model, options, reshape(dm, model.n))
-devito_model(model::Model, options::Options) = devito_model(model, options, nothing)
+devito_model(model::Model, options::JUDIOptions, dm::PhysicalParameter) = devito_model(model, options, reshape(dm.data, model.n))
+devito_model(model::Model, options::JUDIOptions, dm::Vector{T}) where T = devito_model(model, options, reshape(dm, model.n))
+devito_model(model::Model, options::JUDIOptions) = devito_model(model, options, nothing)
 
 """
     pad_sizes(model, options; so=nothing)
@@ -279,9 +279,9 @@ end
 
 remove_out_of_bounds_receivers(G::Geometry, ::Nothing, M::Model) = (remove_out_of_bounds_receivers(G, M), nothing)
 remove_out_of_bounds_receivers(::Nothing, ::Nothing, M::Model) = (nothing, nothing)
-remove_out_of_bounds_receivers(::Nothing, r::Array, M::Model) = (nothing, r)
+remove_out_of_bounds_receivers(::Nothing, r::AbstractArray, M::Model) = (nothing, r)
 remove_out_of_bounds_receivers(G::Geometry, r, M::Model) = remove_out_of_bounds_receivers(G, convert(Matrix{Float32}, r), M)
-remove_out_of_bounds_receivers(w::Array, ::Nothing, M::Model) = (w, nothing)
+remove_out_of_bounds_receivers(w::AbstractArray, ::Nothing, M::Model) = (w, nothing)
 
 """
     convertToCell(x)

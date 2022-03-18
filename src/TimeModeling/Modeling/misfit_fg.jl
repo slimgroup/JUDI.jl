@@ -12,7 +12,7 @@ Example
 =======
     function_value, gradient = fwi_objective(model, source, dobs)
 """
-function fwi_objective(model::Model, q::judiVector, dobs::judiVector; options=Options)
+function fwi_objective(model::Model, q::judiVector, dobs::judiVector; options=Options())
     G = similar(model.m)
     f = fwi_objective!(G, model, q, dobs; options=options)
     f, G
@@ -30,7 +30,7 @@ Example
     function_value, gradient = lsrtm_objective(model, source, dobs, dm)
 """
 function lsrtm_objective(model::Model, q::judiVector, dobs::judiVector, dm;
-                         options=Options, nlind=false)
+                         options=Options(), nlind=false)
     G = similar(model.m)
     f = lsrtm_objective!(G, model, q, dobs, dm; options=options, nlind=nlind)
     f, G
@@ -47,7 +47,7 @@ Example
 =======
     function_value = fwi_objective!(gradient, model, source, dobs)
 """
-fwi_objective!(G, model, q, dobs; options=options) = multi_src_fg!(G, model, q, dobs, nothing; options=options, nlind=false, lin=false)
+fwi_objective!(G, model, q, dobs; options=Options()) = multi_src_fg!(G, model, q, dobs, nothing; options=options, nlind=false, lin=false)
 
 """
     lsrtm_objective!(G, model, source, dobs, dm; options=Options(), nlind=false)
@@ -60,9 +60,10 @@ Example
 =======
     function_value = lsrtm_objective!(gradient, model, source, dobs, dm; options=Options(), nlind=false)
 """
-lsrtm_objective!(G, model, q, dobs, dm; options=options, nlind=nlind) = multi_src_fg!(G, model, q, dobs, dm; options=options, nlind=nlind, lin=true)
+lsrtm_objective!(G, model, q, dobs, dm; options=Options(), nlind=false) = multi_src_fg!(G, model, q, dobs, dm; options=options, nlind=nlind, lin=true)
 
-function multi_src_fg(model_full::Model, source::judiVector, dObs::judiVector, dm, options::Options, nlind::Bool, lin::Bool)
+
+function multi_src_fg(model_full::Model, source::judiVector, dObs::judiVector, dm, options::JUDIOptions, nlind::Bool, lin::Bool)
 # Setup time-domain linear or nonlinear foward and adjoint modeling and interface to OPESCI/devito
 
     # assert this is for single source LSRTM
@@ -76,7 +77,7 @@ function multi_src_fg(model_full::Model, source::judiVector, dObs::judiVector, d
     # Limit model to area with sources/receivers
     if options.limit_m == true
         model = deepcopy(model_full)
-        model, dm = limit_model_to_receiver_area(source.geometry, dObs.geometry, model, options.buffer_size; dm=dm)
+        model, dm = limit_model_to_receiver_area(source.geometry, dObs.geometry, model, options.buffer_size; pert=dm)
     else
         model = model_full
     end
@@ -86,8 +87,8 @@ function multi_src_fg(model_full::Model, source::judiVector, dObs::judiVector, d
     dtComp = convert(Float32, modelPy."critical_dt")
 
     # Extrapolate input data to computational grid
-    qIn = time_resample(source.data[1], source.geometry, dtComp)[1]
-    dObserved = time_resample(convert(Matrix{Float32}, dObs.data[1]), dObs.geometry, dtComp)[1]
+    qIn = time_resample(make_input(source), source.geometry, dtComp)[1]
+    dObserved = time_resample(make_input(dObs), dObs.geometry, dtComp)[1]
 
     # Set up coordinates
     src_coords = setup_grid(source.geometry, model.n)  # shifts source coordinates by origin
@@ -119,5 +120,5 @@ function multi_src_fg(model_full::Model, source::judiVector, dObs::judiVector, d
 end
 
 
-multi_src_fg(t::Tuple{Model, judiVector, judiVector, Any, Options, Bool, Bool}) =
-    multi_src_fg(t[0], t[1], t[2], t[3], t[4], t[5], t[6], t[7])
+multi_src_fg(t::Tuple{Model, judiVector, judiVector, Any, JUDIOptions, Bool, Bool}) where N =
+    multi_src_fg(t[1], t[2], t[3], t[4], t[5], t[6], t[7])

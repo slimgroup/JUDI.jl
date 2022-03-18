@@ -1,5 +1,6 @@
 export subsample
 
+############################################################################################################################
 # Base multi source abstract type
 abstract type judiMultiSourceVector{T} <: DenseVector{T} end
 
@@ -7,41 +8,41 @@ mutable struct judiMultiSourceException <: Exception
     msg :: String
 end
 
-make_input(ms::judiMultiSourceVector) = throw(judiMultiSourceException("$(typeof(ms)) must implement `make_input(ms, dt)` for propagation"))
-make_input(a::Array) = a
+display(ms::judiMultiSourceVector) = println("$(typeof(ms)) wiht $(ms.nsrc) sources")
+show(io::IOContext, ms::judiMultiSourceVector) = print(io, "$(typeof(ms)) wiht $(ms.nsrc) sources")
 
+# Size and type 
+eltype(::judiMultiSourceVector{T}) where T = T
+size(jv::judiMultiSourceVector) = (length(jv),)
+length(jv::judiMultiSourceVector{T}) where {T} = jv.nsrc
+
+# Comparison
 isequal(ms1::judiMultiSourceVector, ms2::judiMultiSourceVector) = ms1 == ms2
 ==(ms1::judiMultiSourceVector, ms2::judiMultiSourceVector) = all(getfield(ms1, s) == getfield(ms2, s) for s in fieldnames(typeof(ms1)))
+
+isapprox(x::judiMultiSourceVector, y::judiMultiSourceVector; rtol::Real=sqrt(eps()), atol::Real=0) =
+    all(isapprox(getfield(x, f), getfield(y, f); rtol=rtol, atol=atol) for f in fieldnames(typeof(x)))
+
 check_compat(ms::Vararg{judiMultiSourceVector, N}) where N = true
 check_compat(x::Number, ms::judiMultiSourceVector) = true
 check_compat(ms::judiMultiSourceVector, x::Number) = true
 
-unsafe_convert(::Type{Ptr{T}}, msv::judiMultiSourceVector{T}) where {T} = unsafe_convert(Ptr{T}, msv.data)
-
-display(ms::judiMultiSourceVector) = println("$(typeof(ms)) wiht $(ms.nsrc) sources")
-show(io::IOContext, ms::judiMultiSourceVector) = print(io, "$(typeof(ms)) wiht $(ms.nsrc) sources")
-
-IndexStyle(::Type{<:judiMultiSourceVector}) = IndexLinear()
-
+# Copy
 copyto!(ms::judiMultiSourceVector, a::Vector{Array{T, N}}) where {T, N} = copyto!(ms.data, a)
 copyto!(a::Vector{Array{T, N}}, ms::judiMultiSourceVector) where {T, N} = copyto!(a, ms.data)
 copy(ms::judiMultiSourceVector{T}) where {T} = begin y = zero(T, ms); y.data = deepcopy(ms.data); y end
 deepcopy(ms::judiMultiSourceVector{T}) where {T} = copy(ms)
 
+# indexing
+IndexStyle(::Type{<:judiMultiSourceVector}) = IndexLinear()
 setindex!(ms::judiMultiSourceVector{T}, v::Array{T, N}, i::Integer) where {T, N} = begin ms.data[i] = v; nothing end
 getindex(ms::judiMultiSourceVector{T}, i::Integer) where {T} = ms[i:i]
 iterate(S::judiMultiSourceVector, state::Integer=1) = state > S.nsrc ? nothing : (S[state], state+1)
-
+unsafe_convert(::Type{Ptr{T}}, msv::judiMultiSourceVector{T}) where {T} = unsafe_convert(Ptr{T}, msv.data)
 # Backward compat subsample
 subsample(ms::judiMultiSourceVector, i) = getindex(ms, i)
 
-eltype(::judiMultiSourceVector{T}) where T = T
-
-size(jv::judiMultiSourceVector) = (length(jv),)
-length(jv::judiMultiSourceVector{T}) where {T} = jv.nsrc
-
 zero(::Type{T}, x::judiMultiSourceVector) where T = throw(judiMultiSourceException("$(typeof(x)) does not implement zero copy zero(::Type{T}, x)"))
-
 similar(x::judiMultiSourceVector{T}) where T = zero(T, x)
 similar(x::judiMultiSourceVector, ET::DataType) = zero(eltype(ET), x)
 similar(x::judiMultiSourceVector, ET::DataType, dims::Union{AbstractUnitRange, Integer}...) = zero(eltype(ET), x)[dims...]
@@ -53,20 +54,18 @@ sum(x::judiMultiSourceVector) = sum(sum(x.data))
 
 isfinite(v::judiMultiSourceVector) = all(all(isfinite.(v.data[i])) for i=1:v.nsrc)
 
-time_sampling(ms::judiMultiSourceVector) = [1 for i=1:ms.nsrc]
-
 conj(A::judiMultiSourceVector{vDT}) where vDT = A
 transpose(A::judiMultiSourceVector{vDT}) where vDT = A
 adjoint(A::judiMultiSourceVector{vDT}) where vDT = A
-
-isapprox(x::judiMultiSourceVector, y::judiMultiSourceVector; rtol::Real=sqrt(eps()), atol::Real=0) =
-    all(isapprox(getfield(x, f), getfield(y, f); rtol=rtol, atol=atol) for f in fieldnames(typeof(x)))
 
 maximum(a::judiMultiSourceVector{avDT}) where avDT = max([maximum(a.data[i]) for i=1:a.nsrc]...)
 minimum(a::judiMultiSourceVector{avDT}) where avDT = min([minimum(a.data[i]) for i=1:a.nsrc]...)
 
 vec(x::judiMultiSourceVector) = vcat(vec.(x.data)...)
 
+time_sampling(ms::judiMultiSourceVector) = [1 for i=1:ms.nsrc]
+############################################################################################################################
+# Linear algebra `*`
 (msv::judiMultiSourceVector{T})(x::Vector{T}) where {T<:Real} = x
 (msv::judiMultiSourceVector{T})(x::judiMultiSourceVector{T}) where {T} = x
 (msv::judiMultiSourceVector{mT})(x::Vector{T}) where {mT, T<:Array} = begin y = deepcopy(msv); y.data .= x; return y end
@@ -83,14 +82,20 @@ function *(J::joCoreBlock, x::judiMultiSourceVector{vDT}) where vDT
     return x(outdata)
 end
 
+# Propagation input
+make_input(ms::judiMultiSourceVector) = throw(judiMultiSourceException("$(typeof(ms)) must implement `make_input(ms, dt)` for propagation"))
+make_input(a::Array) = a
+
+############################################################################################################################
+# Linear algebra norm/abs/cat...
 function norm(a::judiMultiSourceVector{T}, p::Real=2) where T
     if p == Inf
-        return max([maximum(abs.(a.data[i])) for i=1:a.nsrc]...)
+        return maximum([norm(a.data[i], p) for i=1:a.nsrc])
     end
     x = 0.f0
     dt = time_sampling(a)
     for j=1:a.nsrc
-        x += dt[j] * sum(abs.(vec(a.data[j])).^p)
+        x += dt[j] * norm(a.data[j], p)^p
     end
     return T(x^(1.f0/p))
 end
@@ -102,7 +107,7 @@ function dot(a::judiMultiSourceVector{T}, b::judiMultiSourceVector{T}) where T
 	dotprod = 0f0
     dt = time_sampling(a)
 	for j=1:a.nsrc
-		dotprod += dt[j] * dot(vec(a.data[j]),vec(b.data[j]))
+		dotprod += dt[j] * dot(a.data[j], b.data[j])
 	end
 	return T(dotprod)
 end
@@ -128,6 +133,39 @@ function vcat(ai::Vararg{<:judiMultiSourceVector{T}, N}) where {T, N}
     return res
 end
 
+############################################################################################################################
+# Diff/cumsum
+function cumsum(x::judiMultiSourceVector;dims=1)
+    y = deepcopy(x)
+    cumsum!(y, x; dims=dims)
+    return y
+end
+
+function cumsum!(y::judiMultiSourceVector, x::judiMultiSourceVector;dims=1)
+    dims == 1 || dims == 2 || throw(judiMultiSourceException("Dimension $(dims) is out of range for a 2D array"))
+    h = dims == 1 ? time_sampling(x) : [1f0 for i=1:x.nsrc] # receiver dimension is non-dimensional
+    for i = 1:x.nsrc
+        cumsum!(y.data[i], x.data[i], dims=dims)
+        lmul!(h[i], y.data[i])
+    end
+    return y
+end
+
+function diff(x::judiMultiSourceVector; dims=1)
+    # note that this is not the same as default diff in julia, the first entry stays in the diff result
+    dims == 1 || dims == 2 || throw(judiMultiSourceException("Dimension $(dims) is out of range for a 2D array"))
+    y = 1f0 * x        # receiver dimension is non-dimensional
+    h = dims == 1 ? time_sampling(x) : [1f0 for i=1:x.nsrc]
+    for i = 1:x.nsrc
+        n = size(y.data[i],dims)
+        selectdim(y.data[i], dims, 2:n) .-= selectdim(y.data[i], dims, 1:n-1)
+        lmul!(1 / h[i], y.data[i])
+    end
+    return y
+end
+
+
+############################################################################################################################
 # Type conversions
 
 function matmulT(a::AbstractArray{T, 2}, b) where T
@@ -140,19 +178,3 @@ tof32(x::Array{Array{T, N}, 1}) where {N, T<:Real} = T==Float32 ? x : tof32.(x)
 tof32(x::Array{Any, 1}) = try Float32.(x) catch e tof32.(x) end
 tof32(x::StepRangeLen) = tof32.(x)
 tof32(x::Array{StepRangeLen}) = tof32.(x)
-
-##### Rebuild bad vector
-
-function rebuild_maybe_jld(x::Vector{Any})
-    try
-        return tof32(x)
-    catch e
-        if hasproperty(x[1], :offset)
-            return [Float32.(StepRangeLen(xi.ref, xi.step, xi.len, xi.offset)) for xi in x]
-        end
-        return x
-    end
-end
-
-## Propagation
-get_source(x::judiMultiSourceVector, dtComp) = x.data[1]

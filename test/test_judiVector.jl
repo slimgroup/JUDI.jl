@@ -216,48 +216,6 @@ ftol = 1e-6
         vec(q_1.data[i]) == vec(q.data[i])
     end
 
-    # Time interpolation (inplace)
-    dt_orig = 2f0
-    dt_new = 1f0
-    nt_orig = 501
-    nt_new = 1001
-    d_resample = deepcopy(d_block)
-    time_resample!(d_resample, dt_new; order=2)
-
-    @test isequal(d_resample.geometry.dt[1], dt_new)
-    @test isequal(d_resample.geometry.nt[1], nt_new)
-    @test isequal(size(d_resample.data[1])[1], nt_new)
-
-    time_resample!(d_resample, dt_orig; order=2)
-    @test isapprox(d_resample, d_block)
-
-    # Time interpolation (w/ deepcopy)
-    d_resample = time_resample(d_block, dt_new; order=2)
-
-    @test isequal(d_block.geometry.dt[1], dt_orig)
-    @test isequal(d_block.geometry.nt[1], nt_orig)
-    @test isequal(size(d_block.data[1])[1], nt_orig)
-    @test isequal(d_resample.geometry.dt[1], dt_new)
-    @test isequal(d_resample.geometry.nt[1], nt_new)
-    @test isequal(size(d_resample.data[1])[1], nt_new)
-
-    d_recover = time_resample(d_resample, dt_orig; order=2)
-    @test isapprox(d_recover, d_block)
-
-    # Time interpolation (linear operator)
-    I = judiTimeInterpolation(d_block.geometry, dt_orig, dt_new)
-    d_resample = I*d_block
-
-    @test isequal(d_block.geometry.dt[1], dt_orig)
-    @test isequal(d_block.geometry.nt[1], nt_orig)
-    @test isequal(size(d_block.data[1])[1], nt_orig)
-    @test isequal(d_resample.geometry.dt[1], dt_new)
-    @test isequal(d_resample.geometry.nt[1], nt_new)
-    @test isequal(size(d_resample.data[1])[1], nt_new)
-
-    d_recover = transpose(I)*d_resample
-    @test isapprox(d_recover, d_block)
-
     # scale
     a = .5f0 + rand(Float32)
     d_scale = deepcopy(d_block)

@@ -81,6 +81,7 @@ make_src(q, P::jAdjoint{judiLRWF{D}}) where D = (make_input(q), P.data[1])
 make_src(q, P::judiProjection{D}) where D = (P.data[1], make_input(q))
 make_src(q, P::judiLRWF{D}) where D = (make_input(q), P.data[1])
 
+############################################################################################################################
 ###### Lazy injection
 
 struct judiRHS{D} <: judiMultiSourceVector{D}
@@ -90,10 +91,12 @@ struct judiRHS{D} <: judiMultiSourceVector{D}
 end
 
 *(P::jAdjoint{judiProjection{D}}, d::judiVector{D, AT}) where {D, AT} = judiRHS{D}(d.nsrc, P, d)
-getindex(rhs::judiRHS{D}, i) where D = judiRHS{D}(length(i), rhs.P[i], rhs.d[i])
+getindex(rhs::judiRHS{D}, i::Integer) where D = judiRHS{D}(length(i), rhs.P[i], rhs.d[i])
+getindex(rhs::judiRHS{D}, i::RangeOrVec) where D = judiRHS{D}(length(i), rhs.P[i], rhs.d[i])
 make_src(rhs::judiRHS) = make_src(rhs.d, rhs.P)
 eval(rhs::judiRHS) = rhs.d
 
+############################################################################################################################
 # Combination of lazy injections
 struct LazyAdd{D} <: judiMultiSourceVector{D}
     nsrc::Integer

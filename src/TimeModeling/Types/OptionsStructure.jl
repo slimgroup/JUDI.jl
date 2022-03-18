@@ -3,10 +3,10 @@
 # Date: May 2017
 #
 
-export Options
+export Options, JUDIOptions
 
 # Object for velocity/slowness models
-mutable struct Options
+mutable struct JUDIOptions
     space_order::Integer
     free_surface::Bool
     limit_m::Bool
@@ -26,7 +26,7 @@ mutable struct Options
 end
 
 """
-    Options
+    JUDIOptions
         space_order::Integer
         free_surface::Bool
         limit_m::Bool
@@ -115,7 +115,7 @@ Options(;space_order=8,
          return_array=false,
          dt_comp=nothing,
          f0=0.015f0) =
-		 Options(space_order,
+		 JUDIOptions(space_order,
 		 		 free_surface,
 		         limit_m,
 				 buffer_size,
@@ -132,7 +132,17 @@ Options(;space_order=8,
                  dt_comp,
                  f0)
 
-function getindex(options::Options, srcnum)
+JUDIOptions(;kw...) = Options(kw...)
+
+update!(::JUDIOptions, ::Nothing) = nothing
+
+function update!(O::JUDIOptions, other::JUDIOptions)
+    for f in fieldnames(JUDIOptions)
+        setfield!(O, f, getfield(other, f))
+    end
+end
+
+function getindex(options::JUDIOptions, srcnum)
     if isempty(options.frequencies)
         return options
     else
@@ -143,4 +153,4 @@ function getindex(options::Options, srcnum)
     end
 end
 
-subsample(options::Options, srcnum) = getindex(options, srcnum)
+subsample(options::JUDIOptions, srcnum) = getindex(options, srcnum)

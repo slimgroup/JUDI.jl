@@ -139,13 +139,16 @@ function copy!(jv::judiVector, jv2::judiVector)
 end
 
 copyto!(jv::judiVector, jv2::judiVector) = copy!(jv, jv2)
-make_input(jv::judiVector) = jv.data[1]
+make_input(jv::judiVector{T, Matrix{T}}) where T = jv.data[1]
+make_input(jv::judiVector{T, SeisCon}) where T = convert(Matrix{T}, jv.data[1][1].data)
 
 check_compat(ms::Vararg{judiVector, N}) where N = all(y -> compareGeometry(y.geometry, first(ms).geometry), ms)
 ##########################################################
 
 # Overload needed base function for SegyIO objects
 vec(x::SegyIO.SeisCon) = vec(x[1].data)
+dot(x::SegyIO.SeisCon, y::SegyIO.SeisCon) = dot(x[1].data, y[1].data)
+norm(x::SegyIO.SeisCon, p::Real=2) = norm(x[1].data, p)
 abs(x::SegyIO.IBMFloat32) = abs(Float32(x))
 *(n::Number, s::SegyIO.SeisCon) = copy(s)
 
@@ -257,66 +260,8 @@ function write_shot_record(srcGeometry, srcData, recGeometry, recData,options)
     return container
 end
 
-
-function time_resample!(x::judiVector, dt_new; order=2)
-    for j=1:x.nsrc
-        dataInterp, geom = time_resample(x.data[j], getindex(x.geometry, j), dt_new)
-        x.data[j] = dataInterp
-        x.geometry.dt[j] = dt_new
-        x.geometry.nt[j] = geom.nt[1]
-        x.geometry.t[j] = geom.t[1]
-    end
-    return x
-end
-
-function time_resample(x::judiVector, dt_new; order=2)
-    xout = deepcopy(x)
-    time_resample!(xout, dt_new; order=order)
-    return xout
-end
-
-function judiTimeInterpolation(geometry::Geometry, dt_coarse, dt_fine)
-# Time interpolation as a linear operator (copies input data)
-
-    nsrc = length(geometry.xloc)
-    I = joLinearFunctionFwd_T(nsrc, nsrc,
-                              v -> time_resample(v, dt_fine),
-                              w -> time_resample(w, dt_coarse),
-                              Float32,Float32,name="Time resampling")
-    return I
-end
-
 ####################################################################################################
-
-# Integration/differentiation of shot records
-
-function cumsum(x::judiVector;dims=1)
-    y = deepcopy(x)
-    cumsum!(y, x; dims=dims)
-    return y
-end
-
-function cumsum!(y::judiVector, x::judiVector;dims=1)
-    dims == 1 || dims == 2 || throw(judiMultiSourceException("Dimension $(dims) is out of range for a 2D array"))
-    h = dims == 1 ? x.geometry.dt[1] : 1f0              # receiver dimension is non-dimensional
-    for i = 1:x.nsrc
-        cumsum!(y.data[i], x.data[i], dims=dims)
-    end
-    rmul!(y, h)
-    return y
-end
-
-function diff(x::judiVector;dims=1)
-    # note that this is not the same as default diff in julia, the first entry stays in the diff result
-    dims == 1 || dims == 2 || throw(judiMultiSourceException("Dimension $(dims) is out of range for a 2D array"))
-    y = (dims == 1 ? 1f0 / x.geometry.dt[1] : 1f0) * x        # receiver dimension is non-dimensional
-    for i = 1:x.nsrc
-        copy!(selectdim(y.data[i], dims, 2:size(y.data[i],dims)), diff(y.data[i],dims=dims))
-    end
-    return y
-end
-
-
+# Load OOC
 function get_data(x::judiVector{T, SeisCon}) where T
     shots = Array{Array{Float32, 2}, 1}(undef, x.nsrc)
     rec_geometry = Geometry(x.geometry)
@@ -327,54 +272,26 @@ function get_data(x::judiVector{T, SeisCon}) where T
 end
 
 get_data(x::judiVector{T, Array{Float32, 2}}) where T = x
-
 convert_to_array(x::judiVector) = vcat(vec.(x.data)...)
 
-## in place
-function A_mul_B!(x::judiWeights, F::Union{joAbstractLinearOperator, joLinearFunction}, y::judiVector)
-    F.m == size(y, 1) ? z = adjoint(F)*y : z = F*y
-    for j=1:length(x.weights)
-        x.weights[j] .= z.weights[j]
-    end
-end
-
-function A_mul_B!(x::judiVector, F::Union{joAbstractLinearOperator, joLinearFunction}, y::Union{Array, PhysicalParameter})
-    F.m == size(y, 1) ? z = adjoint(F)*y : z = F*y
-    for j=1:length(x.data)
-        x.data[j] .= z.data[j]
-    end
-end
-
-function A_mul_B!(x::Union{Array, PhysicalParameter}, F::Union{joAbstractLinearOperator, joLinearFunction}, y::judiVector)
-    F.m == size(y, 1) ? x[:] .= (adjoint(F)*y)[:] : x[:] .= (F*y)[:]
-end
-
-function A_mul_B!(x::judiVector, F::Union{joAbstractLinearOperator, joLinearFunction}, y::judiWeights)
-    F.m == size(y, 1) ? z = adjoint(F)*y : z = F*y
-    for j=1:length(x.data)
-        x.data[j] .= z.data[j]
-    end
-end
-
-function A_mul_B!(x::judiVector, F::Union{joAbstractLinearOperator, joLinearFunction}, y::judiVector)
-    F.m == size(y, 1) ? z = adjoint(F)*y : z = F*y
-    for j=1:length(x.data)
-        x.data[j] .= z.data[j]
-    end
-end
-
-mul!(x::judiWeights, F::Union{joAbstractLinearOperator, joLinearFunction}, y::judiVector) = A_mul_B!(x, F, y)
-mul!(x::judiVector, F::Union{joAbstractLinearOperator, joLinearFunction}, y::judiWeights) = A_mul_B!(x, F, y)
-mul!(x::judiVector, F::Union{joAbstractLinearOperator, joLinearFunction}, y::judiVector) = A_mul_B!(x, F, y)
-mul!(x::Union{Array, PhysicalParameter}, J::Union{joAbstractLinearOperator, joLinearFunction}, y::judiVector) = A_mul_B!(x, J, y)
-mul!(x::judiVector, J::Union{joAbstractLinearOperator, joLinearFunction}, y::Union{Array, PhysicalParameter}) = A_mul_B!(x, J, y)
-
+##### Rebuild bad vector
 """
     reuild_jv(v)
 rebuild a judiVector from previous version type or JLD2 reconstructed type
 """
 rebuild_jv(v::judiVector{T, AT}) where {T, AT} = v
 rebuild_jv(v) = judiVector(convgeom(v), convdata(v))
+
+function rebuild_maybe_jld(x::Vector{Any})
+    try
+        return tof32(x)
+    catch e
+        if hasproperty(x[1], :offset)
+            return [Float32.(StepRangeLen(xi.ref, xi.step, xi.len, xi.offset)) for xi in x]
+        end
+        return x
+    end
+end
 
 # Rebuild for backward compatinility
 convgeom(x) = GeometryIC{Float32}([getfield(x.geometry, s) for s=fieldnames(GeometryIC)]...)

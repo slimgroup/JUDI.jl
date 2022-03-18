@@ -1,6 +1,7 @@
 import numpy as np
 
 from devito import TimeFunction, warning
+from devito.data.allocators import ExternalAllocator
 from devito.tools import as_tuple
 from pyrevolve import Revolver
 
@@ -151,14 +152,14 @@ def forward_wf_src(model, u, rec_coords, space_order=8, f0=0.015):
     Array
         Shot record
     """
-    wf_src = TimeFunction(name='wf_src', grid=model.grid, time_order=2,
-                          space_order=space_order, save=u.shape[0])
     if isinstance(u, TimeFunction):
-        wf_src._data = u._data
+        wf_src = u
     else:
-        wf_src.data[:] = u[:]
-    rec, _, _ = forward(model, None, rec_coords, None, space_order=space_order, q=wf_src,
-                        f0=f0)
+        wf_src = TimeFunction(name='wf_src', grid=model.grid, time_order=2,
+                              space_order=0, save=u.shape[0], allocator=ExternalAllocator(u),
+                              initializer=lambda x: None)
+
+    rec, _, _ = forward(model, None, rec_coords, None, space_order=space_order, q=wf_src)
     return rec.data
 
 
@@ -182,12 +183,13 @@ def forward_wf_src_norec(model, u, space_order=8, f0=0.015):
     Array
         Wavefield
     """
-    wf_src = TimeFunction(name='wf_src', grid=model.grid, time_order=2,
-                          space_order=space_order, save=u.shape[0])
     if isinstance(u, TimeFunction):
-        wf_src._data = u._data
+        wf_src = u
     else:
-        wf_src.data[:] = u[:]
+        wf_src = TimeFunction(name='wf_src', grid=model.grid, time_order=2,
+                              space_order=0, save=u.shape[0], allocator=ExternalAllocator(u),
+                              initializer=lambda x: None)
+
     _, u, _ = forward(model, None, None, None, space_order=space_order, save=True,
                       q=wf_src, f0=f0)
     return u.data
@@ -304,14 +306,14 @@ def adjoint_wf_src(model, u, src_coords, space_order=8, f0=0.015):
     Array
         Shot record (sampled at source position(s))
     """
-    wf_src = TimeFunction(name='wf_src', grid=model.grid, time_order=2,
-                          space_order=space_order, save=u.shape[0])
     if isinstance(u, TimeFunction):
-        wf_src._data = u._data
+        wf_src = u
     else:
-        wf_src.data[:] = u[:]
-    rec, _, _ = adjoint(model, None, src_coords, None, space_order=space_order, q=wf_src,
-                        f0=f0)
+        wf_src = TimeFunction(name='wf_src', grid=model.grid, time_order=2,
+                              space_order=0, save=u.shape[0], allocator=ExternalAllocator(u),
+                              initializer=lambda x: None)
+
+    rec, _, _ = adjoint(model, None, src_coords, None, space_order=space_order, q=wf_src)
     return rec.data
 
 
@@ -336,12 +338,13 @@ def adjoint_wf_src_norec(model, u, space_order=8, f0=0.015):
     Array
         Adjoint wavefield
     """
-    wf_src = TimeFunction(name='wf_src', grid=model.grid, time_order=2,
-                          space_order=space_order, save=u.shape[0])
     if isinstance(u, TimeFunction):
-        wf_src._data = u._data
+        wf_src = u
     else:
-        wf_src.data[:] = u[:]
+        wf_src = TimeFunction(name='wf_src', grid=model.grid, time_order=2,
+                              space_order=0, save=u.shape[0], allocator=ExternalAllocator(u),
+                              initializer=lambda x: None)
+
     _, v, _ = adjoint(model, None, None, None, space_order=space_order,
                       save=True, q=wf_src, f0=f0)
     return v.data

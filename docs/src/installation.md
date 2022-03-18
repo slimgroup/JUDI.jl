@@ -17,7 +17,27 @@ This will install JUDI, and the `build` will install the necessary dependencies 
 
 In some case you may want to have your own installation of Devtio you want JUDI to use in which case you should foloow these steps.
 
-First, install Devito using `pip`, or see the [Devito's GitHub page](https://github.com/devitocodes/devito) for installation with Conda and further information. The current release of JUDI requires Python 3 and the current Devito version. Run all of the following commands from the (bash) terminal command line (not in the Julia REPL):
+You can find installation instruction in our Wiki at [Installation](https://github.com/slimgroup/JUDI.jl/wiki/Installation).
+
+JUDI is a registered package and can therefore be easily installed from the General registry with `]add/dev JUDI`
+
+## GPU
+
+JUDI supports the computation of the wave equation on GPU via [Devito](https://www.devitoproject.org)'s GPU offloading support.
+
+**NOTE**: Only the wave equation part will be computed on GPU, the julia arrays will still be CPU arrays and `CUDA.jl` is not supported.
+
+### Installation
+
+To enable gpu support in JUDI, you will need to install one of [Devito](https://www.devitoproject.org)'s supported offloading compilers. We strongly recommend checking the [Wiki](https://github.com/devitocodes/devito/wiki) for installation steps and to reach out to the Devito community for GPU compiler related issues.
+
+- [x] `nvc/pgcc`. This is recommended and the simplest installation. You can install the compiler following Nvidia's installation instruction at [HPC-sdk](https://developer.nvidia.com/hpc-sdk)
+- [ ] `aompcc`. This is the AMD compiler that is necessary for running on AMD GPUs. This installation is not tested with JUDI and we recommend to reach out to Devito's team for installation guidelines.
+- [ ] `openmp5/clang`. This installation requires the compilation from source `openmp`, `clang` and `llvm` to install the latest version of `openmp5` enabling gpu offloading. You can find instructions on this installation in Devito's [Wiki](https://github.com/devitocodes/devito/wiki)
+
+### Setup
+
+The only required setup for GPU support are the environment variables for [Devito](https://www.devitoproject.org). For the currently supported `nvc+openacc` setup these are:
 
 ```bash
 pip3 install --user git+https://github.com/devitocodes/devito.git
@@ -41,16 +61,44 @@ julia -e 'using Pkg; Pkg.build("PyCall")'
 If you do not want to install JUDI, you can run JUDI as a docker image. The first possibility is to run the docker container as a Jupyter notebook:
 
 ```
-docker run -p 8888:8888 philippwitte/judi:v1.3
+docker run -p 8888:8888 mloubout/judi-base:1.0
 ```
 
 This command downloads the image and launches a container. You will see a link that you can copy-past to your browser to access the notebooks. Alternatively, you can run a bash session, in which you can start a regular interactive Julia session and run the example scripts. Download/start the container as a bash session with:
 
 ```
-docker run -it philippwitte/judi:v1.3 /bin/bash
+docker run -it mloubout/judi-base:1.0 /bin/bash
 ```
 
 Inside the container, all examples are located in the directory `/app/judi/examples/scripts`.
+
+
+Additionaly, we provide two runtime docker images `mloubout/judi-cpu:1.4.3` and `mloubout/judi-gpu:1.0` that provide runtime (bash session) containers with additional librairies and compilers installed (`icc`, `nvcc`). These image do not offer  jupyter notebook as they are designed to be used as remote image for HPC (i.e [JUDI4Cloud.jl](https://github.com/slimgroup/JUDI4Cloud.jl)). The image `mloubout/judi-cpu:1.4.3` is recommended to be used with [JUDI4Cloud.jl](https://github.com/slimgroup/JUDI4Cloud.jl).
+
+## Testing
+
+A complete test suite is inculded with JUDI and is tested via GitHub Actions. You can also run the test locally
+via:
+
+```julia
+    julia --project -e 'using Pkg;Pkg.test(coverage=false)'
+```
+
+By default, only the JUDI base API will be tested, however the testing suite supports other modes controlled via the environemnt variable `GROUP` such as:
+
+```julia
+	GROUP=JUDI julia --project -e 'using Pkg;Pkg.test(coverage=false)'
+```
+
+The supported modes are:
+
+- JUDI : Only the base API (linear operators, vectors, ...)
+- ISO_OP : Isotropic acoustic operators
+- ISO_OP_FS : Isotropic acoustic operators with free surface
+- TTI_OP : Transverse tilted isotropic operators
+- TTI_OP_FS : Transverse tilted isotropic operators with free surface
+- filename : you can also provide just a filename (i.e `GROUP=test_judiVector.jl`) and only this one test file will be run. Single files with TTI or free surface are not currently supported as it relies on `Base.ARGS` for the setup.
+
 
 ## Configure compiler and OpenMP
 

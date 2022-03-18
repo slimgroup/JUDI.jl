@@ -11,6 +11,7 @@ using ArgParse, Test, Printf
 using SegyIO, LinearAlgebra, Distributed, JOLI
 using TimerOutputs: TimerOutputs, @timeit
 
+set_verbosity(false)
 # Collect timing and allocations information to show in a clear way.
 const TIMEROUTPUT = TimerOutputs.TimerOutput()
 timeit_include(path::AbstractString) = @timeit TIMEROUTPUT path include(path)
@@ -68,7 +69,7 @@ end
 # Generic mdeling tests
 if GROUP == "BASICS" || GROUP == "All"
     println("JUDI generic modelling tests")
-    VERSION >= v"1.7" && push!(Base.ARGS, "-p 2")
+    # VERSION >= v"1.7" && push!(Base.ARGS, "-p 2")
     for t=extras
         timeit_include(t)
         @everywhere try Base.GC.gc(); catch; gc() end

@@ -22,7 +22,7 @@ ftol = 1f-6
     for j=1:nsrc
         wf[j] = randn(Float32, nt, ny, ny)
     end
-    w = judiWavefield(nsrc, dt, wf)
+    w = judiWavefield(dt, wf)
     w1 = similar(w) .+ 1f0
 
     @test isequal(length(w.data), nsrc)

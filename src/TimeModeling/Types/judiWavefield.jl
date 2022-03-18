@@ -11,8 +11,8 @@ export judiWavefield, fft_wavefield
 
 mutable struct judiWavefield{T} <: judiMultiSourceVector{T}
     nsrc::Integer
-    dt::T
-    data::Vector{Array{T, N}} where N
+    dt::Vector{T}
+    data::Vector{<:Union{Array{T, N}, PyArray{T, N}}} where N
 end
 
 ############################################################
@@ -37,24 +37,24 @@ time step dt:
 
 
 """
-function judiWavefield(nsrc::Integer, dt::Real, data::Union{Array{T, N}, PyCall.PyObject, String};  vDT::DataType=Float32) where {T<:Number, N}
+function judiWavefield(nsrc::Integer, dt::Real, data::Array{T, N};  vDT::DataType=Float32) where {T<:Number, N}
 	# length of vector
 	dataCell = [vDT.(data) for j=1:nsrc]
-	return judiWavefield{vDT}(nsrc, Float32(dt), dataCell)
+	return judiWavefield{vDT}(nsrc, [Float32(dt) for i=1:nsrc], dataCell)
 end
 
 function judiWavefield(dt::Real, data::Union{Vector{Any}, Vector{Array{T, N}}};vDT::DataType=Float32) where {T, N}
 	# length of vector
 	nsrc = length(data)
 	T != Float32 && (data = tof32.(data))
-	return judiWavefield{vDT}(nsrc, Float32(dt), data)
+	return judiWavefield{vDT}(nsrc, [Float32(dt) for i=1:nsrc], data)
 end
 
 conj(w::judiWavefield{T}) where {T<:Complex} = judiWavefield{R}(w.nsrc, w.dt, conj(w.data))
 
 ############################################################
 ## overloaded multi_source functions
-time_sampling(jv::judiWavefield) = [jv.dt for i=1:jv.nsrc]
+time_sampling(jv::judiWavefield) = jv.dt
 
 ####################################################################
 # JOLI conversion
@@ -73,11 +73,12 @@ copyto!(jv::judiWavefield, jv2::judiWavefield) = copy!(jv, jv2)
 make_input(w::judiWavefield) = w.data[1]
 check_compat(ms::Vararg{judiWavefield, N}) where N = all(y -> y.dt == first(ms).dt, ms)
 
-getindex(a::judiWavefield{T}, srcnum::RangeOrVec) where T = judiWeights{T}(length(srcnum), a.dt[srcnum], a.data[srcnum])
+getindex(a::judiWavefield{T}, srcnum::RangeOrVec) where T = judiWavefield{T}(length(srcnum), a.dt[srcnum], a.data[srcnum])
 ####################################################################
 
 function push!(a::judiWavefield{T}, b::judiWavefield{T}) where T
     append!(a.data, b.data)
+    append!(a.dt, b.dt)
     a.nsrc += b.nsrc
 end
 
