@@ -46,7 +46,12 @@ const pm = PyNULL()
 const ac = PyNULL()
 
 # Constants
-_worker_pool = default_worker_pool
+function _worker_pool()
+    p = default_worker_pool()
+    pool = length(p) < 2 ? nothing : p
+    return pool
+end
+
 _TFuture = Future
 _verbose = false
 

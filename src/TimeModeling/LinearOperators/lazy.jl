@@ -76,21 +76,10 @@ getindex(P::judiWavelet{D}, i::Integer) where D = judiWavelet{D}(P.m, P.n, P.wav
 
 subsample(P::judiNoopOperator{D}, i) where D = getindex(P, i)
 
-# Processing utilities
-get_coords(P::judiProjection{D}) where D = hcat(P.geometry.xloc[1], P.geometry.zloc[1])
-get_coords(P::judiWavelet{D}) where D = P.wavelet
-
-out_type(::judiProjection{T}, ndim) where T = Array{Float32, 2}
-out_type(::judiWavelet{T}, ndim) where T = Array{Float32, ndim}
-
-process_out(rI::judiProjection{T}, dout, dtComp, ::Symbol) where T = judiVector{T, Array{T, 2}}(1, rI.geometry, [time_resample(dout, dtComp, rI.geometry)])
-
-function process_out(::judiWavelet{T}, dout, dtComp, solver) where T
-    we = getfield(JUDI, solver)
-    padsize = we."model".padsizes
-    dout = remove_padding(dout, padsize)
-    judiWeights{T}(1, [dout])
-end
+make_src(q, P::jAdjoint{judiProjection{D}}) where D = (P.data[1], make_input(q))
+make_src(q, P::jAdjoint{judiLRWF{D}}) where D = (make_input(q), P.data[1])
+make_src(q, P::judiProjection{D}) where D = (P.data[1], make_input(q))
+make_src(q, P::judiLRWF{D}) where D = (make_input(q), P.data[1])
 
 ###### Lazy injection
 
@@ -102,7 +91,7 @@ end
 
 *(P::jAdjoint{judiProjection{D}}, d::judiVector{D, AT}) where {D, AT} = judiRHS{D}(d.nsrc, P, d)
 getindex(rhs::judiRHS{D}, i) where D = judiRHS{D}(length(i), rhs.P[i], rhs.d[i])
-make_input(rhs::judiRHS) = make_input(rhs.d)
+make_src(rhs::judiRHS) = make_src(rhs.d, rhs.P)
 eval(rhs::judiRHS) = rhs.d
 
 # Combination of lazy injections
@@ -140,4 +129,7 @@ function eval(ls::LazyAdd{D}) where D
     judiVector{D, Matrix{D}}(1, geom, [data])
 end
 
-make_input(ls::LazyAdd{D}) where D = make_input(eval(ls))
+function make_src(ls::LazyAdd{D}) where D
+    q = eval(ls)
+    return q.geometry[1], q.data[1]
+end

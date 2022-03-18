@@ -29,7 +29,7 @@ struct judiModeling{D, O} <: judiPropagator{D, O}
 end
 
 # A base propagator returns a wavefield
-make_input(::judiModeling, q::SourceType) = (make_input..., nothing, nothing, nothing)
+make_input(::judiModeling, q::SourceType) = (nothing, make_input(q), nothing, nothing, nothing)
 process_input_data(F::judiModeling, q::Vector) = process_input_data(q, F.model)
 
 ==(F1::judiModeling{D, O1}, F2::judiModeling{D, O2}) where {D, O1, O2} =
@@ -44,11 +44,8 @@ struct judiPointSourceModeling{D, O} <: judiComposedPropagator{D, O}
     judiPointSourceModeling{D, O}(F::judiModeling{D, O}, qInjection::AdjointProjection{D}) where {D, O} = new(F.m, qInjection.n, F, qInjection)
 end
 
-function make_input(F::judiPointSourceModeling{T}, q::SourceType{T}) where {T}
-    srcData, srcGeom = make_input(q)
-    isnothing(srcGeom) && (srcGeom = F.qInjection.gemetry)
-    return srcGeom, srcData, nothing, nothing, nothing
-end 
+make_input(F::judiPointSourceModeling{T, :forward}, q::SourceType{T}) where {T} = (make_src(q, F.qInjection)..., nothing, nothing, nothing)
+make_input(F::judiPointSourceModeling{T, :adjoint}, q::SourceType{T}) where {T} = (nothing, nothing, make_src(q, F.qInjection)..., nothing)
 
 process_input_data(F::judiPointSourceModeling, q::Vector) = process_input_data(q, F.qInjection.geometry)
 
@@ -65,11 +62,8 @@ struct judiDataSourceModeling{D, O} <: judiComposedPropagator{D, O}
         new(rInterpolation.m, qInjection.n, rInterpolation, F, qInjection)
 end
 
-function make_input(F::judiDataSourceModeling{T, O}, q::SourceType{T}) where {T, O}
-    srcData, srcGeom = make_input(q)
-    isnothing(srcGeom) && (srcGeom = F.qInjection.gemetry)
-    return srcGeom, srcData, F.rInterpolation.geometry, nothing, nothing
-end 
+make_input(F::judiDataSourceModeling{T, :forward}, q::SourceType{T}) where {T} = (make_src(q, F.qInjection)..., F.rInterpolation.data[1], nothing, nothing)
+make_input(F::judiDataSourceModeling{T, :adjoint}, q::SourceType{T}) where {T} = (F.rInterpolation.data[1], nothing, make_src(q, F.qInjection)..., nothing)
 
 process_input_data(F::judiDataSourceModeling, q::Vector) = process_input_data(q, F.qInjection.data)
 
@@ -84,10 +78,8 @@ struct judiDataModeling{D, O} <: judiComposedPropagator{D, O}
     judiDataModeling{D, O}(rInterpolation::Projection{D}, F::judiModeling{D, O}) where {D, O} = new(rInterpolation.m, F.n, rInterpolation, F)
 end
 
-function make_input(F::judiDataModeling{T, O}, q::SourceType{T}) where {T, O}
-    srcData, srcGeom = make_input(q)
-    return srcGeom, srcData, F.rInterpolation.geometry, nothing, nothing
-end 
+make_input(F::judiDataModeling{T, O}, q::SourceType{T}) where {T, O} = (nothing, make_input(q), F.rInterpolation.geometry, nothing, nothing) 
+make_input(F::judiDataModeling{T, O}, q::LazyAdd{T}) where {T, O} = (make_src(q)..., F.rInterpolation.geometry, nothing, nothing) 
 
 process_input_data(F::judiDataModeling, q::Vector) = process_input_data(q, F.model)
 
@@ -102,14 +94,13 @@ struct judiJacobian{D, O, FT} <: judiComposedPropagator{D, O}
 end
 
 function make_input(J::judiJacobian{D, :born, FT}, q::dmType) where {D, FT}
-    srcData, srcGeom = make_input(J.q)
-    return srcGeom, srcData, J.F.rInterpolation.geometry, nothing, q
+    srcGeom, srcData = make_src(J.q, J.F.qInjection)
+    return srcGeom, srcData, J.F.rInterpolation.data[1], nothing, q
 end 
 
 function make_input(J::judiJacobian{D, :adjoint_born, FT}, q::SourceType{D}) where {D, FT}
-    srcData, srcGeom = make_input(J.q)
-    recData, recGeom = make_input(q)
-    isnothing(recGeom) && (recGeom = J.F.rInterpolation.gemetry)
+    srcGeom, srcData = make_src(J.q, J.F.qInjection)
+    recGeom, recData = make_src(q, J.F.rInterpolation)
     return srcGeom, srcData, recGeom, recData, nothing
 end 
 

@@ -75,12 +75,12 @@ function pad_array(m::Array{DT}, nb::Array{Tuple{Int64,Int64},1}; mode::Symbol=:
     n = size(m)
     new_size = Tuple([n[i] + sum(nb[i]) for i=1:length(nb)])
     Ei = []
-    for i=length(nb):-1:1
+    for i=1:length(nb)
         left, right = nb[i]
         push!(Ei, joExtend(n[i], mode;pad_upper=right, pad_lower=left, RDT=DT, DDT=DT))
     end
-    padded = joKron(Ei...) * vec(m)
-    return reshape(padded, new_size)
+    padded = joKron(Ei...) * adjoint(m)[:]
+    return PyReverseDims(reshape(padded, reverse(new_size)))
 end
 
 pad_array(::Nothing, ::Array{Tuple{Int64,Int64},1}; mode::Symbol=:border) where {DT} = nothing
@@ -281,6 +281,7 @@ remove_out_of_bounds_receivers(G::Geometry, ::Nothing, M::Model) = (remove_out_o
 remove_out_of_bounds_receivers(::Nothing, ::Nothing, M::Model) = (nothing, nothing)
 remove_out_of_bounds_receivers(::Nothing, r::Array, M::Model) = (nothing, r)
 remove_out_of_bounds_receivers(G::Geometry, r, M::Model) = remove_out_of_bounds_receivers(G, convert(Matrix{Float32}, r), M)
+remove_out_of_bounds_receivers(w::Array, ::Nothing, M::Model) = (w, nothing)
 
 """
     convertToCell(x)
@@ -670,7 +671,16 @@ process_input_data(input::Array{Float32}, model::Model) = process_input_data(inp
 process_input_data(input::judiVector, ::Geometry) = input
 process_input_data(input::judiVector) = input.data
 process_input_data(input::judiWeights, ::Model) = input.weights
-process_input_data(input::Array, ::Array) = input
+
+function process_input_data(input::Array{T}, v::Vector{<:Array}) where T
+    nsrc = length(v)
+    dataCell = Vector{Vector{T}}(undef, nsrc)
+    input = reshape(input, :, nsrc)
+    for j=1:nsrc
+        dataCell[j] = input[:, j]
+    end
+    return dataCell
+end
 
 """
     reshape(x::Array{Float32, 1}, geometry::Geometry)

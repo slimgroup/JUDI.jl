@@ -139,7 +139,7 @@ function copy!(jv::judiVector, jv2::judiVector)
 end
 
 copyto!(jv::judiVector, jv2::judiVector) = copy!(jv, jv2)
-make_input(jv::judiVector) = (jv.data[1], jv.geometry[1])
+make_input(jv::judiVector) = jv.data[1]
 
 check_compat(ms::Vararg{judiVector, N}) where N = all(y -> compareGeometry(y.geometry, first(ms).geometry), ms)
 ##########################################################

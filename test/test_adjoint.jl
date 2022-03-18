@@ -38,7 +38,7 @@ function run_adjoint(F, q, y, dm; test_F=true, test_J=true)
     if test_F
         # Forward-adjoint
         d_hat = F*q
-        q_hat = adjoint(F)*y
+        q_hat = F'*y
 
         # Result F
         a = dot(y, d_hat)
@@ -96,7 +96,7 @@ end
         F = judiModeling(model0, srcGeometry, recGeometry; options=opt)
         Pr = judiProjection(recGeometry)
         Fw = judiModeling(model0; options=opt)
-        Pw = judiLRWF(circshift(q.data[1], 51))
+        Pw = judiLRWF(srcGeometry.dt[1], circshift(q.data[1], 51))
         Fw = Pr*Fw*adjoint(Pw)
 
         # Extended source weights

@@ -305,6 +305,7 @@ function Geometry(geometry::GeometryOOC)
 end
 
 Geometry(geometry::GeometryIC) = geometry
+Geometry(v::Array{T}) where T = v
 Geometry(::Nothing) = nothing
 
 ###########################################################################################################################################

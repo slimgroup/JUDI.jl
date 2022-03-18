@@ -8,7 +8,7 @@ mutable struct judiMultiSourceException <: Exception
 end
 
 make_input(ms::judiMultiSourceVector) = throw(judiMultiSourceException("$(typeof(ms)) must implement `make_input(ms, dt)` for propagation"))
-make_input(a::Array) = nothing, a
+make_input(a::Array) = a
 
 isequal(ms1::judiMultiSourceVector, ms2::judiMultiSourceVector) = ms1 == ms2
 ==(ms1::judiMultiSourceVector, ms2::judiMultiSourceVector) = all(getfield(ms1, s) == getfield(ms2, s) for s in fieldnames(typeof(ms1)))
@@ -98,7 +98,7 @@ end
 # inner product
 function dot(a::judiMultiSourceVector{T}, b::judiMultiSourceVector{T}) where T
 	# Dot product for data containers
-	size(a) == size(b) || throw(judiMultiSourceException("dimension mismatch"))
+	size(a) == size(b) || throw(judiMultiSourceException("dimension mismatch: $(size(a)) != $(size(b))"))
 	dotprod = 0f0
     dt = time_sampling(a)
 	for j=1:a.nsrc

@@ -70,9 +70,7 @@ function copy!(jv::judiWavefield, jv2::judiWavefield)
 end
 
 copyto!(jv::judiWavefield, jv2::judiWavefield) = copy!(jv, jv2)
-
-make_input(w::judiWavefield, dtComp) = (w.data[1], nothing)
-
+make_input(w::judiWavefield) = w.data[1]
 check_compat(ms::Vararg{judiWavefield, N}) where N = all(y -> y.dt == first(ms).dt, ms)
 
 getindex(a::judiWavefield{T}, srcnum::RangeOrVec) where T = judiWeights{T}(length(srcnum), a.dt[srcnum], a.data[srcnum])

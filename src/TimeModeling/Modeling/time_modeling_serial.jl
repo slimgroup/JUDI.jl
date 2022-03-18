@@ -1,7 +1,7 @@
 
 export time_modeling
 
-GeomOrNot = Union{Geometry, Nothing}
+GeomOrNot = Union{Geometry, Array, Nothing}
 ArrayOrNot = Union{Array, Nothing}
 PhysOrNot = Union{dmType, Nothing}
 

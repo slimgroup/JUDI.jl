@@ -1,7 +1,6 @@
 
 export fwi_objective, lsrtm_objective, fwi_objective!, lsrtm_objective!
 
-
 """
     fwi_objective(model, source, dobs; options=Options())
 
@@ -37,7 +36,30 @@ function lsrtm_objective(model::Model, q::judiVector, dobs::judiVector, dm;
     f, G
 end
 
+"""
+    fwi_objective!(G, model, source, dobs; options=Options())
+
+    Evaluate the full-waveform-inversion (reduced state) objective function. Returns a the function value and assigns in-place \\
+the gradient to G. `model` is a `Model` structure with the current velocity model and `source` and `dobs` are the wavelets and \\
+observed data of type `judiVector`.
+
+Example
+=======
+    function_value = fwi_objective!(gradient, model, source, dobs)
+"""
 fwi_objective!(G, model, q, dobs; options=options) = multi_src_fg!(G, model, q, dobs, nothing; options=options, nlind=false, lin=false)
+
+"""
+    lsrtm_objective!(G, model, source, dobs, dm; options=Options(), nlind=false)
+
+    Evaluate the least-square migration (data-space) objective function. Returns a the function value and assigns in-place \\
+the gradient to G. `model` is a `Model` structure with the current velocity model and `source` and `dobs` are the wavelets and \\
+observed data of type `judiVector`.
+
+Example
+=======
+    function_value = lsrtm_objective!(gradient, model, source, dobs, dm; options=Options(), nlind=false)
+"""
 lsrtm_objective!(G, model, q, dobs, dm; options=options, nlind=nlind) = multi_src_fg!(G, model, q, dobs, dm; options=options, nlind=nlind, lin=true)
 
 function multi_src_fg(model_full::Model, source::judiVector, dObs::judiVector, dm, options::Options, nlind::Bool, lin::Bool)
@@ -54,7 +76,7 @@ function multi_src_fg(model_full::Model, source::judiVector, dObs::judiVector, d
     # Limit model to area with sources/receivers
     if options.limit_m == true
         model = deepcopy(model_full)
-        model, dm = limit_model_to_receiver_area(source.geometry,dObs.geometry,model,options.buffer_size; dm=dm)
+        model, dm = limit_model_to_receiver_area(source.geometry, dObs.geometry, model, options.buffer_size; dm=dm)
     else
         model = model_full
     end
@@ -95,3 +117,7 @@ function multi_src_fg(model_full::Model, source::judiVector, dObs::judiVector, d
     end
     return Ref{Float32}(argout1), PhysicalParameter(argout2, model_full.d, model_full.o)
 end
+
+
+multi_src_fg(t::Tuple{Model, judiVector, judiVector, Any, Options, Bool, Bool}) =
+    multi_src_fg(t[0], t[1], t[2], t[3], t[4], t[5], t[6], t[7])
