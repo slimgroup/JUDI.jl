@@ -90,18 +90,16 @@ Parameters
 * `true_adjoint`: Unpadding mode, defaults to False. Will sum the padding to the edge point with `true_adjoint=true`
  and should only be used this way for adjoint testing purpose.
 """
-function remove_padding(gradient::Array{DT}, nb::Array{Tuple{Int64,Int64},1}; true_adjoint::Bool=false) where {DT}
-    # Pad is applied x then y then z, so sum must be done in reverse order x then y then x
-    true_adjoint ? mode = :border : mode = :zeros
-    n = size(gradient)
-    new_size = Tuple([n[i] - sum(nb[i]) for i=1:length(nb)])
-    Ei = []
-    for i=length(nb):-1:1
-        left, right = nb[i]
-        push!(Ei, joExtend(new_size[i], mode;pad_upper=right, pad_lower=left, RDT=DT, DDT=DT))
+function remove_padding(gradient::AbstractArray{DT}, nb::Array{Tuple{Int64,Int64},1}; true_adjoint::Bool=false) where {DT}
+    N = size(gradient)
+    if true_adjoint
+        for (dim, (nbl, nbr)) in enumerate(nb)
+            selectdim(gradient, dim, nbl+1) .+= dropdims(sum(selectdim(gradient, dim, 1:nbl), dims=dim), dims=dim)
+            selectdim(gradient, dim, N[dim]-nbr) .+= dropdims(sum(selectdim(gradient, dim, N[dim]-nbr+1:N[dim]), dims=dim), dims=dim)
+        end
     end
-    gradient = reshape(joKron(Ei...)' * vec(gradient), new_size)
-    return collect(Float32, gradient)
+    out = gradient[[nbl+1:nn-nbr for ((nbl, nbr), nn) in zip(nb, N)]...]
+    return out
 end
 
 """
@@ -250,7 +248,7 @@ Parameters
 * `recData`: Shot record for that geometry in which traces will be removed.
 * `model`: Model defining the computational domain.
 """
-function remove_out_of_bounds_receivers(recGeometry::Geometry, recData::Array, model::Model)
+function remove_out_of_bounds_receivers(recGeometry::Geometry, recData::Matrix{T}, model::Model) where T
 
     # Only keep receivers within the model
     xmin, xmax = model.o[1], model.o[1] + (model.n[1] - 1)*model.d[1]
@@ -275,6 +273,7 @@ end
 remove_out_of_bounds_receivers(G::Geometry, ::Nothing, M::Model) = (remove_out_of_bounds_receivers(G, M), nothing)
 remove_out_of_bounds_receivers(::Nothing, ::Nothing, M::Model) = (nothing, nothing)
 remove_out_of_bounds_receivers(::Nothing, r::Array, M::Model) = (nothing, r)
+remove_out_of_bounds_receivers(G::Geometry, r, M::Model) = remove_out_of_bounds_receivers(G, convert(Matrix{Float32}, r), M)
 
 """
     convertToCell(x)
@@ -504,15 +503,15 @@ Parameters
 * `geometry_in`: Geometry on which `data` is defined.
 * `dt_new`: New time sampling rate to interpolate onto.
 """
-function time_resample(data::Array, geometry_in::Geometry, dt_new)
-
+function time_resample(data::AbstractArray{Float32, N}, geometry_in::Geometry, dt_new) where N
+    @assert N<=2
     if dt_new==geometry_in.dt[1]
         return data, geometry_in
     else
         geometry = deepcopy(geometry_in)
-        timeAxis = 0:geometry.dt[1]:geometry.t[1]
-        timeInterp = 0:dt_new:geometry.t[1]
-        dataInterp = Float32.(SincInterpolation(data, timeAxis, timeInterp))
+        timeAxis = 0f0:geometry.dt[1]:geometry.t[1]
+        timeInterp = 0f0:dt_new:geometry.t[1]
+        dataInterp = SincInterpolation(data, timeAxis, timeInterp)
 
         geometry.dt[1] = dt_new
         geometry.nt[1] = length(timeInterp)
@@ -532,13 +531,14 @@ Parameters
 * `geometry_out`: Geometry on which `data` is to be interpolated.
 * `dt_in`: Time sampling rate of the `data.`
 """
-function time_resample(data::Array, dt_in, geometry_out::Geometry)
-    if dt_in==geometry_out.dt[1]
+function time_resample(data::AbstractArray{Float32, N}, dt_in, geometry_out::Geometry) where N
+    @assert N<=2
+    if dt_in == geometry_out.dt[1]
         return data
     else
-        timeAxis = 0:dt_in:geometry_out.t[1]
-        timeInterp = 0:geometry_out.dt[1]:geometry_out.t[1]
-        return  Float32.(SincInterpolation(data, timeAxis, timeInterp))
+        timeAxis = 0f0:dt_in:geometry_out.t[1]
+        timeInterp = 0f0:geometry_out.dt[1]:geometry_out.t[1]
+        return  SincInterpolation(data, timeAxis, timeInterp)
     end
 end
 
@@ -636,21 +636,13 @@ Parameters:
 * `model`: Model containing physical parameters.
 * `info`: Infor structure.
 """
-function process_input_data(input::Array{Float32}, model::Model, info::Info)
+function process_input_data(input::Array{Float32, N}, model::Model, info::Info) where N
     ndims = length(model.n)
     dataCell = Array{Array{Float32, ndims}, 1}(undef, info.nsrc)
-    if ndims == 2
-        input = reshape(input, model.n[1], model.n[2], info.nsrc)
-        for j=1:info.nsrc
-            dataCell[j] = input[:,:,j]
-        end
-    elseif ndims == 3
-        input = reshape(input, model.n[1], model.n[2], model.n[3], info.nsrc)
-        for j=1:info.nsrc
-            dataCell[j] = input[:,:,:,j]
-        end
-    else
-        throw("Number of dimensions not supported.")
+    input = reshape(input, model.n..., info.nsrc)
+    inds = [Colon() for i=1:length(model.n)]
+    for j=1:info.nsrc
+        dataCell[j] = input[inds..., j]
     end
     return dataCell
 end
@@ -748,7 +740,8 @@ vec(x::Int64) = x;
 vec(x::Int32) = x;
 vec(::Nothing) = nothing
 
-SincInterpolation(Y::Array{T, 2}, S, Up) where T<:Real = sinc.( (Up .- S') ./ (S[2] - S[1]) ) * Y
+SincInterpolation(Y::AbstractMatrix{T}, S::AbstractRange{T}, Up::AbstractRange{T}) where T<:Real =
+    sinc.( (Up .- S') ./ (S[2] - S[1]) ) * Y
 
 subsample(::Nothing, i) = nothing
 subsample(a::Array{Array{T, N}, 1}, i) where {T, N} = a[i]

@@ -47,7 +47,7 @@ time step dt:
 
 
 """
-function judiWavefield(info,dt::Real,data::Union{Array, PyCall.PyObject, String};  vDT::DataType=Float32)
+function judiWavefield(info,dt::Real,data::Union{AbstractArray, String};  vDT::DataType=Float32)
 
 	# length of vector
 	m = info.n * sum(info.nt)

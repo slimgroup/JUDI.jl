@@ -5,7 +5,6 @@ function extended_source_modeling(model_full::Model, srcData, recGeometry, recDa
 
     # Load full geometry for out-of-core geometry containers
     recGeometry = Geometry(recGeometry)
-
     model = model_full
 
     # Set up Python model structure
@@ -18,15 +17,13 @@ function extended_source_modeling(model_full::Model, srcData, recGeometry, recDa
         end
     end
 
-    # Load shot record if stored on disk
-    typeof(recData) == SegyIO.SeisCon && (recData = convert(Array{Float32,2}, recData[1].data))
-
     # Remove receivers outside the modeling domain (otherwise leads to segmentation faults)
-    recGeometry, recData = remove_out_of_bounds_receivers(recGeometry, recData, model)
+    recGeometry, recData = remove_out_of_bounds_receivers(recGeometry, convert(Matrix{Float32}, recData), model)
+    weights = isnothing(weights) ? nothing : pad_array(weights, pad_sizes(model, options; so=0); mode=:zeros)
 
-    isnothing(weights) ? nothing : weights = pad_array(weights, pad_sizes(model, options; so=0); mode=:zeros)
     # Devito interface
-    argout = devito_interface(modelPy, model, srcData, recGeometry, recData, weights, dm, options)
+    argout = devito_interface(modelPy, srcData, recGeometry, recData, weights, dm, options)
+
     # Extend gradient back to original model size
     if op=='J' && mode==-1 && options.limit_m==true
         argout = extend_gradient(model_full, model, argout)

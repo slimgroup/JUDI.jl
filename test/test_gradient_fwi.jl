@@ -60,5 +60,4 @@ dt = srcGeometry.dt[1]
 
 	@test isapprox(rate_1, 1.25f0; rtol=5f-2)
 	@test isapprox(rate_2, 1.5625f0; rtol=5f-2)
-
 end

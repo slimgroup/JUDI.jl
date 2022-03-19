@@ -23,12 +23,14 @@ args = parser.parse_args()
 is_tti = args.tti
 so = args.space_order
 
+dtype = np.float32
+
 # Model
 shape = (301, 151)
 spacing = (10., 10.)
 origin = (0., 0.)
-m = np.empty(shape, dtype=np.float32)
-rho = np.empty(shape, dtype=np.float32)
+m = np.empty(shape, dtype=dtype)
+rho = np.empty(shape, dtype=dtype)
 m[:] = 1/1.5**2  # Top velocity (background)
 rho[:] = 1.0
 m_i = np.linspace(1/1.5**2, 1/4.5**2, args.nlayer)
@@ -44,11 +46,11 @@ dm[:, -1] = 0.
 # Set up model structures
 v0 = m0**(-.5)
 if is_tti:
-    model = Model(shape=shape, origin=origin, spacing=spacing,
+    model = Model(shape=shape, origin=origin, spacing=spacing, dtype=dtype,
                   m=m0, epsilon=.045*(v0-1.5), delta=.03*(v0-1.5),
                   fs=args.fs, rho=rho0, theta=.1*(v0-1.5), dm=dm, space_order=so)
 else:
-    model = Model(shape=shape, origin=origin, spacing=spacing,
+    model = Model(shape=shape, origin=origin, spacing=spacing, dtype=dtype,
                   fs=args.fs, m=m0, rho=rho0, dm=dm, space_order=so)
 
 # Time axis
@@ -63,6 +65,8 @@ f1 = 0.008
 src = RickerSource(name='src', grid=model.grid, f0=f1, time=time_axis)
 src.coordinates.data[0, :] = np.array(model.domain_size) * 0.5
 src.coordinates.data[0, -1] = 20.
+weights = np.zeros(model.grid.shape)
+weights[141:161, 141:161] = np.ones((20, 20))
 
 # Receiver for observed data
 rec_t = Receiver(name='rec_t', grid=model.grid, npoint=301, ntime=nt)
@@ -73,11 +77,14 @@ rec_t.coordinates.data[:, 1] = 20.
 print("Forward J")
 dD_hat, u0l, _ = born(model, src.coordinates.data, rec_t.coordinates.data,
                       src.data, save=True)
-
+# dD_hat, u0l, _ = born(model, None, rec_t.coordinates.data,
+#                       src.data, save=True, ws=weights)
 # Forward
 print("Forward")
 _, u0, _ = forward(model, src.coordinates.data, rec_t.coordinates.data,
                    src.data, save=True)
+# _, u0, _ = forward(model, None, rec_t.coordinates.data,
+#                    src.data, save=True, ws=weights)
 
 # gradient
 print("Adjoint J")
@@ -86,6 +93,10 @@ dm_hat, _ = gradient(model, dD_hat, rec_t.coordinates.data, u0)
 # Adjoint test
 a = model.critical_dt * inner(dD_hat, dD_hat)
 b = inner(dm_hat, model.dm)
+
+a2 = model.critical_dt * np.dot(dD_hat.data.reshape(-1), dD_hat.data.reshape(-1))
+b2 = np.dot(dm_hat.data.reshape(-1), model.dm.data.reshape(-1))
+
 
 if is_tti:
     c = np.linalg.norm(u0[0].data.flatten() - u0l[0].data.flatten(), np.inf)
@@ -96,3 +107,8 @@ print("Difference between saving with forward and born", c)
 
 print("Adjoint test J")
 print("a = %2.5e, b = %2.5e, diff = %2.5e: rerr=%2.5e" % (a, b, a - b, (a-b)/(a+b)))
+
+
+print("Adjoint test J")
+print("a = %2.5e, b = %2.5e, diff = %2.5e: rerr=%2.5e" %
+      (a2, b2, a2 - b2, (a2-b2)/(a2+b2)))

@@ -33,211 +33,211 @@ end
 ########################################################### judiModeling ###############################################
 
 @testset "judiModeling Unit Test with $(nsrc) sources" for nsrc=[1, 2]
+    @timeit TIMEROUTPUT "judiModeling nsrc=$(nsrc)" begin
+        info = example_info(nsrc=nsrc)
+        model = example_model()
+        F_forward = judiModeling(info, model; options=Options())
+        F_adjoint = judiModelingAdjoint(info, model; options=Options())
 
-    info = example_info(nsrc=nsrc)
-    model = example_model()
-    F_forward = judiModeling(info, model; options=Options())
-    F_adjoint = judiModelingAdjoint(info, model; options=Options())
+        @test isequal(typeof(F_forward), judiModeling{Float32, Float32})
+        @test isequal(typeof(F_adjoint), judiModelingAdjoint{Float32, Float32})
 
-    @test isequal(typeof(F_forward), judiModeling{Float32, Float32})
-    @test isequal(typeof(F_adjoint), judiModelingAdjoint{Float32, Float32})
+        # conj, transpose, adjoint
+        @test test_transpose(F_forward)
+        @test test_transpose(F_adjoint)
 
-    # conj, transpose, adjoint
-    @test test_transpose(F_forward)
-    @test test_transpose(F_adjoint)
+        # get index
+        @test test_getindex(F_forward, nsrc)
+        @test test_getindex(F_adjoint, nsrc)
 
-    # get index
-    @test test_getindex(F_forward, nsrc)
-    @test test_getindex(F_adjoint, nsrc)
-
-    if VERSION>v"1.2"
-        a = randn(Float32, model.n...)
-        F2 = F_forward(;m=a)
-        @test isapprox(F2.model.m, a)
-        F2 = F_forward(Model(model.n, model.d, model.o, a))
-        @test isapprox(F2.model.m, a)
-        @test F2.model.n == model.n
+        if VERSION>v"1.2"
+            a = randn(Float32, model.n...)
+            F2 = F_forward(;m=a)
+            @test isapprox(F2.model.m, a)
+            F2 = F_forward(Model(model.n, model.d, model.o, a))
+            @test isapprox(F2.model.m, a)
+            @test F2.model.n == model.n
+        end
     end
-
 end
 
 ############################################################# judiPDE ##################################################
 
 @testset "judiPDE Unit Test with $(nsrc) sources" for nsrc=[1, 2]
+    @timeit TIMEROUTPUT "judiPDE nsrc=$(nsrc)" begin
+        info = example_info(nsrc=nsrc)
+        model = example_model()
+        rec_geometry = example_rec_geometry(nsrc=nsrc)
 
-    info = example_info(nsrc=nsrc)
-    model = example_model()
-    rec_geometry = example_rec_geometry(nsrc=nsrc)
+        PDE_forward = judiPDE("PDE", info, model, rec_geometry; options=Options())
+        PDE_adjoint = judiPDEadjoint("PDEadjoint", info, model, rec_geometry; options=Options())
 
-    PDE_forward = judiPDE("PDE", info, model, rec_geometry; options=Options())
-    PDE_adjoint = judiPDEadjoint("PDEadjoint", info, model, rec_geometry; options=Options())
+        @test isequal(typeof(PDE_forward), judiPDE{Float32, Float32})
+        @test isequal(typeof(PDE_adjoint), judiPDEadjoint{Float32, Float32})
 
-    @test isequal(typeof(PDE_forward), judiPDE{Float32, Float32})
-    @test isequal(typeof(PDE_adjoint), judiPDEadjoint{Float32, Float32})
+        # conj, transpose, adjoint
+        @test test_transpose(PDE_forward)
+        @test test_transpose(PDE_adjoint)
 
-    # conj, transpose, adjoint
-    @test test_transpose(PDE_forward)
-    @test test_transpose(PDE_adjoint)
+        # get index
+        @test test_getindex(PDE_forward, nsrc)
+        @test test_getindex(PDE_adjoint, nsrc)
 
-    # get index
-    @test test_getindex(PDE_forward, nsrc)
-    @test test_getindex(PDE_adjoint, nsrc)
+        # Multiplication w/ judiProjection
+        src_geometry = example_src_geometry()
+        Ps = judiProjection(info, src_geometry)
 
-    # Multiplication w/ judiProjection
-    src_geometry = example_src_geometry()
-    Ps = judiProjection(info, src_geometry)
+        PDE = PDE_forward*transpose(Ps)
+        @test isequal(typeof(PDE), judiPDEfull{Float32, Float32})
+        @test isequal(PDE.recGeometry, rec_geometry)
+        @test isequal(PDE.srcGeometry, src_geometry)
 
-    PDE = PDE_forward*transpose(Ps)
-    @test isequal(typeof(PDE), judiPDEfull{Float32, Float32})
-    @test isequal(PDE.recGeometry, rec_geometry)
-    @test isequal(PDE.srcGeometry, src_geometry)
-
-    PDEad = PDE_adjoint*transpose(Ps)
-    @test isequal(typeof(PDEad), judiPDEfull{Float32, Float32})
-    @test isequal(PDEad.srcGeometry, rec_geometry)
-    @test isequal(PDEad.recGeometry, src_geometry)
-
+        PDEad = PDE_adjoint*transpose(Ps)
+        @test isequal(typeof(PDEad), judiPDEfull{Float32, Float32})
+        @test isequal(PDEad.srcGeometry, rec_geometry)
+        @test isequal(PDEad.recGeometry, src_geometry)
+    end
 end
 
 ######################################################### judiPDEfull ##################################################
 
 @testset "judiPDEfull Unit Test with $(nsrc) sources" for nsrc=[1, 2]
+    @timeit TIMEROUTPUT "judiPDEfull nsrc=$(nsrc)" begin
+        info = example_info(nsrc=nsrc)
+        model = example_model()
+        rec_geometry = example_rec_geometry(nsrc=nsrc)
+        src_geometry = example_src_geometry(nsrc=nsrc)
+        PDE = judiModeling(info, model, src_geometry, rec_geometry; options=Options())
 
-    info = example_info(nsrc=nsrc)
-    model = example_model()
-    rec_geometry = example_rec_geometry(nsrc=nsrc)
-    src_geometry = example_src_geometry(nsrc=nsrc)
-    PDE = judiModeling(info, model, src_geometry, rec_geometry; options=Options())
+        @test isequal(typeof(PDE), judiPDEfull{Float32, Float32})
+        @test isequal(PDE.recGeometry, rec_geometry)
+        @test isequal(PDE.srcGeometry, src_geometry)
 
-    @test isequal(typeof(PDE), judiPDEfull{Float32, Float32})
-    @test isequal(PDE.recGeometry, rec_geometry)
-    @test isequal(PDE.srcGeometry, src_geometry)
-
-    @test test_transpose(PDE)
-    @test test_getindex(PDE, nsrc)
-
+        @test test_transpose(PDE)
+        @test test_getindex(PDE, nsrc)
+    end
 end
 
 ######################################################## judiJacobian ##################################################
 
 @testset "judiJacobian Unit Test with $(nsrc) sources" for nsrc=[1, 2]
+    @timeit TIMEROUTPUT "judiJacobian nsrc=$(nsrc)" begin
+        info = example_info(nsrc=nsrc)
+        model = example_model()
+        rec_geometry = example_rec_geometry(nsrc=nsrc)
+        src_geometry = example_src_geometry(nsrc=nsrc)
+        wavelet = randn(Float32, src_geometry.nt[1])
+        PDE = judiModeling(info, model, src_geometry, rec_geometry; options=Options())
+        q = judiVector(src_geometry, wavelet)
 
-    info = example_info(nsrc=nsrc)
-    model = example_model()
-    rec_geometry = example_rec_geometry(nsrc=nsrc)
-    src_geometry = example_src_geometry(nsrc=nsrc)
-    wavelet = randn(Float32, src_geometry.nt[1])
-    PDE = judiModeling(info, model, src_geometry, rec_geometry; options=Options())
-    q = judiVector(src_geometry, wavelet)
+        J = judiJacobian(PDE, q)
 
-    J = judiJacobian(PDE, q)
+        @test isequal(typeof(J), judiJacobian{Float32, Float32})
+        @test isequal(J.recGeometry, rec_geometry)
+        @test isequal(J.source.geometry, src_geometry)
+        @test all(isequal(J.source.data[i], wavelet) for i=1:nsrc)
+        @test isequal(size(J)[2], prod(model.n))
+        @test test_transpose(J)
 
-    @test isequal(typeof(J), judiJacobian{Float32, Float32})
-    @test isequal(J.recGeometry, rec_geometry)
-    @test isequal(J.source.geometry, src_geometry)
-    @test all(isequal(J.source.data[i], wavelet) for i=1:nsrc)
-    @test isequal(size(J)[2], prod(model.n))
-    @test test_transpose(J)
+        # get index
+        J_sub = J[1]
+        @test isequal(J_sub.info.nsrc, 1)
+        @test isequal(J_sub.model, J.model)
+        @test isequal(size(J_sub)[1], Int(size(J)[1]/nsrc))
 
-    # get index
-    J_sub = J[1]
-    @test isequal(J_sub.info.nsrc, 1)
-    @test isequal(J_sub.model, J.model)
-    @test isequal(size(J_sub)[1], Int(size(J)[1]/nsrc))
-
-    inds = nsrc > 1 ? (1:nsrc) : 1
-    J_sub = J[inds]
-    @test isequal(J_sub.info.nsrc, nsrc)
-    @test isequal(J_sub.model, J.model)
-    @test isequal(size(J_sub), size(J))
-
+        inds = nsrc > 1 ? (1:nsrc) : 1
+        J_sub = J[inds]
+        @test isequal(J_sub.info.nsrc, nsrc)
+        @test isequal(J_sub.model, J.model)
+        @test isequal(size(J_sub), size(J))
+    end
 end
 
 
 ######################################################## judiJacobian ##################################################
 
 @testset "judiJacobianExtended Unit Test with $(nsrc) sources" for nsrc=[1, 2]
+    @timeit TIMEROUTPUT "judiJacobianExtended nsrc=$(nsrc)" begin
+        info = example_info(nsrc=nsrc)
+        model = example_model()
+        rec_geometry = example_rec_geometry(nsrc=nsrc)
+        wavelet = randn(Float32, rec_geometry.nt[1])
+        # Setup operators
+        Pr = judiProjection(info, rec_geometry)
+        F = judiModeling(info, model)
+        Pw = judiLRWF(info, wavelet)
+        w = judiWeights(randn(Float32, model.n); nsrc=nsrc)
+        J = judiJacobian(Pr*F*Pw', w)
 
-    info = example_info(nsrc=nsrc)
-    model = example_model()
-    rec_geometry = example_rec_geometry(nsrc=nsrc)
-    wavelet = randn(Float32, rec_geometry.nt[1])
-    # Setup operators
-    Pr = judiProjection(info, rec_geometry)
-    F = judiModeling(info, model)
-    Pw = judiLRWF(info, wavelet)
-    w = judiWeights(randn(Float32, model.n); nsrc=nsrc)
-    J = judiJacobian(Pr*F*Pw', w)
+        @test isequal(typeof(J), judiJacobianExQ{Float32, Float32})
+        @test isequal(J.recGeometry, rec_geometry)
+        for i=1:nsrc
+            @test isapprox(J.wavelet[i], wavelet)
+            @test isapprox(J.weights[i], w.weights[i])
+        end
+        @test isequal(size(J)[2], prod(model.n))
+        @test test_transpose(J)
 
-    @test isequal(typeof(J), judiJacobianExQ{Float32, Float32})
-    @test isequal(J.recGeometry, rec_geometry)
-    for i=1:nsrc
-        @test isapprox(J.wavelet[i], wavelet)
-        @test isapprox(J.weights[i], w.weights[i])
+        # get index
+        J_sub = J[1]
+        @test isequal(J_sub.info.nsrc, 1)
+        @test isequal(J_sub.model, J.model)
+        @test isapprox(J_sub.weights, J.weights[1:1])
+        @test isequal(size(J_sub)[1], Int(size(J)[1]/nsrc))
+
+        inds = nsrc > 1 ? (1:nsrc) : 1
+        J_sub = J[inds]
+        @test isequal(J_sub.info.nsrc, nsrc)
+        @test isequal(J_sub.model, J.model)
+        @test isapprox(J_sub.weights, J.weights[1:nsrc])
+        @test isequal(size(J_sub), size(J))
+
+        # Test Pw alone
+        P1 = subsample(Pw, 1)
+        @test isapprox(P1.wavelet, Pw[1].wavelet)
+        @test isapprox(conj(Pw).wavelet, Pw.wavelet)
+        @test size(conj(Pw)) == size(Pw)
+        @test size(transpose(Pw)) == size(Pw)[end:-1:1]
+        @test isapprox(transpose(Pw).wavelet, Pw.wavelet)
+
+        P1 = adjoint(Pw) * w
+        @test isequal(typeof(P1), judiExtendedSource{Float32})
     end
-    @test isequal(size(J)[2], prod(model.n))
-    @test test_transpose(J)
-
-    # get index
-    J_sub = J[1]
-    @test isequal(J_sub.info.nsrc, 1)
-    @test isequal(J_sub.model, J.model)
-    @test isapprox(J_sub.weights, J.weights[1:1])
-    @test isequal(size(J_sub)[1], Int(size(J)[1]/nsrc))
-
-    inds = nsrc > 1 ? (1:nsrc) : 1
-    J_sub = J[inds]
-    @test isequal(J_sub.info.nsrc, nsrc)
-    @test isequal(J_sub.model, J.model)
-    @test isapprox(J_sub.weights, J.weights[1:nsrc])
-    @test isequal(size(J_sub), size(J))
-
-    # Test Pw alone
-    P1 = subsample(Pw, 1)
-    @test isapprox(P1.wavelet, Pw[1].wavelet)
-    @test isapprox(conj(Pw).wavelet, Pw.wavelet)
-    @test size(conj(Pw)) == size(Pw)
-    @test size(transpose(Pw)) == size(Pw)[end:-1:1]
-    @test isapprox(transpose(Pw).wavelet, Pw.wavelet)
-
-    P1 = adjoint(Pw) * w
-    @test isequal(typeof(P1), judiExtendedSource{Float32})
-
 end
 
 
 ####################################################### judiProjection #################################################
 
 @testset "judiProjection Unit Test with $(nsrc) sources" for nsrc=[1, 2]
+    @timeit TIMEROUTPUT "judiProjection nsrc=$(nsrc)" begin
+        info = example_info(nsrc=nsrc)
+        rec_geometry = example_rec_geometry(nsrc=nsrc)
+        src_geometry = example_src_geometry(nsrc=nsrc)
+        wavelet = randn(Float32, src_geometry.nt[1])
+        q = judiVector(src_geometry, wavelet)
 
-    info = example_info(nsrc=nsrc)
-    rec_geometry = example_rec_geometry(nsrc=nsrc)
-    src_geometry = example_src_geometry(nsrc=nsrc)
-    wavelet = randn(Float32, src_geometry.nt[1])
-    q = judiVector(src_geometry, wavelet)
+        Pr = judiProjection(info, rec_geometry)
+        Ps = judiProjection(info, src_geometry)
 
-    Pr = judiProjection(info, rec_geometry)
-    Ps = judiProjection(info, src_geometry)
+        @test isequal(typeof(Pr), judiProjection{Float32, Float32})
+        @test isequal(typeof(Ps), judiProjection{Float32, Float32})
+        @test isequal(Pr.geometry, rec_geometry)
+        @test isequal(Ps.geometry, src_geometry)
 
-    @test isequal(typeof(Pr), judiProjection{Float32, Float32})
-    @test isequal(typeof(Ps), judiProjection{Float32, Float32})
-    @test isequal(Pr.geometry, rec_geometry)
-    @test isequal(Ps.geometry, src_geometry)
+        @test test_transpose(Pr)
+        @test test_transpose(Ps)
 
-    @test test_transpose(Pr)
-    @test test_transpose(Ps)
+        Pr_sub = Pr[1]
+        @test isequal(Pr_sub.info.nsrc, 1)
+        @test isequal(size(Pr_sub), convert(Tuple{Int64, Int64}, size(Pr) ./ nsrc))
 
-    Pr_sub = Pr[1]
-    @test isequal(Pr_sub.info.nsrc, 1)
-    @test isequal(size(Pr_sub), convert(Tuple{Int64, Int64}, size(Pr) ./ nsrc))
+        inds = nsrc > 1 ? (1:nsrc) : 1
+        Pr_sub = Pr[inds]
+        @test isequal(Pr_sub.info.nsrc, nsrc)
+        @test isequal(size(Pr_sub), size(Pr))
 
-    inds = nsrc > 1 ? (1:nsrc) : 1
-    Pr_sub = Pr[inds]
-    @test isequal(Pr_sub.info.nsrc, nsrc)
-    @test isequal(size(Pr_sub), size(Pr))
-
-    RHS = transpose(Ps)*q
-    @test isequal(typeof(RHS), judiRHS{Float32})
-    @test isequal(RHS.geometry, q.geometry)
-
+        RHS = transpose(Ps)*q
+        @test isequal(typeof(RHS), judiRHS{Float32})
+        @test isequal(RHS.geometry, q.geometry)
+    end
 end

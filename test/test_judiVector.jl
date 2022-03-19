@@ -387,7 +387,7 @@ ftol = 1e-6
 
 
     # Test transducer
-    q = judiVector(Geometry(0f0, 0f0, 0f0; dt=2, t=1000), randn(251))
+    q = judiVector(Geometry(0f0, 0f0, 0f0; dt=2, t=1000), randn(Float32, 251))
     tr = transducer(q, (10, 10), 30, pi/2)
     @test length(tr.geometry.xloc[1]) == 22
     @test tr.geometry.xloc[1][1:11] == range(-30., 30., length=11)
@@ -395,7 +395,7 @@ ftol = 1e-6
     @test all(tr.geometry.zloc[1][12:end] .== -10f0)
     @test all(tr.geometry.zloc[1][1:11] .== 0f0)
 
-    q = judiVector(Geometry(0f0, 0f0, 0f0; dt=2, t=1000), randn(251))
+    q = judiVector(Geometry(0f0, 0f0, 0f0; dt=2, t=1000), randn(Float32, 251))
     tr = transducer(q, (10, 10), 30, pi)
     @test length(tr.geometry.xloc[1]) == 22
     @test isapprox(tr.geometry.zloc[1][1:11], range(30., -30., length=11); atol=1f-14, rtol=1f-14)
