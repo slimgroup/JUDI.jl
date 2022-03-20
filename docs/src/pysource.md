@@ -5,176 +5,32 @@
 ## FD_utils module
 
 
-### FD_utils.angles_to_trig(model)
-Tile and asymut angles trigonometric functions
-
-
-### FD_utils.gx(field, model)
-Rotated first derivative in x
-:param u: TTI field
-:type u: TimeFunction or Expr
-:param model: Model structure
-:type model: Model
-
-
-* **Returns**
-
-    du/dx in rotated coordinates
-
-
-
-* **Return type**
-
-    Expr
-
-
-
-### FD_utils.gx_T(field, model)
-Rotated first derivative in x
+### FD_utils.R_mat(model)
+Rotation matrix according to tilt and asymut.
 
 
 * **Parameters**
 
-    
-    * **u** (*TimeFunction** or **Expr*) – TTI field
+    **model** (*Model*) – Model structure
 
 
-    * **model** (*Model*) – Model structure
 
+### FD_utils.divs(func, so_fact=1, side=- 1)
+GrDivergenceadient shifted by half a grid point, only to be used in combination
+with grads.
 
 
-* **Returns**
-
-    du/dx.T in rotated coordinates
-
-
-
-* **Return type**
-
-    Expr
-
-
-
-### FD_utils.gy(field, model)
-Rotated first derivative in y
-
-
-* **Parameters**
-
-    
-    * **u** (*TimeFunction** or **Expr*) – TTI field
-
-
-    * **model** (*Model*) – Model structure
-
-
-
-* **Returns**
-
-    du/dy in rotated coordinates
-
-
-
-* **Return type**
-
-    Expr
-
-
-
-### FD_utils.gy_T(field, model)
-Rotated first derivative in y
-
-
-* **Parameters**
-
-    
-    * **u** (*TimeFunction** or **Expr*) – TTI field
-
-
-    * **model** (*Model*) – Model structure
-
-
-
-* **Returns**
-
-    du/dy.T in rotated coordinates
-
-
-
-* **Return type**
-
-    Expr
-
-
-
-### FD_utils.gz(field, model)
-Rotated first derivative in z
-
-
-* **Parameters**
-
-    
-    * **u** (*TimeFunction** or **Expr*) – TTI field
-
-
-    * **model** (*Model*) – Model structure
-
-
-
-* **Returns**
-
-    du/dz in rotated coordinates
-
-
-
-* **Return type**
-
-    Expr
-
-
-
-### FD_utils.gz_T(field, model)
-Rotated first derivative in z
-
-
-* **Parameters**
-
-    
-    * **u** (*TimeFunction** or **Expr*) – TTI field
-
-
-    * **model** (*Model*) – Model structure
-
-
-
-* **Returns**
-
-    du/dz.T in rotated coordinates
-
-
-
-* **Return type**
-
-    Expr
-
+### FD_utils.grads(func, so_fact=1, side=1)
+Gradient shifted by half a grid point, only to be used in combination
+with divs.
 
 
 ### FD_utils.laplacian(v, irho)
 Laplacian with density div( 1/rho grad) (u)
 
 
-### FD_utils.ssa_1(u, v, model)
-First row of
-gx_t(A \* gx(P)) + gy_t( A1 \* gy(P)) + gz_T( A2 \* gz(P))
-
-
-### FD_utils.ssa_2(u, v, model)
-Second row of
-gx_t(A \* gx(P)) + gy_t( A1 \* gy(P)) + gz_T( A2 \* gz(P))
-
-
-### FD_utils.ssa_tti(u, v, model)
-TTI finite difference kernel.
+### FD_utils.sa_tti(u, v, model)
+Tensor factorized SSA TTI wave equation spatial derivatives.
 
 
 * **Parameters**
@@ -189,10 +45,21 @@ TTI finite difference kernel.
     * **model** (*Model*) – Model structure
 
 
+
+### FD_utils.thomsen_mat(model)
+Diagonal Matrices with Thomsen parameters for vectorial temporaries
+computation.
+
+
+* **Parameters**
+
+    **model** (*Model*) – Model structure
+
+
 ## checkpoint module
 
 
-### class checkpoint.CheckpointOperator(op, \*\*kwargs)
+### _class_ checkpoint.CheckpointOperator(op, \*\*kwargs)
 Devito’s concrete implementation of the ABC pyrevolve.Operator. This class wraps
 devito.Operator so it conforms to the pyRevolve API. pyRevolve will call apply
 with arguments t_start and t_end. Devito calls these arguments t_s and t_e so
@@ -219,14 +86,14 @@ pyRevolve.Operator.apply() without caring about these extra arguments while
 this method passes them on correctly to devito.Operator
 
 
-#### t_arg_names( = {'t_end': 'time_M', 't_start': 'time_m'})
+#### t_arg_names(_ = {'t_end': 'time_M', 't_start': 'time_m'_ )
 
-### class checkpoint.DevitoCheckpoint(objects)
+### _class_ checkpoint.DevitoCheckpoint(objects)
 Devito’s concrete implementation of the Checkpoint abstract base class provided by
 pyRevolve. Holds a list of symbol objects that hold data.
 
 
-#### property dtype()
+#### _property_ dtype()
 data type
 
 
@@ -246,7 +113,7 @@ NotImplementedError
 NotImplementedError
 
 
-#### property size()
+#### _property_ size()
 The memory consumption of the data contained in a checkpoint.
 
 
@@ -254,74 +121,6 @@ The memory consumption of the data contained in a checkpoint.
 Return the symbol corresponding to the data at time-step timestep
 
 ## geom_utils module
-
-
-### class geom_utils.AcquisitionGeometry(model, rec_positions, src_positions, t0, tn, \*\*kwargs)
-Encapsulate the geometry of an acquisition:
-- receiver positions and number
-- source positions and number
-In practice this would only point to a segy file with the
-necessary information
-
-
-#### property dt()
-Time step value
-
-
-#### property dtype()
-Data type of the array (shot record, …)
-
-
-#### property f0()
-Peak frequency of the source
-
-
-#### property grid()
-Grid associated with the geometry
-
-
-#### property model()
-Model associated with the geometry
-
-
-#### property nrec()
-Number ov receivers
-
-
-#### property nsrc()
-Number of (simultenaous) sources
-
-
-#### property nt()
-Number of time sample equal to (self.tn - self.t0)/self.dt
-
-
-#### property rec()
-Construct a new Receiver object from the geometry informations
-
-
-#### resample(dt)
-Resamples in time at input dt
-
-
-#### property src()
-Construct a new PointSource object from the geometry informations
-
-
-#### property src_type()
-Type of source
-
-
-#### property t0()
-Start time of the source/receiver
-
-
-#### property time_axis()
-Time Axis
-
-
-#### property tn()
-End time of the source/receiver
 
 
 ### geom_utils.src_rec(model, u, src_coords=None, rec_coords=None, wavelet=None, fw=True, nt=None)
@@ -363,7 +162,7 @@ because the data is the sources
 ## interface module
 
 
-### interface.J_adjoint(model, src_coords, wavelet, rec_coords, recin, space_order=8, checkpointing=False, free_surface=False, n_checkpoints=None, maxmem=None, freq_list=[], dft_sub=None, isic=False, ws=None)
+### interface.J_adjoint(model, src_coords, wavelet, rec_coords, recin, space_order=8, checkpointing=False, n_checkpoints=None, t_sub=1, maxmem=None, freq_list=[], dft_sub=None, isic=False, ws=None)
 Jacobian (adjoint fo born modeling operator) operator on a shot record
 as a source (i.e data residual). Supports three modes:
 \* Checkpinting
@@ -392,9 +191,6 @@ as a source (i.e data residual). Supports three modes:
     * **space_order** (*Int** (**optional**)*) – Spatial discretization order, defaults to 8
 
 
-    * **free_surface** (*Bool** (**optional**)*) – Whether or not to use a free surface
-
-
     * **checkpointing** (*Bool*) – Whether or not to use checkpointing
 
 
@@ -429,7 +225,7 @@ as a source (i.e data residual). Supports three modes:
 
 
 
-### interface.J_adjoint_checkpointing(model, src_coords, wavelet, rec_coords, recin, space_order=8, free_surface=False, is_residual=False, n_checkpoints=None, maxmem=None, return_obj=False, isic=False, ws=None)
+### interface.J_adjoint_checkpointing(model, src_coords, wavelet, rec_coords, recin, space_order=8, is_residual=False, n_checkpoints=None, born_fwd=False, maxmem=None, return_obj=False, isic=False, ws=None, t_sub=1, nlind=False)
 Jacobian (adjoint fo born modeling operator) operator on a shot record
 as a source (i.e data residual). Outputs the gradient with Checkpointing.
 
@@ -455,9 +251,6 @@ as a source (i.e data residual). Outputs the gradient with Checkpointing.
     * **space_order** (*Int** (**optional**)*) – Spatial discretization order, defaults to 8
 
 
-    * **free_surface** (*Bool** (**optional**)*) – Whether or not to use a free surface
-
-
     * **checkpointing** (*Bool*) – Whether or not to use checkpointing
 
 
@@ -476,6 +269,13 @@ as a source (i.e data residual). Outputs the gradient with Checkpointing.
     * **is_residual** (*Bool*) – Whether to treat the input as the residual or as the observed data
 
 
+    * **born_fwd** (*Bool*) – Whether to use the forward or linearized forward modeling operator
+
+
+    * **nlind** (*Bool*) – Whether to remove the non linear data from the input data. This option is
+    only available in combination with born_fwd
+
+
 
 * **Returns**
 
@@ -489,7 +289,7 @@ as a source (i.e data residual). Outputs the gradient with Checkpointing.
 
 
 
-### interface.J_adjoint_freq(model, src_coords, wavelet, rec_coords, recin, space_order=8, free_surface=False, freq_list=[], is_residual=False, return_obj=False, dft_sub=None, isic=False, ws=None)
+### interface.J_adjoint_freq(model, src_coords, wavelet, rec_coords, recin, space_order=8, freq_list=[], is_residual=False, return_obj=False, nlind=False, dft_sub=None, isic=False, ws=None, t_sub=1, born_fwd=False)
 Jacobian (adjoint fo born modeling operator) operator on a shot record
 as a source (i.e data residual). Outputs the gradient with Frequency
 compression (on-the-fly DFT).
@@ -516,9 +316,6 @@ compression (on-the-fly DFT).
     * **space_order** (*Int** (**optional**)*) – Spatial discretization order, defaults to 8
 
 
-    * **free_surface** (*Bool** (**optional**)*) – Whether or not to use a free surface
-
-
     * **freq_list** (*List*) – List of frequencies for on-the-fly DFT
 
 
@@ -534,6 +331,13 @@ compression (on-the-fly DFT).
     * **is_residual** (*Bool*) – Whether to treat the input as the residual or as the observed data
 
 
+    * **born_fwd** (*Bool*) – Whether to use the forward or linearized forward modeling operator
+
+
+    * **nlind** (*Bool*) – Whether to remove the non linear data from the input data. This option is
+    only available in combination with born_fwd
+
+
 
 * **Returns**
 
@@ -547,7 +351,7 @@ compression (on-the-fly DFT).
 
 
 
-### interface.J_adjoint_standard(model, src_coords, wavelet, rec_coords, recin, space_order=8, free_surface=False, is_residual=False, return_obj=False, isic=False, ws=None)
+### interface.J_adjoint_standard(model, src_coords, wavelet, rec_coords, recin, space_order=8, is_residual=False, return_obj=False, born_fwd=False, isic=False, ws=None, t_sub=1, nlind=False)
 Adjoint Jacobian (adjoint fo born modeling operator) operator on a shot record
 as a source (i.e data residual). Outputs the gradient with standard
 zero lag cross correlation over time.
@@ -574,9 +378,6 @@ zero lag cross correlation over time.
     * **space_order** (*Int** (**optional**)*) – Spatial discretization order, defaults to 8
 
 
-    * **free_surface** (*Bool** (**optional**)*) – Whether or not to use a free surface
-
-
     * **isic** (*Bool*) – Whether or not to use ISIC imaging condition
 
 
@@ -584,6 +385,13 @@ zero lag cross correlation over time.
 
 
     * **is_residual** (*Bool*) – Whether to treat the input as the residual or as the observed data
+
+
+    * **born_fwd** (*Bool*) – Whether to use the forward or linearized forward modeling operator
+
+
+    * **nlind** (*Bool*) – Whether to remove the non linear data from the input data. This option is
+    only available in combination with born_fwd
 
 
 
@@ -599,9 +407,9 @@ zero lag cross correlation over time.
 
 
 
-### interface.adjoint_no_rec(model, rec_coords, data, space_order=8, free_surface=False)
+### interface.adjoint_no_rec(model, rec_coords, data, space_order=8)
 Adjoint/backward modeling of a shot record (receivers as source)
-without source sampling.
+without source sampling F^T\*Pr^T\*d_obs.
 
 
 * **Parameters**
@@ -619,9 +427,6 @@ without source sampling.
     * **space_order** (*Int** (**optional**)*) – Spatial discretization order, defaults to 8
 
 
-    * **free_surface** (*Bool** (**optional**)*) – Whether or not to use a free surface
-
-
 
 * **Returns**
 
@@ -635,8 +440,8 @@ without source sampling.
 
 
 
-### interface.adjoint_rec(model, src_coords, rec_coords, data, space_order=8, free_surface=False)
-Adjoint/backward modeling of a shot record (receivers as source).
+### interface.adjoint_rec(model, src_coords, rec_coords, data, space_order=8)
+Adjoint/backward modeling of a shot record (receivers as source) Ps\*F^T\*Pr^T\*d.
 
 
 * **Parameters**
@@ -657,9 +462,6 @@ Adjoint/backward modeling of a shot record (receivers as source).
     * **space_order** (*Int** (**optional**)*) – Spatial discretization order, defaults to 8
 
 
-    * **free_surface** (*Bool** (**optional**)*) – Whether or not to use a free surface
-
-
 
 * **Returns**
 
@@ -673,9 +475,9 @@ Adjoint/backward modeling of a shot record (receivers as source).
 
 
 
-### interface.adjoint_w(model, rec_coords, data, wavelet, space_order=8, free_surface=False)
+### interface.adjoint_w(model, rec_coords, data, wavelet, space_order=8)
 Adjoint/backward modeling of a shot record (receivers as source) for an
-extended source setup
+extended source setup Pw\*F^T\*Pr^T\*d_obs.
 
 
 * **Parameters**
@@ -696,9 +498,6 @@ extended source setup
     * **space_order** (*Int** (**optional**)*) – Spatial discretization order, defaults to 8
 
 
-    * **free_surface** (*Bool** (**optional**)*) – Whether or not to use a free surface
-
-
 
 * **Returns**
 
@@ -712,8 +511,9 @@ extended source setup
 
 
 
-### interface.adjoint_wf_src(model, u, src_coords, space_order=8, free_surface=False)
-Adjoint/backward modeling of a full wavefield (full wavefield as adjoint source).
+### interface.adjoint_wf_src(model, u, src_coords, space_order=8)
+Adjoint/backward modeling of a full wavefield (full wavefield as adjoint source)
+Ps\*F^T\*u.
 
 
 * **Parameters**
@@ -731,9 +531,6 @@ Adjoint/backward modeling of a full wavefield (full wavefield as adjoint source)
     * **space_order** (*Int** (**optional**)*) – Spatial discretization order, defaults to 8
 
 
-    * **free_surface** (*Bool** (**optional**)*) – Whether or not to use a free surface
-
-
 
 * **Returns**
 
@@ -747,8 +544,9 @@ Adjoint/backward modeling of a full wavefield (full wavefield as adjoint source)
 
 
 
-### interface.adjoint_wf_src_norec(model, u, space_order=8, free_surface=False)
-Adjoint/backward modeling of a full wavefield (full wavefield as adjoint source).
+### interface.adjoint_wf_src_norec(model, u, space_order=8)
+Adjoint/backward modeling of a full wavefield (full wavefield as adjoint source)
+F^T\*u.
 
 
 * **Parameters**
@@ -761,9 +559,6 @@ Adjoint/backward modeling of a full wavefield (full wavefield as adjoint source)
 
 
     * **space_order** (*Int** (**optional**)*) – Spatial discretization order, defaults to 8
-
-
-    * **free_surface** (*Bool** (**optional**)*) – Whether or not to use a free surface
 
 
 
@@ -779,7 +574,7 @@ Adjoint/backward modeling of a full wavefield (full wavefield as adjoint source)
 
 
 
-### interface.born_rec(model, src_coords, wavelet, rec_coords, space_order=8, free_surface=False, isic=False)
+### interface.born_rec(model, src_coords, wavelet, rec_coords, space_order=8, isic=False)
 Linearized (Born) modeling of a point source for a model perturbation
 (square slowness) dm.
 
@@ -802,9 +597,6 @@ Linearized (Born) modeling of a point source for a model perturbation
     * **space_order** (*Int** (**optional**)*) – Spatial discretization order, defaults to 8
 
 
-    * **free_surface** (*Bool** (**optional**)*) – Whether or not to use a free surface
-
-
     * **isic** (*Bool*) – Whether or not to use ISIC imaging condition
 
 
@@ -821,8 +613,8 @@ Linearized (Born) modeling of a point source for a model perturbation
 
 
 
-### interface.born_rec_w(model, weight, wavelet, rec_coords, space_order=8, free_surface=False, isic=False)
-Linearized (Born) modeling of a point source for a model
+### interface.born_rec_w(model, weight, wavelet, rec_coords, space_order=8, isic=False)
+Linearized (Born) modeling of an extended source for a model
 perturbation (square slowness) dm with an extended source
 
 
@@ -844,9 +636,6 @@ perturbation (square slowness) dm with an extended source
     * **space_order** (*Int** (**optional**)*) – Spatial discretization order, defaults to 8
 
 
-    * **free_surface** (*Bool** (**optional**)*) – Whether or not to use a free surface
-
-
     * **isic** (*Bool*) – Whether or not to use ISIC imaging condition
 
 
@@ -863,7 +652,7 @@ perturbation (square slowness) dm with an extended source
 
 
 
-### interface.forward_no_rec(model, src_coords, wavelet, space_order=8, free_surface=False)
+### interface.forward_no_rec(model, src_coords, wavelet, space_order=8)
 Forward modeling of a point source without receiver.
 
 
@@ -882,9 +671,6 @@ Forward modeling of a point source without receiver.
     * **space_order** (*Int** (**optional**)*) – Spatial discretization order, defaults to 8
 
 
-    * **free_surface** (*Bool** (**optional**)*) – Whether or not to use a free surface
-
-
 
 * **Returns**
 
@@ -898,8 +684,8 @@ Forward modeling of a point source without receiver.
 
 
 
-### interface.forward_rec(model, src_coords, wavelet, rec_coords, space_order=8, free_surface=False)
-Forward modeling of a point source with receivers.
+### interface.forward_rec(model, src_coords, wavelet, rec_coords, space_order=8)
+Forward modeling of a point source with receivers Pr\*F\*Ps^T\*q.
 
 
 * **Parameters**
@@ -920,9 +706,6 @@ Forward modeling of a point source with receivers.
     * **space_order** (*Int** (**optional**)*) – Spatial discretization order, defaults to 8
 
 
-    * **free_surface** (*Bool** (**optional**)*) – Whether or not to use a free surface
-
-
 
 * **Returns**
 
@@ -936,8 +719,8 @@ Forward modeling of a point source with receivers.
 
 
 
-### interface.forward_rec_w(model, weight, wavelet, rec_coords, space_order=8, free_surface=False)
-Forward modeling of an extended source with receivers.
+### interface.forward_rec_w(model, weight, wavelet, rec_coords, space_order=8)
+Forward modeling of an extended source with receivers  Pr\*F\*Pw^T\*w
 
 
 * **Parameters**
@@ -958,9 +741,6 @@ Forward modeling of an extended source with receivers.
     * **space_order** (*Int** (**optional**)*) – Spatial discretization order, defaults to 8
 
 
-    * **free_surface** (*Bool** (**optional**)*) – Whether or not to use a free surface
-
-
 
 * **Returns**
 
@@ -974,8 +754,8 @@ Forward modeling of an extended source with receivers.
 
 
 
-### interface.forward_rec_wf(model, src_coords, wavelet, rec_coords, space_order=8, free_surface=False)
-Forward modeling of a point source.
+### interface.forward_rec_wf(model, src_coords, wavelet, rec_coords, t_sub=1, space_order=8)
+Forward modeling of a point source Pr\*F\*Ps^T\*q and return wavefield.
 
 
 * **Parameters**
@@ -996,9 +776,6 @@ Forward modeling of a point source.
     * **space_order** (*Int** (**optional**)*) – Spatial discretization order, defaults to 8
 
 
-    * **free_surface** (*Bool** (**optional**)*) – Whether or not to use a free surface
-
-
 
 * **Returns**
 
@@ -1011,8 +788,8 @@ Forward modeling of a point source.
 
 
 
-### interface.forward_wf_src(model, u, rec_coords, space_order=8, free_surface=False)
-Forward modeling of a full wavefield source.
+### interface.forward_wf_src(model, u, rec_coords, space_order=8)
+Forward modeling of a full wavefield source Pr\*F\*u.
 
 
 * **Parameters**
@@ -1030,9 +807,6 @@ Forward modeling of a full wavefield source.
     * **space_order** (*Int** (**optional**)*) – Spatial discretization order, defaults to 8
 
 
-    * **free_surface** (*Bool** (**optional**)*) – Whether or not to use a free surface
-
-
 
 * **Returns**
 
@@ -1046,8 +820,8 @@ Forward modeling of a full wavefield source.
 
 
 
-### interface.forward_wf_src_norec(model, u, space_order=8, free_surface=False)
-Forward modeling of a full wavefield source without receiver.
+### interface.forward_wf_src_norec(model, u, space_order=8)
+Forward modeling of a full wavefield source without receiver F\*u.
 
 
 * **Parameters**
@@ -1060,9 +834,6 @@ Forward modeling of a full wavefield source without receiver.
 
 
     * **space_order** (*Int** (**optional**)*) – Spatial discretization order, defaults to 8
-
-
-    * **free_surface** (*Bool** (**optional**)*) – Whether or not to use a free surface
 
 
 
@@ -1078,7 +849,7 @@ Forward modeling of a full wavefield source without receiver.
 
 
 
-### interface.grad_fwi(model, recin, rec_coords, u, space_order=8, free_surface=False)
+### interface.grad_fwi(model, recin, rec_coords, u, space_order=8)
 FWI gradient, i.e adjoint Jacobian on a data residual.
 
 
@@ -1100,9 +871,6 @@ FWI gradient, i.e adjoint Jacobian on a data residual.
     * **space_order** (*Int** (**optional**)*) – Spatial discretization order, defaults to 8
 
 
-    * **free_surface** (*Bool** (**optional**)*) – Whether or not to use a free surface
-
-
 
 * **Returns**
 
@@ -1114,6 +882,10 @@ FWI gradient, i.e adjoint Jacobian on a data residual.
 
     Array
 
+
+
+### interface.wri_func(model, src_coords, wavelet, rec_coords, recin, yin, space_order=8, isic=False, ws=None, t_sub=1, grad='m', grad_corr=False, alpha_op=False, w_fun=None, eps=0, freq_list=[], wfilt=None)
+Time domain wavefield reconstruction inversion wrapper
 
 ## kernels module
 
@@ -1161,7 +933,7 @@ TTI wave equation (one from my paper) time stepper
 
 
 
-### kernels.wave_kernel(model, u, fw=True, q=None, fs=False)
+### kernels.wave_kernel(model, u, fw=True, q=None)
 Pde kernel corresponding the the model for the input wavefield
 
 
@@ -1180,13 +952,10 @@ Pde kernel corresponding the the model for the input wavefield
     * **q** (*TimeFunction** or **Expr*) – Full time-space source
 
 
-    * **fs** (*Bool*) – Freesurface flag
-
-
 ## models module
 
 
-### class models.Model(origin, spacing, shape, vp, space_order=2, nbl=40, dtype=<class 'numpy.float32'>, epsilon=None, delta=None, theta=None, phi=None, rho=1, dm=None, subdomains=(), \*\*kwargs)
+### _class_ models.Model(origin, spacing, shape, m, space_order=2, nbl=40, dtype=<class 'numpy.float32'>, epsilon=None, delta=None, theta=None, phi=None, rho=1, dm=None, fs=False, \*\*kwargs)
 The physical model used in seismic inversion processes.
 
 
@@ -1205,7 +974,7 @@ The physical model used in seismic inversion processes.
     * **space_order** (*int*) – Order of the spatial stencil discretisation.
 
 
-    * **vp** (*array_like** or **float*) – Velocity in km/s.
+    * **m** (*array_like** or **float*) – Squared slownes in s^2/km^2
 
 
     * **nbl** (*int**, **optional*) – The number of absorbin layers for boundary damping.
@@ -1230,67 +999,69 @@ The physical model used in seismic inversion processes.
 
 
 
-#### property critical_dt()
+#### _property_ critical_dt()
 Critical computational time step value from the CFL condition.
 
 
-#### property dm()
+#### _property_ dm()
 Model perturbation for linearized modeling
 
 
-#### property dt()
+#### _property_ dt()
 User provided dt
 
 
-#### property is_tti()
+#### _property_ is_tti()
 Whether the model is TTI or isotopic
 
 
-#### property m()
-Symbolic representation of the squared slowness
-m = 1/vp^2
+#### _property_ m()
+Function holding the squared slowness in s^2/km^2.
 
 
-#### property space_order()
+#### _property_ space_order()
 Spatial discretization order
 
 
-#### property spacing_map()
+#### _property_ spacing_map()
 Map between spacing symbols and their values for each SpaceDimension.
 
 
-#### property vp()
-Function holding the model velocity in km/s.
+#### _property_ vp()
+Symbolic representation of the velocity
+vp = sqrt(1 / m)
 
 ## propagators module
 
 
-### propagators.adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0, save=False, free_surface=False, ws=None)
+### propagators.adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0, dft_sub=None, save=False, ws=None, norm_v=False, w_fun=None, freq_list=None)
 Low level propagator, to be used through interface.py
 Compute adjoint wavefield v = adjoint(F(m))\*y
 and related quantities (||v||_w, v(xsrc))
 
 
-### propagators.born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False, free_surface=False, isic=False, ws=None)
+### propagators.born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False, q=None, return_op=False, isic=False, freq_list=None, dft_sub=None, ws=None, t_sub=1, nlind=False)
 Low level propagator, to be used through interface.py
-Compute adjoint wavefield v = adjoint(F(m))\*y
-and related quantities (||v||_w, v(xsrc))
+Compute linearized wavefield U = J(m)\* δ m
+and related quantities.
 
 
-### propagators.forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False, q=0, free_surface=False, return_op=False, freq_list=None, dft_sub=None, ws=None)
+### propagators.forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False, q=None, return_op=False, freq_list=None, dft_sub=None, ws=None, t_sub=1, \*\*kwargs)
 Low level propagator, to be used through interface.py
 Compute forward wavefield u = A(m)^{-1}\*f and related quantities (u(xrcv))
 
 
-### propagators.gradient(model, residual, rcv_coords, u, return_op=False, space_order=8, w=None, free_surface=False, freq=None, dft_sub=None, isic=True)
+### propagators.forward_grad(model, src_coords, rcv_coords, wavelet, v, space_order=8, q=None, ws=None, isic=False, w=None, freq=None, \*\*kwargs)
 Low level propagator, to be used through interface.py
-Compute adjoint wavefield v = adjoint(F(m))\*y
-and related quantities (||v||_w, v(xsrc))
+Compute forward wavefield u = A(m)^{-1}\*f and related quantities (u(xrcv))
+
+
+### propagators.gradient(model, residual, rcv_coords, u, return_op=False, space_order=8, w=None, freq=None, dft_sub=None, isic=False)
+Low level propagator, to be used through interface.py
+Compute the action of the adjoint Jacobian onto a residual J’\* δ d.
 
 
 ### propagators.name(model)
-
-### propagators.op_kwargs(model, fs=False)
 ## sensitivity module
 
 
@@ -1308,24 +1079,7 @@ Basic source for linearized modeling
 
 
 
-### sensitivity.corr_fields(u, v, model, \*\*kwargs)
-Cross correlation of forward and adjoint wavefield
-
-
-* **Parameters**
-
-    
-    * **u** (*TimeFunction** or **Tuple*) – Forward wavefield (tuple of fields for TTI or dft)
-
-
-    * **v** (*TimeFunction** or **Tuple*) – Adjoint wavefield (tuple of fields for TTI)
-
-
-    * **model** (*Model*) – Model structure
-
-
-
-### sensitivity.corr_freq(u, v, model, freq=None, dft_sub=None, \*\*kwargs)
+### sensitivity.crosscorr_freq(u, v, model, freq=None, dft_sub=None, \*\*kwargs)
 Standard cross-correlation imaging condition with on-th-fly-dft
 
 
@@ -1348,11 +1102,28 @@ Standard cross-correlation imaging condition with on-th-fly-dft
 
 
 
+### sensitivity.crosscorr_time(u, v, model, \*\*kwargs)
+Cross correlation of forward and adjoint wavefield
+
+
+* **Parameters**
+
+    
+    * **u** (*TimeFunction** or **Tuple*) – Forward wavefield (tuple of fields for TTI or dft)
+
+
+    * **v** (*TimeFunction** or **Tuple*) – Adjoint wavefield (tuple of fields for TTI)
+
+
+    * **model** (*Model*) – Model structure
+
+
+
 ### sensitivity.func_name(freq=None, isic=False)
 Get key for imaging condition/linearized source function
 
 
-### sensitivity.grad_expr(gradm, u, v, model, w=1, freq=None, dft_sub=None, isic=False)
+### sensitivity.grad_expr(gradm, u, v, model, w=None, freq=None, dft_sub=None, isic=False)
 Gradient update stencil
 
 
@@ -1381,7 +1152,21 @@ Gradient update stencil
 
 
 
-### sensitivity.isic_freq_g(u, v, model, \*\*kwargs)
+### sensitivity.inner_grad(u, v)
+Inner product of the gradient of two Function.
+
+
+* **Parameters**
+
+    
+    * **u** (*TimeFunction** or **Function*) – First wavefield
+
+
+    * **v** (*TimeFunction** or **Function*) – Second wavefield
+
+
+
+### sensitivity.isic_freq(u, v, model, \*\*kwargs)
 Inverse scattering imaging condition
 
 
@@ -1398,24 +1183,7 @@ Inverse scattering imaging condition
 
 
 
-### sensitivity.isic_g(u, v, model, \*\*kwargs)
-Inverse scattering imaging condition
-
-
-* **Parameters**
-
-    
-    * **u** (*TimeFunction** or **Tuple*) – Forward wavefield (tuple of fields for TTI or dft)
-
-
-    * **v** (*TimeFunction** or **Tuple*) – Adjoint wavefield (tuple of fields for TTI)
-
-
-    * **model** (*Model*) – Model structure
-
-
-
-### sensitivity.isic_s(model, u, \*\*kwargs)
+### sensitivity.isic_src(model, u, \*\*kwargs)
 ISIC source for linearized modeling
 
 
@@ -1426,6 +1194,23 @@ ISIC source for linearized modeling
 
 
     * **model** (*Model*) – Model containing the perturbation dm
+
+
+
+### sensitivity.isic_time(u, v, model, \*\*kwargs)
+Inverse scattering imaging condition
+
+
+* **Parameters**
+
+    
+    * **u** (*TimeFunction** or **Tuple*) – Forward wavefield (tuple of fields for TTI or dft)
+
+
+    * **v** (*TimeFunction** or **Tuple*) – Adjoint wavefield (tuple of fields for TTI)
+
+
+    * **model** (*Model*) – Model structure
 
 
 
@@ -1445,7 +1230,7 @@ Source for linearized modeling
 ## sources module
 
 
-### class sources.PointSource(\*args, \*\*kwargs)
+### _class_ sources.PointSource(\*args, \*\*kwargs)
 Symbolic data object for a set of sparse point sources
 
 
@@ -1483,33 +1268,29 @@ Symbolic data object for a set of sparse point sources
 
 
 
-#### default_assumptions( = {'commutative': True, 'complex': True, 'extended_real': True, 'finite': True, 'hermitian': True, 'imaginary': False, 'infinite': False, 'real': True})
+#### default_assumptions(_ = {'commutative': True, 'complex': True, 'extended_real': True, 'finite': True, 'hermitian': True, 'imaginary': False, 'infinite': False, 'real': True_ )
 
-#### is_commutative( = True)
+#### is_commutative(_ = Tru_ )
 
-#### is_complex( = True)
+#### is_complex(_ = Tru_ )
 
-#### is_extended_real( = True)
+#### is_extended_real(_ = Tru_ )
 
-#### is_finite( = True)
+#### is_finite(_ = Tru_ )
 
-#### is_hermitian( = True)
+#### is_hermitian(_ = Tru_ )
 
-#### is_imaginary( = False)
+#### is_imaginary(_ = Fals_ )
 
-#### is_infinite( = False)
+#### is_infinite(_ = Fals_ )
 
-#### is_real( = True)
+#### is_real(_ = Tru_ )
 
 ### sources.Receiver()
 alias of `sources.PointSource`
 
 
-### sources.Shot()
-alias of `sources.PointSource`
-
-
-### class sources.RickerSource(\*args, \*\*kwargs)
+### _class_ sources.RickerSource(\*args, \*\*kwargs)
 Symbolic object that encapsulate a set of sources with a
 pre-defined Ricker wavelet:
 [http://subsurfwiki.org/wiki/Ricker_wavelet](http://subsurfwiki.org/wiki/Ricker_wavelet)
@@ -1519,65 +1300,27 @@ f0: Peak frequency for Ricker wavelet in kHz
 time: Discretized values of time in ms
 
 
-#### default_assumptions( = {'commutative': True, 'complex': True, 'extended_real': True, 'finite': True, 'hermitian': True, 'imaginary': False, 'infinite': False, 'real': True})
+#### default_assumptions(_ = {'commutative': True, 'complex': True, 'extended_real': True, 'finite': True, 'hermitian': True, 'imaginary': False, 'infinite': False, 'real': True_ )
 
-#### is_commutative( = True)
+#### is_commutative(_ = Tru_ )
 
-#### is_complex( = True)
+#### is_complex(_ = Tru_ )
 
-#### is_extended_real( = True)
+#### is_extended_real(_ = Tru_ )
 
-#### is_finite( = True)
+#### is_finite(_ = Tru_ )
 
-#### is_hermitian( = True)
+#### is_hermitian(_ = Tru_ )
 
-#### is_imaginary( = False)
+#### is_imaginary(_ = Fals_ )
 
-#### is_infinite( = False)
+#### is_infinite(_ = Fals_ )
 
-#### is_real( = True)
+#### is_real(_ = Tru_ )
 
-#### wavelet(f0, t)
-Defines a Ricker wavelet with a peak frequency f0 at time t.
-f0: Peak frequency in kHz
-t: Discretized values of time in ms
+#### wavelet(timev)
 
-
-### class sources.GaborSource(\*args, \*\*kwargs)
-Symbolic object that encapsulate a set of sources with a
-pre-defined Gabor wavelet:
-[https://en.wikipedia.org/wiki/Gabor_wavelet](https://en.wikipedia.org/wiki/Gabor_wavelet)
-name: Name for the resulting symbol
-grid: `Grid` object defining the computational domain.
-f0: Peak frequency for Ricker wavelet in kHz
-time: Discretized values of time in ms
-
-
-#### default_assumptions( = {'commutative': True, 'complex': True, 'extended_real': True, 'finite': True, 'hermitian': True, 'imaginary': False, 'infinite': False, 'real': True})
-
-#### is_commutative( = True)
-
-#### is_complex( = True)
-
-#### is_extended_real( = True)
-
-#### is_finite( = True)
-
-#### is_hermitian( = True)
-
-#### is_imaginary( = False)
-
-#### is_infinite( = False)
-
-#### is_real( = True)
-
-#### wavelet(f0, t)
-Defines a Gabor wavelet with a peak frequency f0 at time t.
-f0: Peak frequency in kHz
-t: Discretized values of time in ms
-
-
-### class sources.TimeAxis(start=None, step=None, num=None, stop=None)
+### _class_ sources.TimeAxis(start=None, step=None, num=None, stop=None)
 Data object to store the TimeAxis. Exactly three of the four key arguments
 must be prescribed. Because of remainder values it is not possible to create
 a TimeAxis that exactly adhears to the inputs therefore start, stop, step
@@ -1653,7 +1396,7 @@ This function returns the extended source w(x)\*q(t)
 
 
 
-### wave_utils.freesurface(field, npml, forward=True)
+### wave_utils.freesurface(model, eq)
 Generate the stencil that mirrors the field as a free surface modeling for
 the acoustic wave equation
 
@@ -1661,13 +1404,24 @@ the acoustic wave equation
 * **Parameters**
 
     
-    * **field** (*TimeFunction** or **Tuple*) – Field for which to add a free surface
+    * **model** (*Model*) – Physical model
 
 
-    * **npml** (*int*) – Number of ABC points
+    * **eq** (*Eq** or **List of Eq*) – Equation to apply mirror to
 
 
-    * **forward** (*Bool*) – Whether it is forward or backward propagation (in time)
+
+### wave_utils.idft(v, freq=None)
+Symbolic inverse dft of v
+
+
+* **Parameters**
+
+    
+    * **v** (*TimeFunction** or **Tuple*) – Wavefield to take inverse DFT of
+
+
+    * **freq** (*Array*) – Array of frequencies for on-the-fly DFT
 
 
 
@@ -1702,7 +1456,7 @@ Subsampled  time axis
 
 
 
-### wave_utils.wavefield(model, space_order, save=False, nt=None, fw=True, name='')
+### wave_utils.wavefield(model, space_order, save=False, nt=None, fw=True, name='', t_sub=1)
 Create the wavefield for the wave equation
 
 
@@ -1728,7 +1482,45 @@ Create the wavefield for the wave equation
 
 
 
-### wave_utils.wf_as_src(v, w=1)
+### wave_utils.wavefield_subsampled(model, u, nt, t_sub, space_order=8)
+Create a subsampled wavefield
+
+
+* **Parameters**
+
+    
+    * **model** (*Model*) – Physical model
+
+
+    * **u** (*TimeFunction*) – Forward wavefield for modeling
+
+
+    * **nt** (*int*) – Number of time steps on original time axis
+
+
+    * **t_sub** (*int*) – Factor for time-subsampling
+
+
+    * **space_order** (*int*) – Spatial discretization order
+
+
+
+### wave_utils.weighted_norm(u, weight=None)
+Space-time norm of a wavefield, split into norm in time first then in space to avoid
+breaking loops
+
+
+* **Parameters**
+
+    
+    * **u** (*TimeFunction** or **Tuple of TimeFunction*) – Wavefield to take the norm of
+
+
+    * **weight** (*String*) – Spacial weight to apply
+
+
+
+### wave_utils.wf_as_src(v, w=1, freq_list=None)
 Weighted source as a time-space wavefield
 
 

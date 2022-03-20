@@ -9,36 +9,32 @@ jobs:
   build:
     name: Deploy docs
     runs-on: ubuntu-latest
+    env:
+      CI: "true"
+
     steps:
       - name: Checkout master
-        uses: actions/checkout@v1
-
-      - name: Set up Python 3.7
-        uses: actions/setup-python@v1
-        with:
-          python-version: 3.7
-
+        uses: actions/checkout@v2
+      
+      - uses: julia-actions/setup-julia@latest
+      
       - name: Install dependencies
-        run: |
-          pip install --upgrade pip
-          pip install mkdocs jupyter pymdown-extensions python-markdown-math
+        run: julia --project=docs/ -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
 
       - name: Build doc
-        run: for f in *.ipynb;do jupyter nbconvert --to markdown --output-dir='../../docs/tutorials' $f; done
+        run: for f in *.ipynb;do jupyter nbconvert --to markdown --output-dir='../../docs/src/tutorials' $f; done
         working-directory: examples/notebooks/
 
       - name: Build python doc
         run: |
           pip install sphinx-markdown-builder sphinx-markdown-parser devito
           pip install "sphinx==3.1.0"
-          make clean;make markdown
-          mv _build/markdown/pysource.md ../../docs/pysource.md
+          make clean
+          make markdown
+          mv _build/markdown/pysource.md ../../docs/src/pysource.md
         working-directory: src/pydocs/
 
-      - run: mkdocs build
-
-      - name: Deploy
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./site
+      - name: Build and deploy
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # For authentication with GitHub Actions token
+        run: julia --project=docs/ docs/make.jl

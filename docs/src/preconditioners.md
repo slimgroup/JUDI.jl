@@ -1,4 +1,4 @@
-# Seismic preconditioners
+# Seismic Preconditioners
 
 ## Model topmute
 

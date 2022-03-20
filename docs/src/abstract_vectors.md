@@ -1,4 +1,10 @@
-# Abstract JUDI vectors
+# Abstract Vectors
+
+JUDI provides abstract vector types that encapsulate seismic related objects. In particula, JUDI defines thre main types for seismic data [`judiVector`](@ref), full time-space wavefields [`judiWavefield`](@ref) and extended source weights [`judiWeights`](@ref).
+
+```@contents
+Pages = ["abstract_vectors.md"]
+```
 
 ## judiVector
 
@@ -8,16 +14,9 @@ The class `judiVector` is the basic data structure for seismic shot records or s
 
 In the most basic way, `judiVectors` are contstructed from a `Geometry` object (containing either source or receiver geometry) and a cell array of data:
 
-```julia
-x = judiVector(geometry, data)
+```@docs
+judiVector(geometry::Geometry, data::Array{T, N}) where {T, N}
 ```
-
-**Parameters:**
-
- * `geometry`: A `Geometry` object containing source or receiver geometries.
-
- * `data`: A cell array with one cell per source location, where each cell contains a 1D/2D Julia array with either the receiver data or the source wavelet. Alternatively: pass a single Julia array which will be used for all source locations.
-
 
 **Access fields (in-core data containers):**
 
@@ -84,17 +83,9 @@ Abstract vector class for wavefields.
 
 **Construction:**
 
-```julia
-u = judiWavefield(info, dt, data)
+```@docs
+ judiWavefield(info,dt::Real,data::Union{AbstractArray, String};  vDT::DataType=Float32)
 ```
-
-**Parameters:**
-
- * `info`: An `Info` structure.
-
- * `dt`: Time sampling interval of wavefield.
-
- * `data`: Cell array with one cell per source location. Each cell contains a 3D or 4D array for a seismic wavefield. The order of dimensions is `(nt, nx, nz)` (2D) and `(nt, nx, ny, nz)` (3D), where `nt` is the number of time steps.
 
 
 **Access fields:**
@@ -135,8 +126,8 @@ Abstract vector class for a right-hand-side (RHS). A RHS has the size of a full 
 
 **Construction:**
 
-```julia
-rhs = judiRHS(info, geometry, data)
+```@docs
+judiRHS(info, geometry, data;vDT::DataType=Float32)
 ```
 
 A JUDI RHS can also be constructed by multplying a `judiVector` and the corresponding transpose of a `judiProjection` operator:
@@ -147,14 +138,6 @@ rhs2 = Pr'*d_obs
 ```
 
 where `Ps` and `Pr` are `judiProjection` operators for sources and receivers respectively and `q` and `d_obs` are `judiVectors` with the source and receiver data.
-
-**Parameters:**
-
- * `info`: An `Info` structure.
-
- * `geometry`: A JUDI `Geometry` structure, containing the source or receiver geometry.
-
- * `data`: A cell array with one cell per source location. Each cell contains a 1D/2D Julia array with the source or receiver data.
 
  **Access fields:**
 
@@ -177,8 +160,8 @@ Abstract vector class for extended source weights. The weights for each shot loc
 
 **Construction:**
 
-```julia
-w = judiWeights(weights)
+```@docs
+judiWeights(weights::Array{T, N}; nsrc=1, vDT::DataType=Float32) where {T<:Real, N}
 ```
 
 **Parameters:**
@@ -205,25 +188,17 @@ Abstract data vector for an extended source. This data structure is the equivale
 
 Construction from weights and source wavelets:
 
-```julia
-ex_src = judiExtendedSource(info, wavelet, weights)
+```@docs
+judiExtendedSource(info,wavelet,weights;vDT::DataType=Float32)
 ```
 
-Construction from a `judiWeights` vector and a `judiLRWF` injection operator:
+Or alternatively, construction from a `judiWeights` vector and a `judiLRWF` injection operator:
 
 ```julia
 ex_src = Pw'*w
 ```
 
 where `Pw` is a `judiLRWF` operator and `w` is a `judiWeights` vector.
-
-**Parameters:**
-
- * `info`: An `Info` structure.
-
- * `wavelet`: A cell array with one cell per source location containing a 1D Julia array with the time varying source wavelet **or** a single 1D Julia array, which is used for all source locations.
-
- * `weights`: A cell array with one cell per source location containing a 2D/3D Julia array with the spatially varying source weights **or** a single 1D Julia array, which is used for all source locations.
 
 **Access fields:**
 

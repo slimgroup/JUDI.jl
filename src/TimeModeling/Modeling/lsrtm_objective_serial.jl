@@ -7,7 +7,18 @@ lsrtm_objective(model_full::Model, source::judiVector, dObs::judiVector, dm::Uni
 lsrtm_objective(model_full::Model, source::judiVector, dObs::judiVector, dm::Union{Array, PhysicalParameter}) = lsrtm_objective(model_full, source, dObs, dm; options=Options(), nlind=false)
 lsrtm_objective(model_full::Model, source::judiVector, dObs::judiVector, dm::Union{Array, PhysicalParameter}, nlind::Bool) = lsrtm_objective(model_full, source, dObs, dm, Options(), nlind)
 
+"""
+    lsrtm_objective(model, source, dobs, dm; options=Options(), nlind=false)
 
+Evaluate the least-square migration objective function. Returns a tuple with function value and
+gradient. `model` is a `Model` structure with the current velocity model and `source` and `dobs` are the wavelets and
+observed data of type `judiVector`. The `nlind` parameter decide whether the backround velocity synthetic data should be subtracted
+from the observed data effectively computing the gradient as `J'*(J*dm - (d - F*q))``
+
+Example
+=======
+    function_value, dm = lsrtm_objective(model, source, dobs, dm)
+"""
 function lsrtm_objective(model_full::Model, source::judiVector, dObs::judiVector, dm::Union{Array, PhysicalParameter}, options::Options, nlind::Bool)
     # assert this is for single source LSRTM
     @assert source.nsrc == 1 "Multiple sources are used in a single-source lsrtm_objective"

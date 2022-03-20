@@ -42,7 +42,6 @@ All arguments are optional keyword arguments with the following default values:
 
 TWRIOptions(;grad_corr=false, comp_alpha=true, weight_fun=nothing, eps=0, params=:m)
 """
-
 TWRIOptions(;grad_corr=false, comp_alpha=true,
             weight_fun=nothing, eps=0, params=:m, Invq="standard")=
             TWRIOptions(grad_corr, comp_alpha, weight_fun, eps, params, Invq)
@@ -62,6 +61,17 @@ twri_objective(model_full::Model, source::judiVector, dObs::judiVector, y::Union
 twri_objective(model_full::Model, source::judiVector, dObs::judiVector, y::Union{judiVector, Nothing}, twri_opt::TWRIOptions, opt::Options) =
     twri_objective(model_full, source, dObs, y, opt, twri_opt)
 
+"""
+    twri_objective(model, source, dobs; options=Options(), optionswri=TWRIOptions())
+
+Evaluate the time domain Wavefield reconstruction inversion objective function. Returns a tuple with function value and
+gradient(s) w.r.t to m and/or y. `model` is a `Model` structure with the current velocity model and `source` and `dobs` are the wavelets and 
+observed data of type `judiVector`.
+
+Example
+=======
+    function_value, gradient_m, gradient_y = twri_objective(model, source, dobs; options=Options(), optionswri=TWRIOptions())
+"""
 function twri_objective(model_full::Model, source::judiVector, dObs::judiVector, y::Union{judiVector, Nothing},
                         options::Options, optionswri::TWRIOptions)
     # Load full geometry for out-of-core geometry containers

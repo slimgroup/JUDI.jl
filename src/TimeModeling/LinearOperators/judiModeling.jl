@@ -47,6 +47,7 @@ end
 ## outer constructors
 """
     judiModeling(info, model; options=Options())
+	judiModeling(model, src_geometry, rec_geometry; options=Options())
     judiModeling(info, model, src_geometry, rec_geometry; options=Options())
 
 Create seismic modeling operator for a velocity model given as a `Model` structure. `info` is an `Info` structure\\

@@ -1,115 +1,30 @@
-# The Julia Devito Inversion framework (JUDI)
+# Seismic Inversion
 
-[![](https://img.shields.io/badge/docs-stable-blue.svg)](https://slimgroup.github.io/JUDI.jl/) 
-[![Build Status ](https://github.com/slimgroup/JUDI.jl/workflows/CI-tests/badge.svg)](https://github.com/slimgroup/JUDI.jl/actions?query=workflow%3ACI-tests)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3878711.svg)](https://doi.org/10.5281/zenodo.3878711)
-[![codecov](https://codecov.io/gh/slimgroup/JUDI.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/slimgroup/JUDI.jl)
-
-## Overview
-
-JUDI is a framework for large-scale seismic modeling and inversion and designed to enable rapid translations of algorithms to fast and efficient code that scales to industry-size 3D problems. The focus of the package lies on seismic modeling as well as PDE-constrained optimization such as full-waveform inversion (FWI) and imaging (LS-RTM). Wave equations in JUDI are solved with [Devito](https://www.devitoproject.org), a Python domain-specific language for automated finite-difference (FD) computations. JUDI's modeling operators can also be used as layers in (convolutional) neural networks to implement physics-augmented deep learning algorithms. For this, check out JUDI's deep learning extension [JUDI4Flux](https://github.com/slimgroup/JUDI4Flux.jl).
-
-## Interact and contribute
-
-We gladly welcome and encorage contributions from the community to improve our software and its usability. Feel free to:
-
-- Open [issues](https://github.com/slimgroup/JUDI.jl/issues) for bugs
-- Start [discussions](https://github.com/slimgroup/JUDI.jl/discussions) to interat with the developper and ask any questions
-- Open [PR](https://github.com/slimgroup/JUDI.jl/pulls) for bug fixes and improvements
-
-
-## FAQ
-
-You can find an FAQ with answers to issues at [FAQ](https://github.com/slimgroup/JUDI.jl/wiki/FAQ)
-
-## Installation and prerequisites
-
-You can find installation instruction in our Wiki at [Installation](https://github.com/slimgroup/JUDI.jl/wiki/Installation)
-
-## GPU
-
-JUDI supports the computation of the wave equation on GPU via [Devito](https://www.devitoproject.org)'s GPU offloading support.
-
-**NOTE**: Only the wave equation part will be computed on GPU, the julia arrays will still be CPU arrays and `CUDA.jl` is not supported.
-
-### Installation
-
-To enable gpu support in JUDI, you will need to install one of [Devito](https://www.devitoproject.org)'s supported offloading compilers. We strongly recommend checking the [Wiki](https://github.com/devitocodes/devito/wiki) for installation steps and to reach out to the Devito community for GPU compiler related issues.
-
-- [x] `nvc/pgcc`. This is recommended and the simplest installation. You can install the compiler following Nvidia's installation instruction at [HPC-sdk](https://developer.nvidia.com/hpc-sdk)
-- [ ] `aompcc`. This is the AMD compiler that is necessary for running on AMD GPUs. This installation is not tested with JUDI and we recommend to reach out to Devito's team for installation guidelines.
-- [ ] `openmp5/clang`. This installation requires the compilation from source `openmp`, `clang` and `llvm` to install the latest version of `openmp5` enabling gpu offloading. You can find instructions on this installation in Devito's [Wiki](https://github.com/devitocodes/devito/wiki)
-
-### Setup
-
-The only required setup for GPU support are the environment variables for [Devito](https://www.devitoproject.org). For the currently supported `nvc+openacc` setup these are:
-
-```
-export DEVITO_LANGUAGE=openacc
-export DEVITO_ARCH=nvc
-export DEVITO_PLATFORM=nvidiaX
+```@contents
+Pages = ["inversion.md"]
 ```
 
-## Running with Docker
+## Introduction
 
-If you do not want to install JUDI, you can run JUDI as a docker image. The first possibility is to run the docker container as a Jupyter notebook:
+We currently introduced the lineaar operators that allow to write seismic modeling and inversion in a high-level, linear algebra way. These linear operator allow the script to closely follow the mathematics and to be readable and understandable.
 
-```bash
-docker run -p 8888:8888 mloubout/judi-base:1.0
-```
-
-This command downloads the image and launches a container. You will see a link that you can copy-past to your browser to access the notebooks. Alternatively, you can run a bash session, in which you can start a regular interactive Julia session and run the example scripts. Download/start the container as a bash session with:
-
-```bash
-docker run -it mloubout/judi-base:1.0 /bin/bash
-```
-
-Inside the container, all examples are located in the directory `/app/judi/examples/scripts`.
-
-
-Additionaly, we provide two runtime docker images `mloubout/judi-cpu:1.4.3` and `mloubout/judi-gpu:1.0` that provide runtime (bash session) containers with additional librairies and compilers installed (`icc`, `nvcc`). These image do not offer  jupyter notebook as they are designed to be used as remote image for HPC (i.e [JUDI4Cloud.jl](https://github.com/slimgroup/JUDI4Cloud.jl)). The image `mloubout/judi-cpu:1.4.3` is recommended to be used with [JUDI4Cloud.jl](https://github.com/slimgroup/JUDI4Cloud.jl).
-
-## Testing
-
-A complete test suite is inculded with JUDI and is tested via GitHub Actions. You can also run the test locally
-via:
+However, these come with overhead. In particular, consider the following compuation on the FWI gradient:
 
 ```julia
-    julia --project -e 'using Pkg;Pkg.test(coverage=false)'
+
+d_syn = F*q
+r = judiJacobian(F, q)' * (d_syn - d_obs)
 ```
 
-By default, only the JUDI base API will be tested, however the testing suite supports other modes controlled via the environemnt variable `GROUP` such as:
+In this two lines, the forward modeling is performed twice: once to compute `d_syn` then once again to compute the Jacobian adjoint. In order to avoid this overhead for practical inversion, we provide utility function that directly comput the gradient and objective function (L2- misfit) of FWI, LSRTM and TWRI with minimum overhead.
 
-```julia
-	GROUP=JUDI julia --project -e 'using Pkg;Pkg.test(coverage=false)'
+## FWI
+
+```@docs
+fwi_objective
 ```
 
-The supported modes are:
-
-- JUDI : Only the base API (linear operators, vectors, ...)
-- ISO_OP : Isotropic acoustic operators
-- ISO_OP_FS : Isotropic acoustic operators with free surface
-- TTI_OP : Transverse tilted isotropic operators
-- TTI_OP_FS : Transverse tilted isotropic operators with free surface
-- filename : you can also provide just a filename (i.e `GROUP=test_judiVector.jl`) and only this one test file will be run. Single files with TTI or free surface are not currently supported as it relies on `Base.ARGS` for the setup.
-
-
-## Configure compiler and OpenMP
-
-Devito uses just-in-time compilation for the underlying wave equation solves. The default compiler is intel, but can be changed to any other specified compiler such as `gnu`. Either run the following command from the command line or add it to your ~/.bashrc file:
-
-```bash
-export DEVITO_ARCH=gnu
-```
-
-Devito uses shared memory OpenMP parallelism for solving PDEs. OpenMP is disabled by default, but you can enable OpenMP and define the number of threads (per PDE solve) as follows:
-
-```bash
-export DEVITO_LANGUAGE=openmp  # Enable OpenMP. 
-export OMP_NUM_THREADS=4    # Number of OpenMP threads
-```
-
-## Full-waveform inversion
+### Example
 
 JUDI is designed to let you set up objective functions that can be passed to standard packages for (gradient-based) optimization. The following example demonstrates how to perform FWI on the 2D Overthrust model using a spectral projected gradient algorithm from the minConf library, which is included in the software. A small test dataset (62 MB) and the model can be downloaded from this FTP server:
 
@@ -182,10 +97,16 @@ figure(); imshow(sqrt.(1./adjoint(reshape(x, model0.n)))); title("FWI")
 figure(); plot(fvals); title("Function value")
 ```
 
-![fwi](docs/figures/fwi.png)
+![fwi](./figures/fwi.png)
 
 
-## Least squares reverse-time migration
+## LSRTM
+
+```@docs
+lsrtm_objective
+```
+
+### Example
 
 JUDI includes matrix-free linear operators for modeling and linearized (Born) modeling, that let you write algorithms for migration that follow the mathematical notation of standard least squares problems. This example demonstrates how to use Julia Devito to perform least-squares reverse-time migration on the 2D Marmousi model. Start by downloading the test data set (1.1 GB) and the model:
 
@@ -252,7 +173,20 @@ for j=1:niter
 end
 ```
 
-![lsrtm](docs/figures/lsrtm.png)
+![lsrtm](./figures/lsrtm.png)
+
+
+## TWRI
+
+```@docs
+twri_objective
+```
+
+and related TWRI options
+
+```@docs
+TWRIOptions
+```
 
 
 ## Machine Learning
@@ -280,29 +214,4 @@ gs[x]	# gradient w.r.t. to x
 
 JUDI4Flux allows implementing physics-augmented neural networks for seismic inversion, such as loop-unrolled seismic imaging algorithms. For example, the following results are a conventional RTM image, an LS-RTM image and a loop-unrolled LS-RTM image for a single simultaneous shot record.
 
-![flux](docs/figures/figure1.png)
-
-## Authors
-
-This package was written by [Philipp Witte](https://www.slim.eos.ubc.ca/philip) and [Mathias Louboutin](https://www.slim.eos.ubc.ca/content/mathias-louboutin) from the Seismic Laboratory for Imaging and Modeling (SLIM) at the Georgia Institute of Technology.
-
-If you use our software for your research, please cite our [Geophysics paper](https://library.seg.org/doi/abs/10.1190/geo2018-0174.1#):
-
-```
-@article{witteJUDI2019,
-author = {Philipp A. Witte and Mathias Louboutin and Navjot Kukreja and Fabio Luporini and Michael Lange and Gerard J. Gorman and Felix J. Herrmann},
-title = {A large-scale framework for symbolic implementations of seismic inversion algorithms in Julia},
-journal = {GEOPHYSICS},
-volume = {84},
-number = {3},
-pages = {F57-F71},
-year = {2019},
-doi = {10.1190/geo2018-0174.1},
-URL = {https://doi.org/10.1190/geo2018-0174.1},
-eprint = {https://doi.org/10.1190/geo2018-0174.1}
-}
-```
-
-Also visit the Devito homepage at <https://www.devitoproject.org/publications> for more information and references.
-
-Contact authors via: pwitte3@gatech.edu and mlouboutin3@gatech.edu.
+![flux](./figures/figure1.png)

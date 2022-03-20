@@ -2,6 +2,10 @@
 
 JUDI is building on [JOLI.jl](https://github.com/slimgroup/JOLI.jl) to implement matrix-free linear operators. These operators represent the discretized wave-equations and sensitivit (Jacobian) for different acquisition schemes. 
 
+```@contents
+Pages = ["linear_operators.md"]
+```
+
 ## judiModeling
 
 Seismic modeling operator for solving a wave equation for a given right-hand-side.
@@ -110,6 +114,10 @@ q_ad = Ps*F*v
 
 Jacobian of a non-linear forward modeling operator. Corresponds to linearized Born modeling (forward mode) and reverse-time migration (adjoint mode).
 
+```@docs
+judiJacobian
+```
+
 **Construction:**
 
  * A `judiJacobian` operator can be create from an exisiting forward modeling operator and a source vector:
@@ -175,17 +183,9 @@ H = J'*J
 
 Abstract linear operator for source/receiver projections. A (transposed) `judiProjection` operator symbolically injects the data with which it is multiplied during modeling. If multiplied with a forward modeling operator, it samples the wavefield at the specified source/receiver locations.
 
-**Construction:**
-
-```julia
-P = judiProjection(info, geometry)
+```@docs
+judiProjection
 ```
-
-**Parameters:**
-
- * `info`: A JUDI `Info` structure.
-
- * `geometry`: A JUDI `Geometry` structure containing either the source or receiver acquisition set up.s
 
 **Accessible fields:**
 
@@ -214,17 +214,9 @@ q_ad = Ps*F*Pr'*d_obs
 
 Abstract linear operator for sampling a seismic wavefield as a sum over all time steps, weighted by a time-varying wavelet. Its transpose *injects* a time-varying wavelet at every grid point in the model.
 
-**Construction:**
-
-```julia
-P = judiLRWF(info, wavelet)
+```@docs
+judiLRWF
 ```
-
-**Parameters:**
-
- * `info`: A JUDI `Info` structure.
-
- * `wavelet`:  A cell array with one cell per source location, where each cell contains a 1D Julia array of the source wavelet **or** a single Julia array which will be used for all source location.
 
 **Accessible fields:**
 
