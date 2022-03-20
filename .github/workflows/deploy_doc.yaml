@@ -24,7 +24,7 @@ jobs:
       - name: Build python doc
         run: |
           pip install --upgrade pip
-          pip install jupyter sphinx-markdown-builder sphinx-markdown-parser devito
+          pip install sphinx-markdown-builder sphinx-markdown-parser devito
           pip install "sphinx==3.1.0"
           make clean
           make markdown
@@ -32,7 +32,9 @@ jobs:
         working-directory: src/pydocs/
 
       - name: Build doc
-        run: for f in *.ipynb;do jupyter nbconvert --to markdown --output-dir='../../docs/src/tutorials' $f; done
+        run: |
+          pip install --upgrade jupyter Pygments
+          for f in *.ipynb;do jupyter nbconvert --to markdown --output-dir='../../docs/src/tutorials' $f; done
         working-directory: examples/notebooks/
 
       - name: Build and deploy
