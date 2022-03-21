@@ -1,6 +1,6 @@
 # The Julia Devito Inversion framework (JUDI)
 
-[![](https://img.shields.io/badge/docs-stable-blue.svg)](https://slimgroup.github.io/JUDI.jl/dev/) 
+[![](https://img.shields.io/badge/docs-stable-blue.svg)](https://slimgroup.github.io/JUDI.jl) 
 [![Build Status ](https://github.com/slimgroup/JUDI.jl/workflows/CI-tests/badge.svg)](https://github.com/slimgroup/JUDI.jl/actions?query=workflow%3ACI-tests)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3878711.svg)](https://doi.org/10.5281/zenodo.3878711)
 [![codecov](https://codecov.io/gh/slimgroup/JUDI.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/slimgroup/JUDI.jl)
@@ -182,7 +182,7 @@ figure(); imshow(sqrt.(1./adjoint(reshape(x, model0.n)))); title("FWI")
 figure(); plot(fvals); title("Function value")
 ```
 
-![fwi](docs/figures/fwi.png)
+![fwi](docs/src/figures/fwi.png)
 
 
 ## Least squares reverse-time migration
@@ -252,7 +252,7 @@ for j=1:niter
 end
 ```
 
-![lsrtm](docs/figures/lsrtm.png)
+![lsrtm](docs/src/figures/lsrtm.png)
 
 
 ## Machine Learning
@@ -280,7 +280,7 @@ gs[x]	# gradient w.r.t. to x
 
 JUDI4Flux allows implementing physics-augmented neural networks for seismic inversion, such as loop-unrolled seismic imaging algorithms. For example, the following results are a conventional RTM image, an LS-RTM image and a loop-unrolled LS-RTM image for a single simultaneous shot record.
 
-![flux](docs/figures/figure1.png)
+![flux](docs/src/figures/figure1.png)
 
 ## Authors
 
