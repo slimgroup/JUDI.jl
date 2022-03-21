@@ -82,7 +82,7 @@ def SLS_2nd_order(model, u1, u2, fw=True, q=None, f0=0.015):
         Full time-space source as a tuple (one value for each component)
     f0 : Peak frequency
     """
-    qp, m, b, damp = model.qp, model.m, model.irho, model.damp
+    qp, b, damp = model.qp, model.irho, model.damp
 
     q = q or 0
 
@@ -98,6 +98,9 @@ def SLS_2nd_order(model, u1, u2, fw=True, q=None, f0=0.015):
     # Density
     rho = 1. / b
 
+    # Inverse of bulk modulus
+    m = model.m * b
+
     p = u1
     r = u2
 
@@ -108,8 +111,8 @@ def SLS_2nd_order(model, u1, u2, fw=True, q=None, f0=0.015):
             (1. / t_s) * r
         u_r = Eq(r.forward, damp * solve(pde_r, r.forward))
         # Pressure
-        pde_p = m * p.dt2 - rho * (1. + tt) * div(b * grad(p, shift=.5), shift=-.5) + \
-            r.forward - q + (1 - damp) * p.dt
+        pde_p = m * p.dt2 - (1. + tt) * div(b * grad(p, shift=.5), shift=-.5) + \
+            b * r.forward - q + (1 - damp) * p.dt
         u_p = Eq(p.forward, damp * solve(pde_p, p.forward))
 
         return [u_r, u_p]
@@ -119,10 +122,9 @@ def SLS_2nd_order(model, u1, u2, fw=True, q=None, f0=0.015):
         # Attenuation Memory variable.
         pde_r = - r.dt.T + (tt / t_s) * p - (1. / t_s) * r
         u_r = Eq(r.backward, damp * solve(pde_r, r.backward))
-
         # Pressure
-        pde_p = m * p.dt2 - div(b * grad((1. + tt) * rho * p, shift=.5), shift=-.5) + \
-            div(b * grad(rho * r.backward, shift=.5), shift=-.5) + (1 - damp) * p.dt.T
+        pde_p = m * p.dt2 - b * div(b * grad((1. + tt) * rho * p, shift=.5), shift=-.5) + \
+            b * div(b * grad(rho * r.backward, shift=.5), shift=-.5) + (1 - damp) * p.dt.T
         u_p = Eq(p.backward, damp * solve(pde_p, p.backward))
 
         return [u_r, u_p]

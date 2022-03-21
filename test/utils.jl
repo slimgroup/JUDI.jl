@@ -22,6 +22,8 @@ end
 Sets up a simple 2D layered model for the wave equation operators tests
 """
 function setup_model(tti=false, viscoacoustic=false, nlayer=2; n=(301, 151), d=(10., 10.), rand_dm=false)
+    tti && viscoacoustic && throw("The inputs can't be tti and viscoacoustic at the same time")
+
     ## Set up model structure
     o = (0., 0.)
     lw = n[2] ÷ nlayer

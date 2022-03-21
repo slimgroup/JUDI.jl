@@ -28,23 +28,7 @@ dt = srcGeometry.dt[1]
 # testing parameters and utils
 tol = 5f-4
 (tti && fs) && (tol = 5f-3)
-<<<<<<< HEAD
 maxtry = 3
-=======
-###################################################################################################
-# Modeling operators
-@testset "Adjoint test with $(nlayer) layers and tti $(tti) and viscoacoustic $(viscoacoustic) and freesurface $(fs)" begin
-
-    opt = Options(sum_padding=true, dt_comp=dt, free_surface=parsed_args["fs"], f0=f0)
-    F = judiModeling(model0, srcGeometry, recGeometry; options=opt)
-
-    # Nonlinear modeling
-    y = F*q
-
-    # Generate random noise data vector with size of d_hat in the range of F
-    wave_rand = (.5f0 .+ rand(Float32, size(q.data[1]))).*q.data[1]
-    q_rand = judiVector(srcGeometry, wave_rand)
->>>>>>> inferring abc_type in models.py to avoid that carry around in options which is also unsafe for users and replacing initialize_damp by used in Devito
 
 #################################################################################################
 # adjoint test utility function so that can retry if fails

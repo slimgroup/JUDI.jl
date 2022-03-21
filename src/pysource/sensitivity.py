@@ -194,9 +194,6 @@ def basic_src(model, u, **kwargs):
     w = -model.dm * model.irho
     if model.is_tti:
         return (w * u[0].dt2, w * u[1].dt2)
-    if model.is_viscoacoustic:
-        dm = model.dm
-        return -dm * u[0].dt2
     return w * u[0].dt2
 
 
