@@ -88,27 +88,3 @@ Examples
     Jsub = getindex(J,[10,20])
 """
 getindex(a::judiWeights{avDT}, srcnum::RangeOrVec) where avDT = judiWeights{avDT}(length(srcnum), a.data[srcnum])
-
-############################################################
-
-function A_mul_B!(x::judiWeights, F::Union{joAbstractLinearOperator, joLinearFunction}, y::judiWeights)
-    F.m == size(y, 1) ? z = adjoint(F)*y : z = F*y
-    for j=1:length(x.weights)
-        x.weights[j] .= z.weights[j]
-    end
-end
-
-function A_mul_B!(x::judiWeights, F::Union{joAbstractLinearOperator, joLinearFunction}, y::Array)
-    F.m == size(y, 1) ? z = adjoint(F)*y : z = F*y
-    for j=1:length(x.weights)
-        x.weights[j] .= z.weights[j]
-    end
-end
-
-function A_mul_B!(x::Array, F::Union{joAbstractLinearOperator, joLinearFunction}, y::judiWeights)
-    F.m == size(y, 1) ? x[:] .= adjoint(F)*y : x[:] .= F*y
-end
-
-mul!(x::judiWeights, F::Union{joAbstractLinearOperator, joLinearFunction}, y::judiWeights) = A_mul_B!(x, F, y)
-mul!(x::judiWeights, F::Union{joAbstractLinearOperator, joLinearFunction}, y::Array) = A_mul_B!(x, F, y)
-mul!(x::Array, F::Union{joAbstractLinearOperator, joLinearFunction}, y::judiWeights) = A_mul_B!(x, F, y)

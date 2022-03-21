@@ -9,9 +9,10 @@ function wrapcall_data(func, args...;kw...)
 end
 
 wrapcall_function(func, args...;kw...) = pycall(func, PyArray, args...;kw...)
+wrapcall_wf(func, args...;kw...) = pycall(func, Array{Float32}, args...;kw...)
 
 # d_obs = Pr*F*Ps'*q
-function devito_interface(modelPy::PyCall.PyObject, srcGeometry::Geometry, srcData::Array, recGeometry::Geometry, recData::Nothing, dm::Nothing, options::JUDIOptions)
+function devito_interface(modelPy::PyObject, srcGeometry::Geometry, srcData::Array, recGeometry::Geometry, recData::Nothing, dm::Nothing, options::JUDIOptions)
     judilog("Pr*F*Ps'*q")
     # Interpolate input data to computational grid
     dtComp = convert(Float32, modelPy."critical_dt")
@@ -35,7 +36,7 @@ function devito_interface(modelPy::PyCall.PyObject, srcGeometry::Geometry, srcDa
 end
 
 # q_ad = Ps*F'*Pr'*d_obs
-function devito_interface(modelPy::PyCall.PyObject, srcGeometry::Geometry, srcData::Nothing, recGeometry::Geometry, recData::Array, dm::Nothing, options::JUDIOptions)
+function devito_interface(modelPy::PyObject, srcGeometry::Geometry, srcData::Nothing, recGeometry::Geometry, recData::Array, dm::Nothing, options::JUDIOptions)
     judilog("Ps*F'*Pr'*d_obs")
     # Interpolate input data to computational grid
     dtComp = convert(Float32, modelPy."critical_dt")
@@ -54,7 +55,7 @@ function devito_interface(modelPy::PyCall.PyObject, srcGeometry::Geometry, srcDa
 end
 
 # u = F*Ps'*q
-function devito_interface(modelPy::PyCall.PyObject, srcGeometry::Geometry, srcData::Array, recGeometry::Nothing, recData::Nothing, dm::Nothing, options::JUDIOptions)
+function devito_interface(modelPy::PyObject, srcGeometry::Geometry, srcData::Array, recGeometry::Nothing, recData::Nothing, dm::Nothing, options::JUDIOptions)
     judilog("F*Ps'*q")
     # Interpolate input data to computational grid
     dtComp = convert(Float32, modelPy."critical_dt")
@@ -64,14 +65,14 @@ function devito_interface(modelPy::PyCall.PyObject, srcGeometry::Geometry, srcDa
     src_coords = setup_grid(srcGeometry, modelPy.shape)
 
     # Devito call
-    u = wrapcall_function(ac."forward_no_rec", modelPy, src_coords, qIn, space_order=options.space_order, f0=options.f0)
+    u = wrapcall_wf(ac."forward_no_rec", modelPy, src_coords, qIn, space_order=options.space_order)
 
     # Output forward wavefield as judiWavefield
     return judiWavefield{Float32}(1, [dtComp], [u])
 end
 
 # v = F'*Pr'*d_obs
-function devito_interface(modelPy::PyCall.PyObject, srcGeometry::Nothing, srcData::Nothing, recGeometry::Geometry, recData::Array, dm::Nothing, options::JUDIOptions)
+function devito_interface(modelPy::PyObject, srcGeometry::Nothing, srcData::Nothing, recGeometry::Geometry, recData::Array, dm::Nothing, options::JUDIOptions)
     judilog("F'*Pr'*d_obs")
     # Interpolate input data to computational grid
     dtComp = convert(Float32, modelPy."critical_dt")
@@ -81,14 +82,14 @@ function devito_interface(modelPy::PyCall.PyObject, srcGeometry::Nothing, srcDat
     rec_coords = setup_grid(recGeometry, modelPy.shape)
 
     # Devito call
-    v = wrapcall_function(ac."adjoint_no_rec", modelPy, rec_coords, dIn, space_order=options.space_order, f0=options.f0)
+    v = wrapcall_wf(ac."adjoint_no_rec", modelPy, rec_coords, dIn, space_order=options.space_order)
 
     # Output adjoint wavefield as judiWavefield
     return judiWavefield{Float32}(1, [dtComp], [v])
 end
 
 # d_obs = Pr*F*u
-function devito_interface(modelPy::PyCall.PyObject, srcGeometry::Nothing, srcData::Union{Array, PyArray}, recGeometry::Geometry, recData::Nothing, dm::Nothing, options::JUDIOptions)
+function devito_interface(modelPy::PyObject, srcGeometry::Nothing, srcData::Array, recGeometry::Geometry, recData::Nothing, dm::Nothing, options::JUDIOptions)
     judilog("Pr*F*u")
     # Interpolate input data to computational grid
     dtComp = convert(Float32, modelPy."critical_dt")
@@ -104,7 +105,7 @@ function devito_interface(modelPy::PyCall.PyObject, srcGeometry::Nothing, srcDat
 end
 
 # q_ad = Ps*F'*v
-function devito_interface(modelPy::PyCall.PyObject, srcGeometry::Geometry, srcData::Nothing, recGeometry::Nothing, recData::Union{Array, PyArray}, dm::Nothing, options::JUDIOptions)
+function devito_interface(modelPy::PyObject, srcGeometry::Geometry, srcData::Nothing, recGeometry::Nothing, recData::Array, dm::Nothing, options::JUDIOptions)
     judilog("Ps*F'*v")
     # Interpolate input data to computational grid
     dtComp = convert(Float32, modelPy."critical_dt")
@@ -121,33 +122,33 @@ function devito_interface(modelPy::PyCall.PyObject, srcGeometry::Geometry, srcDa
 end
 
 # u_out = F*u_in
-function devito_interface(modelPy::PyCall.PyObject, srcGeometry::Nothing, srcData::Union{Array, PyArray}, recGeometry::Nothing, recData::Nothing, dm::Nothing, options::JUDIOptions)
+function devito_interface(modelPy::PyObject, srcGeometry::Nothing, srcData::Array, recGeometry::Nothing, recData::Nothing, dm::Nothing, options::JUDIOptions)
     judilog("F*u_in")
     # Interpolate input data to computational grid
     dtComp = convert(Float32, modelPy."critical_dt")
 
     # Devito call
-    u = wrapcall_function(ac."forward_wf_src_norec", modelPy, srcData, space_order=options.space_order, f0=options.f0)
+    u = wrapcall_wf(ac."forward_wf_src_norec", modelPy, srcData, space_order=options.space_order)
 
     # Output forward wavefield as judiWavefield
     return judiWavefield{Float32}(1, [dtComp], [u])
 end
 
 # v_out = F'*v_in
-function devito_interface(modelPy::PyCall.PyObject, srcGeometry::Nothing, srcData::Nothing, recGeometry::Nothing, recData::Union{Array, PyArray}, dm::Nothing, options::JUDIOptions)
+function devito_interface(modelPy::PyObject, srcGeometry::Nothing, srcData::Nothing, recGeometry::Nothing, recData::Array, dm::Nothing, options::JUDIOptions)
     judilog("F'*v_in")
     # Interpolate input data to computational grid
     dtComp = convert(Float32, modelPy."critical_dt")
 
     # Devito call
-    v = wrapcall_function(ac."adjoint_wf_src_norec", modelPy, recData, space_order=options.space_order, f0=options.f0)
+    v = wrapcall_wf(ac."adjoint_wf_src_norec", modelPy, recData, space_order=options.space_order)
 
     # Output adjoint wavefield as judiWavefield
     return judiWavefield{Float32}(1, [dtComp], [v])
 end
 
 # d_lin = J*dm
-function devito_interface(modelPy::PyCall.PyObject, srcGeometry::Geometry, srcData::Array, recGeometry::Geometry,
+function devito_interface(modelPy::PyObject, srcGeometry::Geometry, srcData::Array, recGeometry::Geometry,
                           recData::Nothing, dm::Union{PhysicalParameter, Array}, options::JUDIOptions)
     judilog("J*dm")
     # Interpolate input data to computational grid
@@ -174,7 +175,7 @@ function devito_interface(modelPy::PyCall.PyObject, srcGeometry::Geometry, srcDa
 end
 
 # dm = J'*d_lin
-function devito_interface(modelPy::PyCall.PyObject, srcGeometry::Geometry, srcData::Array, recGeometry::Geometry,
+function devito_interface(modelPy::PyObject, srcGeometry::Geometry, srcData::Array, recGeometry::Geometry,
                           recData::Array, dm::Nothing, options::JUDIOptions)
     judilog("J'*d_lin")
     # Interpolate input data to computational grid
@@ -200,7 +201,7 @@ end
 ######################################################################################################################################################
 
 # d_obs = Pr*F*Pw'*w - modeling w/ extended source
-function devito_interface(modelPy::PyCall.PyObject, weights::Array, srcData::Array, recGeometry::Geometry, recData::Nothing,
+function devito_interface(modelPy::PyObject, weights::Array, srcData::Array, recGeometry::Geometry, recData::Nothing,
                           dm::Nothing, options::JUDIOptions)
     judilog("Pr*F*Pw'*w")
     weights = pad_array(reshape(weights, modelPy.shape), modelPy.padsizes; mode=:zeros)
@@ -221,7 +222,7 @@ function devito_interface(modelPy::PyCall.PyObject, weights::Array, srcData::Arr
 end
 
 # dw = Pw*F'*Pr'*d_obs - adjoint modeling w/ extended source
-function devito_interface(modelPy::PyCall.PyObject, srcData::Array, ::Nothing, recGeometry::Geometry, recData::Array, ::Nothing, options::JUDIOptions)
+function devito_interface(modelPy::PyObject, srcData::Array, ::Nothing, recGeometry::Geometry, recData::Array, ::Nothing, options::JUDIOptions)
     judilog("Pw*F'*Pr'*d_obs")
     # Interpolate input data to computational grid
     dtComp = convert(Float32, modelPy."critical_dt")
@@ -244,7 +245,7 @@ function devito_interface(modelPy::PyCall.PyObject, srcData::Array, ::Nothing, r
 end
 
 # Jacobian of extended source modeling: d_lin = J*dm
-function devito_interface(modelPy::PyCall.PyObject, weights::Array, srcData::Array, recGeometry::Geometry, recData::Nothing,
+function devito_interface(modelPy::PyObject, weights::Array, srcData::Array, recGeometry::Geometry, recData::Nothing,
                           dm::Union{PhysicalParameter, Array}, options::JUDIOptions)
     judilog("Jw*dm")
     weights = pad_array(reshape(weights, modelPy.shape), modelPy.padsizes; mode=:zeros)
@@ -270,7 +271,7 @@ function devito_interface(modelPy::PyCall.PyObject, weights::Array, srcData::Arr
 end
 
 # Adjoint Jacobian of extended source modeling: dm = J'*d_lin
-function devito_interface(modelPy::PyCall.PyObject, weights::Array, srcData::Array, recGeometry::Geometry, recData::Array, dm::Nothing, options::JUDIOptions)
+function devito_interface(modelPy::PyObject, weights::Array, srcData::Array, recGeometry::Geometry, recData::Array, dm::Nothing, options::JUDIOptions)
     judilog("Jw'*d_lin")
     weights = pad_array(reshape(weights, modelPy.shape), modelPy.padsizes; mode=:zeros)
     # Interpolate input data to computational grid

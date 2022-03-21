@@ -71,38 +71,6 @@ def forward_rec_w(model, weight, wavelet, rec_coords, space_order=8, f0=0.015):
     return rec.data
 
 
-# Pr*F*Ps'*q
-def forward_rec_wf(model, src_coords, wavelet, rec_coords, t_sub=1,
-                   space_order=8, f0=0.015):
-    """
-    Forward modeling of a point source Pr*F*Ps^T*q and return wavefield.
-
-    Parameters
-    ----------
-    model: Model
-        Physical model
-    src_coords: Array
-        Coordiantes of the source(s)
-    wavelet: Array
-        Source signature
-    rec_coords: Array
-        Coordiantes of the receiver(s)
-    space_order: Int (optional)
-        Spatial discretization order, defaults to 8
-    f0: peak frequency
-
-    Returns
-    ----------
-    Array
-        Shot record
-    TimeFunction
-        Wavefield
-    """
-    rec, u, _ = forward(model, src_coords, rec_coords, wavelet, save=True, t_sub=t_sub,
-                        space_order=space_order, f0=f0)
-    return rec.data, u
-
-
 # F*Ps'*q
 def forward_no_rec(model, src_coords, wavelet, space_order=8, f0=0.015):
     """
@@ -129,7 +97,6 @@ def forward_no_rec(model, src_coords, wavelet, space_order=8, f0=0.015):
                       save=True, f0=f0)
     return u.data
 
-
 # Pr*F*u
 def forward_wf_src(model, u, rec_coords, space_order=8, f0=0.015):
     """
@@ -153,11 +120,11 @@ def forward_wf_src(model, u, rec_coords, space_order=8, f0=0.015):
         Shot record
     """
     if isinstance(u, TimeFunction):
-        wf_src = u
+        wf_src = TimeFunction(name='wf_src', grid=model.grid, time_order=2,
+                              space_order=0, save=u.shape[0], initializer=u.data)
     else:
         wf_src = TimeFunction(name='wf_src', grid=model.grid, time_order=2,
-                              space_order=0, save=u.shape[0], allocator=ExternalAllocator(u),
-                              initializer=lambda x: None)
+                              space_order=0, save=u.shape[0], initializer=u)
 
     rec, _, _ = forward(model, None, rec_coords, None, space_order=space_order, q=wf_src)
     return rec.data
@@ -184,11 +151,11 @@ def forward_wf_src_norec(model, u, space_order=8, f0=0.015):
         Wavefield
     """
     if isinstance(u, TimeFunction):
-        wf_src = u
+        wf_src = TimeFunction(name='wf_src', grid=model.grid, time_order=2,
+                              space_order=0, save=u.shape[0], initializer=u.data)
     else:
         wf_src = TimeFunction(name='wf_src', grid=model.grid, time_order=2,
-                              space_order=0, save=u.shape[0], allocator=ExternalAllocator(u),
-                              initializer=lambda x: None)
+                              space_order=0, save=u.shape[0], initializer=u)
 
     _, u, _ = forward(model, None, None, None, space_order=space_order, save=True,
                       q=wf_src, f0=f0)
@@ -307,11 +274,11 @@ def adjoint_wf_src(model, u, src_coords, space_order=8, f0=0.015):
         Shot record (sampled at source position(s))
     """
     if isinstance(u, TimeFunction):
-        wf_src = u
+        wf_src = TimeFunction(name='wf_src', grid=model.grid, time_order=2,
+                              space_order=0, save=u.shape[0], initializer=u.data)
     else:
         wf_src = TimeFunction(name='wf_src', grid=model.grid, time_order=2,
-                              space_order=0, save=u.shape[0], allocator=ExternalAllocator(u),
-                              initializer=lambda x: None)
+                              space_order=0, save=u.shape[0], initializer=u)
 
     rec, _, _ = adjoint(model, None, src_coords, None, space_order=space_order, q=wf_src)
     return rec.data
@@ -339,11 +306,11 @@ def adjoint_wf_src_norec(model, u, space_order=8, f0=0.015):
         Adjoint wavefield
     """
     if isinstance(u, TimeFunction):
-        wf_src = u
+        wf_src = TimeFunction(name='wf_src', grid=model.grid, time_order=2,
+                              space_order=0, save=u.shape[0], initializer=u.data)
     else:
         wf_src = TimeFunction(name='wf_src', grid=model.grid, time_order=2,
-                              space_order=0, save=u.shape[0], allocator=ExternalAllocator(u),
-                              initializer=lambda x: None)
+                              space_order=0, save=u.shape[0], initializer=u)
 
     _, v, _ = adjoint(model, None, None, None, space_order=space_order,
                       save=True, q=wf_src, f0=f0)

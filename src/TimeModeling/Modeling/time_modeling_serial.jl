@@ -2,8 +2,8 @@
 export time_modeling
 
 GeomOrNot = Union{Geometry, Array, Nothing}
-ArrayOrNot = Union{Array, PyArray, Nothing}
-PhysOrNot = Union{dmType, Nothing}
+ArrayOrNot = Union{Array, PyArray, PyObject, Nothing}
+PhysOrNot = Union{PhysicalParameter, Array, Nothing}
 
 # Setup time-domain linear or nonlinear foward and adjoint modeling and interface to devito
 function time_modeling(model_full::Model, srcGeometry::GeomOrNot, srcData::ArrayOrNot,
@@ -44,7 +44,3 @@ function time_modeling(model_full::Model, srcGeometry::GeomOrNot, srcData::Array
 
     return argout
 end
-
-# Function instance without options
-time_modeling(model::Model, srcGeometry::Geometry, srcData, recGeometry::Geometry, recData, dm, op::Symbol, mode::Int64) =
-    time_modeling(model, srcGeometry, srcData, recGeometry, recData, dm, op, Options())

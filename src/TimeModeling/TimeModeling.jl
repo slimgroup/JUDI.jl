@@ -19,7 +19,7 @@ include("Types/judiVector.jl")    # Julia data container
 include("Types/judiComposites.jl")    # A composite type to work with hcat/vcat of judi types
 
 # Utility types
-const SourceType{T} = Union{Vector{T}, judiMultiSourceVector{T}}
+const SourceType{T} = Union{Vector{T}, judiMultiSourceVector{T}, PhysicalParameter{T}}
 const dmType{T} = Union{Vector{T}, PhysicalParameter{T}}
 
 #############################################################################

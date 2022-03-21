@@ -35,7 +35,6 @@ devito = ["test_linearity.jl",
           "test_adjoint.jl",
           "test_all_options.jl",
           "test_jacobian.jl",
-          "test_jacobian_extended.jl",
           "test_gradient_fwi.jl",
           "test_gradient_lsrtm.jl",
           "test_multi_exp.jl"]
@@ -48,6 +47,7 @@ issues = ["test_issues.jl"]
 
 # custom
 if endswith(GROUP, ".jl")
+    # VERSION >= v"1.7" && push!(Base.ARGS, "-p 2")
     timeit_include(GROUP)
 end
 
@@ -69,7 +69,7 @@ end
 # Generic mdeling tests
 if GROUP == "BASICS" || GROUP == "All"
     println("JUDI generic modelling tests")
-    # VERSION >= v"1.7" && push!(Base.ARGS, "-p 2")
+    VERSION >= v"1.7" && push!(Base.ARGS, "-p 2")
     for t=extras
         timeit_include(t)
         @everywhere try Base.GC.gc(); catch; gc() end

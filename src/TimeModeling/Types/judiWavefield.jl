@@ -12,7 +12,7 @@ export judiWavefield, fft_wavefield
 mutable struct judiWavefield{T} <: judiMultiSourceVector{T}
     nsrc::Integer
     dt::Vector{T}
-    data::Vector{<:Union{Array{T, N}, PyArray{T, N}}} where N
+    data::Vector{<:Union{Array{T, N}, PyArray}} where N
 end
 
 ############################################################

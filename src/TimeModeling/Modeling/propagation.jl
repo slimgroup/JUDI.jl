@@ -4,17 +4,17 @@
 Base propagation interfaces that calls the devito `mode` propagator (forward/adjoint/..)
 with `q` as a source. The return type is infered from `F`.
 """
-function propagate(F::judiPropagator{T, O}, q::AbstractVector{T}) where {T, O}
+function propagate(F::judiPropagator{T, O}, q::AbstractArray{T}) where {T, O}
     srcGeometry, srcData, recGeometry, recData, dm = make_input(F, q)
     return time_modeling(F.model, srcGeometry, srcData, recGeometry, recData, dm, O, F.options)
 end
 
-function propagate(F::judiPropagator{T, :adjoint}, q::AbstractVector{T}) where {T}
+function propagate(F::judiPropagator{T, :adjoint}, q::AbstractArray{T}) where {T}
     srcGeometry, srcData, recGeometry, recData, dm = make_input(F, q)
     return time_modeling(F.model, recGeometry, recData, srcGeometry, srcData, dm, :adjoint, F.options)
 end
 
-propagate(t::Tuple{judiPropagator, AbstractVector}) = propagate(t[1], t[2])
+propagate(t::Tuple{judiPropagator, AbstractArray}) = propagate(t[1], t[2])
 
 """
     run_and_reduce(func, pool, nsrc, arg_func)
@@ -23,25 +23,17 @@ Runs the function `func` for indices `1:nsrc` within arguments `func(arg_func(i)
 the pool is empty, a standard loop and accumulation is ran. If the pool is a julia WorkerPool or
 any custom Distributed pool, he loop is distributed via `remotecall` followed by are binary tree emote reduction.
 """
-function run_and_reduce(func, ::Nothing, nsrc, arg_func::Function)
-    out = func(arg_func(1))
-    for i = 2:nsrc
-        args_loc = arg_func(i)
-        tmp = func(args_loc)
-        single_reduce!(out, tmp)
-    end
-    return out
-end
-
 function run_and_reduce(func, pool, nsrc, arg_func::Function)
-    res = Vector{Future}(undef, nsrc)
-    @sync for i = 1:nsrc
+    res = Vector{_TFuture}(undef, nsrc)
+    for i = 1:nsrc
         args_loc = arg_func(i)
         res[i] = remotecall(func, pool, args_loc)
     end
     res = reduce!(res)
     return res
 end
+
+run_and_reduce(func, ::Nothing, nsrc, arg_func::Function) = mapreduce(i -> func(arg_func(i)), single_reduce!, 1:nsrc)
 
 src_i(::judiJacobian{T, :born, FT}, q, ::Integer) where {T, FT} = q
 src_i(::judiPropagator{T, O}, q::judiMultiSourceVector{T}, i::Integer) where {T, O} = q[i]
@@ -65,7 +57,7 @@ function multi_src_propagate(F::judiPropagator{T, O}, q::AbstractVector{T}) wher
     arg_func = i -> (F[i], src_i(F, q, i))
     # Distribute source
     res = run_and_reduce(propagate, pool, nsrc, arg_func)
-    return as_vec(res,  Val(F.options.return_array))
+    return as_vec(res, Val(F.options.return_array))
 end
 
 """
@@ -80,10 +72,10 @@ function multi_src_fg!(G, model, q, dobs, dm; options=Options(), nlind=false, li
     nsrc = try q.nsrc catch; dobs.nsrc end
     pool = _worker_pool()
     # Distribute source
-    arg_func = i -> (model, q[i], dobs[i], dm, options, nlind, lin)
+    arg_func = i -> (model, q[i], dobs[i], dm, options[i], nlind, lin)
     # Distribute source
     res = run_and_reduce(multi_src_fg, pool, nsrc, arg_func)
-    f, g = as_vec(res,  Val(options.return_array))
+    f, g = as_vec(res, Val(options.return_array))
     G .= g
     return f
 end

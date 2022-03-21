@@ -91,7 +91,6 @@ cases = [(true, true), (true, false), (false, true), (false, false)]
 	end
 end
 
-
 ############################# Full wavefield ############################################
 
 @testset "Basic judiWavefield modeling tests" begin
@@ -112,17 +111,15 @@ end
 		a = dot(u, v)
 		b = dot(dobs, dobs)
 		@printf(" <F x, y> : %2.5e, <x, F' y> : %2.5e, relative error : %2.5e \n", b, a, (a-b)/(a+b))
-		@test isapprox((a-b)/(a+b), 0f0, rtol=1f-4)
-
+		@test isapprox(a/(a+b), b/(a+b), atol=1f-5, rtol=0)
 
 		# Forward from data
-		qa = Ps*Fa*u
-		ua = F*Ps'*qa
+		qa = Ps*Fa*v
 
-		a = dot(u, ua)
-		b = dot(qa, qa)
+		a = dot(u, v)
+		b = dot(q, qa)
 		@printf(" <F x, y> : %2.5e, <x, F' y> : %2.5e, relative error : %2.5e \n", b, a, (a-b)/(a+b))
-		@test isapprox((a-b)/(a+b), 0f0, rtol=1f-4)
+		@test isapprox(a/(a+b), b/(a+b), atol=1f-5, rtol=0)
 
 		# Wavefields as source + return wavefields
 		u2 = F*u
@@ -131,6 +128,7 @@ end
 		a = dot(u2, v)
 		b = dot(v2, u)
 		@printf(" <F x, y> : %2.5e, <x, F' y> : %2.5e, relative error : %2.5e \n", a, b, (a-b)/(a+b))
-		@test isapprox((a-b)/(a+b), 0f0, rtol=1f-4)
+		@test isapprox(a/(a+b), b/(a+b), atol=5f-5, rtol=0)
+		@show norm(u), norm(u2), norm(v), norm(v2), norm(q), norm(qa), norm(dobs)
 	end
 end

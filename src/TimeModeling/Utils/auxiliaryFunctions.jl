@@ -79,7 +79,7 @@ function pad_array(m::Array{DT}, nb::Array{Tuple{Int64,Int64},1}; mode::Symbol=:
         left, right = nb[i]
         push!(Ei, joExtend(n[i], mode;pad_upper=right, pad_lower=left, RDT=DT, DDT=DT))
     end
-    padded = joKron(Ei...) * adjoint(m)[:]
+    padded = joKron(Ei...) * PermutedDimsArray(m, length(n):-1:1)[:]
     return PyReverseDims(reshape(padded, reverse(new_size)))
 end
 

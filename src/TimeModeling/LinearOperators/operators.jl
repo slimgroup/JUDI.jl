@@ -145,8 +145,12 @@ adjoint(L::LazyScal) = LazyScal(L.s, adjoint(L.P))
 
 # Propagation via linear algebra `*`
 *(F::judiPropagator{T, O}, q::SourceType{T}) where {T<:Number, O} = multi_src_propagate(F, q)
-*(F::judiJacobian{T, O, FT}, q::PhysicalParameter{T}) where {T<:Number, O, FT} = multi_src_propagate(F, q)
+*(F::judiJacobian{T, O, FT}, q::dmType{T}) where {T<:Number, O, FT} = multi_src_propagate(F, q)
 
+mul!(out::SourceType{T}, F::judiPropagator{T, O}, q::SourceType{T}) where {T<:Number, O} = begin y = F*q; copyto!(out, y) end
+mul!(out::SourceType{T}, F::joLinearFunction{T, T}, q::SourceType{T}) where {T<:Number, O} = begin y = F*q; copyto!(out, y) end
+mul!(out::Array{T, N}, F::judiJacobian{T, :adjoint_born, FT}, q::SourceType{T}) where {T<:Number, O, FT, N} = begin y = F*q; copyto!(out, y) end
+mul!(out::SourceType{T}, F::judiJacobian{T, :born, FT}, q::Array{T, N}) where {T<:Number, O, FT, N} = begin y = F*q[:]; copyto!(out, y) end
 ############################################################################################################################
 # Propagation input
 process_input_data(::judiPropagator, data::judiMultiSourceVector) = data
@@ -161,26 +165,24 @@ process_input_data(::judiJacobian{D, :born, FT}, q::dmType{D}) where {D, FT} = q
 make_input(::judiModeling, q::SourceType) = (nothing, make_input(q), nothing, nothing, nothing)
 make_input(::judiModeling, rhs::judiRHS) = (make_src(rhs)..., nothing, nothing, nothing)
 make_input(F::judiPointSourceModeling, q::SourceType{T}) where {T} = (make_src(q, F.qInjection)..., nothing, nothing, nothing)
+make_input(F::judiPointSourceModeling, q::Matrix{T}) where {T} = (F.qInjection.data[1], q, nothing, nothing, nothing)
 make_input(F::judiDataModeling, q::SourceType{T}) where {T} = (nothing, make_input(q), F.rInterpolation.geometry, nothing, nothing)
 make_input(F::judiDataModeling{T, O}, q::LazyAdd{T}) where {T, O} = (make_src(q)..., F.rInterpolation.geometry, nothing, nothing)
 make_input(F::judiDataModeling, rhs::judiRHS) = (make_src(rhs)..., F.rInterpolation.geometry, nothing, nothing)
 
 make_input(F::judiDataSourceModeling, q::SourceType{T}) where {T} = (make_src(q, F.qInjection)..., F.rInterpolation.data[1], nothing, nothing)
+make_input(F::judiDataSourceModeling, q::Matrix{T}) where {T} = (F.qInjection.data[1], q, F.rInterpolation.data[1], nothing, nothing)
 
 function make_input(J::judiJacobian{D, :born, FT}, q::dmType) where {D, FT}
     srcGeom, srcData = make_src(J.q, J.F.qInjection)
-    return srcGeom, srcData, J.F.rInterpolation.data[1], nothing, q
+    return srcGeom, srcData, J.F.rInterpolation.data[1], nothing, reshape(q, J.model.n)
 end 
 
 function make_input(J::judiJacobian{D, :adjoint_born, FT}, q::SourceType{D}) where {D, FT}
     srcGeom, srcData = make_src(J.q, J.F.qInjection)
     recGeom, recData = make_src(q, J.F.rInterpolation)
     return srcGeom, srcData, recGeom, recData, nothing
-end 
-
-process_input_data(J::judiJacobian{D, :adjoint_born, FT}, q::Vector) where {D, FT} =
-    process_input_data(q, J.F.qInjection.data)
-process_input_data(::judiJacobian{D, :born, FT}, q::dmType{D}) where {D, FT} = q
+end
 
 ############################################################################################################################
 # indexing

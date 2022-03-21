@@ -3,13 +3,13 @@
 
 Inplace reduction of y into x.
 """
-@inline single_reduce!(x, y) = begin x .+= y; nothing end
+@inline single_reduce!(x, y) = begin x .+= y; x end
 
 for T in [judiVector, judiWeights, judiWavefield]
-    @eval @inline single_reduce!(x::$T, y) = begin push!(x, y); nothing end
+    @eval @inline single_reduce!(x::$T, y) = begin push!(x, y); x end
 end
 
-@inline single_reduce!(x::Ref, y::Ref) where {T<:Number} = begin x[] += y[]; nothing end
+@inline single_reduce!(x::Ref, y::Ref) where {T<:Number} = begin x[] += y[]; x end
 
 @inline function single_reduce!(x::Tuple, y::Tuple)
     nx = length(x)
@@ -18,7 +18,7 @@ end
     for (xi, yi) in zip(x, y)
         single_reduce!(xi, yi)
     end
-    nothing
+    x
 end
 
 """
@@ -51,7 +51,7 @@ reduces into itself `futures[i]`.
 function reduce_level!(futures::Vector{_TFuture}, nleaf::Int)
     nleaf == 0 && return
     @sync for i = 1:2:2*nleaf
-        @async remotecall(local_reduce!, futures[i].where, futures[i], futures[i+1])
+        @async remotecall_wait(local_reduce!, futures[i].where, futures[i], futures[i+1])
     end
     deleteat!(futures, 2:2:2*nleaf)
 end
