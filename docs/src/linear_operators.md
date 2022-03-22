@@ -19,13 +19,13 @@ judiModeling{DDT, RDT}
  * Construct a modeling operator **without** source/receiver projections:
 
 ```julia
-F = judiModeling(info, model; options=opt)
+F = judiModeling(model; options=opt)
 ```
 
  * Construct a modeling operator **with** source/receiver projections:
 
 ```julia
-F = judiModeling(info, model, src_geometry, rec_geometry)
+F = judiModeling(model, src_geometry, rec_geometry)
 ```
 
 Not that in this case, all the information can be infered from the model and geometries. Therefore the operator can be created without the need for the `info` input:

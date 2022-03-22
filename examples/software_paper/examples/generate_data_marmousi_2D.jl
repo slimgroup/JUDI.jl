@@ -57,14 +57,10 @@ f0 = 0.03f0     # kHz
 wavelet = ricker_wavelet(timeS, dtS, f0)
 q = judiVector(srcGeometry, wavelet)
 
-# Set up info structure for linear operators
-ntComp = get_computational_nt(srcGeometry, recGeometry, model)
-info = Info(prod(n), nsrc, ntComp)
-
 # Setup operators
-Pr = judiProjection(info, recGeometry)
-F = judiModeling(info, model)
-Ps = judiProjection(info, srcGeometry)
+Pr = judiProjection(recGeometry)
+F = judiModeling(model)
+Ps = judiProjection(srcGeometry)
 J = judiJacobian(Pr*F*adjoint(Ps), q)
 
 # Born modeling

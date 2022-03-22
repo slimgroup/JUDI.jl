@@ -62,18 +62,13 @@ wavelet3[121:121+length(q)-1] = q
 wavelet4 = zeros(srcGeometry.nt[1])
 wavelet4[201:201+length(q)-1] = q
 wavelet = [wavelet1 wavelet2 wavelet3 wavelet4]	# Collect all wavelets
-
-# Info structure for linear operators
-ntComp = get_computational_nt(srcGeometry, recGeometry, model)	# no. of computational time steps
-info = Info(prod(n), nsrc, ntComp)
-
 ###################################################################################################
 
 # Setup operators
-Pr = judiProjection(info, recGeometry)
-A_inv = judiModeling(info, model)
-A0_inv = judiModeling(info, model0)
-Ps = judiProjection(info, srcGeometry)
+Pr = judiProjection(recGeometry)
+A_inv = judiModeling(model)
+A0_inv = judiModeling(model0)
+Ps = judiProjection(srcGeometry)
 q = judiVector(srcGeometry, wavelet)
 
 # Linearized modeling

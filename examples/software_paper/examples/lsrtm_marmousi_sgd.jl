@@ -29,22 +29,18 @@ src_geometry = Geometry(block; key = "source", segy_depth_key = "SourceDepth")
 wavelet = ricker_wavelet(src_geometry.t[1], src_geometry.dt[1], 0.03)    # 30 Hz wavelet
 q = judiVector(src_geometry, wavelet)
 
-# Set up info structure
-ntComp = get_computational_nt(q.geometry, d_lin.geometry, model0)  # no. of computational time steps
-info = Info(prod(model0.n), d_lin.nsrc, ntComp)
-
 ###################################################################################################
 
 # Setup operators
 opt = Options(optimal_checkpointing=true)  # ~40 GB of memory per source w/o checkpointing
-M = judiModeling(info, model0, q.geometry, d_lin.geometry; options=opt)
+M = judiModeling(model0, q.geometry, d_lin.geometry; options=opt)
 J = judiJacobian(M, q)
 
 # Right-hand preconditioners (model topmute)
 Mr = judiTopmute(model0.n, 52, 10)
 
 # Stochastic gradient
-x = zeros(Float32, info.n)
+x = zeros(Float32, prod(model.n))
 batchsize = 10
 niter = 20
 fval = zeros(Float32, niter)

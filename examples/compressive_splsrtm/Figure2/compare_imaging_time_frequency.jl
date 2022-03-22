@@ -12,7 +12,7 @@ if !isfile("marmousi_small.jld")
 end
 M = load("marmousi_small.jld")
 
-# Setup info and model structure
+# Setup  model structure
 model = Model(M["n"], M["d"], M["o"], M["m"])
 model0 = Model(M["n"], M["d"], M["o"], M["m0"])
 dm = vec(M["dm"])
@@ -47,20 +47,15 @@ src_geometry = Geometry(xsrc,ysrc,zsrc;dt=dtS,t=timeS)
 wavelet = ricker_wavelet(src_geometry.t[1], src_geometry.dt[1], 0.030)  # 25 Hz peak frequency
 q = judiVector(src_geometry, wavelet)
 
-# Set up info structure for linear operators
-ntComp = get_computational_nt(q.geometry, rec_geometry, model0)
-info = Info(prod(model0.n), nsrc, ntComp)
-
-
 #################################################################################################
 
 opt = Options(isic=true, optimal_checkpointing=true)
 
 # Setup operators
-Pr = judiProjection(info, rec_geometry)
-F = judiModeling(info, model; options=opt)
-F0 = judiModeling(info, model0; options=opt)
-Ps = judiProjection(info, src_geometry)
+Pr = judiProjection(rec_geometry)
+F = judiModeling(model; options=opt)
+F0 = judiModeling(model0; options=opt)
+Ps = judiProjection(src_geometry)
 J = judiJacobian(Pr*F0*Ps', q)
 
 # Time-domain RTM

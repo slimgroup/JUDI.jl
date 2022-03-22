@@ -27,12 +27,7 @@ function devito_interface(modelPy::PyObject, srcGeometry::Geometry, srcData::Arr
     dOut = time_resample(dOut, dtComp, recGeometry)
 
     # Output shot record as judiVector
-    if options.save_data_to_disk
-        container = write_shot_record(srcGeometry, srcData, recGeometry, dOut, options)
-        return judiVector(container)
-    else
-        return judiVector{Float32, Array{Float32, 2}}(1, recGeometry, [dOut])
-    end
+    return judiVector{Float32, Array{Float32, 2}}(1, recGeometry, [dOut])
 end
 
 # q_ad = Ps*F'*Pr'*d_obs
@@ -166,12 +161,7 @@ function devito_interface(modelPy::PyObject, srcGeometry::Geometry, srcData::Arr
     dOut = time_resample(dOut, dtComp, recGeometry)
 
     # Output linearized shot records as judiVector
-    if options.save_data_to_disk
-        container = write_shot_record(srcGeometry,srcData,recGeometry,dOut,options)
-        return judiVector(container)
-    else
-        return judiVector{Float32, Array{Float32, 2}}(1, recGeometry, [dOut])
-    end
+    return judiVector{Float32, Array{Float32, 2}}(1, recGeometry, [dOut])
 end
 
 # dm = J'*d_lin
@@ -262,12 +252,7 @@ function devito_interface(modelPy::PyObject, weights::Array, srcData::Array, rec
     dOut = time_resample(dOut, dtComp, recGeometry)
 
     # Output linearized shot records as judiVector
-    if options.save_data_to_disk
-        container = write_shot_record(srcGeometry,srcData,recGeometry,dOut,options)
-        return judiVector(container)
-    else
-        return judiVector{Float32, Array{Float32, 2}}(1, recGeometry, [dOut])
-    end
+    return judiVector{Float32, Array{Float32, 2}}(1, recGeometry, [dOut])
 end
 
 # Adjoint Jacobian of extended source modeling: dm = J'*d_lin

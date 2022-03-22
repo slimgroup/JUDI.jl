@@ -58,10 +58,6 @@ rec_geometry = Geometry(xrec, yrec, zrec; dt = dtR, t = timeR)
 f0 = 0.008
 wavelet = ricker_wavelet(timeS, dtS, f0)
 
-# Info for modeling operators
-ntComp = get_computational_nt(src_geometry, rec_geometry, model)
-info = Info(prod(model.n), nsrc, ntComp)
-
 #######################################################################
 
 # Set up modeling options
@@ -72,9 +68,9 @@ opt = Options(limit_m = true,
               )
 
 # Set up operators
-Pr = judiProjection(info, rec_geometry)
-Ps = judiProjection(info, src_geometry)
-A_inv = judiModeling(info, model; options=opt)
+Pr = judiProjection(rec_geometry)
+Ps = judiProjection(src_geometry)
+A_inv = judiModeling(model; options=opt)
 q = judiVector(src_geometry, wavelet)
 
 # Generate data and save as individual SEG-Y files to disk

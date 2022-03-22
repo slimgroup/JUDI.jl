@@ -143,7 +143,7 @@ To speed up the convergence of our imaging example, we set up a basic preconditi
 ```julia
 # Set up matrix-free linear operators
 opt = Options(optimal_checkpointing = true)    # set to false to disable optimal checkpointing
-F = judiModeling(info, model0, q.geometry, dD.geometry; options=opt)
+F = judiModeling(model0, q.geometry, dD.geometry; options=opt)
 J = judiJacobian(F, q)
 
 # Right-hand preconditioners (model topmute)

@@ -70,9 +70,9 @@ info = Info(prod(n), nsrc, ntComp)
 opt = Options(optimal_checkpointing=true)
 
 # Setup operators
-Pr = judiProjection(info, recGeometry)
-F = judiModeling(info, model)
-Ps = judiProjection(info, srcGeometry)
+Pr = judiProjection(recGeometry)
+F = judiModeling(model)
+Ps = judiProjection(srcGeometry)
 q = judiVector(srcGeometry, wavelet)
 
 # Nonlinear modeling
@@ -80,7 +80,7 @@ dobs = Pr*F*adjoint(Ps)*q
 qad = Ps*F*adjoint(Pr)*dobs
 
 # Linearied modeling
-F0 = judiModeling(info, model0) # modeling operator for background model
+F0 = judiModeling(model0) # modeling operator for background model
 J = judiJacobian(Pr*F0*adjoint(Ps), q)
 dD = J*dm
 rtm = adjoint(J)*dD

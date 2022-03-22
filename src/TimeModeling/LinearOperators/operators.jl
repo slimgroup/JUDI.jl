@@ -5,6 +5,7 @@ const adjoint_map = Dict(:forward => :adjoint, :adjoint => :forward, :born => :a
 # Base abstract types
 abstract type judiPropagator{D, O} <: joAbstractLinearOperator{D, D} end
 abstract type judiComposedPropagator{D, O} <: judiPropagator{D, O} end
+abstract type judiAbstractJacobian{D, O, FT} <: judiComposedPropagator{D, O} end
 
 ############################################################################################################################
 # Concrete types
@@ -41,7 +42,7 @@ struct judiDataSourceModeling{D, O} <: judiComposedPropagator{D, O}
         new(rInterpolation.m, qInjection.n, rInterpolation, F, qInjection)
 end
 
-struct judiJacobian{D, O, FT} <: judiComposedPropagator{D, O}
+struct judiJacobian{D, O, FT} <: judiAbstractJacobian{D, O, FT}
     m::AbstractSize
     n::AbstractSize
     F::FT
@@ -145,12 +146,12 @@ adjoint(L::LazyScal) = LazyScal(L.s, adjoint(L.P))
 
 # Propagation via linear algebra `*`
 *(F::judiPropagator{T, O}, q::SourceType{T}) where {T<:Number, O} = multi_src_propagate(F, q)
-*(F::judiJacobian{T, O, FT}, q::dmType{T}) where {T<:Number, O, FT} = multi_src_propagate(F, q)
+*(F::judiAbstractJacobian{T, O, FT}, q::dmType{T}) where {T<:Number, O, FT} = multi_src_propagate(F, q)
 
 mul!(out::SourceType{T}, F::judiPropagator{T, O}, q::SourceType{T}) where {T<:Number, O} = begin y = F*q; copyto!(out, y) end
 mul!(out::SourceType{T}, F::joLinearFunction{T, T}, q::SourceType{T}) where {T<:Number, O} = begin y = F*q; copyto!(out, y) end
-mul!(out::Array{T, N}, F::judiJacobian{T, :adjoint_born, FT}, q::SourceType{T}) where {T<:Number, O, FT, N} = begin y = F*q; copyto!(out, y) end
-mul!(out::SourceType{T}, F::judiJacobian{T, :born, FT}, q::Array{T, N}) where {T<:Number, O, FT, N} = begin y = F*q[:]; copyto!(out, y) end
+mul!(out::Array{T, N}, F::judiAbstractJacobian{T, :adjoint_born, FT}, q::SourceType{T}) where {T<:Number, O, FT, N} = begin y = F*q; copyto!(out, y) end
+mul!(out::SourceType{T}, F::judiAbstractJacobian{T, :born, FT}, q::Array{T, N}) where {T<:Number, O, FT, N} = begin y = F*q[:]; copyto!(out, y) end
 ############################################################################################################################
 # Propagation input
 process_input_data(::judiPropagator, data::judiMultiSourceVector) = data

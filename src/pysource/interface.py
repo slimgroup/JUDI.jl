@@ -1,7 +1,6 @@
 import numpy as np
 
 from devito import TimeFunction, warning
-from devito.data.allocators import ExternalAllocator
 from devito.tools import as_tuple
 from pyrevolve import Revolver
 
@@ -96,6 +95,7 @@ def forward_no_rec(model, src_coords, wavelet, space_order=8, f0=0.015):
     _, u, _ = forward(model, src_coords, None, wavelet, space_order=space_order,
                       save=True, f0=f0)
     return u.data
+
 
 # Pr*F*u
 def forward_wf_src(model, u, rec_coords, space_order=8, f0=0.015):

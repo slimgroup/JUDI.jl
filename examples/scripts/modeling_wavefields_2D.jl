@@ -67,10 +67,10 @@ info = Info(prod(n), nsrc, ntComp)
 opt = Options()
 
 # Setup operators
-Pr = judiProjection(info, recGeometry)
-F = judiModeling(info, model; options=opt)
-F0 = judiModeling(info, model0; options=opt)
-Ps = judiProjection(info, srcGeometry)
+Pr = judiProjection(recGeometry)
+F = judiModeling(model; options=opt)
+F0 = judiModeling(model0; options=opt)
+Ps = judiProjection(srcGeometry)
 J = judiJacobian(Pr*F0*adjoint(Ps), q)
 
 # Nonlinear modeling
@@ -93,7 +93,7 @@ qnew = Ps*adjoint(F)*u
 dtComp = get_dt(model)
 u0 = zeros(Float32, ntComp[1], model.n[1] + 2*model.nb, model.n[2] + 2*model.nb)
 u0[:, 100, 45] = wavelet = -ricker_wavelet(timeS, dtComp, f0)
-uf = judiWavefield(info, dtComp, u0)
+uf = judiWavefield(dtComp, u0)
 dobs2 = Pr*F*uf # same as dobs
 
 # Wavefields as source + return wavefields

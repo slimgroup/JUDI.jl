@@ -58,10 +58,10 @@ info = Info(prod(n), nsrc, ntComp)
 
 opt = Options(isic=true)
 # Setup operators
-Pr = judiProjection(info, recGeometry)
-F = judiModeling(info, model)
-F0 = judiModeling(info, model0; options=opt)
-Ps = judiProjection(info, srcGeometry)
+Pr = judiProjection(recGeometry)
+F = judiModeling(model)
+F0 = judiModeling(model0; options=opt)
+Ps = judiProjection(srcGeometry)
 J = judiJacobian(Pr*F0*adjoint(Ps), q)
 
 # Nonlinear modeling
@@ -70,7 +70,7 @@ dobs = Pr*F*adjoint(Ps)*q
 
 # With a transducer source pointing down so pi/2 angle and radius 5mm (1cm diameter)
 q2 = transducer(q, model.d, 5, pi/2 .* ones(q.nsrc))
-Ps2 = judiProjection(info, q2.geometry)
+Ps2 = judiProjection(q2.geometry)
 
 dobs2 = Pr*F*adjoint(Ps2)*q2
 

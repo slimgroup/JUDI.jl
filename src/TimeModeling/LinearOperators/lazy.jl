@@ -48,15 +48,15 @@ end
 ############################################################################################################################
 # Constructors
 """
-    judiProjection(info, geometry)
+    judiProjection(geometry)
 Projection operator for sources/receivers to restrict or inject data at specified locations.\\
 `info` is an `Info` structure and `geometry` is a `Geometry` structure with either source or\\
 receiver locations.
 Examples
 ========
 `F` is a modeling operator of type `judiModeling` and `q` is a seismic source of type `judiVector`:
-    Pr = judiProjection(info, rec_geometry)
-    Ps = judiProjection(info, q.geometry)
+    Pr = judiProjection(rec_geometry)
+    Ps = judiProjection(q.geometry)
     dobs = Pr*F*Ps'*q
     qad = Ps*F'*Pr'*dobs
 """
@@ -75,7 +75,7 @@ dimensions of the full time history of the wavefields, but contains only the dat
 source or receiver positions (i.e. wavelets or shot records).
 Constructor
 ==========
-    judiRHS(info, geometry, data)
+    judiRHS(geometry, data)
 Examples
 ========
 Assuming `Pr` and `Ps` are projection operators of type `judiProjection` and `dobs` and `q` are\\

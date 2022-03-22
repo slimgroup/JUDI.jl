@@ -42,5 +42,16 @@ function time_modeling(model_full::Model, srcGeometry::GeomOrNot, srcData::Array
         argout = extend_gradient(model_full, model, argout)
     end
 
+    argout = save_to_disk(argout, srcGeometry, srcData, options, Val(options.save_data_to_disk))
+
     return argout
+end
+
+# Saving to disk utilities
+save_to_disk(shot, srcGeometry, srcData, options, ::Val) = shot
+save_to_disk(shot::judiVector, srcGeometry, srcData, options, ::Val{false}) = shot
+
+function save_to_disk(shot::judiVector, srcGeometry::GeometryIC, srcData::Array, options::JUDIOptions, ::Val{true}) 
+    container = write_shot_record(srcGeometry, srcData, shot.geometry[1], shot.data[1], options)
+    return judiVector(container)
 end

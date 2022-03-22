@@ -52,9 +52,7 @@ proj(x) = reshape(median([vec(mmin) vec(x) vec(mmax)], dims=2), model0.n)
 function fwi_misfit(model::Model, q::judiVector, d::judiVector; misfit = "L2", compute_gradient = true)
 
     # Set up operators
-    nt = get_computational_nt(q.geometry, d.geometry, model)
-    info = Info(prod(model.n), d.nsrc, nt)
-    M = judiModeling(info, model, q.geometry, d.geometry)
+    M = judiModeling(model, q.geometry, d.geometry)
     J = judiJacobian(M, q)
 
     # Data residual, function value and gradient

@@ -37,18 +37,14 @@ recGeometry = Geometry(xrec, yrec, zrec; dt=dt, t=time, nsrc=nsrc)
 f0 = 0.01f0     # kHz
 wavelet = ricker_wavelet(time, dt, f0)
 
-# Set up info structure for linear operators
-ntComp = get_computational_nt(recGeometry, model)
-info = Info(prod(n), nsrc, ntComp)
-
 ###################################################################################################
 
 # Write shots as segy files to disk
 opt = Options(return_array=false, dt_comp=1.0, free_surface=true)
 
 # Setup operators
-Pr = judiProjection(info, recGeometry)
-F = judiModeling(info, model; options=opt)
+Pr = judiProjection(recGeometry)
+F = judiModeling(model; options=opt)
 
 # Extended source weights
 weights = Array{Array}(undef, nsrc)

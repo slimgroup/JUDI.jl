@@ -89,9 +89,9 @@ Next, we can define separate operators for source/receiver projections and a for
 
 ```julia
 # Setup operators
-Pr = judiProjection(info, rec_geometry)
-A_inv = judiModeling(info, model)
-Ps = judiProjection(info, src_geometry)
+Pr = judiProjection(rec_geometry)
+A_inv = judiModeling(model)
+Ps = judiProjection(src_geometry)
 ```
 
 We can see, that from JUDI's perspective, source and receivers are treated equally and are represented by the same operators (`judiProjection`) and vectors (`judiVector`).
@@ -99,7 +99,7 @@ We can see, that from JUDI's perspective, source and receivers are treated equal
 We also could've skipped setting up the projection operators and directly created:
 
 ```julia
-F = judiModeling(info, model, src_geometry, rec_geometry)
+F = judiModeling(model, src_geometry, rec_geometry)
 ```
 
 which is equivalent to creating the combined operator:
@@ -137,7 +137,7 @@ model0 = Model(n, d, o, m0)
 We can create the Jacobian directly from a (non-linear) modeling operator and a source vector:
 
 ```julia
-A0_inv = judiModeling(info, model0) # modeling operator for migration velocity
+A0_inv = judiModeling(model0) # modeling operator for migration velocity
 J = judiJacobian(Pr*A0_inv*Ps', q)
 ```
 
@@ -229,9 +229,9 @@ ntComp = get_computational_nt(src_geometry, rec_geometry, model)
 info = Info(prod(n), nsrc, ntComp)
 
 # Setup operators
-Pr = judiProjection(info, rec_geometry)
-A_inv = judiModeling(info, model)
-Ps = judiProjection(info, src_geometry)
+Pr = judiProjection(rec_geometry)
+A_inv = judiModeling(model)
+Ps = judiProjection(src_geometry)
 
 # Model data
 d_obs = Pr*A_inv*Ps'*q
@@ -477,8 +477,8 @@ ntComp = get_computational_nt(src_geometry, model)
 info = Info(prod(n), nsrc, ntComp)
 
 # Setup operators
-A_inv = judiModeling(info, model)
-Ps = judiProjection(info, src_geometry)
+A_inv = judiModeling(model)
+Ps = judiProjection(src_geometry)
 ```
 
 To model a wavefield, we simply omit the receiver sampling operator:
@@ -562,8 +562,8 @@ ntComp = get_computational_nt(rec_geometry, model)
 info = Info(prod(n), nsrc, ntComp)
 
 # Setup operators
-A_inv = judiModeling(info, model)
-Pr = judiProjection(info, rec_geometry)
+A_inv = judiModeling(model)
+Pr = judiProjection(rec_geometry)
 ```
 
 We define our extended source as a so called `judiWeights` vector. Similar to a `judiVector`, the data of this abstract vector is stored as a cell array, where each cell corresponds to one source experiment. We create a cell array of length two and create a random array of the size of the model as our extended source:
@@ -580,7 +580,7 @@ To inject the extended source into the model and weight it by the wavelet, we cr
 
 ```julia
 # Create operator for injecting the weights, multiplied by the provided wavelet(s)
-Pw = judiLRWF(info, wavelet)
+Pw = judiLRWF(wavelet)
 
 # Model observed data w/ extended source
 F = Pr*A_inv*adjoint(Pw)
@@ -603,7 +603,7 @@ m0 = (1f0 ./ v0).^2
 
 # Model structure and modeling operator for migration velocity
 model0 = Model(n, d, o, m0)
-A0_inv = judiModeling(info, model0)
+A0_inv = judiModeling(model0)
 
 # Jacobian and RTM
 J = judiJacobian(Pr*A0_inv*adjoint(Pw), w)
@@ -629,7 +629,7 @@ JUDI supports imaging (RTM) and demigration (linearized modeling) using the line
 opt = Options(isic=true)
 
 # Set up modeling operator
-A0_inv = judiModeling(info, model0; options=opt)
+A0_inv = judiModeling(model0; options=opt)
 ```
 
 When you create a Jacobian from a forward modeling operator, the Jacobian inherits the options from `A0_inv`:
@@ -656,7 +656,7 @@ JUDI supports optimal checkpointing via Devito's interface to the Revolve librar
 opt = Options(optimal_checkpointing=true)
 
 # Set up modeling operator
-A0_inv = judiModeling(info, model0; options=opt)
+A0_inv = judiModeling(model0; options=opt)
 ```
 
 When you create a Jacobian from a forward modeling operator, the Jacobian inherits the options from `A0_inv`:

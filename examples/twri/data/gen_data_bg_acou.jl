@@ -44,12 +44,8 @@ rcv_geom = Geometry(x_rcv, y_rcv, z_rcv; dt = dt, t = T, nsrc = nsrc)
 # Source function
 fsrc = judiVector(src_geom, wavelet)
 
-# Set up info structure for linear operators
-ntComp = get_computational_nt(src_geom, rcv_geom, model_true)
-info = Info(prod(n), nsrc, ntComp)
-
 # Setup operators
-F = judiModeling(info,model_true, src_geom,rcv_geom)
+F = judiModeling(model_true, src_geom,rcv_geom)
 dat = F*fsrc
 
 ### Saving data

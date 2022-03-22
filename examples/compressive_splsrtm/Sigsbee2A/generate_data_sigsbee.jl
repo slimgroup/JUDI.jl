@@ -16,7 +16,7 @@ if !isfile("sigsbee2A_model.jld")
 end
 M = load("sigsbee2A_model.jld")
 
-# Setup info and model structure
+# Setup model structure
 model0 = Model(M["n"], M["d"], M["o"], M["m0"])
 dm = vec(M["dm"])
 
@@ -82,10 +82,6 @@ f0 = 0.015  # dominant frequency in [kHz]
 wavelet = ricker_wavelet(timeS,dtS,f0)
 q = judiVector(srcGeometry,wavelet)
 
-# Set up info structure for linear operators
-ntComp = get_computational_nt(srcGeometry,recGeometry,model0)
-info = Info(prod(model0.n),nsrc,ntComp)
-
 #################################################################################################
 
 opt = Options(isic=true,    # impedance modeling
@@ -95,9 +91,9 @@ opt = Options(isic=true,    # impedance modeling
               )
 
 # Setup operators
-Pr = judiProjection(info, recGeometry)
-F0 = judiModeling(info, model0; options=opt)
-Ps = judiProjection(info, srcGeometry)
+Pr = judiProjection(recGeometry)
+F0 = judiModeling(model0; options=opt)
+Ps = judiProjection(srcGeometry)
 J = judiJacobian(Pr*F0*Ps', q)
 
 # Linearized modeling (shots written to disk as SEG-Y files automatically)

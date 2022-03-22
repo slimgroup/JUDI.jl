@@ -246,7 +246,7 @@ function src_to_SeisBlock(q::judiVector{avDT, QT};
         receiver_depth_key=receiver_depth_key)
 end
 
-function write_shot_record(srcGeometry, srcData, recGeometry, recData,options)
+function write_shot_record(srcGeometry::GeometryIC, srcData, recGeometry::GeometryIC, recData, options)
     q = judiVector(srcGeometry, srcData)
     d = judiVector(recGeometry, recData)
     pos = [srcGeometry.xloc[1][1], srcGeometry.yloc[1][1],  srcGeometry.zloc[1][1]]
