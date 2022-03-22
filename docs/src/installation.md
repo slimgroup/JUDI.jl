@@ -27,7 +27,7 @@ JUDI supports the computation of the wave equation on GPU via [Devito](https://w
 
 **NOTE**: Only the wave equation part will be computed on GPU, the julia arrays will still be CPU arrays and `CUDA.jl` is not supported.
 
-### Installation
+### Compiler installation
 
 To enable gpu support in JUDI, you will need to install one of [Devito](https://www.devitoproject.org)'s supported offloading compilers. We strongly recommend checking the [Wiki](https://github.com/devitocodes/devito/wiki) for installation steps and to reach out to the Devito community for GPU compiler related issues.
 

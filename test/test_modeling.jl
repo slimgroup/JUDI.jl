@@ -129,6 +129,5 @@ end
 		b = dot(v2, u)
 		@printf(" <F x, y> : %2.5e, <x, F' y> : %2.5e, relative error : %2.5e \n", a, b, (a-b)/(a+b))
 		@test isapprox(a/(a+b), b/(a+b), atol=5f-5, rtol=0)
-		@show norm(u), norm(u2), norm(v), norm(v2), norm(q), norm(qa), norm(dobs)
 	end
 end

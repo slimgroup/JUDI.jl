@@ -88,7 +88,7 @@ Abstract vector class for wavefields.
 **Construction:**
 
 ```@docs
- judiWavefield(dt::Real,data::Union{AbstractArray, String};  vDT::DataType=Float32)
+ judiWavefield
 ```
 
 **Access fields:**

@@ -62,22 +62,6 @@ geometry.xloc[i]
 geometry.xloc[i][j]
 ```
 
-## Info structure
-
-The info structure contains some basic dimensionality information that needs to be available to any type of linear operator:
-
-```@docs
-Info(n::Integer, nsrc::Integer, nt::Integer)
-```
-You can automatically obtain the number of computational time steps as follows:
-
-```julia
-nt = get_computational_nt(src_geometry, rec_geometry, model)
-```
-
-where `src_geometry` is a `Geometry` object with the source geometry, `rec_geometry` is a `Geometry` object with the receiver geometry and `model` is a `Model` structure.
-
-
 ## Options structure
 
 The options structure allows setting several modeling parameters.
@@ -85,3 +69,7 @@ The options structure allows setting several modeling parameters.
 ```@docs
 Options
 ```
+
+**notes**
+
+`Option` has been renamed `JUDIOptions` as of JUDI version `4.0` to avoid potential (and exisiting) conflicts wiht other packages exporting an Options structure.

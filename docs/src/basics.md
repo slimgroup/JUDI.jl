@@ -1,4 +1,4 @@
-# Tutorials
+# Getting Started
 
 These tutorials provide instructions of how to set up various modeling or inversion scenarios with JUDI. For a list of runnable Julia scripts and reproducable research, please also check out the [examples](https://github.com/slimgroup/JUDI.jl/tree/master/examples) directory on Github.
 
@@ -75,14 +75,6 @@ zrec = range(50f0, stop=50f0, length=nxrec)
 
 # Set up receiver structure
 rec_geometry = Geometry(xrec, yrec, zrec; dt=dt, t=time, nsrc=nsrc)
-```
-
-With our model and source and receiver geometries in place, we can proceed to defining our linear operator for seismic modeling. First, we need to define an `info` object, which contains some basic dimensionality information that needs to be shared between operators so that they can determine their size:
-
-```julia
-# Set up info structure for linear operators
-ntComp = get_computational_nt(src_geometry, rec_geometry, model)
-info = Info(prod(n), nsrc, ntComp)
 ```
 
 Next, we can define separate operators for source/receiver projections and a forward modeling operator:
@@ -224,10 +216,6 @@ rec_geometry = Geometry(xrec, yrec, zrec; dt=dt, t=time, nsrc=nsrc)
 Setting up the modeling operators is done as in the previous 2D case:
 
 ```julia
-# Set up info structure for linear operators
-ntComp = get_computational_nt(src_geometry, rec_geometry, model)
-info = Info(prod(n), nsrc, ntComp)
-
 # Setup operators
 Pr = judiProjection(rec_geometry)
 A_inv = judiModeling(model)
@@ -469,13 +457,9 @@ wavelet = ricker_wavelet(time, dt, f0)
 q = judiVector(src_geometry, wavelet)
 ```
 
-As in the 2D quick start tutorial, we create our `info` structure, modeling operator and source projection operator:
+As in the 2D quick start tutorial, we create our odeling operator and source projection operator:
 
 ```julia
-# Set up info structure for linear operators
-ntComp = get_computational_nt(src_geometry, model)
-info = Info(prod(n), nsrc, ntComp)
-
 # Setup operators
 A_inv = judiModeling(model)
 Ps = judiProjection(src_geometry)
@@ -554,13 +538,9 @@ f0 = 0.01f0     # MHz
 wavelet = ricker_wavelet(time, dt, f0)
 ```
 
-As before, we set up an `info` structure, as well as a modeling operator and a receiver sampling operator:
+As before, we set up a modeling operator and a receiver sampling operator:
 
 ```julia
-# Set up info structure for linear operators
-ntComp = get_computational_nt(rec_geometry, model)
-info = Info(prod(n), nsrc, ntComp)
-
 # Setup operators
 A_inv = judiModeling(model)
 Pr = judiProjection(rec_geometry)

@@ -31,6 +31,26 @@ const judiLRWF{T} = judiWavelet{T}
 const Projection{D} = Union{judiProjection{D}, judiWavelet{D}}
 const AdjointProjection{D} = jAdjoint{<:Projection{D}}
 
+"""
+    judiRHS
+        dt::Vector{T}
+        geometry::Geometry
+        data
+Abstract sparse vector for right-hand-sides of the modeling operators. The `judiRHS` vector has the\\
+dimensions of the full time history of the wavefields, but contains only the data defined at the \\
+source or receiver positions (i.e. wavelets or shot records).
+
+Constructor
+==========
+    judiRHS(dt, geometry, data)
+
+Examples
+========
+Assuming `Pr` and `Ps` are projection operators of type `judiProjection` and `dobs` and `q` are\\
+seismic vectors of type `judiVector`, then a `judiRHS` vector can be created as follows:
+    rhs = Pr'*dobs    # right-hand-side with injected observed data
+    rhs = Ps'*q    # right-hand-side with injected wavelet
+"""
 struct judiRHS{D} <: judiMultiSourceVector{D}
     nsrc::Integer
     P::jAdjoint{judiProjection{D}}
@@ -49,9 +69,11 @@ end
 # Constructors
 """
     judiProjection(geometry)
-Projection operator for sources/receivers to restrict or inject data at specified locations.\\
-`info` is an `Info` structure and `geometry` is a `Geometry` structure with either source or\\
+
+Projection operator for sources/receivers to restrict or inject data at specified locations.
+`info` is an `Info` structure and `geometry` is a `Geometry` structure with either source or
 receiver locations.
+
 Examples
 ========
 `F` is a modeling operator of type `judiModeling` and `q` is a seismic source of type `judiVector`:
@@ -63,25 +85,18 @@ Examples
 judiProjection(G::Geometry) = judiProjection{Float32}(_rec_space, time_space_size(2), G)
 
 """
-    judiRHS
-        name::String
-        m::Integer
-        n::Integer
-        info::Info
-        geometry::Geometry
-        data
-Abstract sparse vector for right-hand-sides of the modeling operators. The `judiRHS` vector has the\\
-dimensions of the full time history of the wavefields, but contains only the data defined at the \\
-source or receiver positions (i.e. wavelets or shot records).
-Constructor
-==========
-    judiRHS(geometry, data)
+    judiWavelet(dt, wavelet)
+
+Low-rank wavefield operator which injects a wavelet q at every point of the subsurface.
+`info` is an `Info` structure and `wavelet` is a cell array containing the wavelet(s).
+
 Examples
 ========
-Assuming `Pr` and `Ps` are projection operators of type `judiProjection` and `dobs` and `q` are\\
-seismic vectors of type `judiVector`, then a `judiRHS` vector can be created as follows:
-    rhs = Pr'*dobs    # right-hand-side with injected observed data
-    rhs = Ps'*q    # right-hand-side with injected wavelet
+`F` is a modeling operator of type `judiModeling` and `w` is a weighting matrix of type `judiWeights`:
+    Pr = judiProjection(rec_geometry)
+    Pw = judiWavelet(rec_geometry.dt, q.data) # or judiLRWF(rec_geometry.dt, q.data)
+    dobs = Pr*F*Pw'*w
+    dw = Pw*F'*Pr'*dobs
 """
 judiWavelet(nsrc::Integer, dt::T, w::Array{T, N}) where {T<:Real, N} = judiWavelet{Float32}(_time_space, _space, [w for i=1:nsrc], [dt for i=1:nsrc])
 judiWavelet(dt::T, w::Array{T, N}) where {T<:Real, N} = judiWavelet(1, dt, w)

@@ -28,13 +28,6 @@ F = judiModeling(model; options=opt)
 F = judiModeling(model, src_geometry, rec_geometry)
 ```
 
-Not that in this case, all the information can be infered from the model and geometries. Therefore the operator can be created without the need for the `info` input:
-
-
-```julia
-F = judiModeling(model, src_geometry, rec_geometry)
-```
-
  * Construct a modeling operator from an **existing** operator without geometries and projection operators:
 
 ```julia
@@ -51,25 +44,19 @@ F = Pr*F*Pw'
 
 where `Pw` is a `judiLRWF` (low-rank-wavefield) projection operator.
 
-
-```@docs
-judiModeling(info::Info, model::Model; options=Options(), DDT::DataType=Float32, RDT::DataType=DDT)
-```
-
 **Accessible fields:**
 
 ```julia
-# Info structure
-F.info
-
 # Model structure
 F.model
 
-# Source geometry (if available)
-F.srcGeometry
+# Source injection (if available) and geometry
+F.qInjection
+F.qInjection.geometry
 
-# Receiver geometry (if available)
-F.recGeometry
+# Receiver interpolation (if available) and geometry
+F.rInterpiolation
+F.rInterpiolation.geometry
 
 # Options structure
 F.options
@@ -144,23 +131,22 @@ where `Pw` is a `judiLRWF` operator and `w` is a `judiWeights` vector (or 2D/3D 
 **Accessible fields::**
 
 ```julia
-# Info structure
-J.info
-
 # Model structure
 J.model
 
-# Source geometry (if available)
-J.srcGeometry
+# Underlying propagator
+J.F
 
-# Receiver geometry
-J.recGeometry
+# Source injection (if available) and geometry throughpropagator
+J.F.qInjection
+J.F.qInjection.geometry
 
-# Source wavelet
-J.wavelet
+# Receiver interpolation (if available) and geometry through propagator
+J.F.rInterpiolation
+J.F.rInterpiolation.geometry
 
-# Weights (extended source modeling only)
-J.weights
+# Source term, can be a judiWeghts or a judiVector
+J.q
 
 # Options structure
 J.options
@@ -190,9 +176,6 @@ judiProjection
 **Accessible fields:**
 
 ```julia
-# Info structure
-P.info
-
 # Source/receiver geometry
 P.geometry
 ```
@@ -215,15 +198,12 @@ q_ad = Ps*F*Pr'*d_obs
 Abstract linear operator for sampling a seismic wavefield as a sum over all time steps, weighted by a time-varying wavelet. Its transpose *injects* a time-varying wavelet at every grid point in the model.
 
 ```@docs
-judiLRWF
+judiWavelet
 ```
 
 **Accessible fields:**
 
 ```julia
-# Info structure
-P.info
-
 # Wavelet of i-th source location
 P.wavelet[i]
 ```
