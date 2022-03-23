@@ -313,8 +313,26 @@ eprint = {https://doi.org/10.1190/geo2018-0174.1}
 
 Also visit the Devito homepage at <https://www.devitoproject.org/publications> for more information and references.
 
-Contact authors via: pwitte3@gatech.edu and mlouboutin3@gatech.edu.
+Contact authors via: mlouboutin3@gatech.edu.
 
 
-[Devito]:https://github.com/devitocodes/devito
-[JUDI]:https://github.com/slimgroup/JUDI.jl
+[docs-stable-img]:https://img.shields.io/badge/docs-stable-blue.svg
+[docs-stable-status]:https://slimgroup.github.io/JUDI.jl
+
+[docs-dev-img]:https://img.shields.io/badge/docs-dev-blue.svg
+[docs-dev-status]:https://slimgroup.github.io/JUDI.jl/dev
+
+[build-img]:https://github.com/slimgroup/JUDI.jl/workflows/CI-tests/badge.svg
+[build-status]:https://github.com/slimgroup/JUDI.jl/actions?query=workflow%3ACI-tests
+
+[codecov-img]:https://codecov.io/gh/slimgroup/JUDI.jl/branch/master/graph/badge.svg
+[codecov-status]:https://codecov.io/gh/slimgroup/JUDI.jl
+
+[aqua-img]:https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg
+[aqua-status]:https://github.com/JuliaTesting/Aqua.jl
+
+[zenodo-img]:https://zenodo.org/badge/DOI/10.5281/zenodo.3878711.svg
+[zenodo-status]:https://doi.org/10.5281/zenodo.3878711
+
+[license-img]:http://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat
+[license-status]:LICENSE.md

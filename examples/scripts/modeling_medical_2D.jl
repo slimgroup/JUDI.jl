@@ -15,7 +15,7 @@ m = (1f0 ./ v).^2
 m0 = (1f0 ./ v0).^2
 dm = vec(m - m0)
 
-# Setup info and model structure
+# Setup model structure
 nsrc = 1	# number of sources
 model = Model(n, d, o, m)
 model0 = Model(n, d, o, m0)
@@ -49,10 +49,6 @@ srcGeometry = Geometry(xsrc, ysrc, zsrc; dt=dtS, t=timeS)
 f0 = .05  # kHz
 wavelet = ricker_wavelet(timeS, dtS, f0)
 q = judiVector(srcGeometry, wavelet)
-
-# Set up info structure for linear operators
-ntComp = get_computational_nt(srcGeometry, recGeometry, model)
-info = Info(prod(n), nsrc, ntComp)
 
 ###################################################################################################
 

@@ -35,13 +35,13 @@ end
 
 run_and_reduce(func, ::Nothing, nsrc, arg_func::Function) = mapreduce(i -> func(arg_func(i)), single_reduce!, 1:nsrc)
 
-src_i(::judiJacobian{T, :born, FT}, q, ::Integer) where {T, FT} = q
+src_i(::judiAbstractJacobian{T, :born, FT}, q::dmType{T}, ::Integer) where {T<:Number, FT} = q
 src_i(::judiPropagator{T, O}, q::judiMultiSourceVector{T}, i::Integer) where {T, O} = q[i]
 src_i(::judiPropagator{T, O}, q::Vector{<:Array{T}}, i::Integer) where {T, O} = q[i]
 
 get_nsrc(::judiPropagator, q::judiMultiSourceVector) = q.nsrc
 get_nsrc(::judiPropagator, q::Vector{<:Array}) = length(q)
-get_nsrc(J::judiJacobian, ::dmType) = J.q.nsrc
+get_nsrc(J::judiAbstractJacobian, ::dmType{T}) where T<:Number = J.q.nsrc
 
 """
     multi_src_propagate(F::judiPropagator{T, O}, q::AbstractVector)

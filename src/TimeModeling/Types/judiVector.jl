@@ -6,7 +6,6 @@
 # Date: January 2017
 
 export judiVector, judiVector_to_SeisBlock, src_to_SeisBlock
-export time_resample, time_resample!, judiTimeInterpolation
 export write_shot_record, get_data, convert_to_array, rebuild_jv
 
 ############################################################
@@ -131,7 +130,7 @@ time_sampling(jv::judiVector) = jv.geometry.dt
 # JOLI conversion
 jo_convert(::Type{T}, jv::judiVector{T, Array{T, N}}, ::Bool) where {T<:Real, N} = jv
 jo_convert(::Type{T}, jv::judiVector{vT, Array{vT, N}}, B::Bool) where {T<:Real, vT, N} = judiVector{T, Array{T, N}}(jv.nsrc, jv.geometry, jo_convert.(T, jv.data, B))
-zero(::Type{T}, v::judiVector{vT, AT}) where {T, vT, AT} = judiVector{T, AT}(v.nsrc, deepcopy(v.geometry), T(0) .* v.data)
+zero(::Type{T}, v::judiVector{vT, AT}; nsrc::Integer=v.nsrc) where {T, vT, AT} = judiVector{T, AT}(nsrc, deepcopy(v.geometry), T(0) .* v.data[1:nsrc])
 function copy!(jv::judiVector, jv2::judiVector)
     jv.geometry = deepcopy(jv2.geometry)
     jv.data .= jv2.data

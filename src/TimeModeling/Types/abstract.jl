@@ -13,8 +13,8 @@ show(io::IOContext, ms::judiMultiSourceVector) = print(io, "$(typeof(ms)) wiht $
 
 # Size and type 
 eltype(::judiMultiSourceVector{T}) where T = T
-size(jv::judiMultiSourceVector) = (length(jv),)
-length(jv::judiMultiSourceVector{T}) where {T} = jv.nsrc
+size(jv::judiMultiSourceVector) = (jv.nsrc,)
+length(jv::judiMultiSourceVector{T}) where {T} = sum([length(jv.data[i]) for i=1:jv.nsrc])
 
 # Comparison
 isequal(ms1::judiMultiSourceVector, ms2::judiMultiSourceVector) = ms1 == ms2
@@ -32,20 +32,25 @@ copyto!(ms::judiMultiSourceVector, a::Vector{Array{T, N}}) where {T, N} = copyto
 copyto!(a::Vector{Array{T, N}}, ms::judiMultiSourceVector) where {T, N} = copyto!(a, ms.data)
 copy(ms::judiMultiSourceVector{T}) where {T} = begin y = zero(T, ms); y.data = deepcopy(ms.data); y end
 deepcopy(ms::judiMultiSourceVector{T}) where {T} = copy(ms)
+unsafe_convert(::Type{Ptr{T}}, msv::judiMultiSourceVector{T}) where {T} = unsafe_convert(Ptr{T}, msv.data)
 
 # indexing
 IndexStyle(::Type{<:judiMultiSourceVector}) = IndexLinear()
 setindex!(ms::judiMultiSourceVector{T}, v::Array{T, N}, i::Integer) where {T, N} = begin ms.data[i] = v; nothing end
-getindex(ms::judiMultiSourceVector{T}, i::Integer) where {T} = ms[i:i]
+getindex(ms::judiMultiSourceVector{T}, i::Integer) where {T} = i > ms.nsrc ? 0 : ms[i:i]
+getindex(ms::judiMultiSourceVector{T}, ::Colon) where {T} = vec(ms)
+firstindex(ms::judiMultiSourceVector) = 1
+lastindex(ms::judiMultiSourceVector) = ms.nsrc
 iterate(S::judiMultiSourceVector, state::Integer=1) = state > S.nsrc ? nothing : (S[state], state+1)
-unsafe_convert(::Type{Ptr{T}}, msv::judiMultiSourceVector{T}) where {T} = unsafe_convert(Ptr{T}, msv.data)
 # Backward compat subsample
 subsample(ms::judiMultiSourceVector, i) = getindex(ms, i)
 
 zero(::Type{T}, x::judiMultiSourceVector) where T = throw(judiMultiSourceException("$(typeof(x)) does not implement zero copy zero(::Type{T}, x)"))
 similar(x::judiMultiSourceVector{T}) where T = zero(T, x)
-similar(x::judiMultiSourceVector, ET::DataType) = zero(eltype(ET), x)
-similar(x::judiMultiSourceVector, ET::DataType, dims::Union{AbstractUnitRange, Integer}...) = zero(eltype(ET), x)[dims...]
+similar(x::judiMultiSourceVector, nsrc::Integer) = nsrc < x.nsrc ? zero(eltype(ET), x; nsrc=nsrc) : zero(eltype(ET), x)
+similar(x::judiMultiSourceVector, ::Type{ET}) where ET = zero(eltype(ET), x)
+similar(x::judiMultiSourceVector, ::Type{ET}, dims::AbstractUnitRange) where ET = similar(x, ET)
+similar(x::judiMultiSourceVector, ::Type{ET}, nsrc::Integer) where ET = nsrc <= x.nsrc ? zero(eltype(ET), x; nsrc=nsrc) : similar(x, ET)
 
 jo_convert(::Type{Array{T, N}}, v::judiMultiSourceVector, B::Bool) where {T, N} = jo_convert(T, v, B)
 
@@ -77,7 +82,7 @@ function *(J::Union{Matrix{vDT}, joAbstractLinearOperator}, x::judiMultiSourceVe
 end
 
 function *(J::joCoreBlock, x::judiMultiSourceVector{vDT}) where vDT
-    outvec = vcat([J.fop[i]*vec(x) for i=1:J.l]...)
+    outvec = vcat([J.fop[i]*x for i=1:J.l]...)
     outdata = try reshape(outvec, size(x.data[1]), J.l*x.nsrc); catch; outvec end
     return x(outdata)
 end
@@ -167,11 +172,6 @@ end
 
 ############################################################################################################################
 # Type conversions
-
-function matmulT(a::AbstractArray{T, 2}, b) where T
-    return a*vec(vcat(b.data...))
-end
-
 tof32(x::Number) = [Float32(x)]
 tof32(x::Array{T, N}) where {N, T<:Real} = T==Float32 ? x : Float32.(x)
 tof32(x::Array{Array{T, N}, 1}) where {N, T<:Real} = T==Float32 ? x : tof32.(x)

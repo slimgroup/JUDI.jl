@@ -21,7 +21,14 @@ struct judiPointSourceModeling{D, O} <: judiComposedPropagator{D, O}
     n::AbstractSize
     F::judiModeling{D, O}
     qInjection::AdjointProjection{D}
-    judiPointSourceModeling{D, O}(F::judiModeling{D, O}, qInjection::AdjointProjection{D}) where {D, O} = new(F.m, qInjection.n, F, qInjection)
+    function judiPointSourceModeling{D, O}(F::judiModeling{D, O}, qInjection::AdjointProjection{D}) where {D, O}
+        # instantiate un-initialized sizes
+        ts = time_space_src(get_nsrc(qInjection), get_nt(qInjection), F.model.n)
+        merge!(F.n, ts)
+        merge!(F.m, ts)
+        update_size(qInjection, F)
+        new(F.m, qInjection.n, F, qInjection)
+    end
 end
 
 struct judiDataModeling{D, O} <: judiComposedPropagator{D, O}
@@ -29,7 +36,13 @@ struct judiDataModeling{D, O} <: judiComposedPropagator{D, O}
     n::AbstractSize
     rInterpolation::Projection{D}
     F::judiModeling{D, O}
-    judiDataModeling{D, O}(rInterpolation::Projection{D}, F::judiModeling{D, O}) where {D, O} = new(rInterpolation.m, F.n, rInterpolation, F)
+    function judiDataModeling{D, O}(rInterpolation::Projection{D}, F::judiModeling{D, O}) where {D, O}
+        ts = time_space_src(get_nsrc(rInterpolation), get_nt(rInterpolation), F.model.n)
+        merge!(F.n, ts)
+        merge!(F.m, ts)
+        update_size(rInterpolation, F)
+        new(rInterpolation.m, F.n, rInterpolation, F)
+    end
 end
 
 struct judiDataSourceModeling{D, O} <: judiComposedPropagator{D, O}
@@ -38,8 +51,14 @@ struct judiDataSourceModeling{D, O} <: judiComposedPropagator{D, O}
     rInterpolation::Projection{D}
     F::judiModeling{D, O}
     qInjection::AdjointProjection{D}
-    judiDataSourceModeling{D, O}(rInterpolation::Projection{D}, F::judiModeling{D, O}, qInjection::AdjointProjection{D}) where {D, O} =
+    function judiDataSourceModeling{D, O}(rInterpolation::Projection{D}, F::judiModeling{D, O}, qInjection::AdjointProjection{D}) where {D, O}
+        ts = time_space_src(get_nsrc(rInterpolation), get_nt(rInterpolation), F.model.n)
+        merge!(F.n, ts)
+        merge!(F.m, ts)
+        update_size(rInterpolation, F)
+        update_size(qInjection, F)
         new(rInterpolation.m, qInjection.n, rInterpolation, F, qInjection)
+    end
 end
 
 struct judiJacobian{D, O, FT} <: judiAbstractJacobian{D, O, FT}
@@ -86,7 +105,7 @@ Example
 """
 function judiModeling(model::Model; options=Options())
     D = eltype(model.m)
-    m = time_space_size(ndims(model))
+    m = time_space(model.n)
     return judiModeling{D, :forward}(m, m, model, options)
 end
 
@@ -110,7 +129,7 @@ Examples
 """
 function judiJacobian(F::judiComposedPropagator{D, O}, q::judiMultiSourceVector; options=nothing) where {D, O}
     update!(F.F.options, options)
-    return judiJacobian{D, :born, typeof(F)}(F.m, space_size(ndims(F.model)), F, q)
+    return judiJacobian{D, :born, typeof(F)}(F.m, space(F.model.n), F, q)
 end
 
 # Backward compat with giving weights as array. Not recommened
@@ -142,16 +161,21 @@ adjoint(L::LazyScal) = LazyScal(L.s, adjoint(L.P))
 *(F::judiDataModeling{D, O}, P::AdjointProjection{D}) where {D, O} = judiDataSourceModeling{D, O}(F.rInterpolation, F.F, P)
 *(s::Number, P::judiPropagator) = LazyScal(s, P)
 \(P::judiPropagator, s::Number) = LazyScal(1/s, P)
-*(L::LazyScal, x) = L.s * (L.P * x)
+*(L::LazyScal, x::SourceType{T}) where {T<:Number} = L.s * (L.P * x)
+*(L::LazyScal, x::Array{T, N}) where {T<:Number, N} = L.s * (L.P * x)
 
 # Propagation via linear algebra `*`
 *(F::judiPropagator{T, O}, q::SourceType{T}) where {T<:Number, O} = multi_src_propagate(F, q)
 *(F::judiAbstractJacobian{T, O, FT}, q::dmType{T}) where {T<:Number, O, FT} = multi_src_propagate(F, q)
 
 mul!(out::SourceType{T}, F::judiPropagator{T, O}, q::SourceType{T}) where {T<:Number, O} = begin y = F*q; copyto!(out, y) end
-mul!(out::SourceType{T}, F::joLinearFunction{T, T}, q::SourceType{T}) where {T<:Number, O} = begin y = F*q; copyto!(out, y) end
-mul!(out::Array{T, N}, F::judiAbstractJacobian{T, :adjoint_born, FT}, q::SourceType{T}) where {T<:Number, O, FT, N} = begin y = F*q; copyto!(out, y) end
-mul!(out::SourceType{T}, F::judiAbstractJacobian{T, :born, FT}, q::Array{T, N}) where {T<:Number, O, FT, N} = begin y = F*q[:]; copyto!(out, y) end
+mul!(out::SourceType{T}, F::judiPropagator{T, O}, q::Vector{T}) where {T<:Number, O} = begin y = F*q; copyto!(out, y) end
+mul!(out::SourceType{T}, F::joLinearFunction{T, T}, q::SourceType{T}) where {T<:Number} = begin y = F*q; copyto!(out, y) end
+mul!(out::SourceType{T}, F::judiAbstractJacobian{T, :born, FT}, q::Vector{T}) where {T<:Number, FT} = begin y = F*q[:]; copyto!(out, y) end
+mul!(out::SourceType{T}, F::judiAbstractJacobian{T, :born, FT}, q::Array{T, N}) where {T<:Number, FT, N} = begin y = F*q[:]; copyto!(out, y) end
+mul!(out::Array{T, 2}, F::judiAbstractJacobian{T, :adjoint_born, FT}, q::SourceType{T}) where {T<:Number, FT} =  begin y = F*q; copyto!(out, y) end
+mul!(out::Array{T, 3}, F::judiAbstractJacobian{T, :adjoint_born, FT}, q::SourceType{T}) where {T<:Number, FT} =  begin y = F*q; copyto!(out, y) end
+
 ############################################################################################################################
 # Propagation input
 process_input_data(::judiPropagator, data::judiMultiSourceVector) = data
@@ -161,7 +185,7 @@ process_input_data(F::judiDataSourceModeling, q::Vector) = process_input_data(q,
 process_input_data(F::judiDataModeling, q::Vector) = process_input_data(q, F.model)
 process_input_data(J::judiJacobian{D, :adjoint_born, FT}, q::Vector) where {D, FT} =
     process_input_data(q, J.F.qInjection.data)
-process_input_data(::judiJacobian{D, :born, FT}, q::dmType{D}) where {D, FT} = q
+process_input_data(::judiJacobian{D, :born, FT}, q::dmType{D}) where {D<:Number, FT} = q
 
 make_input(::judiModeling, q::SourceType) = (nothing, make_input(q), nothing, nothing, nothing)
 make_input(::judiModeling, rhs::judiRHS) = (make_src(rhs)..., nothing, nothing, nothing)
@@ -174,7 +198,7 @@ make_input(F::judiDataModeling, rhs::judiRHS) = (make_src(rhs)..., F.rInterpolat
 make_input(F::judiDataSourceModeling, q::SourceType{T}) where {T} = (make_src(q, F.qInjection)..., F.rInterpolation.data[1], nothing, nothing)
 make_input(F::judiDataSourceModeling, q::Matrix{T}) where {T} = (F.qInjection.data[1], q, F.rInterpolation.data[1], nothing, nothing)
 
-function make_input(J::judiJacobian{D, :born, FT}, q::dmType) where {D, FT}
+function make_input(J::judiJacobian{D, :born, FT}, q::dmType{D}) where {D<:Number, FT}
     srcGeom, srcData = make_src(J.q, J.F.qInjection)
     return srcGeom, srcData, J.F.rInterpolation.data[1], nothing, reshape(q, J.model.n)
 end 
@@ -185,13 +209,22 @@ function make_input(J::judiJacobian{D, :adjoint_born, FT}, q::SourceType{D}) whe
     return srcGeom, srcData, recGeom, recData, nothing
 end
 
+
+############################################################################################################################
+# Size update based on linear operator
+
+update_size(w::judiProjection, F::judiPropagator) = set_space_size!(w.n, F.model.n)
+update_size(w::jAdjoint{<:judiProjection}, F::judiPropagator) = set_space_size!(w.op.n, F.model.n)
+
+update_size(w::judiWavelet, F::judiPropagator) = set_space_size!(w.m, F.model.n)
+update_size(w::jAdjoint{<:judiWavelet}, F::judiPropagator) = set_space_size!(w.op.m, F.model.n)
 ############################################################################################################################
 # indexing
-getindex(F::judiModeling{D, O}, i) where {D, O} = judiModeling{D, O}(F.m, F.n, F.model, F.options[i])
+getindex(F::judiModeling{D, O}, i) where {D, O} = judiModeling{D, O}(F.m[i], F.n[i], F.model, F.options[i])
 getindex(F::judiDataModeling{D, O}, i) where {D, O} = judiDataModeling{D, O}(F.rInterpolation[i], F.F[i])
 getindex(F::judiPointSourceModeling{D, O}, i) where {D, O}= judiPointSourceModeling{D, O}(F.F[i], F.qInjection[i])
 getindex(F::judiDataSourceModeling{D, O}, i) where {D, O} = judiDataSourceModeling{D, O}(F.rInterpolation[i], F.F[i], F.qInjection[i])
-getindex(J::judiJacobian{D, O, FT}, i) where {D, O, FT} = judiJacobian{D, O, FT}(J.m, J.n, J.F[i], J.q[i])
+getindex(J::judiJacobian{D, O, FT}, i) where {D, O, FT} = judiJacobian{D, O, FT}(J.m[i], J.n[i], J.F[i], J.q[i])
 
 ############################################################################################################################
 # Comparisons

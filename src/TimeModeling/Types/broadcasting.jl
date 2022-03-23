@@ -28,6 +28,7 @@ for func ∈ [:lmul!, :rmul!, :rdiv!, :ldiv!]
 end
 
 # Broadcasted custom type
+check_compat() = true
 get_src(ms::judiMultiSourceVector, j) = ms.data[j]
 get_src(v::Vector{<:Array}, j) = v[j]
 get_src(v::Array{T, N}, j) where {T<:Number, N} = v
@@ -65,7 +66,7 @@ for op ∈ [:+, :-, :*, :/]
         $(op)(ms1::judiMultiSourceVector, ms2::judiMultiSourceVector) = materialize(broadcasted($op, ms1, ms2))
     end
     # External types and broadcasting
-    for LT in [Number, Vector{<:Array}, Array{<:Number, <:Integer}]
+    for LT in [Number, Real, Vector{<:Array}, Array{<:Number, <:Integer}]
         # +/*/... julia type vs multi source
         @eval $(op)(ms1::$(LT), ms2::judiMultiSourceVector) = materialize(broadcasted($op, ms1, ms2))
         @eval $(op)(ms1::judiMultiSourceVector, ms2::$(LT)) = materialize(broadcasted($op, ms1, ms2))

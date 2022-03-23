@@ -213,6 +213,10 @@ class Model(object):
         known = [getattr(self, i) for i in self.physical_parameters]
         return {i.name: kwargs.get(i.name, i) or i for i in known}
 
+    @property
+    def zero_thomsen(self):
+        return {self.epsilon: 1, self.delta: 1, self.theta: 0, self.phi: 0}
+
     @switchconfig(log_level='ERROR')
     def _gen_phys_param(self, field, name, space_order, is_param=False,
                         default_value=0, func=lambda x: x):

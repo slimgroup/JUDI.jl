@@ -31,31 +31,28 @@ wavelet = ricker_wavelet(src_geometry.t[1],src_geometry.dt[1],0.008f0)  # 8 Hz w
 q = judiVector(src_geometry,wavelet)
 
 ############################### FWI ###########################################
-
 # Set up operators
-ntComp = get_computational_nt(q.geometry,d_obs.geometry,model0) # no. of computational time steps
-info = Info(prod(model0.n),d_obs.nsrc,ntComp)
-Pr = judiProjection(info,d_obs.geometry)
-Ps = judiProjection(info,q.geometry)
-F = judiModeling(info,model0)
-J = judiJacobian(Pr*F*Ps',q)
+F = judiModeling(model0, q.geometry, d_obs.geometry)
+J = judiJacobian(F,q)
 
 # Optimization parameters
 maxiter = parse(Int, get(ENV, "NITER", "10"))
 maxiter_GN = parse(Int, get(ENV, "NITER", "5"))
+batch_size = 5 * parse(Int, get(ENV, "NITER", "$(q.nsrc ÷ 5)"))
+
 fhistory_GN = zeros(Float32,maxiter)
 proj(x) = reshape(median([vec(mmin) vec(x) vec(mmax)]; dims=2),model0.n)
 
 # Gauss-Newton method
 for j=1:maxiter
     println("Iteration: ",j)
-
+    i = randperm(q.nsrc)[1:batch_size]
     # # Model predicted data for subset of sources
-    d_pred = Pr*F*Ps'*q
-    fhistory_GN[j] = .5f0*norm(d_pred - d_obs)^2
+    d_pred = F[i]*q[i]
+    fhistory_GN[j] = .5f0*norm(d_pred - d_obs[i])^2
 
     # GN update direction
-    p = lsqr!(similar(model0.m), J, d_pred - d_obs; maxiter=maxiter_GN, verbose=true)
+    p = lsqr!(similar(model0.m), J[i], d_pred - d_obs[i]; maxiter=maxiter_GN, verbose=true)
 
     # update model and bound constraints
     model0.m .= proj(model0.m .- reshape(p, model0.n))  # alpha=1

@@ -22,7 +22,7 @@ m = (1f0 ./ v).^2
 m0 = (1f0 ./ v0).^2
 dm = vec(m - m0)
 
-# Setup info and model structure
+# Setup model structure
 nsrc = 4
 model = Model(n, d, o, m)  # to include density call Model(n,d,o,m,rho)
 model0 = Model(n, d, o, m0)
@@ -59,10 +59,6 @@ srcGeometry = Geometry(xsrc, ysrc, zsrc; dt=dtS, t=timeS)
 # setup wavelet
 f0 = 0.01f0
 wavelet = ricker_wavelet(timeS, dtS, f0)
-
-# Info structure for linear operators
-ntComp = get_computational_nt(srcGeometry, recGeometry, model)    # no. of computational time steps
-info = Info(prod(n), nsrc, ntComp)
 
 ###################################################################################################
 

@@ -50,7 +50,7 @@ mutable struct PhysicalParameter{vDT} <: AbstractVector{vDT}
     n::Tuple
     d::Tuple
     o::Tuple
-    data::Union{Array, vDT}
+    data::Union{Array{vDT}, vDT}
 end
 
 mutable struct PhysicalParameterException <: Exception
@@ -69,7 +69,7 @@ function PhysicalParameter(n::Tuple, d::Tuple, o::Tuple; vDT=Float32)
 end
 
 function PhysicalParameter(v::Array{vDT}, A::PhysicalParameter) where {vDT}
-    return PhysicalParameter{vDT}(A.n, A.d, A.o, v)
+    return PhysicalParameter{vDT}(A.n, A.d, A.o, reshape(v, A.n))
 end
 
 function PhysicalParameter(v::Array{vDT, N}, n::Tuple, d::Tuple, o::Tuple) where {vDT, N}
@@ -160,24 +160,11 @@ function compare(A::PhysicalParameter, B::PhysicalParameter)
     A.n != B.n && throw(PhysicalParameterException("Incompatible sizes $(A.n) and $(B.n)"))
 end
 
-function +(A::PhysicalParameter{vDT}, B::PhysicalParameter{vDT}) where {vDT}
-    compare(A, B)
-    return PhysicalParameter(A.data + B.data, A)
-end
-
-function -(A::PhysicalParameter{vDT}, B::PhysicalParameter{vDT}) where {vDT}
-    compare(A, B)
-    return PhysicalParameter(A.data - B.data, A)
-end
-
-function *(A::PhysicalParameter{vDT}, B::PhysicalParameter{vDT}) where {vDT}
-    compare(A, B)
-    return PhysicalParameter(A.data .* B.data, A)
-end
-
-function /(A::PhysicalParameter{vDT}, B::PhysicalParameter{vDT}) where {vDT}
-    compare(A, B)
-    return PhysicalParameter(A.data ./ B.data, A)
+for op in [:+, :-, :*, :/]
+    @eval function $(op)(A::PhysicalParameter{T}, B::PhysicalParameter{T}) where T
+        compare(A, B)
+        return PhysicalParameter(broadcast($(op), A.data, B.data), A)
+    end
 end
 
 # Brodacsting
@@ -199,33 +186,17 @@ find_pm(::Tuple{}) = nothing
 find_pm(a::PhysicalParameter, rest) = a
 find_pm(::Any, rest) = find_pm(rest)
 
-function broadcasted(f::Function, A::AbstractArray{vDT, N}, p::PhysicalParameter{RDT}) where {vDT, RDT, N}
-    if size(A) != p.n
-        if length(A) == length(p)
-            return PhysicalParameter(materialize(broadcasted(f, A, vec(p.data))), p.n, p.d, p.o)
+for op in [:+, :-, :*, :/]
+    for (T1, T2) in ([DenseArray, PhysicalParameter], [PhysicalParameter, DenseArray], 
+                     [PhysicalParameter, PhysicalParameter])
+        @eval function broadcasted(::typeof($op), A::$T1, B::$T2)
+            pm = find_pm(A, B)
+            return PhysicalParameter(materialize(broadcasted($(op), A[:], B[:])), pm)
         end
-        throw(PhysicalParameterException("Incompatible sizes $(size(A)) and $(p.n)"))
     end
-    return PhysicalParameter(materialize(broadcasted(f, A, p.data)), p.d, p.o)
+    @eval broadcasted(::typeof($op), p::PhysicalParameter, bc::Base.Broadcast.Broadcasted) = broadcasted($(op), p, materialize(bc))
+    @eval broadcasted(::typeof($op), bc::Base.Broadcast.Broadcasted, p::PhysicalParameter) = broadcasted($(op), materialize(bc), p)
 end
-
-function broadcasted(f::Function, p::PhysicalParameter{RDT}, A::AbstractArray{vDT, N}) where {vDT, RDT, N}
-    if size(A) != p.n
-        if length(A) == length(p)
-            return PhysicalParameter(materialize(broadcasted(f, vec(p.data), A)), p.n, p.d, p.o)
-        end
-        throw(PhysicalParameterException("Incompatible sizes $(size(A)) and $(p.n)"))
-    end
-    return PhysicalParameter(materialize(broadcasted(f, p.data, A)), p.d, p.o)
-end
-
-function broadcasted(f::Function, p1::PhysicalParameter{RDT}, p2::PhysicalParameter{RDT}) where {RDT}
-    p1.n != p2.n && throw(PhysicalParameterException("Incompatible sizes $(p1.n) and $(p2.n)"))
-    return PhysicalParameter(materialize(broadcasted(f, p1.data, p2.data)), p1.d, p1.o)
-end
-
-broadcasted(f::Function, p::PhysicalParameter, bc::Base.Broadcast.Broadcasted) = broadcasted(f, p, materialize(bc))
-broadcasted(f::Function, bc::Base.Broadcast.Broadcasted, p::PhysicalParameter) = broadcasted(f, materialize(bc), p)
 
 function *(A::Union{joMatrix, joLinearFunction, joLinearOperator, joCoreBlock}, p::PhysicalParameter{RDT}) where {RDT}
     @warn "JOLI linear operator, returning julia Array"

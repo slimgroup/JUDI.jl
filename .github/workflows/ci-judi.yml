@@ -17,7 +17,6 @@ jobs:
     env:
       DEVITO_ARCH: gcc-7
       DEVITO_LANGUAGE: "openmp"
-      DEVITO_BACKEND: "core"
       OMP_NUM_THREADS: 4
       GROUP: "JUDI"
 

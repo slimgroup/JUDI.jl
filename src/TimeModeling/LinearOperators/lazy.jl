@@ -1,4 +1,4 @@
-export judiProjection, judiWavelet, judiLRWF, nsrc
+export judiProjection, judiWavelet, judiLRWF
 
 ############################################################################################################################
 # Abstract types
@@ -82,7 +82,7 @@ Examples
     dobs = Pr*F*Ps'*q
     qad = Ps*F'*Pr'*dobs
 """
-judiProjection(G::Geometry) = judiProjection{Float32}(_rec_space, time_space_size(2), G)
+judiProjection(G::Geometry) = judiProjection{Float32}(rec_space(G), time_space_src(get_nsrc(G), G.nt, 3), G)
 
 """
     judiWavelet(dt, wavelet)
@@ -98,10 +98,10 @@ Examples
     dobs = Pr*F*Pw'*w
     dw = Pw*F'*Pr'*dobs
 """
-judiWavelet(nsrc::Integer, dt::T, w::Array{T, N}) where {T<:Real, N} = judiWavelet{Float32}(_time_space, _space, [w for i=1:nsrc], [dt for i=1:nsrc])
+judiWavelet(nsrc::Integer, dt::T, w::Array{T, N}) where {T<:Real, N} = judiWavelet{Float32}(space_src(nsrc), time_space_src(nsrc, length.(w)), [w for i=1:nsrc], [dt for i=1:nsrc])
 judiWavelet(dt::T, w::Array{T, N}) where {T<:Real, N} = judiWavelet(1, dt, w)
-judiWavelet(dt::Vector{<:Number}, w::Vector{T}) where T<:Array = judiWavelet{Float32}(_time_space, _space, w, dt)
-judiWavelet(dt::Vector{<:Number}, w::Vector{<:Number}) = judiWavelet{Float32}(_time_space, _space, [w for i=1:length(dt)], dt)
+judiWavelet(dt::Vector{<:Number}, w::Vector{T}) where T<:Array = judiWavelet{Float32}(space_src(length(dt)), time_space_src(length(dt), length.(w)), w, dt)
+judiWavelet(dt::Vector{<:Number}, w::Vector{<:Number}) = judiWavelet{Float32}(space_src(length(dt)), time_space_src(length(dt), [length(w) for i=1:length(dt)]), [w for i=1:length(dt)], dt)
 judiWavelet(dt::dtT, w::Array{T, N}) where {dtT<:Number, T<:Array, N} = judiWavelet([dt for i=1:length(w)], w)
 
 # Deprecation error
@@ -120,16 +120,16 @@ function getproperty(jA::jAdjoint, s::Symbol)
 end
 
 size(jA::jAdjoint) = (jA.op.n, jA.op.m)
-display(P::jAdjoint) where {D, O} = println("Adjoint($(P.op))")
-display(P::judiProjection{D}) where {D, O} = println("JUDI projection operator $(repr(P.n)) -> $(repr(P.m))")
+display(P::jAdjoint) = println("Adjoint($(P.op))")
+display(P::judiProjection{D}) where D = println("JUDI projection operator $(repr(P.n)) -> $(repr(P.m))")
 
 ############################################################################################################################
 # Indexing
 getindex(jA::jAdjoint{T}, i) where T = jAdjoint{T}(jA.op[i])
-getindex(P::judiProjection{D}, i) where D = judiProjection{D}(P.m, P.n, P.geometry[i])
-getindex(P::judiProjection{D}, i::Integer) where D = judiProjection{D}(P.m, P.n, P.geometry[i:i])
-getindex(P::judiWavelet{D}, i) where D = judiWavelet{D}(P.m, P.n, P.wavelet[i], P.dt[i])
-getindex(P::judiWavelet{D}, i::Integer) where D = judiWavelet{D}(P.m, P.n, P.wavelet[i:i], P.dt[i:i])
+getindex(P::judiProjection{D}, i) where D = judiProjection{D}(P.m[i], P.n[i], P.geometry[i])
+getindex(P::judiProjection{D}, i::Integer) where D = judiProjection{D}(P.m[i], P.n[i], P.geometry[i:i])
+getindex(P::judiWavelet{D}, i) where D = judiWavelet{D}(P.m[i], P.n[i], P.wavelet[i], P.dt[i])
+getindex(P::judiWavelet{D}, i::Integer) where D = judiWavelet{D}(P.m[i], P.n[i], P.wavelet[i:i], P.dt[i:i])
 getindex(rhs::judiRHS{D}, i::Integer) where D = judiRHS{D}(length(i), rhs.P[i], rhs.d[i])
 getindex(rhs::judiRHS{D}, i::RangeOrVec) where D = judiRHS{D}(length(i), rhs.P[i], rhs.d[i])
 getindex(la::LazyAdd{D}, i::RangeOrVec) where D = LazyAdd{D}(length(i), la.A[i], la.B[i], la.sign)
@@ -175,6 +175,11 @@ make_src(q, P::jAdjoint{judiLRWF{D}}) where D = (make_input(q), P.data[1])
 make_src(q, P::judiProjection{D}) where D = (P.data[1], make_input(q))
 make_src(q, P::judiLRWF{D}) where D = (make_input(q), P.data[1])
 make_src(rhs::judiRHS) = make_src(rhs.d, rhs.P)
+
+get_nsrc(P::Projection) = P.m[:src]
+get_nsrc(P::jAdjoint{<:Projection}) = P.op.m[:src]
+get_nt(P::Projection) = P.n[:time]
+get_nt(P::jAdjoint{<:Projection}) = P.op.n[:time]
 
 ############################################################################################################################
 ###### Evaluate lazy operation

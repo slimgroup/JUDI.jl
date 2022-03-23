@@ -9,7 +9,7 @@ for T in [judiVector, judiWeights, judiWavefield]
     @eval @inline single_reduce!(x::$T, y) = begin push!(x, y); x end
 end
 
-@inline single_reduce!(x::Ref, y::Ref) where {T<:Number} = begin x[] += y[]; x end
+@inline single_reduce!(x::Ref, y::Ref) = begin x[] += y[]; x end
 
 @inline function single_reduce!(x::Tuple, y::Tuple)
     nx = length(x)

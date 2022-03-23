@@ -7,7 +7,7 @@
 # Updated July 2020
 
 using JUDI
-using ArgParse, Test, Printf
+using ArgParse, Test, Printf, Aqua
 using SegyIO, LinearAlgebra, Distributed, JOLI
 using TimerOutputs: TimerOutputs, @timeit
 
@@ -130,4 +130,14 @@ if GROUP == "VISCO_AC_OP" || GROUP == "All"
     end
 end
 
+# Code quality check
+if GROUP == "AQUA" || GROUP == "All" || GROUP == "JUDI"
+    @testset "code quality" begin
+        # Prevent ambiguities from PyCall and other packages
+        Aqua.test_all(JUDI; ambiguities=false)
+        Aqua.test_ambiguities(JUDI; Aqua.askwargs(true)...)
+    end
+end
+
+# Testing memory and runtime summary
 show(TIMEROUTPUT; compact=true, sortby=:firstexec)

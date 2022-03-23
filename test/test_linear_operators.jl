@@ -11,20 +11,43 @@ function test_transpose(Op)
     @test isequal(reverse(size(Op)), size(transpose(Op)))
     @test isequal(reverse(size(Op)), size(adjoint(Op)))
     @test isequal(reverse(size(Op)), size(transpose(Op)))
-    return true
 end
 
+sub_dim(v::Vector{<:Integer}, i::Integer) = v[i:i]
+sub_dim(v::Vector{<:Integer}, i::AbstractRange) = v[i]
+sub_dim(v::Integer, i) = v
+
+check_dims(v::Integer, vo::Integer) = v == vo
+check_dims(v::Vector{<:Integer}, vo::Vector{<:Integer}) = v == vo
+check_dims(v::Integer, vo::Vector{<:Integer}) = (length(vo) == 1 && v == vo[1])
+check_dims(v::Vector{<:Integer}, vo::Integer) = (length(v) == 1 && v[1] == vo)
+
 function test_getindex(Op, nsrc)
-    # requires: Op.nsrc == 2
+    so = size(Op)
+
     Op_sub = Op[1]
     @test isequal(Op_sub.model, Op.model)
-    @test isequal(size(Op_sub), size(Op)) # Sizes are purely symbolic so number of sourcs don't matter
+    # Check sizes. Same dimensions but subsampled source
+    @test issetequal(keys(size(Op_sub)), keys(size(Op)))
+    s = size(Op_sub)
+    for i=1:2
+        for (k, v) ∈ s[i]
+            vo = k == :src ? 1 : so[i][k]
+            @test check_dims(v, sub_dim(vo, 1))
+        end
+    end
 
-    inds = nsrc > 1 ? (1:nsrc) : 1
+    inds = 1:nsrc
     Op_sub = Op[inds]
     @test isequal(Op_sub.model, Op.model)
-    @test isequal(size(Op_sub), size(Op))
-    return true
+    @test isequal(keys(size(Op_sub)), keys(size(Op)))
+    s = size(Op_sub)
+    for i=1:2
+        for (k, v) ∈ s[i]
+            vo = k == :src ? nsrc : so[i][k]
+            @test check_dims(v, sub_dim(vo, inds))
+        end
+    end
 end
 
 model = example_model()
@@ -34,22 +57,33 @@ model = example_model()
         F_forward = judiModeling(model; options=Options())
         F_adjoint = adjoint(F_forward)
 
-        @test isequal(size(F_forward)[1], time_space_size(2))
-        @test isequal(size(F_forward)[2], time_space_size(2))
-        @test isequal(size(F_adjoint)[1], time_space_size(2))
-        @test isequal(size(F_adjoint)[2], time_space_size(2))
+        test_transpose(F_forward)
+        @test isequal(size(F_forward)[1], time_space(model.n))
+        @test isequal(size(F_forward)[2], time_space(model.n))
+        @test isequal(size(F_adjoint)[1], time_space(model.n))
+        @test isequal(size(F_adjoint)[2], time_space(model.n))
+        @test issetequal(keys(size(F_forward)[1]), [:time, :x, :z])
+        @test issetequal(keys(size(F_forward)[2]), [:time, :x, :z])
+        # Time is uninitialized until first multiplication since there is no info
+        # on propagation time
+        @test issetequal(values(size(F_forward)[1]), [[0], model.n...])
+        @test Int(size(F_forward)[1]) == 0
+        # Update size for check
+        nt = 10
+        size(F_forward)[1][:time] = [nt for i=1:nsrc]
+        @test Int(size(F_forward)[1]) == nsrc * nt * prod(model.n)
 
         @test adjoint(F_adjoint) == F_forward
         @test isequal(typeof(F_forward), judiModeling{Float32, :forward})
         @test isequal(typeof(F_adjoint), judiModeling{Float32, :adjoint})
 
         # get index
-        @test test_getindex(F_forward, nsrc)
-        @test test_getindex(F_adjoint, nsrc)
+        test_getindex(F_forward, nsrc)
+        test_getindex(F_adjoint, nsrc)
 
         # get index
-        @test test_getindex(F_forward, nsrc)
-        @test test_getindex(F_adjoint, nsrc)
+        test_getindex(F_forward, nsrc)
+        test_getindex(F_adjoint, nsrc)
 
         if VERSION>v"1.2"
             a = randn(Float32, model.n...)
@@ -68,22 +102,30 @@ end
         F_forward = judiModeling(model; options=Options()) * judiProjection(src_geometry)'
         F_adjoint = adjoint(F_forward)
 
-        @test isequal(size(F_forward)[1], time_space_size(2))
-        @test isequal(size(F_forward)[2], JUDI._rec_space)
-        @test isequal(size(F_adjoint)[1], JUDI._rec_space)
-        @test isequal(size(F_adjoint)[2], time_space_size(2))
+        test_transpose(F_forward)
+        @test isequal(size(F_forward)[1], time_space_src(nsrc, src_geometry.nt, model.n))
+        @test isequal(size(F_forward)[2], rec_space(src_geometry))
+        @test isequal(size(F_adjoint)[1], rec_space(src_geometry))
+        @test isequal(size(F_adjoint)[2], time_space_src(nsrc, src_geometry.nt, model.n))
+        @test issetequal(keys(size(F_forward)[1]), (:src, :time, :x, :z))
+        @test issetequal(keys(size(F_forward)[2]), (:src, :time, :rec))
+        # With the composition, everything should be initialized
+        @test issetequal(values(size(F_forward)[1]), (nsrc, src_geometry.nt, model.n...))
+        @test issetequal(values(size(F_forward)[2]), (nsrc, src_geometry.nt, src_geometry.nrec))
+        @test Int(size(F_forward)[1]) == prod(model.n) * sum(src_geometry.nt)
+        @test Int(size(F_forward)[2]) == sum(src_geometry.nrec .* src_geometry.nt)
 
         @test adjoint(F_adjoint) == F_forward
         @test isequal(typeof(F_forward), judiPointSourceModeling{Float32, :forward})
         @test isequal(typeof(F_adjoint), judiDataModeling{Float32, :adjoint})
 
         # get index
-        @test test_getindex(F_forward, nsrc)
-        @test test_getindex(F_adjoint, nsrc)
+        test_getindex(F_forward, nsrc)
+        test_getindex(F_adjoint, nsrc)
 
         # get index
-        @test test_getindex(F_forward, nsrc)
-        @test test_getindex(F_adjoint, nsrc)
+        test_getindex(F_forward, nsrc)
+        test_getindex(F_adjoint, nsrc)
 
         if VERSION>v"1.2"
             a = randn(Float32, model.n...)
@@ -102,22 +144,27 @@ end
         F_forward = judiProjection(rec_geometry)*judiModeling(model; options=Options())
         F_adjoint = adjoint(F_forward)
 
-        @test isequal(size(F_forward)[1], JUDI._rec_space)
-        @test isequal(size(F_forward)[2], time_space_size(2))
-        @test isequal(size(F_adjoint)[1], time_space_size(2))
-        @test isequal(size(F_adjoint)[2], JUDI._rec_space)
+        test_transpose(F_forward)
+        @test isequal(size(F_forward)[1], rec_space(rec_geometry))
+        @test isequal(size(F_forward)[2], time_space_src(nsrc, rec_geometry.nt, model.n))
+        @test isequal(size(F_adjoint)[1], time_space_src(nsrc, rec_geometry.nt, model.n))
+        # With the composition, everything should be initialized
+        @test issetequal(values(size(F_forward)[2]), (nsrc, rec_geometry.nt, model.n...))
+        @test issetequal(values(size(F_forward)[1]), (nsrc, rec_geometry.nt, rec_geometry.nrec))
+        @test Int(size(F_forward)[2]) == prod(model.n) * sum(rec_geometry.nt)
+        @test Int(size(F_forward)[1]) == sum(rec_geometry.nrec .* rec_geometry.nt)
 
         @test adjoint(F_adjoint) == F_forward
         @test isequal(typeof(F_forward), judiDataModeling{Float32, :forward})
         @test isequal(typeof(F_adjoint), judiPointSourceModeling{Float32, :adjoint})
 
         # get index
-        @test test_getindex(F_forward, nsrc)
-        @test test_getindex(F_adjoint, nsrc)
+        test_getindex(F_forward, nsrc)
+        test_getindex(F_adjoint, nsrc)
 
         # get index
-        @test test_getindex(F_forward, nsrc)
-        @test test_getindex(F_adjoint, nsrc)
+        test_getindex(F_forward, nsrc)
+        test_getindex(F_adjoint, nsrc)
 
         if VERSION>v"1.2"
             a = randn(Float32, model.n...)
@@ -137,22 +184,30 @@ end
         F_forward = judiModeling(model, src_geometry, rec_geometry; options=Options())
         F_adjoint = adjoint(F_forward)
 
-        @test isequal(size(F_forward)[1], JUDI._rec_space)
-        @test isequal(size(F_forward)[2], JUDI._rec_space)
-        @test isequal(size(F_adjoint)[1], JUDI._rec_space)
-        @test isequal(size(F_adjoint)[2], JUDI._rec_space)
+        test_transpose(F_forward)
+        @test isequal(size(F_forward)[2], rec_space(src_geometry))
+        @test isequal(size(F_forward)[1], rec_space(rec_geometry))
+        @test isequal(size(F_adjoint)[2], rec_space(rec_geometry))
+        @test isequal(size(F_adjoint)[1], rec_space(src_geometry))
+        @test issetequal(keys(size(F_forward)[1]), (:src, :time, :rec))
+        @test issetequal(keys(size(F_forward)[2]), (:src, :time, :rec))
+        # With the composition, everything should be initialized
+        @test issetequal(values(size(F_forward)[2]), (nsrc, src_geometry.nt, src_geometry.nrec))
+        @test issetequal(values(size(F_forward)[1]), (nsrc, rec_geometry.nt, rec_geometry.nrec))
+        @test Int(size(F_forward)[2]) == sum(src_geometry.nrec .* src_geometry.nt)
+        @test Int(size(F_forward)[1]) == sum(rec_geometry.nrec .* rec_geometry.nt)
 
         @test adjoint(F_adjoint) == F_forward
         @test isequal(typeof(F_forward), judiDataSourceModeling{Float32, :forward})
         @test isequal(typeof(F_adjoint), judiDataSourceModeling{Float32, :adjoint})
 
         # get index
-        @test test_getindex(F_forward, nsrc)
-        @test test_getindex(F_adjoint, nsrc)
+        test_getindex(F_forward, nsrc)
+        test_getindex(F_adjoint, nsrc)
 
         # get index
-        @test test_getindex(F_forward, nsrc)
-        @test test_getindex(F_adjoint, nsrc)
+        test_getindex(F_forward, nsrc)
+        test_getindex(F_adjoint, nsrc)
 
         if VERSION>v"1.2"
             a = randn(Float32, model.n...)
@@ -174,15 +229,19 @@ end
         PDE = judiModeling(model, src_geometry, rec_geometry; options=Options())
         q = judiVector(src_geometry, wavelet)
         J = judiJacobian(PDE, q)
+        # Check sizes
+        @test isequal(size(J)[1], rec_space(rec_geometry))
+        @test isequal(size(J)[2], space(model.n))
+        @test issetequal(keys(size(J)[2]), (:x, :z))
+        @test Int(size(J)[2]) == prod(model.n)
+        @test Int(size(J)[1]) == sum(rec_geometry.nrec .* rec_geometry.nt)
 
         @test isequal(typeof(J), judiJacobian{Float32, :born, typeof(PDE)})
         @test isequal(J.F.rInterpolation.geometry, rec_geometry)
         @test isequal(J.F.qInjection.geometry, src_geometry)
         @test isequal(J.q.geometry, src_geometry)
-        @test isequal(size(J)[1], JUDI._rec_space)
-        @test isequal(size(J)[2], space_size(2))
         @test all(isequal(J.q.data[i], wavelet) for i=1:nsrc)
-        @test test_transpose(J)
+        test_transpose(J)
 
         # get index
         J_sub = J[1]
@@ -214,7 +273,12 @@ end
         Pw = judiLRWF(rec_geometry.dt, wavelet)
         w = judiWeights(randn(Float32, model.n); nsrc=nsrc)
         J = judiJacobian(Pr*F*Pw', w)
-
+        # Check sizes
+        @test isequal(size(J)[1], rec_space(rec_geometry))
+        @test isequal(size(J)[2], space(model.n))
+        @test issetequal(keys(size(J)[2]), (:x, :z))
+        @test Int(size(J)[2]) == prod(model.n)
+        @test Int(size(J)[1]) == sum(rec_geometry.nrec .* rec_geometry.nt)
 
         rec_geometry = example_rec_geometry(nsrc=nsrc)
         wavelet = randn(Float32, rec_geometry.nt[1])
@@ -232,8 +296,8 @@ end
             @test isapprox(J.F.qInjection.wavelet[i], wavelet)
             @test isapprox(J.q.data[i], w.data[i])
         end
-        @test isequal(size(J)[2], JUDI.space_size(2))
-        @test test_transpose(J)
+        @test isequal(size(J)[2], space(model.n))
+        test_transpose(J)
 
         # get index
         J_sub = J[1]
@@ -262,6 +326,12 @@ end
     @timeit TIMEROUTPUT "judiProjection nsrc=$(nsrc)" begin
         rec_geometry = example_rec_geometry(nsrc=nsrc)
         P = judiProjection(rec_geometry)
+        # Check sizes and that's it's unitialized since not combined with any propagator
+        @test size(P)[2] == time_space_src(get_nsrc(rec_geometry), rec_geometry.nt, 3)
+        @test size(P)[1] == rec_space(rec_geometry)
+        # Size is zero since un-initialized
+        @test Int(size(P)[2]) == 0 
+        @test Int(size(P)[1]) ==  sum(rec_geometry.nrec .* rec_geometry.nt)
 
         @test isequal(typeof(P), judiProjection{Float32})
         @test isequal(P.geometry, rec_geometry)
@@ -284,6 +354,12 @@ end
 
         P = judiLRWF(src_geometry.dt, wavelet)
         @test isequal(typeof(P), judiLRWF{Float32})
+        # Check sizes and that's it's unitialized since not combined with any propagator
+        @test size(P)[1] == space_src(nsrc)
+        @test size(P)[2] == time_space_src(nsrc, src_geometry.nt)
+        # Size is zero since un-initialized
+        @test Int(size(P)[1]) == 0
+        @test Int(size(P)[2]) == 0
 
         for i=1:nsrc
             @test isequal(P.wavelet[i], wavelet)

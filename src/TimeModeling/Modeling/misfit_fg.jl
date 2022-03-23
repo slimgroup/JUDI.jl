@@ -57,8 +57,7 @@ function multi_src_fg(model_full::Model, source::judiVector, dObs::judiVector, d
     return Ref{Float32}(argout1), PhysicalParameter(argout2, model_full.d, model_full.o)
 end
 
-multi_src_fg(t::Tuple{Model, judiVector, judiVector, Any, JUDIOptions, Bool, Bool}) where N =
-    multi_src_fg(t[1], t[2], t[3], t[4], t[5], t[6], t[7])
+multi_src_fg(t::Tuple{Model, judiVector, judiVector, Any, JUDIOptions, Bool, Bool}) = multi_src_fg(t[1], t[2], t[3], t[4], t[5], t[6], t[7])
 
 # Find number of experiments
 """
@@ -78,6 +77,7 @@ end
 Filter input `x`` for experiment number `i`. Returns `x` is a constant not depending on experiment.
 """
 get_exp(x, i) = x
+get_exp(x::Tuple{}, i::Any) = x[i]
 for T in [judiVector, Model, judiWeights, judiWavefield, Array{Float32}, PhysicalParameter]
     @eval get_exp(v::Vector{<:$T}, i) = v[i]
     @eval get_exp(v::NTuple{N, <:$T}, i) where N = v[i]

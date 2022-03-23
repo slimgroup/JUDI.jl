@@ -16,13 +16,12 @@ v = ones(Float32,n) .+ 0.4f0
 v[:, :, Int(round(end/2)):end] .= 3f0
 v0 = ones(Float32,n) .+ 0.4f0
 
-
 # Slowness squared [s^2/km^2]
 m0 = (1f0 ./ v0).^2
 m = (1f0 ./ v).^2
 dm = vec(m - m0)
 
-# Setup info and model structure
+# Setup model structure
 nsrc = 1	# number of sources
 model0 = Model(n, d, o, m0)
 model = Model(n, d, o, m)

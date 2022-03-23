@@ -9,7 +9,7 @@ export ricker_wavelet, get_computational_nt, calculate_dt, setup_grid, setup_3D_
 export convertToCell, limit_model_to_receiver_area, extend_gradient, remove_out_of_bounds_receivers
 export time_resample, remove_padding, subsample, process_input_data
 export generate_distribution, select_frequencies
-export devito_model, update_dm, pad_sizes, pad_array
+export devito_model, pad_sizes, pad_array
 export transducer
 
 """
@@ -83,8 +83,8 @@ function pad_array(m::Array{DT}, nb::Array{Tuple{Int64,Int64},1}; mode::Symbol=:
     return PyReverseDims(reshape(padded, reverse(new_size)))
 end
 
-pad_array(::Nothing, ::Array{Tuple{Int64,Int64},1}; mode::Symbol=:border) where {DT} = nothing
-pad_array(m::Number, ::Array{Tuple{Int64,Int64},1}; mode::Symbol=:border) where {DT} = m
+pad_array(::Nothing, ::Array{Tuple{Int64,Int64},1}; s::Symbol=:border) = nothing
+pad_array(m::Number, ::Array{Tuple{Int64,Int64},1}; s::Symbol=:border) = m
 
 """
     remove_padding(m, nb; true_adjoint=False)
@@ -496,7 +496,7 @@ Parameters
 * `geometry_in`: Geometry on which `data` is defined.
 * `dt_new`: New time sampling rate to interpolate onto.
 """
-function time_resample(data::AbstractArray{Float32, N}, geometry_in::Geometry, dt_new) where N
+function time_resample(data::AbstractArray{Float32, N}, geometry_in::Geometry, dt_new::Real) where N
     @assert N<=2
     if dt_new==geometry_in.dt[1]
         return data, geometry_in
@@ -550,7 +550,7 @@ Parameters
 * `geometry_out`: Geometry on which `data` is to be interpolated.
 * `dt_in`: Time sampling rate of the `data.`
 """
-function time_resample(data::AbstractArray{Float32, N}, dt_in, geometry_out::Geometry) where N
+function time_resample(data::AbstractArray{Float32, N}, dt_in::Real, geometry_out::Geometry) where N
     @assert N<=2
     if dt_in == geometry_out.dt[1]
         return data

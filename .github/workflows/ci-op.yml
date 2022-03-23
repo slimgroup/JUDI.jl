@@ -17,7 +17,6 @@ jobs:
     env:
       DEVITO_ARCH: gcc-9
       DEVITO_LANGUAGE: "openmp"
-      DEVITO_BACKEND: "core"
       DEVITO_LOGGING: "ERROR"
       OMP_NUM_THREADS: ${{ matrix.omp }}
       GROUP: ${{ matrix.op }}

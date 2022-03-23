@@ -15,7 +15,7 @@ m0 = (1f0 ./ v0).^2
 m = (1f0 ./ v).^2
 dm = vec(m - m0)
 
-# Setup info and model structure
+# Setup model structure
 nsrc = 2	# number of sources
 model0 = Model(n, d, o, m0)
 model = Model(n, d, o, m)
@@ -54,7 +54,7 @@ end
 w = judiWeights(weights)
 
 # Create operator for injecting the weights, multiplied by the provided wavelet(s)
-Pw = judiLRWF(dt, wavelet)
+Pw = judiLRWF(nsrc, dt, wavelet)
 
 # Model observed data w/ extended source
 F = Pr*F*adjoint(Pw)
