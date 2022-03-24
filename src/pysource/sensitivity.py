@@ -39,12 +39,11 @@ def grad_expr(gradm, u, v, model, w=None, freq=None, dft_sub=None, isic=False):
     isic: Bool
         Whether or not to use inverse scattering imaging condition (not supported yet)
     """
-    if model.is_viscoacoustic and isic:
-        raise ValueError("Inverse scattering imaging condition (not supported yet)")
-    elif model.is_viscoacoustic and freq is not None:
-        raise ValueError("Imaging condition with on-th-fly-dft (not supported yet)")
-    else:
-        ic_func = ic_dict[func_name(freq=freq, isic=isic)]
+    if model.is_viscoacoustic:
+        u, v = (u[0],), (v[0],)
+        if isic:
+            raise ValueError("Inverse scattering imaging condition (not supported yet)")
+    ic_func = ic_dict[func_name(freq=freq, isic=isic)]
     expr = ic_func(as_tuple(u), as_tuple(v), model, freq=freq, factor=dft_sub, w=w)
     if model.fs:
         eq_g = [Eq(gradm, gradm - expr, subdomain=model.grid.subdomains['nofsdomain'])]
@@ -91,7 +90,6 @@ def crosscorr_freq(u, v, model, freq=None, dft_sub=None, **kwargs):
     factor: int
         Subsampling factor for DFT
     """
-    # Subsampled dft time axis
     time = model.grid.time_dim
     dt = time.spacing
     tsave, factor = sub_time(time, dft_sub)
@@ -176,6 +174,8 @@ def lin_src(model, u, isic=False):
     model: Model
         Model containing the perturbation dm
     """
+    if model.is_viscoacoustic and isic:
+        raise ValueError("ISIC source for linearized modeling (not supported yet)")
     ls_func = ls_dict[func_name(isic=isic)]
     return ls_func(model, as_tuple(u))
 

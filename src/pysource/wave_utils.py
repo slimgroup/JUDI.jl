@@ -76,6 +76,7 @@ def wavefield_subsampled(model, u, nt, t_sub, space_order=8):
         nsave = (nt-1)//t_sub + 2
     else:
         return None, []
+    u = (u[0],) if model.is_viscoacoustic else u
     for wf in as_tuple(u):
         usave = TimeFunction(name='us_%s' % wf.name, grid=model.grid, time_order=2,
                              space_order=space_order, time_dim=time_subsampled,
@@ -209,11 +210,9 @@ def otf_dft(model, u, freq, dt, factor=None):
     factor: int
         Subsampling factor for DFT
     """
-    if freq is not None and model.is_viscoacoustic:
-        raise ValueError("On the fly DFT wavefield (not supported yet)")
     if freq is None:
         return [], None
-
+    u = (u[0],) if model.is_viscoacoustic else u
     # init
     dft_modes = []
 
@@ -294,7 +293,7 @@ def sub_time(time, factor, dt=1, freq=None):
         return time, 1
 
 
-def weighted_norm(u, weight=None):
+def weighted_norm(model, u, weight=None):
     """
     Space-time norm of a wavefield, split into norm in time first then in space to avoid
     breaking loops
@@ -306,6 +305,7 @@ def weighted_norm(u, weight=None):
     weight: String
         Spacial weight to apply
     """
+    u = (u[0],) if model.is_viscoacoustic else u
     grid = as_tuple(u)[0].grid
     expr = grid.time_dim.spacing * sum(uu**2 for uu in as_tuple(u))
     # Norm in time

@@ -95,7 +95,7 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0, dft_sub=None,
     nv_t, nv_s = ([], [])
     if norm_v:
         weights = weight_fun(w_fun, model, src_coords)
-        norm_v, (nv_t, nv_s) = weighted_norm(v, weight=weights)
+        norm_v, (nv_t, nv_s) = weighted_norm(model, v, weight=weights)
 
     # Create operator and run
     subs = model.spacing_map
