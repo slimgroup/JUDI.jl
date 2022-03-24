@@ -123,8 +123,9 @@ def SLS_2nd_order(model, u1, u2, fw=True, q=None, f0=0.015):
         pde_r = - r.dt.T + (tt / t_s) * p - (1. / t_s) * r
         u_r = Eq(r.backward, damp * solve(pde_r, r.backward))
         # Pressure
-        pde_p = m * p.dt2 - b * div(b * grad((1. + tt) * rho * p, shift=.5), shift=-.5) + \
-            b * div(b * grad(rho * r.backward, shift=.5), shift=-.5) + (1 - damp) * p.dt.T
+        pde_p = m * p.dt2 - b * \
+            div(b * grad((1. + tt) * rho * p, shift=.5), shift=-.5) + b * \
+            div(b * grad(rho * r.backward, shift=.5), shift=-.5) + (1 - damp) * p.dt.T
         u_p = Eq(p.backward, damp * solve(pde_p, p.backward))
 
         return [u_r, u_p]
