@@ -43,7 +43,7 @@ fs =  parsed_args["fs"]
 
 ### Model
 model, model0, dm = setup_model(tti, parsed_args["viscoacoustic"], 4)
-q, srcGeometry, recGeometry, info = setup_geom(model; nsrc=4)
+q, srcGeometry, recGeometry, info, f0 = setup_geom(model; nsrc=4)
 q1 = q[[1,4]]
 q2 = q[[2,3]]
 srcGeometry1 = subsample(srcGeometry,[1,4])
@@ -53,7 +53,9 @@ recGeometry2 = subsample(recGeometry,[2,3])
 info1 = subsample(info,[1,4])
 info2 = subsample(info,[2,3])
 
-opt = Options(sum_padding=true, free_surface=fs)
+dt = srcGeometry.dt[1]
+
+opt = Options(sum_padding=true, free_surface=fs, f0=f0, dt_comp=dt)
 F1 = judiModeling(info1, model, srcGeometry1, recGeometry1; options=opt)
 F2 = judiModeling(info2, model, srcGeometry2, recGeometry2; options=opt)
 

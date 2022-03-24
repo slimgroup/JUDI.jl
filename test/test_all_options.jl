@@ -10,7 +10,7 @@ fs =  parsed_args["fs"]
 
 ### Model
 model, model0, dm = setup_model(parsed_args["tti"], parsed_args["viscoacoustic"], parsed_args["nlayer"])
-q, srcGeometry, recGeometry, info = setup_geom(model)
+q, srcGeometry, recGeometry, info, f0 = setup_geom(model)
 dt = srcGeometry.dt[1]
 
 
