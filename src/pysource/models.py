@@ -122,7 +122,7 @@ class Model(object):
                  dtype=np.float32, epsilon=None, delta=None, theta=None, phi=None,
                  rho=1, qp=None, dm=None, fs=False, **kwargs):
         # Setup devito grid
-        self.shape = shape
+        self.shape = tuple(shape)
         self.nbl = int(nbl)
         self.origin = tuple([dtype(o) for o in origin])
         abc_type = "mask" if qp is not None else "damp"
@@ -227,10 +227,15 @@ class Model(object):
             return func(default_value)
         if isinstance(field, np.ndarray) and (name == 'm' or
                                               np.min(field) != np.max(field)):
-            # We take advantage of the external allocator to avoid creating a new array
-            function = Function(name=name, grid=self.grid, space_order=space_order,
-                                allocator=ExternalAllocator(field),
-                                initializer=lambda x: None, parameter=is_param)
+            if field.shape == self.shape:
+                function = Function(name=name, grid=self.grid, space_order=space_order,
+                                    parameter=is_param)
+                initialize_function(function, field, self.padsizes)
+            else:
+                # We take advantage of the external allocator
+                function = Function(name=name, grid=self.grid, space_order=space_order,
+                                    allocator=ExternalAllocator(field),
+                                    initializer=lambda x: None, parameter=is_param)
         else:
             return func(np.min(field))
         self._physical_parameters.append(name)

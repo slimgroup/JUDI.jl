@@ -26,8 +26,7 @@ so = args.space_order
 dtype = np.float32
 
 # Model
-gshape = (301, 301)
-shape = (397, 357) if args.fs else (397, 397)
+shape = (301, 301)
 spacing = (10., 10.)
 origin = (0., 0.)
 m = np.empty(shape, dtype=dtype)
@@ -43,7 +42,7 @@ for i in range(1, args.nlayer):
 v = np.sqrt(1./m)
 # Set up model structures
 if is_tti:
-    model = Model(shape=gshape, origin=origin, spacing=spacing, dtype=dtype,
+    model = Model(shape=shape, origin=origin, spacing=spacing, dtype=dtype,
                   m=m, epsilon=.09*(v-1.5), delta=.075*(v-1.5),
                   fs=args.fs, theta=.1*(v-1.5), rho=1, space_order=so)
 elif is_viscoacoustic:
@@ -52,7 +51,7 @@ elif is_viscoacoustic:
     model = Model(shape=shape, origin=origin, spacing=spacing, dtype=dtype,
                   fs=args.fs, m=m, rho=rho, space_order=so, qp=qp)
 else:
-    model = Model(shape=gshape, origin=origin, spacing=spacing, dtype=dtype,
+    model = Model(shape=shape, origin=origin, spacing=spacing, dtype=dtype,
                   fs=args.fs, m=m, rho=rho, space_order=so)
 
 # Time axis
