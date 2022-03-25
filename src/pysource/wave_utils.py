@@ -158,7 +158,12 @@ def extended_src_weights(model, wavelet, v):
     time = model.grid.time_dim
     wavelett = Function(name='wf_src', dimensions=(time,), shape=(nt,))
     wavelett.data[:] = np.array(wavelet)[:, 0]
-    wf = v[0] + v[1] if model.is_tti else v
+    if model.is_tti:
+        wf = v[0] + v[1]
+    elif model.is_viscoacoustic:
+        wf = v[0]
+    else:
+        wf = v
     return w_out, [Inc(w_out, time.spacing * wf * wavelett)]
 
 
