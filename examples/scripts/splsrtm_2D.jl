@@ -68,9 +68,9 @@ solb = bregman(obj, zeros(Float32, prod(model0.n)), bregopt, C);
 
 # Save final velocity model, function value and history
 h5open("lsrtm_marmousi_breg_result.h5", "w") do file
-    write(file, "x", reshape(solb.x, model0.n), "z", reshape(solb.z, model0.n), "fval", Float32.(solb.ϕ_trace)))
+    write(file, "x", reshape(solb.x, model0.n), "z", reshape(solb.z, model0.n), "fval", Float32.(solb.ϕ_trace))
 end
 
 # Plot final image
-figure(); imshow(copy(adjoint(reshape(slob.xx, model0.n))), extent = (0, 7.99, 3.19, 0), cmap = "gray", vmin = -3e-2, vmax = 3e-2)
+figure(); imshow(copy(adjoint(reshape(solb.x, model0.n))), extent = (0, 7.99, 3.19, 0), cmap = "gray", vmin = -3e-2, vmax = 3e-2)
 title("LS-RTM with SGD"); xlabel("Lateral position [km]"); ylabel("Depth [km]")

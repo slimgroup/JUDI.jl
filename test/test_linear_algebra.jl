@@ -95,6 +95,10 @@ fs =  parsed_args["fs"]
         mul!(dobs_out, Md', dobs)
         @test isapprox(dobs_out, Md'*dobs; rtol=ftol)
 
+        # Check JUDI-JOLI compat
+        dm1 = M * J' * Md * dobs
+        @test length(dm1) == prod(model0.n)
+        @test dm1[1] == 0
 
         mul!(w_out, D, w)
         @test isapprox(w_out, D*w; rtol=ftol)

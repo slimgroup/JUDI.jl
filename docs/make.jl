@@ -1,4 +1,7 @@
-using Documenter, JUDI
+using Documenter, JUDI, Weave
+
+ex_path = "$(JUDI.JUDIPATH)/../examples/scripts"
+weave("$(ex_path)/modeling_basic_2D.jl"; out_path="src/tutorials/", doctype="github")
 
 makedocs(sitename="JUDI documentation",
          doctest=false, clean=true,

@@ -86,7 +86,7 @@ _get_property(C::judiComposedPropagator, ::Val{:options}) = C.F.options
 getproperty(J::judiPropagator, s::Symbol) = _get_property(J, Val{s}())
 
 display(P::judiPropagator{D, O}) where {D, O} = println("JUDI $(String(O)){$D} propagator $(repr(P.n)) -> $(repr(P.m))")
-show(io::IOContext, P::judiPropagator{D, O}) where {D, O} = print(io, "JUDI $(String(O)){$D} propagator $(repr(P.n)) -> $(repr(P.m))")
+show(io::Union{IOBuffer, IOContext}, P::judiPropagator{D, O}) where {D, O} = print(io, "JUDI $(String(O)){$D} propagator $(repr(P.n)) -> $(repr(P.m))")
 
 ############################################################################################################################
 # Constructors

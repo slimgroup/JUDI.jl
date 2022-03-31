@@ -33,6 +33,11 @@ mutable struct GeometryOOC{T} <: Geometry{T}
     segy_depth_key::String
 end
 
+
+display(G::Geometry) = println("$(typeof(ms)) wiht $(length(G.nt)) sources")
+show(io::Union{IOBuffer, IOContext}, G::Geometry) = print(io, "$(typeof(G)) wiht $(length(G.nt)) sources")
+
+
 ######################## shapes easy access ################################
 get_nsrc(g::GeometryIC) = length(g.xloc)
 get_nsrc(g::GeometryOOC) = length(g.container)
