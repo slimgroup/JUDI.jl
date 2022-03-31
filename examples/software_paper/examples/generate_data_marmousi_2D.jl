@@ -6,7 +6,10 @@
 using JUDI, SegyIO, HDF5, LinearAlgebra
 
 # Load migration velocity model
-n, d, o, m0, dm = read(h5open("../data/marmousi_model.h5", "r"), "n", "d", "o", "m0", "dm")
+if ~isfile("$(JUDI.JUDI_DATA)/marmousi_model.h5")
+    ftp_data("ftp://slim.gatech.edu/data/SoftwareRelease/Imaging.jl/2DLSRTM/marmousi_model.h5")
+end
+n, d, o, m0, "dm" = read(h5open("$(JUDI.JUDI_DATA)/marmousi_model.h5", "r"), "n", "d", "o", "m0", "dm")
 
 # Set up model structure
 model = Model((n[1], n[2]), (d[1], d[2]), (o[1], o[2]), m0)

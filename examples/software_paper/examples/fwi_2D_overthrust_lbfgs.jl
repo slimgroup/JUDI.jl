@@ -7,10 +7,10 @@ using Statistics, Random, LinearAlgebra
 using JUDI, NLopt, HDF5, SegyIO, PyPlot
 
 # Load starting model
-if ~isfile("overthrust_model_2D.h5")
-    run(`wget ftp://slim.gatech.edu/data/SoftwareRelease/WaveformInversion.jl/2DFWI/overthrust_model_2D.h5`)
+if ~isfile("$(JUDI.JUDI_DATA)/overthrust_model_2D.h5")
+    ftp_data("ftp://slim.gatech.edu/data/SoftwareRelease/WaveformInversion.jl/2DFWI/overthrust_model_2D.h5")
 end
-n, d, o, m0 = read(h5open("overthrust_model_2D.h5", "r"), "n", "d", "o", "m0")
+n, d, o, m0 = read(h5open("$(JUDI.JUDI_DATA)/overthrust_model_2D.h5", "r"), "n", "d", "o", "m0")
 model0 = Model((n[1], n[2]), (d[1], d[2]), (o[1], o[2]), m0)
 
 # Bound constraints
@@ -18,10 +18,10 @@ vmin = 1.4f0
 vmax = 6.5f0
 
 # Load data and create data vector
-if ~isfile("overthrust_2D.segy")
-    run(`wget ftp://slim.gatech.edu/data/SoftwareRelease/WaveformInversion.jl/2DFWI/overthrust_2D.segy`)
+if ~isfile("$(JUDI.JUDI_DATA)/overthrust_2D.segy")
+    ftp_data("ftp://slim.gatech.edu/data/SoftwareRelease/WaveformInversion.jl/2DFWI/overthrust_2D.segy")
 end
-block = segy_read("overthrust_2D.segy")
+block = segy_read("$(JUDI.JUDI_DATA)/overthrust_2D.segy")
 d_obs = judiVector(block)
 
 # Set up wavelet and source vector

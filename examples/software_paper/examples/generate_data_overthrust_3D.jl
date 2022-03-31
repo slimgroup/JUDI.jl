@@ -6,10 +6,10 @@
 using JUDI, HDF5
 
 # Load overthrust model
-if ~isfile("overthrust_3D_true_model.h5")
-    run(`wget ftp://slim.gatech.edu/data/SoftwareRelease/WaveformInversion.jl/3DFWI/overthrust_3D_true_model.h5`)
+if ~isfile("$(JUDI.JUDI_DATA)/overthrust_3D_true_model.h5")
+    ftp_data("ftp://slim.gatech.edu/data/SoftwareRelease/WaveformInversion.jl/3DFWI/overthrust_3D_true_model.h5")
 end
-n, d, o, m = read(h5open("overthrust_3D_true_model.h5","r"), "n", "d", "o", "m")
+n, d, o, m = read(h5open("$(JUDI.JUDI_DATA)/overthrust_3D_true_model.h5","r"), "n", "d", "o", "m")
 
 # Set up model structure
 model = Model((n[1], n[2], n[3]), (d[1], d[2], d[3]), (o[1], o[2], o[3]), m)

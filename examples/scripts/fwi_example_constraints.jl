@@ -10,14 +10,14 @@ using JUDI, SlimOptim, HDF5, SegyIO, PyPlot
 using SetIntersectionProjection
 
 # Load starting model
-n,d,o,m0 = read(h5open("../../data/overthrust_model.h5","r"), "n", "d", "o", "m0")
+n,d,o,m0 = read(h5open("$(JUDI.JUDI_DATA)/overthrust_model.h5","r"), "n", "d", "o", "m0")
 model0 = Model((n[1],n[2]), (d[1],d[2]), (o[1],o[2]), m0)
 
 # Bound constraints
 v0 = sqrt.(1f0 ./ m0)
 
 # Load data
-block = segy_read("../../data/overthrust_shot_records.segy")
+block = segy_read("$(JUDI.JUDI_DATA)/overthrust_shot_records.segy")
 d_obs = judiVector(block)
 
 # Set up wavelet

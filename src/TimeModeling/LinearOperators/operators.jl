@@ -74,12 +74,16 @@ struct LazyScal
 end
 
 ############################################################################################################################
-# Base
-function getproperty(C::judiComposedPropagator, s::Symbol)
-    s == :model && (return C.F.model)
-    s == :options && (return C.F.options)
-    return getfield(C, s)
-end
+# Base and JOLI compat
+_get_property(J::judiPropagator, ::Val{:fop}) = x -> J*x
+_get_property(J::judiPropagator, ::Val{:fop_T}) = x -> J'*x
+_get_property(J::judiPropagator, ::Val{:name}) = "$(typeof(J))"
+_get_property(J::judiPropagator, ::Val{s}) where {s} = getfield(J, s)
+
+_get_property(C::judiComposedPropagator, ::Val{:model}) = C.F.model
+_get_property(C::judiComposedPropagator, ::Val{:options}) = C.F.options
+
+getproperty(J::judiPropagator, s::Symbol) = _get_property(J, Val{s}())
 
 display(P::judiPropagator{D, O}) where {D, O} = println("JUDI $(String(O)){$D} propagator $(repr(P.n)) -> $(repr(P.m))")
 show(io::IOContext, P::judiPropagator{D, O}) where {D, O} = print(io, "JUDI $(String(O)){$D} propagator $(repr(P.n)) -> $(repr(P.m))")

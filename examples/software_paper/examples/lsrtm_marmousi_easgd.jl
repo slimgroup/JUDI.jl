@@ -9,19 +9,19 @@ using Statistics, Random, LinearAlgebra, Distributed
 using JUDI, SegyIO, HDF5, PyPlot
 
 # Load migration velocity model
-if ~isfile("marmousi_model.h5")
-    run(`wget ftp://slim.gatech.edu/data/SoftwareRelease/Imaging.jl/2DLSRTM/marmousi_model.h5`)
+if ~isfile("$(JUDI.JUDI_DATA)/marmousi_model.h5")
+    ftp_data("ftp://slim.gatech.edu/data/SoftwareRelease/Imaging.jl/2DLSRTM/marmousi_model.h5")
 end
-n, d, o, m0 = read(h5open("marmousi_model.h5", "r"), "n", "d", "o", "m0")
+n, d, o, m0 = read(h5open("$(JUDI.JUDI_DATA)/marmousi_model.h5", "r"), "n", "d", "o", "m0")
 
 # Set up model structure
 model0 = Model((n[1], n[2]), (d[1], d[2]), (o[1], o[2]), m0)
 
 # Load data
-if ~isfile("marmousi_2D.segy")
-    run(`wget ftp://slim.gatech.edu/data/SoftwareRelease/Imaging.jl/2DLSRTM/marmousi_2D.segy`)
+if ~isfile("$(JUDI.JUDI_DATA)/marmousi_2D.segy")
+    ftp_data("ftp://slim.gatech.edu/data/SoftwareRelease/Imaging.jl/2DLSRTM/marmousi_2D.segy")
 end
-block = segy_read("marmousi_2D.segy")
+block = segy_read("$(JUDI.JUDI_DATA)/marmousi_2D.segy")
 d_lin = judiVector(block)   # linearized observed data
 
 # Set up wavelet

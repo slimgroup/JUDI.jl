@@ -6,7 +6,7 @@
 __precompile__()
 module JUDI
 
-export JUDIPATH, set_verbosity
+export JUDIPATH, set_verbosity, ftp_data
 JUDIPATH = dirname(pathof(JUDI))
 
 # Dependencies
@@ -54,6 +54,11 @@ end
 
 _TFuture = Future
 _verbose = false
+
+# Utility for data loading
+JUDI_DATA = joinpath(JUDIPATH, "../data")
+ftp_data(ftp::String, name::String) = run(`curl -L $(ftp) --create-dirs -o $(JUDI.JUDI_DATA)/$(name)`)
+ftp_data(ftp::String) = run(`curl -L $(ftp) --create-dirs -o $(JUDI.JUDI_DATA)/$(split(ftp, "/")[end])`)
 
 # Some usefull types
 const RangeOrVec = Union{AbstractRange, Vector}

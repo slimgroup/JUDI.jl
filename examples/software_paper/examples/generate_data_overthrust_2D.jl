@@ -6,7 +6,10 @@
 using JUDI, HDF5, SegyIO
 
 # Load overthrust model
-n, d, o, m = read(h5open("../data/overthrust_model_2D.h5","r"), "n", "d", "o", "m")
+if ~isfile("$(JUDI.JUDI_DATA)/overthrust_model_2D.h5")
+    ftp_data("ftp://slim.gatech.edu/data/SoftwareRelease/WaveformInversion.jl/2DFWI/overthrust_model_2D.h5")
+end
+n, d, o, m = read(h5open("$(JUDI.JUDI_DATA)/overthrust_model_2D.h5","r"), "n", "d", "o", "m")
 
 # Set up model structure
 model = Model((n[1], n[2]), (d[1], d[2]), (o[1], o[2]), m)
