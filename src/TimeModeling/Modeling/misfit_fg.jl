@@ -62,6 +62,7 @@ multi_src_fg(t::Tuple{Model, judiVector, judiVector, Any, JUDIOptions, Bool, Boo
 # Find number of experiments
 """
     get_nexp(x)
+
 Get number of experiments given a JUDI type. By default we have only one experiment unless we input
 a Vector of judiType such as [model, model] to compute gradient for different cases at once.
 """
@@ -74,6 +75,7 @@ end
 # Filter arguments for given task
 """
     get_exp(x, i)
+
 Filter input `x`` for experiment number `i`. Returns `x` is a constant not depending on experiment.
 """
 get_exp(x, i) = x

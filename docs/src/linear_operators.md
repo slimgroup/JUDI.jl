@@ -55,8 +55,8 @@ F.qInjection
 F.qInjection.geometry
 
 # Receiver interpolation (if available) and geometry
-F.rInterpiolation
-F.rInterpiolation.geometry
+F.rInterpolation
+F.rInterpolation.geometry
 
 # Options structure
 F.options
@@ -142,10 +142,10 @@ J.F.qInjection
 J.F.qInjection.geometry
 
 # Receiver interpolation (if available) and geometry through propagator
-J.F.rInterpiolation
-J.F.rInterpiolation.geometry
+J.F.rInterpolation
+J.F.rInterpolation.geometry
 
-# Source term, can be a judiWeghts or a judiVector
+# Source term, can be a judiWeights, judiWavefield, or a judiVector
 J.q
 
 # Options structure

@@ -28,9 +28,11 @@ wavelet = ricker_wavelet(src_geometry.t[1], src_geometry.dt[1], 0.03)    # 30 Hz
 q = judiVector(src_geometry, wavelet)
 
 ###################################################################################################
-
+# Infer subsampling based on free memory
+mem = Sys.free_memory()/(1024^3)
+t_sub = max(1, ceil(Int, 40/mem))
 # Setup operators
-opt = Options(subsampling_factor=5, isic=true)  # ~40 GB of memory per source without subsampling
+opt = Options(subsampling_factor=t_sub, isic=true)  # ~40 GB of memory per source without subsampling
 M = judiModeling(model0, q.geometry, d_lin.geometry; options=opt)
 J = judiJacobian(M, q)
 

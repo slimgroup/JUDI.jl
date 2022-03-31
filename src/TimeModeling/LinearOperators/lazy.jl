@@ -57,6 +57,17 @@ struct judiRHS{D} <: judiMultiSourceVector{D}
     d::judiVector
 end
 
+"""
+    LazyAdd
+        nsrc
+        A
+        B
+        sign
+
+Lazy addition of two RHS (currently only judiVector). The addition isn't evaluated to avoid
+large memory allocation but instead evaluates the addition (with sign `sign`) `A + sign * B`
+for a single source at propagation time.
+"""
 struct LazyAdd{D} <: judiMultiSourceVector{D}
     nsrc::Integer
     A
@@ -71,8 +82,6 @@ end
     judiProjection(geometry)
 
 Projection operator for sources/receivers to restrict or inject data at specified locations.
-`info` is an `Info` structure and `geometry` is a `Geometry` structure with either source or
-receiver locations.
 
 Examples
 ========
@@ -88,7 +97,6 @@ judiProjection(G::Geometry) = judiProjection{Float32}(rec_space(G), time_space_s
     judiWavelet(dt, wavelet)
 
 Low-rank wavefield operator which injects a wavelet q at every point of the subsurface.
-`info` is an `Info` structure and `wavelet` is a cell array containing the wavelet(s).
 
 Examples
 ========

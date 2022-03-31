@@ -1,6 +1,3 @@
-import Base.Broadcast: ArrayStyle, extrude
-####################################################################################################
-
 BroadcastStyle(::Type{<:judiMultiSourceVector}) = ArrayStyle{judiMultiSourceVector}()
 
 function similar(bc::Broadcast.Broadcasted{ArrayStyle{judiMultiSourceVector}}, ::Type{ElType}) where ElType
@@ -9,7 +6,7 @@ function similar(bc::Broadcast.Broadcasted{ArrayStyle{judiMultiSourceVector}}, :
     return similar(A, ElType)
 end
 
-"`A = find_aac(As)` returns the first PhysicalParameter among the arguments."
+"`A = find_msv(As)` returns the first judiMultiSourceVector among the arguments."
 find_msv(bc::Base.Broadcast.Broadcasted) = find_msv(bc.args)
 find_msv(args::Tuple) = find_msv(find_msv(args[1]), Base.tail(args))
 find_msv(x) = x

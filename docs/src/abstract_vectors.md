@@ -6,9 +6,9 @@ JUDI provides abstract vector types that encapsulate seismic related objects. In
 Pages = ["abstract_vectors.md"]
 ```
 
-At the core of JUDI's vector types is the abstract type `judiMultiSourceVector` that represent a dimensionalized `Vector{Array}` where each sub-array correspond to a single source. All JUDI vector types inhert from this abstract type that implements most of the arithmetic and julia core utilities. As an abstract types, `judiMultiSourceVector` should not be instantiated but new types baseed on it should be created if one desire to create its own JUDI multi-source vector type.
+At the core of JUDI's vector types is the abstract type `judiMultiSourceVector` that represent a dimensionalized `Vector{Array}` where each sub-array correspond to a single source. All JUDI vector types inhert from this abstract type that implements most of the arithmetic and julia core utilities. As an abstract types, `judiMultiSourceVector` should not be instantiated but new concrete types based on it should be created if one desire to create its own JUDI multi-source vector type.
 
-All sub-type of `judiMultiSourceVector` must implement the folowing methods to be compatible with JUDI. The following JUDI core types are examples of sub-types.
+All sub-type of `judiMultiSourceVector` must implement the following methods to be compatible with JUDI. The following JUDI core types are examples of sub-types.
 
 ## judiVector
 

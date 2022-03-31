@@ -5,7 +5,7 @@
 # Authors: Philipp Witte (pwitte@eos.ubc.ca), Henryk Modzelewski (hmodzelewski@eos.ubc.ca)
 # Date: June 2017
 
-export judiWavefield, fft_wavefield
+export judiWavefield, fft, ifft
 
 ############################################################
 
@@ -64,6 +64,7 @@ time_sampling(jv::judiWavefield) = jv.dt
 jo_convert(::Type{T}, jw::judiWavefield{T}, ::Bool) where {T<:Number} = jw
 jo_convert(::Type{T}, jw::judiWavefield{vT}, B::Bool) where {T<:Number, vT} = judiWavefield{T}(jw.nsrc, jv.dt, jo_convert.(T, jw.data, B))
 zero(::Type{T}, v::judiWavefield{vT}; nsrc::Integer=v.nsrc) where {T, vT} = judiWavefield{T}(nsrc, v.dt, T(0) .* v.data[1:nsrc])
+zero(::Type{T}, v::judiWavefield{vT}; nsrc::Integer=v.nsrc) where {T<:Real, vT<:Complex} = judiWavefield{T}(nsrc, v.dt, T(0) .* real(v.data[1:nsrc]))
 (w::judiWavefield)(x::Vector{<:Array}) = judiWavefield(w.dt, x)
 
 function copy!(jv::judiWavefield, jv2::judiWavefield)
@@ -86,20 +87,18 @@ function push!(a::judiWavefield{T}, b::judiWavefield{T}) where T
 end
 
 # DFT operator for wavefields, acts along time dimension
-function fft_wavefield(x_in::judiWavefield{T}, mode) where T
-    nsrc = x_in.nsrc
-    nt = size(x_in.data[1], 1)
-    if mode==1
-        x = similar(x_in, Complex{Float32})
-        for i=1:nsrc
-            x.data[i] = fft(x_in.data[i], 1)/sqrt(nt)
-        end
-    elseif mode==-1
-        data = Vector{Array{real(T), ndims(x_in.data[1])}}(undef, x_in.nsrc)
-        for i=1:nsrc
-            data[i] = real(ifft(x_in.data[i], 1)) * sqrt(nt)
-        end
-        x = judiWavefield{Float32}(x_in.nsrc, x_in.dt, data)
+function fft(x_in::judiWavefield{T}) where T
+    x = similar(x_in, Complex{Float32})
+    for i=1:x_in.nsrc
+        x.data[i] = fft(x_in.data[i], 1)/sqrt(size(x_in.data[i], 1))
+    end
+    return x
+end
+
+function ifft(x_in::judiWavefield{T}) where T
+    x = similar(x_in, Float32)
+    for i=1:x_in.nsrc
+        x.data[i] = real(ifft(x_in.data[i], 1)) * sqrt(size(x_in.data[i], 1))
     end
     return x
 end

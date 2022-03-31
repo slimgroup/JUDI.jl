@@ -21,7 +21,7 @@ propagate(t::Tuple{judiPropagator, AbstractArray}) = propagate(t[1], t[2])
 
 Runs the function `func` for indices `1:nsrc` within arguments `func(arg_func(i))`. If the 
 the pool is empty, a standard loop and accumulation is ran. If the pool is a julia WorkerPool or
-any custom Distributed pool, he loop is distributed via `remotecall` followed by are binary tree emote reduction.
+any custom Distributed pool, the loop is distributed via `remotecall` followed by are binary tree remote reduction.
 """
 function run_and_reduce(func, pool, nsrc, arg_func::Function)
     res = Vector{_TFuture}(undef, nsrc)

@@ -103,8 +103,8 @@ dot(A::PhysicalParameter, B::Array) = dot(vec(A.data), vec(B))
 dot(A::Array, B::PhysicalParameter) = dot(vec(A), vec(B.data))
 
 display(A::PhysicalParameter) = println("$(typeof(A)) of size $(A.n) with origin $(A.o) and spacing $(A.d)")
-show(io::Union{IOBuffer, IOContext}, A::PhysicalParameter) = print(io, "$(typeof(A)) of size $(A.n) with origin $(A.o) and spacing $(A.d)")
-show(io, mime, x::PhysicalParameter) = println(io, "$(typeof(A)) of size $(A.n) with origin $(A.o) and spacing $(A.d)")
+show(io::IO, A::PhysicalParameter) = print(io, "$(typeof(A)) of size $(A.n) with origin $(A.o) and spacing $(A.d)")
+summary(io::IO, A::PhysicalParameter) = print(io, "$(typeof(A)) of size $(A.n) with origin $(A.o) and spacing $(A.d)")
 showarg(io::IO, A::PhysicalParameter, toplevel) = print(io, typeof(A), " with size $(A.n), spacing $(A.d) and origin $(A.o)")
 
 # Indexing
@@ -315,4 +315,4 @@ similar(x::Array, m::Model) = similar(x, m.n)
 ndims(m::Model) = ndims(m.m.data)
 
 display(m::Model) = println("Model (n=$(m.n), d=$(m.d), o=$(m.o)) with parameters $(keys(m.params))")
-show(io::Union{IOBuffer, IOContext}, m::Model) = print(io, "Model (n=$(m.n), d=$(m.d), o=$(m.o)) with parameters $(keys(m.params))")
+show(io::IO, m::Model) = print(io, "Model (n=$(m.n), d=$(m.d), o=$(m.o)) with parameters $(keys(m.params))")

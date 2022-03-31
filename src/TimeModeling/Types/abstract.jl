@@ -8,10 +8,10 @@ mutable struct judiMultiSourceException <: Exception
     msg :: String
 end
 
-display(ms::judiMultiSourceVector) = println("$(typeof(ms)) wiht $(ms.nsrc) sources")
-show(io::Union{IOBuffer, IOContext}, ms::judiMultiSourceVector) = print(io, "$(typeof(ms)) wiht $(ms.nsrc) sources")
-# This is needed for Weave.jl beeing aple to print a judiVector
-show(io, mime, ms::judiMultiSourceVector) = println(io, "$(typeof(ms)) wiht $(ms.nsrc) sources")
+display(ms::judiMultiSourceVector) = println("$(string(typeof(ms))) wiht $(ms.nsrc) sources")
+show(io::IO, ms::judiMultiSourceVector) = print(io, "$(string(typeof(ms))) wiht $(ms.nsrc) sources")
+showarg(io::IO, ms::judiMultiSourceVector, toplevel) = print(io, "$(string(typeof(ms))) wiht $(ms.nsrc) sources")
+summary(io::IO, ms::judiMultiSourceVector) = print(io, string(typeof(ms)))
 
 # Size and type 
 eltype(::judiMultiSourceVector{T}) where T = T

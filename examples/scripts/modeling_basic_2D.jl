@@ -1,3 +1,4 @@
+#' # Modeling and inversion with JUDI
 #' ---
 #' title: Overview of JUDI modelign and inversion usage
 #' author: Mathias Louboutin, Philipp Witte
@@ -36,7 +37,7 @@ rho = (v0 .+ .5f0) ./ 2
 # Slowness squared [s^2/km^2]
 m = (1f0 ./ v).^2
 m0 = (1f0 ./ v0).^2
-dm = vec(m - m0)
+dm = vec(m0 - m)
 
 # Setup model structure
 nsrc = 2	# number of sources
@@ -99,11 +100,11 @@ opt = Options(subsampling_factor=2, dt_comp=1.0)
 
 #' Linear Operators
 #' The core idea behind JUDI is to abstract seismic inverse problems in term of linear algebra. In its simplest form, seismic inversion can be formulated as
-#' $$$
-#' \text{argmin}_{\mathbf{m}} \phi(\mathbf{m}) ||\mathbf{P}_r \mathbf{F}(\mathbf{m}) \mathbf{P}_s^{\top} \mathbf{q} - \mathbf{d} ||_2^2
+#' $$
+#' \text{argmin}_{\mathbf{m}} \phi(\mathbf{m}) ||\mathbf{P}_r \mathbf{F}(\mathbf{m}) \mathbf{P}_s^{\top} \mathbf{q} - \mathbf{d} ||_2^2 \\
 #' \nabla_{\mathbf{m}} = \mathbf{J}
-#' $$$
-#' where `\mathbf{P}_r` is the receiver projection (measurment operator) and `\mathbf{P}_s^{\top}` is the source injection operator (adjoint of measurment at the source location).
+#' $$
+#' where $\mathbf{P}_r$ is the receiver projection (measurment operator) and $\mathbf{P}_s^{\top}$ is the source injection operator (adjoint of measurment at the source location).
 #' Therefore, we bastracted these operation to be able to define these operators
 
 # Setup operators
@@ -184,6 +185,8 @@ display(fig)
 #' FWI misfit and gradient
 # evaluate FWI objective function
 f, g = fwi_objective(model0, q, dobs; options=opt)
+
+#' Plot gradient
 fig = figure()
 imshow(g', vmin=-1e2, vmax=1e2, cmap="Greys", extent=[0, (n[1]-1)*d[1], (n[2]-1)*d[2], 0 ], aspect="auto")
 xlabel("Lateral position(m)")
@@ -219,7 +222,9 @@ display(fig)
 #' gjn2 == g
 fjn2, gjn2 = lsrtm_objective(model0, q, dobs, 0f0.*dm; nlind=true, options=opt)
 fig = figure()
-imshow(gj', vmin=-1, vmax=1, cmap="Greys", extent=[0, (n[1]-1)*d[1], (n[2]-1)*d[2], 0 ], aspect="auto")
+
+#' Plot gradient
+imshow(gjn2', vmin=-1e2, vmax=1e2, cmap="Greys", extent=[0, (n[1]-1)*d[1], (n[2]-1)*d[2], 0 ], aspect="auto")
 xlabel("Lateral position(m)")
 ylabel("Depth (m)")
 title("LSRTM gradient with zero perturbation")
@@ -229,11 +234,12 @@ display(fig)
 #' # TWRI
 #' Finally, JUDI implements TWRI, an augmented method to tackle cycle skipping. Once again we provide a cmputationnally efficient wrapper function that returns the objective value and necessary gradients
 f, gm, gy = twri_objective(model0, q, dobs, nothing; options=opt, optionswri=TWRIOptions(params=:all))
-f, gm = twri_objective(model0, q, dobs, nothing; options=Options(frequencies=[[.009, .011], [.008, .012]]),
-                                                 optionswri=TWRIOptions(params=:m))
+# With on-the-fly DFT, experimental
+f, gmf = twri_objective(model0, q, dobs, nothing; options=Options(frequencies=[[.009, .011], [.008, .012]]), optionswri=TWRIOptions(params=:m))
 
+#' Plot gradients
 fig = figure()
-imshow(gj', vmin=-1, vmax=1, cmap="Greys", extent=[0, (n[1]-1)*d[1], (n[2]-1)*d[2], 0 ], aspect="auto")
+imshow(gm', vmin=-1, vmax=1, cmap="Greys", extent=[0, (n[1]-1)*d[1], (n[2]-1)*d[2], 0 ], aspect="auto")
 xlabel("Lateral position(m)")
 ylabel("Depth (m)")
 title("TWRI gradient w.r.t m")

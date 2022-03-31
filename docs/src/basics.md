@@ -457,7 +457,7 @@ wavelet = ricker_wavelet(time, dt, f0)
 q = judiVector(src_geometry, wavelet)
 ```
 
-As in the 2D quick start tutorial, we create our odeling operator and source projection operator:
+As in the 2D quick start tutorial, we create our modeling operator and source projection operator:
 
 ```julia
 # Setup operators

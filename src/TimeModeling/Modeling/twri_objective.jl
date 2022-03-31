@@ -148,7 +148,7 @@ function twri_objective(model::Model, source::judiVector, dObs::judiVector, y::U
     twri_objective = retry(twri_objective_par)
 
     results = Vector{_TFuture}(undef, dObs.nsrc)
-    @sync for j=1:dObs.nsrc
+    for j=1:dObs.nsrc
         isnothing(y) ? yloc = y : yloc = y[j]
         results[j] = remotecall(twri_objective, p, model, source[j], dObs[j], yloc, options[j], optionswri[j])
     end

@@ -138,7 +138,7 @@ end
 
 # Backward compat with giving weights as array. Not recommened
 function judiJacobian(F::judiComposedPropagator{D, O}, q::Array{D, N}; options=nothing) where {D, O, N}
-    @warn "judiWeights is recommned for judiJacobian(F, weights)"
+    @warn "judiWeights is recommended for judiJacobian(F, weights)"
     nsrc = try length(F.qInjection.data) catch; length(F.rInterpolation.data) end
     update!(F.F.options, options)
     return judiJacobian(F, judiWeights(reshape(q, F.model.n); nsrc=nsrc))

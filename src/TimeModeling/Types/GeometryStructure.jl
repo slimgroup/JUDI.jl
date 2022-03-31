@@ -34,9 +34,8 @@ mutable struct GeometryOOC{T} <: Geometry{T}
 end
 
 
-display(G::Geometry) = println("$(typeof(ms)) wiht $(length(G.nt)) sources")
-show(io::Union{IOBuffer, IOContext}, G::Geometry) = print(io, "$(typeof(G)) wiht $(length(G.nt)) sources")
-
+display(G::Geometry) = println("$(typeof(G)) wiht $(length(G.nt)) sources")
+show(io::IO, G::Geometry) = print(io, "$(typeof(G)) wiht $(length(G.nt)) sources")
 
 ######################## shapes easy access ################################
 get_nsrc(g::GeometryIC) = length(g.xloc)

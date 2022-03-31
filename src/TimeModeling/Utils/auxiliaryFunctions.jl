@@ -788,7 +788,4 @@ as_vec(x, ::Val) = x
 as_vec(x::Tuple, v::Val) = tuple((as_vec(xi, v) for xi in x)...)
 as_vec(x::Ref, ::Val) = x[]
 as_vec(x::PhysicalParameter, ::Val{true}) = vec(x.data)
-for T in [judiVector, judiWeights, judiWavefield]
-    @eval as_vec(x::$T, ::Val{true}) = vcat([vec(x.data[i]) for i=1:length(x.data)]...)
-end
-
+as_vec(x::judiMultiSourceVector, ::Val{true}) = vec(x)

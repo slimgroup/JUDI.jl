@@ -82,8 +82,8 @@ ftol = 1f-6
         @test isapprox((a + b) .* v, a .* v + b.* v; rtol=1f-5)
 
         # test fft
-        fw = fft_wavefield(w, 1)
-        fwf = fft_wavefield(fw, -1)
+        fw = fft(w)
+        fwf = ifft(fw)
         @test isapprox(dot(fwf, w), real(dot(fw, fw)); rtol=ftol)
         @test isapprox(fwf, w; rtol=ftol)
     end

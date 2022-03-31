@@ -15,7 +15,7 @@ This will install JUDI, and the `build` will install the necessary dependencies 
 
 ## Custom installation
 
-In some case you may want to have your own installation of Devtio you want JUDI to use in which case you should foloow these steps.
+In some case you may want to have your own installation of Devito you want JUDI to use in which case you should foloow these steps.
 
 You can find installation instruction in our Wiki at [Installation](https://github.com/slimgroup/JUDI.jl/wiki/Installation).
 
@@ -39,21 +39,10 @@ To enable gpu support in JUDI, you will need to install one of [Devito](https://
 
 The only required setup for GPU support are the environment variables for [Devito](https://www.devitoproject.org). For the currently supported `nvc+openacc` setup these are:
 
-```bash
-pip3 install --user git+https://github.com/devitocodes/devito.git
 ```
-
-Once Devito, SegyIO and JOLI are installed, you can install JUDI as follows:
-
-```julia
-] add JUDI
-```
-
-Once you have JUDI installed, you need to point Julia's PyCall package to the Python version for which we previsouly installed Devito. To do this, copy-paste the following commands into the (bash) terminal:
-
-```julia
-export PYTHON=$(which python3)
-julia -e 'using Pkg; Pkg.build("PyCall")'
+export DEVITO_LANGUAGE=openacc
+export DEVITO_ARCH=nvc
+export DEVITO_PLATFORM=nvidiaX
 ```
 
 ## Running with Docker
@@ -73,7 +62,7 @@ docker run -it mloubout/judi-base:1.0 /bin/bash
 Inside the container, all examples are located in the directory `/app/judi/examples/scripts`.
 
 
-Additionaly, we provide two runtime docker images `mloubout/judi-cpu:1.4.3` and `mloubout/judi-gpu:1.0` that provide runtime (bash session) containers with additional librairies and compilers installed (`icc`, `nvcc`). These image do not offer  jupyter notebook as they are designed to be used as remote image for HPC (i.e [JUDI4Cloud.jl](https://github.com/slimgroup/JUDI4Cloud.jl)). The image `mloubout/judi-cpu:1.4.3` is recommended to be used with [JUDI4Cloud.jl](https://github.com/slimgroup/JUDI4Cloud.jl).
+Additionaly, we provide two runtime docker images `mloubout/judi-cpu:1.4.3` and `mloubout/judi-gpu:1.0` that provide runtime (bash session) containers with additional librairies and compilers installed (`icc`, `nvcc`). Theses image do not offer jupyter notebook as they are designed to be used as remote image for HPC (i.e [JUDI4Cloud.jl](https://github.com/slimgroup/JUDI4Cloud.jl)). The image `mloubout/judi-cpu:1.4.3` is recommended to be used with [JUDI4Cloud.jl](https://github.com/slimgroup/JUDI4Cloud.jl).
 
 ## Testing
 

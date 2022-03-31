@@ -21,7 +21,7 @@ end
 @everywhere using JUDI, LinearAlgebra, Test, Distributed
 
 ### Model
-model, model0, dm = setup_model(tti, viscoacoustic, nlayer; rand_dm=true)
+model, model0, dm = setup_model(tti, viscoacoustic, nlayer)
 q, srcGeometry, recGeometry, f0 = setup_geom(model; nsrc=nw)
 dt = srcGeometry.dt[1]
 

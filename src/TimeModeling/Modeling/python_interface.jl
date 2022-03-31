@@ -27,7 +27,7 @@ function devito_interface(modelPy::PyObject, srcGeometry::Geometry, srcData::Arr
     dOut = time_resample(dOut, dtComp, recGeometry)
 
     # Output shot record as judiVector
-    return judiVector{Float32, Array{Float32, 2}}(1, recGeometry, [dOut])
+    return judiVector{Float32, Matrix{Float32}}(1, recGeometry, [dOut])
 end
 
 # q_ad = Ps*F'*Pr'*d_obs
@@ -46,7 +46,7 @@ function devito_interface(modelPy::PyObject, srcGeometry::Geometry, srcData::Not
     qOut = time_resample(qOut, dtComp, srcGeometry)
 
     # Output adjoint data as judiVector
-    return judiVector{Float32, Array{Float32, 2}}(1, srcGeometry, [qOut])
+    return judiVector{Float32, Matrix{Float32}}(1, srcGeometry, [qOut])
 end
 
 # u = F*Ps'*q
@@ -96,7 +96,7 @@ function devito_interface(modelPy::PyObject, srcGeometry::Nothing, srcData::Arra
     dOut = wrapcall_data(ac."forward_wf_src", modelPy, srcData, rec_coords, space_order=options.space_order, f0=options.f0)
     dOut = time_resample(dOut, dtComp, recGeometry)
 
-    return judiVector{Float32, Array{Float32, 2}}(1, recGeometry, [dOut])
+    return judiVector{Float32, Matrix{Float32}}(1, recGeometry, [dOut])
 end
 
 # q_ad = Ps*F'*v
@@ -113,7 +113,7 @@ function devito_interface(modelPy::PyObject, srcGeometry::Geometry, srcData::Not
     qOut = time_resample(qOut, dtComp, srcGeometry)
 
     # Output adjoint data as judiVector
-    return judiVector{Float32, Array{Float32, 2}}(1, srcGeometry, [qOut])
+    return judiVector{Float32, Matrix{Float32}}(1, srcGeometry, [qOut])
 end
 
 # u_out = F*u_in
@@ -161,7 +161,7 @@ function devito_interface(modelPy::PyObject, srcGeometry::Geometry, srcData::Arr
     dOut = time_resample(dOut, dtComp, recGeometry)
 
     # Output linearized shot records as judiVector
-    return judiVector{Float32, Array{Float32, 2}}(1, recGeometry, [dOut])
+    return judiVector{Float32, Matrix{Float32}}(1, recGeometry, [dOut])
 end
 
 # dm = J'*d_lin
@@ -208,7 +208,7 @@ function devito_interface(modelPy::PyObject, weights::Array, srcData::Array, rec
     dOut = time_resample(dOut, dtComp, recGeometry)
 
     # Output shot record as judiVector
-    return judiVector{Float32, Array{Float32, 2}}(1, recGeometry, [dOut])
+    return judiVector{Float32, Matrix{Float32}}(1, recGeometry, [dOut])
 end
 
 # dw = Pw*F'*Pr'*d_obs - adjoint modeling w/ extended source
@@ -252,7 +252,7 @@ function devito_interface(modelPy::PyObject, weights::Array, srcData::Array, rec
     dOut = time_resample(dOut, dtComp, recGeometry)
 
     # Output linearized shot records as judiVector
-    return judiVector{Float32, Array{Float32, 2}}(1, recGeometry, [dOut])
+    return judiVector{Float32, Matrix{Float32}}(1, recGeometry, [dOut])
 end
 
 # Adjoint Jacobian of extended source modeling: dm = J'*d_lin
