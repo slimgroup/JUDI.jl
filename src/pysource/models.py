@@ -67,7 +67,7 @@ def initialize_damp(damp, padsizes, abc_type=False, fs=False):
         mask => 1 inside the domain and decreases in the layer
         not mask => 0 inside the domain and increase in the layer
     """
-    eqs = [Eq(damp, 1.0 if abc_type == "mask" else 0.0)]
+    eqs = [Eq(damp, 1.0 if abc_type else 0.0)]
     for (nbl, nbr), d in zip(padsizes, damp.dimensions):
         if not fs or d is not damp.dimensions[-1]:
             dampcoeff = 1.5 * np.log(1.0 / 0.001) / (nbl)
@@ -76,7 +76,7 @@ def initialize_damp(damp, padsizes, abc_type=False, fs=False):
                                       thickness=nbl)
             pos = Abs((nbl - (dim_l - d.symbolic_min) + 1) / float(nbl))
             val = dampcoeff * (pos - sin(2*np.pi*pos)/(2*np.pi))
-            val = -val if abc_type == "mask" else val
+            val = -val if abc_type else val
             eqs += [Inc(damp.subs({d: dim_l}), val/d.spacing)]
         # right
         dampcoeff = 1.5 * np.log(1.0 / 0.001) / (nbr)
@@ -84,7 +84,7 @@ def initialize_damp(damp, padsizes, abc_type=False, fs=False):
                                    thickness=nbr)
         pos = Abs((nbr - (d.symbolic_max - dim_r) + 1) / float(nbr))
         val = dampcoeff * (pos - sin(2*np.pi*pos)/(2*np.pi))
-        val = -val if abc_type == "mask" else val
+        val = -val if abc_type else val
         eqs += [Inc(damp.subs({d: dim_r}), val/d.spacing)]
 
     Operator(eqs, name='initdamp')()
