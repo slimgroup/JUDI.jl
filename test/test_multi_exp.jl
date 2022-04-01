@@ -34,15 +34,8 @@
     end
 end
 
-parsed_args = parse_commandline()
-
-nlayer = parsed_args["nlayer"]
-tti = parsed_args["tti"]
-viscoacoustic = parsed_args["viscoacoustic"]
-fs =  parsed_args["fs"]
-
 ### Model
-model, model0, dm = setup_model(tti, 4)
+model, model0, dm = setup_model(tti, viscoacoustic, 4)
 q, srcGeometry, recGeometry, f0 = setup_geom(model; nsrc=4)
 q1 = q[[1,4]]
 q2 = q[[2,3]]

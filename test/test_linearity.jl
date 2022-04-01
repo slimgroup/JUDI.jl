@@ -5,22 +5,15 @@
 # Mathias Louboutin, mlouboutin3@gatech.edu
 # Updated July 2020
 
-parsed_args = parse_commandline()
-
-nlayer = parsed_args["nlayer"]
-tti = parsed_args["tti"]
-fs =  parsed_args["fs"]
-viscoacoustic = parsed_args["viscoacoustic"]
-
 ### Model
-model, model0, dm = setup_model(parsed_args["tti"], parsed_args["viscoacoustic"], parsed_args["nlayer"])
+model, model0, dm = setup_model(tti, viscoacoustic, nlayer)
 q1, srcGeometry1, recGeometry, f0 = setup_geom(model)
 srcGeometry2 = deepcopy(srcGeometry1)
 srcGeometry2.xloc[:] .= .9*srcGeometry2.xloc[:]
 srcGeometry2.zloc[:] .= .9*srcGeometry2.zloc[:]
 dt = srcGeometry1.dt[1]
 
-opt = Options(free_surface=parsed_args["fs"], f0=f0)
+opt = Options(free_surface=fs, f0=f0)
 ftol = 5f-5
 
 ####################### Modeling operators ##########################################

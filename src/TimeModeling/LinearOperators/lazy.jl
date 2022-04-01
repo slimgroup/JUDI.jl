@@ -1,4 +1,4 @@
-export judiProjection, judiWavelet, judiLRWF
+export judiProjection, judiWavelet, judiLRWF, judiRHS
 
 ############################################################################################################################
 # Abstract types
@@ -106,14 +106,14 @@ Examples
     dobs = Pr*F*Pw'*w
     dw = Pw*F'*Pr'*dobs
 """
-judiWavelet(nsrc::Integer, dt::T, w::Array{T, N}) where {T<:Real, N} = judiWavelet{Float32}(space_src(nsrc), time_space_src(nsrc, length.(w)), [w for i=1:nsrc], [dt for i=1:nsrc])
-judiWavelet(dt::T, w::Array{T, N}) where {T<:Real, N} = judiWavelet(1, dt, w)
+judiWavelet(nsrc::Integer, dt::T, w::Array{T, N}) where {T<:AbstractFloat, N} = judiWavelet{Float32}(space_src(nsrc), time_space_src(nsrc, length.(w)), [w for i=1:nsrc], [dt for i=1:nsrc])
+judiWavelet(dt::T, w::Array{T, N}) where {T<:AbstractFloat, N} = judiWavelet(1, dt, w)
 judiWavelet(dt::Vector{<:Number}, w::Vector{T}) where T<:Array = judiWavelet{Float32}(space_src(length(dt)), time_space_src(length(dt), length.(w)), w, dt)
 judiWavelet(dt::Vector{<:Number}, w::Vector{<:Number}) = judiWavelet{Float32}(space_src(length(dt)), time_space_src(length(dt), [length(w) for i=1:length(dt)]), [w for i=1:length(dt)], dt)
 judiWavelet(dt::dtT, w::Array{T, N}) where {dtT<:Number, T<:Array, N} = judiWavelet([dt for i=1:length(w)], w)
 
 # Deprecation error
-judiWavelet(::Integer, ::Array{T, N}) where {T<:Real, N} = throw(ArgumentError("Time sampling of the wavelet need to be suplied `judiWavelet(nsrc, dt, wavelet)`"))
+judiWavelet(::Integer, ::Array{T, N}) where {T<:AbstractFloat, N} = throw(ArgumentError("Time sampling of the wavelet need to be suplied `judiWavelet(nsrc, dt, wavelet)`"))
 
 ############################################################################################################################
 # Base overload

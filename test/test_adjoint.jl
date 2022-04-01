@@ -5,15 +5,7 @@
 
 using Distributed
 
-parsed_args = parse_commandline()
-
-nlayer = parsed_args["nlayer"]
-tti = parsed_args["tti"]
-viscoacoustic = parsed_args["viscoacoustic"]
-fs = parsed_args["fs"]
-
 # # Set parallel if specified
-nw = parsed_args["parallel"]
 if nw > 1 && nworkers() < nw
     addprocs(nw-nworkers() + 1; exeflags=["--code-coverage=user", "--inline=no", "--check-bounds=yes"])
 end

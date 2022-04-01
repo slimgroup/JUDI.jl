@@ -35,7 +35,7 @@ Construct vector cell array of weights. The `weights` keyword\\
 can also be a single (non-cell) array, in which case the weights are the same for all source positions:
     judiWeights(weights; nsrc=1)
 """
-function judiWeights(weights::Array{T, N}; nsrc=1) where {T<:Real, N}
+function judiWeights(weights::Array{T, N}; nsrc=1) where {T<:AbstractFloat, N}
     weights = convert(Array{Float32}, weights)
     # length of vector
     weightsCell = [deepcopy(weights) for j=1:nsrc]
@@ -54,8 +54,8 @@ end
 
 ############################################################
 # JOLI conversion
-jo_convert(::Type{T}, jw::judiWeights{T}, ::Bool) where {T<:Real} = jw
-jo_convert(::Type{T}, jw::judiWeights{vT}, B::Bool) where {T<:Real, vT} = judiWavefield{T}(jv.nsrc, jo_convert.(T, jw.weights, B))
+jo_convert(::Type{T}, jw::judiWeights{T}, ::Bool) where {T<:AbstractFloat} = jw
+jo_convert(::Type{T}, jw::judiWeights{vT}, B::Bool) where {T<:AbstractFloat, vT} = judiWavefield{T}(jv.nsrc, jo_convert.(T, jw.weights, B))
 zero(::Type{T}, v::judiWeights{vT}; nsrc::Integer=v.nsrc) where {T, vT} = judiWeights{T}(nsrc, T(0) .* v.data[1:nsrc])
 (w::judiWeights)(x::Vector{<:Array}) = judiWeights(x)
 

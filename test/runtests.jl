@@ -23,13 +23,22 @@ const GROUP = get(ENV, "GROUP", "JUDI")
 
 include("utils.jl")
 
+parsed_args = parse_commandline()
+const nlayer = parsed_args["nlayer"]
+const tti = parsed_args["tti"]
+const fs =  parsed_args["fs"]
+const nw = parsed_args["parallel"]
+const viscoacoustic = parsed_args["viscoacoustic"]
+
+
 base = ["test_geometry.jl",
         "test_judiVector.jl",
         "test_composite.jl",
         "test_judiWeights.jl",
         "test_judiWavefield.jl",
         "test_linear_operators.jl",
-        "test_physicalparam.jl"]
+        "test_physicalparam.jl",
+        "test_compat.jl"]
 
 devito = ["test_linearity.jl",
           "test_adjoint.jl",

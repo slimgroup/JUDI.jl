@@ -1,13 +1,6 @@
 # Author: Mathias Louboutin, mlouboutin3@gatech.edu
 # Date: July 2020
 
-parsed_args = parse_commandline()
-
-nlayer = parsed_args["nlayer"]
-tti = parsed_args["tti"]
-viscoacoustic = parsed_args["viscoacoustic"]
-fs =  parsed_args["fs"]
-
 @testset "Arithmetic test with $(nlayer) layers and tti $(tti) and freesurface $(fs)" begin
 
         # Test 2D find_water_bottom
@@ -17,15 +10,15 @@ fs =  parsed_args["fs"]
         @test find_water_bottom(dm2D) == 6*ones(Integer,10)
 
         ### Model
-        model, model0, dm = setup_model(parsed_args["tti"], parsed_args["viscoacoustic"], parsed_args["nlayer"])
+        model, model0, dm = setup_model(tti, viscoacoustic, nlayer)
         wb = find_water_bottom(model.m .- maximum(model.m))
         q, srcGeometry, recGeometry = setup_geom(model)
         dt = srcGeometry.dt[1]
         nt = length(q.data[1])
         nrec = length(recGeometry.xloc[1])
 
-        opt = Options(free_surface=parsed_args["fs"])
-        opta = Options(free_surface=parsed_args["fs"], return_array=true)
+        opt = Options(free_surface=fs)
+        opta = Options(free_surface=fs, return_array=true)
         ftol = 5f-5
 
         w = judiWeights(randn(Float32, model0.n))

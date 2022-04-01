@@ -10,7 +10,7 @@ mutable struct JUDIOptions
     space_order::Integer
     free_surface::Bool
     limit_m::Bool
-    buffer_size::Real
+    buffer_size::AbstractFloat
     save_data_to_disk::Bool
     file_path::String
     file_name::String
@@ -30,8 +30,8 @@ end
         space_order::Integer
         free_surface::Bool
         limit_m::Bool
-        buffer_size::Real
-        save_rate::Real
+        buffer_size::AbstractFloat
+        save_rate::AbstractFloat
         save_data_to_disk::Bool
         file_path::String
         file_name::String

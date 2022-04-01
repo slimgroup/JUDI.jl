@@ -6,10 +6,7 @@
 # Mathias Louboutin, mlouboutin3@gatech.edu
 # Updated July 2020
 
-parsed_args = parse_commandline()
-
 # Set parallel if specified
-nw = parsed_args["parallel"]
 if nw > 1 && nworkers() < nw
    addprocs(nw-nworkers() + 1; exeflags=["--code-coverage=user", "--inline=no", "--check-bounds=yes"])
 end
@@ -18,12 +15,12 @@ end
 @everywhere using JUDI, LinearAlgebra, Test, Distributed
 
 ### Model
-model, model0, dm = setup_model(parsed_args["tti"], parsed_args["viscoacoustic"], parsed_args["nlayer"]; n=(101, 101), d=(10., 10.))
+model, model0, dm = setup_model(tti, viscoacoustic, nlayer; n=(101, 101), d=(10., 10.))
 q, srcGeometry, recGeometry, f0 = setup_geom(model; nsrc=2, tn=500f0)
 dt = srcGeometry.dt[1]
 
 # Modeling operators
-println("Generic modeling and misc test with ", parsed_args["nlayer"], " layers and tti: ", parsed_args["tti"])
+println("Generic modeling and misc test with ", nlayer, " layers and tti: ", tti)
 
 ftol = 1f-5
 ######################## WITH DENSITY ############################################
@@ -33,15 +30,15 @@ cases = [(true, true), (true, false), (false, true), (false, false)]
 @testset "Generic tests with limit_m = $(limit_m)  and save to disk = $(disk)" for (limit_m, disk)=cases
 	@timeit TIMEROUTPUT "Modeling  limit_m=$(limit_m), save_to_disk=$(disk)" begin
 		# Options structures
-		opt = Options(save_data_to_disk=disk, limit_m=limit_m, buffer_size=100f0,
+		opt = Options(save_data_to_disk=disk, limit_m=limit_m, buffer_size=100f0, f0=f0,
 						file_path=pwd(),	# path to files
 						file_name="shot_record")	# saves files as file_name_xsrc_ysrc.segy
 
-		opt0 = Options(save_data_to_disk=disk, limit_m=limit_m, buffer_size=100f0,
+		opt0 = Options(save_data_to_disk=disk, limit_m=limit_m, buffer_size=100f0, f0=f0,
 						file_path=pwd(),	# path to files
 						file_name="smooth_shot_record")	# saves files as file_name_xsrc_ysrc.segy
 
-		optJ = Options(save_data_to_disk=disk, limit_m=limit_m, buffer_size=100f0,
+		optJ = Options(save_data_to_disk=disk, limit_m=limit_m, buffer_size=100f0, f0=f0,
 						file_path=pwd(),	# path to files
 						file_name="linearized_shot_record")	# saves files as file_name_xsrc_ysrc.segy
 
@@ -95,7 +92,7 @@ end
 
 @testset "Basic judiWavefield modeling tests" begin
 	@timeit TIMEROUTPUT "Wavefield modeling" begin
-		opt = Options(dt_comp=dt)
+		opt = Options(dt_comp=dt, f0=f0)
 		F = judiModeling(model; options=opt)
 		Fa = adjoint(F)
 		Ps = judiProjection(srcGeometry)

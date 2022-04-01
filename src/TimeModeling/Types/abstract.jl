@@ -22,7 +22,7 @@ length(jv::judiMultiSourceVector{T}) where {T} = sum([length(jv.data[i]) for i=1
 isequal(ms1::judiMultiSourceVector, ms2::judiMultiSourceVector) = ms1 == ms2
 ==(ms1::judiMultiSourceVector, ms2::judiMultiSourceVector) = all(getfield(ms1, s) == getfield(ms2, s) for s in fieldnames(typeof(ms1)))
 
-isapprox(x::judiMultiSourceVector, y::judiMultiSourceVector; rtol::Real=sqrt(eps()), atol::Real=0) =
+isapprox(x::judiMultiSourceVector, y::judiMultiSourceVector; rtol::AbstractFloat=sqrt(eps()), atol::AbstractFloat=0.0) =
     all(isapprox(getfield(x, f), getfield(y, f); rtol=rtol, atol=atol) for f in fieldnames(typeof(x)))
 
 check_compat(ms::Vararg{judiMultiSourceVector, N}) where N = true
@@ -73,7 +73,7 @@ vec(x::judiMultiSourceVector) = vcat(vec.(x.data)...)
 time_sampling(ms::judiMultiSourceVector) = [1 for i=1:ms.nsrc]
 ############################################################################################################################
 # Linear algebra `*`
-(msv::judiMultiSourceVector{T})(x::Vector{T}) where {T<:Real} = x
+(msv::judiMultiSourceVector{T})(x::Vector{T}) where {T<:AbstractFloat} = x
 (msv::judiMultiSourceVector{T})(x::judiMultiSourceVector{T}) where {T} = x
 (msv::judiMultiSourceVector{mT})(x::Vector{T}) where {mT, T<:Array} = begin y = deepcopy(msv); y.data .= x; return y end
 

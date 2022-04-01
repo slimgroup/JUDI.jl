@@ -148,12 +148,12 @@ Geometry(xloc::CoordT, yloc::CoordT, zloc::CoordT, dt::Array{T,1}, nt::Array{Int
 function Geometry(xloc::Array{Array{T, 1},1}, yloc::CoordT, zloc::Array{Array{T, 1},1};dt=[],t=[]) where T
     nsrc = length(xloc)
     # Check if single dt was passed
-    dtCell = typeof(t) <: Real ? [T(dt) for j=1:nsrc] : T.(dt)
+    dtCell = typeof(t) <: AbstractFloat ? [T(dt) for j=1:nsrc] : T.(dt)
     # Check if single t was passed
-    tCell = typeof(t) <: Real ? [T(t) for j=1:nsrc] : T.(t)
+    tCell = typeof(t) <: AbstractFloat ? [T(t) for j=1:nsrc] : T.(t)
 
     # Calculate number of time steps
-    ntCell = typeof(t) <: Real ? [floor(Int, t / dt) + 1 for j=1:nsrc] : floor.(Int, tCell ./ dtCell) .+ 1
+    ntCell = typeof(t) <: AbstractFloat ? [floor(Int, t / dt) + 1 for j=1:nsrc] : floor.(Int, tCell ./ dtCell) .+ 1
     return GeometryIC{T}(xloc, yloc, zloc, dtCell, ntCell, tCell)
 end
 

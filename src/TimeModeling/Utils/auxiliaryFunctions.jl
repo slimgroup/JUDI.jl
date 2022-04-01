@@ -496,7 +496,7 @@ Parameters
 * `geometry_in`: Geometry on which `data` is defined.
 * `dt_new`: New time sampling rate to interpolate onto.
 """
-function time_resample(data::AbstractArray{Float32, N}, geometry_in::Geometry, dt_new::Real) where N
+function time_resample(data::AbstractArray{Float32, N}, geometry_in::Geometry, dt_new::AbstractFloat) where N
     @assert N<=2
     if dt_new==geometry_in.dt[1]
         return data, geometry_in
@@ -525,7 +525,7 @@ Parameters
 * `dt_in`: Time sampling of input
 * `dt_new`: New time sampling rate to interpolate onto.
 """
-function time_resample(data::Array, dt_in::T1, dt_new::T2) where {T1<:Real, T2<:Real}
+function time_resample(data::Array, dt_in::T1, dt_new::T2) where {T1<:AbstractFloat, T2<:AbstractFloat}
 
     if dt_new==dt_in
         return data
@@ -550,7 +550,7 @@ Parameters
 * `geometry_out`: Geometry on which `data` is to be interpolated.
 * `dt_in`: Time sampling rate of the `data.`
 """
-function time_resample(data::AbstractArray{Float32, N}, dt_in::Real, geometry_out::Geometry) where N
+function time_resample(data::AbstractArray{Float32, N}, dt_in::AbstractFloat, geometry_out::Geometry) where N
     @assert N<=2
     if dt_in == geometry_out.dt[1]
         return data
@@ -777,7 +777,7 @@ vec(x::Int64) = x;
 vec(x::Int32) = x;
 vec(::Nothing) = nothing
 
-SincInterpolation(Y::AbstractMatrix{T}, S::AbstractRange{T}, Up::AbstractRange{T}) where T<:Real =
+SincInterpolation(Y::AbstractMatrix{T}, S::AbstractRange{T}, Up::AbstractRange{T}) where T<:AbstractFloat =
     sinc.( (Up .- S') ./ (S[2] - S[1]) ) * Y
 
 """

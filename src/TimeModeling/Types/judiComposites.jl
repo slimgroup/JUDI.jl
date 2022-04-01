@@ -221,7 +221,7 @@ function copy!(x::judiVStack, y::judiVStack)
     end
 end
 
-function isapprox(x::judiVStack, y::judiVStack; rtol::Real=sqrt(eps()), atol::Real=0)
+function isapprox(x::judiVStack, y::judiVStack; rtol::AbstractFloat=sqrt(eps()), atol::AbstractFloat=0.0)
     x.m == y.m || throw("Shape error")
     all(isapprox(xx, yy; rtol=rtol, atol=atol) for (xx, yy)=zip(x.components, y.components))
 end

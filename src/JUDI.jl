@@ -90,4 +90,6 @@ module TimeModeling
     const GeometryOOC = JUDI.GeometryOOC{Float32}
 end
 
+# Backward Compatibility
+include("compat.jl")
 end

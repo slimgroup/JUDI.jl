@@ -4,7 +4,7 @@
 #
 
 const IntTuple = Union{Tuple{Integer,Integer}, Tuple{Integer,Integer,Integer},Array{Int64,1},Array{Int32,1}}
-const RealTuple = Union{Tuple{Real,Real}, Tuple{Real,Real,Real},Array{Float64,1},Array{Float32,1}}
+const RealTuple = Union{Tuple{AbstractFloat,AbstractFloat}, Tuple{AbstractFloat,AbstractFloat,AbstractFloat},Array{AbstractFloat,1}}
 
 export Model, PhysicalParameter, get_dt
 

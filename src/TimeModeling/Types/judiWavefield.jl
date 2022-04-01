@@ -22,7 +22,7 @@ end
 """
 judiWavefield
         nsrc::Integer
-        dt::Real
+        dt::AbstractFloat
         data
 
 Abstract vector for seismic wavefields.
@@ -37,21 +37,22 @@ time step dt:
 
 
 """
-function judiWavefield(nsrc::Integer, dt::Real, data::Array{T, N}) where {T<:Number, N}
+function judiWavefield(nsrc::Integer, dt::AbstractFloat, data::Array{T, N}) where {T<:Number, N}
 	# length of vector
 	dataCell = [convert(Array{Float32, N}, data) for j=1:nsrc]
 	return judiWavefield{Float32}(nsrc, [Float32(dt) for i=1:nsrc], dataCell)
 end
 
-function judiWavefield(dt::Real, data::Vector{Array{T, N}}) where {T, N}
+function judiWavefield(dt::AbstractFloat, data::Vector{Array{T, N}}) where {T, N}
 	# length of vector
 	nsrc = length(data)
 	T != Float32 && (data = tof32.(data))
 	return judiWavefield{Float32}(nsrc, [Float32(dt) for i=1:nsrc], data)
 end
 
-judiWavefield(dt::Real, data::Vector{Any}) = judiWavefield(dt, tof32.(data))
-judiWavefield(dt::Real, data::Array{T, N}) where {T<:Number, N} = judiWavefield(1, dt, data)
+judiWavefield(dt::AbstractFloat, nsrc::Integer, data::Array{T, N}) where {T<:Number, N} = judiWavefield(nsrc, dt, data)
+judiWavefield(dt::AbstractFloat, data::Vector{Any}) = judiWavefield(dt, tof32.(data))
+judiWavefield(dt::AbstractFloat, data::Array{T, N}) where {T<:Number, N} = judiWavefield(1, dt, data)
 
 conj(w::judiWavefield{T}) where {T<:Complex} = judiWavefield{R}(w.nsrc, w.dt, conj(w.data))
 
@@ -64,7 +65,7 @@ time_sampling(jv::judiWavefield) = jv.dt
 jo_convert(::Type{T}, jw::judiWavefield{T}, ::Bool) where {T<:Number} = jw
 jo_convert(::Type{T}, jw::judiWavefield{vT}, B::Bool) where {T<:Number, vT} = judiWavefield{T}(jw.nsrc, jv.dt, jo_convert.(T, jw.data, B))
 zero(::Type{T}, v::judiWavefield{vT}; nsrc::Integer=v.nsrc) where {T, vT} = judiWavefield{T}(nsrc, v.dt, T(0) .* v.data[1:nsrc])
-zero(::Type{T}, v::judiWavefield{vT}; nsrc::Integer=v.nsrc) where {T<:Real, vT<:Complex} = judiWavefield{T}(nsrc, v.dt, T(0) .* real(v.data[1:nsrc]))
+zero(::Type{T}, v::judiWavefield{vT}; nsrc::Integer=v.nsrc) where {T<:AbstractFloat, vT<:Complex} = judiWavefield{T}(nsrc, v.dt, T(0) .* real(v.data[1:nsrc]))
 (w::judiWavefield)(x::Vector{<:Array}) = judiWavefield(w.dt, x)
 
 function copy!(jv::judiWavefield, jv2::judiWavefield)
@@ -102,8 +103,3 @@ function ifft(x_in::judiWavefield{T}) where T
     end
     return x
 end
-
-function isapprox(x::judiWavefield, y::judiWavefield; rtol::Real=sqrt(eps()), atol::Real=0)
-    isapprox(x.data, y.data; rtol=rtol, atol=atol) && isapprox(x.dt, y.dt;rtol=rtol, atol=atol)
-end
-

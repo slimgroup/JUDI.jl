@@ -6,15 +6,8 @@
 # Author: Mathias Louboutin, mlouboutin3@gatech.edu
 # Update Date: July 2020
 
-parsed_args = parse_commandline()
-
-nlayer = parsed_args["nlayer"]
-tti = parsed_args["tti"]
-viscoacoustic = parsed_args["viscoacoustic"]
-fs =  parsed_args["fs"]
-
 ### Model
-model, model0, dm = setup_model(parsed_args["tti"], parsed_args["viscoacoustic"], parsed_args["nlayer"])
+model, model0, dm = setup_model(tti, viscoacoustic, nlayer)
 q, srcGeometry, recGeometry, f0 = setup_geom(model)
 dt = srcGeometry.dt[1]
 
@@ -23,7 +16,7 @@ m0 = model0.m
 
 @testset "Jacobian test with $(nlayer) layers and tti $(tti) and viscoacoustic $(viscoacoustic) freesurface $(fs)" begin
     # Write shots as segy files to disk
-    opt = Options(sum_padding=true, dt_comp=dt, free_surface=parsed_args["fs"], f0=f0)
+    opt = Options(sum_padding=true, dt_comp=dt, free_surface=fs, f0=f0)
 
     # Setup operators
     Pr = judiProjection(recGeometry)
@@ -64,7 +57,7 @@ end
 
 @testset "Extended source Jacobian test with $(nlayer) layers and tti $(tti) and freesurface $(fs)" begin
     @timeit TIMEROUTPUT "Extended source Jacobian" begin
-        opt = Options(sum_padding=true, dt_comp=dt, return_array=true, free_surface=parsed_args["fs"], f0=f0)
+        opt = Options(sum_padding=true, dt_comp=dt, return_array=true, free_surface=fs, f0=f0)
 
         # Setup operators
         Pr = judiProjection(recGeometry)
