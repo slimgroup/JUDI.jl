@@ -41,7 +41,6 @@ jobs:
           network: host
           build-args: JVER=${{ matrix.version }}
           tags: mloubout/judi:${{ matrix.version }}-dev
-          build-args:
   
       - name: JUDI release image
         if: github.event_name == 'release'
