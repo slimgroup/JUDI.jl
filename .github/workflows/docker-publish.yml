@@ -10,8 +10,11 @@ on:
 jobs:
   deploy-judi-image:
     runs-on: ubuntu-latest
-    matrix:
-      version: ['1.6', '1.7']
+
+    strategy:
+      fail-fast: false
+      matrix:
+        version: ['1.6', '1.7']
 
     steps:
       - name: Check event name
