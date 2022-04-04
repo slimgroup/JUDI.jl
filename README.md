@@ -70,7 +70,7 @@ docker run -it mloubout/judi:1.7-latest /bin/bash
 
 Inside the container, all examples are located in the directory `/app/judi/examples/scripts`.
 
-**Previous versions**: As of version `2.6.6` of JUDI, we also ship version-tagged images as `mloubout/judi:JVER-ver` where `ver` is the version of JUDI wanted. 
+**Previous versions**: As of version `v2.6.7` of JUDI, we also ship version-tagged images as `mloubout/judi:JVER-ver` where `ver` is the version of JUDI wanted, for example the current JUDI version with julia 1.7 is `mloubout/judi:1.7-v2.6.7`
 
 **Development version**: Additionaly, we provide two images corresponding to the latest development version of JUDI (latest state of the master branch). These images are called `mloubout/judi:JVER-dev` and can be used in ta similar way.
 
