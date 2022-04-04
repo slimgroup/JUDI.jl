@@ -1,7 +1,7 @@
 # The Julia Devito Inversion framework (JUDI)
 
 [![](https://img.shields.io/badge/docs-stable-blue.svg)](https://slimgroup.github.io/JUDI.jl) 
-[![Build Status ](https://github.com/slimgroup/JUDI.jl/workflows/CI-tests/badge.svg)](https://github.com/slimgroup/JUDI.jl/actions?query=workflow%3ACI-tests)
+[![Build Status ](https://github.com/slimgroup/JUDI.jl/workflows/CI-tests/badge.svg)](https://github.com/slimgroup/JUDI.jl/actions/workflows/ci-op.yml)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3878711.svg)](https://doi.org/10.5281/zenodo.3878711)
 [![codecov](https://codecov.io/gh/slimgroup/JUDI.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/slimgroup/JUDI.jl)
 
