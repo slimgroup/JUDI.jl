@@ -1,9 +1,9 @@
 # The Julia Devito Inversion framework (JUDI)
 
-[![](https://img.shields.io/badge/docs-stable-blue.svg)](https://slimgroup.github.io/JUDI.jl) 
-[![Build Status ](https://github.com/slimgroup/JUDI.jl/workflows/CI-tests/badge.svg)](https://github.com/slimgroup/JUDI.jl/actions/workflows/ci-op.yml)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3878711.svg)](https://doi.org/10.5281/zenodo.3878711)
-[![codecov](https://codecov.io/gh/slimgroup/JUDI.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/slimgroup/JUDI.jl)
+| **Documentation**     | **Build Status**    |                      |
+|:--------------------------------------:|:-----------------------------------------------:|:----------------------------------------------------:|
+| [![][docs-stable-img]][docs-stable-status] [![][docs-dev-img]][docs-dev-status] | [![][build-img]][build-status] [![][codecov-img]][codecov-status] [![][aqua-img]][aqua-status] | [![][license-img]][license-status] [![][zenodo-img]][zenodo-status] |
+
 
 ## Overview
 
@@ -88,12 +88,12 @@ via:
 By default, only the [JUDI] base API will be tested. However, the testing suite supports other modes controlled via the environment variable `GROUP` such as:
 
 ```Julia
-	GROUP=[JUDI] Julia --project -e 'using Pkg;Pkg.test(coverage=false)'
+	GROUP=JUDI Julia --project -e 'using Pkg;Pkg.test(coverage=false)'
 ```
 
 The supported modes are:
 
-- [JUDI] : Only the base API (linear operators, vectors, ...)
+- JUDI : Only the base API (linear operators, vectors, ...)
 - BASICS: Generic modeling and inversion tests such as out of core behavior
 - ISO_OP : Isotropic acoustic operators
 - ISO_OP_FS : Isotropic acoustic operators with free surface

@@ -24,6 +24,6 @@ for f in [:judiModeling, :judiProjection, :judiWavefield]
     end
 end
 
-for f in [:judiWavefield, :judiLRWF, :judiRHS]
+for f in [:judiLRWF, :judiRHS]
     @eval $f(info::Info, ar...;kw...) = throw(ArgumentError("$($f)(info::Info, ...) is deprecated and requires a time sampling rate `dt`"))
 end
