@@ -68,6 +68,7 @@ RUN rm -rf /var/lib/apt/lists/* \
 	&& apt-get clean
 
 # Install and build IJulia
+RUN pip3 install --user jupyter matplotlib devito
 ENV JUPYTER="/root/.local/bin/jupyter"
 RUN julia -e 'using Pkg; Pkg.add("IJulia")'
 
