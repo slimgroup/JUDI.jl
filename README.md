@@ -52,7 +52,7 @@ export DEVITO_PLATFORM=nvidiaX
 
 ## Running with Docker
 
-If you do not want to install JUDI, you can run JUDI as a docker image. The first possibility is to run the docker container as a Jupyter notebook. JUDI provides two docker images for the latest JUDI release for Julia versions `1.6` (LTS) and `1.7` (latest stable version). The images names are `mloubout/judi:JVER-latest` where `JVER` is the julia version. This docker images contains pre-installed compilers for CPUs (gcc 10) and Nvidia GPUs (nvc) vi the nvidia HPC sdk. The environment is automatically set for [Devito] based on the hardware available. 
+If you do not want to install JUDI, you can run JUDI as a [docker image](https://hub.docker.com/repository/docker/mloubout/judi). The first possibility is to run the docker container as a Jupyter notebook. JUDI provides two docker images for the latest JUDI release for Julia versions `1.6` (LTS) and `1.7` (latest stable version). The images names are `mloubout/judi:JVER-latest` where `JVER` is the julia version. This docker images contains pre-installed compilers for CPUs (gcc 10) and Nvidia GPUs (nvc) vi the nvidia HPC sdk. The environment is automatically set for [Devito] based on the hardware available. 
 
 **Note**: If you wish to use your gpu, you will need to install [nvidia-docker](https://docs.nvidia.com/ai-enterprise/deployment-guide/dg-docker.html) and run `docker run --gpus all` in order to make the GPUs available at runtime from within the image.
 
@@ -94,6 +94,7 @@ By default, only the JUDI base API will be tested, however the testing suite sup
 The supported modes are:
 
 - JUDI : Only the base API (linear operators, vectors, ...)
+- BASICS: Generic modeling and inversion tests such as out of core behavior
 - ISO_OP : Isotropic acoustic operators
 - ISO_OP_FS : Isotropic acoustic operators with free surface
 - TTI_OP : Transverse tilted isotropic operators
@@ -291,7 +292,7 @@ JUDI4Flux allows implementing physics-augmented neural networks for seismic inve
 
 ## Authors
 
-This package was written by [Philipp Witte](https://www.slim.eos.ubc.ca/philip) and [Mathias Louboutin](https://www.slim.eos.ubc.ca/content/mathias-louboutin) from the Seismic Laboratory for Imaging and Modeling (SLIM) at the Georgia Institute of Technology.
+This package was written by [Philipp Witte](https://www.linkedin.com/in/philipp-witte/) and [Mathias Louboutin](https://mloubout.github.io/) from the Seismic Laboratory for Imaging and Modeling (SLIM) at the Georgia Institute of Technology.
 
 If you use our software for your research, please cite our [Geophysics paper](https://library.seg.org/doi/abs/10.1190/geo2018-0174.1#):
 
