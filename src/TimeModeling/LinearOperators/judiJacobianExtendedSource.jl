@@ -92,6 +92,6 @@ end
 
 function adjbornop(J::judiJacobianExQ, w)
     srcnum = 1:J.info.nsrc
-    return extended_source_modeling(J.model, J.wavelet, J.recGeometry, process_input_data(w, J.info),
+    return extended_source_modeling(J.model, J.wavelet, J.recGeometry, process_input_data(w, J.recGeometry, J.info),
                                     J.weights, nothing, srcnum, 'J', -1, J.options)
 end

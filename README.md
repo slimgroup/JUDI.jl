@@ -7,14 +7,14 @@
 
 ## Overview
 
-JUDI is a framework for large-scale seismic modeling and inversion and designed to enable rapid translations of algorithms to fast and efficient code that scales to industry-size 3D problems. The focus of the package lies on seismic modeling as well as PDE-constrained optimization such as full-waveform inversion (FWI) and imaging (LS-RTM). Wave equations in JUDI are solved with [Devito](https://www.devitoproject.org), a Python domain-specific language for automated finite-difference (FD) computations. JUDI's modeling operators can also be used as layers in (convolutional) neural networks to implement physics-augmented deep learning algorithms. For this, check out JUDI's deep learning extension [JUDI4Flux](https://github.com/slimgroup/JUDI4Flux.jl).
+[JUDI] is a framework for large-scale seismic modeling and inversion and is designed to enable rapid translations of algorithms to fast and efficient code that scales to industry-size 3D problems. The focus of the package lies on seismic modeling as well as PDE-constrained optimization such as full-waveform inversion (FWI) and imaging (LS-RTM). Wave equations in [JUDI] are solved with [Devito], a Python domain-specific language for automated finite-difference (FD) computations. JUDI's modeling operators can also be used as layers in (convolutional) neural networks to implement physics-augmented deep learning algorithms. For this, check out JUDI's deep learning extension [JUDI4Flux](https://github.com/slimgroup/JUDI4Flux.jl).
 
 ## Interact and contribute
 
-We gladly welcome and encorage contributions from the community to improve our software and its usability. Feel free to:
+We gladly welcome and encourage contributions from the community to improve our software and its usability. Feel free to:
 
 - Open [issues](https://github.com/slimgroup/JUDI.jl/issues) for bugs
-- Start [discussions](https://github.com/slimgroup/JUDI.jl/discussions) to interat with the developper and ask any questions
+- Start [discussions](https://github.com/slimgroup/JUDI.jl/discussions) to interact with the developer and ask any questions
 - Open [PR](https://github.com/slimgroup/JUDI.jl/pulls) for bug fixes and improvements
 
 
@@ -24,25 +24,25 @@ You can find an FAQ with answers to issues at [FAQ](https://github.com/slimgroup
 
 ## Installation and prerequisites
 
-You can find installation instruction in our Wiki at [Installation](https://github.com/slimgroup/JUDI.jl/wiki/Installation)
+You can find installation instructions in our Wiki at [Installation](https://github.com/slimgroup/JUDI.jl/wiki/Installation)
 
 ## GPU
 
-JUDI supports the computation of the wave equation on GPU via [Devito](https://www.devitoproject.org)'s GPU offloading support.
+[JUDI] supports the computation of the wave equation on GPU via [Devito](https://www.devitoproject.org)'s GPU offloading support.
 
-**NOTE**: Only the wave equation part will be computed on GPU, the julia arrays will still be CPU arrays and `CUDA.jl` is not supported.
+**NOTE**: Only the wave equation part will be computed on GPU, the Julia arrays will still be CPU arrays and `CUDA.jl` is not supported.
 
 ### Installation
 
 To enable gpu support in JUDI, you will need to install one of [Devito](https://www.devitoproject.org)'s supported offloading compilers. We strongly recommend checking the [Wiki](https://github.com/devitocodes/devito/wiki) for installation steps and to reach out to the Devito community for GPU compiler related issues.
 
 - [x] `nvc/pgcc`. This is recommended and the simplest installation. You can install the compiler following Nvidia's installation instruction at [HPC-sdk](https://developer.nvidia.com/hpc-sdk)
-- [ ] `aompcc`. This is the AMD compiler that is necessary for running on AMD GPUs. This installation is not tested with JUDI and we recommend to reach out to Devito's team for installation guidelines.
+- [ ] `aompcc`. This is the AMD compiler that is necessary for running on AMD GPUs. This installation is not tested with [JUDI] and we recommend to reach out to Devito's team for installation guidelines.
 - [ ] `openmp5/clang`. This installation requires the compilation from source `openmp`, `clang` and `llvm` to install the latest version of `openmp5` enabling gpu offloading. You can find instructions on this installation in Devito's [Wiki](https://github.com/devitocodes/devito/wiki)
 
 ### Setup
 
-The only required setup for GPU support are the environment variables for [Devito](https://www.devitoproject.org). For the currently supported `nvc+openacc` setup these are:
+The only required setup for GPU support are the environment variables for [Devito]. For the currently supported `nvc+openacc` setup these are:
 
 ```
 export DEVITO_LANGUAGE=openacc
@@ -52,17 +52,17 @@ export DEVITO_PLATFORM=nvidiaX
 
 ## Running with Docker
 
-If you do not want to install JUDI, you can run JUDI as a [docker image](https://hub.docker.com/repository/docker/mloubout/judi). The first possibility is to run the docker container as a Jupyter notebook. JUDI provides two docker images for the latest JUDI release for Julia versions `1.6` (LTS) and `1.7` (latest stable version). The images names are `mloubout/judi:JVER-latest` where `JVER` is the julia version. This docker images contains pre-installed compilers for CPUs (gcc 10) and Nvidia GPUs (nvc) vi the nvidia HPC sdk. The environment is automatically set for [Devito] based on the hardware available. 
+If you do not want to install JUDI, you can run [JUDI] as a [docker image](https://hub.docker.com/repository/docker/mloubout/judi). The first possibility is to run the docker container as a Jupyter notebook. [JUDI] provides two docker images for the latest [JUDI] release for Julia versions `1.6` (LTS) and `1.7` (latest stable version). The images names are `mloubout/judi:JVER-latest` where `JVER` is the Julia version. This docker images contains pre-installed compilers for CPUs (gcc 10) and Nvidia GPUs (nvc) vi the nvidia HPC sdk. The environment is automatically set for [Devito] based on the hardware available. 
 
 **Note**: If you wish to use your gpu, you will need to install [nvidia-docker](https://docs.nvidia.com/ai-enterprise/deployment-guide/dg-docker.html) and run `docker run --gpus all` in order to make the GPUs available at runtime from within the image.
 
-To run JUDI via docker execute the following command in your terminal:
+To run [JUDI] via docker execute the following command in your terminal:
 
 ```bash
 docker run -p 8888:8888 mloubout/judi:1.7-latest
 ```
 
-This command downloads the image and launches a container. You will see a link that you can copy-past to your browser to access the notebooks. Alternatively, you can run a bash session, in which you can start a regular interactive Julia session and run the example scripts. Download/start the container as a bash session with:
+This command downloads the image and launches a container. You will see a link that you can copy-paste to your browser to access the notebooks. Alternatively, you can run a bash session, in which you can start a regular interactive Julia session and run the example scripts. Download/start the container as a bash session with:
 
 ```bash
 docker run -it mloubout/judi:1.7-latest /bin/bash
@@ -70,30 +70,30 @@ docker run -it mloubout/judi:1.7-latest /bin/bash
 
 Inside the container, all examples are located in the directory `/app/judi/examples/scripts`.
 
-**Previous versions**: As of version `v2.6.7` of JUDI, we also ship version-tagged images as `mloubout/judi:JVER-ver` where `ver` is the version of JUDI wanted, for example the current JUDI version with julia 1.7 is `mloubout/judi:1.7-v2.6.7`
+**Previous versions**: As of version `v2.6.7` of JUDI, we also ship version-tagged images as `mloubout/judi:JVER-ver` where `ver` is the version of [JUDI] wanted, for example the current [JUDI] version with Julia 1.7 is `mloubout/judi:1.7-v2.6.7`
 
-**Development version**: Additionaly, we provide two images corresponding to the latest development version of JUDI (latest state of the master branch). These images are called `mloubout/judi:JVER-dev` and can be used in ta similar way.
+**Development version**: Additionaly, we provide two images corresponding to the latest development version of [JUDI] (latest state of the master branch). These images are called `mloubout/judi:JVER-dev` and can be used in ta similar way.
 
 
 
 ## Testing
 
-A complete test suite is inculded with JUDI and is tested via GitHub Actions. You can also run the test locally
+A complete test suite is included with [JUDI] and is tested via GitHub Actions. You can also run the test locally
 via:
 
-```julia
-    julia --project -e 'using Pkg;Pkg.test(coverage=false)'
+```Julia
+    Julia --project -e 'using Pkg;Pkg.test(coverage=false)'
 ```
 
-By default, only the JUDI base API will be tested, however the testing suite supports other modes controlled via the environemnt variable `GROUP` such as:
+By default, only the [JUDI] base API will be tested. However, the testing suite supports other modes controlled via the environment variable `GROUP` such as:
 
-```julia
-	GROUP=JUDI julia --project -e 'using Pkg;Pkg.test(coverage=false)'
+```Julia
+	GROUP=[JUDI] Julia --project -e 'using Pkg;Pkg.test(coverage=false)'
 ```
 
 The supported modes are:
 
-- JUDI : Only the base API (linear operators, vectors, ...)
+- [JUDI] : Only the base API (linear operators, vectors, ...)
 - BASICS: Generic modeling and inversion tests such as out of core behavior
 - ISO_OP : Isotropic acoustic operators
 - ISO_OP_FS : Isotropic acoustic operators with free surface
@@ -119,16 +119,16 @@ export OMP_NUM_THREADS=4    # Number of OpenMP threads
 
 ## Full-waveform inversion
 
-JUDI is designed to let you set up objective functions that can be passed to standard packages for (gradient-based) optimization. The following example demonstrates how to perform FWI on the 2D Overthrust model using a spectral projected gradient algorithm from the minConf library, which is included in the software. A small test dataset (62 MB) and the model can be downloaded from this FTP server:
+[JUDI] is designed to let you set up objective functions that can be passed to standard packages for (gradient-based) optimization. The following example demonstrates how to perform FWI on the 2D Overthrust model using a spectral projected gradient algorithm from the minConf library, which is included in the software. A small test dataset (62 MB) and the model can be downloaded from this FTP server:
 
-```julia
+```Julia
 run(`wget ftp://slim.gatech.edu/data/SoftwareRelease/WaveformInversion.jl/2DFWI/overthrust_2D.segy`)
 run(`wget ftp://slim.gatech.edu/data/SoftwareRelease/WaveformInversion.jl/2DFWI/overthrust_2D_initial_model.h5`)
 ```
 
 The first step is to load the velocity model and the observed data into Julia, as well as setting up bound constraints for the inversion, which prevent too high or low velocities in the final result. Furthermore, we define an 8 Hertz Ricker wavelet as the source function:
 
-```julia
+```Julia
 using PyPlot, HDF5, SegyIO, JUDI, SlimOptim, Statistics, Random
 
 # Load starting model
@@ -154,7 +154,7 @@ q = judiVector(src_geometry, wavelet)
 
 For this FWI example, we define an objective function that can be passed to the minConf optimization library, which is included in the Julia Devito software package. We allow a maximum of 20 function evaluations using a spectral-projected gradient (SPG) algorithm. To save computational cost, each function evaluation uses a randomized subset of 20 shot records, instead of all 97 shots:
 
-```julia
+```Julia
 # Optimization parameters
 fevals = 20	# number of function evaluations
 batchsize = 20	# number of sources per iteration
@@ -184,7 +184,7 @@ x, fsave, funEvals= minConf_SPG(objective_function, vec(m0), ProjBound, options)
 
 This example script can be run in parallel and requires roughly 220 MB of memory per source location. Execute the following code to generate figures of the initial model and the result, as well as the function values:
 
-```julia
+```Julia
 figure(); imshow(sqrt.(1./adjoint(m0))); title("Initial model")
 figure(); imshow(sqrt.(1./adjoint(reshape(x, model0.n)))); title("FWI")
 figure(); plot(fvals); title("Function value")
@@ -195,16 +195,16 @@ figure(); plot(fvals); title("Function value")
 
 ## Least squares reverse-time migration
 
-JUDI includes matrix-free linear operators for modeling and linearized (Born) modeling, that let you write algorithms for migration that follow the mathematical notation of standard least squares problems. This example demonstrates how to use Julia Devito to perform least-squares reverse-time migration on the 2D Marmousi model. Start by downloading the test data set (1.1 GB) and the model:
+[JUDI] includes matrix-free linear operators for modeling and linearized (Born) modeling, that let you write algorithms for migration that follow the mathematical notation of standard least squares problems. This example demonstrates how to use Julia Devito to perform least-squares reverse-time migration on the 2D Marmousi model. Start by downloading the test data set (1.1 GB) and the model:
 
-```julia
+```Julia
 run(`wget ftp://slim.gatech.edu/data/SoftwareRelease/Imaging.jl/2DLSRTM/marmousi_2D.segy`)
 run(`wget ftp://slim.gatech.edu/data/SoftwareRelease/Imaging.jl/2DLSRTM/marmousi_migration_velocity.h5`)
 ```
 
 Once again, load the starting model and the data and set up the source wavelet. For this example, we use a Ricker wavelet with 30 Hertz peak frequency. For setting up matrix-free linear operators, an `info` structure with the dimensions of the problem is required:
 
-```julia
+```Julia
 using PyPlot, HDF5, JUDI, SegyIO, Random
 
 # Load smooth migration velocity model
@@ -227,7 +227,7 @@ info = Info(prod(model0.n),dD.nsrc,ntComp)
 
 To speed up the convergence of our imaging example, we set up a basic preconditioner for each the model- and the data space, consisting of mutes to suppress the ocean-bottom reflection in the data and the source/receiver imprint in the image. The operator `J` represents the linearized modeling operator and its adjoint `J'` corresponds to the migration (RTM) operator. The forward and adjoint pair can be used for a basic LS-RTM example with (stochastic) gradient descent:
 
-```julia
+```Julia
 # Set up matrix-free linear operators
 opt = Options(optimal_checkpointing = true)    # set to false to disable optimal checkpointing
 F = judiModeling(info, model0, q.geometry, dD.geometry; options=opt)
@@ -265,9 +265,9 @@ end
 
 ## Machine Learning
 
-The JUDI4Flux interface allows integrating JUDI modeling operators into convolutional neural networks for deep learning. For example, the following code snippet shows how to create a shallow CNN consisting of two convolutional layers with a nonlinear forward modeling layer in-between them. JUDI4Flux enables backpropagation through Flux' automatic differentiation tool, but calls the corresponding adjoint JUDI operators under the hood. For more details, please check out the [JUDI4Flux Github](https://github.com/slimgroup/JUDI4Flux.jl) page.
+The JUDI4Flux interface allows integrating [JUDI] modeling operators into convolutional neural networks for deep learning. For example, the following code snippet shows how to create a shallow CNN consisting of two convolutional layers with a nonlinear forward modeling layer in-between them. JUDI4Flux enables backpropagation through Flux' automatic differentiation tool, but calls the corresponding adjoint [JUDI] operators under the hood. For more details, please check out the [JUDI4Flux Github](https://github.com/slimgroup/JUDI4Flux.jl) page.
 
-```julia
+```Julia
 # Jacobian
 W1 = judiJacobian(F0, q)
 b1 = randn(Float32, num_samples)
@@ -314,3 +314,7 @@ eprint = {https://doi.org/10.1190/geo2018-0174.1}
 Also visit the Devito homepage at <https://www.devitoproject.org/publications> for more information and references.
 
 Contact authors via: pwitte3@gatech.edu and mlouboutin3@gatech.edu.
+
+
+[Devito]:https://github.com/devitocodes/devito
+[JUDI]:https://github.com/slimgroup/JUDI.jl
