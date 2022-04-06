@@ -48,9 +48,8 @@ if is_tti:
 elif is_viscoacoustic:
     qp = np.empty(shape, dtype=np.float32)
     qp[:] = 3.516*((v[:]*1000.)**2.2)*10**(-6)
-    model = Model(shape=shape, origin=origin, spacing=spacing,
-                  fs=args.fs, m=m, rho=rho, space_order=so,
-                  qp=qp)
+    model = Model(shape=shape, origin=origin, spacing=spacing, dtype=dtype,
+                  fs=args.fs, m=m, rho=rho, space_order=so, qp=qp)
 else:
     model = Model(shape=shape, origin=origin, spacing=spacing, dtype=dtype,
                   fs=args.fs, m=m, rho=rho, space_order=so)

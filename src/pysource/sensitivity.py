@@ -41,8 +41,6 @@ def grad_expr(gradm, u, v, model, w=None, freq=None, dft_sub=None, isic=False):
     """
     if model.is_viscoacoustic:
         u, v = (u[0],), (v[0],)
-        if isic:
-            raise ValueError("Inverse scattering imaging condition (not supported yet)")
     ic_func = ic_dict[func_name(freq=freq, isic=isic)]
     expr = ic_func(as_tuple(u), as_tuple(v), model, freq=freq, factor=dft_sub, w=w)
     if model.fs:
@@ -174,8 +172,6 @@ def lin_src(model, u, isic=False):
     model: Model
         Model containing the perturbation dm
     """
-    if model.is_viscoacoustic and isic:
-        raise ValueError("ISIC source for linearized modeling (not supported yet)")
     ls_func = ls_dict[func_name(isic=isic)]
     return ls_func(model, as_tuple(u))
 

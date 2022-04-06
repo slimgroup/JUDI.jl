@@ -1,12 +1,8 @@
 import numpy as np
-<<<<<<< HEAD
-=======
 from sympy import Abs, sqrt
->>>>>>> inferring abc_type in models.py to avoid that carry around in options which is also unsafe for users and replacing initialize_damp by used in Devito
 import warnings
 from devito import (Grid, Function, SubDomain, SubDimension, Eq, Inc,
-                    Operator, mmin, initialize_function, switchconfig,
-                    Abs, sqrt, sin)
+                    Operator, mmin, initialize_function, switchconfig, sin)
 from devito.tools import as_tuple
 
 
@@ -276,8 +272,7 @@ class Model(GenericModel):
         if self.nbl != 0:
             # Create dampening field as symbol `damp`
             self.damp = Function(name="damp", grid=self.grid)
-            initialize_damp(self.damp, self.padsizes, spacing, abc_type=self.abc_type,
-                            fs=fs)
+            initialize_damp(self.damp, self.padsizes, abc_type=self.abc_type, fs=fs)
         else:
             self.damp = 1
 

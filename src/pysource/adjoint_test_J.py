@@ -1,7 +1,6 @@
 import numpy as np
 from argparse import ArgumentParser
 from scipy import ndimage
-from devito import inner
 from devito.logger import info
 
 from sources import RickerSource, Receiver
@@ -56,7 +55,7 @@ if is_tti:
 elif is_viscoacoustic:
     qp0 = np.empty(shape, dtype=np.float32)
     qp0[:] = 3.516*((v0[:]*1000.)**2.2)*10**(-6)
-    model = Model(shape=shape, origin=origin, spacing=spacing,
+    model = Model(shape=shape, origin=origin, spacing=spacing, dtype=dtype,
                   fs=args.fs, m=m0, rho=rho0, qp=qp0, dm=dm, space_order=so)
 else:
     model = Model(shape=shape, origin=origin, spacing=spacing, dtype=dtype,
@@ -85,13 +84,13 @@ rec_t.coordinates.data[:, 1] = 20.
 # Linearized data
 print("Forward J")
 dD_hat, u0l, _ = born(model, src.coordinates.data, rec_t.coordinates.data,
-                      src.data, save=True)
+                      src.data, save=True, f0=f1)
 # dD_hat, u0l, _ = born(model, None, rec_t.coordinates.data,
 #                       src.data, save=True, ws=weights)
 # Forward
 print("Forward")
 _, u0, _ = forward(model, src.coordinates.data, rec_t.coordinates.data,
-                   src.data, save=True)
+                   src.data, save=True, f0=f1)
 # _, u0, _ = forward(model, None, rec_t.coordinates.data,
 #                    src.data, save=True, ws=weights)
 
@@ -99,22 +98,23 @@ _, u0, _ = forward(model, src.coordinates.data, rec_t.coordinates.data,
 print("Adjoint J")
 dm_hat, _ = gradient(model, dD_hat, rec_t.coordinates.data, u0, f0=f1)
 
+if is_viscoacoustic:
+    # Adjoint test: Verify <Ax,y> matches  <x, A^Ty> closely
+    term1 = np.dot(dm_hat.data.reshape(-1), model.dm.data.reshape(-1))
+    term2 = np.linalg.norm(dD_hat.data) ** 2
 
-a2 = model.critical_dt * np.dot(dD_hat.data.reshape(-1), dD_hat.data.reshape(-1))
-b2 = np.dot(dm_hat.data.reshape(-1), model.dm.data.reshape(-1))
-
-
-if is_tti:
-    c = np.linalg.norm(u0[0].data.flatten() - u0l[0].data.flatten(), np.inf)
+    info('<x, J^Ty>: %f, <Jx,y>: %f, difference: %4.4e, ratio: %f'
+         % (term1, term2, (term1 - term2)/term1, term1 / term2))
+    assert np.isclose((term1 - term2)/term1, 0., atol=1.e-5)
 else:
-    c = np.linalg.norm(u0.data.flatten() - u0l.data.flatten(), np.inf)
+    a2 = model.critical_dt * np.dot(dD_hat.data.reshape(-1), dD_hat.data.reshape(-1))
+    b2 = np.dot(dm_hat.data.reshape(-1), model.dm.data.reshape(-1))
+    if is_tti:
+        c = np.linalg.norm(u0[0].data.flatten() - u0l[0].data.flatten(), np.inf)
+    else:
+        c = np.linalg.norm(u0.data.flatten() - u0l.data.flatten(), np.inf)
 
-print("Difference between saving with forward and born", c)
-
-print("Adjoint test J")
-print("a = %2.5e, b = %2.5e, diff = %2.5e: rerr=%2.5e" % (a, b, a - b, (a-b)/(a+b)))
-
-
-print("Adjoint test J")
-print("a = %2.5e, b = %2.5e, diff = %2.5e: rerr=%2.5e" %
-      (a2, b2, a2 - b2, (a2-b2)/(a2+b2)))
+    print("Difference between saving with forward and born", c)
+    print("Adjoint test J")
+    print("a = %2.5e, b = %2.5e, diff = %2.5e: rerr=%2.5e" %
+          (a2, b2, a2 - b2, (a2-b2)/(a2+b2)))
