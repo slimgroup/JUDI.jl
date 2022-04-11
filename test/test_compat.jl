@@ -2,7 +2,7 @@
 
 ### Model
 nsrc = 2
-model, model0, dm = setup_model(tti, nlayer)
+model, model0, dm = setup_model(tti, viscoacoustic, nlayer)
 q, srcGeometry, recGeometry = setup_geom(model; nsrc=nsrc)
 dt = srcGeometry.dt[1]
 nt = srcGeometry.nt[1]

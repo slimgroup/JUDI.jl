@@ -1,6 +1,6 @@
 # LS-RTM of the 2D Marmousi model using linearized bregmann
 # Author: mlouboutin3@gatech.edu
-# Date: December 2022
+# Date: April 2022
 
 using Statistics, Random, LinearAlgebra, JOLI
 using JUDI, SegyIO, HDF5, PyPlot, SlimOptim
@@ -38,9 +38,9 @@ J = judiJacobian(M, q)
 
 # Right-hand preconditioners (model topmute)
 Mr = judiTopmute(model0.n, 52, 10)
-# Sparisty
+# Sparsity
 C = joEye(prod(model0.n); DDT=Float32, RDT=Float32)
-# If available use curvelt instead for better result
+# If available use curvelet instead for better result
 
 # Setup linearized bregman
 batchsize = 5 * parse(Int, get(ENV, "NITER", "$(q.nsrc ÷ 5)"))
@@ -57,7 +57,6 @@ function obj(x)
     residual = Ml*J[inds]*Mr*dm - Ml*d_lin[inds]
     # grad
     G = reshape(Mr'J[inds]'*Ml'*residual, model0.n)
-    G[:, 1:35] .= 0f0
     g_scale == 0 && (global g_scale = .05f0/maximum(G))
     G .*= g_scale
     return .5f0*norm(residual)^2, G[:]

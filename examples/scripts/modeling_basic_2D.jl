@@ -1,6 +1,6 @@
 #' # Modeling and inversion with JUDI
 #' ---
-#' title: Overview of JUDI modelign and inversion usage
+#' title: Overview of JUDI modeling and inversion usage
 #' author: Mathias Louboutin, Philipp Witte
 #' date: April 2022
 #' ---
@@ -8,7 +8,7 @@
 #' This example script is written using [Weave.jl](https://github.com/JunoLab/Weave.jl) and can be converted to different format for documentation and usage
 #' This example is converted to a markdown file for the documentation.
 
-#' # Import JUDI, Linear algebra utilities and Ploting
+#' # Import JUDI, Linear algebra utilities and Plotting
 using JUDI, PyPlot, LinearAlgebra
 
 #+ echo = false; results = "hidden"
@@ -171,7 +171,7 @@ title("RTM image")
 display(fig)
 
 #' ## Inversion utility functions
-#' We currently introduced the lineaar operators that allow to write seismic modeling and inversion in a high-level, linear algebra way. These linear operator allow the script to closely follow the mathematics and to be readable and understandable.
+#' We currently introduced the lineaar operators that allow to write seismic modeling and inversion in a high-level, linear algebra way. These linear operators allow the script to closely follow the mathematics and to be readable and understandable.
 #' 
 #' However, these come with overhead. In particular, consider the following compuation on the FWI gradient:
 #' 
@@ -218,7 +218,7 @@ display(fig)
 #' By extension, lsrtm_objective is the same as fwi_objecive when `dm` is zero
 #' And with computing of the residual. Small noise can be seen in the difference
 #' due to floating point roundoff errors with openMP, but running with 
-#' OMP_NUM_THREAS=1 (no parllelism) produces the exact (difference == 0) same result
+#' OMP_NUM_THREADS=1 (no parllelism) produces the exact (difference == 0) same result
 #' gjn2 == g
 fjn2, gjn2 = lsrtm_objective(model0, q, dobs, 0f0.*dm; nlind=true, options=opt)
 fig = figure()
@@ -232,7 +232,7 @@ display(fig)
 
 
 #' # TWRI
-#' Finally, JUDI implements TWRI, an augmented method to tackle cycle skipping. Once again we provide a cmputationnally efficient wrapper function that returns the objective value and necessary gradients
+#' Finally, JUDI implements TWRI, an augmented method to tackle cycle skipping. Once again we provide a computationnally efficient wrapper function that returns the objective value and necessary gradients
 f, gm, gy = twri_objective(model0, q, dobs, nothing; options=opt, optionswri=TWRIOptions(params=:all))
 # With on-the-fly DFT, experimental
 f, gmf = twri_objective(model0, q, dobs, nothing; options=Options(frequencies=[[.009, .011], [.008, .012]]), optionswri=TWRIOptions(params=:m))

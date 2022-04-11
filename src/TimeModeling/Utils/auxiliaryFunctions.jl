@@ -653,7 +653,7 @@ Preprocesses input Array into an Array of Array for modeling
 Parameters:
 * `input`: Input to preprocess.
 * `model`: Model containing physical parameters.
-* `nscr`: Number of sources
+* `nsrc`: Number of sources
 """
 function process_input_data(input::Array{Float32}, model::Model, nsrc::Integer)
     ndims = length(model.n)
