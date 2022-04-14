@@ -65,7 +65,7 @@ def crosscorr_time(u, v, model, **kwargs):
         Model structure
     """
     if model.is_viscoacoustic:
-        return u[0].dt2 * v[0]
+        return u[0].indices[0].spacing * u[0].dt2 * v[0]
 
     w = kwargs.get('w') or u[0].indices[0].spacing * model.irho
     return w * sum(vv.dt2 * uu for uu, vv in zip(u, v))

@@ -39,7 +39,7 @@ q, srcGeometry, recGeometry, info, f0 = setup_geom(model)
             end
         else
             dt = srcGeometry.dt[1]
-            opt = Options(sum_padding=true, free_surface=parsed_args["fs"], f0=f0, dt_comp=dt)
+            opt = Options(sum_padding=true, free_surface=parsed_args["fs"], f0=f0)
             F = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
 
             y0 = F*q
@@ -48,9 +48,8 @@ q, srcGeometry, recGeometry, info, f0 = setup_geom(model)
         ##################################checkpointing###############################################
         println("Testing checkpointing")
         @timeit TIMEROUTPUT "Checkpointing" begin
-                viscoacoustic ? dt = srcGeometry.dt[1] : dt = nothing
                 opt = Options(sum_padding=true, free_surface=parsed_args["fs"], optimal_checkpointing=true,
-                        f0=f0, dt_comp=dt)
+                        f0=f0)
                 F = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
 
                 # Linearized modeling
@@ -59,13 +58,8 @@ q, srcGeometry, recGeometry, info, f0 = setup_geom(model)
                 y_hat = J*dm
                 x_hat2 = adjoint(J)*y0
 
-                if ~viscoacoustic
-                    c = dot(y0, y_hat)
-                    d = dot(dm, x_hat2)
-                else
-                    c = dot(y0.data, y_hat.data)
-                    d = dot(dm.data, x_hat2.data)
-                end
+                c = dot(y0, y_hat)
+                d = dot(dm, x_hat2)
                 @printf(" <J x, y> : %2.5e, <x, J' y> : %2.5e, relative error : %2.5e \n", c, d, c/d - 1)
                 @test isapprox(c, d, rtol=1f-2)
 

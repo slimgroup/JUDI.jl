@@ -18,10 +18,10 @@ fs =  parsed_args["fs"]
 
 ### Model
 model, model0, dm = setup_model(tti, viscoacoustic, 4)
-q, srcGeometry, recGeometry, info = setup_geom(model)
+q, srcGeometry, recGeometry, info, f0 = setup_geom(model)
 dt = srcGeometry.dt[1]
 
-opt = Options(sum_padding=true, free_surface=fs)
+opt = Options(sum_padding=true, free_surface=fs, f0=f0)
 F = judiModeling(info, model, srcGeometry, recGeometry; options=opt)
 F0 = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
 J = judiJacobian(F0, q)
@@ -32,7 +32,7 @@ dobs0 = F0*q
 
 ###################################################################################################
 
-@testset "LSRTM gradient test with $(nlayer) layers and tti $(tti) and freesurface $(fs)" begin
+@testset "LSRTM gradient test with $(nlayer) layers and tti $(tti) and viscoacoustic $(viscoacoustic) and freesurface $(fs)" begin
 	@timeit TIMEROUTPUT "LSRTM gradient test" begin
 		# Gradient test
 		ftol = (tti && fs) ? 1f-1 : 5f-2
@@ -95,7 +95,7 @@ end
 
 # Test if lsrtm_objective produces the same value/gradient as is done by the correct algebra
 cases = [(true, false, true), (false, false, true), (true, true, false), (true, false, false), (false, true, false), (false, false, false)]	# DFT and optimal_checkpointing normally don't co-exist
-@testset "LSRTM gradient linear algebra test with $(nlayer) layers and tti $(tti) and freesurface $(fs) and isic $(isic) and optimal_checkpointing $(optchk) and DFT $(dft)" for (isic,optchk,dft) = cases
+@testset "LSRTM gradient linear algebra test with $(nlayer) layers and tti $(tti) and viscoacoustic $(viscoacoustic) and freesurface $(fs) and isic $(isic) and optimal_checkpointing $(optchk) and DFT $(dft)" for (isic,optchk,dft) = cases
     @timeit TIMEROUTPUT "LSRTM validity (isic=$(isic), checkpointing=$(optchk), dft=$(dft))" begin
 		ftol = 5f-4
 		freq = dft ? [[2.5, 4.5],[3.5, 5.5],[10.0, 15.0], [30.0, 32.0]] : []

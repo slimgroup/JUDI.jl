@@ -5,18 +5,6 @@
 
 using Distributed
 
-using ArgParse, Test, Printf
-using TimerOutputs: TimerOutputs, @timeit
-
-# Collect timing and allocations information to show in a clear way.
-const TIMEROUTPUT = TimerOutputs.TimerOutput()
-timeit_include(path::AbstractString) = @timeit TIMEROUTPUT path include(path)
-
-# Utilities
-const success_log = Dict(true => "SUCCESS", false => "FAILED")
-
-include("utils.jl")
-
 parsed_args = parse_commandline()
 
 nlayer = parsed_args["nlayer"]
@@ -65,13 +53,8 @@ function run_adjoint(F, q, y, dm; test_F=true, test_J=true)
         ld_hat = J*dm
         dm_hat = J'*y
 
-        if ~viscoacoustic
-            c = dot(ld_hat, y)
-            d = dot(dm_hat, dm)
-        else
-            c = dot(ld_hat.data, y.data)
-            d = dot(dm_hat.data, dm.data)
-        end
+        c = dot(ld_hat, y)
+        d = dot(dm_hat, dm)
         @printf(" <J x, y> : %2.5e, <x, J' y> : %2.5e, relative error : %2.5e \n", c, d, (c - d)/(c + d))
         adj_J = isapprox(c/(c+d), d/(c+d), atol=tol, rtol=0)
     end
