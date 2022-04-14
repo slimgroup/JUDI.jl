@@ -88,6 +88,7 @@ def crosscorr_freq(u, v, model, freq=None, dft_sub=None, **kwargs):
     factor: int
         Subsampling factor for DFT
     """
+    # Subsampled dft time axis
     time = model.grid.time_dim
     dt = time.spacing
     tsave, factor = sub_time(time, dft_sub)

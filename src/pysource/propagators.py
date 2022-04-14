@@ -37,7 +37,6 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
 
     # Add extended source
     q = q or wf_as_src(model, u, w=0)
-
     q = extented_src(model, ws, wavelet, q=q)
 
     # Set up PDE expression and rearrange
@@ -181,7 +180,6 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
         pdel = []
     else:
         pdel = wave_kernel(model, ul, q=lin_src(model, u, isic=isic), f0=f0)
-
     # Setup source and receiver
     geom_expr, _, rcvnl = src_rec(model, u, rec_coords=rcv_coords if nlind else None,
                                   src_coords=src_coords, wavelet=wavelet)

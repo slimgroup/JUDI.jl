@@ -120,7 +120,7 @@ def SLS_2nd_order(model, u1, u2, fw=True, q=None, f0=0.015):
     else:
 
         # Attenuation Memory variable.
-        pde_r = - r.dt.T + (tt / t_s) * p - (1. / t_s) * r
+        pde_r = r.dt.T - (tt / t_s) * p + (1. / t_s) * r
         u_r = Eq(r.backward, damp * solve(pde_r, r.backward))
         # Pressure
         pde_p = m * p.dt2 - b * \
