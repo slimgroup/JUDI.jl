@@ -9,7 +9,7 @@ parsed_args = parse_commandline()
 
 nlayer = parsed_args["nlayer"]
 tti = parsed_args["tti"]
-viscoacoustic = parsed_args["viscoacoustic"]
+viscoacoustic = true #parsed_args["viscoacoustic"]
 fs = parsed_args["fs"]
 
 # # Set parallel if specified

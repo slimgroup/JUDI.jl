@@ -256,14 +256,20 @@ class Model(GenericModel):
         self._init_density(rho, space_order)
         self._dm = self._gen_phys_param(dm, 'dm', space_order)
 
-        # Additional parameter fields for Viscoacoustic operators
-        if qp is not None:
-            self._is_viscoacoustic = True
-            self.qp = self._gen_phys_param(qp, 'qp', space_order)
-        else:
-            self._is_viscoacoustic = False
-        # Additional parameter fields for TTI operators
+        # Model type
+        self._is_viscoacoustic = qp is not None
         self._is_tti = any(p is not None for p in [epsilon, delta, theta, phi])
+        # Cannot be tti and visco at the moment
+        if self._is_viscoacoustic and self._is_tti:
+            raise NotImplementedError("Viscosity not supported for TTI")
+        if self._is_viscoacoustic and self.fs:
+            raise NotImplementedError("Freesurface not supported for viscoacoustic")
+
+        # Additional parameter fields for Viscoacoustic operators
+        if self._is_viscoacoustic:
+            self.qp = self._gen_phys_param(qp, 'qp', space_order)
+
+        # Additional parameter fields for TTI operators
         if self._is_tti:
             epsilon = 1 if epsilon is None else 1 + 2 * epsilon
             delta = 1 if delta is None else 1 + 2 * delta

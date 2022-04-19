@@ -1,4 +1,4 @@
-from devito import Eq, solve, div, grad
+from devito import Eq, solve, TimeFunction
 from sympy import sqrt
 
 from wave_utils import freesurface
@@ -24,9 +24,9 @@ def wave_kernel(model, u, fw=True, q=None, f0=0.015):
     if model.is_tti:
         pde = tti_kernel(model, u[0], u[1], fw=fw, q=q)
     elif model.is_viscoacoustic:
-        pde = SLS_2nd_order(model, u[0], u[1], fw=fw, q=q, f0=f0)
+        pde = SLS_2nd_order(model, u, fw=fw, q=q, f0=f0)
     else:
-        pde = acoustic_kernel(model, u, fw, q=q)
+        pde = acoustic_kernel(model, u, fw=fw, q=q)
     return pde
 
 
@@ -64,9 +64,14 @@ def acoustic_kernel(model, u, fw=True, q=None):
     return pde
 
 
-def SLS_2nd_order(model, u1, u2, fw=True, q=None, f0=0.015):
+def SLS_2nd_order(model, p, fw=True, q=None, f0=0.015):
     """
-    Viscoacoustic 2nd SLS wave equation
+    Viscoacoustic 2nd SLS wave equation.
+    https://library.seg.org/doi/10.1190/geo2013-0030.1
+
+    Bulk modulus moved to rhs. The adjoint equation is directly derived
+    as the discrete adjoint of the forward PDE which leads to a slightly different
+    formulation than in the paper.
 
     Parameters
     ----------
@@ -82,8 +87,9 @@ def SLS_2nd_order(model, u1, u2, fw=True, q=None, f0=0.015):
         Full time-space source as a tuple (one value for each component)
     f0 : Peak frequency
     """
-    qp, b, damp = model.qp, model.irho, model.damp
-
+    qp, b, damp, m = model.qp, model.irho, model.damp, model.m
+    m = m * b
+    # Source
     q = q or 0
 
     # The stress relaxation parameter
@@ -93,40 +99,32 @@ def SLS_2nd_order(model, u1, u2, fw=True, q=None, f0=0.015):
     t_ep = 1./(f0**2*t_s)
 
     # The relaxation time
-    tt = (t_ep/t_s)-1.
+    tt = (t_ep/t_s) - 1
 
-    # Density
-    rho = 1. / b
-
-    # Inverse of bulk modulus
-    m = model.m * b
-
-    p = u1
-    r = u2
-
+    # memory variable
+    r = TimeFunction(name='r%s' % p.name, grid=p.grid, time_order=1,
+                     space_order=p.space_order)
     if fw:
-
-        # Attenuation Memory variable.
-        pde_r = r.dt - (tt / t_s) * rho * div(b * grad(p, shift=.5), shift=-.5) + \
-            (1. / t_s) * r
+        # Attenuation Memory variable
+        pde_r = b * r.dt - (tt / t_s) * laplacian(p, b) + (b / t_s) * r
         u_r = Eq(r.forward, damp * solve(pde_r, r.forward))
+
         # Pressure
-        pde_p = m * p.dt2 - (1. + tt) * div(b * grad(p, shift=.5), shift=-.5) + \
+        pde_p = m * p.dt2 - (1. + tt) * laplacian(p, b) + \
             b * r.forward - q + (1 - damp) * p.dt
-        u_p = Eq(p.forward, damp * solve(pde_p, p.forward))
+        u_p = Eq(p.forward, solve(pde_p, p.forward))
 
         return [u_r, u_p]
-
     else:
-
-        # Attenuation Memory variable.
-        pde_r = r.dt.T - (tt / t_s) * p + (1. / t_s) * r
+        # Attenuation Memory variable
+        pde_r = r.dt.T + b * p + (1 / t_s) * r
         u_r = Eq(r.backward, damp * solve(pde_r, r.backward))
+
         # Pressure
-        pde_p = m * p.dt2 - b * \
-            div(b * grad((1. + tt) * rho * p, shift=.5), shift=-.5) + b * \
-            div(b * grad(rho * r.backward, shift=.5), shift=-.5) + (1 - damp) * p.dt.T
-        u_p = Eq(p.backward, damp * solve(pde_p, p.backward))
+        pde_p = m * p.dt2 - laplacian((1. + tt) * p, b) - \
+            laplacian((tt/(b*t_s)) * r.backward, b) + (1 - damp) * p.dt.T - q
+
+        u_p = Eq(p.backward, solve(pde_p, p.backward))
 
         return [u_r, u_p]
 

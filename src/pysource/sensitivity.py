@@ -39,8 +39,6 @@ def grad_expr(gradm, u, v, model, w=None, freq=None, dft_sub=None, isic=False):
     isic: Bool
         Whether or not to use inverse scattering imaging condition (not supported yet)
     """
-    if model.is_viscoacoustic:
-        u, v = (u[0],), (v[0],)
     ic_func = ic_dict[func_name(freq=freq, isic=isic)]
     expr = ic_func(as_tuple(u), as_tuple(v), model, freq=freq, factor=dft_sub, w=w)
     if model.fs:
@@ -64,9 +62,6 @@ def crosscorr_time(u, v, model, **kwargs):
     model: Model
         Model structure
     """
-    if model.is_viscoacoustic:
-        return u[0].indices[0].spacing * u[0].dt2 * v[0]
-
     w = kwargs.get('w') or u[0].indices[0].spacing * model.irho
     return w * sum(vv.dt2 * uu for uu, vv in zip(u, v))
 

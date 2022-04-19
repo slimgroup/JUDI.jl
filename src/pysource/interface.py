@@ -688,10 +688,6 @@ def J_adjoint_checkpointing(model, src_coords, wavelet, rec_coords, recin, space
     vk.update({'src%s' % as_tuple(v)[0].name: rec})
     # Wrapped ops
     wrap_fw = CheckpointOperator(op_f, m=model.m, **uk)
-
-    if model.is_viscoacoustic:
-        vk.pop(u[1].name)
-
     wrap_rev = CheckpointOperator(op, m=model.m, **vk)
 
     # Run forward

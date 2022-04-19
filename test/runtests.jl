@@ -123,12 +123,9 @@ if GROUP == "VISCO_AC_OP" || GROUP == "All"
     println("JUDI Viscoacoustic operators tests")
     # Viscoacoustic tests
     push!(Base.ARGS, "--viscoacoustic")
-    visco = ["test_jacobian_extended.jl"]
     for t=devito
-        if (~any(x->x==t, visco))
-            @time include(t)
-            try Base.GC.gc(); catch; gc() end
-        end
+        timeit_include(t)
+        try Base.GC.gc(); catch; gc() end
     end
 end
 

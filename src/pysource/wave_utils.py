@@ -2,7 +2,7 @@ import numpy as np
 from sympy import cos, sin, sign
 
 from devito import (TimeFunction, Function, Inc, DefaultDimension,
-                    Eq, ConditionalDimension, Dimension, NODE)
+                    Eq, ConditionalDimension, Dimension)
 from devito.tools import as_tuple
 from devito.symbolics import retrieve_functions, INT
 
@@ -27,7 +27,6 @@ def wavefield(model, space_order, save=False, nt=None, fw=True, name='', t_sub=1
     name: string
         Custom name attached to default (u+name)
     """
-
     name = "u"+name if fw else "v"+name
     save = False if t_sub > 1 else save
     if model.is_tti:
@@ -36,15 +35,6 @@ def wavefield(model, space_order, save=False, nt=None, fw=True, name='', t_sub=1
         v = TimeFunction(name="%s2" % name, grid=model.grid, time_order=2,
                          space_order=space_order, save=None if not save else nt)
         return (u, v)
-    elif model.is_viscoacoustic:
-        name_r = "r"+name
-        u = TimeFunction(name=name, grid=model.grid, time_order=2,
-                         space_order=space_order, save=None if not save else nt,
-                         staggered=NODE)
-        r = TimeFunction(name=name_r, grid=model.grid, time_order=2,
-                         space_order=space_order, save=None if not save else nt,
-                         staggered=NODE)
-        return (u, r)
     else:
         return TimeFunction(name=name, grid=model.grid, time_order=2,
                             space_order=space_order, save=None if not save else nt)
@@ -76,7 +66,7 @@ def wavefield_subsampled(model, u, nt, t_sub, space_order=8):
         nsave = (nt-1)//t_sub + 2
     else:
         return None, []
-    u = (u[0],) if model.is_viscoacoustic else u
+
     for wf in as_tuple(u):
         usave = TimeFunction(name='us_%s' % wf.name, grid=model.grid, time_order=2,
                              space_order=space_order, time_dim=time_subsampled,
@@ -86,7 +76,7 @@ def wavefield_subsampled(model, u, nt, t_sub, space_order=8):
     return wf_s, eq_save
 
 
-def wf_as_src(model, v, w=1, freq_list=None):
+def wf_as_src(v, w=1, freq_list=None):
     """
     Weighted source as a time-space wavefield
 
@@ -100,7 +90,7 @@ def wf_as_src(model, v, w=1, freq_list=None):
         Weight for the source expression (default=1)
     """
     v = idft(v, freq=freq_list) if freq_list is not None else as_tuple(v)
-    if len(v) == 2 and model.is_viscoacoustic is False:
+    if len(v) == 2:
         return (w * v[0], w * v[1])
     return w * v[0]
 
@@ -158,12 +148,7 @@ def extended_src_weights(model, wavelet, v):
     time = model.grid.time_dim
     wavelett = Function(name='wf_src', dimensions=(time,), shape=(nt,))
     wavelett.data[:] = np.array(wavelet)[:, 0]
-    if model.is_tti:
-        wf = v[0] + v[1]
-    elif model.is_viscoacoustic:
-        wf = v[0]
-    else:
-        wf = v
+    wf = v[0] + v[1] if model.is_tti else v
     return w_out, [Inc(w_out, time.spacing * wf * wavelett)]
 
 
@@ -200,7 +185,7 @@ def freesurface(model, eq):
     return fs_eq
 
 
-def otf_dft(model, u, freq, dt, factor=None):
+def otf_dft(u, freq, dt, factor=None):
     """
     On the fly DFT wavefield (frequency slices) and expression
 
@@ -217,7 +202,7 @@ def otf_dft(model, u, freq, dt, factor=None):
     """
     if freq is None:
         return [], None
-    u = (u[0],) if model.is_viscoacoustic else u
+
     # init
     dft_modes = []
 
@@ -298,7 +283,7 @@ def sub_time(time, factor, dt=1, freq=None):
         return time, 1
 
 
-def weighted_norm(model, u, weight=None):
+def weighted_norm(u, weight=None):
     """
     Space-time norm of a wavefield, split into norm in time first then in space to avoid
     breaking loops
@@ -310,7 +295,6 @@ def weighted_norm(model, u, weight=None):
     weight: String
         Spacial weight to apply
     """
-    u = (u[0],) if model.is_viscoacoustic else u
     grid = as_tuple(u)[0].grid
     expr = grid.time_dim.spacing * sum(uu**2 for uu in as_tuple(u))
     # Norm in time

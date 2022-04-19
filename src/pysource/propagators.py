@@ -36,7 +36,7 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     u_save, eq_save = wavefield_subsampled(model, u, nt, t_sub)
 
     # Add extended source
-    q = q or wf_as_src(model, u, w=0)
+    q = q or wf_as_src(u, w=0)
     q = extented_src(model, ws, wavelet, q=q)
 
     # Set up PDE expression and rearrange
@@ -47,7 +47,7 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
                                 rec_coords=rcv_coords, wavelet=wavelet)
 
     # On-the-fly Fourier
-    dft, dft_modes = otf_dft(model, u, freq_list, model.critical_dt, factor=dft_sub)
+    dft, dft_modes = otf_dft(u, freq_list, model.critical_dt, factor=dft_sub)
 
     # Create operator and run
     subs = model.spacing_map
@@ -81,7 +81,7 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0, dft_sub=None,
     pde = wave_kernel(model, v, q=q, fw=False, f0=f0)
 
     # On-the-fly Fourier
-    dft, dft_modes = otf_dft(model, v, freq_list, model.critical_dt, factor=dft_sub)
+    dft, dft_modes = otf_dft(v, freq_list, model.critical_dt, factor=dft_sub)
 
     # Setup source and receiver
     geom_expr, _, rcv = src_rec(model, v, src_coords=rcv_coords, nt=nt,
@@ -94,7 +94,7 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0, dft_sub=None,
     nv_t, nv_s = ([], [])
     if norm_v:
         weights = weight_fun(w_fun, model, src_coords)
-        norm_v, (nv_t, nv_s) = weighted_norm(model, v, weight=weights)
+        norm_v, (nv_t, nv_s) = weighted_norm(v, weight=weights)
 
     # Create operator and run
     subs = model.spacing_map
@@ -171,7 +171,7 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     u_save, eq_save = wavefield_subsampled(model, u, nt, t_sub)
 
     # Extended source
-    q = q or wf_as_src(model, u, w=0)
+    q = q or wf_as_src(u, w=0)
     q = extented_src(model, ws, wavelet, q=q)
 
     # Set up PDE expression and rearrange
@@ -186,7 +186,7 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     geom_exprl, _, rcvl = src_rec(model, ul, rec_coords=rcv_coords, nt=nt)
 
     # On-the-fly Fourier
-    dft, dft_modes = otf_dft(model, u, freq_list, model.critical_dt, factor=dft_sub)
+    dft, dft_modes = otf_dft(u, freq_list, model.critical_dt, factor=dft_sub)
 
     # Create operator and run
     subs = model.spacing_map
@@ -218,7 +218,7 @@ def forward_grad(model, src_coords, rcv_coords, wavelet, v, space_order=8,
     u = wavefield(model, space_order, save=False)
 
     # Add extended source
-    q = q or wf_as_src(model, u, w=0)
+    q = q or wf_as_src(u, w=0)
     q = extented_src(model, ws, wavelet, q=q)
 
     # Set up PDE expression and rearrange

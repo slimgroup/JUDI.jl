@@ -53,7 +53,7 @@ def src_rec(model, u, src_coords=None, rec_coords=None, wavelet=None, fw=True, n
     if rec_coords is not None:
         rcv = Receiver(name="rcv%s" % namef, grid=model.grid, ntime=nt,
                        coordinates=rec_coords)
-        rec_expr = u[0] if model.is_tti or model.is_viscoacoustic else u
+        rec_expr = u[0] if model.is_tti else u
         adj_rcv = rcv.interpolate(expr=rec_expr)
         geom_expr += adj_rcv
     return geom_expr, src, rcv

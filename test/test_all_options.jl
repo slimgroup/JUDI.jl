@@ -15,34 +15,26 @@ q, srcGeometry, recGeometry, info, f0 = setup_geom(model)
 
 @testset "Gradient options test with $(nlayer) layers and tti $(tti) and viscoacoustic $(viscoacoustic) and freesurface $(fs)" begin
         ##################################ISIC########################################################
-        if ~viscoacoustic
-            println("Testing isic")
-            @timeit TIMEROUTPUT "ISIC" begin
-                    opt = Options(sum_padding=true, free_surface=parsed_args["fs"], isic=true)
-                    F = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
-
-                    # Linearized modeling
-                    J = judiJacobian(F, q)
-                    @test norm(J*(0f0.*dm)) == 0
-
-                    y0 = F*q
-                    y_hat = J*dm
-                    x_hat1 = adjoint(J)*y0
-
-                    c = dot(y0, y_hat)
-                    d = dot(dm, x_hat1)
-                    @printf(" <J x, y> : %2.5e, <x, J' y> : %2.5e, relative error : %2.5e \n", c, d, c/d - 1)
-                    @test isapprox(c, d, rtol=5f-2)
-                    @test !isnan(norm(y0))
-                    @test !isnan(norm(y_hat))
-                    @test !isnan(norm(x_hat1))
-            end
-        else
-            dt = srcGeometry.dt[1]
-            opt = Options(sum_padding=true, free_surface=parsed_args["fs"], f0=f0)
+        println("Testing isic")
+        @timeit TIMEROUTPUT "ISIC" begin
+            opt = Options(sum_padding=true, free_surface=parsed_args["fs"], isic=true)
             F = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
 
+            # Linearized modeling
+            J = judiJacobian(F, q)
+            @test norm(J*(0f0.*dm)) == 0
+
             y0 = F*q
+            y_hat = J*dm
+            x_hat1 = adjoint(J)*y0
+
+            c = dot(y0, y_hat)
+            d = dot(dm, x_hat1)
+            @printf(" <J x, y> : %2.5e, <x, J' y> : %2.5e, relative error : %2.5e \n", c, d, c/d - 1)
+            @test isapprox(c, d, rtol=5f-2)
+            @test !isnan(norm(y0))
+            @test !isnan(norm(y_hat))
+            @test !isnan(norm(x_hat1))
         end
 
         ##################################checkpointing###############################################
@@ -109,44 +101,42 @@ q, srcGeometry, recGeometry, info, f0 = setup_geom(model)
         end
 
         ##################################subsampling#################################################
-        if ~viscoacoustic
-            println("Testing subsampling")
-            @timeit TIMEROUTPUT "Subsampling" begin
-                    opt = Options(sum_padding=true, free_surface=parsed_args["fs"], subsampling_factor=4)
-                    F = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
+        println("Testing subsampling")
+        @timeit TIMEROUTPUT "Subsampling" begin
+                opt = Options(sum_padding=true, free_surface=parsed_args["fs"], subsampling_factor=4)
+                F = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
 
-                    # Linearized modeling
-                    J = judiJacobian(F, q)
+                # Linearized modeling
+                J = judiJacobian(F, q)
 
-                    y_hat = J*dm
-                    x_hat4 = adjoint(J)*y0
+                y_hat = J*dm
+                x_hat4 = adjoint(J)*y0
 
-                    c = dot(y0, y_hat)
-                    d = dot(dm, x_hat4)
-                    @printf(" <J x, y> : %2.5e, <x, J' y> : %2.5e, relative error : %2.5e \n", c, d, c/d - 1)
-                    @test isapprox(c, d, rtol=1f-2)
-                    @test !isnan(norm(y_hat))
-                    @test !isnan(norm(x_hat4))
-            end
+                c = dot(y0, y_hat)
+                d = dot(dm, x_hat4)
+                @printf(" <J x, y> : %2.5e, <x, J' y> : %2.5e, relative error : %2.5e \n", c, d, c/d - 1)
+                @test isapprox(c, d, rtol=1f-2)
+                @test !isnan(norm(y_hat))
+                @test !isnan(norm(x_hat4))
+        end
         ##################################ISIC + DFT #########################################################
-            println("Testing isic+dft")
-            @timeit TIMEROUTPUT "ISIC+DFT" begin
-                    opt = Options(sum_padding=true, free_surface=parsed_args["fs"],
-                            isic=true, frequencies=[2.5, 4.5])
-                    F = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
+        println("Testing isic+dft")
+        @timeit TIMEROUTPUT "ISIC+DFT" begin
+                opt = Options(sum_padding=true, free_surface=parsed_args["fs"],
+                        isic=true, frequencies=[2.5, 4.5])
+                F = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
 
-                    # Linearized modeling
-                    J = judiJacobian(F, q)
-                    @test norm(J*(0f0.*dm)) == 0
+                # Linearized modeling
+                J = judiJacobian(F, q)
+                @test norm(J*(0f0.*dm)) == 0
 
-                    y_hat = J*dm
-                    x_hat5 = adjoint(J)*y0
+                y_hat = J*dm
+                x_hat5 = adjoint(J)*y0
 
-                    c = dot(y0, y_hat)
-                    d = dot(dm, x_hat5)
-                    @printf(" <J x, y> : %2.5e, <x, J' y> : %2.5e, relative error : %2.5e \n", c, d, c/d - 1)
-                    @test !isnan(norm(y_hat))
-                    @test !isnan(norm(x_hat5))
-            end
+                c = dot(y0, y_hat)
+                d = dot(dm, x_hat5)
+                @printf(" <J x, y> : %2.5e, <x, J' y> : %2.5e, relative error : %2.5e \n", c, d, c/d - 1)
+                @test !isnan(norm(y_hat))
+                @test !isnan(norm(x_hat5))
         end
 end
