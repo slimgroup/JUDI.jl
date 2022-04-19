@@ -188,7 +188,7 @@ function devito_interface(modelPy::PyCall.PyObject, srcGeometry::Geometry, srcDa
     grad = wrapcall_function(ac."J_adjoint", modelPy,
                   src_coords, qIn, rec_coords, dIn, t_sub=options.subsampling_factor,
                   space_order=options.space_order, checkpointing=options.optimal_checkpointing,
-                  freq_list=freqs, isic=options.isic,
+                  freq_list=freqs, isic=options.isic, is_residual=true,
                   dft_sub=options.dft_subsampling_factor[1], f0=options.f0)
 
     # Remove PML and return gradient as Array
@@ -267,7 +267,7 @@ function devito_interface(modelPy::PyCall.PyObject, srcData::Array, recGeometry:
 end
 
 # Adjoint Jacobian of extended source modeling: dm = J'*d_lin
-function devito_interface(modelPy::PyCall.PyObject, srcData::Array, recGeometry::Geometry, recData::Array, weights:: Array, dm::Nothing, options::Options)
+function devito_interface(modelPy::PyCall.PyObject, srcData::Array, recGeometry::Geometry, recData::Array, weights::Array, dm::Nothing, options::Options)
 
     # Interpolate input data to computational grid
     dtComp = convert(Float32, modelPy."critical_dt")
@@ -280,7 +280,7 @@ function devito_interface(modelPy::PyCall.PyObject, srcData::Array, recGeometry:
     grad = wrapcall_function(ac."J_adjoint", modelPy,
                   nothing, qIn, rec_coords, dIn, t_sub=options.subsampling_factor,
                   space_order=options.space_order, checkpointing=options.optimal_checkpointing,
-                  freq_list=freqs, isic=options.isic, ws=weights,
+                  freq_list=freqs, isic=options.isic, ws=weights, is_residual=true,
                   dft_sub=options.dft_subsampling_factor[1], f0=options.f0)
     # Remove PML and return gradient as Array
     grad = remove_padding(grad, modelPy.padsizes; true_adjoint=options.sum_padding)

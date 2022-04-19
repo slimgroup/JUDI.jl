@@ -1,7 +1,7 @@
-from devito import Eq, solve, TimeFunction
+from devito import Eq, solve
 from sympy import sqrt
 
-from wave_utils import freesurface
+from wave_utils import freesurface, memory_field
 from FD_utils import laplacian, sa_tti
 
 
@@ -102,8 +102,8 @@ def SLS_2nd_order(model, p, fw=True, q=None, f0=0.015):
     tt = (t_ep/t_s) - 1
 
     # memory variable
-    r = TimeFunction(name='r%s' % p.name, grid=p.grid, time_order=1,
-                     space_order=p.space_order)
+    r = memory_field(p)
+
     if fw:
         # Attenuation Memory variable
         pde_r = b * r.dt - (tt / t_s) * laplacian(p, b) + (b / t_s) * r

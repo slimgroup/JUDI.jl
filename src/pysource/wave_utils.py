@@ -3,7 +3,7 @@ from sympy import cos, sin, sign
 
 from devito import (TimeFunction, Function, Inc, DefaultDimension,
                     Eq, ConditionalDimension, Dimension)
-from devito.tools import as_tuple
+from devito.tools import as_tuple, memoized_func
 from devito.symbolics import retrieve_functions, INT
 
 
@@ -38,6 +38,21 @@ def wavefield(model, space_order, save=False, nt=None, fw=True, name='', t_sub=1
     else:
         return TimeFunction(name=name, grid=model.grid, time_order=2,
                             space_order=space_order, save=None if not save else nt)
+
+
+@memoized_func
+def memory_field(p):
+    """
+    Memory variable for viscosity modeling.
+
+    Parameters
+    ----------
+
+    p : TimeFunction
+        Forward wavefield
+    """
+    return TimeFunction(name='r%s' % p.name, grid=p.grid, time_order=2,
+                        space_order=p.space_order, save=None)
 
 
 def wavefield_subsampled(model, u, nt, t_sub, space_order=8):
