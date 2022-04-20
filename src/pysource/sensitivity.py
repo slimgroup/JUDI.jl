@@ -227,3 +227,31 @@ def inner_grad(u, v):
 ic_dict = {'isic_freq': isic_freq, 'corr_freq': crosscorr_freq,
            'isic': isic_time, 'corr': crosscorr_time}
 ls_dict = {'isic': isic_src, 'corr': basic_src}
+
+
+def l2_loss(dsyn, dobs, dt, is_residual=False):
+    """
+    L2 loss and residual between the synthetic data dsyn and observed data dobs
+
+    Parameters
+    ----------
+
+    dsyn: SparseTimeFunction or tuple
+        Synthetic data or tuple (background, linearized) data
+    dobs: SparseTimeFunction
+        Observed data
+    dt: float
+        Time sampling rate
+    is_residual: bool
+        Whether input dobs is already the data residual
+    """
+    if not is_residual:
+        try:
+            dsyn[0].data[:] -= dobs[:] - dsyn[1].data[:]  # input is observed data
+            return .5 * dt * np.linalg.norm(dsyn[0].data)**2, dsyn[0].data
+        except:
+            dsyn.data[:] -= dobs[:]   # input is observed data
+    else:
+        dsyn.data[:] = dobs[:]
+
+    return .5 * dt * np.linalg.norm(dsyn.data)**2, dsyn.data

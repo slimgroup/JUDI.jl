@@ -108,7 +108,7 @@ end
 Crops the `model` to the area of the source an receiver with an extra buffer. This reduces the size
 of the problem when the model si large and the source and receiver located in a small part of the domain.
 
-In the cartoon below, the full model will be cropped to the center area containg the source (o) receivers (x) and 
+In the cartoon below, the full model will be cropped to the center area containg the source (o) receivers (x) and
 buffer area (*)
 
 --------------------------------------------
@@ -116,7 +116,7 @@ buffer area (*)
 | . . . . . . . . . . . . . . . . . . . . . |  - o Source position
 | . . . . * * * * * * * * * * * * . . . . . |  - x receiver positions
 | . . . . * x x x x x x x x x x * . . . . . |  - * Extra buffer (grid spacing in that simple case)
-| . . . . * x x x x x x x x x x * . . . . . | 
+| . . . . * x x x x x x x x x x * . . . . . |
 | . . . . * x x x x x x x x x x * . . . . . |
 | . . . . * x x x x x o x x x x * . . . . . |
 | . . . . * x x x x x x x x x x * . . . . . |
@@ -219,7 +219,7 @@ Parameters
 function remove_out_of_bounds_receivers(recGeometry::Geometry, model::Model)
 
     # Only keep receivers within the model
-    xmin, xmax = model.o[1], model.o[1] + (model.n[1] - 1)*model.d[1] 
+    xmin, xmax = model.o[1], model.o[1] + (model.n[1] - 1)*model.d[1]
     if typeof(recGeometry.xloc[1]) <: Array
         idx_xrec = findall(x -> xmax >= x >= xmin, recGeometry.xloc[1])
         recGeometry.xloc[1] = recGeometry.xloc[1][idx_xrec]
@@ -229,7 +229,7 @@ function remove_out_of_bounds_receivers(recGeometry::Geometry, model::Model)
 
     # For 3D shot records, scan also y-receivers
     if length(model.n) == 3 && typeof(recGeometry.yloc[1]) <: Array
-        ymin, ymax = model.o[2], model.o[2] + (model.n[2] - 1)*model.d[2] 
+        ymin, ymax = model.o[2], model.o[2] + (model.n[2] - 1)*model.d[2]
         idx_yrec = findall(x -> ymax >= x >= ymin, recGeometry.yloc[1])
         recGeometry.xloc[1] = recGeometry.xloc[1][idx_yrec]
         recGeometry.yloc[1] = recGeometry.yloc[1][idx_yrec]
@@ -390,7 +390,7 @@ end
 """
     setup_grid(geometry, n)
 
-Sets up the coordinate arrays for Devito. 
+Sets up the coordinate arrays for Devito.
 
 Parameters:
 * `geometry`: Geometry containing the coordinates
@@ -416,7 +416,7 @@ function setup_grid(geometry, n)
 end
 
 """
-    setup_3D_grid(x, y, z)  
+    setup_3D_grid(x, y, z)
 
 Converts one dimensional input (x, y, z) into three dimensional coordinates. The number of point created
 is `length(x)*lenght(y)` with all the x/y pairs and each pair at depth z[idx[x]]. `x` and `z` must have the same size.
@@ -455,7 +455,7 @@ function setup_3D_grid(xrec::Vector{<:AbstractVector{T}},yrec::Vector{<:Abstract
 end
 
 """
-    setup_3D_grid(x, y, z)  
+    setup_3D_grid(x, y, z)
 
 Converts one dimensional input (x, y, z) into three dimensional coordinates. The number of point created
 is `length(x)*lenght(y)` with all the x/y pairs and each pair at same depth z.
@@ -495,7 +495,7 @@ end
 """
     time_resample(data, geometry_in, dt_new)
 
-Resample the input data with sinc interpolation from the current time sampling (geometrty_in) to the 
+Resample the input data with sinc interpolation from the current time sampling (geometrty_in) to the
 new time sampling `dt_new`.
 
 Parameters
@@ -523,7 +523,7 @@ end
 """
     time_resample(data, dt_in, geometry_in)
 
-Resample the input data with sinc interpolation from the current time sampling (dt_in) to the 
+Resample the input data with sinc interpolation from the current time sampling (dt_in) to the
 new time sampling `geometry_out`.
 
 Parameters

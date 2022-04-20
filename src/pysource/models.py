@@ -91,10 +91,11 @@ class GenericModel(object):
     General model class with common properties
     """
     def __init__(self, origin, spacing, shape, space_order, nbl=20,
-                 dtype=np.float32, fs=False, grid=None):
+                 dtype=np.float32, fs=False, abc_type="damp", grid=None):
         self.shape = shape
         self.nbl = int(nbl)
         self.origin = tuple([dtype(o) for o in origin])
+        self.abc_type = abc_type
         self.fs = fs
         # Origin of the computational domain with boundary to inject/interpolate
         # at the correct index
@@ -117,7 +118,7 @@ class GenericModel(object):
         if self.nbl != 0:
             # Create dampening field as symbol `damp`
             self.damp = Function(name="damp", grid=self.grid)
-            initialize_damp(self.damp, self.padsizes, fs=fs)
+            initialize_damp(self.damp, self.padsizes, abc_type=abc_type, fs=fs)
             self._physical_parameters = ['damp']
         else:
             self.damp = 1
@@ -240,9 +241,12 @@ class Model(GenericModel):
     """
     def __init__(self, origin, spacing, shape, m, space_order=2, nbl=40,
                  dtype=np.float32, epsilon=None, delta=None, theta=None, phi=None,
-                 rho=1, dm=None, fs=False, **kwargs):
+                 rho=1, qp=None, dm=None, fs=False, **kwargs):
+
+        abc_type = "mask" if qp is not None else "damp"
+
         super(Model, self).__init__(origin, spacing, shape, space_order, nbl, dtype,
-                                    fs=fs, grid=kwargs.get('grid'))
+                                    fs=fs, abc_type=abc_type, grid=kwargs.get('grid'))
 
         self.scale = 1
         self._space_order = space_order
@@ -251,8 +255,21 @@ class Model(GenericModel):
         # density
         self._init_density(rho, space_order)
         self._dm = self._gen_phys_param(dm, 'dm', space_order)
-        # Additional parameter fields for TTI operators
+
+        # Model type
+        self._is_viscoacoustic = qp is not None
         self._is_tti = any(p is not None for p in [epsilon, delta, theta, phi])
+        # Cannot be tti and visco at the moment
+        if self._is_viscoacoustic and self._is_tti:
+            raise NotImplementedError("Viscosity not supported for TTI")
+        if self._is_viscoacoustic and self.fs:
+            raise NotImplementedError("Freesurface not supported for viscoacoustic")
+
+        # Additional parameter fields for Viscoacoustic operators
+        if self._is_viscoacoustic:
+            self.qp = self._gen_phys_param(qp, 'qp', space_order)
+
+        # Additional parameter fields for TTI operators
         if self._is_tti:
             epsilon = 1 if epsilon is None else 1 + 2 * epsilon
             delta = 1 if delta is None else 1 + 2 * delta
@@ -303,6 +320,13 @@ class Model(GenericModel):
         Whether the model is TTI or isotopic
         """
         return self._is_tti
+
+    @property
+    def is_viscoacoustic(self):
+        """
+        Whether the model is TTI or isotopic
+        """
+        return self._is_viscoacoustic
 
     @property
     def _max_vp(self):

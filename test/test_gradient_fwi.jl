@@ -11,16 +11,17 @@ parsed_args = parse_commandline()
 
 nlayer = parsed_args["nlayer"]
 tti = parsed_args["tti"]
-fs =  parsed_args["fs"]
+viscoacoustic = parsed_args["viscoacoustic"]
+fs = parsed_args["fs"]
 
 ### Model
-model, model0, dm = setup_model(parsed_args["tti"], 4)
-q, srcGeometry, recGeometry, info = setup_geom(model)
+model, model0, dm = setup_model(tti, viscoacoustic, 4)
+q, srcGeometry, recGeometry, info, f0 = setup_geom(model)
 dt = srcGeometry.dt[1]
 
 ###################################################################################################
 
-@testset "FWI gradient test with $(nlayer) layers and tti $(tti) and freesurface $(fs)" begin
+@testset "FWI gradient test with $(nlayer) layers and tti $(tti) and viscoacoustic $(viscoacoustic) and freesurface $(fs)" begin
 	# Gradient test
 	h = 5f-2
 	maxiter = 6
@@ -30,19 +31,21 @@ dt = srcGeometry.dt[1]
 	modelH = deepcopy(model0)
 
 	# Observed data
-	opt = Options(sum_padding=true, free_surface=parsed_args["fs"])
+	opt = Options(sum_padding=true, free_surface=fs, f0=f0)
 	F = judiModeling(info, model, srcGeometry, recGeometry; options=opt)
 	d = F*q
 
 	# FWI gradient and function value for m0
 	Jm0, grad = fwi_objective(model0, q, d; options=opt)
-
+	# Check get same misfit as l2 misifit on forward data
+	Jm01 = .5f0 * norm(F(model0)*q - d)^2
+	@test Jm0 ≈ Jm01
 	dJ = dot(grad, dm)
 
 	for j=1:maxiter
-		# FWI gradient and function falue for m0 + h*dm
+		# FWI function value for m0 + h*dm
 		modelH.m = model0.m + h*dm
-		Jm, gradm = fwi_objective(modelH, q, d;options=opt)
+		Jm = .5f0 * norm(F(modelH)*q - d)^2
 
 		# Check convergence
 		err1[j] = abs(Jm - Jm0)

@@ -18,7 +18,7 @@ end
 @everywhere using JUDI, LinearAlgebra, Test, Distributed
 
 ### Model
-model, model0, dm = setup_model(parsed_args["tti"], parsed_args["nlayer"]; n=(101, 101), d=(10., 10.))
+model, model0, dm = setup_model(parsed_args["tti"], parsed_args["viscoacoustic"], parsed_args["nlayer"]; n=(101, 101), d=(10., 10.))
 q, srcGeometry, recGeometry, info = setup_geom(model; nsrc=2, tn=500f0)
 dt = srcGeometry.dt[1]
 

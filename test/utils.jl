@@ -21,15 +21,17 @@ end
 """
 Sets up a simple 2D layered model for the wave equation operators tests
 """
-function setup_model(tti=false, nlayer=2; n=(301, 151), d=(10., 10.), rand_dm=false)
-    ## Set up model structure	
+function setup_model(tti=false, viscoacoustic=false, nlayer=2; n=(301, 151), d=(10., 10.), rand_dm=false)
+    tti && viscoacoustic && throw("The inputs can't be tti and viscoacoustic at the same time")
+
+    ## Set up model structure
     o = (0., 0.)
     lw = n[2] ÷ nlayer
-    
+
     v = ones(Float32, n) .* 1.5f0
     vp_i = range(1.5f0, 3.5f0, length=nlayer)
-    for i in range(2, nlayer, step=1)	
-        v[:, (i-1)*lw+ 1:end] .= vp_i[i]  # Bottom velocity	
+    for i in range(2, nlayer, step=1)
+        v[:, (i-1)*lw+ 1:end] .= vp_i[i]  # Bottom velocity
     end
 
     v0 = smooth(v, 7)
@@ -46,6 +48,11 @@ function setup_model(tti=false, nlayer=2; n=(301, 151), d=(10., 10.), rand_dm=fa
         theta =  smooth((v0[:, :] .- 1.5f0)/4, 3) .* rand([0, 1]) # makes sure VTI is tested
         model0 = Model(n, d, o, m0; epsilon=epsilon, delta=delta, theta=theta)
         model = Model(n, d, o, m; epsilon=epsilon, delta=delta, theta=theta)
+    elseif viscoacoustic
+        println("Viscoacoustic Model")
+        qp0 = 3.516f0 .* ((v .* 1000f0).^2.2f0) .* 10f0^(-6f0)
+        model = Model(n,d,o,m,rho0,qp0)
+        model0 = Model(n,d,o,m0,rho0,qp0)
     else
         model = Model(n, d, o, m, rho0)
         model0 = Model(n, d, o, m0, rho0)
@@ -97,7 +104,7 @@ function setup_geom(model; nsrc=1, tn=1500f0)
     ntComp = get_computational_nt(srcGeometry, recGeometry, model; dt=dt)
     info = Info(prod(model.n), nsrc, ntComp)
 
-    return q, srcGeometry, recGeometry, info
+    return q, srcGeometry, recGeometry, info, f0
 end
 
 
@@ -107,6 +114,9 @@ function parse_commandline()
     @add_arg_table! s begin
         "--tti"
             help = "TTI, default False"
+            action = :store_true
+        "--viscoacoustic"
+            help = "Viscoacoustic, default False"
             action = :store_true
         "--fs"
             help = "Free surface, default False"

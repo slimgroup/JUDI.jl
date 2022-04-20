@@ -45,25 +45,13 @@ function fwi_objective(model_full::Model, source::judiVector, dObs::judiVector, 
     src_coords = setup_grid(source.geometry, model.n)  # shifts source coordinates by origin
     rec_coords = setup_grid(dObs.geometry, model.n)    # shifts rec coordinates by origin
 
+    length(options.frequencies) == 0 ? freqs = nothing : freqs = options.frequencies
+    argout1, argout2 = pycall(ac."J_adjoint", Tuple{Float32, PyArray}, modelPy,
+                              src_coords, qIn, rec_coords, dObserved, t_sub=options.subsampling_factor,
+                              space_order=options.space_order, checkpointing=options.optimal_checkpointing,
+                              freq_list=freqs, isic=options.isic, is_residual=false, return_obj=true,
+                              dft_sub=options.dft_subsampling_factor[1], f0=options.f0)
 
-    if options.optimal_checkpointing == true
-        argout1, argout2 = pycall(ac."J_adjoint_checkpointing", Tuple{Float32, PyArray},
-                                  modelPy, src_coords, qIn,
-                                  rec_coords, dObserved, is_residual=false, return_obj=true, isic=options.isic,
-                                  t_sub=options.subsampling_factor, space_order=options.space_order)
-    elseif ~isempty(options.frequencies)
-        argout1, argout2 = pycall(ac."J_adjoint_freq", Tuple{Float32,  PyArray},
-                                  modelPy, src_coords, qIn,
-                                  rec_coords, dObserved, is_residual=false, return_obj=true, isic=options.isic,
-                                  freq_list=options.frequencies, t_sub=options.subsampling_factor,
-                                  space_order=options.space_order)
-    else
-        argout1, argout2 = pycall(ac."J_adjoint_standard", Tuple{Float32, PyArray},
-                                  modelPy, src_coords, qIn,
-                                  rec_coords, dObserved, is_residual=false, return_obj=true,
-                                  t_sub=options.subsampling_factor, space_order=options.space_order,
-                                  isic=options.isic)
-    end
     argout2 = remove_padding(argout2, modelPy.padsizes; true_adjoint=options.sum_padding)
     if options.limit_m==true
         argout2 = extend_gradient(model_full, model, argout2)

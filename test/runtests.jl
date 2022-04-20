@@ -17,7 +17,7 @@ timeit_include(path::AbstractString) = @timeit TIMEROUTPUT path include(path)
 
 # Utilities
 const success_log = Dict(true => "SUCCESS", false => "FAILED")
-# Test set 
+# Test set
 const GROUP = get(ENV, "GROUP", "JUDI")
 
 include("utils.jl")
@@ -40,6 +40,7 @@ devito = ["test_linearity.jl",
           "test_gradient_lsrtm.jl",
           "test_multi_exp.jl"]
         #   "test_gradient_twri.jl"]
+devito = ["test_gradient_fwi.jl"]
 
 extras = ["test_modeling.jl", "test_basics.jl", "test_linear_algebra.jl"]
 
@@ -112,6 +113,17 @@ if GROUP == "TTI_OP_FS" || GROUP == "All"
     println("JUDI TTI operators with free surface tests")
     push!(Base.ARGS, "--tti")
     push!(Base.ARGS, "--fs")
+    for t=devito
+        timeit_include(t)
+        try Base.GC.gc(); catch; gc() end
+    end
+end
+
+# Viscoacoustic tests
+if GROUP == "VISCO_AC_OP" || GROUP == "All"
+    println("JUDI Viscoacoustic operators tests")
+    # Viscoacoustic tests
+    push!(Base.ARGS, "--viscoacoustic")
     for t=devito
         timeit_include(t)
         try Base.GC.gc(); catch; gc() end

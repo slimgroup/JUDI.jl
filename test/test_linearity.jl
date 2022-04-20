@@ -10,21 +10,22 @@ parsed_args = parse_commandline()
 nlayer = parsed_args["nlayer"]
 tti = parsed_args["tti"]
 fs =  parsed_args["fs"]
+viscoacoustic = parsed_args["viscoacoustic"]
 
 ### Model
-model, model0, dm = setup_model(parsed_args["tti"], parsed_args["nlayer"])
-q1, srcGeometry1, recGeometry, info = setup_geom(model)
+model, model0, dm = setup_model(parsed_args["tti"], parsed_args["viscoacoustic"], parsed_args["nlayer"])
+q1, srcGeometry1, recGeometry, info, f0 = setup_geom(model)
 srcGeometry2 = deepcopy(srcGeometry1)
-srcGeometry2.xloc[:] .= .9*srcGeometry2.xloc[:] 
+srcGeometry2.xloc[:] .= .9*srcGeometry2.xloc[:]
 srcGeometry2.zloc[:] .= .9*srcGeometry2.zloc[:]
 dt = srcGeometry1.dt[1]
 
-opt = Options(free_surface=parsed_args["fs"])
+opt = Options(free_surface=parsed_args["fs"], f0=f0)
 ftol = 5f-5
 
 ####################### Modeling operators ##########################################
 
-@testset "Linearity test with $(nlayer) layers and tti $(tti) and freesurface $(fs)" begin
+@testset "Linearity test with $(nlayer) layers and tti $(tti) and viscoacoustic $(viscoacoustic) and freesurface $(fs)" begin
     @timeit TIMEROUTPUT "Linearity" begin
         # Modeling operators
         Pr = judiProjection(info,recGeometry)
@@ -144,7 +145,6 @@ end
 
 
 ####################### Extended source operators ##########################################
-
 if parsed_args["tti"]
     ftol = 5f-4
 end
@@ -178,7 +178,7 @@ end
         q5 = (2f0 * Aa) * d1
 
         dm2 =  .5f0 * dm
-        dm2.data .= circshift(dm2.data, (0, 20))    
+        dm2.data .= circshift(dm2.data, (0, 20))
         lind =  J * dm
         lind2 = J * (2f0 .* dm)
         lind3 = J * dm2

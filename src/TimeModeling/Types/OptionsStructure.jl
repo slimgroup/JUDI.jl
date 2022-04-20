@@ -24,6 +24,7 @@ mutable struct Options
     dft_subsampling_factor::Integer
     return_array::Bool
     dt_comp::Union{Real, Nothing}
+    f0::Real
 end
 
 """
@@ -46,6 +47,7 @@ end
 	    dft_subsampling_factor::Integer
         return_array::Bool
         dt_comp::Real
+        f0::Real
 
 
 
@@ -85,6 +87,8 @@ Options structure for seismic modeling.
 
 `dt_comp`: overwrite automatically computed computational time step with this value.
 
+`f0`: define peak frequency.
+
 Constructor
 ==========
 
@@ -98,7 +102,7 @@ All arguments are optional keyword arguments with the following default values:
             num_checkpoints=nothing, checkpoints_maxmem=nothing,
             frequencies=[], isic=false,
             subsampling_factor=1, dft_subsampling_factor=1, return_array=false,
-            dt_comp=nothing)
+            dt_comp=nothing, f0=0.015f0)
 
 """
 Options(;space_order=8,
@@ -117,7 +121,8 @@ Options(;space_order=8,
 		 subsampling_factor=1,
 		 dft_subsampling_factor=1,
          return_array=false,
-         dt_comp=nothing) =
+         dt_comp=nothing,
+         f0=0.015f0) =
 		 Options(space_order,
 		 		 free_surface,
 		         limit_m,
@@ -134,7 +139,8 @@ Options(;space_order=8,
 				 subsampling_factor,
 				 dft_subsampling_factor,
                  return_array,
-                 dt_comp)
+                 dt_comp,
+                 f0)
 
 function subsample(options::Options, srcnum)
     if isempty(options.frequencies)

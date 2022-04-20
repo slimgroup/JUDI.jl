@@ -10,19 +10,20 @@ parsed_args = parse_commandline()
 
 nlayer = parsed_args["nlayer"]
 tti = parsed_args["tti"]
+viscoacoustic = parsed_args["viscoacoustic"]
 fs =  parsed_args["fs"]
 
 ### Model
-model, model0, dm = setup_model(parsed_args["tti"], parsed_args["nlayer"])
-q, srcGeometry, recGeometry, info = setup_geom(model)
+model, model0, dm = setup_model(parsed_args["tti"], parsed_args["viscoacoustic"], parsed_args["nlayer"])
+q, srcGeometry, recGeometry, info, f0 = setup_geom(model)
 dt = srcGeometry.dt[1]
 
 m0 = model0.m
 ######################## WITH DENSITY ############################################
 
-@testset "Jacobian test with $(nlayer) layers and tti $(tti) and freesurface $(fs)" begin
+@testset "Jacobian test with $(nlayer) layers and tti $(tti) and viscoacoustic $(viscoacoustic) freesurface $(fs)" begin
     # Write shots as segy files to disk
-    opt = Options(sum_padding=true, dt_comp=dt, free_surface=parsed_args["fs"])
+    opt = Options(sum_padding=true, dt_comp=dt, free_surface=parsed_args["fs"], f0=f0)
 
     # Setup operators
     Pr = judiProjection(info, recGeometry)
@@ -54,7 +55,7 @@ m0 = model0.m
         j == 1 ? prev = 1 : prev = j - 1
         @printf("h = %2.2e, e1 = %2.2e, rate = %2.2e", h, err1[j], err1[prev]/err1[j])
         @printf(", e2 = %2.2e, rate = %2.2e \n", err2[j], err2[prev]/err2[j])
-        
+
         h = h * .8f0
     end
 

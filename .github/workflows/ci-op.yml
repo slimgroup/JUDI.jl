@@ -28,7 +28,7 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         op: ["ISO_OP", "ISO_OP_FS", "TTI_OP", "TTI_OP_FS", "BASICS"]
-        version: ['1.6', '1.7']
+        version: ['1.7']
         omp: [2]
   
         include:
@@ -41,6 +41,16 @@ jobs:
             version: '1.7'
             op: "ISO_OP_FS"
             omp: 1
+          
+          - os: ubuntu-latest
+            version: '1.7'
+            op: "VISCO_AC_OP"
+            omp: 2
+
+          - os: ubuntu-latest
+            version: '1.6'
+            op: "TTI_OP"
+            omp: 2
 
     steps:
       - name: Checkout JUDI

@@ -10,6 +10,8 @@ from propagators import forward, adjoint
 parser = ArgumentParser(description="Adjoint test args")
 parser.add_argument("--tti", default=False, action='store_true',
                     help="Test acoustic or tti")
+parser.add_argument("--viscoacoustic", default=False, action='store_true',
+                    help="Test viscoacoustic")
 parser.add_argument("--fs", default=False, action='store_true',
                     help="Test with free surface")
 parser.add_argument('-nlayer', dest='nlayer', default=3, type=int,
@@ -18,6 +20,7 @@ parser.add_argument('-so', dest='space_order', default=8, type=int,
                     help="Spatial discretization order")
 args = parser.parse_args()
 is_tti = args.tti
+is_viscoacoustic = args.viscoacoustic
 so = args.space_order
 
 dtype = np.float32
@@ -42,6 +45,11 @@ if is_tti:
     model = Model(shape=shape, origin=origin, spacing=spacing, dtype=dtype,
                   m=m, epsilon=.09*(v-1.5), delta=.075*(v-1.5),
                   fs=args.fs, theta=.1*(v-1.5), rho=1, space_order=so)
+elif is_viscoacoustic:
+    qp = np.empty(shape, dtype=np.float32)
+    qp[:] = 3.516*((v[:]*1000.)**2.2)*10**(-6)
+    model = Model(shape=shape, origin=origin, spacing=spacing, dtype=dtype,
+                  fs=args.fs, m=m, rho=rho, space_order=so, qp=qp)
 else:
     model = Model(shape=shape, origin=origin, spacing=spacing, dtype=dtype,
                   fs=args.fs, m=m, rho=rho, space_order=so)
@@ -65,10 +73,11 @@ rec_t.coordinates.data[:, 0] = np.linspace(0., 3000., num=301)
 rec_t.coordinates.data[:, 1] = 20.
 
 # Test data and source
-d_hat, u1, _ = forward(model, src1.coordinates.data, rec_t.coordinates.data, src1.data)
+d_hat, u1, _ = forward(model, src1.coordinates.data, rec_t.coordinates.data, src1.data,
+                       f0=f1)
 
 # Adjoint
-q0, _, _ = adjoint(model, d_hat, src1.coordinates.data, rec_t.coordinates.data)
+q0, _, _ = adjoint(model, d_hat, src1.coordinates.data, rec_t.coordinates.data, f0=f1)
 
 # Adjoint test
 a = inner(d_hat, d_hat)
