@@ -17,7 +17,7 @@ m0 = M["m0"][1200:2200, 150:800]
 dm = M["dm"][1200:2200, 150:800]
 n = size(m)
 
-# Setup info and model structure
+# Setup model structure
 model = Model(n, M["d"], M["o"], m)
 model0 = Model(n, M["d"], M["o"], m0)
 dm = vec(dm)
@@ -52,11 +52,6 @@ srcGeometry = Geometry(xsrc, ysrc, zsrc; dt=dtS, t=timeS)
 f0 = 0.015
 wavelet = ricker_wavelet(timeS,dtS,f0)
 q = judiVector(srcGeometry,wavelet)
-
-# Set up info structure for linear operators
-ntComp = get_computational_nt(srcGeometry,recGeometry,model)
-info = Info(prod(model.n),nsrc,ntComp)
-
 #################################################################################################
 
 opt = Options(isic=false,
@@ -65,10 +60,10 @@ opt = Options(isic=false,
               )
 
 # Setup operators
-Pr = judiProjection(info, recGeometry)
-F = judiModeling(info, model; options=opt)
-F0 = judiModeling(info, model0; options=opt)
-Ps = judiProjection(info, srcGeometry)
+Pr = judiProjection(recGeometry)
+F = judiModeling(model; options=opt)
+F0 = judiModeling(model0; options=opt)
+Ps = judiProjection(srcGeometry)
 J = judiJacobian(Pr*F0*Ps', q)
 
 # Set frequencies

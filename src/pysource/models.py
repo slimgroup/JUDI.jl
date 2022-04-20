@@ -3,6 +3,7 @@ import warnings
 from devito import (Grid, Function, SubDomain, SubDimension, Eq, Inc,
                     Operator, mmin, initialize_function, switchconfig,
                     Abs, sqrt, sin)
+from devito.data.allocators import ExternalAllocator
 from devito.tools import as_tuple
 
 
@@ -86,129 +87,7 @@ def initialize_damp(damp, padsizes, abc_type="damp", fs=False):
     Operator(eqs, name='initdamp')()
 
 
-class GenericModel(object):
-    """
-    General model class with common properties
-    """
-    def __init__(self, origin, spacing, shape, space_order, nbl=20,
-                 dtype=np.float32, fs=False, abc_type="damp", grid=None):
-        self.shape = shape
-        self.nbl = int(nbl)
-        self.origin = tuple([dtype(o) for o in origin])
-        self.abc_type = abc_type
-        self.fs = fs
-        # Origin of the computational domain with boundary to inject/interpolate
-        # at the correct index
-        origin_pml = [dtype(o - s*nbl) for o, s in zip(origin, spacing)]
-        shape_pml = np.array(shape) + 2 * self.nbl
-        if fs:
-            fsdomain = FSDomain(space_order + 1)
-            physdomain = PhysicalDomain(space_order + 1, fs=fs)
-            subdomains = (physdomain, fsdomain)
-            origin_pml[-1] = origin[-1]
-            shape_pml[-1] -= self.nbl
-        else:
-            subdomains = ()
-        # Physical extent is calculated per cell, so shape - 1
-        extent = tuple(np.array(spacing) * (shape_pml - 1))
-        self.grid = grid or Grid(extent=extent, shape=shape_pml,
-                                 origin=tuple(origin_pml),
-                                 dtype=dtype, subdomains=subdomains)
-
-        if self.nbl != 0:
-            # Create dampening field as symbol `damp`
-            self.damp = Function(name="damp", grid=self.grid)
-            initialize_damp(self.damp, self.padsizes, abc_type=abc_type, fs=fs)
-            self._physical_parameters = ['damp']
-        else:
-            self.damp = 1
-            self._physical_parameters = []
-
-    @property
-    def padsizes(self):
-        padsizes = [(self.nbl, self.nbl) for _ in range(self.dim-1)]
-        padsizes.append((0 if self.fs else self.nbl, self.nbl))
-        return padsizes
-
-    def physical_params(self, **kwargs):
-        """
-        Return all set physical parameters and update to input values if provided
-        """
-        known = [getattr(self, i) for i in self.physical_parameters]
-        return {i.name: kwargs.get(i.name, i) or i for i in known}
-
-    @switchconfig(log_level='ERROR')
-    def _gen_phys_param(self, field, name, space_order, is_param=False,
-                        default_value=0, func=lambda x: x):
-        """
-        Create symbolic object an initiliaze its data
-        """
-        if field is None:
-            return func(default_value)
-        if isinstance(field, np.ndarray) and (name == 'm' or
-                                              np.min(field) != np.max(field)):
-            function = Function(name=name, grid=self.grid, space_order=space_order,
-                                parameter=is_param)
-            if field.shape == self.shape:
-                initialize_function(function, func(field), self.padsizes)
-            else:
-                function._data_with_outhalo[:] = func(field)
-        else:
-            return func(np.min(field))
-        self._physical_parameters.append(name)
-        return function
-
-    @property
-    def physical_parameters(self):
-        """
-        List of physical parameteres
-        """
-        return as_tuple(self._physical_parameters)
-
-    @property
-    def dim(self):
-        """
-        Spatial dimension of the problem and model domain.
-        """
-        return self.grid.dim
-
-    @property
-    def spacing(self):
-        """
-        Grid spacing for all fields in the physical model.
-        """
-        return self.grid.spacing
-
-    @property
-    def space_dimensions(self):
-        """
-        Spatial dimensions of the grid
-        """
-        return self.grid.dimensions
-
-    @property
-    def spacing_map(self):
-        """
-        Map between spacing symbols and their values for each `SpaceDimension`.
-        """
-        return self.grid.spacing_map
-
-    @property
-    def dtype(self):
-        """
-        Data type for all assocaited data objects.
-        """
-        return self.grid.dtype
-
-    @property
-    def domain_size(self):
-        """
-        Physical size of the domain as determined by shape and spacing
-        """
-        return tuple((d-1) * s for d, s in zip(self.shape, self.spacing))
-
-
-class Model(GenericModel):
+class Model(object):
     """
     The physical model used in seismic inversion processes.
 
@@ -242,12 +121,40 @@ class Model(GenericModel):
     def __init__(self, origin, spacing, shape, m, space_order=2, nbl=40,
                  dtype=np.float32, epsilon=None, delta=None, theta=None, phi=None,
                  rho=1, qp=None, dm=None, fs=False, **kwargs):
-
+        # Setup devito grid
+        self.shape = tuple(shape)
+        self.nbl = int(nbl)
+        self.origin = tuple([dtype(o) for o in origin])
         abc_type = "mask" if qp is not None else "damp"
+        self.fs = fs
+        # Origin of the computational domain with boundary to inject/interpolate
+        # at the correct index
+        origin_pml = [dtype(o - s*nbl) for o, s in zip(origin, spacing)]
+        shape_pml = np.array(shape) + 2 * self.nbl
+        if fs:
+            fsdomain = FSDomain(space_order + 1)
+            physdomain = PhysicalDomain(space_order + 1, fs=fs)
+            subdomains = (physdomain, fsdomain)
+            origin_pml[-1] = origin[-1]
+            shape_pml[-1] -= self.nbl
+        else:
+            subdomains = ()
+        # Physical extent is calculated per cell, so shape - 1
+        extent = tuple(np.array(spacing) * (shape_pml - 1))
+        self.grid = Grid(extent=extent, shape=shape_pml, origin=tuple(origin_pml),
+                         dtype=dtype, subdomains=subdomains)
 
-        super(Model, self).__init__(origin, spacing, shape, space_order, nbl, dtype,
-                                    fs=fs, abc_type=abc_type, grid=kwargs.get('grid'))
+        # Absorbing boundary layer
+        if self.nbl != 0:
+            # Create dampening field as symbol `damp`
+            self.damp = Function(name="damp", grid=self.grid)
+            initialize_damp(self.damp, self.padsizes, abc_type=abc_type, fs=fs)
+            self._physical_parameters = ['damp']
+        else:
+            self.damp = 1
+            self._physical_parameters = []
 
+        # Seismic fields and properties
         self.scale = 1
         self._space_order = space_order
         # Create square slowness of the wave as symbol `m`
@@ -292,6 +199,89 @@ class Model(GenericModel):
         else:
             self.irho = self._gen_phys_param(rho, 'irho', so,
                                              func=lambda x: np.reciprocal(x))
+
+    @property
+    def padsizes(self):
+        padsizes = [(self.nbl, self.nbl) for _ in range(self.dim-1)]
+        padsizes.append((0 if self.fs else self.nbl, self.nbl))
+        return padsizes
+
+    def physical_params(self, **kwargs):
+        """
+        Return all set physical parameters and update to input values if provided
+        """
+        known = [getattr(self, i) for i in self.physical_parameters]
+        return {i.name: kwargs.get(i.name, i) or i for i in known}
+
+    @property
+    def zero_thomsen(self):
+        return {self.epsilon: 1, self.delta: 1, self.theta: 0, self.phi: 0}
+
+    @switchconfig(log_level='ERROR')
+    def _gen_phys_param(self, field, name, space_order, is_param=False,
+                        default_value=0, func=lambda x: x):
+        """
+        Create symbolic object an initiliaze its data
+        """
+        if field is None:
+            return func(default_value)
+        if isinstance(field, np.ndarray) and (name == 'm' or
+                                              np.min(field) != np.max(field)):
+            if field.shape == self.shape:
+                function = Function(name=name, grid=self.grid, space_order=space_order,
+                                    parameter=is_param)
+                initialize_function(function, field, self.padsizes)
+            else:
+                # We take advantage of the external allocator
+                function = Function(name=name, grid=self.grid, space_order=space_order,
+                                    allocator=ExternalAllocator(field),
+                                    initializer=lambda x: None, parameter=is_param)
+        else:
+            return func(np.min(field))
+        self._physical_parameters.append(name)
+        return function
+
+    @property
+    def physical_parameters(self):
+        """
+        List of physical parameteres
+        """
+        return as_tuple(self._physical_parameters)
+
+    @property
+    def dim(self):
+        """
+        Spatial dimension of the problem and model domain.
+        """
+        return self.grid.dim
+
+    @property
+    def spacing(self):
+        """
+        Grid spacing for all fields in the physical model.
+        """
+        return self.grid.spacing
+
+    @property
+    def space_dimensions(self):
+        """
+        Spatial dimensions of the grid
+        """
+        return self.grid.dimensions
+
+    @property
+    def dtype(self):
+        """
+        Data type for all assocaited data objects.
+        """
+        return self.grid.dtype
+
+    @property
+    def domain_size(self):
+        """
+        Physical size of the domain as determined by shape and spacing
+        """
+        return tuple((d-1) * s for d, s in zip(self.shape, self.spacing))
 
     @property
     def space_order(self):
@@ -379,7 +369,7 @@ class Model(GenericModel):
             if not isinstance(self._dm, Function):
                 self._dm = self._gen_phys_param(dm, 'dm', self.space_order)
             elif dm.shape == self.shape:
-                initialize_function(self._dm, dm, self.nbl)
+                initialize_function(self._dm, dm, self.padsizes)
             elif dm.shape == self.dm.shape:
                 self.dm.data[:] = dm[:]
             else:
@@ -414,7 +404,7 @@ class Model(GenericModel):
             if m.shape == self.m.shape:
                 self.m.data[:] = m[:]
             elif m.shape == self.shape:
-                initialize_function(self._m, m, self.nbl)
+                initialize_function(self._m, m, self.padsizes)
             else:
                 raise ValueError("Incorrect input size %s for model of size" % m.shape +
                                  " %s without or %s with padding" % (self.shape,

@@ -9,11 +9,8 @@ datapath = joinpath(dirname(pathof(JUDI)))*"/../data/"
 
 @testset "Geometry Unit Test with $(nsrc) sources" for nsrc=[1, 2]
     @timeit TIMEROUTPUT "Geometry (nsrc=$(nsrc))" begin
-        # Number of sources
-        nsrc = 2
-
         # Constructor if nt is not passed
-        xsrc = convertToCell(range(100f0, stop=1100f0, length=nsrc))
+        xsrc = convertToCell(range(100f0, stop=1100f0, length=2)[1:nsrc])
         ysrc = convertToCell(range(0f0, stop=0f0, length=nsrc))
         zsrc = convertToCell(range(20f0, stop=20f0, length=nsrc))
 
@@ -27,7 +24,7 @@ datapath = joinpath(dirname(pathof(JUDI)))*"/../data/"
         @test isequal(typeof(geometry.t), Array{Float32, 1})
 
         # Constructor if coordinates are not passed as a cell arrays
-        xsrc = range(100f0, stop=1100f0, length=nsrc)
+        xsrc = range(100f0, stop=1100f0, length=2)[1:nsrc]
         ysrc = range(0f0, stop=0f0, length=nsrc)
         zsrc = range(20f0, stop=20f0, length=nsrc)
 
@@ -63,7 +60,7 @@ datapath = joinpath(dirname(pathof(JUDI)))*"/../data/"
         @test isequal(rec_geometry.key, "receiver")
         @test isequal(src_geometry.segy_depth_key, "SourceSurfaceElevation")
         @test isequal(rec_geometry.segy_depth_key, "RecGroupElevation")
-        @test isequal(prod(size(block.data)), sum(rec_geometry.nsamples))
+        @test isequal(prod(size(block.data)), sum(rec_geometry.nrec .* rec_geometry.nt))
 
         # Set up geometry summary from out-of-core data container passed as cell array
         container_cell = Array{SegyIO.SeisCon}(undef, nsrc)
@@ -80,7 +77,7 @@ datapath = joinpath(dirname(pathof(JUDI)))*"/../data/"
         @test isequal(rec_geometry.key, "receiver")
         @test isequal(src_geometry.segy_depth_key, "SourceSurfaceElevation")
         @test isequal(rec_geometry.segy_depth_key, "RecGroupElevation")
-        @test isequal(prod(size(block.data)), sum(rec_geometry.nsamples))
+        @test isequal(prod(size(block.data)), sum(rec_geometry.nrec .* rec_geometry.nt))
 
         # Load geometry from out-of-core Geometry container
         src_geometry_ic = Geometry(src_geometry)

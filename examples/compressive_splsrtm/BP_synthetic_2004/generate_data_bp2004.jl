@@ -44,11 +44,6 @@ nsrc = geometry["nsrc"]
 # Set up source
 wavelet = ricker_wavelet(src_geometry.t[1], src_geometry.dt[1], 0.020)  # 27 Hz peak frequency
 q = judiVector(src_geometry, wavelet)
-
-# Info structure for linear operators
-ntComp = get_computational_nt(src_geometry, rec_geometry, model0)    # no. of computational time steps
-info = Info(prod(model0.n), nsrc, ntComp)
-
 ###################################################################################################
 
 # Save data to disk
@@ -60,7 +55,7 @@ opt = Options(limit_m = true,
               file_name = "bp_observed_data_")
 
 # Setup operators
-F = judiModeling(info, model0, q.geometry, rec_geometry; options=opt)
+F = judiModeling(model0, q.geometry, rec_geometry; options=opt)
 
 # Model data (write to disk)
 F*q

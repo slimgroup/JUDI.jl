@@ -4,7 +4,7 @@
 #
 
 const IntTuple = Union{Tuple{Integer,Integer}, Tuple{Integer,Integer,Integer},Array{Int64,1},Array{Int32,1}}
-const RealTuple = Union{Tuple{Real,Real}, Tuple{Real,Real,Real},Array{Float64,1},Array{Float32,1}}
+const RealTuple = Union{Tuple{AbstractFloat,AbstractFloat}, Tuple{AbstractFloat,AbstractFloat,AbstractFloat},Array{AbstractFloat,1}}
 
 export Model, PhysicalParameter, get_dt
 
@@ -50,7 +50,7 @@ mutable struct PhysicalParameter{vDT} <: AbstractVector{vDT}
     n::Tuple
     d::Tuple
     o::Tuple
-    data::Union{Array, vDT}
+    data::Union{Array{vDT}, vDT}
 end
 
 mutable struct PhysicalParameterException <: Exception
@@ -69,7 +69,7 @@ function PhysicalParameter(n::Tuple, d::Tuple, o::Tuple; vDT=Float32)
 end
 
 function PhysicalParameter(v::Array{vDT}, A::PhysicalParameter) where {vDT}
-    return PhysicalParameter{vDT}(A.n, A.d, A.o, v)
+    return PhysicalParameter{vDT}(A.n, A.d, A.o, reshape(v, A.n))
 end
 
 function PhysicalParameter(v::Array{vDT, N}, n::Tuple, d::Tuple, o::Tuple) where {vDT, N}
@@ -103,7 +103,8 @@ dot(A::PhysicalParameter, B::Array) = dot(vec(A.data), vec(B))
 dot(A::Array, B::PhysicalParameter) = dot(vec(A), vec(B.data))
 
 display(A::PhysicalParameter) = println("$(typeof(A)) of size $(A.n) with origin $(A.o) and spacing $(A.d)")
-show(A::PhysicalParameter) = show(A.data)
+show(io::IO, A::PhysicalParameter) = print(io, "$(typeof(A)) of size $(A.n) with origin $(A.o) and spacing $(A.d)")
+summary(io::IO, A::PhysicalParameter) = print(io, "$(typeof(A)) of size $(A.n) with origin $(A.o) and spacing $(A.d)")
 showarg(io::IO, A::PhysicalParameter, toplevel) = print(io, typeof(A), " with size $(A.n), spacing $(A.d) and origin $(A.o)")
 
 # Indexing
@@ -126,11 +127,14 @@ Base.dotview(m::PhysicalParameter, i) = Base.dotview(m.data, i)
 getindex(A::PhysicalParameter, i::Int) = A.data[i]
 getindex(A::PhysicalParameter, i::Colon) = A.data[:]
 
+get_step(r::StepRange) = r.step
+get_step(r) = 1
+
 function getindex(A::PhysicalParameter{T}, I::Vararg{Union{Int, BitArray, Function, StepRange{Int}, UnitRange{Int}}, N}) where {N, T}
     new_v = getindex(A.data, I...)
     length(size(new_v)) != length(A.n) && (return new_v)
     s = [i == (:) ? 0 : i[1]-1 for i=I]
-    st = [getattr(i, :step, 1) for i=I]
+    st = [get_step(i) for i=I]
     new_o = [ao+i*d for (ao, i, d)=zip(A.o, s, A.d)]
     new_d = [d*s for (d, s)=zip(A.d, st)]
     PhysicalParameter{T}(size(new_v), tuple(new_d...), tuple(new_o...), new_v)
@@ -142,9 +146,10 @@ setindex!(A::PhysicalParameter, v, i::Int) = (A.data[i] = v)
 # Constructiors by copy
 similar(x::PhysicalParameter{vDT}) where {vDT} = vDT(0) .* x
 copy(x::PhysicalParameter{vDT}) where {vDT} = PhysicalParameter{vDT}(x.n, x.d, x.o, x.data)
+unsafe_convert(::Type{Ptr{T}}, p::PhysicalParameter{T}) where {T} = unsafe_convert(Ptr{T}, p.data)
 
 # Equality
-isequal(A::PhysicalParameter, B::PhysicalParameter) = (A.data == B.data && A.o == B.o && A.d == B.d)
+==(A::PhysicalParameter, B::PhysicalParameter) = (A.data == B.data && A.o == B.o && A.d == B.d)
 isapprox(A::PhysicalParameter, B::PhysicalParameter; kwargs...) = (isapprox(A.data, B.data) && A.o == B.o && A.d == B.d)
 isapprox(A::PhysicalParameter, B::AbstractArray; kwargs...) = isapprox(A.data, B)
 isapprox(A::AbstractArray, B::PhysicalParameter; kwargs...) = isapprox(A, B.data)
@@ -156,24 +161,11 @@ function compare(A::PhysicalParameter, B::PhysicalParameter)
     A.n != B.n && throw(PhysicalParameterException("Incompatible sizes $(A.n) and $(B.n)"))
 end
 
-function +(A::PhysicalParameter{vDT}, B::PhysicalParameter{vDT}) where {vDT}
-    compare(A, B)
-    return PhysicalParameter(A.data + B.data, A)
-end
-
-function -(A::PhysicalParameter{vDT}, B::PhysicalParameter{vDT}) where {vDT}
-    compare(A, B)
-    return PhysicalParameter(A.data - B.data, A)
-end
-
-function *(A::PhysicalParameter{vDT}, B::PhysicalParameter{vDT}) where {vDT}
-    compare(A, B)
-    return PhysicalParameter(A.data .* B.data, A)
-end
-
-function /(A::PhysicalParameter{vDT}, B::PhysicalParameter{vDT}) where {vDT}
-    compare(A, B)
-    return PhysicalParameter(A.data ./ B.data, A)
+for op in [:+, :-, :*, :/]
+    @eval function $(op)(A::PhysicalParameter{T}, B::PhysicalParameter{T}) where T
+        compare(A, B)
+        return PhysicalParameter(broadcast($(op), A.data, B.data), A)
+    end
 end
 
 # Brodacsting
@@ -181,47 +173,31 @@ BroadcastStyle(::Type{<:PhysicalParameter}) = Broadcast.ArrayStyle{PhysicalParam
 
 function similar(bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{PhysicalParameter}}, ::Type{ElType}) where ElType
     # Scan the inputs for the ArrayAndChar:
-    A = find_aac(bc)
+    A = find_pm(bc)
     # Use the char field of A to create the output
     ElType == Bool ? Ad = similar(Array{ElType}, axes(A.data)) : Ad = similar(A.data)
     PhysicalParameter(Ad, A.d, A.o)
 end
 
-"`A = find_aac(As)` returns the first PhysicalParameter among the arguments."
-find_aac(bc::Base.Broadcast.Broadcasted) = find_aac(bc.args)
-find_aac(args::Tuple) = find_aac(find_aac(args[1]), Base.tail(args))
-find_aac(x) = x
-find_aac(::Tuple{}) = nothing
-find_aac(a::PhysicalParameter, rest) = a
-find_aac(::Any, rest) = find_aac(rest)
+"`A = find_pm(As)` returns the first PhysicalParameter among the arguments."
+find_pm(bc::Base.Broadcast.Broadcasted) = find_pm(bc.args)
+find_pm(args::Tuple) = find_pm(find_pm(args[1]), Base.tail(args))
+find_pm(x) = x
+find_pm(::Tuple{}) = nothing
+find_pm(a::PhysicalParameter, rest) = a
+find_pm(::Any, rest) = find_pm(rest)
 
-function broadcasted(f::Function, A::AbstractArray{vDT, N}, p::PhysicalParameter{RDT}) where {vDT, RDT, N}
-    if size(A) != p.n
-        if length(A) == length(p)
-            return PhysicalParameter(materialize(broadcasted(f, A, vec(p.data))), p.n, p.d, p.o)
+for op in [:+, :-, :*, :/]
+    for (T1, T2) in ([DenseArray, PhysicalParameter], [PhysicalParameter, DenseArray], 
+                     [PhysicalParameter, PhysicalParameter])
+        @eval function broadcasted(::typeof($op), A::$T1, B::$T2)
+            pm = find_pm(A, B)
+            return PhysicalParameter(materialize(broadcasted($(op), A[:], B[:])), pm)
         end
-        throw(PhysicalParameterException("Incompatible sizes $(size(A)) and $(p.n)"))
     end
-    return PhysicalParameter(materialize(broadcasted(f, A, p.data)), p.d, p.o)
+    @eval broadcasted(::typeof($op), p::PhysicalParameter, bc::Base.Broadcast.Broadcasted) = broadcasted($(op), p, materialize(bc))
+    @eval broadcasted(::typeof($op), bc::Base.Broadcast.Broadcasted, p::PhysicalParameter) = broadcasted($(op), materialize(bc), p)
 end
-
-function broadcasted(f::Function, p::PhysicalParameter{RDT}, A::AbstractArray{vDT, N}) where {vDT, RDT, N}
-    if size(A) != p.n
-        if length(A) == length(p)
-            return PhysicalParameter(materialize(broadcasted(f, vec(p.data), A)), p.n, p.d, p.o)
-        end
-        throw(PhysicalParameterException("Incompatible sizes $(size(A)) and $(p.n)"))
-    end
-    return PhysicalParameter(materialize(broadcasted(f, p.data, A)), p.d, p.o)
-end
-
-function broadcasted(f::Function, p1::PhysicalParameter{RDT}, p2::PhysicalParameter{RDT}) where {RDT}
-    p1.n != p2.n && throw(PhysicalParameterException("Incompatible sizes $(p1.n) and $(p2.n)"))
-    return PhysicalParameter(materialize(broadcasted(f, p1.data, p2.data)), p1.d, p1.o)
-end
-
-broadcasted(f::Function, p::PhysicalParameter, bc::Base.Broadcast.Broadcasted) = broadcasted(f, p, materialize(bc))
-broadcasted(f::Function, bc::Base.Broadcast.Broadcasted, p::PhysicalParameter) = broadcasted(f, materialize(bc), p)
 
 function *(A::Union{joMatrix, joLinearFunction, joLinearOperator, joCoreBlock}, p::PhysicalParameter{RDT}) where {RDT}
     @warn "JOLI linear operator, returning julia Array"
@@ -333,5 +309,10 @@ function Base.getproperty(obj::Model, sym::Symbol)
     end
 end
 
-similar(x::PhysicalParameter{vDT}, m::Model) where {vDT} = PhysicalParameter(m.n, m.d, m.o; vDT=vDT)
-similar(x::Array, m::Model) where {vDT} = similar(x, m.n)
+similar(::PhysicalParameter{vDT}, m::Model) where {vDT} = PhysicalParameter(m.n, m.d, m.o; vDT=vDT)
+similar(x::Array, m::Model) = similar(x, m.n)
+
+ndims(m::Model) = ndims(m.m.data)
+
+display(m::Model) = println("Model (n=$(m.n), d=$(m.d), o=$(m.o)) with parameters $(keys(m.params))")
+show(io::IO, m::Model) = print(io, "Model (n=$(m.n), d=$(m.d), o=$(m.o)) with parameters $(keys(m.params))")

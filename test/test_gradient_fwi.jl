@@ -6,17 +6,9 @@
 # Mathias Louboutin, mlouboutin3@gatech.edu
 # Updated July 2020
 
-parsed_args = parse_commandline()
-
-
-nlayer = parsed_args["nlayer"]
-tti = parsed_args["tti"]
-viscoacoustic = parsed_args["viscoacoustic"]
-fs = parsed_args["fs"]
-
 ### Model
 model, model0, dm = setup_model(tti, viscoacoustic, 4)
-q, srcGeometry, recGeometry, info, f0 = setup_geom(model)
+q, srcGeometry, recGeometry, f0 = setup_geom(model)
 dt = srcGeometry.dt[1]
 
 ###################################################################################################
@@ -32,7 +24,7 @@ dt = srcGeometry.dt[1]
 
 	# Observed data
 	opt = Options(sum_padding=true, free_surface=fs, f0=f0)
-	F = judiModeling(info, model, srcGeometry, recGeometry; options=opt)
+	F = judiModeling(model, srcGeometry, recGeometry; options=opt)
 	d = F*q
 
 	# FWI gradient and function value for m0

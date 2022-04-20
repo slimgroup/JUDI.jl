@@ -115,7 +115,7 @@ run(`wget ftp://slim.gatech.edu/data/SoftwareRelease/Imaging.jl/2DLSRTM/marmousi
 run(`wget ftp://slim.gatech.edu/data/SoftwareRelease/Imaging.jl/2DLSRTM/marmousi_migration_velocity.h5`)
 ```
 
-Once again, load the starting model and the data and set up the source wavelet. For this example, we use a Ricker wavelet with 30 Hertz peak frequency. For setting up matrix-free linear operators, an `info` structure with the dimensions of the problem is required:
+Once again, load the starting model and the data and set up the source wavelet. For this example, we use a Ricker wavelet with 30 Hertz peak frequency.
 
 ```julia
 using PyPlot, HDF5, JUDI, SegyIO, Random
@@ -143,7 +143,7 @@ To speed up the convergence of our imaging example, we set up a basic preconditi
 ```julia
 # Set up matrix-free linear operators
 opt = Options(optimal_checkpointing = true)    # set to false to disable optimal checkpointing
-F = judiModeling(info, model0, q.geometry, dD.geometry; options=opt)
+F = judiModeling(model0, q.geometry, dD.geometry; options=opt)
 J = judiJacobian(F, q)
 
 # Right-hand preconditioners (model topmute)

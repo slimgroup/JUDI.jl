@@ -64,6 +64,10 @@ jobs:
           version: ${{ matrix.version }}
           arch: x64
 
+      - name: Set julia python
+        run: |
+          PYTHON=$(which python3) julia -e 'using Pkg;Pkg.add("PyCall");Pkg.build("PyCall")'
+
       - name: Build JUDI
         uses: julia-actions/julia-buildpkg@latest
 

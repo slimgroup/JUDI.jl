@@ -5,15 +5,7 @@
 
 using Distributed
 
-parsed_args = parse_commandline()
-
-nlayer = parsed_args["nlayer"]
-tti = parsed_args["tti"]
-viscoacoustic = parsed_args["viscoacoustic"]
-fs = parsed_args["fs"]
-
 # # Set parallel if specified
-nw = parsed_args["parallel"]
 if nw > 1 && nworkers() < nw
     addprocs(nw-nworkers() + 1; exeflags=["--code-coverage=user", "--inline=no", "--check-bounds=yes"])
 end
@@ -21,8 +13,8 @@ end
 @everywhere using JUDI, LinearAlgebra, Test, Distributed
 
 ### Model
-model, model0, dm = setup_model(tti, viscoacoustic, nlayer; rand_dm=true)
-q, srcGeometry, recGeometry, info, f0 = setup_geom(model; nsrc=nw)
+model, model0, dm = setup_model(tti, viscoacoustic, nlayer)
+q, srcGeometry, recGeometry, f0 = setup_geom(model; nsrc=nw)
 dt = srcGeometry.dt[1]
 
 # testing parameters and utils
@@ -38,7 +30,7 @@ function run_adjoint(F, q, y, dm; test_F=true, test_J=true)
     if test_F
         # Forward-adjoint
         d_hat = F*q
-        q_hat = adjoint(F)*y
+        q_hat = F'*y
 
         # Result F
         a = dot(y, d_hat)
@@ -94,9 +86,9 @@ end
     @timeit TIMEROUTPUT "Extended source adjoint" begin
         opt = Options(sum_padding=true, dt_comp=dt, free_surface=parsed_args["fs"], f0=f0)
         F = judiModeling(model0, srcGeometry, recGeometry; options=opt)
-        Pr = judiProjection(info, recGeometry)
-        Fw = judiModeling(info, model0; options=opt)
-        Pw = judiLRWF(info, circshift(q.data[1], 51))
+        Pr = judiProjection(recGeometry)
+        Fw = judiModeling(model0; options=opt)
+        Pw = judiLRWF(srcGeometry.dt[1], circshift(q.data[1], 51))
         Fw = Pr*Fw*adjoint(Pw)
 
         # Extended source weights

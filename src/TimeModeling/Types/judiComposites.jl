@@ -7,7 +7,7 @@ mutable struct judiVStack{vDT<:Number}
     components::Array{Any, 1}
 end
 
-function vcat(x::judiVector, y::judiWeights)
+function vcat(x::judiMultiSourceVector, y::judiMultiSourceVector)
     components = Array{Any}(undef, 2)
     components[1] = x
     components[2] = y
@@ -16,16 +16,7 @@ function vcat(x::judiVector, y::judiWeights)
     return judiVStack{Float32}(m, n, components)
 end
 
-function vcat(x::judiWeights, y::judiVector)
-    components = Array{Any}(undef, 2)
-    components[1] = x
-    components[2] = y
-    m = length(x)+length(y)
-    n = 1
-    return judiVStack{Float32}(m, n, components)
-end
-
-function vcat(x::judiVStack, y::Union{judiWeights, judiVector})
+function vcat(x::judiVStack, y::judiMultiSourceVector)
     components = Array{Any}(undef, length(x.components) + 1)
     for i=1:length(x.components)
         components[i] = x.components[i]
@@ -36,7 +27,7 @@ function vcat(x::judiVStack, y::Union{judiWeights, judiVector})
     return judiVStack{Float32}(m, n, components)
 end
 
-function vcat(x::Union{judiWeights, judiVector}, y::judiVStack)
+function vcat(x::judiMultiSourceVector, y::judiVStack)
     components = Array{Any}(undef, length(y.components) + 1)
     components[1] = x
     for i=2:length(y.components)+1
@@ -62,10 +53,22 @@ function vcat(x::judiVStack, y::judiVStack)
     return judiVStack{Float32}(m, n, components)
 end
 
+
+for T ∈ [judiVector, judiWeights, judiWavefield]
+    @eval begin
+        function vcat(x::$T, y::$T)
+            xn = deepcopy(x)
+            push!(xn, y)
+            return xn
+        end
+    end
+end
+
 function *(F::joAbstractLinearOperator, v::judiVStack)
     return sum(F.fop[i]*v[i] for i=1:length(v.components))
 end
 
+(msv::judiMultiSourceVector{T})(x::judiVStack{T}) where {T} = x
 ############################################################
 ## overloaded Base functions
 
@@ -198,12 +201,12 @@ function materialize!(x::judiVStack, y::judiVStack)
     return x
 end
 
-function broadcast!(identity, x::judiVStack, y::judiVStack)
+function broadcast!(::typeof(identity), x::judiVStack, y::judiVStack)
     size(x) == size(y) || throw(judiWeightsException("dimension mismatch"))
     copy!(x,y)
 end
 
-function broadcasted(identity, x::judiVStack)
+function broadcasted(::typeof(identity), x::judiVStack)
     return x
 end
 
@@ -218,28 +221,24 @@ function copy!(x::judiVStack, y::judiVStack)
     end
 end
 
-function isapprox(x::judiVStack, y::judiVStack; rtol::Real=sqrt(eps()), atol::Real=0)
+function isapprox(x::judiVStack, y::judiVStack; rtol::AbstractFloat=sqrt(eps()), atol::AbstractFloat=0.0)
     x.m == y.m || throw("Shape error")
     all(isapprox(xx, yy; rtol=rtol, atol=atol) for (xx, yy)=zip(x.components, y.components))
 end
 
 ############################################################
 
-function A_mul_B!(x::judiWeights, F::joCoreBlock, y::judiVStack)
+function A_mul_B!(x::judiMultiSourceVector, F::joCoreBlock, y::judiVStack)
     F.m == size(y, 1) ? z = adjoint(F)*y : z = F*y
-    x.weights = z.weights
+    x.data .= z.data
 end
 
-function A_mul_B!(x::judiVStack, F::joCoreBlock, y::judiWeights)
+function A_mul_B!(x::judiVStack, F::joCoreBlock, y::judiMultiSourceVector)
     F.m == size(y, 1) ? z = adjoint(F)*y : z = F*y
     for j=1:length(x.components)
-        try
-            x.components[j].data .= z.components[j].data
-        catch e
-            x.components[j].weights .= z.components[j].weights
-        end
+        x.components[j].data .= z.components[j].data
     end
 end
 
-mul!(x::judiWeights, J::joCoreBlock, y::judiVStack) = A_mul_B!(x, J, y)
-mul!(x::judiVStack, J::joCoreBlock, y::judiWeights) = A_mul_B!(x, J, y)
+mul!(x::judiMultiSourceVector, J::joCoreBlock, y::judiVStack) = A_mul_B!(x, J, y)
+mul!(x::judiVStack, J::joCoreBlock, y::judiMultiSourceVector) = A_mul_B!(x, J, y)

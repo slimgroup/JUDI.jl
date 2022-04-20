@@ -29,7 +29,7 @@ so = args.space_order
 dtype = np.float32
 
 # Model
-shape = (301, 151)
+shape = (301, 301)
 spacing = (10., 10.)
 origin = (0., 0.)
 m = np.empty(shape, dtype=dtype)

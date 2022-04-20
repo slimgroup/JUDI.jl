@@ -14,7 +14,7 @@ using JUDI, PyPlot, JLD, SegyIO, JOLI, Random
 # Load Sigsbee model
 M = load("sigsbee2A_model.jld")
 
-# Setup info and model structure
+# Setup model structure
 model0 = Model(M["n"], M["d"], M["o"], M["m0"])
 dm = vec(M["dm"])
 
@@ -27,19 +27,14 @@ src_geometry = Geometry(container; key="source")
 wavelet = ricker_wavelet(src_geometry.t[1], src_geometry.dt[1], 0.015)  # 15 Hz peak frequency
 q = judiVector(src_geometry, wavelet)
 
-# Set up info structure for linear operators
-ntComp = get_computational_nt(q.geometry,d_lin.geometry, model0)
-info = Info(prod(model0.n), d_lin.nsrc, ntComp)
-
-
 #################################################################################################
 
 opt = Options(isic=true, optimal_checkpointing=true)
 
 # Setup operators
-Pr = judiProjection(info, d_lin.geometry)
-F0 = judiModeling(info, model0; options=opt)
-Ps = judiProjection(info, src_geometry)
+Pr = judiProjection(d_lin.geometry)
+F0 = judiModeling(model0; options=opt)
+Ps = judiProjection(src_geometry)
 J = judiJacobian(Pr*F0*Ps', q)
 
 # Right-hand preconditioners (model topmute)
@@ -49,8 +44,8 @@ S = judiDepthScaling(model0)
 Mr = S*Tm
 
 # Linearized Bregman parameters
-x = zeros(Float32, info.n)
-z = zeros(Float32, info.n)
+x = zeros(Float32, prod(model0.n))
+z = zeros(Float32, prod(model0.n))
 batchsize = 100
 niter = 20
 fval = zeros(Float32, niter)

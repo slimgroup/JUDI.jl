@@ -1,9 +1,9 @@
 # The Julia Devito Inversion framework (JUDI)
 
-[![](https://img.shields.io/badge/docs-stable-blue.svg)](https://slimgroup.github.io/JUDI.jl) 
-[![Build Status ](https://github.com/slimgroup/JUDI.jl/workflows/CI-tests/badge.svg)](https://github.com/slimgroup/JUDI.jl/actions/workflows/ci-op.yml)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3878711.svg)](https://doi.org/10.5281/zenodo.3878711)
-[![codecov](https://codecov.io/gh/slimgroup/JUDI.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/slimgroup/JUDI.jl)
+| **Documentation**     | **Build Status**    |                      |
+|:--------------------------------------:|:-----------------------------------------------:|:----------------------------------------------------:|
+| [![][docs-stable-img]][docs-stable-status] [![][docs-dev-img]][docs-dev-status] | [![][build-img]][build-status] [![][codecov-img]][codecov-status] [![][aqua-img]][aqua-status] | [![][license-img]][license-status] [![][zenodo-img]][zenodo-status] |
+
 
 ## Overview
 
@@ -52,7 +52,7 @@ export DEVITO_PLATFORM=nvidiaX
 
 ## Running with Docker
 
-If you do not want to install JUDI, you can run [JUDI] as a [docker image](https://hub.docker.com/repository/docker/mloubout/judi). The first possibility is to run the docker container as a Jupyter notebook. [JUDI] provides two docker images for the latest [JUDI] release for Julia versions `1.6` (LTS) and `1.7` (latest stable version). The images names are `mloubout/judi:JVER-latest` where `JVER` is the Julia version. This docker images contains pre-installed compilers for CPUs (gcc 10) and Nvidia GPUs (nvc) vi the nvidia HPC sdk. The environment is automatically set for [Devito] based on the hardware available. 
+If you do not want to install JUDI, you can run [JUDI] as a [docker image](https://hub.docker.com/repository/docker/mloubout/judi). The first possibility is to run the docker container as a Jupyter notebook. [JUDI] provides two docker images for the latest [JUDI] release for Julia versions `1.6` (LTS) and `1.7` (latest stable version). The images names are `mloubout/judi:JVER-latest` where `JVER` is the Julia version. This docker images contain pre-installed compilers for CPUs (gcc-10) and Nvidia GPUs (nvc) via the nvidia HPC sdk. The environment is automatically set for [Devito] based on the hardware available. 
 
 **Note**: If you wish to use your gpu, you will need to install [nvidia-docker](https://docs.nvidia.com/ai-enterprise/deployment-guide/dg-docker.html) and run `docker run --gpus all` in order to make the GPUs available at runtime from within the image.
 
@@ -72,8 +72,7 @@ Inside the container, all examples are located in the directory `/app/judi/examp
 
 **Previous versions**: As of version `v2.6.7` of JUDI, we also ship version-tagged images as `mloubout/judi:JVER-ver` where `ver` is the version of [JUDI] wanted, for example the current [JUDI] version with Julia 1.7 is `mloubout/judi:1.7-v2.6.7`
 
-**Development version**: Additionaly, we provide two images corresponding to the latest development version of [JUDI] (latest state of the master branch). These images are called `mloubout/judi:JVER-dev` and can be used in ta similar way.
-
+**Development version**: Additionally, we provide two images corresponding to the latest development version of [JUDI] (latest state of the master branch). These images are called `mloubout/judi:JVER-dev` and can be used in a similar way.
 
 
 ## Testing
@@ -88,12 +87,12 @@ via:
 By default, only the [JUDI] base API will be tested. However, the testing suite supports other modes controlled via the environment variable `GROUP` such as:
 
 ```Julia
-	GROUP=[JUDI] Julia --project -e 'using Pkg;Pkg.test(coverage=false)'
+	GROUP=JUDI Julia --project -e 'using Pkg;Pkg.test(coverage=false)'
 ```
 
 The supported modes are:
 
-- [JUDI] : Only the base API (linear operators, vectors, ...)
+- JUDI : Only the base API (linear operators, vectors, ...)
 - BASICS: Generic modeling and inversion tests such as out of core behavior
 - ISO_OP : Isotropic acoustic operators
 - ISO_OP_FS : Isotropic acoustic operators with free surface
@@ -230,7 +229,7 @@ To speed up the convergence of our imaging example, we set up a basic preconditi
 ```Julia
 # Set up matrix-free linear operators
 opt = Options(optimal_checkpointing = true)    # set to false to disable optimal checkpointing
-F = judiModeling(info, model0, q.geometry, dD.geometry; options=opt)
+F = judiModeling(model0, q.geometry, dD.geometry; options=opt)
 J = judiJacobian(F, q)
 
 # Right-hand preconditioners (model topmute)
@@ -313,8 +312,26 @@ eprint = {https://doi.org/10.1190/geo2018-0174.1}
 
 Also visit the Devito homepage at <https://www.devitoproject.org/publications> for more information and references.
 
-Contact authors via: pwitte3@gatech.edu and mlouboutin3@gatech.edu.
+Contact authors via: mlouboutin3@gatech.edu.
 
 
-[Devito]:https://github.com/devitocodes/devito
-[JUDI]:https://github.com/slimgroup/JUDI.jl
+[docs-stable-img]:https://img.shields.io/badge/docs-stable-blue.svg
+[docs-stable-status]:https://slimgroup.github.io/JUDI.jl
+
+[docs-dev-img]:https://img.shields.io/badge/docs-dev-blue.svg
+[docs-dev-status]:https://slimgroup.github.io/JUDI.jl/dev
+
+[build-img]:https://github.com/slimgroup/JUDI.jl/workflows/CI-tests/badge.svg
+[build-status]:https://github.com/slimgroup/JUDI.jl/actions?query=workflow%3ACI-tests
+
+[codecov-img]:https://codecov.io/gh/slimgroup/JUDI.jl/branch/master/graph/badge.svg
+[codecov-status]:https://codecov.io/gh/slimgroup/JUDI.jl
+
+[aqua-img]:https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg
+[aqua-status]:https://github.com/JuliaTesting/Aqua.jl
+
+[zenodo-img]:https://zenodo.org/badge/DOI/10.5281/zenodo.3878711.svg
+[zenodo-status]:https://doi.org/10.5281/zenodo.3878711
+
+[license-img]:http://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat
+[license-status]:LICENSE.md

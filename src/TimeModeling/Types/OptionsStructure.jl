@@ -3,21 +3,19 @@
 # Date: May 2017
 #
 
-export Options, subsample
+export Options, JUDIOptions
 
 # Object for velocity/slowness models
-mutable struct Options
+mutable struct JUDIOptions
     space_order::Integer
     free_surface::Bool
     limit_m::Bool
-    buffer_size::Real
+    buffer_size::AbstractFloat
     save_data_to_disk::Bool
     file_path::String
     file_name::String
     sum_padding::Bool
     optimal_checkpointing::Bool
-    num_checkpoints::Union{Integer, Nothing}
-    checkpoints_maxmem::Union{Real, Nothing}
     frequencies::Array
     isic::Bool
     subsampling_factor::Integer
@@ -28,19 +26,17 @@ mutable struct Options
 end
 
 """
-    Options
+    JUDIOptions
         space_order::Integer
         free_surface::Bool
         limit_m::Bool
-        buffer_size::Real
-        save_rate::Real
+        buffer_size::AbstractFloat
+        save_rate::AbstractFloat
         save_data_to_disk::Bool
         file_path::String
         file_name::String
         sum_padding::Bool
         optimal_checkpointing::Bool
-        num_checkpoints::Integer
-        checkpoints_maxmem::Real
 	    frequencies::Array
 	    isic::Bool
         subsampling_factor::Integer
@@ -70,10 +66,6 @@ Options structure for seismic modeling.
 `sum_padding`: when removing the padding area of the gradient, sum into boundary rows/columns for true adjoints
 
 `optimal_checkpointing`: instead of saving the forward wavefield, recompute it using optimal checkpointing
-
-`num_checkpoints`: number of checkpoints. If not supplied, is set to log(num_timesteps).
-
-`checkpoints_maxmem`: maximum amount of memory that can be allocated for checkpoints (MB)
 
 `frequencies`: calculate the FWI/LS-RTM gradient in the frequency domain for a given set of frequencies
 
@@ -123,7 +115,7 @@ Options(;space_order=8,
          return_array=false,
          dt_comp=nothing,
          f0=0.015f0) =
-		 Options(space_order,
+		 JUDIOptions(space_order,
 		 		 free_surface,
 		         limit_m,
 				 buffer_size,
@@ -132,8 +124,6 @@ Options(;space_order=8,
 				 file_name,
 				 sum_padding,
 				 optimal_checkpointing,
-				 num_checkpoints,
-				 checkpoints_maxmem,
 				 frequencies,
 				 isic,
 				 subsampling_factor,
@@ -142,7 +132,17 @@ Options(;space_order=8,
                  dt_comp,
                  f0)
 
-function subsample(options::Options, srcnum)
+JUDIOptions(;kw...) = Options(kw...)
+
+update!(::JUDIOptions, ::Nothing) = nothing
+
+function update!(O::JUDIOptions, other::JUDIOptions)
+    for f in fieldnames(JUDIOptions)
+        setfield!(O, f, getfield(other, f))
+    end
+end
+
+function getindex(options::JUDIOptions, srcnum)
     if isempty(options.frequencies)
         return options
     else
@@ -152,3 +152,5 @@ function subsample(options::Options, srcnum)
         return opt_out
     end
 end
+
+subsample(options::JUDIOptions, srcnum) = getindex(options, srcnum)

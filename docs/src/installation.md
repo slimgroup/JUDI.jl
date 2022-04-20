@@ -15,42 +15,84 @@ This will install JUDI, and the `build` will install the necessary dependencies 
 
 ## Custom installation
 
-In some case you may want to have your own installation of Devtio you want JUDI to use in which case you should foloow these steps.
+In some case you may want to have your own installation of Devito you want JUDI to use in which case you should foloow these steps.
 
-First, install Devito using `pip`, or see the [Devito's GitHub page](https://github.com/devitocodes/devito) for installation with Conda and further information. The current release of JUDI requires Python 3 and the current Devito version. Run all of the following commands from the (bash) terminal command line (not in the Julia REPL):
+You can find installation instruction in our Wiki at [Installation](https://github.com/slimgroup/JUDI.jl/wiki/Installation).
 
-```bash
-pip3 install --user git+https://github.com/devitocodes/devito.git
+JUDI is a registered package and can therefore be easily installed from the General registry with `]add/dev JUDI`
+
+## GPU
+
+JUDI supports the computation of the wave equation on GPU via [Devito](https://www.devitoproject.org)'s GPU offloading support.
+
+**NOTE**: Only the wave equation part will be computed on GPU, the julia arrays will still be CPU arrays and `CUDA.jl` is not supported.
+
+### Compiler installation
+
+To enable gpu support in JUDI, you will need to install one of [Devito](https://www.devitoproject.org)'s supported offloading compilers. We strongly recommend checking the [Wiki](https://github.com/devitocodes/devito/wiki) for installation steps and to reach out to the Devito community for GPU compiler related issues.
+
+- [x] `nvc/pgcc`. This is recommended and the simplest installation. You can install the compiler following Nvidia's installation instruction at [HPC-sdk](https://developer.nvidia.com/hpc-sdk)
+- [ ] `aompcc`. This is the AMD compiler that is necessary for running on AMD GPUs. This installation is not tested with JUDI and we recommend to reach out to Devito's team for installation guidelines.
+- [ ] `openmp5/clang`. This installation requires the compilation from source `openmp`, `clang` and `llvm` to install the latest version of `openmp5` enabling gpu offloading. You can find instructions on this installation in Devito's [Wiki](https://github.com/devitocodes/devito/wiki)
+
+### Setup
+
+The only required setup for GPU support are the environment variables for [Devito](https://www.devitoproject.org). For the currently supported `nvc+openacc` setup these are:
+
 ```
-
-Once Devito, SegyIO and JOLI are installed, you can install JUDI as follows:
-
-```julia
-] add JUDI
-```
-
-Once you have JUDI installed, you need to point Julia's PyCall package to the Python version for which we previsouly installed Devito. To do this, copy-paste the following commands into the (bash) terminal:
-
-```julia
-export PYTHON=$(which python3)
-julia -e 'using Pkg; Pkg.build("PyCall")'
+export DEVITO_LANGUAGE=openacc
+export DEVITO_ARCH=nvc
+export DEVITO_PLATFORM=nvidiaX
 ```
 
 ## Running with Docker
 
-If you do not want to install JUDI, you can run JUDI as a docker image. The first possibility is to run the docker container as a Jupyter notebook:
+If you do not want to install JUDI, you can run [JUDI] as a [docker image](https://hub.docker.com/repository/docker/mloubout/judi). The first possibility is to run the docker container as a Jupyter notebook. [JUDI] provides two docker images for the latest [JUDI] release for Julia versions `1.6` (LTS) and `1.7` (latest stable version). The images names are `mloubout/judi:JVER-latest` where `JVER` is the Julia version. This docker images contain pre-installed compilers for CPUs (gcc-10) and Nvidia GPUs (nvc) via the nvidia HPC sdk. The environment is automatically set for [Devito] based on the hardware available. 
 
-```
-docker run -p 8888:8888 philippwitte/judi:v1.3
+**Note**: If you wish to use your gpu, you will need to install [nvidia-docker](https://docs.nvidia.com/ai-enterprise/deployment-guide/dg-docker.html) and run `docker run --gpus all` in order to make the GPUs available at runtime from within the image.
+
+To run [JUDI] via docker execute the following command in your terminal:
+
+```bash
+docker run -p 8888:8888 mloubout/judi:1.7-latest
 ```
 
-This command downloads the image and launches a container. You will see a link that you can copy-past to your browser to access the notebooks. Alternatively, you can run a bash session, in which you can start a regular interactive Julia session and run the example scripts. Download/start the container as a bash session with:
+This command downloads the image and launches a container. You will see a link that you can copy-paste to your browser to access the notebooks. Alternatively, you can run a bash session, in which you can start a regular interactive Julia session and run the example scripts. Download/start the container as a bash session with:
 
-```
-docker run -it philippwitte/judi:v1.3 /bin/bash
+```bash
+docker run -it mloubout/judi:1.7-latest /bin/bash
 ```
 
 Inside the container, all examples are located in the directory `/app/judi/examples/scripts`.
+
+**Previous versions**: As of version `v2.6.7` of JUDI, we also ship version-tagged images as `mloubout/judi:JVER-ver` where `ver` is the version of [JUDI] wanted, for example the current [JUDI] version with Julia 1.7 is `mloubout/judi:1.7-v2.6.7`
+
+**Development version**: Additionally, we provide two images corresponding to the latest development version of [JUDI] (latest state of the master branch). These images are called `mloubout/judi:JVER-dev` and can be used in a similar way.
+
+## Testing
+
+A complete test suite is included with JUDI and is tested via GitHub Actions. You can also run the test locally
+via:
+
+```julia
+    julia --project -e 'using Pkg;Pkg.test(coverage=false)'
+```
+
+By default, only the JUDI base API will be tested, however the testing suite supports other modes controlled via the environemnt variable `GROUP` such as:
+
+```julia
+	GROUP=JUDI julia --project -e 'using Pkg;Pkg.test(coverage=false)'
+```
+
+The supported modes are:
+
+- JUDI : Only the base API (linear operators, vectors, ...)
+- ISO_OP : Isotropic acoustic operators
+- ISO_OP_FS : Isotropic acoustic operators with free surface
+- TTI_OP : Transverse tilted isotropic operators
+- TTI_OP_FS : Transverse tilted isotropic operators with free surface
+- filename : you can also provide just a filename (i.e `GROUP=test_judiVector.jl`) and only this one test file will be run. Single files with TTI or free surface are not currently supported as it relies on `Base.ARGS` for the setup.
+
 
 ## Configure compiler and OpenMP
 

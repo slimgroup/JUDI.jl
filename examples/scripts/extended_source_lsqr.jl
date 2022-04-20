@@ -18,7 +18,7 @@ v[:,Int(round(end/2)):end] .= 5f0
 # Slowness squared [s^2/km^2]
 m = (1f0 ./ v).^2
 
-# Setup info and model structure
+# Setup model structure
 nsrc = 1	# number of sources
 model = Model(n, d, o, m)
 
@@ -39,28 +39,24 @@ recGeometry = Geometry(xrec, yrec, zrec; dt=dt, t=time, nsrc=nsrc)
 f0 = 0.01f0     # kHz
 wavelet = ricker_wavelet(time, dt, f0)
 
-# Set up info structure for linear operators
-ntComp = get_computational_nt(recGeometry, model)
-info = Info(prod(n), nsrc, ntComp)
-
 ###################################################################################################
 
 # Write shots as segy files to disk
 opt = Options()
 
 # Setup operators
-Pr = judiProjection(info, recGeometry)
-F = judiModeling(info, model; options=opt)
+Pr = judiProjection(recGeometry)
+F = judiModeling(model; options=opt)
 
 # Random weights (size of the model)
 w = judiWeights(randn(Float32, model.n))
 
 # Create operator for injecting the weights, multiplied by the provided wavelet(s)
-Pw = judiLRWF(info, wavelet)
+Pw = judiLRWF(dt, wavelet)
 
 # Model observed data w/ extended source
 lambda = 1f2
-I = joDirac(info.n, DDT=Float32, RDT=Float32)
+I = joDirac(prod(model.n), DDT=Float32, RDT=Float32)
 F = Pr*F*adjoint(Pw)
 F̄ = [F; lambda*I]
 

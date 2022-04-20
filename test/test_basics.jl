@@ -112,54 +112,48 @@ function setup_3d()
 end
 
 @testset "Test basic utilities" begin
-    setup_3d()
-    for ndim=[2, 3]
-        test_padding(ndim)
-    end
-    opt = Options(frequencies=[[2.5, 4.5], [3.5, 5.5]])
-    @test subsample(opt, 1).frequencies == [2.5, 4.5]
-    @test subsample(opt, 2).frequencies == [3.5, 5.5]
+    @timeit TIMEROUTPUT "Basic setup utilities" begin
+        setup_3d()
+        for ndim=[2, 3]
+            test_padding(ndim)
+        end
+        opt = Options(frequencies=[[2.5, 4.5], [3.5, 5.5]])
+        @test subsample(opt, 1).frequencies == [2.5, 4.5]
+        @test subsample(opt, 2).frequencies == [3.5, 5.5]
 
-    for ndim=[2, 3]
-        for tti=[true, false]
-            test_limit_m(ndim, tti)
+        for ndim=[2, 3]
+            for tti=[true, false]
+                test_limit_m(ndim, tti)
+            end
+        end
+
+        # Test model
+        for ndim=[2, 3]
+            for tti=[true, false]
+                model =  test_model(ndim; tti=tti)
+
+                # Default dt
+                modelPy = devito_model(model, Options())
+                @test get_dt(model) == calculate_dt(model)
+                @test isapprox(modelPy.critical_dt, calculate_dt(model))
+                @test isapprox(calculate_dt(model; dt=.5f0), .5f0)
+
+                # Input dt
+                modelPy = devito_model(model, Options(dt_comp=.5f0))
+                @test modelPy.critical_dt == .5f0
+
+                # Verify nt
+                srcGeometry = example_src_geometry()
+                recGeometry = example_rec_geometry(cut=true)
+                nt1 = get_computational_nt(srcGeometry, recGeometry, model)
+                nt2 = get_computational_nt(srcGeometry, model)
+                nt3 = get_computational_nt(srcGeometry, recGeometry, model; dt=1f0)
+                nt4 = get_computational_nt(srcGeometry, model; dt=1f0)
+                @test all(nt1 .== (trunc(Int64, 1000f0 / calculate_dt(model)) + 1))
+                @test all(nt1 .== nt2)
+                @test all(nt3 .== 1001)
+                @test all(nt4 .== 1001)
+            end
         end
     end
-
-    # Test model
-    for ndim=[2, 3]
-        for tti=[true, false]
-            model =  test_model(ndim; tti=tti)
-
-            # Default dt
-            modelPy = devito_model(model, Options())
-            @test get_dt(model) == calculate_dt(model)
-            @test isapprox(modelPy.critical_dt, calculate_dt(model))
-            @test isapprox(calculate_dt(model; dt=.5f0), .5f0)
-
-            # Input dt
-            modelPy = devito_model(model, Options(dt_comp=.5f0))
-            @test modelPy.critical_dt == .5f0
-
-            # Verify nt
-            srcGeometry = example_src_geometry()
-            recGeometry = example_rec_geometry(cut=true)
-            nt1 = get_computational_nt(srcGeometry, recGeometry, model)
-            nt2 = get_computational_nt(srcGeometry, model)
-            nt3 = get_computational_nt(srcGeometry, recGeometry, model; dt=1f0)
-            nt4 = get_computational_nt(srcGeometry, model; dt=1f0)
-            @test all(nt1 .== (trunc(Int64, 1000f0 / calculate_dt(model)) + 1))
-            @test all(nt1 .== nt2)
-            @test all(nt3 .== 1001)
-            @test all(nt4 .== 1001)
-        end
-    end
-
-    # Test info subsampling
-    info = Info(400, 4, [50,100,150,200])
-    info1 = subsample(info, [1,3])
-    @test info1.n == info.n
-    @test info1.nsrc == 2
-    @test info1.nt == [50,150]
-
 end

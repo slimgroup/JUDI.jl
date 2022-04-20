@@ -38,7 +38,7 @@ q = judiVector(src_geometry, wavelet)
 
 # Info structure for linear operators
 ntComp = get_computational_nt(src_geometry, d_obs.geometry, model0)    # no. of computational time steps
-info = Info(prod(model0.n), d_obs.nsrc, ntComp)
+
 
 
 ###################################################################################################
@@ -50,7 +50,7 @@ opt = Options(limit_m = true,
 			  dft_subsampling_factor=8)
 
 # Setup operators
-F = judiModeling(info, model0, q.geometry, d_obs.geometry; options=opt)
+F = judiModeling(model0, q.geometry, d_obs.geometry; options=opt)
 J = judiJacobian(F, q)
 
 # Right-hand preconditioners
@@ -59,8 +59,8 @@ T = judiTopmute(model0.n, (1 .- water_bottom), [])
 Mr = D*T
 
 # Linearized Bregman parameters
-x = zeros(Float32, info.n)
-z = zeros(Float32, info.n)
+x = zeros(Float32, prod(model0.n))
+z = zeros(Float32, prod(model0.n))
 batchsize = 200
 niter = 20
 nfreq = 20

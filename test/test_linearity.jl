@@ -5,22 +5,15 @@
 # Mathias Louboutin, mlouboutin3@gatech.edu
 # Updated July 2020
 
-parsed_args = parse_commandline()
-
-nlayer = parsed_args["nlayer"]
-tti = parsed_args["tti"]
-fs =  parsed_args["fs"]
-viscoacoustic = parsed_args["viscoacoustic"]
-
 ### Model
-model, model0, dm = setup_model(parsed_args["tti"], parsed_args["viscoacoustic"], parsed_args["nlayer"])
-q1, srcGeometry1, recGeometry, info, f0 = setup_geom(model)
+model, model0, dm = setup_model(tti, viscoacoustic, nlayer)
+q1, srcGeometry1, recGeometry, f0 = setup_geom(model)
 srcGeometry2 = deepcopy(srcGeometry1)
 srcGeometry2.xloc[:] .= .9*srcGeometry2.xloc[:]
 srcGeometry2.zloc[:] .= .9*srcGeometry2.zloc[:]
 dt = srcGeometry1.dt[1]
 
-opt = Options(free_surface=parsed_args["fs"], f0=f0)
+opt = Options(free_surface=fs, f0=f0)
 ftol = 5f-5
 
 ####################### Modeling operators ##########################################
@@ -28,10 +21,10 @@ ftol = 5f-5
 @testset "Linearity test with $(nlayer) layers and tti $(tti) and viscoacoustic $(viscoacoustic) and freesurface $(fs)" begin
     @timeit TIMEROUTPUT "Linearity" begin
         # Modeling operators
-        Pr = judiProjection(info,recGeometry)
-        Ps1 = judiProjection(info,srcGeometry1)
-        Ps2 = judiProjection(info,srcGeometry2)
-        F = judiModeling(info,model; options=opt)
+        Pr = judiProjection(recGeometry)
+        Ps1 = judiProjection(srcGeometry1)
+        Ps2 = judiProjection(srcGeometry2)
+        F = judiModeling(model; options=opt)
         q2 = judiVector(srcGeometry2,q1.data[1])
 
         A1 = Pr*F*adjoint(Ps1)
@@ -152,9 +145,9 @@ end
 @testset "Extended source linearity test with $(nlayer) layers and tti $(tti) and freesurface $(fs)" begin
     @timeit TIMEROUTPUT "Extended source Linearity" begin
         # Modeling operators
-        Pr = judiProjection(info, recGeometry)
-        F = judiModeling(info, model; options=opt)
-        Pw = judiLRWF(info, q1.data[1])
+        Pr = judiProjection(recGeometry)
+        F = judiModeling(model; options=opt)
+        Pw = judiLRWF(q1.geometry.dt[1], q1.data[1])
 
         A = Pr*F*adjoint(Pw)
         Aa = adjoint(A)
@@ -168,8 +161,8 @@ end
 
         d1 = A*w
         d2 = A*x
-        d3 = Pr*F*(adjoint(Pw)*w + adjoint(Pw)*x)
-        d4 = Pr*F*(adjoint(Pw)*w - adjoint(Pw)*x)
+        d3 = A*(w+x)
+        d4 = A*(w-x)
         d5 = A*(2f0 * w)
         d6 = (2f0 * A) * w
 

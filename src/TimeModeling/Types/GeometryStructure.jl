@@ -20,30 +20,34 @@ mutable struct GeometryIC{T} <: Geometry{T}
     t::Array{T,1}
 end
 
+getproperty(G::GeometryIC, s::Symbol) = s == :nrec ? length.(G.xloc) : getfield(G, s)
+
 # Out-of-core geometry structure, contains look-up table instead of coordinates
 mutable struct GeometryOOC{T} <: Geometry{T}
     container::Array{SegyIO.SeisCon,1}
     dt::Array{T,1}
     nt::Array{Integer,1}
     t::Array{T,1}
-    nsamples::Array{Integer,1}
+    nrec::Array{Integer,1}
     key::String
     segy_depth_key::String
 end
+
+
+display(G::Geometry) = println("$(typeof(G)) wiht $(length(G.nt)) sources")
+show(io::IO, G::Geometry) = print(io, "$(typeof(G)) wiht $(length(G.nt)) sources")
 
 ######################## shapes easy access ################################
 get_nsrc(g::GeometryIC) = length(g.xloc)
 get_nsrc(g::GeometryOOC) = length(g.container)
 
-n_samples(g::GeometryOOC, ::Info) = sum(g.nsamples)
-n_samples(g::GeometryIC, info::Info) = sum([length(g.xloc[j])*g.nt[j] for j=1:info.nsrc])
-n_samples(g::GeometryOOC, ::Integer) = sum(g.nsamples)
+n_samples(g::GeometryOOC, nsrc::Integer) = sum([g.nrec[j]*g.nt[j] for j=1:nsrc])
 n_samples(g::GeometryIC, nsrc::Integer) = sum([length(g.xloc[j])*g.nt[j] for j=1:nsrc])
 
 ################################################ Constructors ####################################################################
 
 """
-    Geometry
+    GeometryIC
         xloc::Array{Array{T, 1},1}
         yloc::Array{Array{T, 1},1}
         zloc::Array{Array{T, 1},1}
@@ -51,10 +55,18 @@ n_samples(g::GeometryIC, nsrc::Integer) = sum([length(g.xloc[j])*g.nt[j] for j=1
         nt::Array{Integer,1}
         t::Array{T,1}
 
-Geometry structure for seismic sources or receivers. Each field is a cell array, where individual cell entries\\
-contain values or arrays with coordinates and sampling information for the corresponding shot position. The \\
+Geometry structure for seismic sources or receivers. Each field is a cell array, where individual cell entries
+contain values or arrays with coordinates and sampling information for the corresponding shot position. The 
 first three entries are in meters and the last three entries in milliseconds.
 
+GeometryOOC{T} <: Geometry{T}
+    container::Array{SegyIO.SeisCon,1}
+    dt::Array{T,1}
+    nt::Array{Integer,1}
+    t::Array{T,1}
+    nrec::Array{Integer,1}
+    key::String
+    segy_depth_key::String
 
 Constructors
 ============
@@ -67,8 +79,8 @@ Pass single array as coordinates/parameters for all `nsrc` experiments:
 
     Geometry(xloc, yloc, zloc, dt=[], nt=[], nsrc=1)
 
-Create geometry structure for either source or receivers from a SegyIO.SeisBlock object.\\
-`segy_depth_key` is the SegyIO keyword that contains the depth coordinate and `key` is \\
+Create geometry structure for either source or receivers from a SegyIO.SeisBlock object.
+`segy_depth_key` is the SegyIO keyword that contains the depth coordinate and `key` is 
 set to either `source` for source geometry or `receiver` for receiver geometry:
 
     Geometry(SeisBlock; key="source", segy_depth_key="")
@@ -105,11 +117,11 @@ Examples
     rec_geometry = Geometry(seis_block; key="receiver", segy_depth_key="RecGroupElevation")
     src_geometry = Geometry(seis_block; key="source", segy_depth_key="SourceDepth")
 
-Check the seis_block's header entries to findall out which keywords contain the depth coordinates.\\
-The source depth keyword is either `SourceDepth` or `SourceSurfaceElevation`. The receiver depth \\
+Check the seis_block's header entries to findall out which keywords contain the depth coordinates.
+The source depth keyword is either `SourceDepth` or `SourceSurfaceElevation`. The receiver depth 
 keyword is typically `RecGroupElevation`.
 
-(4) Read source and receiver geometries from out-of-core SEG-Y files (for large data sets). Returns an out-of-core \\
+(4) Read source and receiver geometries from out-of-core SEG-Y files (for large data sets). Returns an out-of-core 
 geometry object `GeometryOOC` without the source/receiver coordinates, but a lookup table instead:
 
     using SegyIO
@@ -136,12 +148,12 @@ Geometry(xloc::CoordT, yloc::CoordT, zloc::CoordT, dt::Array{T,1}, nt::Array{Int
 function Geometry(xloc::Array{Array{T, 1},1}, yloc::CoordT, zloc::Array{Array{T, 1},1};dt=[],t=[]) where T
     nsrc = length(xloc)
     # Check if single dt was passed
-    dtCell = typeof(t) <: Real ? [T(dt) for j=1:nsrc] : T.(dt)
+    dtCell = typeof(t) <: AbstractFloat ? [T(dt) for j=1:nsrc] : T.(dt)
     # Check if single t was passed
-    tCell = typeof(t) <: Real ? [T(t) for j=1:nsrc] : T.(t)
+    tCell = typeof(t) <: AbstractFloat ? [T(t) for j=1:nsrc] : T.(t)
 
     # Calculate number of time steps
-    ntCell = typeof(t) <: Real ? [floor(Int, t / dt) + 1 for j=1:nsrc] : floor.(Int, tCell ./ dtCell) .+ 1
+    ntCell = typeof(t) <: AbstractFloat ? [floor(Int, t / dt) + 1 for j=1:nsrc] : floor.(Int, tCell ./ dtCell) .+ 1
     return GeometryIC{T}(xloc, yloc, zloc, dtCell, ntCell, tCell)
 end
 
@@ -227,15 +239,15 @@ function Geometry(data::SegyIO.SeisCon; key="source", segy_depth_key="")
     dt = Array{Float32}(undef, nsrc)
     nt = Array{Integer}(undef, nsrc)
     t = Array{Float32}(undef, nsrc)
-    nsamples = Array{Integer}(undef, nsrc)
+    nrec = Array{Integer}(undef, nsrc)
     for j=1:nsrc
         container[j] = split(data,j)
         dt[j] = data.blocks[j].summary["dt"][1]/1f3
         nt[j] = data.ns
         t[j] = (nt[j]-1)*dt[j]
-        key=="source" ? nsamples[j] = data.ns : nsamples[j] = Int((data.blocks[j].endbyte - data.blocks[j].startbyte)/(240 + data.ns*4)*data.ns)
+        nrec[j] = key=="source" ? 1 : Int((data.blocks[j].endbyte - data.blocks[j].startbyte)/(240 + data.ns*4))
     end
-    return  GeometryOOC{Float32}(container,dt,nt,t,nsamples,key,segy_depth_key)
+    return  GeometryOOC{Float32}(container,dt,nt,t,nrec,key,segy_depth_key)
 end
 
 # Set up geometry summary from out-of-core data container passed as cell array
@@ -252,15 +264,15 @@ function Geometry(data::Array{SegyIO.SeisCon,1}; key="source", segy_depth_key=""
     nsrc = length(data)
     container = Array{SegyIO.SeisCon}(undef, nsrc)
     dt = Array{Float32}(undef, nsrc); nt = Array{Integer}(undef, nsrc); t = Array{Float32}(undef, nsrc)
-    nsamples = Array{Integer}(undef, nsrc)
+    nrec = Array{Integer}(undef, nsrc)
     for j=1:nsrc
         container[j] = data[j]
         dt[j] = data[j].blocks[1].summary["dt"][1]/1f3
         nt[j] = data[j].ns
         t[j] = (nt[j]-1)*dt[j]
-        key=="source" ? nsamples[j] = data[j].ns : nsamples[j] = Int((data[j].blocks[1].endbyte - data[j].blocks[1].startbyte)/(240 + data[j].ns*4)*data[j].ns)
+        nrec[j] = key=="source" ? 1 : Int((data[j].blocks[1].endbyte - data[j].blocks[1].startbyte)/(240 + data[j].ns*4))
     end
-    return  GeometryOOC{Float32}(container,dt,nt,t,nsamples,key,segy_depth_key)
+    return  GeometryOOC{Float32}(container,dt,nt,t,nrec,key,segy_depth_key)
 end
 
 # Load geometry from out-of-core Geometry container
@@ -307,25 +319,28 @@ function Geometry(geometry::GeometryOOC)
 end
 
 Geometry(geometry::GeometryIC) = geometry
+Geometry(v::Array{T}) where T = v
 Geometry(::Nothing) = nothing
 
 ###########################################################################################################################################
+subsample(g::Geometry, I) = getindex(g, I)
 
-# Subsample in-core geometry structure
-function subsample(geometry::GeometryIC,srcnum)
-    if length(srcnum)==1
-        srcnum = srcnum[1]
-        geometry = Geometry(geometry.xloc[srcnum], geometry.yloc[srcnum], geometry.zloc[srcnum];
-                            dt=geometry.dt[srcnum],t=geometry.t[srcnum],nsrc=1)
-    else
-        geometry = Geometry(geometry.xloc[srcnum], geometry.yloc[srcnum], geometry.zloc[srcnum],
-                            geometry.dt[srcnum], geometry.nt[srcnum], geometry.t[srcnum])
-    end
+# getindex in-core geometry structure
+function getindex(geometry::GeometryIC{T}, srcnum::RangeOrVec) where T
+    xsub = geometry.xloc[srcnum]
+    ysub = geometry.yloc[srcnum]
+    zsub = geometry.zloc[srcnum]
+    dtsub = geometry.dt[srcnum]
+    ntsub = geometry.nt[srcnum]
+    tsub = geometry.t[srcnum]
+    geometry = GeometryIC{T}(xsub, ysub, zsub, dtsub, ntsub, tsub)
     return geometry
 end
 
-# Subsample out-of-core geometry structure
-subsample(geometry::GeometryOOC, srcnum) = Geometry(geometry.container[srcnum]; key=geometry.key, segy_depth_key=geometry.segy_depth_key)
+getindex(geometry::GeometryIC{T}, srcnum::Integer) where T = getindex(geometry, srcnum:srcnum)
+
+# getindex out-of-core geometry structure
+getindex(geometry::GeometryOOC, srcnum) = Geometry(geometry.container[srcnum]; key=geometry.key, segy_depth_key=geometry.segy_depth_key)
 
 # Compare if geometries match
 function compareGeometry(geometry_A::Geometry, geometry_B::Geometry)
@@ -337,7 +352,8 @@ function compareGeometry(geometry_A::Geometry, geometry_B::Geometry)
     end
 end
 
-isequal(geometry_A::Geometry, geometry_B::Geometry) = compareGeometry(geometry_A, geometry_B)
+==(geometry_A::Geometry, geometry_B::Geometry) = compareGeometry(geometry_A, geometry_B)
+isapprox(geometry_A::Geometry, geometry_B::Geometry; kw...) = compareGeometry(geometry_A, geometry_B)
 
 function compareGeometry(geometry_A::GeometryOOC, geometry_B::GeometryOOC)
     check = true
@@ -353,7 +369,7 @@ function compareGeometry(geometry_A::GeometryOOC, geometry_B::GeometryOOC)
     return check
 end
 
-isequal(geometry_A::GeometryOOC, geometry_B::GeometryOOC) = compareGeometry(geometry_A, geometry_B)
+==(geometry_A::GeometryOOC, geometry_B::GeometryOOC) = compareGeometry(geometry_A, geometry_B)
 
 compareGeometry(geometry_A::GeometryOOC, geometry_B::Geometry) = true
 compareGeometry(geometry_A::Geometry, geometry_B::GeometryOOC) = true

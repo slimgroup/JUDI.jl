@@ -22,7 +22,7 @@ m = (1f0 ./ v).^2
 m0 = (1f0 ./ v0).^2
 dm = vec(m - m0)
 
-# Setup info and model structure
+# Setup model structure
 nsrc = 2	# number of sources
 model = Model(n, d, o, m)
 model0 = Model(n, d, o, m0)
@@ -56,21 +56,16 @@ srcGeometry = Geometry(xsrc, ysrc, zsrc; dt=dtS, t=timeS)
 f0 = 0.01f0     # kHz
 wavelet = ricker_wavelet(timeS, dtS, f0)
 q = judiVector(srcGeometry, wavelet)
-
-# Set up info structure for linear operators
-ntComp = get_computational_nt(srcGeometry, recGeometry, model)
-info = Info(prod(n), nsrc, ntComp)
-
 ###################################################################################################
 
 # Write shots as segy files to disk
 opt = Options()
 
 # Setup operators
-Pr = judiProjection(info, recGeometry)
-F = judiModeling(info, model; options=opt)
-F0 = judiModeling(info, model0; options=opt)
-Ps = judiProjection(info, srcGeometry)
+Pr = judiProjection(recGeometry)
+F = judiModeling(model; options=opt)
+F0 = judiModeling(model0; options=opt)
+Ps = judiProjection(srcGeometry)
 J = judiJacobian(Pr*F0*adjoint(Ps), q)
 
 # Nonlinear modeling
@@ -91,9 +86,10 @@ qnew = Ps*adjoint(F)*u
 
 # Create custom wavefield as source (needs to be on computational time axis and contain padding)
 dtComp = get_dt(model)
+ntComp = get_computational_nt(q.geometry, model)
 u0 = zeros(Float32, ntComp[1], model.n[1] + 2*model.nb, model.n[2] + 2*model.nb)
 u0[:, 100, 45] = wavelet = -ricker_wavelet(timeS, dtComp, f0)
-uf = judiWavefield(info, dtComp, u0)
+uf = judiWavefield(dtComp, u0)
 dobs2 = Pr*F*uf # same as dobs
 
 # Wavefields as source + return wavefields

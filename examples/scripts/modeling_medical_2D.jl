@@ -15,7 +15,7 @@ m = (1f0 ./ v).^2
 m0 = (1f0 ./ v0).^2
 dm = vec(m - m0)
 
-# Setup info and model structure
+# Setup model structure
 nsrc = 1	# number of sources
 model = Model(n, d, o, m)
 model0 = Model(n, d, o, m0)
@@ -50,18 +50,14 @@ f0 = .05  # kHz
 wavelet = ricker_wavelet(timeS, dtS, f0)
 q = judiVector(srcGeometry, wavelet)
 
-# Set up info structure for linear operators
-ntComp = get_computational_nt(srcGeometry, recGeometry, model)
-info = Info(prod(n), nsrc, ntComp)
-
 ###################################################################################################
 
 opt = Options(isic=true)
 # Setup operators
-Pr = judiProjection(info, recGeometry)
-F = judiModeling(info, model)
-F0 = judiModeling(info, model0; options=opt)
-Ps = judiProjection(info, srcGeometry)
+Pr = judiProjection(recGeometry)
+F = judiModeling(model)
+F0 = judiModeling(model0; options=opt)
+Ps = judiProjection(srcGeometry)
 J = judiJacobian(Pr*F0*adjoint(Ps), q)
 
 # Nonlinear modeling
@@ -70,7 +66,7 @@ dobs = Pr*F*adjoint(Ps)*q
 
 # With a transducer source pointing down so pi/2 angle and radius 5mm (1cm diameter)
 q2 = transducer(q, model.d, 5, pi/2 .* ones(q.nsrc))
-Ps2 = judiProjection(info, q2.geometry)
+Ps2 = judiProjection(q2.geometry)
 
 dobs2 = Pr*F*adjoint(Ps2)*q2
 

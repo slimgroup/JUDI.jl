@@ -8,9 +8,9 @@ This documentation provides an overview over JUDI's basic data structures and ab
 
  * [Installation](@ref): Install guidlines for JUDI and compilers.
 
- * [Tutorials](@ref): Shows basic functionalities and some common applications.
+ * [Getting Started](@ref): A few simple guided examples to get familiar with JUDI.
 
- * [Data structures](@ref): Explains the `Model`, `Geometry` and `Info` data structures and how to set up acquisition geometries.
+ * [Data structures](@ref): Explains the `Model`, `Geometry` and `Options` data structures and how to set up acquisition geometries.
 
  * [Abstract Vectors](@ref): Documents JUDI's abstract vector classes `judiVector`, `judiWavefield`, `judiRHS`, `judiWeights` and `judiExtendedSource`.
 

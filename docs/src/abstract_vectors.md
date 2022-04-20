@@ -6,6 +6,10 @@ JUDI provides abstract vector types that encapsulate seismic related objects. In
 Pages = ["abstract_vectors.md"]
 ```
 
+At the core of JUDI's vector types is the abstract type `judiMultiSourceVector` that represent a dimensionalized `Vector{Array}` where each sub-array correspond to a single source. All JUDI vector types inhert from this abstract type that implements most of the arithmetic and julia core utilities. As an abstract types, `judiMultiSourceVector` should not be instantiated but new concrete types based on it should be created if one desire to create its own JUDI multi-source vector type.
+
+All sub-type of `judiMultiSourceVector` must implement the following methods to be compatible with JUDI. The following JUDI core types are examples of sub-types.
+
 ## judiVector
 
 The class `judiVector` is the basic data structure for seismic shot records or seismic sources. From JUDI's perspective, both are treated the same and can be multiplied with modeling operators.
@@ -84,9 +88,8 @@ Abstract vector class for wavefields.
 **Construction:**
 
 ```@docs
- judiWavefield(info,dt::Real,data::Union{AbstractArray, String};  vDT::DataType=Float32)
+ judiWavefield
 ```
-
 
 **Access fields:**
 
@@ -126,8 +129,8 @@ Abstract vector class for a right-hand-side (RHS). A RHS has the size of a full 
 
 **Construction:**
 
-```@docs
-judiRHS(info, geometry, data;vDT::DataType=Float32)
+```julia
+rhs = judiRHS(geometry, data)
 ```
 
 A JUDI RHS can also be constructed by multplying a `judiVector` and the corresponding transpose of a `judiProjection` operator:
@@ -178,34 +181,3 @@ w.weights[i]
 **Operations:**
 
 Supports the same arithmetric operations as a `judiVector`.
-
-
-## judiExtendedSource
-
-Abstract data vector for an extended source. This data structure is the equivalent type of `judiRHS` for extended source modeling. A `judiExtendedSource` has the dimension of the full wavefield, but only contains the 1D wavelet and the 2D/3D spatially varying weights in memory.
-
-**Construction:**
-
-Construction from weights and source wavelets:
-
-```@docs
-judiExtendedSource(info,wavelet,weights;vDT::DataType=Float32)
-```
-
-Or alternatively, construction from a `judiWeights` vector and a `judiLRWF` injection operator:
-
-```julia
-ex_src = Pw'*w
-```
-
-where `Pw` is a `judiLRWF` operator and `w` is a `judiWeights` vector.
-
-**Access fields:**
-
-```julia
-# Access weights of i-th source location
-ex_src.weights[i]
-
-# Access wavelet of i-th source location
-ex_src.wavelet[i]
-```

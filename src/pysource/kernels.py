@@ -160,7 +160,11 @@ def tti_kernel(model, u1, u2, fw=True, q=None):
     stencilr = solve(wmr * u2.dt2 + damp * udt2 - H1 - q[1], u2_n)
 
     if 'nofsdomain' in model.grid.subdomains:
-        pdea = freesurface(model, acoustic_kernel(model, u1, fw, q=q[0]))
+        # Water at free surface, no anisotrpy
+        acout_ttip = [Eq(u1_n, stencilp.subs(model.zero_thomsen))]
+        acout_ttir = [Eq(u2_n, stencilr.subs(model.zero_thomsen))]
+        pdea = freesurface(model, acout_ttip) + freesurface(model, acout_ttir)
+        # Standard PDE in subsurface
         first_stencil = Eq(u1_n, stencilp, subdomain=model.grid.subdomains['nofsdomain'])
         second_stencil = Eq(u2_n, stencilr, subdomain=model.grid.subdomains['nofsdomain'])
     else:

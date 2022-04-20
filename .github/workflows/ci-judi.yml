@@ -17,7 +17,6 @@ jobs:
     env:
       DEVITO_ARCH: gcc-7
       DEVITO_LANGUAGE: "openmp"
-      DEVITO_BACKEND: "core"
       OMP_NUM_THREADS: 4
       GROUP: "JUDI"
 
@@ -31,6 +30,15 @@ jobs:
     steps:
       - name: Checkout JUDI
         uses: actions/checkout@v2
+
+      - name: Cache julia install
+        uses: actions/cache@v2
+        env:
+          cache-name: cache-julia-pkgs
+        with:
+          # julia is installed in ~/.julia
+          path: ~/.julia
+          key: ${{ matrix.os }}-${{ matrix.version }}-${{ env.cache-name }}
 
       - name: Setup julia
         uses: julia-actions/setup-julia@v1

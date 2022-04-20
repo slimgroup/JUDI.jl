@@ -5,21 +5,14 @@
 # Authors: Philipp Witte (pwitte@eos.ubc.ca), Henryk Modzelewski (hmodzelewski@eos.ubc.ca)
 # Date: June 2017
 
-export judiWavefield, judiWavefieldException, judiDFTwavefield, muteWavefield, dump_wavefield, fft_wavefield
+export judiWavefield, fft, ifft
 
 ############################################################
 
-mutable struct judiWavefield{vDT<:Number} <: joAbstractLinearOperator{vDT,vDT}
-	name::String
-	m::Integer
-	n::Integer
-	info::Info
-    dt
-	data
-end
-
-mutable struct judiWavefieldException <: Exception
-	msg :: String
+mutable struct judiWavefield{T} <: judiMultiSourceVector{T}
+    nsrc::Integer
+    dt::Vector{T}
+    data::Vector{<:Union{Array{T, N}, PyArray}} where N
 end
 
 ############################################################
@@ -28,11 +21,8 @@ end
 
 """
 judiWavefield
-        name::String
-        m::Integer
-        n::Integer
-        info::Info
-        dt::Real
+        nsrc::Integer
+        dt::AbstractFloat
         data
 
 Abstract vector for seismic wavefields.
@@ -43,135 +33,73 @@ Constructors
 Construct wavefield vector from an info structure, a cell array of wavefields and the computational \\
 time step dt:
 
-    judiWavefield(info, nt, data)
+    judiWavefield(nsrc, dt, data)
 
 
 """
-function judiWavefield(info,dt::Real,data::Union{AbstractArray, String};  vDT::DataType=Float32)
-
+function judiWavefield(nsrc::Integer, dt::AbstractFloat, data::Array{T, N}) where {T<:Number, N}
 	# length of vector
-	m = info.n * sum(info.nt)
-	n = 1
-	dataCell = [vDT.(data) for j=1:info.nsrc]
-
-	return judiWavefield{vDT}("judiWavefield",m,n,info, Float32(dt), dataCell)
+	dataCell = [convert(Array{Float32, N}, data) for j=1:nsrc]
+	return judiWavefield{Float32}(nsrc, [Float32(dt) for i=1:nsrc], dataCell)
 end
 
-function judiWavefield(info, dt::Real, data::Union{Array{Any,1}, Array{Array{T, N}, 1}};vDT::DataType=Float32) where {T, N}
+function judiWavefield(dt::AbstractFloat, data::Vector{Array{T, N}}) where {T, N}
 	# length of vector
 	nsrc = length(data)
-	nsrc != info.nsrc && throw("Different number of sources in info ($(info.nsrc)) and data array ($nsrc)")
-	m = info.n * sum(info.nt)
-	n = 1
 	T != Float32 && (data = tof32.(data))
-	return judiWavefield{vDT}("judiWavefield",m,n,info, Float32(dt), data)
+	return judiWavefield{Float32}(nsrc, [Float32(dt) for i=1:nsrc], data)
 end
 
+judiWavefield(dt::AbstractFloat, nsrc::Integer, data::Array{T, N}) where {T<:Number, N} = judiWavefield(nsrc, dt, data)
+judiWavefield(dt::AbstractFloat, data::Vector{Any}) = judiWavefield(dt, tof32.(data))
+judiWavefield(dt::AbstractFloat, data::Array{T, N}) where {T<:Number, N} = judiWavefield(1, dt, data)
+
+conj(w::judiWavefield{T}) where {T<:Complex} = judiWavefield{R}(w.nsrc, w.dt, conj(w.data))
+
+############################################################
+## overloaded multi_source functions
+time_sampling(jv::judiWavefield) = jv.dt
 
 ####################################################################
-## overloaded Base functions
+# JOLI conversion
+jo_convert(::Type{T}, jw::judiWavefield{T}, ::Bool) where {T<:Number} = jw
+jo_convert(::Type{T}, jw::judiWavefield{vT}, B::Bool) where {T<:Number, vT} = judiWavefield{T}(jw.nsrc, jv.dt, jo_convert.(T, jw.data, B))
+zero(::Type{T}, v::judiWavefield{vT}; nsrc::Integer=v.nsrc) where {T, vT} = judiWavefield{T}(nsrc, v.dt, T(0) .* v.data[1:nsrc])
+zero(::Type{T}, v::judiWavefield{vT}; nsrc::Integer=v.nsrc) where {T<:AbstractFloat, vT<:Complex} = judiWavefield{T}(nsrc, v.dt, T(0) .* real(v.data[1:nsrc]))
+(w::judiWavefield)(x::Vector{<:Array}) = judiWavefield(w.dt, x)
 
-# conj(jo)
-conj(A::judiWavefield{vDT}) where vDT =
-	judiWavefield{vDT}("conj("*A.name*")",A.m,A.n,A.info,A.dt,A.data)
-
-# transpose(jo)
-transpose(A::judiWavefield{vDT}) where vDT =
-	judiWavefield{vDT}(""*A.name*".'",A.n,A.m,A.info,A.dt,A.data)
-
-# adjoint(jo)
-adjoint(A::judiWavefield{vDT}) where vDT = conj(transpose(A))
-
-####################################################################
-
-function vcat(ai::Vararg{judiWavefield{avDT}, N}) where {avDT, N}
-	N == 1 && (return ai[1])
-	N > 2 && (return vcat(ai[1], vcat(ai[2:end]...)))
-	a, b = ai
-	m = a.m + b.m
-	n = 1
-	nsrc = a.info.nsrc + b.info.nsrc
-	data = Array{Array{avDT, 3}, 1}(undef, nsrc)
-	nt = Array{Integer}(undef, nsrc)
-	for j=1:a.info.nsrc
-		data[j] = a.data[j]
-		nt[j] = a.info.nt[j]
-	end
-	for j=a.info.nsrc+1:nsrc
-		data[j] = b.data[j-a.info.nsrc]
-		nt[j] = b.info.nt[j-a.info.nsrc]
-	end
-	info = Info(a.info.n, nsrc, nt)
-	return judiWavefield{avDT}("judiWavefield",info.n * sum(info.nt), 1, info, a.dt ,data)
+function copy!(jv::judiWavefield, jv2::judiWavefield)
+    v.data .= jv2.data
+    jv.dt = jv2.dt
+    jv
 end
+
+copyto!(jv::judiWavefield, jv2::judiWavefield) = copy!(jv, jv2)
+make_input(w::judiWavefield) = w.data[1]
+check_compat(ms::Vararg{judiWavefield, N}) where N = all(y -> y.dt == first(ms).dt, ms)
+
+getindex(a::judiWavefield{T}, srcnum::RangeOrVec) where T = judiWavefield{T}(length(srcnum), a.dt[srcnum], a.data[srcnum])
+####################################################################
 
 function push!(a::judiWavefield{T}, b::judiWavefield{T}) where T
-	append!(a.data, b.data)
-	a.m += b.m
-	a.info.nsrc += b.info.nsrc
+    append!(a.data, b.data)
+    append!(a.dt, b.dt)
+    a.nsrc += b.nsrc
 end
 
 # DFT operator for wavefields, acts along time dimension
-function fft_wavefield(x_in,mode)
-	nsrc = x_in.info.nsrc
-	nt = size(x_in.data[1], 1)
-	if mode==1
-		x = similar(x_in, Complex{Float32})
-		for i=1:nsrc
-			x.data[i] = fft(x_in.data[i], 1)/sqrt(nt)
-		end
-	elseif mode==-1
-		x = similar(x_in, Float32)
-		for i=1:nsrc
-			x.data[i] = real(ifft(x_in.data[i], 1)) * sqrt(nt)
-		end
-	end
-	return x
-end
-
-# Sampling mask to extract wavefields from full vector
-subsample(u::judiWavefield,srcnum) = judiWavefield(u.info,u.data[srcnum];vDT=eltype(u))
-similar(u::judiWavefield) = 0f0 * u
-similar(u::judiWavefield, vDT::DataType) = judiWavefield{vDT}("judiWavefield",u.m, u.n, u.info, u.dt, Array{vDT}.(0f0.*u.data))
-
-# norm
-function norm(a::judiWavefield{avDT}, p::Real=2) where avDT
-    if p == Inf
-        return max([maximum(abs.(a.data[i])) for i=1:a.info.nsrc]...)
+function fft(x_in::judiWavefield{T}) where T
+    x = similar(x_in, Complex{Float32})
+    for i=1:x_in.nsrc
+        x.data[i] = fft(x_in.data[i], 1)/sqrt(size(x_in.data[i], 1))
     end
-    x = 0.f0
-    for j=1:a.info.nsrc
-        x += Float32(a.dt) * sum(abs.(vec(a.data[j])).^p)
+    return x
+end
+
+function ifft(x_in::judiWavefield{T}) where T
+    x = similar(x_in, Float32)
+    for i=1:x_in.nsrc
+        x.data[i] = real(ifft(x_in.data[i], 1)) * sqrt(size(x_in.data[i], 1))
     end
-    return x^(1.f0/p)
+    return x
 end
-
-# inner product
-function dot(a::judiWavefield{avDT}, b::judiWavefield{bvDT}) where {avDT, bvDT}
-	# Dot product for data containers
-	size(a) == size(b) || throw(judiWavefieldException("dimension mismatch"))
-	dotprod = 0f0
-	for j=1:a.info.nsrc
-		dotprod += Float32(a.dt) * dot(vec(a.data[j]),vec(b.data[j]))
-	end
-	return dotprod
-end
-
-# abs
-function abs(a::judiWavefield{avDT}) where avDT
-	b = deepcopy(a)
-	for j=1:a.info.nsrc
-		b.data[j] = abs.(a.data[j])
-	end
-	return b
-end
-
-function isapprox(x::judiWavefield, y::judiWavefield; rtol::Real=sqrt(eps()), atol::Real=0)
-    x.info.nsrc == y.info.nsrc || throw(judiVectorException("Incompatible number of sources"))
-    isapprox(x.data, y.data; rtol=rtol, atol=atol)
-end
-
-####################################################################################################
-
-isfinite(x::judiWavefield) = all(all(isfinite.(x.data[i])) for i=1:length(x.data))
-

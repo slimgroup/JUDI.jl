@@ -101,10 +101,7 @@ function setup_geom(model; nsrc=1, tn=1500f0)
     wavelet = ricker_wavelet(T, dt, f0)
     q = judiVector(srcGeometry, wavelet)
 
-    ntComp = get_computational_nt(srcGeometry, recGeometry, model; dt=dt)
-    info = Info(prod(model.n), nsrc, ntComp)
-
-    return q, srcGeometry, recGeometry, info, f0
+    return q, srcGeometry, recGeometry, f0
 end
 
 
@@ -135,7 +132,6 @@ end
 
 
 # Example structures
-example_info(; n=(120,100), nsrc=2, ntComp=1000) = Info(prod(n), nsrc, ntComp)
 example_model(; n=(120,100), d=(10f0, 10f0), o=(0f0, 0f0), m=randn(Float32, n)) = Model(n, d, o, m)
 
 function example_rec_geometry(; nsrc=2, nrec=120, cut=false)
