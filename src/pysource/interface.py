@@ -458,20 +458,21 @@ def J_adjoint(model, src_coords, wavelet, rec_coords, recin, space_order=8,
         Adjoint jacobian on the input data (gradient)
     """
     if checkpointing:
-        return J_adjoint_checkpointing(model, src_coords, wavelet, rec_coords,
-                                       recin, space_order=8, is_residual=is_residual,
-                                       n_checkpoints=n_checkpoints, isic=isic, ws=ws,
-                                       f0=f0, return_obj=return_obj, born_fwd=born_fwd)
+        return J_adjoint_checkpointing(model, src_coords, wavelet, rec_coords, recin,
+                                       space_order=8, is_residual=is_residual, ws=ws,
+                                       n_checkpoints=n_checkpoints, isic=isic, f0=f0,
+                                       nlind=nlind, return_obj=return_obj,
+                                       born_fwd=born_fwd)
     elif freq_list is not None:
         return J_adjoint_freq(model, src_coords, wavelet, rec_coords, recin,
                               space_order=space_order, dft_sub=dft_sub, f0=f0,
-                              freq_list=freq_list, is_residual=is_residual,
+                              freq_list=freq_list, is_residual=is_residual, nlind=nlind,
                               return_obj=return_obj, isic=isic, ws=ws, born_fwd=born_fwd)
     else:
         return J_adjoint_standard(model, src_coords, wavelet, rec_coords, recin,
                                   is_residual=is_residual, isic=isic, ws=ws, t_sub=t_sub,
                                   return_obj=return_obj, space_order=space_order,
-                                  born_fwd=born_fwd, f0=f0)
+                                  born_fwd=born_fwd, f0=f0, nlind=nlind)
 
 
 def J_adjoint_freq(model, src_coords, wavelet, rec_coords, recin, space_order=8,
@@ -663,7 +664,8 @@ def J_adjoint_checkpointing(model, src_coords, wavelet, rec_coords, recin, space
     wrp.apply_forward()
 
     # Residual and gradient
-    f, _ = l2_loss(rec, recin, model.critical_dt, is_residual=is_residual)
+    f, _ = l2_loss(rec_g, recin, model.critical_dt, is_residual=is_residual)
+    rec.data[:] = as_tuple(rec_g)[0].data[:]
 
     wrp.apply_reverse()
 

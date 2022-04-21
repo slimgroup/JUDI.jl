@@ -20,7 +20,7 @@ end
 for f in [:judiModeling, :judiProjection, :judiWavefield]
     @eval function $f(info::Info, ar...;kw...)
         depwarn("$($f)(info::Info, ar...; kw...) is deprecated, use $($f)(ar...; kw...)", Symbol($f); force=true)
-        $f(ar..., kw...)
+        $f(ar...; kw...)
     end
 end
 

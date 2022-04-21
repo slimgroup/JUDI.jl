@@ -25,7 +25,7 @@ dobs0 = F0*q
 
 ###################################################################################################
 
-@testset "LSRTM gradient test with $(nlayer) layers and tti $(tti) and viscoacoustic $(viscoacoustic) and freesurface $(fs)" for nlind=[true, false]
+@testset "LSRTM gradient test with $(nlayer) layers, tti $(tti), viscoacoustic $(viscoacoustic). freesurface $(fs), nlind $(nlind)" for nlind=[true, false]
 	@timeit TIMEROUTPUT "LSRTM gradient test, nlind=$(nlind)" begin
 		# Gradient test
 		ftol = (tti && fs) ? 1f-1 : 5f-2
@@ -46,7 +46,7 @@ dobs0 = F0*q
 		for j=1:maxiter
 			dmloc = dm + h*dmp
 			# LS-RTM gradient and function falue for m0 + h*dm
-			Jm = .5f0 * norm(J*dmloc - dD)^2
+			Jm = lsrtm_objective(model0, q, dobs, dmloc; options=opt, nlind=nlind)[1]
 			@printf("h = %2.2e, J0 = %2.2e, Jm = %2.2e \n", h, Jm0, Jm)
 			# Check convergence
 			err1[j] = abs(Jm - Jm0)
@@ -81,7 +81,7 @@ end
 
 
 # Test if lsrtm_objective produces the same value/gradient as is done by the correct algebra
-@testset "LSRTM gradient linear algebra test with $(nlayer) layers, tti $(tti), freesurface $(fs)" begin
+@testset "LSRTM gradient linear algebra test with $(nlayer) layers, tti $(tti), viscoacoustic $(viscoacoustic), freesurface $(fs)" begin
 	# Draw a random case to avoid long CI.
 	isic, dft, optchk = rand([true, false], 3)
 	optchk = optchk && !dft

@@ -27,13 +27,13 @@ function run_and_reduce(func, pool, nsrc, arg_func::Function)
     res = Vector{_TFuture}(undef, nsrc)
     for i = 1:nsrc
         args_loc = arg_func(i)
-        res[i] = remotecall(func, pool, args_loc)
+        res[i] = remotecall(func, pool, args_loc...)
     end
     res = reduce!(res)
     return res
 end
 
-run_and_reduce(func, ::Nothing, nsrc, arg_func::Function) = mapreduce(i -> func(arg_func(i)), single_reduce!, 1:nsrc)
+run_and_reduce(func, ::Nothing, nsrc, arg_func::Function) = mapreduce(i -> func(arg_func(i)...), single_reduce!, 1:nsrc)
 
 src_i(::judiAbstractJacobian{T, :born, FT}, q::dmType{T}, ::Integer) where {T<:Number, FT} = q
 src_i(::judiPropagator{T, O}, q::judiMultiSourceVector{T}, i::Integer) where {T, O} = q[i]
@@ -67,15 +67,26 @@ This is the main multi-source wrapper function for `fwi_objective` and `lsrtm_ob
 Computes the misifit and gradient (LSRTM if `lin` else FWI) for the given `q` source and `dobs` and
 perturbation `dm`.
 """
-function multi_src_fg!(G, model, q, dobs, dm; options=Options(), nlind=false, lin=false)
+function multi_src_fg!(G, model, q, dobs, dm; options=Options(), kw...)
+    check_non_indexable(kw)
     # Number of sources and init result
     nsrc = try q.nsrc catch; dobs.nsrc end
     pool = _worker_pool()
     # Distribute source
-    arg_func = i -> (model, q[i], dobs[i], dm, options[i], nlind, lin)
+    arg_func = i -> (model, q[i], dobs[i], dm, options[i], values(kw)...)
     # Distribute source
-    res = run_and_reduce(fg, pool, nsrc, arg_func)
+    res = run_and_reduce(multi_src_fg, pool, nsrc, arg_func)
     f, g = as_vec(res, Val(options.return_array))
     G .= g
     return f
+end
+
+check_non_indexable(d::Dict) = for (k, v) in d check_non_indexable(v) end
+check_non_indexable(x) = false
+check_non_indexable(::Bool) = true
+check_non_indexable(::Number) = true
+check_non_indexable(::judiMultiSourceVector) = throw(ArgumentError("Keyword arguments must not be source dependent"))
+function check_non_indexable(::AbstractArray)
+    @warn "keyword arguement Array considered source independent and copied to all workers"
+    true
 end
