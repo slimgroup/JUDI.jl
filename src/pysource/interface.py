@@ -414,7 +414,7 @@ def grad_fwi(model, recin, rec_coords, u, space_order=8, f0=0.015):
 def J_adjoint(model, src_coords, wavelet, rec_coords, recin, space_order=8,
               is_residual=False, checkpointing=False, n_checkpoints=None, t_sub=1,
               return_obj=False, freq_list=[], dft_sub=None, isic=False,
-              ws=None, f0=0.015, born_fwd=False):
+              ws=None, f0=0.015, born_fwd=False, nlind=False):
     """
     Jacobian (adjoint fo born modeling operator) operator on a shot record
     as a source (i.e data residual). Supports three modes:

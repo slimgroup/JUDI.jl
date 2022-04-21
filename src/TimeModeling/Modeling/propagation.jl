@@ -74,7 +74,7 @@ function multi_src_fg!(G, model, q, dobs, dm; options=Options(), nlind=false, li
     # Distribute source
     arg_func = i -> (model, q[i], dobs[i], dm, options[i], nlind, lin)
     # Distribute source
-    res = run_and_reduce(multi_src_fg, pool, nsrc, arg_func)
+    res = run_and_reduce(fg, pool, nsrc, arg_func)
     f, g = as_vec(res, Val(options.return_array))
     G .= g
     return f
