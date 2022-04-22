@@ -1,9 +1,5 @@
 using Documenter, JUDI, Weave, Pkg
 
-# Build pyplot to install matplotlib
-ENV["PYTHON"]=""
-Pkg.build("PyCall")
-
 import JUDI: judiMultiSourceVector
 import Base.show
 

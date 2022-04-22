@@ -101,9 +101,11 @@ opt = Options(subsampling_factor=2, dt_comp=1.0)
 #' Linear Operators
 #' The core idea behind JUDI is to abstract seismic inverse problems in term of linear algebra. In its simplest form, seismic inversion can be formulated as
 #' $$
-#' \text{argmin}_{\mathbf{m}} \phi(\mathbf{m}) ||\mathbf{P}_r \mathbf{F}(\mathbf{m}) \mathbf{P}_s^{\top} \mathbf{q} - \mathbf{d} ||_2^2 \\
-#' \nabla_{\mathbf{m}} = \mathbf{J}
+#' \underset{\mathbf{m}}{\text{argmin}} \ \ \phi(\mathbf{m}) = ||\mathbf{P}_r \mathbf{F}(\mathbf{m}) \mathbf{P}_s^{\top} \mathbf{q} - \mathbf{d} ||_2^2 \\
+#' \text{   } \\
+#' \nabla_{\mathbf{m}} \phi(\mathbf{m}) = \mathbf{J}(\mathbf{m}, \mathbf{q})^{\top} (\mathbf{P}_r \mathbf{F}(\mathbf{m}) \mathbf{P}_s^{\top} \mathbf{q} - \mathbf{d})
 #' $$
+#' 
 #' where $\mathbf{P}_r$ is the receiver projection (measurment operator) and $\mathbf{P}_s^{\top}$ is the source injection operator (adjoint of measurment at the source location).
 #' Therefore, we bastracted these operation to be able to define these operators
 
