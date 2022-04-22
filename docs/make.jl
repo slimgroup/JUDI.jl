@@ -11,7 +11,8 @@ show(io::IO, ::MIME, G::Geometry) = println(io, "$(typeof(G)) wiht $(length(G.nt
 
 # Convert example to documentation markdown file
 ex_path = "$(JUDI.JUDIPATH)/../examples/scripts"
-weave("$(ex_path)/modeling_basic_2D.jl"; out_path="src/tutorials/05_quickstart.md", doctype="github")
+doc_path = "$(JUDI.JUDIPATH)/../docs"
+weave("$(ex_path)/modeling_basic_2D.jl"; out_path="$(doc_path)/src/tutorials/05_quickstart.md", doctype="github")
 
 # Create documentation
 makedocs(sitename="JUDI documentation",

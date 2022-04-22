@@ -36,7 +36,7 @@ function multi_src_fg(model_full::Model, source::judiVector, dObs::judiVector, d
     argout1, argout2 = pycall(ac."J_adjoint", Tuple{Float32, PyArray}, modelPy,
                   src_coords, qIn, rec_coords, dObserved, t_sub=options.subsampling_factor,
                   space_order=options.space_order, checkpointing=options.optimal_checkpointing,
-                  freq_list=freqs, isic=options.isic, is_residual=false, born_fwd=lin,
+                  freq_list=freqs, isic=options.isic, is_residual=false, born_fwd=lin, nlind=nlind,
                   dft_sub=options.dft_subsampling_factor[1], f0=options.f0, return_obj=true)
 
     argout2 = remove_padding(argout2, modelPy.padsizes; true_adjoint=options.sum_padding)
@@ -45,8 +45,6 @@ function multi_src_fg(model_full::Model, source::judiVector, dObs::judiVector, d
     end
     return Ref{Float32}(argout1), PhysicalParameter(argout2, model_full.d, model_full.o)
 end
-
-multi_src_fg(t::Tuple{Model, judiVector, judiVector, Any, JUDIOptions, Bool, Bool}) = multi_src_fg(t[1], t[2], t[3], t[4], t[5], t[6], t[7])
 
 # Find number of experiments
 """
@@ -100,10 +98,10 @@ Example
 =======
     function_value, gradient = fwi_objective(model, source, dobs)
 """
-function fwi_objective(model::MTypes, q::Dtypes, dobs::Dtypes; options=Options())
+function fwi_objective(model::MTypes, q::Dtypes, dobs::Dtypes; options=Options(), kw...)
     n_exp = check_args(model, q, dobs)
     G = n_exp == 1 ? similar(model.m) : [similar(get_exp(model, i).m) for i=1:n_exp]
-    f = fwi_objective!(G, model, q, dobs; options=options)
+    f = fwi_objective!(G, model, q, dobs; options=options, kw...)
     f, G
 end
 
@@ -118,10 +116,10 @@ Example
 =======
     function_value, gradient = lsrtm_objective(model, source, dobs, dm)
 """
-function lsrtm_objective(model::MTypes, q::Dtypes, dobs::Dtypes, dm::dmTypes; options=Options(), nlind=false)
+function lsrtm_objective(model::MTypes, q::Dtypes, dobs::Dtypes, dm::dmTypes; options=Options(), nlind=false, kw...)
     n_exp = check_args(model, q, dobs, dm)
     G = n_exp == 1 ? similar(model.m) : [similar(get_exp(model, i).m) for i=1:n_exp]
-    f = lsrtm_objective!(G, model, q, dobs, dm; options=options, nlind=nlind)
+    f = lsrtm_objective!(G, model, q, dobs, dm; options=options, nlind=nlind, kw...)
     f, G
 end
 
@@ -136,10 +134,9 @@ Example
 =======
     function_value = fwi_objective!(gradient, model, source, dobs)
 """
-function fwi_objective!(G, model::MTypes, q::Dtypes, dobs::Dtypes; options=Options())
+function fwi_objective!(G, model::MTypes, q::Dtypes, dobs::Dtypes; options=Options(), kw...)
     n_exp = check_args(G, model, dobs, q)
-    return multi_exp_fg!(Val(n_exp), G, model, q, dobs, nothing;
-                         options=options, nlind=false, lin=false)
+    return multi_exp_fg!(Val(n_exp), G, model, q, dobs, nothing; options=options, nlind=false, lin=false, kw...)
 end
 
 """
@@ -153,10 +150,9 @@ Example
 =======
     function_value = lsrtm_objective!(gradient, model, source, dobs, dm; options=Options(), nlind=false)
 """
-function lsrtm_objective!(G, model::MTypes, q::Dtypes, dobs::Dtypes, dm::dmTypes; options=Options(), nlind=false)
+function lsrtm_objective!(G, model::MTypes, q::Dtypes, dobs::Dtypes, dm::dmTypes; options=Options(), nlind=false, kw...)
     n_exp = check_args(G, model, q, dobs, dm)
-    return multi_exp_fg!(Val(n_exp), G, model, q, dobs, dm;
-                         options=options, nlind=nlind, lin=true)
+    return multi_exp_fg!(Val(n_exp), G, model, q, dobs, dm; options=options, nlind=nlind, lin=true, kw...)
 end
 
 multi_exp_fg!(n::Val{1}, ar...; kw...) = multi_src_fg!(ar...; kw...)

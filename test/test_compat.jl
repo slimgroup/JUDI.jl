@@ -13,6 +13,7 @@ nrec = length(recGeometry.xloc[1])
         info =  Info(prod(model.n), nt, nsrc)
         @test_logs (:warn, "Info is deprecated and will be removed in future versions") Info(prod(model.n), nt, nsrc)
         @test_logs (:warn, "judiModeling(info::Info, ar...; kw...) is deprecated, use judiModeling(ar...; kw...)") judiModeling(info, model)
+        @test_logs (:warn, "judiModeling(info::Info, ar...; kw...) is deprecated, use judiModeling(ar...; kw...)") judiModeling(info, model; options=Options())
         @test_logs (:warn, "judiProjection(info::Info, ar...; kw...) is deprecated, use judiProjection(ar...; kw...)") judiProjection(info, recGeometry)
         @test_logs (:warn, "judiWavefield(info::Info, ar...; kw...) is deprecated, use judiWavefield(ar...; kw...)") judiWavefield(info, dt, nsrc, randn(nt, model.n...))
     
