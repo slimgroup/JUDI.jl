@@ -8,10 +8,11 @@ mutable struct judiMultiSourceException <: Exception
     msg :: String
 end
 
-display(ms::judiMultiSourceVector) = println("$(string(typeof(ms))) wiht $(ms.nsrc) sources")
-show(io::IO, ms::judiMultiSourceVector) = print(io, "$(string(typeof(ms))) wiht $(ms.nsrc) sources")
-showarg(io::IO, ms::judiMultiSourceVector, toplevel) = print(io, "$(string(typeof(ms))) wiht $(ms.nsrc) sources")
+display(ms::judiMultiSourceVector) = println("$(string(typeof(ms))) with $(ms.nsrc) sources")
+show(io::IO, ms::judiMultiSourceVector) = print(io, "$(string(typeof(ms))) with $(ms.nsrc) sources")
+showarg(io::IO, ms::judiMultiSourceVector, toplevel) = print(io, "$(string(typeof(ms))) with $(ms.nsrc) sources")
 summary(io::IO, ms::judiMultiSourceVector) = print(io, string(typeof(ms)))
+show(io::IO, ::MIME{Symbol("text/plain")}, ms::judiMultiSourceVector) = println(io, "$(typeof(ms)) with $(ms.nsrc) sources")
 
 # Size and type 
 eltype(::judiMultiSourceVector{T}) where T = T
