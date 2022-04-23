@@ -1,13 +1,4 @@
-using Documenter, JUDI, Weave, Pkg
-
-import JUDI: judiMultiSourceVector
-import Base.show
-
-# Some dispatch needed for Weave
-show(io::IO, ::MIME, ms::judiMultiSourceVector) = println(io, "$(typeof(ms)) wiht $(ms.nsrc) sources")
-show(io::IO, ::MIME, m::Model) = print(io, "Model (n=$(m.n), d=$(m.d), o=$(m.o)) with parameters $(keys(m.params))")
-show(io::IO, ::MIME, A::PhysicalParameter) = println(io, "$(typeof(A)) of size $(A.n) with origin $(A.o) and spacing $(A.d)")
-show(io::IO, ::MIME, G::Geometry) = println(io, "$(typeof(G)) wiht $(length(G.nt)) sources")
+using Documenter, JUDI, Weave
 
 # Convert example to documentation markdown file
 ex_path = "$(JUDI.JUDIPATH)/../examples/scripts"

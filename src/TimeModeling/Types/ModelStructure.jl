@@ -106,6 +106,7 @@ display(A::PhysicalParameter) = println("$(typeof(A)) of size $(A.n) with origin
 show(io::IO, A::PhysicalParameter) = print(io, "$(typeof(A)) of size $(A.n) with origin $(A.o) and spacing $(A.d)")
 summary(io::IO, A::PhysicalParameter) = print(io, "$(typeof(A)) of size $(A.n) with origin $(A.o) and spacing $(A.d)")
 showarg(io::IO, A::PhysicalParameter, toplevel) = print(io, typeof(A), " with size $(A.n), spacing $(A.d) and origin $(A.o)")
+show(io::IO, ::MIME{Symbol("text/plain")}, A::PhysicalParameter) = println(io, "$(typeof(A)) of size $(A.n) with origin $(A.o) and spacing $(A.d)")
 
 # Indexing
 firstindex(A::PhysicalParameter) = 1
@@ -316,3 +317,4 @@ ndims(m::Model) = ndims(m.m.data)
 
 display(m::Model) = println("Model (n=$(m.n), d=$(m.d), o=$(m.o)) with parameters $(keys(m.params))")
 show(io::IO, m::Model) = print(io, "Model (n=$(m.n), d=$(m.d), o=$(m.o)) with parameters $(keys(m.params))")
+show(io::IO, ::MIME{Symbol("text/plain")}, m::Model) = print(io, "Model (n=$(m.n), d=$(m.d), o=$(m.o)) with parameters $(keys(m.params))")

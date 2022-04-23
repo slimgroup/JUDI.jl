@@ -36,6 +36,7 @@ end
 
 display(G::Geometry) = println("$(typeof(G)) wiht $(length(G.nt)) sources")
 show(io::IO, G::Geometry) = print(io, "$(typeof(G)) wiht $(length(G.nt)) sources")
+show(io::IO, ::MIME{Symbol("text/plain")}, G::Geometry) = println(io, "$(typeof(G)) wiht $(length(G.nt)) sources")
 
 ######################## shapes easy access ################################
 get_nsrc(g::GeometryIC) = length(g.xloc)
