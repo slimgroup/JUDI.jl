@@ -125,6 +125,9 @@ function dot(a::judiMultiSourceVector{T}, b::judiMultiSourceVector{T}) where T
 	return T(dotprod)
 end
 
+dot(a::judiMultiSourceVector{T}, b::Vector{T}) where T = dot(vec(a), b)
+dot(a::Vector{T}, b::judiMultiSourceVector{T}) where T = dot(b, a)
+
 # abs
 function abs(a::judiMultiSourceVector{T}) where T
 	b = deepcopy(a)

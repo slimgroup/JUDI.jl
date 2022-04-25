@@ -21,7 +21,7 @@ end
 """
 Sets up a simple 2D layered model for the wave equation operators tests
 """
-function setup_model(tti=false, viscoacoustic=false, nlayer=2; n=(301, 151), d=(10., 10.), rand_dm=false)
+function setup_model(tti=false, viscoacoustic=false, nlayer=2; n=(301, 151), d=(10., 10.))
     tti && viscoacoustic && throw("The inputs can't be tti and viscoacoustic at the same time")
 
     ## Set up model structure
@@ -58,13 +58,7 @@ function setup_model(tti=false, viscoacoustic=false, nlayer=2; n=(301, 151), d=(
         model0 = Model(n, d, o, m0, rho0)
         @test Model(n, d, o, m0; rho=rho0).rho == model0.rho
     end
-    if rand_dm
-        dm = similar(model.m)
-        fill!(dm, 0f0)
-        dm[21:end-20, 21:end-20] .= .1f0.*randn(Float32, dm[21:end-20, 21:end-20].n)
-    else
-        dm = model.m - model0.m
-    end
+    dm = model.m - model0.m
     return model, model0, dm
 end
 

@@ -279,7 +279,7 @@ end
 
 remove_out_of_bounds_receivers(G::Geometry, ::Nothing, M::Model) = (remove_out_of_bounds_receivers(G, M), nothing)
 remove_out_of_bounds_receivers(::Nothing, ::Nothing, M::Model) = (nothing, nothing)
-remove_out_of_bounds_receivers(::Nothing, r::AbstractArray, M::Model) = (nothing, r)
+remove_out_of_bounds_receivers(w, r::AbstractArray, M::Model) = (w, r)
 remove_out_of_bounds_receivers(G::Geometry, r, M::Model) = remove_out_of_bounds_receivers(G, convert(Matrix{Float32}, r), M)
 remove_out_of_bounds_receivers(w::AbstractArray, ::Nothing, M::Model) = (w, nothing)
 
