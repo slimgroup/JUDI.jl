@@ -7,7 +7,16 @@ RUN julia -e 'using Pkg;Pkg.update()'
 # Git setup in case
 RUN git config --global pull.rebase false
 
-# Update dev packages
+# Upate JUDI
+run cd ${JULIA_DEPOT_PATH}/dev/JUDI && git pull origin master && \
+    julia --project -e "using Pkg; Pkg.update()" && \
+    julia -e 'using Pkg;Pkg.update("JUDI")' && \
+    julia -e 'using JUDI'
+
+# Check versions status
+RUN julia -e 'using Pkg;Pkg.status()'
+
+# Update other dev packages
 RUN for d in ${JULIA_DEPOT_PATH}/dev/* ; do \
       if [ -f $d/Project.toml ]; then \
         echo "Updating $d" && \
