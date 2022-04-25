@@ -6,7 +6,6 @@ from devito import (Grid, Function, SubDomain, SubDimension, Eq, Inc,
 from devito.data.allocators import ExternalAllocator
 from devito.tools import as_tuple, memoized_func
 
-
 __all__ = ['Model']
 
 
@@ -110,7 +109,8 @@ def initialize_damp(damp, padsizes, abc_type="damp", fs=False):
 
 class Model(object):
     """
-    The physical model used in seismic inversion processes.
+    The physical model used in seismic inversion
+        shape_pml = np.array(shape) + 2 * self.nbl processes.
 
     Parameters
     ----------
@@ -169,7 +169,7 @@ class Model(object):
         if self.nbl != 0:
             # Create dampening field as symbol `damp`
             self.damp = Function(name="damp", grid=self.grid)
-            initialize_damp(self.damp, self.padsizes, abc_type=abc_type, fs=fs)
+            initialize_damp(self.padsizes, abc_type, fs)(damp=self.damp)
             self._physical_parameters = ['damp']
         else:
             self.damp = 1
@@ -449,3 +449,44 @@ class Model(object):
         sp_map = self.grid.spacing_map
         sp_map.update({self.grid.time_dim.spacing: self.critical_dt})
         return sp_map
+
+
+
+class EmptyModel(object):
+    """
+    An pseudo Model structure that does not contain any physical field but only the necessary information
+    to create an operator. This Model should not be used for propagation.
+    """
+
+    def __init__(self, tti, visco, spacing, fs, space_order, p_params):
+        self.is_tti = tti
+        self.is_viscoacoustic = visco
+        self.spacing = spacing
+        self.fs = fs
+        if fs:
+            fsdomain = FSDomain(space_order + 1)
+            physdomain = PhysicalDomain(space_order + 1, fs=fs)
+            subdomains = (physdomain, fsdomain)
+        else:
+            subdomains = ()
+        self.grid = Grid(tuple([11]*len(spacing)), extent=[s*10 for s in spacing], subdomains=subdomains)
+        self.dimensions = self.grid.dimensions
+
+        # Create the function for the physical parameters
+        self.damp = Function(name='damp', grid=self.grid, space_order=0)
+        for p in set(p_params) - {'damp'}:
+            setattr(self, p, Function(name=p, grid=self.grid, space_order=space_order))
+
+    @property
+    def spacing_map(self):
+        """
+        Map between spacing symbols and their values for each `SpaceDimension`.
+        """
+        return self.grid.spacing_map
+
+    @property
+    def critical_dt(self):
+        """
+        User provided dt
+        """
+        return self.grid.time_dim.spacing

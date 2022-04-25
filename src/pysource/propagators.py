@@ -4,6 +4,7 @@ from wave_utils import (wf_as_src, wavefield, otf_dft, extended_src_weights,
                         extented_src, wavefield_subsampled, weighted_norm)
 from sensitivity import grad_expr, lin_src
 from utils import weight_fun, opt_op
+from operators import forward_op
 
 from devito import Operator, Function
 from devito.tools import as_tuple
@@ -20,7 +21,7 @@ def name(model):
 
 # Forward propagation
 def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
-            q=None, return_op=False, freq_list=None, dft_sub=None,
+            qwf=None, return_op=False, freq_list=None, dft_sub=None,
             ws=None, t_sub=1, f0=0.015, **kwargs):
     """
     Low level propagator, to be used through `interface.py`
@@ -36,29 +37,28 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     u_save, eq_save = wavefield_subsampled(model, u, nt, t_sub)
 
     # Add extended source
-    q = q or wf_as_src(u, w=0)
+    q = qwf or wf_as_src(u, w=0)
     q = extented_src(model, ws, wavelet, q=q)
 
     # Set up PDE expression and rearrange
     pde = wave_kernel(model, u, q=q, f0=f0)
 
     # Setup source and receiver
-    geom_expr, _, rcv = src_rec(model, u, src_coords=src_coords, nt=nt,
+    geom_expr, src, rcv = src_rec(model, u, src_coords=src_coords, nt=nt,
                                 rec_coords=rcv_coords, wavelet=wavelet)
 
     # On-the-fly Fourier
     dft, dft_modes = otf_dft(u, freq_list, model.critical_dt, factor=dft_sub)
 
     # Create operator and run
-    subs = model.spacing_map
-    op = Operator(pde + dft + geom_expr + eq_save,
-                  subs=subs, name="forward"+name(model),
-                  opt=opt_op(model))
-    op.cfunction
+    op = forward_op(model.physical_parameters, model.is_tti, model.is_viscoacoustic, space_order, model.spacing,
+                    save, t_sub, model.fs, src_coords is not None, rcv_coords is not None,
+                    freq_list is not None, dft_sub, ws is not None, qwf is not None)
+
     if return_op:
         return op, u, rcv
 
-    summary = op()
+    summary = op(dt=model.critical_dt, u=u, srcu=src, rcvu=rcv, **model.physical_params())
 
     # Output
     return rcv, dft_modes or (u_save if t_sub > 1 else u), summary
