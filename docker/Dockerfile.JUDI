@@ -22,7 +22,7 @@ RUN for d in ${JULIA_DEPOT_PATH}/dev/* ; do \
         url=$(git config --get remote.origin.url) && \
         julia -e "using Pkg;Pkg.develop(url=\"${url}\")" && \
         julia --project -e "using Pkg; Pkg.update()" && \
-        julia -e "using Pkg;Pkg.update(\"${d}\")" && \
+        PD="$(basename $d)" && julia -e "using Pkg;Pkg.update(\"${PD}\")" && \
         PD="$(basename $d)" && julia -e "using $PD"; \
       fi; \
     done
