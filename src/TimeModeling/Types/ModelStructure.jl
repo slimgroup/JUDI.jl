@@ -46,7 +46,7 @@ cannot be infered from the array.
     PhysicalParameter(v::vDT, n::Tuple, d::Tuple, o::Tuple) Creates a constant (single number) PhyicalParameter
 
 """
-mutable struct PhysicalParameter{vDT} <: AbstractVector{vDT}
+mutable struct PhysicalParameter{vDT} <: DenseVector{vDT}
     n::Tuple
     d::Tuple
     o::Tuple
@@ -205,7 +205,7 @@ function *(A::Union{joMatrix, joLinearFunction, joLinearOperator, joCoreBlock}, 
     return A*vec(p.data)
 end
 
-materialize!(p::PhysicalParameter{RDT}, b::Array{<:Number, N}) where{RDT, N} = (p.data[:] .= b)
+materialize!(p::PhysicalParameter{RDT}, b::Array{<:Number, N}) where{RDT, N} = (p.data .= reshape(b, axes(p.data)))
 materialize!(p::PhysicalParameter{RDT}, b::Base.Broadcast.Broadcasted{Base.Broadcast.DefaultArrayStyle{N}}) where{RDT, N} = materialize!(p, collect(b))
 materialize!(p::Array, b::Broadcast.Broadcasted{Broadcast.ArrayStyle{PhysicalParameter}}) = materialize!(p, reshape(collect(b), size(p)))
 

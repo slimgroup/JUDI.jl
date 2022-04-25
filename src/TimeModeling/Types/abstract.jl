@@ -72,6 +72,8 @@ minimum(a::judiMultiSourceVector{avDT}) where avDT = min([minimum(a.data[i]) for
 vec(x::judiMultiSourceVector) = vcat(vec.(x.data)...)
 
 time_sampling(ms::judiMultiSourceVector) = [1 for i=1:ms.nsrc]
+
+reshape(ms::judiMultiSourceVector, dims::Dims{N}) where N = reshape(vec(ms), dims)
 ############################################################################################################################
 # Linear algebra `*`
 (msv::judiMultiSourceVector{T})(x::Vector{T}) where {T<:AbstractFloat} = x
@@ -94,6 +96,9 @@ end
 make_input(ms::judiMultiSourceVector) = throw(judiMultiSourceException("$(typeof(ms)) must implement `make_input(ms, dt)` for propagation"))
 make_input(a::Array) = a
 
+as_src(ms::judiMultiSourceVector{T}) where T = ms
+as_src(p::AbstractVector{T}) where T = p
+as_src(p) = view(p, :)
 ############################################################################################################################
 # Linear algebra norm/abs/cat...
 function norm(a::judiMultiSourceVector{T}, p::Real=2) where T

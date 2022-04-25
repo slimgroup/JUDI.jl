@@ -631,11 +631,11 @@ Parameters:
 * `geometry`: Geometry containing physical parameters.
 * `nsrc`: Number of sources
 """
-function process_input_data(input::Array{Float32}, geometry::Geometry)
+function process_input_data(input::AbstractArray{Float32}, geometry::Geometry)
     # Input data is pure Julia array: assume fixed no.
     # of receivers and reshape into data cube nt x nrec x nsrc
     nt = Int(geometry.nt[1])
-    nrec = length(geometry.xloc[1])
+    nrec = geometry.nrec[1]
     nsrc = length(geometry.xloc)
     data = reshape(input, nt, nrec, nsrc)
     dataCell = Array{Array{Float32, 2}, 1}(undef, nsrc)
@@ -655,7 +655,7 @@ Parameters:
 * `model`: Model containing physical parameters.
 * `nsrc`: Number of sources
 """
-function process_input_data(input::Array{Float32}, model::Model, nsrc::Integer)
+function process_input_data(input::AbstractArray{Float32}, model::Model, nsrc::Integer)
     ndims = length(model.n)
     dataCell = Array{Array{Float32, ndims}, 1}(undef, nsrc)
 
@@ -667,12 +667,12 @@ function process_input_data(input::Array{Float32}, model::Model, nsrc::Integer)
     return dataCell
 end
 
-process_input_data(input::Array{Float32}, model::Model) = process_input_data(input, model, length(input) ÷ prod(model.n))
+process_input_data(input::AbstractArray{Float32}, model::Model) = process_input_data(input, model, length(input) ÷ prod(model.n))
 process_input_data(input::judiVector, ::Geometry) = input
 process_input_data(input::judiVector) = input.data
 process_input_data(input::judiWeights, ::Model) = input.weights
 
-function process_input_data(input::Array{T}, v::Vector{<:Array}) where T
+function process_input_data(input::AbstractArray{T}, v::Vector{<:Array}) where T
     nsrc = length(v)
     dataCell = Vector{Vector{T}}(undef, nsrc)
     input = reshape(input, :, nsrc)
@@ -687,9 +687,9 @@ end
 
 Reshapes input vector intu a 3D `nt x nrec x nsrc` Array.
 """
-function reshape(x::Array{Float32, 1}, geometry::Geometry)
+function reshape(x::AbstractArray{Float32, 1}, geometry::Geometry)
     nt = geometry.nt[1]
-    nrec = length(geometry.xloc[1])
+    nrec = geometry.nrec[1]
     nsrc = Int(length(x) / nt / nrec)
     return reshape(x, nt, nrec, nsrc)
 end

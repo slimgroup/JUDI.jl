@@ -169,7 +169,8 @@ adjoint(L::LazyScal) = LazyScal(L.s, adjoint(L.P))
 *(L::LazyScal, x::Array{T, N}) where {T<:Number, N} = L.s * (L.P * x)
 
 # Propagation via linear algebra `*`
-*(F::judiPropagator{T, O}, q::SourceType{T}) where {T<:Number, O} = multi_src_propagate(F, q)
+*(F::judiPropagator{T, O}, q::judiMultiSourceVector{T}) where {T<:Number, O} = multi_src_propagate(F, q)
+*(F::judiPropagator{T, O}, q::AbstractVector{T}) where {T<:Number, O} = multi_src_propagate(F, q)
 *(F::judiAbstractJacobian{T, O, FT}, q::dmType{T}) where {T<:Number, O, FT} = multi_src_propagate(F, q)
 
 mul!(out::SourceType{T}, F::judiPropagator{T, O}, q::SourceType{T}) where {T<:Number, O} = begin y = F*q; copyto!(out, y) end
@@ -182,13 +183,15 @@ mul!(out::Array{T, 3}, F::judiAbstractJacobian{T, :adjoint_born, FT}, q::SourceT
 
 ############################################################################################################################
 # Propagation input
-process_input_data(::judiPropagator, data::judiMultiSourceVector) = data
-process_input_data(F::judiModeling, q::Vector) = process_input_data(q, F.model)
-process_input_data(F::judiPointSourceModeling, q::Vector) = process_input_data(q, F.qInjection.geometry)
-process_input_data(F::judiDataSourceModeling, q::Vector) = process_input_data(q, F.qInjection.data)
-process_input_data(F::judiDataModeling, q::Vector) = process_input_data(q, F.model)
-process_input_data(J::judiJacobian{D, :adjoint_born, FT}, q::Vector) where {D, FT} =
-    process_input_data(q, J.F.qInjection.data)
+process_input_data(::judiPointSourceModeling, data::judiMultiSourceVector) = data
+process_input_data(::judiDataSourceModeling, data::judiMultiSourceVector) = data
+
+process_input_data(F::judiModeling, q::AbstractVector) = process_input_data(q, F.model)
+process_input_data(F::judiPointSourceModeling, q::AbstractVector) = process_input_data(q, F.qInjection.geometry)
+process_input_data(F::judiDataSourceModeling, q::AbstractVector) = process_input_data(q, F.qInjection.data)
+process_input_data(F::judiDataModeling, q::AbstractVector) = process_input_data(q, F.model)
+process_input_data(J::judiJacobian{D, :adjoint_born, FT}, q::AbstractVector) where {D, FT} =
+    process_input_data(q, J.F.rInterpolation.data)
 process_input_data(::judiJacobian{D, :born, FT}, q::dmType{D}) where {D<:Number, FT} = q
 
 make_input(::judiModeling, q::SourceType) = (nothing, make_input(q), nothing, nothing, nothing)

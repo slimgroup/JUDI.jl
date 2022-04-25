@@ -4,6 +4,7 @@ authors = ["Philipp Witte, Mathias Louboutin"]
 version = "3.0.3"
 
 [deps]
+ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
 DSP = "717857b8-e6f2-59f4-9121-6e50c889abd2"
 Dierckx = "39dd38d3-220a-591b-8e3c-4c3a8c710a94"
 Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
@@ -25,6 +26,7 @@ PyCall = "1.18, 1.90, 1.91, 1.62"
 Reexport = "0.2, 1"
 SegyIO = "0.7.7"
 TimerOutputs = "0.5"
+Flux = "0.12, 0.13"
 julia = "1"
 
 [extras]
@@ -34,6 +36,7 @@ JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
+Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
 
 [targets]
-test = ["Aqua", "ArgParse", "JLD2", "Printf", "Test", "TimerOutputs"]
+test = ["Aqua", "ArgParse", "JLD2", "Printf", "Test", "TimerOutputs", "Flux"]
