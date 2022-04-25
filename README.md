@@ -2,7 +2,7 @@
 
 | **Documentation**     | **Build Status**    |                      |
 |:--------------------------------------:|:-----------------------------------------------:|:----------------------------------------------------:|
-| [![][docs-stable-img]][docs-stable-status] [![][docs-dev-img]][docs-dev-status] | [![][build-img]][build-status] [![][codecov-img]][codecov-status] [![][aqua-img]][aqua-status] | [![][license-img]][license-status] [![][zenodo-img]][zenodo-status] |
+| [![][docs-stable-img]][docs-stable-status] [![][docs-dev-img]][docs-dev-status] | [![][build-img]][build-status] [![][codecov-img]][codecov-status] [![][aqua-img]][aqua-status] | [![][license-img]][license-status] [![][zenodo-img]][zenodo-status] [![][docker-img]][docker-url]|
 
 
 ## Overview
@@ -335,3 +335,10 @@ Contact authors via: mlouboutin3@gatech.edu.
 
 [license-img]:http://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat
 [license-status]:LICENSE.md
+
+
+[JUDI]:https://github.com/slimgroup/JUDI.jl
+[Devito]:https://github.com/devitocodes/devito
+
+[docker-img]:https://img.shields.io/docker/v/mloubout/judi?sort=semver
+[docker-url]:https://hub.docker.com/r/mloubout/judi
