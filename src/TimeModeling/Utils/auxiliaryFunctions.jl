@@ -161,12 +161,12 @@ function limit_model_to_receiver_area(srcGeometry::Geometry, recGeometry::Geomet
     end
 
     # extract part of the model that contains sources/receivers
-    nx_min = Int(min_x ÷ model.d[1]) + 1
-    nx_max = Int(max_x ÷ model.d[1]) + 1
+    nx_min = Int((min_x-model.o[1]) ÷ model.d[1]) + 1
+    nx_max = Int((max_x-model.o[1]) ÷ model.d[1]) + 1
     inds = [max(1, nx_min):nx_max, 1:model.n[end]]
     if ndim == 3
-        ny_min = Int(min_y ÷ model.d[1]) + 1
-        ny_max = Int(max_y ÷ model.d[1]) + 1
+        ny_min = Int((min_y-model.o[2]) ÷ model.d[2]) + 1
+        ny_max = Int((max_y-model.o[2]) ÷ model.d[2]) + 1
         insert!(inds, 2, max(1, ny_min):ny_max)
     end
 
