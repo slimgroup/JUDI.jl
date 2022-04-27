@@ -21,7 +21,8 @@ const success_log = Dict(true => "SUCCESS", false => "FAILED")
 # Test set
 const GROUP = get(ENV, "GROUP", "JUDI")
 
-include("utils.jl")
+# JUDI seismic utils
+include("seismic_utils.jl")
 
 parsed_args = parse_commandline()
 const nlayer = parsed_args["nlayer"]
@@ -29,6 +30,10 @@ const tti = parsed_args["tti"]
 const fs =  parsed_args["fs"]
 const nw = parsed_args["parallel"]
 const viscoacoustic = parsed_args["viscoacoustic"]
+
+
+# Testing Utilities
+include("testing_utils.jl")
 
 
 base = ["test_geometry.jl",

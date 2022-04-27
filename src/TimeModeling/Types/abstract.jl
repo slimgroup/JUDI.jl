@@ -115,26 +115,26 @@ end
 
 # inner product
 function dot(a::judiMultiSourceVector{T}, b::judiMultiSourceVector{T}) where T
-	# Dot product for data containers
-	size(a) == size(b) || throw(judiMultiSourceException("dimension mismatch: $(size(a)) != $(size(b))"))
-	dotprod = 0f0
+    # Dot product for data containers
+    size(a) == size(b) || throw(judiMultiSourceException("dimension mismatch: $(size(a)) != $(size(b))"))
+    dotprod = 0f0
     dt = time_sampling(a)
-	for j=1:a.nsrc
-		dotprod += dt[j] * dot(a.data[j], b.data[j])
-	end
-	return T(dotprod)
+    for j=1:a.nsrc
+        dotprod += dt[j] * dot(a.data[j], b.data[j])
+    end
+    return T(dotprod)
 end
 
-dot(a::judiMultiSourceVector{T}, b::Vector{T}) where T = dot(vec(a), b)
-dot(a::Vector{T}, b::judiMultiSourceVector{T}) where T = dot(b, a)
+dot(a::judiMultiSourceVector{T}, b::Array{T}) where T = dot(vec(a), vec(b))
+dot(a::Array{T}, b::judiMultiSourceVector{T}) where T = dot(b, a)
 
 # abs
 function abs(a::judiMultiSourceVector{T}) where T
-	b = deepcopy(a)
-	for j=1:a.nsrc
-		b.data[j] = abs.(a.data[j])
-	end
-	return b
+    b = deepcopy(a)
+    for j=1:a.nsrc
+        b.data[j] = abs.(a.data[j])
+    end
+    return b
 end
 
 # vcat
