@@ -120,5 +120,57 @@ datapath = joinpath(dirname(pathof(JUDI)))*"/../data/"
 
         @test compareGeometry(src_geometry, src_geometry)
         @test compareGeometry(rec_geometry, rec_geometry)
+
+        # Check if 'limit_model_to_receiver_area' works with nonzero origin
+        # Set up model structure
+        n = (100, 100, 100)    # (x,y,z) or (x,z)
+        d = (10., 10., 10.)
+        o = (100., 100., 0.)    # set nonzero origin
+
+        # Velocity [km/s] (ones same as [s^2/km^2])
+        m = ones(Float32,n)
+
+        # Setup model structure
+        model = Model(n, d, o, m)
+
+        # Set up 3D receiver geometry by defining one receiver vector in each x and y direction
+        nxrec = 5
+        nyrec = 3
+        xrec = range(300f0, stop=700f0, length=nxrec)
+        yrec = range(400f0, stop=600f0, length=nyrec)
+        zrec = 50f0
+
+        # Construct 3D grid from basis vectors
+        (xrec, yrec, zrec) = setup_3D_grid(xrec, yrec, zrec)
+
+        # receiver sampling and recording time
+        timeR = 100f0   # receiver recording time [ms]
+        dtR = 4f0    # receiver sampling interval
+
+        # Set up receiver structure
+        recGeometry = Geometry(xrec, yrec, zrec; dt=dtR, t=timeR, nsrc=1)
+
+        # Set up source geometry (cell array with source locations for each shot)
+        xsrc = convertToCell([500f0])
+        ysrc = convertToCell([500f0])
+        zsrc = convertToCell([0f0])
+
+        # source sampling and number of time steps
+        timeS = 100f0   # source length in [ms]
+        dtS = 2f0    # source sampling interval
+
+        # Set up source structure
+        srcGeometry = Geometry(xsrc, ysrc, zsrc; dt=dtS, t=timeS)
+
+        buffer = 100f0
+        model_out = limit_model_to_receiver_area(srcGeometry, recGeometry, model, buffer)
+
+        # Check results
+        # min/max X
+        @test isequal(model_out.o[1], xrec[1]-buffer)
+        @test isequal(model_out.o[1] + model_out.d[1]*(model_out.n[1]-1), xrec[end]+buffer)
+        # min/max Y
+        @test isequal(model_out.o[2], yrec[1]-buffer)
+        @test isequal(model_out.o[2] + model_out.d[2]*(model_out.n[2]-1), yrec[end]+buffer)
     end
 end
