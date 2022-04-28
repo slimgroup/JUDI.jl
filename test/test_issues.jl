@@ -52,7 +52,7 @@ end
         (xrec, yrec, zrec) = setup_3D_grid(xrec, yrec, zrec)
 
         # Set up receiver structure
-        recGeometry = Geometry(xrec, yrec, zrec; dt=2, t=100f0, nsrc=1)
+        recGeometry = Geometry(xrec, yrec, zrec; dt=2f0, t=100f0, nsrc=1)
 
         # Set up source geometry (cell array with source locations for each shot)
         xsrc = convertToCell([500f0])
@@ -60,7 +60,7 @@ end
         zsrc = convertToCell([0f0])
 
         # Set up source structure
-        srcGeometry = Geometry(xsrc, ysrc, zsrc; dt=2, t=100f0)
+        srcGeometry = Geometry(xsrc, ysrc, zsrc; dt=2f0, t=100f0)
 
         buffer = 100f0
         model_limited, _ = limit_model_to_receiver_area(srcGeometry, recGeometry, model, buffer)
