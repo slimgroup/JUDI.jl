@@ -7,11 +7,7 @@ ftol = 1f-6
 function test_model(ndim; tti=false)
     n = Tuple(121 for i=1:ndim)
     # non zero origin to check 'limit_model_to_receiver_area'
-    o = (10., 0.)
-    if ndim == 3
-        # 'example_rec_geometry()' sets '0' for 'y' (thus no need to set 0[2] = 10)
-        o = (10., 0., 0.)
-    end
+    o = ndims == 3 ? (10., 0., 0.) : (10., 0.)
     d = Tuple(10. for i=1:ndim)
     m = .5f0 .+ rand(Float32, n...)
     if !tti
