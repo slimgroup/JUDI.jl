@@ -6,7 +6,8 @@ ftol = 1f-6
 
 function test_model(ndim; tti=false)
     n = Tuple(121 for i=1:ndim)
-    o = Tuple(0. for i=1:ndim)
+    # non zero origin to check 'limit_model_to_receiver_area'
+    o = ndim == 3 ? (10., 0., 0.) : (10., 0.)
     d = Tuple(10. for i=1:ndim)
     m = .5f0 .+ rand(Float32, n...)
     if !tti
@@ -56,11 +57,21 @@ function test_limit_m(ndim, tti)
 
     srcGeometry = example_src_geometry()
     recGeometry = example_rec_geometry(cut=true)
+    buffer = 100f0
     dm = rand(Float32, model.n...)
-    new_mod, dm_n = limit_model_to_receiver_area(srcGeometry, recGeometry, deepcopy(model), 100f0; pert=dm)
+    new_mod, dm_n = limit_model_to_receiver_area(srcGeometry, recGeometry, deepcopy(model), buffer; pert=dm)
+
+    # check new_mod coordinates
+    # as long as func 'example_rec_geometry' uses '0' for 'y' we check only 'x' limits
+    min_x = min(minimum(recGeometry.xloc[1]), minimum(srcGeometry.xloc[1]))
+    max_x = max(maximum(recGeometry.xloc[1]), maximum(srcGeometry.xloc[1]))
+
+    @test isapprox(new_mod.o[1], min_x-buffer; rtol=ftol)
+    @test isapprox(new_mod.o[1] + new_mod.d[1]*(new_mod.n[1]-1), max_x+buffer; rtol=ftol)
 
     # check inds
-    inds = ndim == 3 ? [6:116, 1:11, 1:121] : [6:116, 1:121]
+    # 5:115 because of origin[1] = 10 (if origin[1] = 0 then 6:116)
+    inds = ndim == 3 ? [5:115, 1:11, 1:121] : [5:115, 1:121]
     @test new_mod.n[1] == 111
     @test new_mod.n[end] == 121
     if ndim == 3
