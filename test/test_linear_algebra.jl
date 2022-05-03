@@ -89,6 +89,20 @@
         @test isapprox(dobs_out, Md'*dobs; rtol=ftol)
 
         # Check JUDI-JOLI compat
+        
+        # check JOLI operator w/ judiVector
+        mul!(dobs_out, J*D, dm)
+        mul!(dobs, J*D, dm.data)
+        dlin = J*D*dm
+        @test isapprox(dobs_out, dlin; rtol=ftol)
+        @test isapprox(dobs_out, dobs; rtol=ftol)
+        # check JOLI operator w/ judiVector
+        DFT = joDFT(size(dm.data)[1], size(dm.data)[2]; DDT=Float32, RDT=ComplexF32)
+        dm1 = adjoint(J*DFT') * dlin
+        dm2 = similar(dm1)
+        mul!(dm2, adjoint(J*DFT'), dlin)
+        @test isapprox(dm1, dm2; rtol=ftol)
+
         dm1 = M * J' * Md * dobs
         @test length(dm1) == prod(model0.n)
         @test dm1[1] == 0
