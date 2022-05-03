@@ -172,6 +172,20 @@ ylabel("Depth (m)")
 title("RTM image")
 display(fig)
 
+#' notice that we can conduct a simplistic least-squares reverse-time migration via LSQR thanks to the linear algebraic abstraction
+using IterativeSolvers
+S = judiDepthScaling(model0)  # depth scaling
+lsrtm = 0f0 .* rtm
+lsqr!(lsrtm, J*S, dD; maxiter=2)
+
+#' Plot LSRTM
+fig = figure()
+imshow(reshape(S*lsrtm, n)', vmin=-1, vmax=1, cmap="Greys", extent=[0, (n[1]-1)*d[1], (n[2]-1)*d[2], 0 ], aspect="auto")
+xlabel("Lateral position(m)")
+ylabel("Depth (m)")
+title("LSRTM via LSQR")
+display(fig)
+
 #' ## Inversion utility functions
 #' We currently introduced the lineaar operators that allow to write seismic modeling and inversion in a high-level, linear algebra way. These linear operators allow the script to closely follow the mathematics and to be readable and understandable.
 #' 
