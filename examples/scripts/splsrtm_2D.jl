@@ -3,7 +3,7 @@
 # Date: April 2022
 
 using Statistics, Random, LinearAlgebra, JOLI
-using JUDI, SegyIO, HDF5, PyPlot, SlimOptim
+using JUDI, SegyIO, HDF5, PyPlot, SlimOptim, IterativeSolvers
 
 
 # Load migration velocity model
@@ -66,7 +66,6 @@ end
 bregopt = bregman_options(maxIter=niter, verbose=2, quantile=.9, alpha=.1, antichatter=false, spg=true)
 solb = bregman(obj, zeros(Float32, prod(model0.n)), bregopt, C);
 
-
 # Save final velocity model, function value and history
 h5open("lsrtm_marmousi_breg_result.h5", "w") do file
     write(file, "x", reshape(solb.x, model0.n), "z", reshape(solb.z, model0.n), "fval", Float32.(solb.ϕ_trace))
@@ -74,4 +73,17 @@ end
 
 # Plot final image
 figure(); imshow(copy(adjoint(reshape(solb.x, model0.n))), extent = (0, 7.99, 3.19, 0), cmap = "gray", vmin = -3e-2, vmax = 3e-2)
-title("LS-RTM with SGD"); xlabel("Lateral position [km]"); ylabel("Depth [km]")
+title("SPLS-RTM with SGD"); xlabel("Lateral position [km]"); ylabel("Depth [km]")
+
+#' LSQR
+lsqr_sol = 0f0 .* solb.x
+lsqr!(lsqr_sol, Ml*J*Mr, Ml*d_lin; maxiter=1)
+
+# Save final velocity model, function value and history
+h5open("lsrtm_marmousi_lsqr_result.h5", "w") do file
+    write(file, "x", reshape(lsqr_sol, model0.n))
+end
+
+# Plot final image
+figure(); imshow(copy(adjoint(reshape(lsqr_sol, model0.n))), extent = (0, 7.99, 3.19, 0), cmap = "gray", vmin = -3e-2, vmax = 3e-2)
+title("SPLS-RTM with LSQR"); xlabel("Lateral position [km]"); ylabel("Depth [km]")
