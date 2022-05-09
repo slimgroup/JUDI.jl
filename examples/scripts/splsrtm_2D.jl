@@ -77,8 +77,8 @@ title("SPLS-RTM with SGD"); xlabel("Lateral position [km]"); ylabel("Depth [km]"
 
 #' LSQR
 lsqr_sol = 0f0 .* solb.x
-Ml = judiMarineTopmute2D(30, d_lin.geometry)
-lsqr!(lsqr_sol, Ml*J*Mr, Ml*d_lin; maxiter=1)
+Ml = judiMarineTopmute2D(30, d_lin[1].geometry)
+lsqr!(lsqr_sol, Ml*J[1]*Mr, Ml*d_lin[1]; maxiter=1)
 
 # Save final velocity model, function value and history
 h5open("lsrtm_marmousi_lsqr_result.h5", "w") do file
