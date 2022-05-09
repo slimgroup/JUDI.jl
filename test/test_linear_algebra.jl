@@ -1,12 +1,6 @@
 # Author: Mathias Louboutin, mlouboutin3@gatech.edu
 # Date: July 2020
 
-parsed_args = parse_commandline()
-
-nlayer = parsed_args["nlayer"]
-tti = parsed_args["tti"]
-fs =  parsed_args["fs"]
-
 @testset "Arithmetic test with $(nlayer) layers and tti $(tti) and freesurface $(fs)" begin
 
         # Test 2D find_water_bottom
@@ -16,25 +10,25 @@ fs =  parsed_args["fs"]
         @test find_water_bottom(dm2D) == 6*ones(Integer,10)
 
         ### Model
-        model, model0, dm = setup_model(parsed_args["tti"], parsed_args["nlayer"])
+        model, model0, dm = setup_model(tti, viscoacoustic, nlayer)
         wb = find_water_bottom(model.m .- maximum(model.m))
-        q, srcGeometry, recGeometry, info = setup_geom(model)
+        q, srcGeometry, recGeometry = setup_geom(model)
         dt = srcGeometry.dt[1]
         nt = length(q.data[1])
         nrec = length(recGeometry.xloc[1])
 
-        opt = Options(free_surface=parsed_args["fs"])
-        opta = Options(free_surface=parsed_args["fs"], return_array=true)
+        opt = Options(free_surface=fs)
+        opta = Options(free_surface=fs, return_array=true)
         ftol = 5f-5
 
         w = judiWeights(randn(Float32, model0.n))
 
         # Build operators
-        Pr = judiProjection(info, recGeometry)
-        F = judiModeling(info, model; options=opt)
-        Fa = judiModeling(info, model; options=opta)
-        Ps = judiProjection(info, srcGeometry)
-        Pw = judiLRWF(info, q.data[1])
+        Pr = judiProjection(recGeometry)
+        F = judiModeling(model; options=opt)
+        Fa = judiModeling(model; options=opta)
+        Ps = judiProjection(srcGeometry)
+        Pw = judiLRWF(q.geometry.dt[1], q.data[1])
         J = judiJacobian(Pr*F*adjoint(Ps), q)
         Jw = judiJacobian(Pr*F*adjoint(Pw), w)
 
@@ -94,6 +88,10 @@ fs =  parsed_args["fs"]
         mul!(dobs_out, Md', dobs)
         @test isapprox(dobs_out, Md'*dobs; rtol=ftol)
 
+        # Check JUDI-JOLI compat
+        dm1 = M * J' * Md * dobs
+        @test length(dm1) == prod(model0.n)
+        @test dm1[1] == 0
 
         mul!(w_out, D, w)
         @test isapprox(w_out, D*w; rtol=ftol)

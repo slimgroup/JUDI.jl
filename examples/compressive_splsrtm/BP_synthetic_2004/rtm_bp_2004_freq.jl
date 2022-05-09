@@ -33,7 +33,7 @@ q = judiVector(src_geometry, wavelet)
 
 # Info structure for linear operators
 ntComp = get_computational_nt(src_geometry, d_obs.geometry, model0)    # no. of computational time steps
-info = Info(prod(model0.n), d_obs.nsrc, ntComp)
+
 
 ###################################################################################################
 
@@ -45,7 +45,7 @@ opt = Options(limit_m = true,
 
 # Setup operators
 q_dist = generate_distribution(q)
-F = judiModeling(info, model0, q.geometry, d_obs.geometry; options=opt)
+F = judiModeling(model0, q.geometry, d_obs.geometry; options=opt)
 J = judiJacobian(F, q)
 
 # Set up random frequencies

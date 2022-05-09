@@ -3,6 +3,7 @@ import warnings
 from devito import (Grid, Function, SubDomain, SubDimension, Eq, Inc,
                     Operator, mmin, initialize_function, switchconfig,
                     Abs, sqrt, sin)
+from devito.data.allocators import ExternalAllocator
 from devito.tools import as_tuple
 
 
@@ -86,15 +87,45 @@ def initialize_damp(damp, padsizes, abc_type="damp", fs=False):
     Operator(eqs, name='initdamp')()
 
 
-class GenericModel(object):
+class Model(object):
     """
-    General model class with common properties
+    The physical model used in seismic inversion processes.
+
+    Parameters
+    ----------
+    origin : tuple of floats
+        Origin of the model in m as a tuple in (x,y,z) order.
+    spacing : tuple of floats
+        Grid size in m as a Tuple in (x,y,z) order.
+    shape : tuple of int
+        Number of grid points size in (x,y,z) order.
+    space_order : int
+        Order of the spatial stencil discretisation.
+    m : array_like or float
+        Squared slownes in s^2/km^2
+    nbl : int, optional
+        The number of absorbin layers for boundary damping.
+    dtype : np.float32 or np.float64
+        Defaults to 32.
+    epsilon : array_like or float, optional
+        Thomsen epsilon parameter (0<epsilon<1).
+    delta : array_like or float
+        Thomsen delta parameter (0<delta<1), delta<epsilon.
+    theta : array_like or float
+        Tilt angle in radian.
+    phi : array_like or float
+        Asymuth angle in radian.
+    dt: Float
+        User provided computational time-step
     """
-    def __init__(self, origin, spacing, shape, space_order, nbl=20,
-                 dtype=np.float32, fs=False, grid=None):
-        self.shape = shape
+    def __init__(self, origin, spacing, shape, m, space_order=2, nbl=40,
+                 dtype=np.float32, epsilon=None, delta=None, theta=None, phi=None,
+                 rho=1, qp=None, dm=None, fs=False, **kwargs):
+        # Setup devito grid
+        self.shape = tuple(shape)
         self.nbl = int(nbl)
         self.origin = tuple([dtype(o) for o in origin])
+        abc_type = "mask" if qp is not None else "damp"
         self.fs = fs
         # Origin of the computational domain with boundary to inject/interpolate
         # at the correct index
@@ -110,18 +141,64 @@ class GenericModel(object):
             subdomains = ()
         # Physical extent is calculated per cell, so shape - 1
         extent = tuple(np.array(spacing) * (shape_pml - 1))
-        self.grid = grid or Grid(extent=extent, shape=shape_pml,
-                                 origin=tuple(origin_pml),
-                                 dtype=dtype, subdomains=subdomains)
+        self.grid = Grid(extent=extent, shape=shape_pml, origin=tuple(origin_pml),
+                         dtype=dtype, subdomains=subdomains)
 
+        # Absorbing boundary layer
         if self.nbl != 0:
             # Create dampening field as symbol `damp`
             self.damp = Function(name="damp", grid=self.grid)
-            initialize_damp(self.damp, self.padsizes, fs=fs)
+            initialize_damp(self.damp, self.padsizes, abc_type=abc_type, fs=fs)
             self._physical_parameters = ['damp']
         else:
             self.damp = 1
             self._physical_parameters = []
+
+        # Seismic fields and properties
+        self.scale = 1
+        self._space_order = space_order
+        # Create square slowness of the wave as symbol `m`
+        self._m = self._gen_phys_param(m, 'm', space_order)
+        # density
+        self._init_density(rho, space_order)
+        self._dm = self._gen_phys_param(dm, 'dm', space_order)
+
+        # Model type
+        self._is_viscoacoustic = qp is not None
+        self._is_tti = any(p is not None for p in [epsilon, delta, theta, phi])
+        # Cannot be tti and visco at the moment
+        if self._is_viscoacoustic and self._is_tti:
+            raise NotImplementedError("Viscosity not supported for TTI")
+        if self._is_viscoacoustic and self.fs:
+            raise NotImplementedError("Freesurface not supported for viscoacoustic")
+
+        # Additional parameter fields for Viscoacoustic operators
+        if self._is_viscoacoustic:
+            self.qp = self._gen_phys_param(qp, 'qp', space_order)
+
+        # Additional parameter fields for TTI operators
+        if self._is_tti:
+            epsilon = 1 if epsilon is None else 1 + 2 * epsilon
+            delta = 1 if delta is None else 1 + 2 * delta
+            self.epsilon = self._gen_phys_param(epsilon, 'epsilon', space_order)
+            self.scale = np.sqrt(np.max(epsilon))
+            self.delta = self._gen_phys_param(delta, 'delta', space_order)
+            self.theta = self._gen_phys_param(theta, 'theta', space_order)
+            self.phi = self._gen_phys_param(phi, 'phi', space_order)
+        # User provided dt
+        self._dt = kwargs.get('dt')
+
+    def _init_density(self, rho, so):
+        """
+        Initialize density parameter. Depending on variance in density
+        either density or inverse density is setup.
+        """
+        if np.max(rho)/np.min(rho) > 10:
+            self.rho = self._gen_phys_param(rho, 'rho', so)
+            self.irho = 1 / self.rho
+        else:
+            self.irho = self._gen_phys_param(rho, 'irho', so,
+                                             func=lambda x: np.reciprocal(x))
 
     @property
     def padsizes(self):
@@ -136,6 +213,10 @@ class GenericModel(object):
         known = [getattr(self, i) for i in self.physical_parameters]
         return {i.name: kwargs.get(i.name, i) or i for i in known}
 
+    @property
+    def zero_thomsen(self):
+        return {self.epsilon: 1, self.delta: 1, self.theta: 0, self.phi: 0}
+
     @switchconfig(log_level='ERROR')
     def _gen_phys_param(self, field, name, space_order, is_param=False,
                         default_value=0, func=lambda x: x):
@@ -146,12 +227,15 @@ class GenericModel(object):
             return func(default_value)
         if isinstance(field, np.ndarray) and (name == 'm' or
                                               np.min(field) != np.max(field)):
-            function = Function(name=name, grid=self.grid, space_order=space_order,
-                                parameter=is_param)
             if field.shape == self.shape:
-                initialize_function(function, func(field), self.padsizes)
+                function = Function(name=name, grid=self.grid, space_order=space_order,
+                                    parameter=is_param)
+                initialize_function(function, field, self.padsizes)
             else:
-                function._data_with_outhalo[:] = func(field)
+                # We take advantage of the external allocator
+                function = Function(name=name, grid=self.grid, space_order=space_order,
+                                    allocator=ExternalAllocator(field),
+                                    initializer=lambda x: None, parameter=is_param)
         else:
             return func(np.min(field))
         self._physical_parameters.append(name)
@@ -186,13 +270,6 @@ class GenericModel(object):
         return self.grid.dimensions
 
     @property
-    def spacing_map(self):
-        """
-        Map between spacing symbols and their values for each `SpaceDimension`.
-        """
-        return self.grid.spacing_map
-
-    @property
     def dtype(self):
         """
         Data type for all assocaited data objects.
@@ -205,76 +282,6 @@ class GenericModel(object):
         Physical size of the domain as determined by shape and spacing
         """
         return tuple((d-1) * s for d, s in zip(self.shape, self.spacing))
-
-
-class Model(GenericModel):
-    """
-    The physical model used in seismic inversion processes.
-
-    Parameters
-    ----------
-    origin : tuple of floats
-        Origin of the model in m as a tuple in (x,y,z) order.
-    spacing : tuple of floats
-        Grid size in m as a Tuple in (x,y,z) order.
-    shape : tuple of int
-        Number of grid points size in (x,y,z) order.
-    space_order : int
-        Order of the spatial stencil discretisation.
-    m : array_like or float
-        Squared slownes in s^2/km^2
-    nbl : int, optional
-        The number of absorbin layers for boundary damping.
-    dtype : np.float32 or np.float64
-        Defaults to 32.
-    epsilon : array_like or float, optional
-        Thomsen epsilon parameter (0<epsilon<1).
-    delta : array_like or float
-        Thomsen delta parameter (0<delta<1), delta<epsilon.
-    theta : array_like or float
-        Tilt angle in radian.
-    phi : array_like or float
-        Asymuth angle in radian.
-    dt: Float
-        User provided computational time-step
-    """
-    def __init__(self, origin, spacing, shape, m, space_order=2, nbl=40,
-                 dtype=np.float32, epsilon=None, delta=None, theta=None, phi=None,
-                 rho=1, dm=None, fs=False, **kwargs):
-        super(Model, self).__init__(origin, spacing, shape, space_order, nbl, dtype,
-                                    fs=fs, grid=kwargs.get('grid'))
-
-        self.scale = 1
-        self._space_order = space_order
-        # Create square slowness of the wave as symbol `m`
-        self._m = self._gen_phys_param(m, 'm', space_order)
-        # density
-        self._init_density(rho, space_order)
-        self._dm = self._gen_phys_param(dm, 'dm', space_order)
-        # Additional parameter fields for TTI operators
-        self._is_tti = any(p is not None for p in [epsilon, delta, theta, phi])
-        if self._is_tti:
-            epsilon = 1 if epsilon is None else 1 + 2 * epsilon
-            delta = 1 if delta is None else 1 + 2 * delta
-            self.epsilon = self._gen_phys_param(epsilon, 'epsilon', space_order)
-            self.scale = np.sqrt(np.max(epsilon))
-            self.delta = self._gen_phys_param(delta, 'delta', space_order)
-            self.theta = self._gen_phys_param(theta, 'theta', space_order)
-            self.phi = self._gen_phys_param(phi, 'phi', space_order)
-        # User provided dt
-        self._dt = kwargs.get('dt')
-
-    def _init_density(self, rho, so):
-        """
-        Initialize density parameter. Depending on variance in density
-        either density or inverse density is setup.
-        """
-        if np.max(rho)/np.min(rho) > 10:
-            self.rho = self._gen_phys_param(rho, 'rho', so)
-            self.irho = 1 / self.rho
-        else:
-            self.irho = self._gen_phys_param(rho, 'irho', so,
-                                             func=lambda x: np.reciprocal(x))
 
     @property
     def space_order(self):
@@ -303,6 +310,13 @@ class Model(GenericModel):
         Whether the model is TTI or isotopic
         """
         return self._is_tti
+
+    @property
+    def is_viscoacoustic(self):
+        """
+        Whether the model is TTI or isotopic
+        """
+        return self._is_viscoacoustic
 
     @property
     def _max_vp(self):
@@ -355,7 +369,7 @@ class Model(GenericModel):
             if not isinstance(self._dm, Function):
                 self._dm = self._gen_phys_param(dm, 'dm', self.space_order)
             elif dm.shape == self.shape:
-                initialize_function(self._dm, dm, self.nbl)
+                initialize_function(self._dm, dm, self.padsizes)
             elif dm.shape == self.dm.shape:
                 self.dm.data[:] = dm[:]
             else:
@@ -390,7 +404,7 @@ class Model(GenericModel):
             if m.shape == self.m.shape:
                 self.m.data[:] = m[:]
             elif m.shape == self.shape:
-                initialize_function(self._m, m, self.nbl)
+                initialize_function(self._m, m, self.padsizes)
             else:
                 raise ValueError("Incorrect input size %s for model of size" % m.shape +
                                  " %s without or %s with padding" % (self.shape,

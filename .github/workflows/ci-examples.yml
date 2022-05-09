@@ -11,32 +11,48 @@ on:
       - master
 
 jobs:
-  test:
-    name: JUDI example on Julia ${{ matrix.version }}
-    runs-on: ${{ matrix.os }}
-    env:
-      DEVITO_ARCH: gcc-9
-      DEVITO_LANGUAGE: "openmp"
-      DEVITO_BACKEND: "core"
-      DEVITO_LOGGING: "ERROR"
-      OMP_NUM_THREADS: ${{ matrix.omp }}
-      NITER: 1
+  list-examples:
+    runs-on: ubuntu-latest
 
     strategy:
       fail-fast: false
-
-      matrix:
-        os: [ubuntu-latest]
-        omp: [2]
-        version: [1.6, 1.7]
+  
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
 
     steps:
       - name: Checkout JUDI
         uses: actions/checkout@v2
 
-      - name: Install GCC 9
-        if : runner.os == 'macOS'
-        run : brew install gcc@9
+      - id: set-matrix
+        run: echo "::set-output name=matrix::$(ls examples/scripts/*.jl | xargs -n 1 basename | jq -R -s -c 'split("\n")[:-1]')"
+        shell: bash
+
+  run-examples:
+    runs-on: ubuntu-latest
+    needs: list-examples
+    name: ${{ matrix.example }} on Julia ${{ matrix.version }}
+
+    env:
+      DEVITO_ARCH: gcc-9
+      DEVITO_LANGUAGE: "openmp"
+      DEVITO_LOGGING: "ERROR"
+      OMP_NUM_THREADS: 2
+      NITER: 1
+
+    strategy:
+      fail-fast: false
+      matrix:
+        example: ${{ fromJson(needs.list-examples.outputs.matrix) }}
+        version: ['1.7']
+
+        include:
+         - example: "modeling_basic_2D.jl"
+           version: '1.6'
+
+    steps:
+      - name: Checkout JUDI
+        uses: actions/checkout@v2
 
       - name: Set julia python
         run: |
@@ -45,8 +61,12 @@ jobs:
       - name: Setup julia
         uses: julia-actions/setup-julia@v1
         with:
-          version: "${{ matrix.version }}"
+          version: ${{ matrix.version }}
           arch: x64
+
+      - name: Set julia python
+        run: |
+          PYTHON=$(which python3) julia -e 'using Pkg;Pkg.add("PyCall");Pkg.build("PyCall")'
 
       - name: Build JUDI
         uses: julia-actions/julia-buildpkg@latest
@@ -56,7 +76,6 @@ jobs:
           julia -e 'using Pkg;Pkg.add(["NLopt", "JOLI", "PyPlot", "IterativeSolvers", "SlimOptim", "HDF5", "SegyIO", "SetIntersectionProjection", "Images"])'
           julia -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd()))'
 
-      - name: Run base examples
-        working-directory: examples/scripts
-        run: |
-          julia -p 2 -e 'for f in filter!(e->e≠"runall.jl", readdir(".")); include(f); end'
+      - name: Run examples
+        working-directory: examples/scripts/
+        run: julia -p 2 ${{ matrix.example }}

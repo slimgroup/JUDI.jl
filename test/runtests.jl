@@ -7,35 +7,43 @@
 # Updated July 2020
 
 using JUDI
-using ArgParse, Test, Printf
+using ArgParse, Test, Printf, Aqua
 using SegyIO, LinearAlgebra, Distributed, JOLI
 using TimerOutputs: TimerOutputs, @timeit
 
+set_verbosity(false)
 # Collect timing and allocations information to show in a clear way.
 const TIMEROUTPUT = TimerOutputs.TimerOutput()
 timeit_include(path::AbstractString) = @timeit TIMEROUTPUT path include(path)
 
 # Utilities
 const success_log = Dict(true => "SUCCESS", false => "FAILED")
-# Test set 
+# Test set
 const GROUP = get(ENV, "GROUP", "JUDI")
 
 include("utils.jl")
 
-base = ["test_abstract_vectors.jl",
-        "test_geometry.jl",
+parsed_args = parse_commandline()
+const nlayer = parsed_args["nlayer"]
+const tti = parsed_args["tti"]
+const fs =  parsed_args["fs"]
+const nw = parsed_args["parallel"]
+const viscoacoustic = parsed_args["viscoacoustic"]
+
+
+base = ["test_geometry.jl",
         "test_judiVector.jl",
         "test_composite.jl",
         "test_judiWeights.jl",
         "test_judiWavefield.jl",
         "test_linear_operators.jl",
-        "test_physicalparam.jl"]
+        "test_physicalparam.jl",
+        "test_compat.jl"]
 
 devito = ["test_linearity.jl",
           "test_adjoint.jl",
           "test_all_options.jl",
           "test_jacobian.jl",
-          "test_jacobian_extended.jl",
           "test_gradient_fwi.jl",
           "test_gradient_lsrtm.jl",
           "test_multi_exp.jl"]
@@ -47,6 +55,7 @@ issues = ["test_issues.jl"]
 
 # custom
 if endswith(GROUP, ".jl")
+    # VERSION >= v"1.7" && push!(Base.ARGS, "-p 2")
     timeit_include(GROUP)
 end
 
@@ -118,4 +127,25 @@ if GROUP == "TTI_OP_FS" || GROUP == "All"
     end
 end
 
+# Viscoacoustic tests
+if GROUP == "VISCO_AC_OP" || GROUP == "All"
+    println("JUDI Viscoacoustic operators tests")
+    # Viscoacoustic tests
+    push!(Base.ARGS, "--viscoacoustic")
+    for t=devito
+        timeit_include(t)
+        try Base.GC.gc(); catch; gc() end
+    end
+end
+
+# Code quality check
+if GROUP == "AQUA" || GROUP == "All" || GROUP == "JUDI"
+    @testset "code quality" begin
+        # Prevent ambiguities from PyCall and other packages
+        Aqua.test_all(JUDI; ambiguities=false)
+        Aqua.test_ambiguities(JUDI; Aqua.askwargs(true)...)
+    end
+end
+
+# Testing memory and runtime summary
 show(TIMEROUTPUT; compact=true, sortby=:firstexec)

@@ -9,7 +9,7 @@ export ricker_wavelet, get_computational_nt, calculate_dt, setup_grid, setup_3D_
 export convertToCell, limit_model_to_receiver_area, extend_gradient, remove_out_of_bounds_receivers
 export time_resample, remove_padding, subsample, process_input_data
 export generate_distribution, select_frequencies
-export devito_model, update_dm, pad_sizes, pad_array
+export devito_model, pad_sizes, pad_array
 export transducer
 
 """
@@ -22,17 +22,21 @@ Parameters
 * `options`: JUDI Options structure.
 * `dm`: Squared slowness perturbation (optional), Array or PhysicalParameter.
 """
-function devito_model(model::Model, options::Options; dm=nothing)
+function devito_model(model::Model, options::JUDIOptions, dm)
     pad = pad_sizes(model, options)
     # Set up Python model structure
     m = pad_array(model[:m].data, pad)
-    !isnothing(dm) && (dm = pad_array(reshape(getattr(dm, :data, dm), model.n), pad))
+    dm = pad_array(dm, pad)
     physpar = Dict((n, pad_array(v.data, pad)) for (n, v) in model.params if n != :m)
     modelPy = pm."Model"(model.o, model.d, model.n, m, fs=options.free_surface,
                          nbl=model.nb, space_order=options.space_order, dt=options.dt_comp, dm=dm;
                          physpar...)
     return modelPy
 end
+
+devito_model(model::Model, options::JUDIOptions, dm::PhysicalParameter) = devito_model(model, options, reshape(dm.data, model.n))
+devito_model(model::Model, options::JUDIOptions, dm::Vector{T}) where T = devito_model(model, options, reshape(dm, model.n))
+devito_model(model::Model, options::JUDIOptions) = devito_model(model, options, nothing)
 
 """
     pad_sizes(model, options; so=nothing)
@@ -71,13 +75,16 @@ function pad_array(m::Array{DT}, nb::Array{Tuple{Int64,Int64},1}; mode::Symbol=:
     n = size(m)
     new_size = Tuple([n[i] + sum(nb[i]) for i=1:length(nb)])
     Ei = []
-    for i=length(nb):-1:1
+    for i=1:length(nb)
         left, right = nb[i]
         push!(Ei, joExtend(n[i], mode;pad_upper=right, pad_lower=left, RDT=DT, DDT=DT))
     end
-    padded = joKron(Ei...) * vec(m)
-    return reshape(padded, new_size)
+    padded = joKron(Ei...) * PermutedDimsArray(m, length(n):-1:1)[:]
+    return PyReverseDims(reshape(padded, reverse(new_size)))
 end
+
+pad_array(::Nothing, ::Array{Tuple{Int64,Int64},1}; s::Symbol=:border) = nothing
+pad_array(m::Number, ::Array{Tuple{Int64,Int64},1}; s::Symbol=:border) = m
 
 """
     remove_padding(m, nb; true_adjoint=False)
@@ -108,7 +115,7 @@ end
 Crops the `model` to the area of the source an receiver with an extra buffer. This reduces the size
 of the problem when the model si large and the source and receiver located in a small part of the domain.
 
-In the cartoon below, the full model will be cropped to the center area containg the source (o) receivers (x) and 
+In the cartoon below, the full model will be cropped to the center area containg the source (o) receivers (x) and
 buffer area (*)
 
 --------------------------------------------
@@ -116,7 +123,7 @@ buffer area (*)
 | . . . . . . . . . . . . . . . . . . . . . |  - o Source position
 | . . . . * * * * * * * * * * * * . . . . . |  - x receiver positions
 | . . . . * x x x x x x x x x x * . . . . . |  - * Extra buffer (grid spacing in that simple case)
-| . . . . * x x x x x x x x x x * . . . . . | 
+| . . . . * x x x x x x x x x x * . . . . . |
 | . . . . * x x x x x x x x x x * . . . . . |
 | . . . . * x x x x x o x x x x * . . . . . |
 | . . . . * x x x x x x x x x x * . . . . . |
@@ -154,12 +161,12 @@ function limit_model_to_receiver_area(srcGeometry::Geometry, recGeometry::Geomet
     end
 
     # extract part of the model that contains sources/receivers
-    nx_min = Int(min_x ÷ model.d[1]) + 1
-    nx_max = Int(max_x ÷ model.d[1]) + 1
+    nx_min = Int((min_x-model.o[1]) ÷ model.d[1]) + 1
+    nx_max = Int((max_x-model.o[1]) ÷ model.d[1]) + 1
     inds = [max(1, nx_min):nx_max, 1:model.n[end]]
     if ndim == 3
-        ny_min = Int(min_y ÷ model.d[1]) + 1
-        ny_max = Int(max_y ÷ model.d[1]) + 1
+        ny_min = Int((min_y-model.o[2]) ÷ model.d[2]) + 1
+        ny_max = Int((max_y-model.o[2]) ÷ model.d[2]) + 1
         insert!(inds, 2, max(1, ny_min):ny_max)
     end
 
@@ -219,7 +226,7 @@ Parameters
 function remove_out_of_bounds_receivers(recGeometry::Geometry, model::Model)
 
     # Only keep receivers within the model
-    xmin, xmax = model.o[1], model.o[1] + (model.n[1] - 1)*model.d[1] 
+    xmin, xmax = model.o[1], model.o[1] + (model.n[1] - 1)*model.d[1]
     if typeof(recGeometry.xloc[1]) <: Array
         idx_xrec = findall(x -> xmax >= x >= xmin, recGeometry.xloc[1])
         recGeometry.xloc[1] = recGeometry.xloc[1][idx_xrec]
@@ -229,7 +236,7 @@ function remove_out_of_bounds_receivers(recGeometry::Geometry, model::Model)
 
     # For 3D shot records, scan also y-receivers
     if length(model.n) == 3 && typeof(recGeometry.yloc[1]) <: Array
-        ymin, ymax = model.o[2], model.o[2] + (model.n[2] - 1)*model.d[2] 
+        ymin, ymax = model.o[2], model.o[2] + (model.n[2] - 1)*model.d[2]
         idx_yrec = findall(x -> ymax >= x >= ymin, recGeometry.yloc[1])
         recGeometry.xloc[1] = recGeometry.xloc[1][idx_yrec]
         recGeometry.yloc[1] = recGeometry.yloc[1][idx_yrec]
@@ -272,8 +279,9 @@ end
 
 remove_out_of_bounds_receivers(G::Geometry, ::Nothing, M::Model) = (remove_out_of_bounds_receivers(G, M), nothing)
 remove_out_of_bounds_receivers(::Nothing, ::Nothing, M::Model) = (nothing, nothing)
-remove_out_of_bounds_receivers(::Nothing, r::Array, M::Model) = (nothing, r)
+remove_out_of_bounds_receivers(::Nothing, r::AbstractArray, M::Model) = (nothing, r)
 remove_out_of_bounds_receivers(G::Geometry, r, M::Model) = remove_out_of_bounds_receivers(G, convert(Matrix{Float32}, r), M)
+remove_out_of_bounds_receivers(w::AbstractArray, ::Nothing, M::Model) = (w, nothing)
 
 """
     convertToCell(x)
@@ -390,33 +398,18 @@ end
 """
     setup_grid(geometry, n)
 
-Sets up the coordinate arrays for Devito. 
+Sets up the coordinate arrays for Devito.
 
 Parameters:
 * `geometry`: Geometry containing the coordinates
 * `n`: Domain size
 """
-function setup_grid(geometry, n)
-    # 3D grid
-    if length(n)==3
-        if length(geometry.xloc[1]) > 1
-            source_coords = Array{Float32,2}([vec(geometry.xloc[1]) vec(geometry.yloc[1]) vec(geometry.zloc[1])])
-        else
-            source_coords = Array{Float32,2}([geometry.xloc[1] geometry.yloc[1] geometry.zloc[1]])
-        end
-    else
-    # 2D grid
-        if length(geometry.xloc[1]) > 1
-            source_coords = Array{Float32,2}([vec(geometry.xloc[1]) vec(geometry.zloc[1])])
-        else
-            source_coords = Array{Float32,2}([geometry.xloc[1] geometry.zloc[1]])
-        end
-    end
-    return source_coords
-end
+setup_grid(geometry, ::NTuple{3, T}) where T = hcat(geometry.xloc[1], geometry.yloc[1], geometry.zloc[1])
+setup_grid(geometry, ::NTuple{2, T}) where T = hcat(geometry.xloc[1], geometry.zloc[1])
+setup_grid(geometry, ::NTuple{1, T}) where T = geometry.xloc[1]
 
 """
-    setup_3D_grid(x, y, z)  
+    setup_3D_grid(x, y, z)
 
 Converts one dimensional input (x, y, z) into three dimensional coordinates. The number of point created
 is `length(x)*lenght(y)` with all the x/y pairs and each pair at depth z[idx[x]]. `x` and `z` must have the same size.
@@ -455,7 +448,7 @@ function setup_3D_grid(xrec::Vector{<:AbstractVector{T}},yrec::Vector{<:Abstract
 end
 
 """
-    setup_3D_grid(x, y, z)  
+    setup_3D_grid(x, y, z)
 
 Converts one dimensional input (x, y, z) into three dimensional coordinates. The number of point created
 is `length(x)*lenght(y)` with all the x/y pairs and each pair at same depth z.
@@ -495,7 +488,7 @@ end
 """
     time_resample(data, geometry_in, dt_new)
 
-Resample the input data with sinc interpolation from the current time sampling (geometrty_in) to the 
+Resample the input data with sinc interpolation from the current time sampling (geometrty_in) to the
 new time sampling `dt_new`.
 
 Parameters
@@ -503,7 +496,7 @@ Parameters
 * `geometry_in`: Geometry on which `data` is defined.
 * `dt_new`: New time sampling rate to interpolate onto.
 """
-function time_resample(data::AbstractArray{Float32, N}, geometry_in::Geometry, dt_new) where N
+function time_resample(data::AbstractArray{Float32, N}, geometry_in::Geometry, dt_new::AbstractFloat) where N
     @assert N<=2
     if dt_new==geometry_in.dt[1]
         return data, geometry_in
@@ -520,10 +513,36 @@ function time_resample(data::AbstractArray{Float32, N}, geometry_in::Geometry, d
     end
 end
 
+
+"""
+    time_resample(data, dt_in, dt_new)
+
+Resample the input data with sinc interpolation from the current time sampling dt_in to the 
+new time sampling `dt_new`.
+
+Parameters
+* `data`: Data to be reampled. If data is a matrix, resamples each column.
+* `dt_in`: Time sampling of input
+* `dt_new`: New time sampling rate to interpolate onto.
+"""
+function time_resample(data::Array, dt_in::T1, dt_new::T2) where {T1<:AbstractFloat, T2<:AbstractFloat}
+
+    if dt_new==dt_in
+        return data
+    else
+        nt = size(data, 1)
+        timeAxis = 0:dt_in:(nt-1)*dt_in
+        timeInterp = 0:dt_new:(nt-1)*dt_in
+        dataInterp = Float32.(SincInterpolation(data, timeAxis, timeInterp))
+        return dataInterp
+    end
+end
+
+
 """
     time_resample(data, dt_in, geometry_in)
 
-Resample the input data with sinc interpolation from the current time sampling (dt_in) to the 
+Resample the input data with sinc interpolation from the current time sampling (dt_in) to the
 new time sampling `geometry_out`.
 
 Parameters
@@ -531,7 +550,7 @@ Parameters
 * `geometry_out`: Geometry on which `data` is to be interpolated.
 * `dt_in`: Time sampling rate of the `data.`
 """
-function time_resample(data::AbstractArray{Float32, N}, dt_in, geometry_out::Geometry) where N
+function time_resample(data::AbstractArray{Float32, N}, dt_in::AbstractFloat, geometry_out::Geometry) where N
     @assert N<=2
     if dt_in == geometry_out.dt[1]
         return data
@@ -603,21 +622,21 @@ function select_frequencies(q_dist; fmin=0f0, fmax=Inf, nf=1)
 end
 
 """
-    process_input_data(input, geometry, info)
+    process_input_data(input, geometry, nsrc)
 
 Preprocesses input Array into an Array of Array for modeling
 
 Parameters:
 * `input`: Input to preprocess.
 * `geometry`: Geometry containing physical parameters.
-* `info`: Infor structure.
+* `nsrc`: Number of sources
 """
-function process_input_data(input::Array{Float32}, geometry::Geometry, info::Info)
+function process_input_data(input::Array{Float32}, geometry::Geometry)
     # Input data is pure Julia array: assume fixed no.
     # of receivers and reshape into data cube nt x nrec x nsrc
     nt = Int(geometry.nt[1])
     nrec = length(geometry.xloc[1])
-    nsrc = info.nsrc
+    nsrc = length(geometry.xloc)
     data = reshape(input, nt, nrec, nsrc)
     dataCell = Array{Array{Float32, 2}, 1}(undef, nsrc)
     for j=1:nsrc
@@ -627,29 +646,41 @@ function process_input_data(input::Array{Float32}, geometry::Geometry, info::Inf
 end
 
 """
-    process_input_data(input, model, info)
+    process_input_data(input, model, nsrc)
 
 Preprocesses input Array into an Array of Array for modeling
 
 Parameters:
 * `input`: Input to preprocess.
 * `model`: Model containing physical parameters.
-* `info`: Infor structure.
+* `nsrc`: Number of sources
 """
-function process_input_data(input::Array{Float32, N}, model::Model, info::Info) where N
+function process_input_data(input::Array{Float32}, model::Model, nsrc::Integer)
     ndims = length(model.n)
-    dataCell = Array{Array{Float32, ndims}, 1}(undef, info.nsrc)
-    input = reshape(input, model.n..., info.nsrc)
-    inds = [Colon() for i=1:length(model.n)]
-    for j=1:info.nsrc
-        dataCell[j] = input[inds..., j]
+    dataCell = Array{Array{Float32, ndims}, 1}(undef, nsrc)
+
+    input = reshape(input, model.n..., nsrc)
+    nd = ndims(input)
+    for j=1:nsrc
+        dataCell[j] = selectdim(input, nd, j)
     end
     return dataCell
 end
 
-process_input_data(input::judiVector, ::Geometry, ::Info) = input.data
-process_input_data(input::judiVector, ::Info) = input.data
-process_input_data(input::judiWeights, ::Model, ::Info) = input.weights
+process_input_data(input::Array{Float32}, model::Model) = process_input_data(input, model, length(input) ÷ prod(model.n))
+process_input_data(input::judiVector, ::Geometry) = input
+process_input_data(input::judiVector) = input.data
+process_input_data(input::judiWeights, ::Model) = input.weights
+
+function process_input_data(input::Array{T}, v::Vector{<:Array}) where T
+    nsrc = length(v)
+    dataCell = Vector{Vector{T}}(undef, nsrc)
+    input = reshape(input, :, nsrc)
+    for j=1:nsrc
+        dataCell[j] = input[:, j]
+    end
+    return dataCell
+end
 
 """
     reshape(x::Array{Float32, 1}, geometry::Geometry)
@@ -663,6 +694,16 @@ function reshape(x::Array{Float32, 1}, geometry::Geometry)
     return reshape(x, nt, nrec, nsrc)
 end
 
+"""
+    reshape(V::Vector{T}, n::Tuple, nblock::Integer)
+
+Reshapes input vector into a `Vector{Array{T, N}}` of length `nblock` with each subarray of size `n`
+"""
+function reshape(x::Vector{T}, d::Dims, nsrc::Integer) where {T<:Number}
+    length(x) == prod(d)*nsrc || throw(judiMultiSourceException("Incompatible size"))
+    as_nd = reshape(x, d..., nsrc)
+    return [collect(selectdim(as_nd, ndims(as_nd), s)) for s=1:nsrc]
+end
 
 """
     transducer(q, d, r, theta)
@@ -729,10 +770,6 @@ function transducer(q::judiVector, d::Tuple, r::Number, theta)
 end
 
 ########################################### Misc defaults
-
-pad_array(m::Number, ::Array{Tuple{Int64,Int64},1}) = m
-pad_array(::Nothing, ::Array{Tuple{Int64,Int64},1}) = nothing
-
 # Vectorization of single variable (not defined in Julia)
 vec(x::Float64) = x;
 vec(x::Float32) = x;
@@ -740,9 +777,15 @@ vec(x::Int64) = x;
 vec(x::Int32) = x;
 vec(::Nothing) = nothing
 
-SincInterpolation(Y::AbstractMatrix{T}, S::AbstractRange{T}, Up::AbstractRange{T}) where T<:Real =
+SincInterpolation(Y::AbstractMatrix{T}, S::AbstractRange{T}, Up::AbstractRange{T}) where T<:AbstractFloat =
     sinc.( (Up .- S') ./ (S[2] - S[1]) ) * Y
 
-subsample(::Nothing, i) = nothing
-subsample(a::Array{Array{T, N}, 1}, i) where {T, N} = a[i]
-subsample(a::Array{SeisCon,1}, i::Int64) = a[i]
+"""
+    as_vec(x, ::Val{Bool})
+Vectorizes output when `return_array` is set to `true`.
+"""
+as_vec(x, ::Val) = x
+as_vec(x::Tuple, v::Val) = tuple((as_vec(xi, v) for xi in x)...)
+as_vec(x::Ref, ::Val) = x[]
+as_vec(x::PhysicalParameter, ::Val{true}) = vec(x.data)
+as_vec(x::judiMultiSourceVector, ::Val{true}) = vec(x)

@@ -1,7 +1,7 @@
 name = "JUDI"
 uuid = "f3b833dc-6b2e-5b9c-b940-873ed6319979"
 authors = ["Philipp Witte, Mathias Louboutin"]
-version = "2.6.5"
+version = "3.0.2"
 
 [deps]
 DSP = "717857b8-e6f2-59f4-9121-6e50c889abd2"
@@ -11,21 +11,24 @@ FFTW = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
 JOLI = "bb331ad6-a1cf-11e9-23da-9bcb53c69f6f"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 PyCall = "438e738f-606a-5dbb-bf0a-cddfbfd45ab0"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
 SegyIO = "157a0f19-4d44-4de5-a0d0-07e2f0ac4dfa"
 
 [compat]
+Aqua = "0.5"
 DSP = "0.6, 0.7"
 Dierckx = "0.4, 0.5"
 FFTW = "1"
-JOLI = "0.7"
+JOLI = "0.7, 0.8"
 PyCall = "1.18, 1.90, 1.91, 1.62"
 Reexport = "0.2, 1"
 SegyIO = "0.7.7"
-julia = "1"
 TimerOutputs = "0.5"
+julia = "1"
 
 [extras]
+Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 ArgParse = "c7e460c6-2fb9-53a9-8c5b-16f535851c63"
 JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
@@ -33,4 +36,4 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
 
 [targets]
-test = ["Test", "ArgParse", "Printf", "JLD2", "TimerOutputs"]
+test = ["Aqua", "ArgParse", "JLD2", "Printf", "Test", "TimerOutputs"]

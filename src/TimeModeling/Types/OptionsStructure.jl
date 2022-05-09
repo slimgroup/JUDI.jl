@@ -3,49 +3,47 @@
 # Date: May 2017
 #
 
-export Options, subsample
+export Options, JUDIOptions
 
 # Object for velocity/slowness models
-mutable struct Options
+mutable struct JUDIOptions
     space_order::Integer
     free_surface::Bool
     limit_m::Bool
-    buffer_size::Real
+    buffer_size::AbstractFloat
     save_data_to_disk::Bool
     file_path::String
     file_name::String
     sum_padding::Bool
     optimal_checkpointing::Bool
-    num_checkpoints::Union{Integer, Nothing}
-    checkpoints_maxmem::Union{Real, Nothing}
     frequencies::Array
     isic::Bool
     subsampling_factor::Integer
     dft_subsampling_factor::Integer
     return_array::Bool
     dt_comp::Union{Real, Nothing}
+    f0::Real
 end
 
 """
-    Options
+    JUDIOptions
         space_order::Integer
         free_surface::Bool
         limit_m::Bool
-        buffer_size::Real
-        save_rate::Real
+        buffer_size::AbstractFloat
+        save_rate::AbstractFloat
         save_data_to_disk::Bool
         file_path::String
         file_name::String
         sum_padding::Bool
         optimal_checkpointing::Bool
-        num_checkpoints::Integer
-        checkpoints_maxmem::Real
 	    frequencies::Array
 	    isic::Bool
         subsampling_factor::Integer
 	    dft_subsampling_factor::Integer
         return_array::Bool
         dt_comp::Real
+        f0::Real
 
 
 
@@ -69,10 +67,6 @@ Options structure for seismic modeling.
 
 `optimal_checkpointing`: instead of saving the forward wavefield, recompute it using optimal checkpointing
 
-`num_checkpoints`: number of checkpoints. If not supplied, is set to log(num_timesteps).
-
-`checkpoints_maxmem`: maximum amount of memory that can be allocated for checkpoints (MB)
-
 `frequencies`: calculate the FWI/LS-RTM gradient in the frequency domain for a given set of frequencies
 
 `subsampling_factor`: compute forward wavefield on a time axis that is reduced by a given factor (default is 1)
@@ -84,6 +78,8 @@ Options structure for seismic modeling.
 `return_array`: return data from nonlinear/linear modeling as a plain Julia array.
 
 `dt_comp`: overwrite automatically computed computational time step with this value.
+
+`f0`: define peak frequency.
 
 Constructor
 ==========
@@ -98,7 +94,7 @@ All arguments are optional keyword arguments with the following default values:
             num_checkpoints=nothing, checkpoints_maxmem=nothing,
             frequencies=[], isic=false,
             subsampling_factor=1, dft_subsampling_factor=1, return_array=false,
-            dt_comp=nothing)
+            dt_comp=nothing, f0=0.015f0)
 
 """
 Options(;space_order=8,
@@ -117,8 +113,9 @@ Options(;space_order=8,
 		 subsampling_factor=1,
 		 dft_subsampling_factor=1,
          return_array=false,
-         dt_comp=nothing) =
-		 Options(space_order,
+         dt_comp=nothing,
+         f0=0.015f0) =
+		 JUDIOptions(space_order,
 		 		 free_surface,
 		         limit_m,
 				 buffer_size,
@@ -127,16 +124,25 @@ Options(;space_order=8,
 				 file_name,
 				 sum_padding,
 				 optimal_checkpointing,
-				 num_checkpoints,
-				 checkpoints_maxmem,
 				 frequencies,
 				 isic,
 				 subsampling_factor,
 				 dft_subsampling_factor,
                  return_array,
-                 dt_comp)
+                 dt_comp,
+                 f0)
 
-function subsample(options::Options, srcnum)
+JUDIOptions(;kw...) = Options(kw...)
+
+update!(::JUDIOptions, ::Nothing) = nothing
+
+function update!(O::JUDIOptions, other::JUDIOptions)
+    for f in fieldnames(JUDIOptions)
+        setfield!(O, f, getfield(other, f))
+    end
+end
+
+function getindex(options::JUDIOptions, srcnum)
     if isempty(options.frequencies)
         return options
     else
@@ -146,3 +152,5 @@ function subsample(options::Options, srcnum)
         return opt_out
     end
 end
+
+subsample(options::JUDIOptions, srcnum) = getindex(options, srcnum)

@@ -16,7 +16,7 @@ if !isfile("sigsbee2A_model.jld")
 end
 M = load("sigsbee2A_model.jld")
 
-# Setup info and model structure
+# Setup model structure
 model0 = Model(M["n"], M["d"], M["o"], M["m0"])
 dm = vec(M["dm"])
 
@@ -34,36 +34,35 @@ xmid = domain_x / 2
 
 # Source/receivers
 nsrc = Int(length(xmin:source_spacing:xmax))
-xrec = Array{Any}(undef, nsrc)
-yrec = Array{Any}(undef, nsrc)
-zrec = Array{Any}(undef, nsrc)
-xsrc = Array{Any}(undef, nsrc)
-ysrc = Array{Any}(undef, nsrc)
-zsrc = Array{Any}(undef, nsrc)
+xrec = Vector{Vector{Float32}}(undef, nsrc)
+yrec = Vector{Vector{Float32}}(undef, nsrc)
+zrec = Vector{Vector{Float32}}(undef, nsrc)
+xsrc = Vector{Vector{Float32}}(undef, nsrc)
+ysrc = Vector{Vector{Float32}}(undef, nsrc)
+zsrc = Vector{Vector{Float32}}(undef, nsrc)
 
 # Vessel goes from left to right in right-hand side of model
 nsrc_half = Int(nsrc/2)
 for j=1:nsrc_half
     xloc = xmid + (j-1)*source_spacing
     xrec[j] = range(xloc - max_offset, xloc - min_offset, length=nrec)
-    yrec[j] = 0.
+    yrec[j] = [0.]
     zrec[j] = range(50f0, 50f0, length=nrec)
-    xsrc[j] = xloc
-    ysrc[j] = 0f0
-    zsrc[j] = 20f0
+    xsrc[j] = [xloc]
+    ysrc[j] = [0f0]
+    zsrc[j] = [20f0]
 end
 
 # Vessel goes from right to left in left-hand side of model
 for j=1:nsrc_half
     xloc = xmid - (j-1)*source_spacing
     xrec[nsrc_half + j] = range(xloc + min_offset, xloc + max_offset, length=nrec)
-    yrec[nsrc_half + j] = 0f0
+    yrec[nsrc_half + j] = [0f0]
     zrec[nsrc_half + j] = range(50f0, 50f0, length=nrec)
-    xsrc[nsrc_half + j] = xloc
-    ysrc[nsrc_half + j] = 0f0
-    zsrc[nsrc_half + j] = 20f0
+    xsrc[nsrc_half + j] = [xloc]
+    ysrc[nsrc_half + j] = [0f0]
+    zsrc[nsrc_half + j] = [20f0]
 end
-
 # receiver sampling and recording time
 timeR = 10000f0   # receiver recording time [ms]
 dtR = 4f0    # receiver sampling interval
@@ -83,10 +82,6 @@ f0 = 0.015  # dominant frequency in [kHz]
 wavelet = ricker_wavelet(timeS,dtS,f0)
 q = judiVector(srcGeometry,wavelet)
 
-# Set up info structure for linear operators
-ntComp = get_computational_nt(srcGeometry,recGeometry,model0)
-info = Info(prod(model0.n),nsrc,ntComp)
-
 #################################################################################################
 
 opt = Options(isic=true,    # impedance modeling
@@ -96,9 +91,9 @@ opt = Options(isic=true,    # impedance modeling
               )
 
 # Setup operators
-Pr = judiProjection(info, recGeometry)
-F0 = judiModeling(info, model0; options=opt)
-Ps = judiProjection(info, srcGeometry)
+Pr = judiProjection(recGeometry)
+F0 = judiModeling(model0; options=opt)
+Ps = judiProjection(srcGeometry)
 J = judiJacobian(Pr*F0*Ps', q)
 
 # Linearized modeling (shots written to disk as SEG-Y files automatically)

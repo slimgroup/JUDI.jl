@@ -17,7 +17,6 @@ jobs:
     env:
       DEVITO_ARCH: gcc-9
       DEVITO_LANGUAGE: "openmp"
-      DEVITO_BACKEND: "core"
       DEVITO_LOGGING: "ERROR"
       OMP_NUM_THREADS: ${{ matrix.omp }}
       GROUP: ${{ matrix.op }}
@@ -28,7 +27,7 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         op: ["ISO_OP", "ISO_OP_FS", "TTI_OP", "TTI_OP_FS", "BASICS"]
-        version: ['1.6', '1.7']
+        version: ['1.7']
         omp: [2]
   
         include:
@@ -41,6 +40,16 @@ jobs:
             version: '1.7'
             op: "ISO_OP_FS"
             omp: 1
+          
+          - os: ubuntu-latest
+            version: '1.7'
+            op: "VISCO_AC_OP"
+            omp: 2
+
+          - os: ubuntu-latest
+            version: '1.6'
+            op: "TTI_OP"
+            omp: 2
 
     steps:
       - name: Checkout JUDI
@@ -50,15 +59,24 @@ jobs:
         if : runner.os == 'macOS'
         run : brew install gcc@9
 
-      - name: Set julia python
-        run: |
-          PYTHON=$(which python3) julia -e 'using Pkg;Pkg.add("PyCall");Pkg.build("PyCall")'
+      - name: Cache julia install
+        uses: actions/cache@v2
+        env:
+          cache-name: cache-julia-pkgs
+        with:
+          # julia is installed in ~/.julia
+          path: ~/.julia
+          key: ${{ matrix.os }}-${{ matrix.version }}-${{ env.cache-name }}
 
       - name: Setup julia
         uses: julia-actions/setup-julia@v1
         with:
           version: ${{ matrix.version }}
           arch: x64
+
+      - name: Set julia python
+        run: |
+          PYTHON=$(which python3) julia -e 'using Pkg;Pkg.add("PyCall");Pkg.build("PyCall")'
 
       - name: Build JUDI
         uses: julia-actions/julia-buildpkg@latest

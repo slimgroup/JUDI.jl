@@ -6,10 +6,7 @@
 # Mathias Louboutin, mlouboutin3@gatech.edu
 # Updated July 2020
 
-parsed_args = parse_commandline()
-
 # Set parallel if specified
-nw = parsed_args["parallel"]
 if nw > 1 && nworkers() < nw
    addprocs(nw-nworkers() + 1; exeflags=["--code-coverage=user", "--inline=no", "--check-bounds=yes"])
 end
@@ -18,12 +15,12 @@ end
 @everywhere using JUDI, LinearAlgebra, Test, Distributed
 
 ### Model
-model, model0, dm = setup_model(parsed_args["tti"], parsed_args["nlayer"]; n=(101, 101), d=(10., 10.))
-q, srcGeometry, recGeometry, info = setup_geom(model; nsrc=2, tn=500f0)
+model, model0, dm = setup_model(tti, viscoacoustic, nlayer; n=(101, 101), d=(10., 10.))
+q, srcGeometry, recGeometry, f0 = setup_geom(model; nsrc=2, tn=500f0)
 dt = srcGeometry.dt[1]
 
 # Modeling operators
-println("Generic modeling and misc test with ", parsed_args["nlayer"], " layers and tti: ", parsed_args["tti"])
+println("Generic modeling and misc test with ", nlayer, " layers and tti: ", tti)
 
 ftol = 1f-5
 ######################## WITH DENSITY ############################################
@@ -33,23 +30,23 @@ cases = [(true, true), (true, false), (false, true), (false, false)]
 @testset "Generic tests with limit_m = $(limit_m)  and save to disk = $(disk)" for (limit_m, disk)=cases
 	@timeit TIMEROUTPUT "Modeling  limit_m=$(limit_m), save_to_disk=$(disk)" begin
 		# Options structures
-		opt = Options(save_data_to_disk=disk, limit_m=limit_m, buffer_size=100f0,
+		opt = Options(save_data_to_disk=disk, limit_m=limit_m, buffer_size=100f0, f0=f0,
 						file_path=pwd(),	# path to files
 						file_name="shot_record")	# saves files as file_name_xsrc_ysrc.segy
 
-		opt0 = Options(save_data_to_disk=disk, limit_m=limit_m, buffer_size=100f0,
+		opt0 = Options(save_data_to_disk=disk, limit_m=limit_m, buffer_size=100f0, f0=f0,
 						file_path=pwd(),	# path to files
 						file_name="smooth_shot_record")	# saves files as file_name_xsrc_ysrc.segy
 
-		optJ = Options(save_data_to_disk=disk, limit_m=limit_m, buffer_size=100f0,
+		optJ = Options(save_data_to_disk=disk, limit_m=limit_m, buffer_size=100f0, f0=f0,
 						file_path=pwd(),	# path to files
 						file_name="linearized_shot_record")	# saves files as file_name_xsrc_ysrc.segy
 
 		# Setup operators
-		Pr = judiProjection(info, recGeometry)
-		F = judiModeling(info, model; options=opt)
-		F0 = judiModeling(info, model0; options=opt0)
-		Ps = judiProjection(info, srcGeometry)
+		Pr = judiProjection(recGeometry)
+		F = judiModeling(model; options=opt)
+		F0 = judiModeling(model0; options=opt0)
+		Ps = judiProjection(srcGeometry)
 
 		# Combined operator Pr*F*adjoint(Ps)
 		Ffull = judiModeling(model, srcGeometry, recGeometry)
@@ -66,17 +63,17 @@ cases = [(true, true), (true, false), (false, true), (false, false)]
 
 		# fwi objective function
 		f, g = fwi_objective(model0, q, d1; options=opt)
-		f, g = fwi_objective(model0, subsample(q,1), subsample(d1,1); options=opt)
+		f, g = fwi_objective(model0, getindex(q,1), getindex(d1,1); options=opt)
 
-		# Subsampling
+		# Indexing (per source)
 		for inds=[2, [1, 2]]
-			dsub = subsample(dfull, inds)
-			qsub = subsample(q, inds)
-				Fsub = subsample(F, inds)
-			Jsub = subsample(J, inds)
-			Ffullsub = subsample(Ffull, inds)
-			Pssub = subsample(Ps, inds)
-			Prsub = subsample(Pr, inds)
+			dsub = getindex(dfull, inds)
+			qsub = getindex(q, inds)
+			Fsub = getindex(F, inds)
+			Jsub = getindex(J, inds)
+			Ffullsub = getindex(Ffull, inds)
+			Pssub = getindex(Ps, inds)
+			Prsub = getindex(Pr, inds)
 			ds1 = Ffullsub*qsub 
 			ds2 = Prsub * Fsub * adjoint(Pssub) *qsub 
 			@test isapprox(ds1, get_data(ds2), rtol=ftol)
@@ -91,29 +88,35 @@ cases = [(true, true), (true, false), (false, true), (false, false)]
 	end
 end
 
-
 ############################# Full wavefield ############################################
 
 @testset "Basic judiWavefield modeling tests" begin
 	@timeit TIMEROUTPUT "Wavefield modeling" begin
-		opt = Options(dt_comp=dt)
-		F = judiModeling(info, model; options=opt)
-		Fa = judiModelingAdjoint(info, model; options=opt)
-		Ps = judiProjection(info, srcGeometry)
-		Pr = judiProjection(info, recGeometry)
+		opt = Options(dt_comp=dt, f0=f0)
+		F = judiModeling(model; options=opt)
+		Fa = adjoint(F)
+		Ps = judiProjection(srcGeometry)
+		Pr = judiProjection(recGeometry)
 
 		# Return wavefields
 		u = F * adjoint(Ps) * q
 
 		# Adjoint from data
 		dobs = Pr*F*u
-		v = Fa*(adjoint(Pr)*dobs)
+		v = Fa*adjoint(Pr)*dobs
 
 		a = dot(u, v)
 		b = dot(dobs, dobs)
-		@printf(" <F x, y> : %2.5e, <x, F' y> : %2.5e, relative error : %2.5e \n", b, a, a/b - 1)
-		@test isapprox(a, b, rtol=1f-4)
+		@printf(" <F x, y> : %2.5e, <x, F' y> : %2.5e, relative error : %2.5e \n", b, a, (a-b)/(a+b))
+		@test isapprox(a/(a+b), b/(a+b), atol=1f-5, rtol=0)
 
+		# Forward from data
+		qa = Ps*Fa*v
+
+		a = dot(u, v)
+		b = dot(q, qa)
+		@printf(" <F x, y> : %2.5e, <x, F' y> : %2.5e, relative error : %2.5e \n", b, a, (a-b)/(a+b))
+		@test isapprox(a/(a+b), b/(a+b), atol=1f-5, rtol=0)
 
 		# Wavefields as source + return wavefields
 		u2 = F*u
@@ -121,7 +124,7 @@ end
 
 		a = dot(u2, v)
 		b = dot(v2, u)
-		@printf(" <F x, y> : %2.5e, <x, F' y> : %2.5e, relative error : %2.5e \n", a, b, a/b - 1)
-		@test isapprox(a, b, rtol=1f-4)
+		@printf(" <F x, y> : %2.5e, <x, F' y> : %2.5e, relative error : %2.5e \n", a, b, (a-b)/(a+b))
+		@test isapprox(a/(a+b), b/(a+b), atol=1f-4, rtol=0)
 	end
 end

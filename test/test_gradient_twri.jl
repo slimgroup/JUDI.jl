@@ -6,15 +6,9 @@
 # Mathias Louboutin, mlouboutin3@gatech.edu
 # Updated July 2020
 
-parsed_args = parse_commandline()
-
-nlayer = parsed_args["nlayer"]
-tti = parsed_args["tti"]
-fs =  parsed_args["fs"]
-
 ### Model
-model, model0, dm = setup_model(parsed_args["tti"], 4)
-q, srcGeometry, recGeometry, info = setup_geom(model)
+model, model0, dm = setup_model(tti, viscoacoustic, 4)
+q, srcGeometry, recGeometry, f0 = setup_geom(model)
 dt = srcGeometry.dt[1]
 
 ###################################################################################################
@@ -30,9 +24,9 @@ dt = srcGeometry.dt[1]
 	modelH = deepcopy(model0)
 
 	# Observed data
-	opt = Options(sum_padding=true, free_surface=parsed_args["fs"])
-	F = judiModeling(info, model, srcGeometry, recGeometry; options=opt)
-	F0 = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
+	opt = Options(sum_padding=true, free_surface=fs)
+	F = judiModeling(model, srcGeometry, recGeometry; options=opt)
+	F0 = judiModeling(model0, srcGeometry, recGeometry; options=opt)
 	d = F*q
 	d0 = F0*q
 	y = 2.5f0*(d0 - d)
@@ -76,9 +70,9 @@ end
 	modelH = deepcopy(model0)
 
 	# Observed data
-	opt = Options(sum_padding=true, free_surface=parsed_args["fs"])
-	F = judiModeling(info, model, srcGeometry, recGeometry; options=opt)
-	F0 = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
+	opt = Options(sum_padding=true, free_surface=fs)
+	F = judiModeling(model, srcGeometry, recGeometry; options=opt)
+	F0 = judiModeling(model0, srcGeometry, recGeometry; options=opt)
 	d = F*q
 	d0 = F0*q
 	y = .1f0 * (d0 - d)
