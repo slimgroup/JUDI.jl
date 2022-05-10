@@ -326,6 +326,7 @@ Examples
 # merge(judiVector, AbstractVector)
 function merge(v::judiVector{T, Array{T,N}}, w::AbstractVector{T}=ones(T, v.nsrc)) where {T, N}
 
+    (v.nsrc==1) && return vcat([w[i] .* v for i = 1:length(w)]...)
     (norm(diff(v.geometry.dt))+norm(diff(v.geometry.nt))+norm(diff(v.geometry.t)) == 0) || throw(judiVectorException("nt/dt/t mismatch in judiVector"))
 
     dict = Vector{Dict{Tuple{T,T,T}, Vector{T}}}(undef, v.nsrc)

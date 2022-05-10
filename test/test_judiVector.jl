@@ -354,5 +354,27 @@ ftol = 1e-6
             @test isapprox(refarray[i][:,1], d_diff_rec.data[i][:,1])
             @test isapprox(d_diff_rec.data[i][:,2:end], diff(refarray[i],dims=2))
         end
+
+        # test merging (sim src)
+        @test merge(d_obs) == merge(d_obs, ones(Float32,d_obs.nsrc))
+        W = randn(Float32, 4, d_obs.nsrc)
+        d_obs_merge = merge(d_obs, W)
+        @test d_obs_merge.nsrc == 4
+        for i = 1:4
+            d_sim = W[i,:] .* d_obs
+            @test d_obs_merge[i] == sum([d_sim[j] for j = 1:d_obs.nsrc])
+        end
+
+        q = judiVector(example_src_geometry(; nsrc=nsrc), randn(Float32, 251, 1))
+        @test merge(q) == merge(q, ones(Float32, q.nsrc))
+        q_merge = merge(q, W)
+        @test q_merge.nsrc == 4
+        for i = 1:4
+            @test q_merge.geometry.xloc[i] == vcat(q.geometry.xloc...)
+            @test q_merge.geometry.yloc[i] == q.geometry.yloc[1]
+            @test q_merge.geometry.zloc[i] == vcat(q.geometry.zloc...)
+            q_sim = W[i,:] .* q
+            @test q_merge.data[i] == hcat([q_sim.data[j] for j = 1:q.nsrc]...)
+        end
     end
 end
