@@ -32,6 +32,10 @@ m0 = model0.m
     @test norm(J*(0f0.*dm)) == 0
     @test isapprox(dD, J*vec(dm.data); rtol=1f-6)
 
+    # Test sim src
+    W = judiSimSrcWeights(randn(Float32, 4, dD.nsrc))
+    @test isapprox(W * dD, W * J * dm; rtol=1f-4)
+
     # Jacobian test
     maxiter = 6
     h = 5f-2

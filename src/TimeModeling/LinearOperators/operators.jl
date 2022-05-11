@@ -1,4 +1,5 @@
 export judiModeling, judiDataModeling, judiDataSourceModeling, judiPointSourceModeling, judiJacobian
+export judiSimSrcWeights, judiSimSrcWeightsException
 
 const adjoint_map = Dict(:forward => :adjoint, :adjoint => :forward, :born => :adjoint_born, :adjoint_born => :born)
 
@@ -100,7 +101,7 @@ as additional input arguments, which creates a combined operator `judiProjection
 
 Example
 =======
-`Pr` and `Ps` are projection operatos of type `judiProjection` and
+`Pr` and `Ps` are projection operators of type `judiProjection` and
 `q` is a data vector of type `judiVector`:
     F = judiModeling(model)
     dobs = Pr*F*Ps'*q
@@ -238,3 +239,110 @@ isequal(P1::judiPropagator, P2::judiPropagator) = P1 == P2
 ==(F1::judiPointSourceModeling, F2::judiPointSourceModeling) = (F1.F == F2.F && F1.qInjection == F2.qInjection)
 ==(F1::judiDataSourceModeling, F2::judiDataSourceModeling) = (F1.F == F2.F && F1.qInjection == F2.qInjection && F1.rInterpolation == F2.rInterpolation)
 ==(F1::judiJacobian{D, O1, FT1}, F2::judiJacobian{D, O2, FT2}) where {D, O1, O2, FT1, FT2} = (O1 == O2 && FT1 == FT2 && F1.F == F2.F && F1.q == F2.q)
+
+############################################################
+# judiSimSrcWeights ## #################################################
+############################################################
+
+# Authors: Ziyi Yin, ziyi.yin@gatech.edu
+# Date: Feb 2022
+
+############################################################
+
+struct judiSimSrcWeights{vDT<:Number} <: joAbstractLinearOperator{vDT,vDT}
+    name::String
+    m::Integer
+    n::Integer
+    w::Matrix{vDT}  # size: number of simultaneous shots * number of sequential shots
+end
+
+mutable struct judiSimSrcWeightsException <: Exception
+    msg :: String
+end
+
+function judiSimSrcWeights(w::Matrix)
+    return judiSimSrcWeights("judiSimSrcWeights", size(w,1), size(w,2), w)
+end
+
+
+############################################################
+## overloaded Base functions
+
+# conj(judiSimSrcWeights)
+conj(A::judiSimSrcWeights{vDT}) where vDT =
+    judiSimSrcWeights("conj("*A.name*")",m,n,conj(w))
+
+# adjoint(judiSimSrcWeights)
+adjoint(A::judiSimSrcWeights{vDT}) where vDT =
+    judiSimSrcWeights("adjoint("*A.name*")",n,m,adjoint(w))
+
+# transpose(judiSimSrcWeights)
+transpose(A::judiSimSrcWeights{vDT}) where vDT =
+    judiSimSrcWeights("transpose("*A.name*")",n,m,transpose(w))
+
+############################################################
+## overloaded Base *(...judiSimSrcWeights...)
+
+# *(judiSimSrcWeights,judiVector)
+function *(A::judiSimSrcWeights{T}, v::judiVector{T, Array{T, N}}) where {T, N}
+
+    A.n == v.nsrc || throw(judiSimSrcWeightsException("Shape mismatch: A:$(size(A)), v: $(size(v))"))
+    V = merge(v, A.w)
+    jo_check_type_match(T,eltype(V),join(["RDT from *(judiSimSrcWeights,judiVector):",A.name,typeof(A),eltype(V)]," / "))
+    return V
+
+end
+
+# *(judiSimSrcWeights, judiJacobian)
+function *(A::judiSimSrcWeights{D}, J::judiJacobian{D, O, FT}) where {D, O, FT}
+
+    A.n == J.m[:src] || throw(judiSimSrcWeightsException("Shape mismatch: W:$(size(A)), J: $(size(J))"))
+
+    # set up src/rec geometry
+    Ps_sim = judiProjection(getSimGeometry(J.F.qInjection.op.geometry, A.m))
+    Pr_sim = judiProjection(getSimGeometry(J.F.rInterpolation.geometry, A.m))
+
+    # set up source
+    q_sim = merge(J.q, A.w)
+
+    # set up modeling
+    F_sim = judiModeling(J.F.model; options=J.options)
+
+    # set up linearized modeling operator
+    return judiJacobian(Pr_sim*F_sim*adjoint(Ps_sim), q_sim)
+end
+
+############################################################
+## utility function
+
+# turn a source/receiver geometry to a sim src geometry 
+function getSimGeometry(geometry::Geometry, nsimsrc::Int=1)
+
+    loc = []
+    for i = 1:get_nsrc(geometry)
+        for j = 1:length(geometry.xloc[i])
+            xloc = geometry.xloc[i][j]
+            if length(geometry.yloc[i]) == 1
+                yloc = geometry.yloc[i][1]
+            else
+                yloc = geometry.yloc[i][j]
+            end
+            zloc = geometry.zloc[i][j]
+            union!(loc, [(xloc, yloc, zloc)])
+        end
+    end
+
+    key = sort(vcat(loc...), by=x->getindex(x,1))
+
+    xloc = @. getindex(key, 1)
+    yloc = @. getindex(key, 2)
+    zloc = @. getindex(key, 3)
+
+    # set geometry
+    if length(geometry.yloc[1]) == 1
+        yloc = geometry.yloc[1] # don't change it if 2D data
+    end
+
+    return Geometry(xloc,yloc,zloc; dt=geometry.dt[1], t=geometry.t[1], nsrc=nsimsrc)
+
+end
