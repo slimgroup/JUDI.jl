@@ -120,7 +120,7 @@ function promote_shape(p::PhysicalParameter, A::Array{vDT, N}) where {vDT, N}
 end
 
 promote_shape(A::Array{vDT, N}, p::PhysicalParameter) where {vDT, N} = promote_shape(p, A)
-reshape(p::PhysicalParameter, n::Tuple{Vararg{Int64,N}}) where N = (prod(n)==prod(p.n) && return p)
+reshape(p::PhysicalParameter, n::Tuple{Vararg{Int64,N}}) where N = (n == p.n ? p : reshape(p.data, n))
 
 dotview(A::PhysicalParameter{vDT}, I::Vararg{Union{Function, Int, UnitRange{Int}}, N}) where {vDT, N} = dotview(A.data, I...)
 Base.dotview(m::PhysicalParameter, i) = Base.dotview(m.data, i)
@@ -215,7 +215,7 @@ mul!(x::PhysicalParameter, F::Union{joAbstractLinearOperator, joLinearFunction, 
 mul!(x::Array, F::Union{joAbstractLinearOperator, joLinearFunction, Array}, y::PhysicalParameter) = mul!(x, F, y[1:end])
 
 # For ploting
-array2py(p::PhysicalParameter{vDT}, i::Int64, I::CartesianIndex{N}) where {vDT, N} = array2py(p.data, i, I)
+NpyArray(p::PhysicalParameter{vDT}, revdims::Bool) where {vDT} = NpyArray(p.data, revdims)
 
 ###################################################################################################
 # Isotropic acoustic

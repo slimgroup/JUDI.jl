@@ -66,7 +66,7 @@ end
 Sets up a simple 2D acquisition for the wave equation operators tests
 """
 
-function setup_geom(model; nsrc=1, tn=1500f0)
+function setup_geom(model; nsrc=1, tn=1500f0, dt=nothing)
     ## Set up receiver geometry
     nxrec = model.n[1] - 2
     xrec = collect(range(model.d[1], stop=(model.n[1]-2)*model.d[1], length=nxrec))
@@ -75,7 +75,7 @@ function setup_geom(model; nsrc=1, tn=1500f0)
 
     # receiver sampling and recording time
     T = tn   # receiver recording time [ms]
-    dt = .75f0    # receiver sampling interval [ms]
+    dt = isnothing(dt) ? .75f0 : dt    # receiver sampling interval [ms]
 
     # Set up receiver structure
     recGeometry = Geometry(xrec, yrec, zrec; dt=dt, t=T, nsrc=nsrc)

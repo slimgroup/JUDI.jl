@@ -27,7 +27,6 @@ function ∇m(F::judiPropagator{T, O}, m::AbstractArray{T}, q::AbstractArray{T},
     return dm
 end
 
-
 # projection
 (project::ProjectTo{AbstractArray})(dx::PhysicalParameter) = project(reshape(dx.data, project.axes))
 

@@ -45,7 +45,7 @@ import JOLI: jo_convert
 import FFTW: fft, ifft
 
 # Import pycall array to python for easy plotting
-import PyCall.array2py
+import PyCall.NpyArray
 
 # Import AD rrule
 import ChainRulesCore: rrule

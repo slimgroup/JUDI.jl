@@ -5,10 +5,11 @@ using Flux
 
 ### Model
 nsrc = 1
+dt = 1f0
+
 model, model0, dm = setup_model(tti, viscoacoustic, 4)
 m, m0 = model.m.data, model0.m.data
-q, srcGeometry, recGeometry, f0 = setup_geom(model; nsrc=nsrc)
-dt = srcGeometry.dt[1]
+q, srcGeometry, recGeometry, f0 = setup_geom(model; nsrc=nsrc, dt=dt)
 
 # Common op
 Pr = judiProjection(recGeometry)
@@ -23,10 +24,10 @@ function GenSimSourceMulti(xsrc_index, zsrc_index, nsrc, n)
     return weights
 end
 
+randx(x::Array{Float32}) = x .* (1 .+ randn(Float32, size(x)))
 perturb(x::Vector{T}) where T = circshift(x, rand(1:20))
 perturb(x::Array{T, N}) where {T, N} = circshift(x, (rand(1:20), zeros(N-1)...))
-perturb(x::judiVector) = judiVector(x.geometry, [x.data[i] .* randn(Float32, size(x.data[i])) for i=1:x.nsrc])
-mean(x) = sum(x)/length(x)
+perturb(x::judiVector) = judiVector(x.geometry, [randx(x.data[i]) for i=1:x.nsrc])
 
 misfit_objective(d_obs, q0, m0, F) = .5f0*norm(F(m0, q0) - d_obs)^2
 
@@ -36,7 +37,6 @@ function loss(d_obs, q0, m0, F)
         ϕ = misfit_objective(d_obs, q0, m0, F)
         return ϕ
     end
-    ϕ = F.options.return_array ? dt*ϕ : ϕ
     return ϕ, g[q0], g[m0]
 end
 
@@ -47,12 +47,12 @@ sinput = zip(["Point", "Extended"], [Ps, Pw], (q, w))
 #####################################################################################
 ftol = sqrt(eps(1f0))
 
-@testset "AD correctness check return_array=$(ra)" for ra in []#[true, false]
-    opt = Options(return_array=ra, sum_padding=true, f0=f0, dt_comp=1f0)
+@testset "AD correctness check return_array=$(ra)" for ra in [true, false]
+    opt = Options(return_array=ra, sum_padding=true, f0=f0)
     A_inv = judiModeling(model; options=opt)
     A_inv0 = judiModeling(model0; options=opt)
     @testset "AD correctness check source type: $(stype)" for (stype, Pq, q) in sinput
-        @timeit TIMEROUTPUT "$(stype) source AD" begin
+        @timeit TIMEROUTPUT "$(stype) source AD, array=$(ra)" begin
             # Linear operators
             q0 = perturb(q)
             # Operators
@@ -85,31 +85,27 @@ ftol = sqrt(eps(1f0))
     end
 end
 
-stol = 1f-1
 
 @testset "AD Gradient test return_array=$(ra)" for ra in [false, true]
-    opt = Options(return_array=ra, sum_padding=true, f0=f0)
+    opt = Options(return_array=ra, sum_padding=true, f0=f0, dt_comp=dt)
     F = judiModeling(model; options=opt)
     ginput = zip(["Point", "Extended"], [Pr*F*Ps', Pr*F*Pw'], (q, w))
     @testset "Gradient test: $(stype) source" for (stype, F, q) in ginput
         @timeit TIMEROUTPUT "$(stype) source gradient, array=$(ra)" begin
             # Initialize source for source perturbation
             q0 = perturb(q)
-            # Linear operators
+            # Data and source perturbation
             d, dq = F*q, q-q0
 
             #####################################################################################
-        
-            # Gradient test for extended modeling: weights
             f0, gq, gm = loss(d, q0, m0, F)
+            # Gradient test for extended modeling: source
             print("\nGradient test source $(stype) source, array=$(ra)\n")
-            grad_test(x-> misfit_objective(d, x, m0, F), q0, dq, gq; h0=5f-2)
+            grad_test(x-> misfit_objective(d, x, m0, F), q0, dq, gq)
   
             # Gradient test for extended modeling: model
             print("\nGradient test model $(stype) source, array=$(ra)\n")
-            grad_test(x-> misfit_objective(d, q0, x, F), m0, dm, gm; h0=5f-2)
-
+            grad_test(x-> misfit_objective(d, q0, x, F), m0, dm, gm)
         end
     end
 end
-

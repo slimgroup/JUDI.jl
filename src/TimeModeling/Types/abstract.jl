@@ -98,7 +98,7 @@ make_input(a::Array) = a
 
 as_src(ms::judiMultiSourceVector{T}) where T = ms
 as_src(p::AbstractVector{T}) where T = p
-as_src(p) = view(p, :)
+as_src(p) = vec(p)
 ############################################################################################################################
 # Linear algebra norm/abs/cat...
 function norm(a::judiMultiSourceVector{T}, p::Real=2) where T
