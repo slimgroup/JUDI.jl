@@ -97,7 +97,7 @@
         @test isapprox(dobs_out, dlin; rtol=ftol)
         @test isapprox(dobs_out, dobs; rtol=ftol)
         # check JOLI operator w/ judiVector
-        DFT = joDFT(size(dm.data)[1], size(dm.data)[2]; DDT=Float32, RDT=ComplexF32)
+        DFT = joDFT(dm.n...; DDT=Float32, RDT=ComplexF32)
         dm1 = adjoint(J*DFT') * dlin
         dm2 = similar(dm1)
         mul!(dm2, adjoint(J*DFT'), dlin)
