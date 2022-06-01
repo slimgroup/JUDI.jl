@@ -18,8 +18,8 @@ Ps = judiProjection(srcGeometry)
 Pw = judiLRWF(dt, q.data[1])
 
 function GenSimSourceMulti(xsrc_index, zsrc_index, nsrc, n)
-	weights = zeros(Float32, n[1], n[2], 1, nsrc)
-	for j=1:nsrc
+    weights = zeros(Float32, n[1], n[2], 1, nsrc)
+    for j=1:nsrc
         weights[xsrc_index[j], zsrc_index[j], 1, j] = 1f0
     end
     return weights

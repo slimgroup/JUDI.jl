@@ -169,7 +169,7 @@ class Model(object):
         if self.nbl != 0:
             # Create dampening field as symbol `damp`
             self.damp = Function(name="damp", grid=self.grid)
-            initialize_damp(self.padsizes, abc_type, fs)(damp=self.damp)
+            initialize_damp(self.damp, self.padsizes, abc_type=abc_type, fs=fs)
             self._physical_parameters = ['damp']
         else:
             self.damp = 1

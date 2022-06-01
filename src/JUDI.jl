@@ -50,9 +50,6 @@ import PyCall.NpyArray
 # Import AD rrule
 import ChainRulesCore: rrule
 
-# Import AD rrule
-import ChainRulesCore: rrule
-
 # Set python paths
 const pm = PyNULL()
 const ac = PyNULL()
