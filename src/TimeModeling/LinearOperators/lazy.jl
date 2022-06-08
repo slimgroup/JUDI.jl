@@ -200,7 +200,7 @@ function reshape(x::Vector{T}, P::judiProjection{T}, ::Model; with_batch=false) 
 end
 
 function reshape(x::Vector{T}, P::judiWavelet{T}, m::Model; with_batch=false) where T
-    out = with_batch ? reshape(x, model.n..., 1,get_nsrc(P)) : reshape(x, model.n..., get_nsrc(P))
+    out = with_batch ? reshape(x, m.n..., 1,get_nsrc(P)) : reshape(x, m.n..., get_nsrc(P))
     return out
 end
 
