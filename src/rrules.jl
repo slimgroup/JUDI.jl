@@ -7,6 +7,7 @@ function rrule(F::judiPropagator{T, O}, m::AbstractArray{T}, q::AbstractArray{T}
         dq = @thunk(∇source(F, m, Δy, dims))
         return (NoTangent(), dm, dq)
     end
+    y = F.options.return_array ? reshape(y, F.rInterpolation, F.model; with_batch=true) : y
     return y, pullback
 end
 

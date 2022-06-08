@@ -193,6 +193,17 @@ get_nsrc(P::jAdjoint{<:Projection}) = P.op.m[:src]
 get_nt(P::Projection) = P.n[:time]
 get_nt(P::jAdjoint{<:Projection}) = P.op.n[:time]
 
+function reshape(x::Vector{T}, P::judiProjection{T}, ::Model; with_batch=false) where T
+    out = reshape(x, P.geometry)
+    out = with_batch ? reshape(out, size(out, 1), size(out, 2), 1, size(out, 3)) : out
+    return out
+end
+
+function reshape(x::Vector{T}, P::judiWavelet{T}, m::Model; with_batch=false) where T
+    out = with_batch ? reshape(x, model.n..., 1,get_nsrc(P)) : reshape(x, model.n..., get_nsrc(P))
+    return out
+end
+
 ############################################################################################################################
 ###### Evaluate lazy operation
 eval(rhs::judiRHS) = rhs.d
