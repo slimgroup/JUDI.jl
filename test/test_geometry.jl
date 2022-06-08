@@ -15,6 +15,8 @@ datapath = joinpath(dirname(pathof(JUDI)))*"/../data/"
         zsrc = convertToCell(range(20f0, stop=20f0, length=nsrc))
 
         geometry =  Geometry(xsrc, ysrc, zsrc; dt=2f0, t=1000f0)
+        geometry_t =  Geometry(xsrc, ysrc, zsrc; dt=2, t=1000)
+        @test geometry_t == geometry
 
         @test isequal(typeof(geometry.xloc), Array{Array{Float32,1}, 1})
         @test isequal(typeof(geometry.yloc), Array{Array{Float32,1}, 1})
