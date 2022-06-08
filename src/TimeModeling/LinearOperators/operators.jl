@@ -172,6 +172,10 @@ adjoint(L::LazyScal) = LazyScal(L.s, adjoint(L.P))
 *(F::judiPropagator{T, O}, q::judiMultiSourceVector{T}) where {T<:Number, O} = multi_src_propagate(F, q)
 *(F::judiPropagator{T, O}, q::AbstractVector{T}) where {T<:Number, O} = multi_src_propagate(F, q)
 *(F::judiAbstractJacobian{T, O, FT}, q::dmType{T}) where {T<:Number, O, FT} = multi_src_propagate(F, q)
+# Some cases have high dimensional arrays as input such as ML applications.
+*(F::judiPropagator, q::Array{T, 4}) where T = F*vec(q)
+*(F::judiPropagator, q::Array{T, 5}) where T = F*vec(q)
+*(F::judiPropagator, q::Array{T, 6}) where T = F*vec(q)
 
 mul!(out::SourceType{T}, F::judiPropagator{T, O}, q::SourceType{T}) where {T<:Number, O} = begin y = F*q; copyto!(out, y) end
 mul!(out::SourceType{T}, F::joLinearFunction{T, T}, q::SourceType{T}) where {T<:Number} = begin y = F*q; copyto!(out, y) end

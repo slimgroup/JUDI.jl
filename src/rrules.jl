@@ -30,9 +30,3 @@ end
 
 # projection
 (project::ProjectTo{AbstractArray})(dx::PhysicalParameter) = project(reshape(dx.data, project.axes))
-
-############################# mul ##########################################
-# Array with additional channel and batch dim
-*(F::judiPropagator, q::Array{T, 4}) where T = F*vec(q)
-*(F::judiPropagator, q::Array{T, 5}) where T = F*vec(q)
-*(F::judiPropagator, q::Array{T, 6}) where T = F*vec(q)

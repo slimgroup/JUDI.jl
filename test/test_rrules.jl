@@ -2,7 +2,7 @@
 # Author: Mathias Louboutin, mathias.louboutin@gmail.com
 # April 2022
 using Flux
-Flux.Random.seed!(29)
+Flux.Random.seed!(2022)
 
 ### Model
 nsrc = 1
@@ -18,8 +18,8 @@ Ps = judiProjection(srcGeometry)
 Pw = judiLRWF(dt, q.data[1])
 
 function GenSimSourceMulti(xsrc_index, zsrc_index, nsrc, n)
-	weights = zeros(Float32, n[1], n[2], 1, nsrc)
-	for j=1:nsrc
+    weights = zeros(Float32, n[1], n[2], 1, nsrc)
+    for j=1:nsrc
         weights[xsrc_index[j], zsrc_index[j], 1, j] = 1f0
     end
     return weights
@@ -32,7 +32,7 @@ perturb(x::judiVector) = judiVector(x.geometry, [randx(x.data[i]) for i=1:x.nsrc
 reverse(x::judiVector) = judiVector(x.geometry, [x.data[i][end:-1:1, :] for i=1:x.nsrc])
 
 misfit_objective(d_obs, q0, m0, F) = .5f0*norm(F(m0, q0) - d_obs)^2
-
+    
 function loss(d_obs, q0, m0, F)
     local ϕ
     # Reshape as ML size if returns array

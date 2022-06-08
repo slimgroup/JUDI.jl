@@ -4,7 +4,7 @@ from devito import (Grid, Function, SubDomain, SubDimension, Eq, Inc,
                     Operator, mmin, initialize_function, switchconfig,
                     Abs, sqrt, sin)
 from devito.data.allocators import ExternalAllocator
-from devito.tools import as_tuple
+from devito.tools import as_tuple, memoized_func
 
 
 __all__ = ['Model']
@@ -44,19 +44,15 @@ class FSDomain(SubDomain):
         return map_d
 
 
-@switchconfig(log_level='ERROR')
-def initialize_damp(damp, padsizes, abc_type="damp", fs=False):
+@memoized_func
+def damp_op(ndim, padsizes, abc_type, fs):
     """
-    Initialise damping field with an absorbing boundary layer.
-    Includes basic constant Q setup (not interfaced yet) and assumes that
-    the peak frequency is 1/(10 * spacing).
+    Create damping field initialization operator.
 
     Parameters
     ----------
-    damp : Function
-        The damping field for absorbing boundary condition.
-    nbl : int
-        Number of points in the damping layer.
+    padsize : List of tuple
+        Number of points in the damping layer for each dimension and side.
     spacing :
         Grid spacing coefficient.
     mask : bool, optional
@@ -64,6 +60,7 @@ def initialize_damp(damp, padsizes, abc_type="damp", fs=False):
         mask => 1 inside the domain and decreases in the layer
         not mask => 0 inside the domain and increase in the layer
     """
+    damp = Function(name="damp", grid=Grid(tuple([11]*ndim)), space_order=0)
     eqs = [Eq(damp, 1.0 if abc_type == "mask" else 0.0)]
     for (nbl, nbr), d in zip(padsizes, damp.dimensions):
         if not fs or d is not damp.dimensions[-1]:
@@ -84,7 +81,31 @@ def initialize_damp(damp, padsizes, abc_type="damp", fs=False):
         val = -val if abc_type == "mask" else val
         eqs += [Inc(damp.subs({d: dim_r}), val/d.spacing)]
 
-    Operator(eqs, name='initdamp')()
+    return Operator(eqs, name='initdamp')
+
+
+@switchconfig(log_level='ERROR')
+def initialize_damp(damp, padsizes, abc_type="damp", fs=False):
+    """
+    Initialise damping field with an absorbing boundary layer.
+    Includes basic constant Q setup (not interfaced yet) and assumes that
+    the peak frequency is 1/(10 * spacing).
+
+    Parameters
+    ----------
+    damp : Function
+        The damping field for absorbing boundary condition.
+    nbl : int
+        Number of points in the damping layer.
+    spacing :
+        Grid spacing coefficient.
+    mask : bool, optional
+        whether the dampening is a mask or layer.
+        mask => 1 inside the domain and decreases in the layer
+        not mask => 0 inside the domain and increase in the layer
+    """
+    op = damp_op(damp.grid.dim, padsizes, abc_type, fs)
+    op(damp=damp)
 
 
 class Model(object):
@@ -204,7 +225,7 @@ class Model(object):
     def padsizes(self):
         padsizes = [(self.nbl, self.nbl) for _ in range(self.dim-1)]
         padsizes.append((0 if self.fs else self.nbl, self.nbl))
-        return padsizes
+        return tuple(p for p in padsizes)
 
     def physical_params(self, **kwargs):
         """

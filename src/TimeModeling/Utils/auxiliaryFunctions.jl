@@ -51,13 +51,13 @@ Parameters
 function pad_sizes(model, options; so=nothing)
     isnothing(so) && (so = options.space_order)
     try
-        return [(nbl + so, nbr + so) for (nbl, nbr)=model.padsizes]
+        return tuple([(nbl + so, nbr + so) for (nbl, nbr)=model.padsizes]...)
     catch e
         padsizes = [(model.nb + so, model.nb + so) for i=1:length(model.n)]
         if options.free_surface
             padsizes[end] = (so, model.nb + so)
         end
-        return padsizes
+        return tuple(padsizes...)
     end
 end
 
@@ -71,7 +71,7 @@ Parameters
 * `nb`: Size of padding. Array of tuple with one (nb_left, nb_right) tuple per dimension.
 * `mode`: Padding mode (optional), defaults to :border.
 """
-function pad_array(m::Array{DT}, nb::Array{Tuple{Int64,Int64},1}; mode::Symbol=:border) where {DT}
+function pad_array(m::Array{DT}, nb::NTuple{N, NTuple{2, Int64}}; mode::Symbol=:border) where {DT, N}
     n = size(m)
     new_size = Tuple([n[i] + sum(nb[i]) for i=1:length(nb)])
     Ei = []
@@ -83,8 +83,8 @@ function pad_array(m::Array{DT}, nb::Array{Tuple{Int64,Int64},1}; mode::Symbol=:
     return PyReverseDims(reshape(padded, reverse(new_size)))
 end
 
-pad_array(::Nothing, ::Array{Tuple{Int64,Int64},1}; s::Symbol=:border) = nothing
-pad_array(m::Number, ::Array{Tuple{Int64,Int64},1}; s::Symbol=:border) = m
+pad_array(::Nothing, ::NTuple{N, NTuple{2, Int64}}; s::Symbol=:border) where N = nothing
+pad_array(m::Number, ::NTuple{N, NTuple{2, Int64}}; s::Symbol=:border) where N = m
 
 """
     remove_padding(m, nb; true_adjoint=False)
@@ -97,7 +97,7 @@ Parameters
 * `true_adjoint`: Unpadding mode, defaults to False. Will sum the padding to the edge point with `true_adjoint=true`
  and should only be used this way for adjoint testing purpose.
 """
-function remove_padding(gradient::AbstractArray{DT}, nb::Array{Tuple{Int64,Int64},1}; true_adjoint::Bool=false) where {DT}
+function remove_padding(gradient::AbstractArray{DT}, nb::NTuple{ND, NTuple{2, Int64}}; true_adjoint::Bool=false) where {ND, DT}
     N = size(gradient)
     if true_adjoint
         for (dim, (nbl, nbr)) in enumerate(nb)

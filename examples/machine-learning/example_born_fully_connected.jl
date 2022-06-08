@@ -77,7 +77,7 @@ function network(x)
     return x
 end
 
-# Gradient
+# Inputs and target
 x = zeros(Float32, n_in)
 y = randn(Float32, n_out)
 
