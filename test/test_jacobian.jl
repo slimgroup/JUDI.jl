@@ -19,46 +19,28 @@ m0 = model0.m
     opt = Options(sum_padding=true, dt_comp=dt, free_surface=fs, f0=f0)
 
     # Setup operators
-    Pr = judiProjection(recGeometry)
-    F = judiModeling(model; options=opt)
-    F0 = judiModeling(model0; options=opt)
-    Ps = judiProjection(srcGeometry)
-    J = judiJacobian(Pr*F0*adjoint(Ps), q)
+    F = judiModeling(model, srcGeometry, recGeometry; options=opt)
+    F0 = judiModeling(model0, srcGeometry, recGeometry; options=opt)
+    J = judiJacobian(F0, q)
 
     # Linear modeling
-    dobs = Pr*F0*Ps'*q
+    dobs = F*q
     dD = J*dm
 
     @test norm(J*(0f0.*dm)) == 0
     @test isapprox(dD, J*vec(dm.data); rtol=1f-6)
 
-    # Jacobian test
-    maxiter = 6
-    h = 5f-2
-    err1 = zeros(Float32, maxiter)
-    err2 = zeros(Float32, maxiter)
+    # Gradient test
+    grad_test(x-> F(;m=x)*q, m0, dm, dD; data=true)
 
-    for j=1:maxiter
-
-        F.model.m = m0 + h*dm
-        dpred = Pr*F*Ps'*q
-
-        err1[j] = norm(dpred - dobs)
-        err2[j] = norm(dpred - dobs - h*dD)
-        j == 1 ? prev = 1 : prev = j - 1
-        @printf("h = %2.2e, e1 = %2.2e, rate = %2.2e", h, err1[j], err1[prev]/err1[j])
-        @printf(", e2 = %2.2e, rate = %2.2e \n", err2[j], err2[prev]/err2[j])
-
-        h = h * .8f0
-    end
 end
 
 ### Extended source
-
-@testset "Extended source Jacobian test with $(nlayer) layers and tti $(tti) and freesurface $(fs)" begin
-    @timeit TIMEROUTPUT "Extended source Jacobian" begin
-        opt = Options(sum_padding=true, dt_comp=dt, return_array=true, free_surface=fs, f0=f0)
-
+@testset "Extended source Jacobian test with $(nlayer) layers and tti $(tti) and freesurface $(fs)" for ra=[true, false]
+    @timeit TIMEROUTPUT "Extended source Jacobian return_array=$(ra)" begin
+        opt = Options(sum_padding=true, dt_comp=dt, return_array=ra, free_surface=fs, f0=f0)
+        DT = ra ? Vector{Float32} : judiVector{Float32, Matrix{Float32}}
+        QT = ra ? Vector{Float32} : judiWeights{Float32}
         # Setup operators
         Pr = judiProjection(recGeometry)
         F = judiModeling(model; options=opt)
@@ -76,36 +58,12 @@ end
         # Nonlinear modeling
         dobs = A0*w
         wa = adjoint(A0)*dobs
-        @test typeof(dobs) == Vector{Float32}
-        @test typeof(wa) == Vector{Float32}
+        @test typeof(dobs) == DT
+        @test typeof(wa) == QT
         dD = J*dm
-        @test typeof(dD) == Vector{Float32}
+        @test typeof(dD) == DT
 
-        # Jacobian test
-        maxiter = 6
-        h = 5f-2
-        err1 = zeros(Float32, maxiter)
-        err2 = zeros(Float32, maxiter)
-
-        for j=1:maxiter
-
-            A.model.m = m0 + h*dm
-            dpred = A*w
-            @test typeof(dpred) == Vector{Float32}
-
-            err1[j] = norm(dpred - dobs)
-            err2[j] = norm(dpred - dobs - h*dD)
-            j == 1 ? prev = 1 : prev = j - 1
-            @printf("h = %2.2e, e1 = %2.2e, rate = %2.2e", h, err1[j], err1[prev]/err1[j])
-            @printf(", e2 = %2.2e, rate = %2.2e \n", err2[j], err2[prev]/err2[j])
-
-            h = h * .8f0
-        end
-
-        rate_1 = sum(err1[1:end-1]./err1[2:end])/(maxiter - 1)
-        rate_2 = sum(err2[1:end-1]./err2[2:end])/(maxiter - 1)
-
-        @test isapprox(rate_1, 1.25f0; rtol=1f-2)
-        @test isapprox(rate_2, 1.5625f0; rtol=1f-2)
+        # Gradient test
+        grad_test(x-> A(;m=x)*w, m0, dm, dD; data=true)
     end
 end

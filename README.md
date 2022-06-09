@@ -264,7 +264,7 @@ end
 
 ## Machine Learning
 
-The JUDI4Flux interface allows integrating [JUDI] modeling operators into convolutional neural networks for deep learning. For example, the following code snippet shows how to create a shallow CNN consisting of two convolutional layers with a nonlinear forward modeling layer in-between them. JUDI4Flux enables backpropagation through Flux' automatic differentiation tool, but calls the corresponding adjoint [JUDI] operators under the hood. For more details, please check out the [JUDI4Flux Github](https://github.com/slimgroup/JUDI4Flux.jl) page.
+[JUDI] implements [ChainRulesCore] reverse rules to integrate the modeling operators into convolutional neural networks for deep learning. For example, the following code snippet shows how to create a shallow CNN consisting of two convolutional layers with a nonlinear forward modeling layer in-between them. [JUDI] enables backpropagation through [Flux]' automatic differentiation tools, but calls the corresponding adjoint [JUDI] operators under the hood.
 
 ```Julia
 # Jacobian
@@ -285,7 +285,7 @@ gs = Tracker.gradient(() -> loss(x, y), p)
 gs[x]	# gradient w.r.t. to x
 ```
 
-JUDI4Flux allows implementing physics-augmented neural networks for seismic inversion, such as loop-unrolled seismic imaging algorithms. For example, the following results are a conventional RTM image, an LS-RTM image and a loop-unrolled LS-RTM image for a single simultaneous shot record.
+[JUDI] allows implementing physics-augmented neural networks for seismic inversion, such as loop-unrolled seismic imaging algorithms. For example, the following results are a conventional RTM image, an LS-RTM image and a loop-unrolled LS-RTM image for a single simultaneous shot record.
 
 ![flux](docs/src/figures/figure1.png)
 
@@ -295,7 +295,7 @@ This package was written by [Philipp Witte](https://www.linkedin.com/in/philipp-
 
 If you use our software for your research, please cite our [Geophysics paper](https://library.seg.org/doi/abs/10.1190/geo2018-0174.1#):
 
-```
+```bibtex
 @article{witteJUDI2019,
 author = {Philipp A. Witte and Mathias Louboutin and Navjot Kukreja and Fabio Luporini and Michael Lange and Gerard J. Gorman and Felix J. Herrmann},
 title = {A large-scale framework for symbolic implementations of seismic inversion algorithms in Julia},
@@ -313,7 +313,6 @@ eprint = {https://doi.org/10.1190/geo2018-0174.1}
 Also visit the Devito homepage at <https://www.devitoproject.org/publications> for more information and references.
 
 Contact authors via: mlouboutin3@gatech.edu.
-
 
 [docs-stable-img]:https://img.shields.io/badge/docs-stable-blue.svg?style=plastic
 [docs-stable-status]:https://slimgroup.github.io/JUDI.jl
@@ -341,3 +340,5 @@ Contact authors via: mlouboutin3@gatech.edu.
 
 [JUDI]:https://github.com/slimgroup/JUDI.jl
 [Devito]:https://github.com/devitocodes/devito
+[ChainRulesCore]:https://github.com/JuliaDiff/ChainRulesCore.jl
+[Flux]:https://github.com/FluxML/Flux.jl

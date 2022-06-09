@@ -72,6 +72,8 @@ minimum(a::judiMultiSourceVector{avDT}) where avDT = min([minimum(a.data[i]) for
 vec(x::judiMultiSourceVector) = vcat(vec.(x.data)...)
 
 time_sampling(ms::judiMultiSourceVector) = [1 for i=1:ms.nsrc]
+
+reshape(ms::judiMultiSourceVector, dims::Dims{N}) where N = reshape(vec(ms), dims)
 ############################################################################################################################
 # Linear algebra `*`
 (msv::judiMultiSourceVector{T})(x::Vector{T}) where {T<:AbstractFloat} = x
@@ -94,6 +96,9 @@ end
 make_input(ms::judiMultiSourceVector) = throw(judiMultiSourceException("$(typeof(ms)) must implement `make_input(ms, dt)` for propagation"))
 make_input(a::Array) = a
 
+as_src(ms::judiMultiSourceVector{T}) where T = ms
+as_src(p::AbstractVector{T}) where T = p
+as_src(p) = vec(p)
 ############################################################################################################################
 # Linear algebra norm/abs/cat...
 function norm(a::judiMultiSourceVector{T}, p::Real=2) where T
@@ -110,23 +115,26 @@ end
 
 # inner product
 function dot(a::judiMultiSourceVector{T}, b::judiMultiSourceVector{T}) where T
-	# Dot product for data containers
-	size(a) == size(b) || throw(judiMultiSourceException("dimension mismatch: $(size(a)) != $(size(b))"))
-	dotprod = 0f0
+    # Dot product for data containers
+    size(a) == size(b) || throw(judiMultiSourceException("dimension mismatch: $(size(a)) != $(size(b))"))
+    dotprod = 0f0
     dt = time_sampling(a)
-	for j=1:a.nsrc
-		dotprod += dt[j] * dot(a.data[j], b.data[j])
-	end
-	return T(dotprod)
+    for j=1:a.nsrc
+        dotprod += dt[j] * dot(a.data[j], b.data[j])
+    end
+    return T(dotprod)
 end
+
+dot(a::judiMultiSourceVector{T}, b::Array{T}) where T = dot(vec(a), vec(b))
+dot(a::Array{T}, b::judiMultiSourceVector{T}) where T = dot(b, a)
 
 # abs
 function abs(a::judiMultiSourceVector{T}) where T
-	b = deepcopy(a)
-	for j=1:a.nsrc
-		b.data[j] = abs.(a.data[j])
-	end
-	return b
+    b = deepcopy(a)
+    for j=1:a.nsrc
+        b.data[j] = abs.(a.data[j])
+    end
+    return b
 end
 
 # vcat

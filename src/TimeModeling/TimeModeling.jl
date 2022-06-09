@@ -19,7 +19,7 @@ include("Types/judiVector.jl")    # Julia data container
 include("Types/judiComposites.jl")    # A composite type to work with hcat/vcat of judi types
 
 # Utility types
-const SourceType{T} = Union{Vector{T}, judiMultiSourceVector{T}, PhysicalParameter{T}}
+const SourceType{T} = Union{Vector{T}, Matrix{T}, judiMultiSourceVector{T}, PhysicalParameter{T}}
 const dmType{T} = Union{Vector{T}, PhysicalParameter{T}}
 
 #############################################################################
@@ -65,4 +65,7 @@ if VERSION>v"1.2"
     end
     Fl
   end
+
+  (F::judiPropagator)(m::Model, q) = F(m)*as_src(q)
+  (F::judiPropagator)(m, q) = F(;m=m)*as_src(q)
 end

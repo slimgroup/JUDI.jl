@@ -1,6 +1,8 @@
 # Getting Started
 
-These tutorials provide instructions of how to set up various modeling or inversion scenarios with JUDI. For a list of runnable Julia scripts and reproducable research, please also check out the [examples](https://github.com/slimgroup/JUDI.jl/tree/master/examples) directory on Github.
+These tutorials provide instructions of how to set up various modeling or inversion scenarios with JUDI. For a list of runnable Julia scripts and reproducable research, please also check out the examples:
+ - The [examples](https://github.com/slimgroup/JUDI.jl/tree/master/examples/scripts) scripts contain simple modeling and inversion examples such as FWI, LSRTM, and medical modeling.
+ - The [machine-learning](https://github.com/slimgroup/JUDI.jl/tree/master/examples/machine-learning) scripts contain examples of machine learning using Flux.
 
 ```@contents
 Pages = ["tutorials.md"]

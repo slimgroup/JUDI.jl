@@ -15,6 +15,7 @@ using Distributed
 using DSP, FFTW, Dierckx
 using PyCall
 using JOLI, SegyIO
+using ChainRulesCore
 
 # Import Base functions to dispatch on JUDI types
 import Base.depwarn
@@ -44,7 +45,10 @@ import JOLI: jo_convert
 import FFTW: fft, ifft
 
 # Import pycall array to python for easy plotting
-import PyCall.array2py
+import PyCall.NpyArray
+
+# Import AD rrule
+import ChainRulesCore: rrule
 
 # Set python paths
 const pm = PyNULL()
@@ -92,4 +96,7 @@ end
 
 # Backward Compatibility
 include("compat.jl")
+
+# Automatic Differentiation
+include("rrules.jl")
 end

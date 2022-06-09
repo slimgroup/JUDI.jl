@@ -25,48 +25,30 @@ dobs0 = F0*q
 
 ###################################################################################################
 
+@testset "FWI gradient test with $(nlayer) layers and tti $(tti) and viscoacoustic $(viscoacoustic) and freesurface $(fs)" begin
+	# FWI gradient and function value for m0
+	Jm0, grad = fwi_objective(model0, q, dobs; options=opt)
+	# Check get same misfit as l2 misifit on forward data
+	Jm01 = .5f0 * norm(F(model0)*q - dobs)^2
+	@test Jm0 ≈ Jm01
+
+	grad_test(x-> .5f0*norm(F(;m=x)*q - dobs)^2, model0.m , dm, grad)
+
+end
+
+###################################################################################################
+
 @testset "LSRTM gradient test with $(nlayer) layers, tti $(tti), viscoacoustic $(viscoacoustic). freesurface $(fs), nlind $(nlind)" for nlind=[true, false]
 	@timeit TIMEROUTPUT "LSRTM gradient test, nlind=$(nlind)" begin
-		# Gradient test
-		ftol = (tti && fs) ? 1f-1 : 5f-2
-		h = 5f-2
-		maxiter = 5
-		err1 = zeros(maxiter)
-		err2 = zeros(maxiter)
-		h_all = zeros(maxiter)
-
 		# LS-RTM gradient and function value for m0
-		Jm0, grad = lsrtm_objective(model0, q, dobs, dm; options=opt, nlind=nlind)
 		dD = nlind ? (dobs - dobs0) : dobs
+		Jm0, grad = lsrtm_objective(model0, q, dD, dm; options=opt, nlind=nlind)
 
 		# Perturbation
 		dmp = 2f0*circshift(dm, 10)
-		dJ = dot(grad, dmp)
 
-		for j=1:maxiter
-			dmloc = dm + h*dmp
-			# LS-RTM gradient and function falue for m0 + h*dm
-			Jm = lsrtm_objective(model0, q, dobs, dmloc; options=opt, nlind=nlind)[1]
-			@printf("h = %2.2e, J0 = %2.2e, Jm = %2.2e \n", h, Jm0, Jm)
-			# Check convergence
-			err1[j] = abs(Jm - Jm0)
-			err2[j] = abs(Jm - Jm0 - h*dJ)
-
-			j == 1 ? prev = 1 : prev = j - 1
-			@printf("h = %2.2e, e1 = %2.2e, rate = %2.2e", h, err1[j], err1[prev]/err1[j])
-			@printf(", e2  = %2.2e, rate = %2.2e \n", err2[j], err2[prev]/err2[j])
-			h_all[j] = h
-			h = h * .5f0
-		end
-
-		# Check convergence rates
-		rate_1 = sum(err1[1:end-1]./err1[2:end])/(maxiter - 1)
-		rate_2 = sum(err2[1:end-1]./err2[2:end])/(maxiter - 1)
-
-		# This is a linearized problem, so the whole expansion is O(dm) and
-		# "second order error" should be first order
-		@test isapprox(rate_1, 2f0; rtol=ftol)
-		@test isapprox(rate_2, 4f0; rtol=ftol)
+		# Gradient test
+		grad_test(x-> lsrtm_objective(model0, q, dD, x;options=opt, nlind=nlind)[1], dm, dmp, grad)
 
 		# test that with zero dm we get the same as fwi_objective for residual
 		if nlind

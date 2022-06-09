@@ -51,13 +51,13 @@ Parameters
 function pad_sizes(model, options; so=nothing)
     isnothing(so) && (so = options.space_order)
     try
-        return [(nbl + so, nbr + so) for (nbl, nbr)=model.padsizes]
+        return tuple([(nbl + so, nbr + so) for (nbl, nbr)=model.padsizes]...)
     catch e
         padsizes = [(model.nb + so, model.nb + so) for i=1:length(model.n)]
         if options.free_surface
             padsizes[end] = (so, model.nb + so)
         end
-        return padsizes
+        return tuple(padsizes...)
     end
 end
 
@@ -71,7 +71,7 @@ Parameters
 * `nb`: Size of padding. Array of tuple with one (nb_left, nb_right) tuple per dimension.
 * `mode`: Padding mode (optional), defaults to :border.
 """
-function pad_array(m::Array{DT}, nb::Array{Tuple{Int64,Int64},1}; mode::Symbol=:border) where {DT}
+function pad_array(m::Array{DT}, nb::NTuple{N, NTuple{2, Int64}}; mode::Symbol=:border) where {DT, N}
     n = size(m)
     new_size = Tuple([n[i] + sum(nb[i]) for i=1:length(nb)])
     Ei = []
@@ -83,8 +83,8 @@ function pad_array(m::Array{DT}, nb::Array{Tuple{Int64,Int64},1}; mode::Symbol=:
     return PyReverseDims(reshape(padded, reverse(new_size)))
 end
 
-pad_array(::Nothing, ::Array{Tuple{Int64,Int64},1}; s::Symbol=:border) = nothing
-pad_array(m::Number, ::Array{Tuple{Int64,Int64},1}; s::Symbol=:border) = m
+pad_array(::Nothing, ::NTuple{N, NTuple{2, Int64}}; s::Symbol=:border) where N = nothing
+pad_array(m::Number, ::NTuple{N, NTuple{2, Int64}}; s::Symbol=:border) where N = m
 
 """
     remove_padding(m, nb; true_adjoint=False)
@@ -97,7 +97,7 @@ Parameters
 * `true_adjoint`: Unpadding mode, defaults to False. Will sum the padding to the edge point with `true_adjoint=true`
  and should only be used this way for adjoint testing purpose.
 """
-function remove_padding(gradient::AbstractArray{DT}, nb::Array{Tuple{Int64,Int64},1}; true_adjoint::Bool=false) where {DT}
+function remove_padding(gradient::AbstractArray{DT}, nb::NTuple{ND, NTuple{2, Int64}}; true_adjoint::Bool=false) where {ND, DT}
     N = size(gradient)
     if true_adjoint
         for (dim, (nbl, nbr)) in enumerate(nb)
@@ -279,8 +279,8 @@ end
 
 remove_out_of_bounds_receivers(G::Geometry, ::Nothing, M::Model) = (remove_out_of_bounds_receivers(G, M), nothing)
 remove_out_of_bounds_receivers(::Nothing, ::Nothing, M::Model) = (nothing, nothing)
-remove_out_of_bounds_receivers(::Nothing, r::AbstractArray, M::Model) = (nothing, r)
-remove_out_of_bounds_receivers(G::Geometry, r, M::Model) = remove_out_of_bounds_receivers(G, convert(Matrix{Float32}, r), M)
+remove_out_of_bounds_receivers(w, r::AbstractArray, M::Model) = (w, r)
+remove_out_of_bounds_receivers(G::Geometry, r::AbstractArray, M::Model) = remove_out_of_bounds_receivers(G, convert(Matrix{Float32}, r), M)
 remove_out_of_bounds_receivers(w::AbstractArray, ::Nothing, M::Model) = (w, nothing)
 
 """
@@ -631,11 +631,11 @@ Parameters:
 * `geometry`: Geometry containing physical parameters.
 * `nsrc`: Number of sources
 """
-function process_input_data(input::Array{Float32}, geometry::Geometry)
+function process_input_data(input::AbstractArray{Float32}, geometry::Geometry)
     # Input data is pure Julia array: assume fixed no.
     # of receivers and reshape into data cube nt x nrec x nsrc
     nt = Int(geometry.nt[1])
-    nrec = length(geometry.xloc[1])
+    nrec = geometry.nrec[1]
     nsrc = length(geometry.xloc)
     data = reshape(input, nt, nrec, nsrc)
     dataCell = Array{Array{Float32, 2}, 1}(undef, nsrc)
@@ -655,7 +655,7 @@ Parameters:
 * `model`: Model containing physical parameters.
 * `nsrc`: Number of sources
 """
-function process_input_data(input::Array{Float32}, model::Model, nsrc::Integer)
+function process_input_data(input::AbstractArray{Float32}, model::Model, nsrc::Integer)
     ndims = length(model.n)
     dataCell = Array{Array{Float32, ndims}, 1}(undef, nsrc)
 
@@ -667,12 +667,12 @@ function process_input_data(input::Array{Float32}, model::Model, nsrc::Integer)
     return dataCell
 end
 
-process_input_data(input::Array{Float32}, model::Model) = process_input_data(input, model, length(input) ÷ prod(model.n))
+process_input_data(input::AbstractArray{Float32}, model::Model) = process_input_data(input, model, length(input) ÷ prod(model.n))
 process_input_data(input::judiVector, ::Geometry) = input
 process_input_data(input::judiVector) = input.data
 process_input_data(input::judiWeights, ::Model) = input.weights
 
-function process_input_data(input::Array{T}, v::Vector{<:Array}) where T
+function process_input_data(input::AbstractArray{T}, v::Vector{<:Array}) where T
     nsrc = length(v)
     dataCell = Vector{Vector{T}}(undef, nsrc)
     input = reshape(input, :, nsrc)
@@ -687,9 +687,9 @@ end
 
 Reshapes input vector intu a 3D `nt x nrec x nsrc` Array.
 """
-function reshape(x::Array{Float32, 1}, geometry::Geometry)
+function reshape(x::AbstractArray{Float32, 1}, geometry::Geometry)
     nt = geometry.nt[1]
-    nrec = length(geometry.xloc[1])
+    nrec = geometry.nrec[1]
     nsrc = Int(length(x) / nt / nrec)
     return reshape(x, nt, nrec, nsrc)
 end
