@@ -3,8 +3,8 @@
 # Date: January 2017
 #
 
-const IntTuple = Union{Tuple{Integer,Integer}, Tuple{Integer,Integer,Integer},Array{Int64,1},Array{Int32,1}}
-const RealTuple = Union{Tuple{AbstractFloat,AbstractFloat}, Tuple{AbstractFloat,AbstractFloat,AbstractFloat},Array{AbstractFloat,1}}
+const IntTuple = Union{Tuple{Integer,Integer}, Tuple{Integer,Integer,Integer},Vector{Integer}}
+const RealTuple = Union{Tuple{Real,Real}, Tuple{Real,Real,Real},Vector{Real}}
 
 export Model, PhysicalParameter, get_dt
 
