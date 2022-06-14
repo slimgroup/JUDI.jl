@@ -113,3 +113,15 @@ def opt_op(model):
         except InvalidOperator:
             opts.pop('cire-repeats-sops')
     return ('advanced', opts)
+
+
+def fields_kwargs(*args):
+    """
+    Creates a dictionary of {f.name: f} for any field argument that is not None
+    """
+    kw = {}
+    for field in args:
+        if field is not None:
+            # In some case could be a tuple of fields, such as dft modes
+            kw.update({f.name: f for f in as_tuple(field)})
+    return kw

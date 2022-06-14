@@ -9,7 +9,8 @@ from propagators import forward, adjoint, born, gradient, forward_grad
 from sensitivity import l2_loss
 from sources import Receiver
 from utils import weight_fun, compute_optalpha
-from wave_utils import wf_as_src, memory_field
+from fields import memory_field
+from fields_exprs import wf_as_src
 
 
 # Forward wrappers Pr*F*Ps'*q

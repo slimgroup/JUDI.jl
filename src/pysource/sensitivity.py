@@ -4,7 +4,7 @@ from sympy import cos, sin
 from devito import Eq
 from devito.tools import as_tuple
 
-from wave_utils import sub_time, freesurface
+from fields_exprs import sub_time, freesurface
 from FD_utils import divs, grads
 
 

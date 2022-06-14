@@ -1,10 +1,10 @@
 from kernels import wave_kernel
 from geom_utils import src_rec
-from wave_utils import (wf_as_src, wavefield, otf_dft, extended_src_weights,
-                        extented_src, wavefield_subsampled, weighted_norm)
+from fields import (fourier_modes, wavefield, lr_src_fields, wavefield,
+                    wavefield_subsampled)
 from sensitivity import grad_expr, lin_src
-from utils import weight_fun, opt_op
-from operators import forward_op
+from utils import weight_fun, opt_op, fields_kwargs
+from operators import forward_op, adjoint_op
 
 from devito import Operator, Function
 from devito.tools import as_tuple
@@ -33,38 +33,41 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     # Setting forward wavefield
     u = wavefield(model, space_order, save=save, nt=nt, t_sub=t_sub)
 
-    # Expression for saving wavefield if time subsampling is used
-    u_save, eq_save = wavefield_subsampled(model, u, nt, t_sub)
-
-    # Add extended source
-    q = qwf or wf_as_src(u, w=0)
-    q = extented_src(model, ws, wavelet, q=q)
-
-    # Set up PDE expression and rearrange
-    pde = wave_kernel(model, u, q=q, f0=f0)
-
     # Setup source and receiver
-    geom_expr, src, rcv = src_rec(model, u, src_coords=src_coords, nt=nt,
-                                rec_coords=rcv_coords, wavelet=wavelet)
-
-    # On-the-fly Fourier
-    dft, dft_modes = otf_dft(u, freq_list, model.critical_dt, factor=dft_sub)
+    src, rcv = src_rec(model, u, src_coords, rcv_coords, wavelet, nt)
 
     # Create operator and run
-    op = forward_op(model.physical_parameters, model.is_tti, model.is_viscoacoustic, space_order, model.spacing,
-                    save, t_sub, model.fs, src_coords is not None, rcv_coords is not None,
+    op = forward_op(model.physical_parameters, model.is_tti, model.is_viscoacoustic,
+                    space_order, model.spacing, save, t_sub, model.fs,
+                    src_coords is not None, rcv_coords is not None,
                     freq_list is not None, dft_sub, ws is not None, qwf is not None)
 
     if return_op:
         return op, u, rcv
 
-    summary = op(dt=model.critical_dt, u=u, srcu=src, rcvu=rcv, **model.physical_params())
+    # Make kwargs
+    kw = {'dt': model.critical_dt}
+
+    # Expression for saving wavefield if time subsampling is used
+    u_save = wavefield_subsampled(model, u, nt, t_sub)
+
+    # On-the-fly Fourier
+    dft_modes, fr = fourier_modes(u, freq_list)
+    
+    # Extended source
+    ws, wt = lr_src_fields(model, ws, wavelet)
+
+    # Update kwargs
+    kw.update(fields_kwargs(u, src, rcv, u_save, dft_modes, fr, ws, wt))
+    kw.update(model.physical_params())
+
+    summary = op(**kw)
 
     # Output
     return rcv, dft_modes or (u_save if t_sub > 1 else u), summary
 
 
-def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0, dft_sub=None,
+def adjoint(model, y, src_coords, rcv_coords, space_order=8, qwf=None, dft_sub=None,
             save=False, ws=None, norm_v=False, w_fun=None, freq_list=None, f0=0.015):
     """
     Low level propagator, to be used through `interface.py`
@@ -77,37 +80,36 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0, dft_sub=None,
     # Setting adjoint wavefield
     v = wavefield(model, space_order, save=save, nt=nt, fw=False)
 
-    # Set up PDE expression and rearrange
-    pde = wave_kernel(model, v, q=q, fw=False, f0=f0)
-
-    # On-the-fly Fourier
-    dft, dft_modes = otf_dft(v, freq_list, model.critical_dt, factor=dft_sub)
-
     # Setup source and receiver
-    geom_expr, _, rcv = src_rec(model, v, src_coords=rcv_coords, nt=nt,
-                                rec_coords=src_coords, wavelet=y, fw=False)
-
-    # Extended source
-    wsrc, ws_expr = extended_src_weights(model, ws, v)
-
+    src, rcv = src_rec(model, v, src_coords=rcv_coords, nt=nt,
+                       rec_coords=src_coords, wavelet=y)
     # Wavefield norm
-    nv_t, nv_s = ([], [])
-    if norm_v:
-        weights = weight_fun(w_fun, model, src_coords)
-        norm_v, (nv_t, nv_s) = weighted_norm(v, weight=weights)
+    nv_weights = weight_fun(w_fun, model, src_coords) if norm_v else None
 
     # Create operator and run
-    subs = model.spacing_map
-    op = Operator(pde + ws_expr + nv_t + dft + geom_expr + nv_s,
-                  subs=subs, name="adjoint"+name(model),
-                  opt=opt_op(model))
-    op.cfunction
-    # Run operator
-    summary = op()
+    # (p_params, tti, visco, space_order, spacing, save, nv_weights, fs, pt_src, pt_rec, dft, full_q):
+    op = adjoint_op(model.physical_parameters, model.is_tti, model.is_viscoacoustic,
+                    space_order, model.spacing, save, nv_weights, model.fs,
+                    src_coords is not None, rcv_coords is not None,
+                    freq_list is not None, dft_sub, ws is not None, qwf is not None)
+
+    # On-the-fly Fourier
+    dft_modes, fr = fourier_modes(v, freq_list)
+
+    # Extended source
+    ws, wt = lr_src_fields(model, None, ws, empty_ws=True)
+
+    # Update kwargs
+    kw = {'dt': model.critical_dt}
+    kw.update(fields_kwargs(v, src, rcv, dft_modes, fr, ws, wt))
+    kw.update(model.physical_params())
+
+    # Run op
+    summary = op(**kw)
 
     # Output
-    if wsrc:
-        return wsrc, summary
+    if ws:
+        return ws, summary
     if norm_v:
         return rcv, dft_modes or v, norm_v.data[0], summary
     return rcv, v, summary

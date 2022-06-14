@@ -1,7 +1,8 @@
 from devito import Eq, solve
 from sympy import sqrt
 
-from wave_utils import freesurface, memory_field
+from fields import memory_field
+from fields_exprs import freesurface
 from FD_utils import laplacian, sa_tti
 
 
