@@ -451,11 +451,11 @@ class Model(object):
         return sp_map
 
 
-
 class EmptyModel(object):
     """
-    An pseudo Model structure that does not contain any physical field but only the necessary information
-    to create an operator. This Model should not be used for propagation.
+    An pseudo Model structure that does not contain any physical field
+    but only the necessary information to create an operator.
+    This Model should not be used for propagation.
     """
 
     def __init__(self, tti, visco, spacing, fs, space_order, p_params):
@@ -469,7 +469,8 @@ class EmptyModel(object):
             subdomains = (physdomain, fsdomain)
         else:
             subdomains = ()
-        self.grid = Grid(tuple([11]*len(spacing)), extent=[s*10 for s in spacing], subdomains=subdomains)
+        self.grid = Grid(tuple([11]*len(spacing)), extent=[s*10 for s in spacing],
+                         subdomains=subdomains)
         self.dimensions = self.grid.dimensions
 
         # Create the function for the physical parameters
