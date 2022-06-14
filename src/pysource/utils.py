@@ -26,7 +26,7 @@ def weight_fun(w_fun, model, src_coords):
         Source coordinates.
     """
     if w_fun is None:
-        return None
+        return 1
     else:
         return weight_srcfocus(model, src_coords, delta=w_fun[1],
                                full=(w_fun[0] == "srcfocus"))
@@ -123,5 +123,10 @@ def fields_kwargs(*args):
     for field in args:
         if field is not None:
             # In some case could be a tuple of fields, such as dft modes
-            kw.update({f.name: f for f in as_tuple(field)})
+            try:
+                kw.update({f.name: f for f in as_tuple(field)})
+            except AttributeError:
+                for f in field:
+                    kw.update({ff.name: ff for ff in f})
+
     return kw

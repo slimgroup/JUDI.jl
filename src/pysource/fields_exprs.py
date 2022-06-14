@@ -1,11 +1,11 @@
 import numpy as np
 from sympy import cos, sin, sign
 
-from devito import (Function, Inc, Eq, ConditionalDimension, Dimension)
+from devito import Max, Inc, Eq, ConditionalDimension, Dimension, Function
 from devito.tools import as_tuple
 from devito.symbolics import retrieve_functions, INT
 
-from fields import wavefield_subsampled, lr_src_fields, fourier_modes
+from fields import wavefield_subsampled, lr_src_fields, fourier_modes, norm_holder
 
 
 def save_subsampled(model, u, nt, t_sub, space_order=8):
@@ -151,11 +151,11 @@ def otf_dft(u, freq, dt, factor=None):
         return []
 
     # init
-    dft_modes, f = fourier_modes(u, freq, factor=factor)
+    dft_modes, f = fourier_modes(u, freq)
 
     # Subsampled dft time axis
     time = as_tuple(u)[0].grid.time_dim
-    tsave, factor = sub_time(time, factor, dt=dt, freq=freq)
+    tsave, factor, fact_eq = sub_time(time, factor, dt=dt, freq=freq)
 
     # Pulsation
     omega_t = 2*np.pi*f*tsave*factor*dt
@@ -164,7 +164,7 @@ def otf_dft(u, freq, dt, factor=None):
     for ((ufr, ufi), wf) in zip(dft_modes, as_tuple(u)):
         dft += [Inc(ufr, factor * cos(omega_t) * wf)]
         dft += [Inc(ufi, -factor * sin(omega_t) * wf)]
-    return dft
+    return dft + fact_eq
 
 
 def idft(v, freq=None):
@@ -206,14 +206,21 @@ def sub_time(time, factor, dt=1, freq=None):
         Subsampling factor
     """
     if factor == 1:
-        return time, factor
+        return time, factor, []
     elif freq is not None:
-        factor = factor or max([1, int(1 / (dt*4*np.max(freq)))])
-        return ConditionalDimension(name='tsave', parent=time, factor=factor), factor
+        if factor is not None:
+            return (ConditionalDimension(name='tsave', parent=time, factor=factor),
+                    factor, [])
+        else:
+            fi = Dimension(name="fi",)
+            factor = Function(name="subf", shape=(1,), dimensions=(fi,), dtype=np.int32)
+            fact_eq = [Eq(factor, INT(Max(1, 1 / (dt*4*np.max(freq)))))]
+            return (ConditionalDimension(name='tsave', parent=time, factor=factor[0]),
+                    factor, fact_eq)
     elif factor is not None:
-        return ConditionalDimension(name='tsave', parent=time, factor=factor), factor
+        return ConditionalDimension(name='tsave', parent=time, factor=factor), factor, []
     else:
-        return time, 1
+        return time, 1, []
 
 
 def weighted_norm(u, weight=None):
@@ -231,12 +238,10 @@ def weighted_norm(u, weight=None):
     grid = as_tuple(u)[0].grid
     expr = grid.time_dim.spacing * sum(uu**2 for uu in as_tuple(u))
     # Norm in time
-    norm_vy2_t = Function(name="nvy2t", grid=grid, space_order=0)
-    n_t = [Eq(norm_vy2_t, norm_vy2_t + expr)]
+    nv, nvt = norm_holder(u)
+    n_t = [Eq(nvt, nvt + expr)]
     # Then norm in space
-    i = Dimension(name="i",)
-    norm_vy2 = Function(name="nvy2", shape=(1,), dimensions=(i,), grid=grid)
     w = weight or 1
-    n_s = [Inc(norm_vy2[0], norm_vy2_t / w**2)]
+    n_s = [Inc(nv[0], nvt / w**2)]
     # Return norm object and expr
-    return norm_vy2, (n_t, n_s)
+    return (n_t, n_s)

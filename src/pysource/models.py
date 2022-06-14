@@ -232,7 +232,10 @@ class Model(object):
         Return all set physical parameters and update to input values if provided
         """
         known = [getattr(self, i) for i in self.physical_parameters]
-        return {i.name: kwargs.get(i.name, i) or i for i in known}
+        params = {i.name: kwargs.get(i.name, i) or i for i in known}
+        if not kwargs.get('born', False):
+            params.pop('dm', None)
+        return params
 
     @property
     def zero_thomsen(self):
@@ -477,6 +480,8 @@ class EmptyModel(object):
         self.damp = Function(name='damp', grid=self.grid, space_order=0)
         for p in set(p_params) - {'damp'}:
             setattr(self, p, Function(name=p, grid=self.grid, space_order=space_order))
+        if 'irho' not in p_params:
+            self.irho = 1
 
     @property
     def spacing_map(self):

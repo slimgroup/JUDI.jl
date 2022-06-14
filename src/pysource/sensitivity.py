@@ -40,13 +40,13 @@ def grad_expr(gradm, u, v, model, w=None, freq=None, dft_sub=None, isic=False):
         Whether or not to use inverse scattering imaging condition (not supported yet)
     """
     ic_func = ic_dict[func_name(freq=freq, isic=isic)]
-    expr = ic_func(as_tuple(u), as_tuple(v), model, freq=freq, factor=dft_sub, w=w)
+    expr, extra = ic_func(as_tuple(u), as_tuple(v), model, freq=freq, factor=dft_sub)
     if model.fs:
         eq_g = [Eq(gradm, gradm - expr, subdomain=model.grid.subdomains['nofsdomain'])]
         eq_g += freesurface(model, eq_g)
     else:
         eq_g = [Eq(gradm, gradm - expr)]
-    return eq_g
+    return eq_g + extra
 
 
 def crosscorr_time(u, v, model, **kwargs):
@@ -63,7 +63,7 @@ def crosscorr_time(u, v, model, **kwargs):
         Model structure
     """
     w = kwargs.get('w') or u[0].indices[0].spacing * model.irho
-    return w * sum(vv.dt2 * uu for uu, vv in zip(u, v))
+    return w * sum(vv.dt2 * uu for uu, vv in zip(u, v)), []
 
 
 def crosscorr_freq(u, v, model, freq=None, dft_sub=None, **kwargs):
@@ -86,7 +86,7 @@ def crosscorr_freq(u, v, model, freq=None, dft_sub=None, **kwargs):
     # Subsampled dft time axis
     time = model.grid.time_dim
     dt = time.spacing
-    tsave, factor = sub_time(time, dft_sub)
+    tsave, factor, fact_eq = sub_time(time, dft_sub)
     expr = 0
 
     for uu, vv in zip(u, v):
@@ -100,7 +100,7 @@ def crosscorr_freq(u, v, model, freq=None, dft_sub=None, **kwargs):
         expr += sum(w(freq[ff])*(ufr._subs(fdim, ff)*cos(omega_t(freq[ff])) -
                                  ufi._subs(fdim, ff)*sin(omega_t(freq[ff])))
                     for ff in range(nfreq))*vv
-    return expr
+    return expr, fact_eq
 
 
 def isic_time(u, v, model, **kwargs):
@@ -118,7 +118,7 @@ def isic_time(u, v, model, **kwargs):
     """
     w = u[0].indices[0].spacing * model.irho
     return w * sum(uu * vv.dt2 * model.m + inner_grad(uu, vv)
-                   for uu, vv in zip(u, v))
+                   for uu, vv in zip(u, v)), []
 
 
 def isic_freq(u, v, model, **kwargs):
@@ -138,7 +138,7 @@ def isic_freq(u, v, model, **kwargs):
     # Subsampled dft time axis
     time = model.grid.time_dim
     dt = time.spacing
-    tsave, factor = sub_time(time, kwargs.get('factor'))
+    tsave, factor, fact_eq = sub_time(time, kwargs.get('factor'))
     expr = 0
     for uu, vv in zip(u, v):
         ufr, ufi = uu
@@ -154,7 +154,7 @@ def isic_freq(u, v, model, **kwargs):
             ufrf, ufif = ufr._subs(fdim, ff), ufi._subs(fdim, ff)
             idftu = (ufrf * cwt - ufif * swt)
             expr += w(freq[ff]) * idftu * vv * model.m - w2 * inner_grad(idftu, vv)
-    return expr
+    return expr, fact_eq
 
 
 def lin_src(model, u, isic=False):
