@@ -1,6 +1,7 @@
 import numpy as np
+from collections.abc import Hashable
+from functools import partial
 
-from devito.tools import memoized_func
 from devito import Constant, Operator, Function, info
 
 from models import EmptyModel
@@ -20,6 +21,54 @@ def name(model):
         return "viscoacoustic"
     else:
         return ""
+
+
+class memoized_func(object):
+    """
+    Decorator. Caches a function's return value each time it is called.
+    If called later with the same arguments, the cached value is returned
+    (not reevaluated). This decorator may also be used on class methods,
+    but it will cache at the class level; to cache at the instance level,
+    use ``memoized_meth``.
+
+    Adapted from: ::
+
+        https://github.com/devitocodes/devito/blob/master/devito/tools/memoization.py
+
+
+    This version is made task safe to prevent access conflicts between different julia
+    workers.
+
+    """
+
+    def __init__(self, func):
+        self.func = func
+        self.cache = {}
+
+    def __call__(self, *args, **kw):
+        if not isinstance(args, Hashable):
+            # Uncacheable, a list, for instance.
+            # Better to not cache than blow up.
+            return self.func(*args, **kw)
+        key = (self.func, args, frozenset(kw.items()))
+        if key in self.cache:
+            while True:
+                try:
+                    return self.cache[key]
+                except RuntimeError:
+                    pass
+
+        value = self.func(*args, **kw)
+        self.cache[key] = value
+        return value
+
+    def __repr__(self):
+        """Return the function's docstring."""
+        return self.func.__doc__
+
+    def __get__(self, obj, objtype):
+        """Support instance methods."""
+        return partial(self.__call__, obj)
 
 
 @memoized_func

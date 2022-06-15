@@ -496,3 +496,10 @@ class EmptyModel(object):
         User provided dt
         """
         return self.grid.time_dim.spacing
+
+    @property
+    def dim(self):
+        """
+        Spatial dimension of the problem and model domain.
+        """
+        return self.grid.dim
