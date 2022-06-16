@@ -40,7 +40,7 @@ def grad_expr(gradm, u, v, model, w=None, freq=None, dft_sub=None, isic=False):
         Whether or not to use inverse scattering imaging condition (not supported yet)
     """
     ic_func = ic_dict[func_name(freq=freq, isic=isic)]
-    expr = ic_func(as_tuple(u), as_tuple(v), model, freq=freq, factor=dft_sub)
+    expr = ic_func(as_tuple(u), as_tuple(v), model, freq=freq, factor=dft_sub, w=w)
     if model.fs:
         eq_g = [Eq(gradm, gradm - expr, subdomain=model.grid.subdomains['nofsdomain'])]
         eq_g += freesurface(model, eq_g)

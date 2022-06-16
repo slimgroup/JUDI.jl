@@ -618,6 +618,7 @@ def J_adjoint_checkpointing(model, src_coords, wavelet, rec_coords, recin, space
 
     nt = wavelet.shape[0]
     rec = Receiver(name='rec', grid=model.grid, ntime=nt, coordinates=rec_coords)
+    kwg['srcv'] = rec
     # Wavefields to checkpoint
     cpwf = [uu for uu in as_tuple(u)]
     if model.is_viscoacoustic:

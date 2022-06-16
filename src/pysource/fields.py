@@ -136,7 +136,7 @@ def wavefield_subsampled(model, u, nt, t_sub, space_order=8):
 
 def lr_src_fields(model, weight, wavelet, empty_ws=False):
     """
-    Extended source for modelling where the source is the outer product of
+    Extended source for modeling where the source is the outer product of
     a spatially varying weight and a time-dependent wavelet i.e.:
     u.dt2 - u.laplace = w(x)*q(t)
     This function returns the extended source w(x)*q(t)
@@ -148,7 +148,7 @@ def lr_src_fields(model, weight, wavelet, empty_ws=False):
     weight: Array
         Array of weight for the spatial Function
     wavelet: Array
-        Time-serie for the time-varying source
+        Time-series for the time-varying source
     q: Symbol or Expr (optional)
         Previously existing source to be added to (source will be q +  w(x)*q(t))
     """
