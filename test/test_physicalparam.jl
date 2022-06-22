@@ -15,16 +15,16 @@ ftol = 1f-5
         @test PhysicalParameter(p.data, n, d, o) == p
         @test PhysicalParameter(vec(p.data), n, d, o) == p
 
-        @test size(p) == (prod(n), 1)
-        @test size(conj(p)) == (prod(n), 1)
+        @test size(p) == (prod(n),)
+        @test size(conj(p)) == (prod(n),)
 
-        @test size(adjoint(p)) == (prod(n), 1)
+        @test size(adjoint(p)) == (prod(n),)
         @test adjoint(p).n == p.n[end:-1:1]
         @test adjoint(p).d == p.d[end:-1:1]
         @test adjoint(p).o == p.o[end:-1:1]
         @test isapprox(adjoint(p).data, permutedims(p.data, nd:-1:1))
 
-        @test size(transpose(p)) == (prod(n), 1)
+        @test size(transpose(p)) == (prod(n),)
         @test transpose(p).n == p.n[end:-1:1]
         @test transpose(p).d == p.d[end:-1:1]
         @test transpose(p).o == p.o[end:-1:1]
