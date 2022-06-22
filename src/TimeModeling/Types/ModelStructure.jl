@@ -91,7 +91,7 @@ transpose(x::PhysicalParameter{vDT}) where vDT = PhysicalParameter{vDT}(x.n[end:
 adjoint(x::PhysicalParameter{vDT}) where vDT = transpose(x)
 
 # Basic overloads
-size(A::PhysicalParameter) = (prod(A.n), 1)
+size(A::PhysicalParameter) = (prod(A.n),)
 length(A::PhysicalParameter) = prod(A.n)
 
 function norm(A::PhysicalParameter, order::Real=2)
