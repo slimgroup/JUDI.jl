@@ -178,7 +178,6 @@ adjoint(L::LazyScal) = LazyScal(L.s, adjoint(L.P))
 *(F::judiPropagator, q::Array{T, 6}) where T = F*vec(q)
 
 mul!(out::SourceType{T}, F::judiPropagator{T, O}, q::SourceType{T}) where {T<:Number, O} = begin y = F*q; copyto!(out, y) end
-mul!(out::SourceType{T}, F::judiPropagator{T, O}, q::Vector{T}) where {T<:Number, O} = begin y = F*q; copyto!(out, y) end
 mul!(out::SourceType{T1}, F::Union{joLinearOperator{T2, T1}, joLinearFunction{T2, T1}}, q::SourceType{T2}) where {T1<:Number, T2<:Number} = begin y = F*q; copyto!(out, y) end
 mul!(out::SourceType{T1}, F::Union{joLinearOperator{T2, T1}, joLinearFunction{T2, T1}}, q::Array{T2, N}) where {T1<:Number, T2<:Number, N} = begin y = F*q[:]; copyto!(out, y) end
 mul!(out::SourceType{T}, F::judiAbstractJacobian{T, :born, FT}, q::Vector{T}) where {T<:Number, FT} = begin y = F*q[:]; copyto!(out, y) end
