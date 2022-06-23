@@ -92,7 +92,7 @@
         
         # check JOLI operator w/ judiVector
         mul!(dobs_out, J*D, dm)
-        mul!(dobs, J*D, dm.data)
+        mul!(dobs, J*D, vec(dm.data))
         dlin = J*D*dm
         @test isapprox(dobs_out, dlin; rtol=ftol)
         @test isapprox(dobs_out, dobs; rtol=ftol)
