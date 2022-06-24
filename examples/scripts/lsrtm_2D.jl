@@ -1,9 +1,9 @@
-# LS-RTM of the 2D Marmousi model using linearized bregmann
-# Author: mlouboutin3@gatech.edu
-# Date: April 2022
+# LS-RTM of the 2D Marmousi model using LSQR
+# Author: ziyi.yin@gatech.edu
+# Date: June 2022
 
 using Statistics, Random, LinearAlgebra, JOLI
-using JUDI, SegyIO, HDF5, PyPlot, SlimOptim
+using JUDI, SegyIO, HDF5, PyPlot, IterativeSolvers
 
 
 # Load migration velocity model
@@ -38,39 +38,18 @@ J = judiJacobian(M, q)
 
 # Right-hand preconditioners (model topmute)
 Mr = judiTopmute(model0.n, 52, 10)
-# Sparsity
-C = joEye(prod(model0.n); DDT=Float32, RDT=Float32)
-# If available use curvelet instead for better result
 
-# Setup linearized bregman
-batchsize = 5 * parse(Int, get(ENV, "NITER", "$(q.nsrc ÷ 5)"))
+#' LSQR
 niter = parse(Int, get(ENV, "NITER", "10"))
-g_scale = 0
-
-function obj(x)
-    flush(stdout)
-    dm = PhysicalParameter(x, model0.n, model0.d, model0.o)
-    inds = randperm(q.nsrc)[1:batchsize]
-    # Preconditionners
-    Ml = judiMarineTopmute2D(30, d_lin[inds].geometry)
-
-    residual = Ml*J[inds]*Mr*dm - Ml*d_lin[inds]
-    # grad
-    G = reshape(Mr'J[inds]'*Ml'*residual, model0.n)
-    g_scale == 0 && (global g_scale = .05f0/maximum(G))
-    G .*= g_scale
-    return .5f0*norm(residual)^2, G[:]
-end
-
-# Bregman
-bregopt = bregman_options(maxIter=niter, verbose=2, quantile=.9, alpha=.1, antichatter=false, spg=true)
-solb = bregman(obj, zeros(Float32, prod(model0.n)), bregopt, C);
+lsqr_sol = zeros(Float32, prod(n))
+Ml = judiMarineTopmute2D(30, d_lin[1].geometry)
+lsqr!(lsqr_sol, Ml*J[1]*Mr, Ml*d_lin[1]; maxiter=niter)     # only invert the first shot record
 
 # Save final velocity model, function value and history
-h5open("lsrtm_marmousi_breg_result.h5", "w") do file
-    write(file, "x", reshape(solb.x, model0.n), "z", reshape(solb.z, model0.n), "fval", Float32.(solb.ϕ_trace))
+h5open("lsrtm_marmousi_lsqr_result.h5", "w") do file
+    write(file, "x", reshape(lsqr_sol, model0.n))
 end
 
 # Plot final image
-figure(); imshow(copy(adjoint(reshape(solb.x, model0.n))), extent = (0, 7.99, 3.19, 0), cmap = "gray", vmin = -3e-2, vmax = 3e-2)
-title("SPLS-RTM with Linearized Bregman"); xlabel("Lateral position [km]"); ylabel("Depth [km]")
+figure(); imshow(copy(adjoint(reshape(lsqr_sol, model0.n))), extent = (0, 7.99, 3.19, 0), cmap = "gray", vmin = -3e-2, vmax = 3e-2)
+title("LS-RTM with LSQR"); xlabel("Lateral position [km]"); ylabel("Depth [km]")
