@@ -42,8 +42,8 @@ Mr = judiTopmute(model0.n, 52, 10)
 #' LSQR
 niter = parse(Int, get(ENV, "NITER", "10"))
 lsqr_sol = zeros(Float32, prod(n))
-Ml = judiMarineTopmute2D(30, d_lin[1].geometry)
-lsqr!(lsqr_sol, Ml*J[1]*Mr, Ml*d_lin[1]; maxiter=niter)     # only invert the first shot record
+Ml = judiMarineTopmute2D(30, d_lin.geometry)
+lsqr!(lsqr_sol, Ml*J*Mr, Ml*d_lin; maxiter=niter)
 
 # Save final velocity model, function value and history
 h5open("lsrtm_marmousi_lsqr_result.h5", "w") do file
