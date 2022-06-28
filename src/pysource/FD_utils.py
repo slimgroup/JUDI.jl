@@ -60,9 +60,15 @@ def R_mat(model):
         Model structure
     """
     # Rotation matrix
-    Rt = rot_axis2(model.theta)
+    try:
+        Rt = rot_axis2(model.theta)
+    except AttributeError:
+        Rt = rot_axis2(0)
     if model.dim == 3:
-        Rt *= rot_axis3(model.phi)
+        try:
+            Rt *= rot_axis3(model.phi)
+        except AttributeError:
+            Rt *= rot_axis3(0)
     else:
         Rt = Rt[[0, 2], [0, 2]]
     R = TensorFunction(name="R", grid=model.grid, components=Rt, symmetric=False)

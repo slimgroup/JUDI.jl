@@ -27,10 +27,21 @@ include("seismic_utils.jl")
 parsed_args = parse_commandline()
 const nlayer = parsed_args["nlayer"]
 const tti = parsed_args["tti"]
-const fs =  parsed_args["fs"]
+const fs = parsed_args["fs"]
 const nw = parsed_args["parallel"]
 const viscoacoustic = parsed_args["viscoacoustic"]
 
+
+# Utility macro to run block of code with a single omp threa
+macro single_threaded(expr)
+    return quote
+        nthreads = ENV["OMP_NUM_THREADS"]
+        ENV["OMP_NUM_THREADS"] = "1"
+        local val = $(esc(expr))
+        ENV["OMP_NUM_THREADS"] = nthreads
+        val
+    end
+end
 
 # Testing Utilities
 include("testing_utils.jl")

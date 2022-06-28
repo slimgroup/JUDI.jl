@@ -108,7 +108,7 @@ end
 		a = dot(u, v)
 		b = dot(dobs, dobs)
 		@printf(" <F x, y> : %2.5e, <x, F' y> : %2.5e, relative error : %2.5e \n", b, a, (a-b)/(a+b))
-		@test isapprox(a/(a+b), b/(a+b), atol=1f-5, rtol=0)
+		@test isapprox(a/(a+b), b/(a+b), atol=2.5f-5, rtol=0)
 
 		# Forward from data
 		qa = Ps*Fa*v
@@ -116,7 +116,7 @@ end
 		a = dot(u, v)
 		b = dot(q, qa)
 		@printf(" <F x, y> : %2.5e, <x, F' y> : %2.5e, relative error : %2.5e \n", b, a, (a-b)/(a+b))
-		@test isapprox(a/(a+b), b/(a+b), atol=1f-5, rtol=0)
+		@test isapprox(a/(a+b), b/(a+b), atol=2.5f-5, rtol=0)
 
 		# Wavefields as source + return wavefields
 		u2 = F*u

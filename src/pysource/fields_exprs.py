@@ -1,62 +1,14 @@
 import numpy as np
 from sympy import cos, sin, sign
 
-from devito import (TimeFunction, Function, Inc, DefaultDimension,
-                    Eq, ConditionalDimension, Dimension)
-from devito.data.allocators import ExternalAllocator
-from devito.tools import as_tuple, memoized_func
+from devito import Inc, Eq, ConditionalDimension
+from devito.tools import as_tuple
 from devito.symbolics import retrieve_functions, INT
 
-
-def wavefield(model, space_order, save=False, nt=None, fw=True, name='', t_sub=1):
-    """
-    Create the wavefield for the wave equation
-
-    Parameters
-    ----------
-
-    model : Model
-        Physical model
-    space_order: int
-        Spatial discretization order
-    save : Bool
-        Whether or not to save the time history
-    nt : int (optional)
-        Number of time steps if the wavefield is saved
-    fw : Bool
-        Forward or backward (for naming)
-    name: string
-        Custom name attached to default (u+name)
-    """
-    name = "u"+name if fw else "v"+name
-    save = False if t_sub > 1 else save
-    if model.is_tti:
-        u = TimeFunction(name="%s1" % name, grid=model.grid, time_order=2,
-                         space_order=space_order, save=None if not save else nt)
-        v = TimeFunction(name="%s2" % name, grid=model.grid, time_order=2,
-                         space_order=space_order, save=None if not save else nt)
-        return (u, v)
-    else:
-        return TimeFunction(name=name, grid=model.grid, time_order=2,
-                            space_order=space_order, save=None if not save else nt)
+from fields import wavefield_subsampled, lr_src_fields, fourier_modes, norm_holder
 
 
-@memoized_func
-def memory_field(p):
-    """
-    Memory variable for viscosity modeling.
-
-    Parameters
-    ----------
-
-    p : TimeFunction
-        Forward wavefield
-    """
-    return TimeFunction(name='r%s' % p.name, grid=p.grid, time_order=2,
-                        space_order=p.space_order, save=None)
-
-
-def wavefield_subsampled(model, u, nt, t_sub, space_order=8):
+def save_subsampled(model, u, nt, t_sub, space_order=8):
     """
     Create a subsampled wavefield
 
@@ -74,22 +26,13 @@ def wavefield_subsampled(model, u, nt, t_sub, space_order=8):
     space_order: int
         Spatial discretization order
     """
-    wf_s = []
+    wf_s = wavefield_subsampled(model, u, nt, t_sub, space_order)
+    if wf_s is None:
+        return []
     eq_save = []
-    if t_sub > 1:
-        time_subsampled = ConditionalDimension(name='t_sub', parent=model.grid.time_dim,
-                                               factor=t_sub)
-        nsave = (nt-1)//t_sub + 2
-    else:
-        return None, []
-
-    for wf in as_tuple(u):
-        usave = TimeFunction(name='us_%s' % wf.name, grid=model.grid, time_order=2,
-                             space_order=space_order, time_dim=time_subsampled,
-                             save=nsave)
-        wf_s.append(usave)
-        eq_save.append(Eq(usave, wf))
-    return wf_s, eq_save
+    for (wfs, wf) in zip(wf_s, as_tuple(u)):
+        eq_save.append(Eq(wfs, wf))
+    return eq_save
 
 
 def wf_as_src(v, w=1, freq_list=None):
@@ -131,19 +74,13 @@ def extented_src(model, weight, wavelet, q=0):
     """
     if weight is None:
         return q
-    time = model.grid.time_dim
-    nt = wavelet.shape[0]
-    wavelett = Function(name='wf_src', dimensions=(time,), shape=(nt,))
-    wavelett.data[:] = np.array(wavelet)[:, 0]
-    source_weight = Function(name='src_weight', grid=model.grid, space_order=0,
-                             allocator=ExternalAllocator(weight),
-                             initializer=lambda x: None)
+    ws, wt = lr_src_fields(model, weight, wavelet)
     if model.is_tti:
-        return (q[0] + source_weight * wavelett, q[1] + source_weight * wavelett)
-    return q + source_weight * wavelett
+        return (q[0] + ws * wt, q[1] + ws * wt)
+    return q + ws * wt
 
 
-def extended_src_weights(model, wavelet, v):
+def extended_rec(model, wavelet, v):
     """
     Adjoint of extended source. This function returns the expression to obtain
     the spatially varrying weights from the wavefield and time-dependent wavelet
@@ -158,15 +95,10 @@ def extended_src_weights(model, wavelet, v):
         Wavefield to get the weights from
     """
     if wavelet is None:
-        return None, []
-    nt = wavelet.shape[0]
-    # Data is sampled everywhere as a sum over time and weighted by wavelet
-    w_out = Function(name='src_weight', grid=model.grid, space_order=0)
-    time = model.grid.time_dim
-    wavelett = Function(name='wf_src', dimensions=(time,), shape=(nt,))
-    wavelett.data[:] = np.array(wavelet)[:, 0]
+        return []
+    ws, wt = lr_src_fields(model, None, wavelet, empty_ws=True)
     wf = v[0] + v[1] if model.is_tti else v
-    return w_out, [Inc(w_out, time.spacing * wf * wavelett)]
+    return [Inc(ws, model.grid.time_dim.spacing * wf * wt)]
 
 
 def freesurface(model, eq):
@@ -208,8 +140,6 @@ def otf_dft(u, freq, dt, factor=None):
 
     Parameters
     ----------
-    model: Model
-        Physical model
     u: TimeFunction or Tuple
         Forward wavefield
     freq: Array
@@ -218,37 +148,23 @@ def otf_dft(u, freq, dt, factor=None):
         Subsampling factor for DFT
     """
     if freq is None:
-        return [], None
+        return []
 
     # init
-    dft_modes = []
+    dft_modes, f = fourier_modes(u, freq)
 
     # Subsampled dft time axis
     time = as_tuple(u)[0].grid.time_dim
     tsave, factor = sub_time(time, factor, dt=dt, freq=freq)
 
-    # Frequencies
-    nfreq = np.shape(freq)[0]
-    freq_dim = DefaultDimension(name='freq_dim', default_value=nfreq)
-    f = Function(name='f', dimensions=(freq_dim,), shape=(nfreq,))
-    f.data[:] = np.array(freq[:])
-    # Get fourier atoms to avoid shitty perf
-    cf = TimeFunction(name="cf", dimensions=(as_tuple(u)[0].grid.stepping_dim, freq_dim),
-                      shape=(3, nfreq), time_order=2)
-    sf = TimeFunction(name="sf", dimensions=(as_tuple(u)[0].grid.stepping_dim, freq_dim),
-                      shape=(3, nfreq), time_order=2)
     # Pulsation
     omega_t = 2*np.pi*f*tsave*factor*dt
-    dft = [Eq(cf, cos(omega_t)), Eq(sf, sin(omega_t))]
-    for wf in as_tuple(u):
-        ufr = Function(name='ufr%s' % wf.name, dimensions=(freq_dim,) + wf.indices[1:],
-                       grid=wf.grid, shape=(nfreq,) + wf.shape[1:])
-        ufi = Function(name='ufi%s' % wf.name, dimensions=(freq_dim,) + wf.indices[1:],
-                       grid=wf.grid, shape=(nfreq,) + wf.shape[1:])
-        dft += [Inc(ufr, factor * cf * wf)]
-        dft += [Inc(ufi, -factor * sf * wf)]
-        dft_modes += [(ufr, ufi)]
-    return dft, dft_modes
+    # DFT
+    dft = []
+    for ((ufr, ufi), wf) in zip(dft_modes, as_tuple(u)):
+        dft += [Inc(ufr, factor * cos(omega_t) * wf)]
+        dft += [Inc(ufi, -factor * sin(omega_t) * wf)]
+    return dft
 
 
 def idft(v, freq=None):
@@ -291,9 +207,6 @@ def sub_time(time, factor, dt=1, freq=None):
     """
     if factor == 1:
         return time, factor
-    elif freq is not None:
-        factor = factor or max([1, int(1 / (dt*4*np.max(freq)))])
-        return ConditionalDimension(name='tsave', parent=time, factor=factor), factor
     elif factor is not None:
         return ConditionalDimension(name='tsave', parent=time, factor=factor), factor
     else:
@@ -315,12 +228,10 @@ def weighted_norm(u, weight=None):
     grid = as_tuple(u)[0].grid
     expr = grid.time_dim.spacing * sum(uu**2 for uu in as_tuple(u))
     # Norm in time
-    norm_vy2_t = Function(name="nvy2t", grid=grid, space_order=0)
-    n_t = [Eq(norm_vy2_t, norm_vy2_t + expr)]
+    nv, nvt = norm_holder(u)
+    n_t = [Eq(nvt, nvt + expr)]
     # Then norm in space
-    i = Dimension(name="i",)
-    norm_vy2 = Function(name="nvy2", shape=(1,), dimensions=(i,), grid=grid)
     w = weight or 1
-    n_s = [Inc(norm_vy2[0], norm_vy2_t / w**2)]
+    n_s = [Inc(nv[0], nvt / w**2)]
     # Return norm object and expr
-    return norm_vy2, (n_t, n_s)
+    return (n_t, n_s)

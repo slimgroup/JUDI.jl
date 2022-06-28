@@ -143,17 +143,14 @@ Example
 """
 function twri_objective(model::Model, source::judiVector, dObs::judiVector, y::Union{judiVector, Nothing};
                         options=Options(), optionswri=TWRIOptions())
-    p = default_worker_pool()
-    twri_objective_par = remote(TimeModeling.twri_objective)
-    twri_objective = retry(twri_objective_par)
-
-    results = Vector{_TFuture}(undef, dObs.nsrc)
-    for j=1:dObs.nsrc
-        isnothing(y) ? yloc = y : yloc = y[j]
-        results[j] = remotecall(twri_objective, p, model, source[j], dObs[j], yloc, options[j], optionswri[j])
+    pool = _worker_pool()
+    if isnothing(y)
+        arg_func = j -> (model, source[j], dObs[j], nothing, options[j], optionswri[j])
+    else
+        arg_func = j -> (model, source[j], dObs[j], y[j], options[j], optionswri[j])
     end
-
+    results = run_and_reduce(twri_objective, pool, source.nsrc, arg_func)
     # Collect and reduce gradients
-    out = as_vec(reduce!(results), Val(options.return_array))
+    out = as_vec(results, Val(options.return_array))
     return out
 end
