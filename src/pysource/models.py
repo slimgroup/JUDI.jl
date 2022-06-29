@@ -4,8 +4,7 @@ from devito import (Grid, Function, SubDomain, SubDimension, Eq, Inc,
                     Operator, mmin, initialize_function, switchconfig,
                     Abs, sqrt, sin)
 from devito.data.allocators import ExternalAllocator
-from devito.tools import as_tuple
-
+from devito.tools import as_tuple, memoized_func
 
 __all__ = ['Model']
 
@@ -44,19 +43,15 @@ class FSDomain(SubDomain):
         return map_d
 
 
-@switchconfig(log_level='ERROR')
-def initialize_damp(damp, padsizes, abc_type="damp", fs=False):
+@memoized_func
+def damp_op(ndim, padsizes, abc_type, fs):
     """
-    Initialise damping field with an absorbing boundary layer.
-    Includes basic constant Q setup (not interfaced yet) and assumes that
-    the peak frequency is 1/(10 * spacing).
+    Create damping field initialization operator.
 
     Parameters
     ----------
-    damp : Function
-        The damping field for absorbing boundary condition.
-    nbl : int
-        Number of points in the damping layer.
+    padsize : List of tuple
+        Number of points in the damping layer for each dimension and side.
     spacing :
         Grid spacing coefficient.
     mask : bool, optional
@@ -64,6 +59,7 @@ def initialize_damp(damp, padsizes, abc_type="damp", fs=False):
         mask => 1 inside the domain and decreases in the layer
         not mask => 0 inside the domain and increase in the layer
     """
+    damp = Function(name="damp", grid=Grid(tuple([11]*ndim)), space_order=0)
     eqs = [Eq(damp, 1.0 if abc_type == "mask" else 0.0)]
     for (nbl, nbr), d in zip(padsizes, damp.dimensions):
         if not fs or d is not damp.dimensions[-1]:
@@ -84,12 +80,37 @@ def initialize_damp(damp, padsizes, abc_type="damp", fs=False):
         val = -val if abc_type == "mask" else val
         eqs += [Inc(damp.subs({d: dim_r}), val/d.spacing)]
 
-    Operator(eqs, name='initdamp')()
+    return Operator(eqs, name='initdamp')
+
+
+@switchconfig(log_level='ERROR')
+def initialize_damp(damp, padsizes, abc_type="damp", fs=False):
+    """
+    Initialise damping field with an absorbing boundary layer.
+    Includes basic constant Q setup (not interfaced yet) and assumes that
+    the peak frequency is 1/(10 * spacing).
+
+    Parameters
+    ----------
+    damp : Function
+        The damping field for absorbing boundary condition.
+    nbl : int
+        Number of points in the damping layer.
+    spacing :
+        Grid spacing coefficient.
+    mask : bool, optional
+        whether the dampening is a mask or layer.
+        mask => 1 inside the domain and decreases in the layer
+        not mask => 0 inside the domain and increase in the layer
+    """
+    op = damp_op(damp.grid.dim, padsizes, abc_type, fs)
+    op(damp=damp)
 
 
 class Model(object):
     """
-    The physical model used in seismic inversion processes.
+    The physical model used in seismic inversion
+        shape_pml = np.array(shape) + 2 * self.nbl processes.
 
     Parameters
     ----------
@@ -204,14 +225,17 @@ class Model(object):
     def padsizes(self):
         padsizes = [(self.nbl, self.nbl) for _ in range(self.dim-1)]
         padsizes.append((0 if self.fs else self.nbl, self.nbl))
-        return padsizes
+        return tuple(p for p in padsizes)
 
     def physical_params(self, **kwargs):
         """
         Return all set physical parameters and update to input values if provided
         """
         known = [getattr(self, i) for i in self.physical_parameters]
-        return {i.name: kwargs.get(i.name, i) or i for i in known}
+        params = {i.name: kwargs.get(i.name, i) or i for i in known}
+        if not kwargs.get('born', False):
+            params.pop('dm', None)
+        return params
 
     @property
     def zero_thomsen(self):
@@ -428,3 +452,54 @@ class Model(object):
         sp_map = self.grid.spacing_map
         sp_map.update({self.grid.time_dim.spacing: self.critical_dt})
         return sp_map
+
+
+class EmptyModel(object):
+    """
+    An pseudo Model structure that does not contain any physical field
+    but only the necessary information to create an operator.
+    This Model should not be used for propagation.
+    """
+
+    def __init__(self, tti, visco, spacing, fs, space_order, p_params):
+        self.is_tti = tti
+        self.is_viscoacoustic = visco
+        self.spacing = spacing
+        self.fs = fs
+        if fs:
+            fsdomain = FSDomain(space_order + 1)
+            physdomain = PhysicalDomain(space_order + 1, fs=fs)
+            subdomains = (physdomain, fsdomain)
+        else:
+            subdomains = ()
+        self.grid = Grid(tuple([11]*len(spacing)), extent=[s*10 for s in spacing],
+                         subdomains=subdomains)
+        self.dimensions = self.grid.dimensions
+
+        # Create the function for the physical parameters
+        self.damp = Function(name='damp', grid=self.grid, space_order=0)
+        for p in set(p_params) - {'damp'}:
+            setattr(self, p, Function(name=p, grid=self.grid, space_order=space_order))
+        if 'irho' not in p_params:
+            self.irho = 1
+
+    @property
+    def spacing_map(self):
+        """
+        Map between spacing symbols and their values for each `SpaceDimension`.
+        """
+        return self.grid.spacing_map
+
+    @property
+    def critical_dt(self):
+        """
+        User provided dt
+        """
+        return self.grid.time_dim.spacing
+
+    @property
+    def dim(self):
+        """
+        Spatial dimension of the problem and model domain.
+        """
+        return self.grid.dim

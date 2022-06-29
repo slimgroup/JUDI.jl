@@ -26,7 +26,7 @@ def weight_fun(w_fun, model, src_coords):
         Source coordinates.
     """
     if w_fun is None:
-        return None
+        return 1
     else:
         return weight_srcfocus(model, src_coords, delta=w_fun[1],
                                full=(w_fun[0] == "srcfocus"))
@@ -113,3 +113,20 @@ def opt_op(model):
         except InvalidOperator:
             opts.pop('cire-repeats-sops')
     return ('advanced', opts)
+
+
+def fields_kwargs(*args):
+    """
+    Creates a dictionary of {f.name: f} for any field argument that is not None
+    """
+    kw = {}
+    for field in args:
+        if field is not None:
+            # In some case could be a tuple of fields, such as dft modes
+            try:
+                kw.update({f.name: f for f in as_tuple(field)})
+            except AttributeError:
+                for f in field:
+                    kw.update({ff.name: ff for ff in f})
+
+    return kw

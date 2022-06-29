@@ -141,31 +141,31 @@ function Geometry(xloc, yloc, zloc; dt=[], t=[], nsrc=nothing)
     return Geometry(tof32(xloc), tof32(yloc), tof32(zloc); dt=dt, t=t, nsrc=nsrc)
 end
 
-Geometry(xloc::CoordT, yloc::CoordT, zloc::CoordT, dt::Array{T,1}, nt::Array{Integer,1}, t::Array{T,1}) where T = GeometryIC{T}(xloc,yloc,zloc,dt,nt,t)
+Geometry(xloc::CoordT, yloc::CoordT, zloc::CoordT, dt::Array{T,1}, nt::Array{Integer,1}, t::Array{T,1}) where {T<:Real} = GeometryIC{T}(xloc,yloc,zloc,dt,nt,t)
 
 # Fallback constructors for non standard input types 
 
 # Constructor if nt is not passed
-function Geometry(xloc::Array{Array{T, 1},1}, yloc::CoordT, zloc::Array{Array{T, 1},1};dt=[],t=[]) where T
+function Geometry(xloc::Array{Array{T, 1},1}, yloc::CoordT, zloc::Array{Array{T, 1},1};dt=[],t=[]) where {T<:Real}
     nsrc = length(xloc)
     # Check if single dt was passed
-    dtCell = typeof(t) <: AbstractFloat ? [T(dt) for j=1:nsrc] : T.(dt)
+    dtCell = typeof(dt) <: Real ? [T(dt) for j=1:nsrc] : T.(dt)
     # Check if single t was passed
-    tCell = typeof(t) <: AbstractFloat ? [T(t) for j=1:nsrc] : T.(t)
+    tCell = typeof(t) <: Real ? [T(t) for j=1:nsrc] : T.(t)
 
     # Calculate number of time steps
-    ntCell = typeof(t) <: AbstractFloat ? [floor(Int, t / dt) + 1 for j=1:nsrc] : floor.(Int, tCell ./ dtCell) .+ 1
+    ntCell = floor.(Int, tCell ./ dtCell) .+ 1
     return GeometryIC{T}(xloc, yloc, zloc, dtCell, ntCell, tCell)
 end
 
 # Constructor if coordinates are not passed as a cell arrays
-function Geometry(xloc::Array{T, 1}, yloc::CoordT, zloc::Array{T, 1}; dt=[], t=[], nsrc::Integer=1) where T
+function Geometry(xloc::Array{T, 1}, yloc::CoordT, zloc::Array{T, 1}; dt=[], t=[], nsrc::Integer=1) where {T<:Real}
     xlocCell = [xloc for j=1:nsrc]
     ylocCell = [yloc for j=1:nsrc]
     zlocCell = [zloc for j=1:nsrc]
     dtCell = [T(dt) for j=1:nsrc]
-    ntCell = [floor(Int, t/dt)+1 for j=1:nsrc]
     tCell = [T(t) for j=1:nsrc]
+    ntCell = floor.(Int, tCell ./ dtCell) .+ 1
     return GeometryIC{T}(xlocCell, ylocCell, zlocCell, dtCell, ntCell, tCell)
 end
 

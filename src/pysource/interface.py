@@ -1,6 +1,6 @@
 import numpy as np
 
-from devito import TimeFunction, warning
+from devito import warning
 from devito.tools import as_tuple
 from pyrevolve import Revolver
 
@@ -9,7 +9,8 @@ from propagators import forward, adjoint, born, gradient, forward_grad
 from sensitivity import l2_loss
 from sources import Receiver
 from utils import weight_fun, compute_optalpha
-from wave_utils import wf_as_src, memory_field
+from fields import memory_field, src_wavefield
+from fields_exprs import wf_as_src
 
 
 # Forward wrappers Pr*F*Ps'*q
@@ -119,14 +120,8 @@ def forward_wf_src(model, u, rec_coords, space_order=8, f0=0.015):
     Array
         Shot record
     """
-    if isinstance(u, TimeFunction):
-        wf_src = TimeFunction(name='wf_src', grid=model.grid, time_order=2,
-                              space_order=0, save=u.shape[0], initializer=u.data)
-    else:
-        wf_src = TimeFunction(name='wf_src', grid=model.grid, time_order=2,
-                              space_order=0, save=u.shape[0], initializer=u)
-
-    rec, _, _ = forward(model, None, rec_coords, None, space_order=space_order, q=wf_src)
+    wsrc = src_wavefield(model, u, fw=True)
+    rec, _, _ = forward(model, None, rec_coords, None, space_order=space_order, qwf=wsrc)
     return rec.data
 
 
@@ -150,15 +145,9 @@ def forward_wf_src_norec(model, u, space_order=8, f0=0.015):
     Array
         Wavefield
     """
-    if isinstance(u, TimeFunction):
-        wf_src = TimeFunction(name='wf_src', grid=model.grid, time_order=2,
-                              space_order=0, save=u.shape[0], initializer=u.data)
-    else:
-        wf_src = TimeFunction(name='wf_src', grid=model.grid, time_order=2,
-                              space_order=0, save=u.shape[0], initializer=u)
-
+    wf_src = src_wavefield(model, u, fw=True)
     _, u, _ = forward(model, None, None, None, space_order=space_order, save=True,
-                      q=wf_src, f0=f0)
+                      qwf=wf_src, f0=f0)
     return u.data
 
 
@@ -273,14 +262,8 @@ def adjoint_wf_src(model, u, src_coords, space_order=8, f0=0.015):
     Array
         Shot record (sampled at source position(s))
     """
-    if isinstance(u, TimeFunction):
-        wf_src = TimeFunction(name='wf_src', grid=model.grid, time_order=2,
-                              space_order=0, save=u.shape[0], initializer=u.data)
-    else:
-        wf_src = TimeFunction(name='wf_src', grid=model.grid, time_order=2,
-                              space_order=0, save=u.shape[0], initializer=u)
-
-    rec, _, _ = adjoint(model, None, src_coords, None, space_order=space_order, q=wf_src)
+    wsrc = src_wavefield(model, u, fw=False)
+    rec, _, _ = adjoint(model, None, src_coords, None, space_order=space_order, qwf=wsrc)
     return rec.data
 
 
@@ -305,15 +288,9 @@ def adjoint_wf_src_norec(model, u, space_order=8, f0=0.015):
     Array
         Adjoint wavefield
     """
-    if isinstance(u, TimeFunction):
-        wf_src = TimeFunction(name='wf_src', grid=model.grid, time_order=2,
-                              space_order=0, save=u.shape[0], initializer=u.data)
-    else:
-        wf_src = TimeFunction(name='wf_src', grid=model.grid, time_order=2,
-                              space_order=0, save=u.shape[0], initializer=u)
-
+    wf_src = src_wavefield(model, u, fw=False)
     _, v, _ = adjoint(model, None, None, None, space_order=space_order,
-                      save=True, q=wf_src, f0=f0)
+                      save=True, qwf=wf_src, f0=f0)
     return v.data
 
 
@@ -632,32 +609,25 @@ def J_adjoint_checkpointing(model, src_coords, wavelet, rec_coords, recin, space
         Adjoint jacobian on the input data (gradient)
     """
     # Optimal checkpointing
-    op_f, u, rec_g = op_fwd_J[born_fwd](model, src_coords, rec_coords, wavelet,
-                                        space_order=space_order, return_op=True,
-                                        isic=isic, nlind=nlind, ws=ws, f0=f0)
-    op, g, v = gradient(model, recin, rec_coords, u, space_order=space_order,
-                        return_op=True, isic=isic, f0=f0)
+    op_f, u, rec_g, kwu = op_fwd_J[born_fwd](model, src_coords, rec_coords, wavelet,
+                                             save=False, space_order=space_order,
+                                             return_op=True, isic=isic, nlind=nlind,
+                                             ws=ws, f0=f0)
+    op, g, kwg = gradient(model, recin, rec_coords, u, space_order=space_order,
+                          return_op=True, isic=isic, f0=f0)
 
     nt = wavelet.shape[0]
     rec = Receiver(name='rec', grid=model.grid, ntime=nt, coordinates=rec_coords)
+    kwg['srcv'] = rec
     # Wavefields to checkpoint
     cpwf = [uu for uu in as_tuple(u)]
     if model.is_viscoacoustic:
         cpwf += [memory_field(u)]
     cp = DevitoCheckpoint(cpwf)
-    # Op arguments
-    uk = {uu.name: uu for uu in as_tuple(u)}
-    vk = {**uk, **{vv.name: vv for vv in as_tuple(v)}}
-    # Acquisition
-    uk.update({r.name: r for r in as_tuple(rec_g)})
-    vk.update({'src%s' % as_tuple(v)[0].name: rec})
-    # Model params
-    uk.update(model.physical_params())
-    vk.update(model.physical_params())
-    vk.pop('dm', None)
+
     # Wrapped ops
-    wrap_fw = CheckpointOperator(op_f, **uk)
-    wrap_rev = CheckpointOperator(op, **vk)
+    wrap_fw = CheckpointOperator(op_f, **kwu)
+    wrap_rev = CheckpointOperator(op, **kwg)
 
     # Run forward
     wrp = Revolver(cp, wrap_fw, wrap_rev, n_checkpoints, nt-2)

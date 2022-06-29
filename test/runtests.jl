@@ -21,14 +21,30 @@ const success_log = Dict(true => "SUCCESS", false => "FAILED")
 # Test set
 const GROUP = get(ENV, "GROUP", "JUDI")
 
-include("utils.jl")
+# JUDI seismic utils
+include("seismic_utils.jl")
 
 parsed_args = parse_commandline()
 const nlayer = parsed_args["nlayer"]
 const tti = parsed_args["tti"]
-const fs =  parsed_args["fs"]
+const fs = parsed_args["fs"]
 const nw = parsed_args["parallel"]
 const viscoacoustic = parsed_args["viscoacoustic"]
+
+
+# Utility macro to run block of code with a single omp threa
+macro single_threaded(expr)
+    return quote
+        nthreads = ENV["OMP_NUM_THREADS"]
+        ENV["OMP_NUM_THREADS"] = "1"
+        local val = $(esc(expr))
+        ENV["OMP_NUM_THREADS"] = nthreads
+        val
+    end
+end
+
+# Testing Utilities
+include("testing_utils.jl")
 
 
 base = ["test_geometry.jl",
@@ -44,10 +60,9 @@ devito = ["test_linearity.jl",
           "test_adjoint.jl",
           "test_all_options.jl",
           "test_jacobian.jl",
-          "test_gradient_fwi.jl",
-          "test_gradient_lsrtm.jl",
-          "test_multi_exp.jl"]
-        #   "test_gradient_twri.jl"]
+          "test_gradients.jl",
+          "test_multi_exp.jl",
+          "test_rrules.jl"]
 
 extras = ["test_modeling.jl", "test_basics.jl", "test_linear_algebra.jl"]
 

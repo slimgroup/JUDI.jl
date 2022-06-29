@@ -1,70 +1,66 @@
 from kernels import wave_kernel
-from geom_utils import src_rec
-from wave_utils import (wf_as_src, wavefield, otf_dft, extended_src_weights,
-                        extented_src, wavefield_subsampled, weighted_norm)
-from sensitivity import grad_expr, lin_src
-from utils import weight_fun, opt_op
+from geom_utils import src_rec, geom_expr
+from fields import (fourier_modes, wavefield, lr_src_fields,
+                    wavefield_subsampled, norm_holder)
+from fields_exprs import extented_src
+from sensitivity import grad_expr
+from utils import weight_fun, opt_op, fields_kwargs
+from operators import forward_op, adjoint_op, born_op, adjoint_born_op
 
-from devito import Operator, Function
+from devito import Operator, Function, Constant
 from devito.tools import as_tuple
-
-
-def name(model):
-    if model.is_tti:
-        return "tti"
-    elif model.is_viscoacoustic:
-        return "viscoacoustic"
-    else:
-        return ""
 
 
 # Forward propagation
 def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
-            q=None, return_op=False, freq_list=None, dft_sub=None,
+            qwf=None, return_op=False, freq_list=None, dft_sub=None,
             ws=None, t_sub=1, f0=0.015, **kwargs):
     """
     Low level propagator, to be used through `interface.py`
     Compute forward wavefield u = A(m)^{-1}*f and related quantities (u(xrcv))
     """
     # Number of time steps
-    nt = as_tuple(q)[0].shape[0] if wavelet is None else wavelet.shape[0]
+    nt = as_tuple(qwf)[0].shape[0] if wavelet is None else wavelet.shape[0]
 
     # Setting forward wavefield
     u = wavefield(model, space_order, save=save, nt=nt, t_sub=t_sub)
 
-    # Expression for saving wavefield if time subsampling is used
-    u_save, eq_save = wavefield_subsampled(model, u, nt, t_sub)
-
-    # Add extended source
-    q = q or wf_as_src(u, w=0)
-    q = extented_src(model, ws, wavelet, q=q)
-
-    # Set up PDE expression and rearrange
-    pde = wave_kernel(model, u, q=q, f0=f0)
-
     # Setup source and receiver
-    geom_expr, _, rcv = src_rec(model, u, src_coords=src_coords, nt=nt,
-                                rec_coords=rcv_coords, wavelet=wavelet)
-
-    # On-the-fly Fourier
-    dft, dft_modes = otf_dft(u, freq_list, model.critical_dt, factor=dft_sub)
+    src, rcv = src_rec(model, u, src_coords, rcv_coords, wavelet, nt)
 
     # Create operator and run
-    subs = model.spacing_map
-    op = Operator(pde + dft + geom_expr + eq_save,
-                  subs=subs, name="forward"+name(model),
-                  opt=opt_op(model))
-    op.cfunction
-    if return_op:
-        return op, u, rcv
+    op = forward_op(model.physical_parameters, model.is_tti, model.is_viscoacoustic,
+                    space_order, model.spacing, save, t_sub, model.fs,
+                    src_coords is not None, rcv_coords is not None,
+                    freq_list is not None, dft_sub, ws is not None, qwf is not None)
 
-    summary = op()
+    # Make kwargs
+    kw = {'dt': model.critical_dt}
+    f0q = Constant('f0', value=f0) if model.is_viscoacoustic else None
+
+    # Expression for saving wavefield if time subsampling is used
+    u_save = wavefield_subsampled(model, u, nt, t_sub)
+
+    # On-the-fly Fourier
+    dft_modes, fr = fourier_modes(u, freq_list)
+
+    # Extended source
+    ws, wt = lr_src_fields(model, ws, wavelet)
+
+    # Update kwargs
+    kw.update(fields_kwargs(u, qwf, src, rcv, u_save, dft_modes, fr, ws, wt, f0q))
+    kw.update(model.physical_params())
+
+    if return_op:
+        return op, u, rcv, kw
+
+    summary = op(**kw)
 
     # Output
     return rcv, dft_modes or (u_save if t_sub > 1 else u), summary
 
 
-def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0, dft_sub=None,
+def adjoint(model, y, src_coords, rcv_coords, space_order=8, qwf=None, dft_sub=None,
             save=False, ws=None, norm_v=False, w_fun=None, freq_list=None, f0=0.015):
     """
     Low level propagator, to be used through `interface.py`
@@ -72,44 +68,46 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0, dft_sub=None,
     and related quantities (||v||_w, v(xsrc))
     """
     # Number of time steps
-    nt = as_tuple(q)[0].shape[0] if y is None else y.shape[0]
+    nt = as_tuple(qwf)[0].shape[0] if y is None else y.shape[0]
 
     # Setting adjoint wavefield
     v = wavefield(model, space_order, save=save, nt=nt, fw=False)
 
-    # Set up PDE expression and rearrange
-    pde = wave_kernel(model, v, q=q, fw=False, f0=f0)
-
-    # On-the-fly Fourier
-    dft, dft_modes = otf_dft(v, freq_list, model.critical_dt, factor=dft_sub)
-
     # Setup source and receiver
-    geom_expr, _, rcv = src_rec(model, v, src_coords=rcv_coords, nt=nt,
-                                rec_coords=src_coords, wavelet=y, fw=False)
-
-    # Extended source
-    wsrc, ws_expr = extended_src_weights(model, ws, v)
-
+    src, rcv = src_rec(model, v, src_coords=rcv_coords, nt=nt,
+                       rec_coords=src_coords, wavelet=y)
     # Wavefield norm
-    nv_t, nv_s = ([], [])
-    if norm_v:
-        weights = weight_fun(w_fun, model, src_coords)
-        norm_v, (nv_t, nv_s) = weighted_norm(v, weight=weights)
+    nv_weights = weight_fun(w_fun, model, src_coords) if norm_v else None
 
     # Create operator and run
-    subs = model.spacing_map
-    op = Operator(pde + ws_expr + nv_t + dft + geom_expr + nv_s,
-                  subs=subs, name="adjoint"+name(model),
-                  opt=opt_op(model))
-    op.cfunction
-    # Run operator
-    summary = op()
+    op = adjoint_op(model.physical_parameters, model.is_tti, model.is_viscoacoustic,
+                    space_order, model.spacing, save, nv_weights, model.fs,
+                    src_coords is not None, rcv_coords is not None,
+                    freq_list is not None, dft_sub, ws is not None, qwf is not None)
+
+    # On-the-fly Fourier
+    dft_modes, fr = fourier_modes(v, freq_list)
+
+    # Extended source
+    ws, wt = lr_src_fields(model, None, ws, empty_ws=True)
+
+    # Norm v
+    nv2, nvt2 = norm_holder(v) if norm_v else (None, None)
+
+    # Update kwargs
+    kw = {'dt': model.critical_dt}
+    f0q = Constant('f0', value=f0) if model.is_viscoacoustic else None
+    kw.update(fields_kwargs(v, nv2, nvt2, qwf, src, rcv, dft_modes, fr, ws, wt, f0q))
+    kw.update(model.physical_params())
+
+    # Run op
+    summary = op(**kw)
 
     # Output
-    if wsrc:
-        return wsrc, summary
+    if ws:
+        return ws, summary
     if norm_v:
-        return rcv, dft_modes or v, norm_v.data[0], summary
+        return rcv, dft_modes or v, nv2.data[0], summary
     return rcv, v, summary
 
 
@@ -121,41 +119,39 @@ def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8,
     """
     # Setting adjoint wavefieldgradient
     v = wavefield(model, space_order, fw=False)
-
-    # Set up PDE expression and rearrange
-    pde = wave_kernel(model, v, fw=False, f0=f0)
-
-    # Setup source and receiver
-    geom_expr, _, _ = src_rec(model, v, src_coords=rcv_coords,
-                              wavelet=residual, fw=False)
+    try:
+        t_sub = as_tuple(u)[0].indices[0]._factor
+    except AttributeError:
+        t_sub = 1
 
     # Setup gradient wrt m
     gradm = Function(name="gradm", grid=model.grid)
-    g_expr = grad_expr(gradm, u, v, model, w=w, freq=freq, dft_sub=dft_sub, isic=isic)
+
+    # Setup source and receiver
+    src, _ = src_rec(model, v, src_coords=rcv_coords, wavelet=residual)
 
     # Create operator and run
-    subs = model.spacing_map
-    op = Operator(pde + geom_expr + g_expr,
-                  subs=subs, name="gradient"+name(model),
-                  opt=opt_op(model))
-    try:
-        op.cfunction
-    except:
-        op = Operator(pde + geom_expr + g_expr,
-                      subs=subs, name="gradient"+name(model),
-                      opt='advanced')
-        op.cfunction
-    if return_op:
-        return op, gradm, v
+    op = adjoint_born_op(model.physical_parameters, model.is_tti, model.is_viscoacoustic,
+                         space_order, model.spacing, rcv_coords is not None, model.fs, w,
+                         not return_op, t_sub, freq is not None, dft_sub, isic)
 
-    summary = op()
+    # Update kwargs
+    kw = {'dt': model.critical_dt}
+    f0q = Constant('f0', value=f0) if model.is_viscoacoustic else None
+    kw.update(fields_kwargs(src, u, v, gradm, f0q))
+    kw.update(model.physical_params())
+
+    if return_op:
+        return op, gradm, kw
+
+    summary = op(**kw)
 
     # Output
     return gradm, summary
 
 
 def born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
-         q=None, return_op=False, isic=False, freq_list=None, dft_sub=None,
+         qwf=None, return_op=False, isic=False, freq_list=None, dft_sub=None,
          ws=None, t_sub=1, nlind=False, f0=0.015):
     """
     Low level propagator, to be used through `interface.py`
@@ -167,38 +163,38 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     u = wavefield(model, space_order, save=save, nt=nt, t_sub=t_sub)
     ul = wavefield(model, space_order, name="l")
 
-    # Expression for saving wavefield if time subsampling is used
-    u_save, eq_save = wavefield_subsampled(model, u, nt, t_sub)
-
-    # Extended source
-    q = q or wf_as_src(u, w=0)
-    q = extented_src(model, ws, wavelet, q=q)
-
-    # Set up PDE expression and rearrange
-    pde = wave_kernel(model, u, q=q, f0=f0)
-    if model.dm == 0:
-        pdel = []
-    else:
-        pdel = wave_kernel(model, ul, q=lin_src(model, u, isic=isic), f0=f0)
     # Setup source and receiver
-    geom_expr, _, rcvnl = src_rec(model, u, rec_coords=rcv_coords if nlind else None,
-                                  src_coords=src_coords, wavelet=wavelet)
-    geom_exprl, _, rcvl = src_rec(model, ul, rec_coords=rcv_coords, nt=nt)
-
-    # On-the-fly Fourier
-    dft, dft_modes = otf_dft(u, freq_list, model.critical_dt, factor=dft_sub)
+    snl, rnl = src_rec(model, u, rec_coords=rcv_coords if nlind else None,
+                       src_coords=src_coords, wavelet=wavelet)
+    _, rcvl = src_rec(model, ul, rec_coords=rcv_coords, nt=nt)
 
     # Create operator and run
-    subs = model.spacing_map
-    op = Operator(pde + geom_expr + geom_exprl + pdel + dft + eq_save,
-                  subs=subs, name="born"+name(model),
-                  opt=opt_op(model))
-    op.cfunction
-    outrec = (rcvl, rcvnl) if nlind else rcvl
-    if return_op:
-        return op, u, outrec
+    op = born_op(model.physical_parameters, model.is_tti, model.is_viscoacoustic,
+                 space_order, model.spacing, save,
+                 src_coords is not None, rcv_coords is not None, model.fs, t_sub,
+                 ws is not None, freq_list is not None, dft_sub, isic, nlind)
 
-    summary = op()
+    # Make kwargs
+    kw = {'dt': model.critical_dt}
+    f0q = Constant('f0', value=f0) if model.is_viscoacoustic else None
+    # Expression for saving wavefield if time subsampling is used
+    u_save = wavefield_subsampled(model, u, nt, t_sub)
+
+    # On-the-fly Fourier
+    dft_modes, fr = fourier_modes(u, freq_list)
+
+    # Extended source
+    ws, wt = lr_src_fields(model, ws, wavelet)
+
+    # Update kwargs
+    kw.update(fields_kwargs(u, ul, snl, rnl, rcvl, u_save, dft_modes, fr, ws, wt, f0q))
+    kw.update(model.physical_params(born=True))
+
+    outrec = (rcvl, rnl) if nlind else rcvl
+    if return_op:
+        return op, u, outrec, kw
+
+    summary = op(**kw)
 
     # Output
     return outrec, dft_modes or (u_save if t_sub > 1 else u), summary
@@ -218,15 +214,16 @@ def forward_grad(model, src_coords, rcv_coords, wavelet, v, space_order=8,
     u = wavefield(model, space_order, save=False)
 
     # Add extended source
-    q = q or wf_as_src(u, w=0)
+    q = q or 0
     q = extented_src(model, ws, wavelet, q=q)
 
     # Set up PDE expression and rearrange
     pde = wave_kernel(model, u, q=q, f0=f0)
 
     # Setup source and receiver
-    geom_expr, _, rcv = src_rec(model, u, src_coords=src_coords, nt=nt,
-                                rec_coords=rcv_coords, wavelet=wavelet)
+    rexpr = geom_expr(model, u, src_coords=src_coords, nt=nt,
+                      rec_coords=rcv_coords, wavelet=wavelet)
+    _, rcv = src_rec(model, u, src_coords, rcv_coords, wavelet, nt)
 
     # Setup gradient wrt m
     gradm = Function(name="gradm", grid=model.grid)
@@ -234,11 +231,11 @@ def forward_grad(model, src_coords, rcv_coords, wavelet, v, space_order=8,
 
     # Create operator and run
     subs = model.spacing_map
-    op = Operator(pde + geom_expr + g_expr,
-                  subs=subs, name="forward_grad"+name(model),
+    op = Operator(pde + rexpr + g_expr,
+                  subs=subs, name="forward_grad",
                   opt=opt_op(model))
 
-    summary = op()
+    summary = op(dt=model.critical_dt, rcvu=rcv)
 
     # Output
     return rcv, gradm, summary

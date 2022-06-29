@@ -22,63 +22,41 @@ J = judiJacobian(F0, q)
 # Observed data
 dobs = F*q
 dobs0 = F0*q
+dm1 = 2f0*circshift(dm, 10)
+
+###################################################################################################
+
+@testset "FWI gradient test with $(nlayer) layers and tti $(tti) and viscoacoustic $(viscoacoustic) and freesurface $(fs)" begin
+	# FWI gradient and function value for m0
+	Jm0, grad = fwi_objective(model0, q, dobs; options=opt)
+	# Check get same misfit as l2 misifit on forward data
+	Jm01 = .5f0 * norm(F(model0)*q - dobs)^2
+	@test Jm0 ≈ Jm01
+
+	grad_test(x-> .5f0*norm(F(;m=x)*q - dobs)^2, model0.m , dm, grad)
+
+end
 
 ###################################################################################################
 
 @testset "LSRTM gradient test with $(nlayer) layers, tti $(tti), viscoacoustic $(viscoacoustic). freesurface $(fs), nlind $(nlind)" for nlind=[true, false]
 	@timeit TIMEROUTPUT "LSRTM gradient test, nlind=$(nlind)" begin
-		# Gradient test
-		ftol = (tti && fs) ? 1f-1 : 5f-2
-		h = 5f-2
-		maxiter = 5
-		err1 = zeros(maxiter)
-		err2 = zeros(maxiter)
-		h_all = zeros(maxiter)
-
 		# LS-RTM gradient and function value for m0
-		Jm0, grad = lsrtm_objective(model0, q, dobs, dm; options=opt, nlind=nlind)
 		dD = nlind ? (dobs - dobs0) : dobs
+		Jm0, grad = lsrtm_objective(model0, q, dD, dm; options=opt, nlind=nlind)
 
-		# Perturbation
-		dmp = 2f0*circshift(dm, 10)
-		dJ = dot(grad, dmp)
-
-		for j=1:maxiter
-			dmloc = dm + h*dmp
-			# LS-RTM gradient and function falue for m0 + h*dm
-			Jm = lsrtm_objective(model0, q, dobs, dmloc; options=opt, nlind=nlind)[1]
-			@printf("h = %2.2e, J0 = %2.2e, Jm = %2.2e \n", h, Jm0, Jm)
-			# Check convergence
-			err1[j] = abs(Jm - Jm0)
-			err2[j] = abs(Jm - Jm0 - h*dJ)
-
-			j == 1 ? prev = 1 : prev = j - 1
-			@printf("h = %2.2e, e1 = %2.2e, rate = %2.2e", h, err1[j], err1[prev]/err1[j])
-			@printf(", e2  = %2.2e, rate = %2.2e \n", err2[j], err2[prev]/err2[j])
-			h_all[j] = h
-			h = h * .5f0
-		end
-
-		# Check convergence rates
-		rate_1 = sum(err1[1:end-1]./err1[2:end])/(maxiter - 1)
-		rate_2 = sum(err2[1:end-1]./err2[2:end])/(maxiter - 1)
-
-		# This is a linearized problem, so the whole expansion is O(dm) and
-		# "second order error" should be first order
-		@test isapprox(rate_1, 2f0; rtol=ftol)
-		@test isapprox(rate_2, 4f0; rtol=ftol)
+		# Gradient test
+		grad_test(x-> lsrtm_objective(model0, q, dD, x;options=opt, nlind=nlind)[1], dm, dm1, grad)
 
 		# test that with zero dm we get the same as fwi_objective for residual
 		if nlind
-			ENV["OMP_NUM_THREADS"]=1
-			Jls, gradls = lsrtm_objective(model0, q, dobs, 0f0.*dm; options=opt, nlind=nlind)
-			Jfwi, gradfwi = fwi_objective(model0, q, dobs; options=opt)
+			Jls, gradls = @single_threaded lsrtm_objective(model0, q, dobs, 0f0.*dm; options=opt, nlind=true)
+			Jfwi, gradfwi = @single_threaded fwi_objective(model0, q, dobs; options=opt)
 			@test isapprox(Jls, Jfwi; rtol=0f0, atol=0f0)
 			@test isapprox(gradls, gradfwi; rtol=0f0, atol=0f0)
 		end
 	end
 end
-
 
 # Test if lsrtm_objective produces the same value/gradient as is done by the correct algebra
 @testset "LSRTM gradient linear algebra test with $(nlayer) layers, tti $(tti), viscoacoustic $(viscoacoustic), freesurface $(fs)" begin
@@ -93,15 +71,14 @@ end
 		J.options.optimal_checkpointing = optchk
 		J.options.frequencies = freq
 
-		dm1 = 2f0*circshift(dm, 10)
 		d_res = dobs0 + J*dm1 - dobs
 		Jm0_1 = 0.5f0 * norm(d_res)^2f0
-		grad_1 = J'*d_res
+		grad_1 = @single_threaded J'*d_res
 
 		opt = J.options
-		Jm0, grad = lsrtm_objective(model0, q, dobs, dm1; options=opt, nlind=true)
-		Jm01, grad1 = lsrtm_objective(model0, q, dobs-dobs0, dm1; options=opt, nlind=false)
-
+		Jm0, grad = @single_threaded lsrtm_objective(model0, q, dobs, dm1; options=opt, nlind=true)
+		Jm01, grad1 = @single_threaded lsrtm_objective(model0, q, dobs-dobs0, dm1; options=opt, nlind=false)
+	
 		@test isapprox(grad, grad_1; rtol=ftol)
 		@test isapprox(Jm0, Jm0_1; rtol=ftol)
 		@test isapprox(grad, grad1; rtol=ftol)

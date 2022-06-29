@@ -3,8 +3,8 @@
 # Date: January 2017
 #
 
-const IntTuple = Union{Tuple{Integer,Integer}, Tuple{Integer,Integer,Integer},Array{Int64,1},Array{Int32,1}}
-const RealTuple = Union{Tuple{AbstractFloat,AbstractFloat}, Tuple{AbstractFloat,AbstractFloat,AbstractFloat},Array{AbstractFloat,1}}
+const IntTuple = Union{Tuple{Integer,Integer}, Tuple{Integer,Integer,Integer},Vector{Integer}}
+const RealTuple = Union{Tuple{Real,Real}, Tuple{Real,Real,Real},Vector{Real}}
 
 export Model, PhysicalParameter, get_dt
 
@@ -46,7 +46,7 @@ cannot be infered from the array.
     PhysicalParameter(v::vDT, n::Tuple, d::Tuple, o::Tuple) Creates a constant (single number) PhyicalParameter
 
 """
-mutable struct PhysicalParameter{vDT} <: AbstractVector{vDT}
+mutable struct PhysicalParameter{vDT} <: DenseVector{vDT}
     n::Tuple
     d::Tuple
     o::Tuple
@@ -91,7 +91,7 @@ transpose(x::PhysicalParameter{vDT}) where vDT = PhysicalParameter{vDT}(x.n[end:
 adjoint(x::PhysicalParameter{vDT}) where vDT = transpose(x)
 
 # Basic overloads
-size(A::PhysicalParameter) = (prod(A.n), 1)
+size(A::PhysicalParameter) = (prod(A.n),)
 length(A::PhysicalParameter) = prod(A.n)
 
 function norm(A::PhysicalParameter, order::Real=2)
@@ -120,7 +120,7 @@ function promote_shape(p::PhysicalParameter, A::Array{vDT, N}) where {vDT, N}
 end
 
 promote_shape(A::Array{vDT, N}, p::PhysicalParameter) where {vDT, N} = promote_shape(p, A)
-reshape(p::PhysicalParameter, n::Tuple{Vararg{Int64,N}}) where N = (prod(n)==prod(p.n) && return p)
+reshape(p::PhysicalParameter, n::Tuple{Vararg{Int64,N}}) where N = (n == p.n ? p : reshape(p.data, n))
 
 dotview(A::PhysicalParameter{vDT}, I::Vararg{Union{Function, Int, UnitRange{Int}}, N}) where {vDT, N} = dotview(A.data, I...)
 Base.dotview(m::PhysicalParameter, i) = Base.dotview(m.data, i)
@@ -205,7 +205,7 @@ function *(A::Union{joMatrix, joLinearFunction, joLinearOperator, joCoreBlock}, 
     return A*vec(p.data)
 end
 
-materialize!(p::PhysicalParameter{RDT}, b::Array{<:Number, N}) where{RDT, N} = (p.data[:] .= b)
+materialize!(p::PhysicalParameter{RDT}, b::Array{<:Number, N}) where{RDT, N} = (p.data .= reshape(b, axes(p.data)))
 materialize!(p::PhysicalParameter{RDT}, b::Base.Broadcast.Broadcasted{Base.Broadcast.DefaultArrayStyle{N}}) where{RDT, N} = materialize!(p, collect(b))
 materialize!(p::Array, b::Broadcast.Broadcasted{Broadcast.ArrayStyle{PhysicalParameter}}) = materialize!(p, reshape(collect(b), size(p)))
 
@@ -215,7 +215,7 @@ mul!(x::PhysicalParameter, F::Union{joAbstractLinearOperator, joLinearFunction, 
 mul!(x::Array, F::Union{joAbstractLinearOperator, joLinearFunction, Array}, y::PhysicalParameter) = mul!(x, F, y[1:end])
 
 # For ploting
-array2py(p::PhysicalParameter{vDT}, i::Int64, I::CartesianIndex{N}) where {vDT, N} = array2py(p.data, i, I)
+NpyArray(p::PhysicalParameter{vDT}, revdims::Bool) where {vDT} = NpyArray(p.data, revdims)
 
 ###################################################################################################
 # Isotropic acoustic

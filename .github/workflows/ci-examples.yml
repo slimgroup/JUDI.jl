@@ -16,7 +16,7 @@ jobs:
 
     strategy:
       fail-fast: false
-  
+
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
 
@@ -25,7 +25,7 @@ jobs:
         uses: actions/checkout@v2
 
       - id: set-matrix
-        run: echo "::set-output name=matrix::$(ls examples/scripts/*.jl | xargs -n 1 basename | jq -R -s -c 'split("\n")[:-1]')"
+        run: echo "::set-output name=matrix::$(ls examples/scripts/*.jl examples/machine-learning/*.jl | xargs -n 1 | jq -R -s -c 'split("\n")[:-1]')"
         shell: bash
 
   run-examples:
@@ -47,7 +47,7 @@ jobs:
         version: ['1.7']
 
         include:
-         - example: "modeling_basic_2D.jl"
+         - example: "examples/scripts/modeling_basic_2D.jl"
            version: '1.6'
 
     steps:
@@ -73,9 +73,8 @@ jobs:
 
       - name: Install packages
         run: |
-          julia -e 'using Pkg;Pkg.add(["NLopt", "JOLI", "PyPlot", "IterativeSolvers", "SlimOptim", "HDF5", "SegyIO", "SetIntersectionProjection", "Images"])'
+          julia -e 'using Pkg;Pkg.add(["NLopt", "Flux", "JOLI", "PyPlot", "IterativeSolvers", "SlimOptim", "HDF5", "SegyIO", "SetIntersectionProjection", "Images"])'
           julia -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd()))'
 
       - name: Run examples
-        working-directory: examples/scripts/
         run: julia -p 2 ${{ matrix.example }}

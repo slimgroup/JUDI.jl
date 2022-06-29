@@ -170,14 +170,19 @@ adjoint(L::LazyScal) = LazyScal(L.s, adjoint(L.P))
 *(L::LazyScal, x::Array{T, N}) where {T<:Number, N} = L.s * (L.P * x)
 
 # Propagation via linear algebra `*`
-*(F::judiPropagator{T, O}, q::SourceType{T}) where {T<:Number, O} = multi_src_propagate(F, q)
+*(F::judiPropagator{T, O}, q::judiMultiSourceVector{T}) where {T<:Number, O} = multi_src_propagate(F, q)
+*(F::judiPropagator{T, O}, q::AbstractVector{T}) where {T<:Number, O} = multi_src_propagate(F, q)
 *(F::judiAbstractJacobian{T, O, FT}, q::dmType{T}) where {T<:Number, O, FT} = multi_src_propagate(F, q)
+# Some cases have high dimensional arrays as input such as ML applications.
+*(F::judiPropagator, q::Array{T, 4}) where T = F*vec(q)
+*(F::judiPropagator, q::Array{T, 5}) where T = F*vec(q)
+*(F::judiPropagator, q::Array{T, 6}) where T = F*vec(q)
 
 mul!(out::SourceType{T}, F::judiPropagator{T, O}, q::SourceType{T}) where {T<:Number, O} = begin y = F*q; copyto!(out, y) end
-mul!(out::SourceType{T}, F::judiPropagator{T, O}, q::Vector{T}) where {T<:Number, O} = begin y = F*q; copyto!(out, y) end
 mul!(out::SourceType{T}, F::joLinearFunction{T, T}, q::SourceType{T}) where {T<:Number} = begin y = F*q; copyto!(out, y) end
 mul!(out::SourceType{T}, F::judiAbstractJacobian{T, :born, FT}, q::Vector{T}) where {T<:Number, FT} = begin y = F*q[:]; copyto!(out, y) end
-mul!(out::SourceType{T}, F::judiAbstractJacobian{T, :born, FT}, q::Array{T, N}) where {T<:Number, FT, N} = begin y = F*q[:]; copyto!(out, y) end
+mul!(out::SourceType{T}, F::judiAbstractJacobian{T, :born, FT}, q::Array{T, 2}) where {T<:Number, FT} = begin y = F*q[:]; copyto!(out, y) end
+mul!(out::SourceType{T}, F::judiAbstractJacobian{T, :born, FT}, q::Array{T, 3}) where {T<:Number, FT} = begin y = F*q[:]; copyto!(out, y) end
 mul!(out::Array{T, 2}, F::judiAbstractJacobian{T, :adjoint_born, FT}, q::SourceType{T}) where {T<:Number, FT} =  begin y = F*q; copyto!(out, y) end
 mul!(out::Array{T, 3}, F::judiAbstractJacobian{T, :adjoint_born, FT}, q::SourceType{T}) where {T<:Number, FT} =  begin y = F*q; copyto!(out, y) end
 
@@ -188,8 +193,7 @@ process_input_data(F::judiModeling, q::Vector) = process_input_data(q, F.model)
 process_input_data(F::judiPointSourceModeling, q::Vector) = process_input_data(q, F.qInjection.geometry)
 process_input_data(F::judiDataSourceModeling, q::Vector) = process_input_data(q, F.qInjection.data)
 process_input_data(F::judiDataModeling, q::Vector) = process_input_data(q, F.model)
-process_input_data(J::judiJacobian{D, :adjoint_born, FT}, q::Vector) where {D, FT} =
-    process_input_data(q, J.F.qInjection.data)
+process_input_data(J::judiJacobian{D, :adjoint_born, FT}, q::Vector) where {D, FT} = process_input_data(q, J.F.rInterpolation.data)
 process_input_data(::judiJacobian{D, :born, FT}, q::dmType{D}) where {D<:Number, FT} = q
 
 make_input(::judiModeling, q::SourceType) = (nothing, make_input(q), nothing, nothing, nothing)
