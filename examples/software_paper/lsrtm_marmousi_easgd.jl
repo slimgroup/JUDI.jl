@@ -49,9 +49,9 @@ rho = 1f0
 alpha = eta*rho
 beta = p*alpha
 
-x = zeros(Float32, prod(model0.n).n, p)
-xnew = zeros(Float32, prod(model0.n).n, p)
-xav = zeros(Float32, prod(model0.n).n)
+x = zeros(Float32, prod(model0.n), p)
+xnew = zeros(Float32, prod(model0.n), p)
+xav = zeros(Float32, prod(model0.n))
 
 # Parallel gradient function
 @everywhere function update_x(Ml, J, Mr, x, d, eta, alpha, xav)
