@@ -76,7 +76,8 @@ time_sampling(ms::judiMultiSourceVector) = [1 for i=1:ms.nsrc]
 reshape(ms::judiMultiSourceVector, dims::Dims{N}) where N = reshape(vec(ms), dims)
 ############################################################################################################################
 # Linear algebra `*`
-(msv::judiMultiSourceVector{T})(x::AbstractVector{T}) where {T<:Number} = x
+(msv::judiMultiSourceVector{mT})(x::AbstractVector{T}) where {mT, T<:Number} = x
+(msv::judiMultiSourceVector{T})(x::judiMultiSourceVector{T}) where {T<:Number} = x
 (msv::judiMultiSourceVector{mT})(x::AbstractVector{T}) where {mT, T<:Array} = begin y = deepcopy(msv); y.data .= x; return y end
 
 function *(J::Union{Matrix{vDT}, joAbstractLinearOperator}, x::judiMultiSourceVector{vDT}) where vDT
