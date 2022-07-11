@@ -39,15 +39,13 @@ J = judiJacobian(M, q)
 # Right-hand preconditioners (model topmute)
 Mr = judiTopmute(model0.n, 52, 10)
 
-#' LSQR
+#' set up number of iterations
 niter = parse(Int, get(ENV, "NITER", "10"))
 lsqr_sol = zeros(Float32, prod(n))
 
-# only invert for the randomly picked indices so that this example can run a bit faster
-# suggested to run with all indices in practice
-idx = randperm(q.nsrc)[1:4]
-Ml = judiMarineTopmute2D(30, d_lin[idx].geometry)
-lsqr!(lsqr_sol, Ml*J[idx]*Mr, Ml*d_lin[idx]; maxiter=niter)
+# LSQR
+Ml = judiMarineTopmute2D(30, d_lin.geometry)
+lsqr!(lsqr_sol, Ml*J*Mr, Ml*d_lin; maxiter=niter)
 
 # Save final velocity model, function value and history
 h5open("lsrtm_marmousi_lsqr_result.h5", "w") do file
