@@ -1,10 +1,10 @@
 from kernels import wave_kernel
 from geom_utils import src_rec, geom_expr
 from fields import (fourier_modes, wavefield, lr_src_fields,
-                    wavefield_subsampled, norm_holder)
+                    wavefield_subsampled, norm_holder, frequencies)
 from fields_exprs import extented_src
 from sensitivity import grad_expr
-from utils import weight_fun, opt_op, fields_kwargs
+from utils import weight_fun, opt_op, fields_kwargs, nfreq
 from operators import forward_op, adjoint_op, born_op, adjoint_born_op
 
 from devito import Operator, Function, Constant
@@ -32,7 +32,7 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     op = forward_op(model.physical_parameters, model.is_tti, model.is_viscoacoustic,
                     space_order, model.spacing, save, t_sub, model.fs,
                     src_coords is not None, rcv_coords is not None,
-                    freq_list is not None, dft_sub, ws is not None, qwf is not None)
+                    nfreq(freq_list), dft_sub, ws is not None, qwf is not None)
 
     # Make kwargs
     kw = {'dt': model.critical_dt}
@@ -83,7 +83,7 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, qwf=None, dft_sub=N
     op = adjoint_op(model.physical_parameters, model.is_tti, model.is_viscoacoustic,
                     space_order, model.spacing, save, nv_weights, model.fs,
                     src_coords is not None, rcv_coords is not None,
-                    freq_list is not None, dft_sub, ws is not None, qwf is not None)
+                    nfreq(freq_list), dft_sub, ws is not None, qwf is not None)
 
     # On-the-fly Fourier
     dft_modes, fr = fourier_modes(v, freq_list)
@@ -133,12 +133,13 @@ def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8,
     # Create operator and run
     op = adjoint_born_op(model.physical_parameters, model.is_tti, model.is_viscoacoustic,
                          space_order, model.spacing, rcv_coords is not None, model.fs, w,
-                         not return_op, t_sub, freq is not None, dft_sub, isic)
+                         not return_op, t_sub, nfreq(freq), dft_sub, isic)
 
     # Update kwargs
     kw = {'dt': model.critical_dt}
+    f, _factor = frequencies(freq)
     f0q = Constant('f0', value=f0) if model.is_viscoacoustic else None
-    kw.update(fields_kwargs(src, u, v, gradm, f0q))
+    kw.update(fields_kwargs(src, u, v, gradm, f0q, f))
     kw.update(model.physical_params())
 
     if return_op:
@@ -172,7 +173,7 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     op = born_op(model.physical_parameters, model.is_tti, model.is_viscoacoustic,
                  space_order, model.spacing, save,
                  src_coords is not None, rcv_coords is not None, model.fs, t_sub,
-                 ws is not None, freq_list is not None, dft_sub, isic, nlind)
+                 ws is not None, nfreq(freq_list), dft_sub, isic, nlind)
 
     # Make kwargs
     kw = {'dt': model.critical_dt}

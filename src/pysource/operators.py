@@ -73,7 +73,7 @@ class memoized_func(object):
 
 @memoized_func
 def forward_op(p_params, tti, visco, space_order, spacing, save, t_sub, fs, pt_src,
-               pt_rec, dft, dft_sub, ws, full_q):
+               pt_rec, nfreq, dft_sub, ws, full_q):
     """
     Low level forward operator creation, to be used through `propagator.py`
     Compute forward wavefield u = A(m)^{-1}*f and related quantities (u(xrcv))
@@ -86,7 +86,7 @@ def forward_op(p_params, tti, visco, space_order, spacing, save, t_sub, fs, pt_s
     scords = np.ones((1, ndim)) if pt_src else None
     rcords = np.ones((1, ndim)) if pt_rec else None
     wavelet = np.ones((nt, 1))
-    freq_list = np.ones((2,)) if dft else None
+    freq_list = np.ones((nfreq,)) if nfreq > 0 else None
     q = wavefield(model, 0, save=True, nt=nt, name="qwf") if full_q else 0
     wsrc = Function(name='src_weight', grid=model.grid, space_order=0) if ws else None
 
@@ -120,7 +120,7 @@ def forward_op(p_params, tti, visco, space_order, spacing, save, t_sub, fs, pt_s
 
 @memoized_func
 def adjoint_op(p_params, tti, visco, space_order, spacing, save, nv_weights, fs,
-               pt_src, pt_rec, dft, dft_sub, ws, full_q):
+               pt_src, pt_rec, nfreq, dft_sub, ws, full_q):
     """
     Low level adjoint operator creation, to be used through `propagators.py`
     Compute adjoint wavefield v = adjoint(F(m))*y
@@ -134,7 +134,7 @@ def adjoint_op(p_params, tti, visco, space_order, spacing, save, nv_weights, fs,
     scords = np.ones((1, ndim)) if pt_src else None
     rcords = np.ones((1, ndim)) if pt_rec else None
     wavelet = np.ones((nt, 1))
-    freq_list = np.ones((2,)) if dft else None
+    freq_list = np.ones((nfreq,)) if nfreq > 0 else None
     q = wavefield(model, 0, save=True, nt=nt, fw=False, name="qwf") if full_q else 0
 
     # Setting adjoint wavefield
@@ -167,7 +167,7 @@ def adjoint_op(p_params, tti, visco, space_order, spacing, save, nv_weights, fs,
 
 @memoized_func
 def born_op(p_params, tti, visco, space_order, spacing, save, pt_src,
-            pt_rec, fs, t_sub, ws, dft, dft_sub, isic, nlind):
+            pt_rec, fs, t_sub, ws, nfreq, dft_sub, isic, nlind):
     """
     Low level born operator creation, to be used through `interface.py`
     Compute linearized wavefield U = J(m)* δ m
@@ -181,7 +181,7 @@ def born_op(p_params, tti, visco, space_order, spacing, save, pt_src,
     wavelet = np.ones((nt, 1))
     scords = np.ones((1, ndim)) if pt_src else None
     rcords = np.ones((1, ndim)) if pt_rec else None
-    freq_list = np.ones((2,)) if dft else None
+    freq_list = np.ones((nfreq,)) if nfreq > 0 else None
     wsrc = Function(name='src_weight', grid=model.grid, space_order=0) if ws else None
     f0 = Constant('f0')
 
@@ -220,7 +220,7 @@ def born_op(p_params, tti, visco, space_order, spacing, save, pt_src,
 
 @memoized_func
 def adjoint_born_op(p_params, tti, visco, space_order, spacing, pt_rec, fs, w,
-                    save, t_sub, dft, dft_sub, isic):
+                    save, t_sub, nfreq, dft_sub, isic):
     """
     Low level gradient operator creation, to be used through `propagators.py`
     Compute the action of the adjoint Jacobian onto a residual J'* δ d.
@@ -231,10 +231,11 @@ def adjoint_born_op(p_params, tti, visco, space_order, spacing, pt_rec, fs, w,
     ndim = len(spacing)
     residual = np.ones((nt, 1))
     rcords = np.ones((1, ndim)) if pt_rec else None
-    freq_list = np.ones((2,)) if dft else None
+    freq_list = np.ones((nfreq,)) if nfreq > 0 else None
     # Setting adjoint wavefieldgradient
     v = wavefield(model, space_order, fw=False)
-    u = forward_wavefield(model, space_order, save=save, nt=nt, dft=dft, t_sub=t_sub)
+    u = forward_wavefield(model, space_order, save=save, nt=nt,
+                          dft=nfreq > 0, t_sub=t_sub)
 
     # Set up PDE expression and rearrange
     pde = wave_kernel(model, v, fw=False, f0=Constant('f0'))

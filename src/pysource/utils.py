@@ -115,6 +115,13 @@ def opt_op(model):
     return ('advanced', opts)
 
 
+def nfreq(freq_list):
+    """
+    Check number of on-the-fly DFT frequencies.
+    """
+    return 0 if freq_list is None else np.shape(freq_list)[0]
+
+
 def fields_kwargs(*args):
     """
     Creates a dictionary of {f.name: f} for any field argument that is not None
