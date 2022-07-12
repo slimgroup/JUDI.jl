@@ -19,7 +19,7 @@ model0 = Model((n[1], n[2]), (d[1], d[2]), (o[1], o[2]), m0)
 if ~isfile("$(JUDI.JUDI_DATA)/marmousi_2D.segy")
     ftp_data("ftp://slim.gatech.edu/data/SoftwareRelease/Imaging.jl/2DLSRTM/marmousi_2D.segy")
 end
-block = segy_read("$(JUDI.JUDI_DATA)/marmousi_2D.segy")
+block = segy_scan(JUDI.JUDI_DATA, "marmousi_2D.segy", ["GroupX","GroupY","RecGroupElevation","SourceSurfaceElevation","dt"])
 d_lin = judiVector(block)   # linearized observed data
 
 # Set up wavelet
@@ -72,5 +72,8 @@ h5open("lsrtm_marmousi_breg_result.h5", "w") do file
 end
 
 # Plot final image
-figure(); imshow(copy(adjoint(reshape(solb.x, model0.n))), extent = (0, 7.99, 3.19, 0), cmap = "gray", vmin = -3e-2, vmax = 3e-2)
-title("SPLS-RTM with Linearized Bregman"); xlabel("Lateral position [km]"); ylabel("Depth [km]")
+figure()
+imshow(reshape(solb.x, model0.n)', extent = (0, 7.99, 3.19, 0), cmap = "gray", vmin = -3e-2, vmax = 3e-2)
+title("SPLS-RTM with Linearized Bregman")
+xlabel("Lateral position [km]")
+ylabel("Depth [km]")

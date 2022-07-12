@@ -7,15 +7,10 @@
 export marineTopmute2D, judiMarineTopmute2D
 export model_topmute, judiTopmute, find_water_bottom, depth_scaling, judiDepthScaling, low_filter, judiFilter
 
-
 ############################################ Data space preconditioners ################################################
 
 function judiFilter(geometry, fmin, fmax)
-    nsrc = length(geometry.xloc)
-    N = 0
-    for j=1:nsrc
-        N += geometry.nt[j]*length(geometry.xloc[j])
-    end
+    N = n_samples(geometry)
     D = joLinearFunctionFwd_T(N, N,
                               v -> low_filter(v,geometry.dt[1];fmin=fmin, fmax=fmax),
                               w -> low_filter(w,geometry.dt[1];fmin=fmin, fmax=fmax),
@@ -54,8 +49,11 @@ function low_filter(Din::judiVector, dt_in; fmin=0.0, fmax=25.0)
     return Dout	
 end
 
+# This brrute force and should be improved into a lazy evaluation that only does the mute at read time.
+marineTopmute2D(Dobs::judiVector{T, SeisCon}, muteStart::Integer; mute=Array{Any}(undef, 3), flipmask=false) where T<:Number =
+    marineTopmute2D(get_data(Dobs), muteStart; mute=mute, flipmask=flipmask)
 
-function marineTopmute2D(Dobs::judiVector, muteStart::Integer; mute=Array{Any}(undef, 3), flipmask=false)
+function marineTopmute2D(Dobs::judiVector{T, Matrix{T}}, muteStart::Integer; mute=Array{Any}(undef, 3), flipmask=false) where T<:Number
     # Data topmute for end-on spread marine streamer data
     Din = deepcopy(Dobs)
 
@@ -111,11 +109,7 @@ end
 
 function judiMarineTopmute2D(muteStart,geometry;params=Array{Any}(undef, 3),flipmask=false)
 # JOLI wrapper for the linear depth scaling function
-    nsrc = length(geometry.xloc)
-    N = 0
-    for j=1:nsrc
-        N += geometry.nt[j]*length(geometry.xloc[j])
-    end
+    N = n_samples(geometry)
     D = joLinearFunctionFwd_T(N,N,
                              v -> marineTopmute2D(v,muteStart;mute=params, flipmask=flipmask),
                              w -> marineTopmute2D(w,muteStart;mute=params, flipmask=flipmask),
@@ -195,7 +189,6 @@ function find_water_bottom(m::AbstractArray{avDT,2};eps = 1e-4) where {avDT}
 end
 
 find_water_bottom(m::AbstractArray{avDT,3};eps = 1e-4) where {avDT} = reshape(find_water_bottom(reshape(m, :, size(m)[end]);eps=eps), size(m,1), size(m,2))
-
 find_water_bottom(m::PhysicalParameter;eps = 1e-4) = find_water_bottom(m.data)
 
 function depth_scaling(m, model)
@@ -208,8 +201,8 @@ end
 function judiDepthScaling(model)
 # JOLI wrapper for the linear depth scaling function
     N = prod(model.n)
-    D = joLinearFunctionFwd_T(N, N,
-                             v -> depth_scaling(v,model),
-                             w -> depth_scaling(w,model),
-                             Float32,Float32,name="Depth scaling")
+    return joLinearFunctionFwd_T(N, N,
+                    v -> depth_scaling(v,model),
+                    w -> depth_scaling(w,model),
+                    Float32,Float32,name="Depth scaling")
 end
