@@ -4,6 +4,7 @@ from sympy import cos, sin
 from devito import Eq
 from devito.tools import as_tuple
 
+from fields import frequencies
 from fields_exprs import sub_time, freesurface
 from FD_utils import divs, grads
 
@@ -89,17 +90,15 @@ def crosscorr_freq(u, v, model, freq=None, dft_sub=None, **kwargs):
     tsave, factor = sub_time(time, dft_sub)
     expr = 0
 
+    fdim = as_tuple(u)[0][0].dimensions[0]
+    f, nfreq = frequencies(freq, fdim=fdim)
+    omega_t = 2*np.pi*f*tsave*factor*dt
+    # Gradient weighting is (2*np.pi*f)**2/nt
+    w = -(2*np.pi*f)**2/time.symbolic_max
+
     for uu, vv in zip(u, v):
         ufr, ufi = uu
-        # Frequencies
-        nfreq = np.shape(freq)[0]
-        fdim = ufr.dimensions[0]
-        omega_t = lambda f: 2*np.pi*f*tsave*factor*dt
-        # Gradient weighting is (2*np.pi*f)**2/nt
-        w = lambda f: -(2*np.pi*f)**2/time.symbolic_max
-        expr += sum(w(freq[ff])*(ufr._subs(fdim, ff)*cos(omega_t(freq[ff])) -
-                                 ufi._subs(fdim, ff)*sin(omega_t(freq[ff])))
-                    for ff in range(nfreq))*vv
+        expr += w*(ufr*cos(omega_t) - ufi*sin(omega_t))*vv
     return expr
 
 
@@ -139,21 +138,18 @@ def isic_freq(u, v, model, **kwargs):
     time = model.grid.time_dim
     dt = time.spacing
     tsave, factor = sub_time(time, kwargs.get('factor'))
+    fdim = as_tuple(u)[0][0].dimensions[0]
+    f, nfreq = frequencies(freq, fdim=fdim)
+    omega_t = 2*np.pi*f*tsave*factor*dt
+    w = -(2*np.pi*f)**2/time.symbolic_max
+    w2 = factor / time.symbolic_max
+
     expr = 0
     for uu, vv in zip(u, v):
         ufr, ufi = uu
-        # Frequencies
-        nfreq = np.shape(freq)[0]
-        fdim = ufr.dimensions[0]
-        omega_t = lambda f: 2*np.pi*f*tsave*factor*dt
-        # Gradient weighting is (2*np.pi*f)**2/nt
-        w = lambda f: -(2*np.pi*f)**2/time.symbolic_max
-        w2 = factor / time.symbolic_max
-        for ff in range(nfreq):
-            cwt, swt = cos(omega_t(freq[ff])), sin(omega_t(freq[ff]))
-            ufrf, ufif = ufr._subs(fdim, ff), ufi._subs(fdim, ff)
-            idftu = (ufrf * cwt - ufif * swt)
-            expr += w(freq[ff]) * idftu * vv * model.m - w2 * inner_grad(idftu, vv)
+        cwt, swt = cos(omega_t), sin(omega_t)
+        idftu = (ufr * cwt - ufi * swt)
+        expr += w * idftu * vv * model.m - w2 * inner_grad(idftu, vv)
     return expr
 
 

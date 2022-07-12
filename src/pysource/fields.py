@@ -167,6 +167,24 @@ def lr_src_fields(model, weight, wavelet, empty_ws=False):
     return source_weight, wavelett
 
 
+def frequencies(freq, fdim=None):
+    """
+    Frequencies as a one dimensional Function
+
+    Parameters
+    ----------
+    freq: List or 1D array
+        List of frequencies
+    """
+    if freq is None:
+        return None, 0
+    nfreq = np.shape(freq)[0]
+    freq_dim = fdim or DefaultDimension(name='freq_dim', default_value=nfreq)
+    f = Function(name='f', dimensions=(freq_dim,), shape=(nfreq,))
+    f.data[:] = np.array(freq[:])
+    return f, nfreq
+
+
 def fourier_modes(u, freq):
     """
     On the fly DFT wavefield (frequency slices) and expression
@@ -182,10 +200,8 @@ def fourier_modes(u, freq):
         return None, None
 
     # Frequencies
-    nfreq = np.shape(freq)[0]
-    freq_dim = DefaultDimension(name='freq_dim', default_value=nfreq)
-    f = Function(name='f', dimensions=(freq_dim,), shape=(nfreq,))
-    f.data[:] = np.array(freq[:])
+    f, nfreq = frequencies(freq)
+    freq_dim = f.dimensions[0]
 
     dft_modes = []
     for wf in as_tuple(u):
