@@ -178,10 +178,12 @@ adjoint(L::LazyScal) = LazyScal(L.s, adjoint(L.P))
 *(F::judiPropagator, q::Array{T, 6}) where T = F*vec(q)
 
 mul!(out::SourceType{T}, F::judiPropagator{T, O}, q::SourceType{T}) where {T<:Number, O} = begin y = F*q; copyto!(out, y) end
-mul!(out::SourceType{T}, F::joLinearFunction{T, T}, q::SourceType{T}) where {T<:Number} = begin y = F*q; copyto!(out, y) end
 mul!(out::SourceType{T}, F::judiAbstractJacobian{T, :born, FT}, q::Vector{T}) where {T<:Number, FT} = begin y = F*q[:]; copyto!(out, y) end
 mul!(out::SourceType{T}, F::judiAbstractJacobian{T, :born, FT}, q::Array{T, 2}) where {T<:Number, FT} = begin y = F*q[:]; copyto!(out, y) end
 mul!(out::SourceType{T}, F::judiAbstractJacobian{T, :born, FT}, q::Array{T, 3}) where {T<:Number, FT} = begin y = F*q[:]; copyto!(out, y) end
+mul!(out::SourceType{T1}, F::Union{joLinearFunction{T2, T1}, joLinearOperator{T2, T1}}, q::SourceType{T2}) where {T1<:Number, T2<:Number} = begin y = F*q; copyto!(out, y) end
+mul!(out::SourceType{T1}, F::Union{joLinearFunction{T2, T1}, joLinearOperator{T2, T1}}, q::Array{T2, 2}) where {T1<:Number, T2<:Number} = begin y = F*q[:]; copyto!(out, y) end
+mul!(out::SourceType{T1}, F::Union{joLinearFunction{T2, T1}, joLinearOperator{T2, T1}}, q::Array{T2, 3}) where {T1<:Number, T2<:Number} = begin y = F*q[:]; copyto!(out, y) end
 mul!(out::Array{T, 2}, F::judiAbstractJacobian{T, :adjoint_born, FT}, q::SourceType{T}) where {T<:Number, FT} =  begin y = F*q; copyto!(out, y) end
 mul!(out::Array{T, 3}, F::judiAbstractJacobian{T, :adjoint_born, FT}, q::SourceType{T}) where {T<:Number, FT} =  begin y = F*q; copyto!(out, y) end
 

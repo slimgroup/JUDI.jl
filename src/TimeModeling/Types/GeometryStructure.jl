@@ -44,6 +44,7 @@ get_nsrc(g::GeometryOOC) = length(g.container)
 
 n_samples(g::GeometryOOC, nsrc::Integer) = sum([g.nrec[j]*g.nt[j] for j=1:nsrc])
 n_samples(g::GeometryIC, nsrc::Integer) = sum([length(g.xloc[j])*g.nt[j] for j=1:nsrc])
+n_samples(g::Geometry) = n_samples(g, get_nsrc(g))
 
 ################################################ Constructors ####################################################################
 
