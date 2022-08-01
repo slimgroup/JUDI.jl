@@ -15,7 +15,7 @@ jobs:
     name: JUDI base on Julia ${{ matrix.version }} - ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     env:
-      DEVITO_ARCH: gcc-7
+      DEVITO_ARCH: gcc-9
       DEVITO_LANGUAGE: "openmp"
       OMP_NUM_THREADS: 4
       GROUP: "JUDI"
@@ -48,7 +48,7 @@ jobs:
 
       - name: Instal gcc
         if: runner.os == 'macOS'
-        run: brew install gcc@7
+        run: brew install gcc@9
 
       - name: Set julia python
         run: |

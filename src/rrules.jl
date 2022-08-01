@@ -30,3 +30,10 @@ end
 
 # projection
 (project::ProjectTo{AbstractArray})(dx::PhysicalParameter) = project(reshape(dx.data, project.axes))
+
+# Adjoint to avoid odd corner cases in some Zygote version
+function rrule(::typeof(adjoint), F::judiPropagator)
+    Fa = adjoint(F)
+    _LinOp_pullback(y) = (NoTangent(), adjoint(y))
+    return Fa, _LinOp_pullback
+end
