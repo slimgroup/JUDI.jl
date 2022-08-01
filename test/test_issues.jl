@@ -35,3 +35,18 @@ end
         @test typeof(model_true.m) == PhysicalParameter{Float32}
     end
 end
+
+@testset "Test issue #130" begin
+    @timeit TIMEROUTPUT "Issue 130" begin
+        model, model0, dm = setup_model(tti, viscoacoustic, nlayer)
+        q, srcGeometry, recGeometry, f0 = setup_geom(model; nsrc=1)
+        opt = Options(save_data_to_disk=true, file_path=pwd(),	# path to files
+                      file_name="test_wri")	# saves files as file_name_xsrc_ysrc.segy
+        F = judiModeling(model, srcGeometry, recGeometry; options=opt)
+        dobs = F*q
+        f, gm, gy = twri_objective(model0, q, dobs, nothing; options=opt, optionswri=TWRIOptions(params=:all))
+        @test typeof(f) <: Number
+        @test typeof(gy) <: judiVector
+        @test typeof(gm) <: PhysicalParameter
+    end
+end
