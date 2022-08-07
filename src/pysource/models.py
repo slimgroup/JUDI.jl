@@ -472,7 +472,8 @@ class EmptyModel(object):
             subdomains = (physdomain, fsdomain)
         else:
             subdomains = ()
-        self.grid = Grid(tuple([11]*len(spacing)), extent=[s*10 for s in spacing],
+        self.grid = Grid(tuple([space_order+1]*len(spacing)),
+                         extent=[s*space_order for s in spacing],
                          subdomains=subdomains)
         self.dimensions = self.grid.dimensions
 

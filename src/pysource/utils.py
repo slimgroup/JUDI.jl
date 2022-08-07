@@ -2,12 +2,6 @@ import numpy as np
 from sympy import sqrt
 from devito import configuration
 
-try:
-    from devito.core.cpu import Cpu64OperatorMixin as cpo
-except ImportError:
-    from devito.core.cpu import CPU64NoopOperator as cpo
-
-from devito.exceptions import InvalidOperator
 from devito.tools import as_tuple
 
 
@@ -93,25 +87,6 @@ def opt_op(model):
                 'mpi': configuration['mpi']}
     else:
         opts = {'openmp': True, 'par-collapse-ncores': 2, 'mpi': configuration['mpi']}
-    # Minimal size temporaries
-    if not model.fs and not (configuration['platform'].name in ['nvidiaX', 'amdgpuX']):
-        try:
-            opts['min-storage'] = True
-            'min-storage' in cpo._normalize_kwargs(options=dict(opts))['options']
-        except InvalidOperator:
-            opts.pop('min-storage')
-    # Cire rotate for tti
-    if model.is_tti and model.dim > 2:
-        try:
-            opts['cire-rotate'] = True
-            'cire-rotate' in cpo._normalize_kwargs(options=dict(opts))['options']
-        except InvalidOperator:
-            opts.pop('cire-rotate')
-        try:
-            opts['cire-repeats-sops'] = 9
-            'cire-repeats-sops' in cpo._normalize_kwargs(options=dict(opts))['options']
-        except InvalidOperator:
-            opts.pop('cire-repeats-sops')
     return ('advanced', opts)
 
 
