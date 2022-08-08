@@ -315,7 +315,7 @@ Also visit the Devito homepage at <https://www.devitoproject.org/publications> f
 Contact authors via: mlouboutin3@gatech.edu.
 
 [docs-stable-img]:https://img.shields.io/badge/docs-stable-blue.svg?style=plastic
-[docs-stable-status]:https://slimgroup.github.io/JUDI.jl
+[docs-stable-status]:https://slimgroup.github.io/JUDI.jl/stable
 
 [docs-dev-img]:https://img.shields.io/badge/docs-dev-blue.svg
 [docs-dev-status]:https://slimgroup.github.io/JUDI.jl/dev
