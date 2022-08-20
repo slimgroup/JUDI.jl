@@ -56,7 +56,8 @@ function setup_model(tti=false, viscoacoustic=false, nlayer=2; n=(301, 151), d=(
     else
         model = Model(n, d, o, m, rho0)
         model0 = Model(n, d, o, m0, rho0)
-        @test Model(n, d, o, m0; rho=rho0).rho == model0.rho
+        @test all(Model(n, d, o, m0; rho=rho0).b[:] .== 1f0 ./ rho0[:])
+        @test Model(n, d, o, m0; rho=rho0).b == model0.b
     end
     dm = model.m - model0.m
     return model, model0, dm
@@ -65,7 +66,6 @@ end
 """
 Sets up a simple 2D acquisition for the wave equation operators tests
 """
-
 function setup_geom(model; nsrc=1, tn=1500f0, dt=nothing)
     ## Set up receiver geometry
     nxrec = model.n[1] - 2

@@ -141,7 +141,7 @@ class Model(object):
     """
     def __init__(self, origin, spacing, shape, m, space_order=2, nbl=40,
                  dtype=np.float32, epsilon=None, delta=None, theta=None, phi=None,
-                 rho=1, qp=None, dm=None, fs=False, **kwargs):
+                 rho=None, b=None, qp=None, dm=None, fs=False, **kwargs):
         # Setup devito grid
         self.shape = tuple(shape)
         self.nbl = int(nbl)
@@ -181,7 +181,7 @@ class Model(object):
         # Create square slowness of the wave as symbol `m`
         self._m = self._gen_phys_param(m, 'm', space_order)
         # density
-        self._init_density(rho, space_order)
+        self._init_density(rho, b, space_order)
         self._dm = self._gen_phys_param(dm, 'dm', space_order)
 
         # Model type
@@ -209,17 +209,18 @@ class Model(object):
         # User provided dt
         self._dt = kwargs.get('dt')
 
-    def _init_density(self, rho, so):
+    def _init_density(self, rho, b, so):
         """
         Initialize density parameter. Depending on variance in density
         either density or inverse density is setup.
         """
-        if np.max(rho)/np.min(rho) > 10:
+        if rho is not None:
             self.rho = self._gen_phys_param(rho, 'rho', so)
             self.irho = 1 / self.rho
+        elif b is not None:
+            self.irho = self._gen_phys_param(b, 'irho', so)
         else:
-            self.irho = self._gen_phys_param(rho, 'irho', so,
-                                             func=lambda x: np.reciprocal(x))
+            self.irho = 1
 
     @property
     def padsizes(self):

@@ -30,6 +30,26 @@ function test_model(ndim; tti=false)
     return model
 end
 
+function test_density(ndim)
+    n = Tuple(121 for i=1:ndim)
+    # non zero origin to check 'limit_model_to_receiver_area'
+    o = (10, 0, 0)[1:ndim]
+    d = Tuple(10. for i=1:ndim)
+    m = .5f0 .+ rand(Float32, n...)
+    rho = rand(Float32, n) .+ 1f0
+    model = Model(n, d, o, m, rho; nb=0)
+    @test :b in keys(model.params)
+    modelpy = devito_model(model, Options())
+    @test isapprox(modelpy.irho.data, model.b)
+
+    rho[61] = 1000
+    model = Model(n, d, o, m, rho; nb=0)
+    @test :rho in keys(model.params)
+    modelpy = devito_model(model, Options())
+    @test isapprox(modelpy.rho.data, model.rho)
+end
+
+
 # Test padding and its adjoint
 function test_padding(ndim)
 
@@ -127,6 +147,7 @@ end
         setup_3d()
         for ndim=[2, 3]
             test_padding(ndim)
+            test_density(ndim)
         end
         opt = Options(frequencies=[[2.5, 4.5], [3.5, 5.5]])
         @test subsample(opt, 1).frequencies == [2.5, 4.5]
