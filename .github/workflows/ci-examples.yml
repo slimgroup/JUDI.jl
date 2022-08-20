@@ -44,11 +44,14 @@ jobs:
       fail-fast: false
       matrix:
         example: ${{ fromJson(needs.list-examples.outputs.matrix) }}
-        version: ['1.7']
+        version: ['1.8']
 
         include:
          - example: "examples/scripts/modeling_basic_2D.jl"
            version: '1.6'
+
+         - example: "examples/scripts/modeling_basic_2D.jl"
+           version: '1.7'
 
     steps:
       - name: Checkout JUDI

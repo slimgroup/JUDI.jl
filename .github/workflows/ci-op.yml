@@ -27,7 +27,7 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         op: ["ISO_OP", "ISO_OP_FS", "TTI_OP", "TTI_OP_FS", "BASICS"]
-        version: ['1.7']
+        version: ['1.8']
         omp: [2]
   
         include:
@@ -38,7 +38,12 @@ jobs:
 
           - os: macos-latest
             version: '1.7'
-            op: "ISO_OP_FS"
+            op: "BASICS"
+            omp: 1
+
+          - os: macos-latest
+            version: '1.8'
+            op: "BASICS"
             omp: 1
           
           - os: ubuntu-latest
@@ -48,7 +53,7 @@ jobs:
 
           - os: ubuntu-latest
             version: '1.6'
-            op: "TTI_OP"
+            op: "BASICS"
             omp: 2
 
     steps:

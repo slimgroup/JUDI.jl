@@ -279,10 +279,14 @@ function Model(n::IntTuple, d::RealTuple, o::RealTuple, m;
                phi=nothing, rho=nothing, qp=nothing, nb=40)
 
     params = Dict(:m => PhysicalParameter(Float32.(m), d, o))
-    for (name, val)=zip([:rho, :qp, :epsilon, :delta, :theta, :phi], [rho, qp, epsilon, delta, theta, phi])
+    for (name, val)=zip([:qp, :epsilon, :delta, :theta, :phi], [qp, epsilon, delta, theta, phi])
         ~isnothing(val) && (params[name] = PhysicalParameter(Float32.(val), n, d, o))
     end
-    
+    if ~isnothing(rho)
+        r = /(extrema(rho)...)
+        val, name = r > .1 ? (1f0 ./ rho, :b) : (rho, :rho)
+        params[name] = PhysicalParameter(Float32.(val), n, d, o)
+    end
     return Model(n, d, o, nb, params)
 end
 
