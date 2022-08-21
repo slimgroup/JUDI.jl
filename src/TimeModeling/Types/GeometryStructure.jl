@@ -172,10 +172,64 @@ end
 
 ################################################ Constructors from SEGY data  ####################################################
 
+# Utility function to prepare dtCell, ntCell, tCell from SEGY or based on user defined dt and t.
+# Useful when creating geometry for Forward Modeling with custom timings.
+function timings_from_segy(data::Union{SegyIO.SeisBlock,SegyIO.SeisCon,Array{SegyIO.SeisCon,1}}; dt=[], t=[])
+
+    # Get nsrc
+    if isa(data,SegyIO.SeisBlock)
+        src = get_header(data,"FieldRecord")
+        nsrc = length(unique(src))
+    else
+        nsrc = length(data)
+    end
+
+    # Prepare dtCell
+    if isempty(dt)
+        if isa(data,SegyIO.SeisBlock)
+            dtCell = fill(Float32(get_header(data, "dt")[1]/1f3), nsrc)
+        elseif isa(data,SegyIO.SeisCon)
+            dtCell = [Float32(data.blocks[j].summary["dt"][1]/1f3) for j=1:nsrc]
+        else
+            dtCell = [Float32(data[j].blocks[1].summary["dt"][1]/1f3) for j=1:nsrc]
+        end
+    elseif isa(dt,Real)
+        dtCell = fill(Float32(dt), nsrc)
+    elseif isa(dt,Array{<:Real,1}) && length(dt) == nsrc
+        dtCell = Float32.(dt)
+    else
+        throw("User defined `dt` is neither: Real, Array of Real or the length of Array doesn't match the number of sources in SEGY")
+    end
+
+    # Prepare tCell and ntCell
+    if isempty(t)
+        if isa(data,SegyIO.SeisBlock)
+            ntCell = fill(Integer(get_header(data, "ns")[1]), nsrc)
+            tCell = Float32.((ntCell.-1).*dtCell)
+        elseif isa(data,SegyIO.SeisCon)
+            ntCell = fill(Integer(data.ns), nsrc)
+            tCell = Float32.((ntCell.-1).*dtCell)
+        else
+            ntCell = [Integer(data[j].ns) for j=1:nsrc]
+            tCell = Float32.((ntCell.-1).*dtCell)
+        end
+    elseif isa(t,Real)
+        tCell = fill(Float32(t), nsrc)
+        ntCell = floor.(Integer, tCell ./ dtCell) .+ 1
+    elseif isa(t,Array{<:Real,1}) && length(t) == nsrc
+        tCell = Float32.(t)
+        ntCell = floor.(Integer, tCell ./ dtCell) .+ 1
+    else
+        throw("User defined `t` is neither: Real, Array of Real or the length of Array doesn't match the number of sources in SEGY")
+    end
+    return dtCell,ntCell,tCell
+end
+
 # Set up source geometry object from in-core data container
 function Geometry(data::SegyIO.SeisBlock; key="source", segy_depth_key="", dt=[], t=[])
     src = get_header(data,"FieldRecord")
-    nsrc = length(unique(src))
+    usrc = unique(src)
+    nsrc = length(usrc)
     if key=="source"
         isempty(segy_depth_key) && (segy_depth_key="SourceSurfaceElevation")
         params = ["SourceX","SourceY",segy_depth_key]
@@ -196,7 +250,7 @@ function Geometry(data::SegyIO.SeisBlock; key="source", segy_depth_key="", dt=[]
     zloc_full = get_header(data, params[3])
 
     for j=1:nsrc
-        traces = findall(src .== unique(src)[j])
+        traces = findall(src .== usrc[j])
         if key=="source"    # assume same source location for all traces within one shot record
             xloc[j] = convert(gt, xloc_full[traces][1])
             yloc[j] = convert(gt,yloc_full[traces][1])
@@ -214,32 +268,7 @@ function Geometry(data::SegyIO.SeisBlock; key="source", segy_depth_key="", dt=[]
         zloc = convertToCell(zloc)
     end
 
-    # Prepare dtCell
-    if isempty(dt)
-        dt_full = get_header(data, "dt")[1]
-        dtCell = fill(Float32(dt_full/1f3), nsrc)
-    elseif isa(dt,Real)
-        dtCell = fill(Float32(dt), nsrc)
-    elseif isa(dt,Array{<:Real,1}) && length(dt) == nsrc
-        dtCell = Float32.(dt)
-    else
-        throw("User defined `dt` is neither: Real, Array of Real or the length of Array doesn't match the number of sources in SEGY")
-    end
-
-    # Prepare tCell and ntCell
-    if isempty(t)
-        nt_full = get_header(data, "ns")[1]
-        ntCell = fill(Integer(nt_full), nsrc)
-        tCell = Float32.((ntCell.-1).*dtCell)
-    elseif isa(t,Real)
-        tCell = fill(Float32(t), nsrc)
-        ntCell = floor.(Integer, tCell ./ dtCell) .+ 1
-    elseif isa(t,Array{<:Real,1}) && length(t) == nsrc
-        tCell = Float32.(t)
-        ntCell = floor.(Integer, tCell ./ dtCell) .+ 1
-    else
-        throw("User defined `t` is neither: Real, Array of Real or the length of Array doesn't match the number of sources in SEGY")
-    end
+    dtCell,ntCell,tCell = timings_from_segy(data, dt=dt, t=t)
     return GeometryIC{Float32}(xloc,yloc,zloc,dtCell,ntCell,tCell)
 end
 
@@ -263,31 +292,8 @@ function Geometry(data::SegyIO.SeisCon; key="source", segy_depth_key="", dt=[], 
         nrec[j] = key=="source" ? 1 : Int((data.blocks[j].endbyte - data.blocks[j].startbyte)/(240 + data.ns*4))
     end
 
-    # Prepare dtCell
-    if isempty(dt)
-        dtCell = [Float32(data.blocks[j].summary["dt"][1]/1f3) for j=1:nsrc]
-    elseif isa(dt,Real)
-        dtCell = fill(Float32(dt), nsrc)
-    elseif isa(dt,Array{<:Real,1}) && length(dt) == nsrc
-        dtCell = Float32.(dt)
-    else
-        throw("User defined `dt` is neither: Real, Array of Real or the length of Array doesn't match the number of sources in SEGY")
-    end
-
-    # Prepare tCell and ntCell
-    if isempty(t)
-        ntCell = fill(Integer(data.ns), nsrc)
-        tCell = Float32.((ntCell.-1).*dtCell)
-    elseif isa(t,Real)
-        tCell = fill(Float32(t), nsrc)
-        ntCell = floor.(Integer, tCell ./ dtCell) .+ 1
-    elseif isa(t,Array{<:Real,1}) && length(t) == nsrc
-        tCell = Float32.(t)
-        ntCell = floor.(Integer, tCell ./ dtCell) .+ 1
-    else
-        throw("User defined `t` is neither: Real, Array of Real or the length of Array doesn't match the number of sources in SEGY")
-    end
-    return  GeometryOOC{Float32}(container,dtCell,ntCell,tCell,nrec,key,segy_depth_key)
+    dtCell,ntCell,tCell = timings_from_segy(data, dt=dt, t=t)
+    return GeometryOOC{Float32}(container,dtCell,ntCell,tCell,nrec,key,segy_depth_key)
 end
 
 # Set up geometry summary from out-of-core data container passed as cell array
@@ -309,31 +315,8 @@ function Geometry(data::Array{SegyIO.SeisCon,1}; key="source", segy_depth_key=""
         nrec[j] = key=="source" ? 1 : Int((data[j].blocks[1].endbyte - data[j].blocks[1].startbyte)/(240 + data[j].ns*4))
     end
 
-    # Prepare dtCell
-    if isempty(dt)
-        dtCell = [Float32(data[j].blocks[1].summary["dt"][1]/1f3) for j=1:nsrc]
-    elseif isa(dt,Real)
-        dtCell = fill(Float32(dt), nsrc)
-    elseif isa(dt,Array{<:Real,1}) && length(dt) == nsrc
-        dtCell = Float32.(dt)
-    else
-        throw("User defined `dt` is neither: Real, Array of Real or the length of Array doesn't match the number of sources in SEGY")
-    end
-
-    # Prepare tCell and ntCell
-    if isempty(t)
-        ntCell = [Integer(data[j].ns) for j=1:nsrc]
-        tCell = Float32.((ntCell.-1).*dtCell)
-    elseif isa(t,Real)
-        tCell = fill(Float32(t), nsrc)
-        ntCell = floor.(Integer, tCell ./ dtCell) .+ 1
-    elseif isa(t,Array{<:Real,1}) && length(t) == nsrc
-        tCell = Float32.(t)
-        ntCell = floor.(Integer, tCell ./ dtCell) .+ 1
-    else
-        throw("User defined `t` is neither: Real, Array of Real or the length of Array doesn't match the number of sources in SEGY")
-    end
-    return  GeometryOOC{Float32}(container,dtCell,ntCell,tCell,nrec,key,segy_depth_key)
+    dtCell,ntCell,tCell = timings_from_segy(data, dt=dt, t=t)
+    return GeometryOOC{Float32}(container,dtCell,ntCell,tCell,nrec,key,segy_depth_key)
 end
 
 # Load geometry from out-of-core Geometry container
