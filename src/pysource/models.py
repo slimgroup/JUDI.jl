@@ -483,7 +483,7 @@ class EmptyModel(object):
         for p in set(p_params) - {'damp'}:
             setattr(self, p, Function(name=p, grid=self.grid, space_order=space_order))
         if 'irho' not in p_params:
-            self.irho = 1
+            self.irho = 1 if 'rho' not in p_params else 1 / self.rho
 
     @property
     def spacing_map(self):
