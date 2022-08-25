@@ -50,3 +50,24 @@ end
         @test typeof(gm) <: PhysicalParameter
     end
 end
+
+@testset "Test issue #140" begin
+    @timeit TIMEROUTPUT "Issue 140" begin
+        n = (120, 100)   # (x,y,z) or (x,z)
+        d = (10., 10.)
+        o = (0., 0.)
+        
+        v = ones(Float32,n) .+ 0.5f0
+        v[:,Int(round(end/2)):end] .= 3.5f0
+        rho = ones(Float32,n) ;
+        rho[1,1] = .09;# error but .1 makes rho go to b and then it is happy
+        m = (1f0 ./ v).^2
+        nsrc = 2	# number of sources
+        model = Model(n, d, o, m;rho=rho)
+        
+        q, srcGeometry, recGeometry, f0 = setup_geom(model; nsrc=nsrc)
+        F = judiModeling(model, srcGeometry, recGeometry)
+        dobs = F*q
+        @test ~isnan(norm(dobs))
+    end
+end
