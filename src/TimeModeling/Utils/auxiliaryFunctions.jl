@@ -6,7 +6,7 @@
 # Updated July 2020
 
 export ricker_wavelet, get_computational_nt, calculate_dt, setup_grid, setup_3D_grid
-export convertToCell, limit_model_to_receiver_area, extend_gradient, remove_out_of_bounds_receivers
+export convertToCell, limit_model_to_receiver_area, remove_out_of_bounds_receivers, extend_gradient
 export time_resample, remove_padding, subsample, process_input_data
 export generate_distribution, select_frequencies
 export devito_model, pad_sizes, pad_array
@@ -184,34 +184,6 @@ function limit_model_to_receiver_area(srcGeometry::Geometry, recGeometry::Geomet
 
     pert = reshape(pert, n_orig)[inds...]
     return model, vec(pert)
-end
-
-"""
-    extend_gradient(model_full, model, array)
-
-This operation does the opposite of [`limit_model_to_receiver_area`](@ref) and put back a cropped array into
-the full model.
-
-Parameters
-* `model_full`: Full domain model.
-* `model`: Cropped model.
-* `array`: Array to be extended (padded with zero) to the full model size.
-"""
-function extend_gradient(model_full::Model, model::Model, gradient::Union{Array, PhysicalParameter})
-    # Extend gradient back to full model size
-    ndim = length(model.n)
-    full_gradient = similar(gradient, model_full)
-    fill!(full_gradient, 0)
-    nx_start = Int(Float32(Float32(model.o[1] - model_full.o[1]) ÷ model.d[1])) + 1
-    nx_end = nx_start + model.n[1] - 1
-    if ndim == 2
-        full_gradient[nx_start:nx_end,:] = gradient
-    else
-        ny_start = Int((model.o[2] - model_full.o[2])/model.d[2] + 1)
-        ny_end = ny_start + model.n[2] - 1
-        full_gradient[nx_start:nx_end,ny_start:ny_end,:] = gradient
-    end
-    return full_gradient
 end
 
 """
@@ -789,3 +761,7 @@ as_vec(x::Tuple, v::Val) = tuple((as_vec(xi, v) for xi in x)...)
 as_vec(x::Ref, ::Val) = x[]
 as_vec(x::PhysicalParameter, ::Val{true}) = vec(x.data)
 as_vec(x::judiMultiSourceVector, ::Val{true}) = vec(x)
+
+
+######### backward compat
+extend_gradient(model_full, model, array) = array

@@ -40,10 +40,7 @@ function multi_src_fg(model_full::Model, source::judiVector, dObs::judiVector, d
                   dft_sub=options.dft_subsampling_factor[1], f0=options.f0, return_obj=true)
 
     argout2 = remove_padding(argout2, modelPy.padsizes; true_adjoint=options.sum_padding)
-    if options.limit_m==true
-        argout2 = extend_gradient(model_full, model, argout2)
-    end
-    return Ref{Float32}(argout1), PhysicalParameter(argout2, model_full.d, model_full.o)
+    return Ref{Float32}(argout1), PhysicalParameter(argout2, model.d, model.o)
 end
 
 # Find number of experiments
