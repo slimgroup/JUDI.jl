@@ -19,7 +19,7 @@ using ChainRulesCore
 
 # Import Base functions to dispatch on JUDI types
 import Base.depwarn
-import Base.*, Base./, Base.+, Base.-, Base.==
+import Base.*, Base./, Base.+, Base.-, Base.==, Base.\
 import Base.copy!, Base.copy, Base.copyto!, Base.deepcopy, Base.summary
 import Base.sum, Base.ndims, Base.reshape, Base.fill!, Base.axes, Base.dotview
 import Base.eltype, Base.length, Base.size, Base.iterate, Base.show, Base.display, Base.showarg

@@ -156,17 +156,39 @@ isapprox(A::PhysicalParameter, B::AbstractArray; kwargs...) = isapprox(A.data, B
 isapprox(A::AbstractArray, B::PhysicalParameter; kwargs...) = isapprox(A, B.data)
 
 # # Arithmetic operations
-function compare(A::PhysicalParameter, B::PhysicalParameter)
-    A.o != B.o && throw(PhysicalParameterException("Incompatible origins $(A.o) and $(B.o)"))
-    A.d != B.d && throw(PhysicalParameterException("Incompatible spacing $(A.d) and $(B.d)"))
-    A.n != B.n && throw(PhysicalParameterException("Incompatible sizes $(A.n) and $(B.n)"))
+compare(A::PhysicalParameter, B::PhysicalParameter) =  (A.o == B.o &&  A.d == B.d &&  A.n == B.n)
+
+function combine(op, A::PhysicalParameter{T}, B::PhysicalParameter{T}) where T
+    o = min.(A.o, B.o)
+    sa = floor.(Int, (A.o .- o) ./ A.d) .+ 1
+    ea = sa .+ A.n .- 1
+    sb = floor.(Int, (B.o .- o) ./ B.d) .+ 1
+    eb = sb .+ B.n .- 1
+    mn = max.(ea, eb)
+    out = zeros(T, mn)
+    ia = [s:e for (s, e) in zip(sa, ea)]
+    ib = [s:e for (s, e) in zip(sb, eb)]
+    out[ia...] .= A.data
+    broadcast!(op, view(out, ib...),  view(out, ib...), B.data)
+    return PhysicalParameter{T}(mn, A.d, o, out)
 end
 
 for op in [:+, :-, :*, :/]
     @eval function $(op)(A::PhysicalParameter{T}, B::PhysicalParameter{T}) where T
-        compare(A, B)
-        return PhysicalParameter(broadcast($(op), A.data, B.data), A)
+        if compare(A, B)
+            return PhysicalParameter(broadcast($(op), A.data, B.data), A)
+        elseif A.d == B.d
+            # same grid but difference origin/shape, merging
+            return combine($(op), A, B)
+        else
+            throw(PhysicalParameterException("Incompatible grid"))
+        end
     end
+end
+
+function *(A::Union{joMatrix, joLinearFunction, joLinearOperator, joCoreBlock}, p::PhysicalParameter{RDT}) where {RDT}
+    @warn "JOLI linear operator, returning julia Array"
+    return A*vec(p.data)
 end
 
 # Brodacsting
@@ -188,26 +210,25 @@ find_pm(::Tuple{}) = nothing
 find_pm(a::PhysicalParameter, rest) = a
 find_pm(::Any, rest) = find_pm(rest)
 
-for op in [:+, :-, :*, :/]
-    for (T1, T2) in ([DenseArray, PhysicalParameter], [PhysicalParameter, DenseArray], 
-                     [PhysicalParameter, PhysicalParameter])
-        @eval function broadcasted(::typeof($op), A::$T1, B::$T2)
-            pm = find_pm(A, B)
-            return PhysicalParameter(materialize(broadcasted($(op), A[:], B[:])), pm)
-        end
+function materialize!(A::PhysicalParameter, ev::PhysicalParameter)
+    A.d == ev.d || throw(PhysicalParameterException("Incompatible grid"))
+    A.n = ev.n
+    A.o = ev.o
+    A.data = ev.data
+    nothing
+end
+
+materialize!(A::PhysicalParameter, B::Broadcast.Broadcasted{Broadcast.DefaultArrayStyle{PhysicalParameter}}) = materialize!(A, B.f(B.args...))
+materialize!(A::PhysicalParameter, B::Broadcast.Broadcasted{Broadcast.DefaultArrayStyle{N}}) where N = materialize!(A.data, reshape(materialize(B), A.n))
+materialize!(A::AbstractArray, B::Broadcast.Broadcasted{Broadcast.ArrayStyle{PhysicalParameter}}) = materialize!(A, reshape(materialize(B).data, size(A)))
+
+for op in [:+, :-, :*, :/, :\]
+    @eval begin
+        broadcasted(::typeof($op), A::PhysicalParameter{T}, B::DenseArray{T}) where T = PhysicalParameter{T}(A.n, A.d, A.o, materialize(broadcasted($(op), A.data, reshape(B, A.n))))
+        broadcasted(::typeof($op), B::DenseArray{T}, A::PhysicalParameter{T}) where T = PhysicalParameter{T}(A.n, A.d, A.o, materialize(broadcasted($(op), reshape(B, A.n), A.data)))
+        broadcasted(::typeof($op), A::PhysicalParameter{T}, B::PhysicalParameter{T}) where T = $(op)(A, B)
     end
-    @eval broadcasted(::typeof($op), p::PhysicalParameter, bc::Base.Broadcast.Broadcasted) = broadcasted($(op), p, materialize(bc))
-    @eval broadcasted(::typeof($op), bc::Base.Broadcast.Broadcasted, p::PhysicalParameter) = broadcasted($(op), materialize(bc), p)
 end
-
-function *(A::Union{joMatrix, joLinearFunction, joLinearOperator, joCoreBlock}, p::PhysicalParameter{RDT}) where {RDT}
-    @warn "JOLI linear operator, returning julia Array"
-    return A*vec(p.data)
-end
-
-materialize!(p::PhysicalParameter{RDT}, b::Array{<:Number, N}) where{RDT, N} = (p.data .= reshape(b, axes(p.data)))
-materialize!(p::PhysicalParameter{RDT}, b::Base.Broadcast.Broadcasted{Base.Broadcast.DefaultArrayStyle{N}}) where{RDT, N} = materialize!(p, collect(b))
-materialize!(p::Array, b::Broadcast.Broadcasted{Broadcast.ArrayStyle{PhysicalParameter}}) = materialize!(p, reshape(collect(b), size(p)))
 
 # Linalg Extras
 mul!(x::PhysicalParameter, F::Union{joAbstractLinearOperator, joLinearFunction, Array}, y::Array) = mul!(view(x.data, :), F, y)

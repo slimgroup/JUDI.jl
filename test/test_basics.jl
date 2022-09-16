@@ -79,6 +79,7 @@ function test_limit_m(ndim, tti)
     recGeometry = example_rec_geometry(cut=true)
     buffer = 100f0
     dm = rand(Float32, model.n...)
+    dmb = PhysicalParameter(0 .* dm, model.n, model.d, model.o)
     new_mod, dm_n = limit_model_to_receiver_area(srcGeometry, recGeometry, deepcopy(model), buffer; pert=dm)
 
     # check new_mod coordinates
@@ -107,14 +108,12 @@ function test_limit_m(ndim, tti)
         @test isapprox(new_mod.phi, model.phi[inds...]; rtol=ftol)
     end
 
-    ex_dm = extend_gradient(model, new_mod, dm_n)
-    @test size(ex_dm) == size(dm)
     dmt = PhysicalParameter(dm_n, new_mod.n, model.d, new_mod.o)
-    ex_dm = extend_gradient(model, new_mod, dmt)
-    @test size(ex_dm.data) == size(dm)
+    ex_dm = dmb + dmt
     @test ex_dm.o == model.o
     @test ex_dm.n == model.n
-
+    @test ex_dm.d == model.d
+    @test norm(ex_dm) == norm(dm_n)
 end
 
 function setup_3d()

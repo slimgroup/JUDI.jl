@@ -103,8 +103,7 @@ function twri_objective(model_full::Model, source::judiVector, dObs::judiVector,
 
     if (optionswri.params in [:m, :all])
         gradm = remove_padding(gradm, modelPy.padsizes; true_adjoint=options.sum_padding)
-        options.limit_m==true && (gradm = extend_gradient(model_full, model, gradm))
-        gradm =  PhysicalParameter(gradm, model_full.d, model_full.o)
+        gradm = PhysicalParameter(gradm, model.d, model.o)
     end
     if ~isnothing(grady)
         grady = time_resample(grady, dtComp, dObs.geometry)

@@ -37,7 +37,7 @@ ftol = 1f-5
         @test ps.o == o
 
         @test isequal(p.data, a)
-        p .= zeros(n...)
+        p .= zeros(Float32, n...)
         p .= a
         @test isequal(p.data, a)
         @test p.d == d
@@ -82,8 +82,8 @@ ftol = 1f-5
         pl = PhysicalParameter(0, n, d, o)
         @test pl.data == 0
         @test isapprox(dot(p, p), norm(p)^2)
-        @test isapprox(dot(ones(n), p), sum(p.data))
-        @test isapprox(dot(p, ones(n)), sum(p.data))
+        @test isapprox(dot(ones(Float32, n), p), sum(p.data))
+        @test isapprox(dot(p, ones(Float32, n)), sum(p.data))
 
         # broadcast multiplication
         u = p
@@ -109,10 +109,10 @@ ftol = 1f-5
         u_scale .= u ./ v
         @test isapprox(u_scale.data[1], u.data[1]./v.data[1])
 
-        @test isapprox(u.*c, u)
-        @test isapprox(c.*u, u)
-        @test isapprox(u./c, u)
-        @test isapprox(c./u, 1 ./u)
+        @test isapprox(u .* c, u)
+        @test isapprox(c .* u, u)
+        @test isapprox(u ./ c, u)
+        @test isapprox(c ./ u, 1 ./u)
         @test isapprox(c .+ u, 1 .+ u)
         @test isapprox(c .- u, 1 .- u)
         @test isapprox(u .+ c, 1 .+ u)
@@ -195,5 +195,20 @@ ftol = 1f-5
         @test length(u2) == 2 * length(u)
         @test u2[1:length(u)] == vec(u.data)
         @test u2[length(u)+1:end] == vec(u.data)
+
+
+        # Test combinations
+        n = (120, 100)   # (x,y,z) or (x,z)
+        d = (10., 10.)
+        on = ones(Float32, n)
+
+        m1 = PhysicalParameter(n, d, (0f0, 0f0), on)
+        m2 = PhysicalParameter(n, d, (100f0, 100f0), on)
+        m12 = m1 + m2
+        @test m12.o == m1.o
+        @test m12.d == m1.d
+        @test m12.n == (130, 110)
+        # Check values               overlap   edges z  edges x    corners
+       @test norm(m12.data, 1) == (110*90*2 + 10*90*2 + 10*110*2 + 10*10*2)
     end
 end
