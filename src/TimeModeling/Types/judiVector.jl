@@ -71,7 +71,16 @@ wavelets or a single wavelet as an array):
     dobs = judiVector(seis_container; segy_depth_key="RecGroupElevation")
 
 """
+function check_geom(geom::Geometry, data)
+    if data isa Vector
+        (geom.nt[1] != size(data[1])[1]) && throw(judiMultiSourceException("Geometry's number of samples doesn't match the data: $(geom.nt[1]), $(size(data[1])[1])"))
+    else
+        (geom.nt[1] != size(data)[1]) && throw(judiMultiSourceException("Geometry's number of samples doesn't match the data: $(geom.nt[1]), $(size(data)[1])"))
+    end
+end
+
 function judiVector(geometry::Geometry, data::Array{T, N}) where {T, N}
+    check_geom(geometry, data)
     T == Float32 || (data = tof32(data))
     N < 3 || throw(judiMultiSourceException("Only 1D (trace) and 2D (record) input data supported"))
     nsrc = get_nsrc(geometry)
@@ -84,6 +93,7 @@ end
 
 # constructor if data is passed as a cell array
 function judiVector(geometry::Geometry, data::Vector{Array{T, N}}) where {T, N}
+    check_geom(geometry, data)
     T == Float32 || (data = tof32.(data))
     nsrcd = length(data)
     nsrcg = get_nsrc(geometry)
@@ -93,6 +103,7 @@ end
 
 # contructor for in-core data container and given geometry
 function judiVector(geometry::Geometry, data::SegyIO.SeisBlock)
+    check_geom(geometry, data)
     # length of data vector
     src = get_header(data,"FieldRecord")
     nsrc = length(unique(src))
@@ -107,6 +118,7 @@ end
 
 # contructor for single out-of-core data container and given geometry
 function judiVector(geometry::Geometry, data::SegyIO.SeisCon)
+    check_geom(geometry, data)
     # length of data vector
     nsrc = length(data)
     # fill data vector with pointers to data location
