@@ -185,40 +185,36 @@ function timings_from_segy(data::Union{SegyIO.SeisBlock,SegyIO.SeisCon,Array{Seg
     end
 
     # Prepare dtCell
-    if isempty(dt)
-        if isa(data,SegyIO.SeisBlock)
-            dtCell = fill(Float32(get_header(data, "dt")[1]/1f3), nsrc)
-        elseif isa(data,SegyIO.SeisCon)
-            dtCell = [Float32(data.blocks[j].summary["dt"][1]/1f3) for j=1:nsrc]
-        else
-            dtCell = [Float32(data[j].blocks[1].summary["dt"][1]/1f3) for j=1:nsrc]
-        end
-    elseif isa(dt,Real)
+    if isa(dt,Real)
         dtCell = fill(Float32(dt), nsrc)
     elseif isa(dt,Array{<:Real,1}) && length(dt) == nsrc
         dtCell = Float32.(dt)
+    elseif isempty(dt) && isa(data,SegyIO.SeisBlock)
+        dtCell = fill(Float32(get_header(data, "dt")[1]/1f3), nsrc)
+    elseif isempty(dt) && isa(data,SegyIO.SeisCon)
+        dtCell = [Float32(data.blocks[j].summary["dt"][1]/1f3) for j=1:nsrc]
+    elseif isempty(dt)
+        dtCell = [Float32(data[j].blocks[1].summary["dt"][1]/1f3) for j=1:nsrc]
     else
         throw("User defined `dt` is neither: Real, Array of Real or the length of Array doesn't match the number of sources in SEGY")
     end
 
     # Prepare tCell and ntCell
-    if isempty(t)
-        if isa(data,SegyIO.SeisBlock)
-            ntCell = fill(Integer(get_header(data, "ns")[1]), nsrc)
-            tCell = Float32.((ntCell.-1).*dtCell)
-        elseif isa(data,SegyIO.SeisCon)
-            ntCell = fill(Integer(data.ns), nsrc)
-            tCell = Float32.((ntCell.-1).*dtCell)
-        else
-            ntCell = [Integer(data[j].ns) for j=1:nsrc]
-            tCell = Float32.((ntCell.-1).*dtCell)
-        end
-    elseif isa(t,Real)
+    if isa(t,Real)
         tCell = fill(Float32(t), nsrc)
         ntCell = floor.(Integer, tCell ./ dtCell) .+ 1
     elseif isa(t,Array{<:Real,1}) && length(t) == nsrc
         tCell = Float32.(t)
         ntCell = floor.(Integer, tCell ./ dtCell) .+ 1
+    elseif isempty(t) && isa(data,SegyIO.SeisBlock)
+        ntCell = fill(Integer(get_header(data, "ns")[1]), nsrc)
+        tCell = Float32.((ntCell.-1).*dtCell)
+    elseif isempty(t) && isa(data,SegyIO.SeisCon)
+        ntCell = fill(Integer(data.ns), nsrc)
+        tCell = Float32.((ntCell.-1).*dtCell)
+    elseif isempty(t)
+        ntCell = [Integer(data[j].ns) for j=1:nsrc]
+        tCell = Float32.((ntCell.-1).*dtCell)
     else
         throw("User defined `t` is neither: Real, Array of Real or the length of Array doesn't match the number of sources in SEGY")
     end
