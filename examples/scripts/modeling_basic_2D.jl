@@ -70,11 +70,6 @@ xsrc = convertToCell(range(0f0, stop=(n[1]-1)*d[1], length=nsrc))
 ysrc = convertToCell(range(0f0, stop=0f0, length=nsrc))
 zsrc = convertToCell(range(d[1], stop=d[1], length=nsrc))
 
-# Set up source geometry (cell array with source locations for each shot)
-xsrc = convertToCell(range(0f0, stop=(n[1]-1)*d[1], length=nsrc))
-ysrc = convertToCell(range(0f0, stop=0f0, length=nsrc))
-zsrc = convertToCell(range(d[1], stop=d[1], length=nsrc))
-
 # Set up source structure
 srcGeometry = Geometry(xsrc, ysrc, zsrc; dt=dtD, t=timeD)
 
