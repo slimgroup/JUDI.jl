@@ -320,6 +320,10 @@ ftol = 1e-6
         @test isapprox(tr.geometry.xloc[1][12:end], -10f0*ones(11); atol=1f-14, rtol=1f-14)
         @test isapprox(tr.geometry.xloc[1][1:11], zeros(11); atol=1f-14, rtol=1f-14)
 
+        # Test exception if number of samples in geometry doesn't match ns of data
+        @test_throws JUDI.judiMultiSourceException judiVector(Geometry(0f0, 0f0, 0f0; dt=2, t=1000), randn(Float32, 10))
+        @test_throws JUDI.judiMultiSourceException judiVector(rec_geometry, randn(Float32, 10))        
+
         # Test integral & derivative
         refarray = Array{Array{Float32, 2}, 1}(undef, nsrc)
         for j=1:nsrc
