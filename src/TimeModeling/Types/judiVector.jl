@@ -71,14 +71,6 @@ wavelets or a single wavelet as an array):
     dobs = judiVector(seis_container; segy_depth_key="RecGroupElevation")
 
 """
-function check_geom(geom::Geometry, data)
-    if data isa Vector
-        (geom.nt[1] != size(data[1])[1]) && throw(judiMultiSourceException("Geometry's number of samples doesn't match the data: $(geom.nt[1]), $(size(data[1])[1])"))
-    else
-        (geom.nt[1] != size(data)[1]) && throw(judiMultiSourceException("Geometry's number of samples doesn't match the data: $(geom.nt[1]), $(size(data)[1])"))
-    end
-end
-
 function judiVector(geometry::Geometry, data::Array{T, N}) where {T, N}
     check_geom(geometry, data)
     T == Float32 || (data = tof32(data))

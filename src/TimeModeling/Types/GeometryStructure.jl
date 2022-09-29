@@ -424,3 +424,13 @@ end
 
 pushfield!(a::Array, b::Array) = append!(a, b)
 pushfield!(a, b) = nothing
+
+# Gets called by judiVector constructor to be sure that geometry is consistent with the data.
+# Data may be any of: Array, Vector, SeisBlock, SeisCon
+function check_geom(geom::Geometry, data)
+    if data isa Vector
+        (geom.nt[1] != size(data[1])[1]) && throw(judiMultiSourceException("Geometry's number of samples doesn't match the data: $(geom.nt[1]), $(size(data[1])[1])"))
+    else
+        (geom.nt[1] != size(data)[1]) && throw(judiMultiSourceException("Geometry's number of samples doesn't match the data: $(geom.nt[1]), $(size(data)[1])"))
+    end
+end
