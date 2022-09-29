@@ -249,8 +249,8 @@ function Geometry(data::SegyIO.SeisBlock; key="source", segy_depth_key="", dt=[]
         traces = findall(src .== usrc[j])
         if key=="source"    # assume same source location for all traces within one shot record
             xloc[j] = convert(gt, xloc_full[traces][1])
-            yloc[j] = convert(gt,yloc_full[traces][1])
-            zloc[j] = abs.(convert(gt,zloc_full[traces][1]))
+            yloc[j] = convert(gt, yloc_full[traces][1])
+            zloc[j] = abs.(convert(gt, zloc_full[traces][1]))
         else
             xloc[j] = convert(gt, xloc_full[traces])
             yloc[j] = convert(gt, yloc_full[traces])
@@ -426,10 +426,18 @@ pushfield!(a::Array, b::Array) = append!(a, b)
 pushfield!(a, b) = nothing
 
 # Gets called by judiVector constructor to be sure that geometry is consistent with the data.
-# Data may be any of: Array, Vector, SeisBlock, SeisCon
+# Data may be any of: Array, Array of Array, SeisBlock, SeisCon
 function check_geom(geom::Geometry, data)
-    if data isa Vector
+    if data isa Array && data[1] isa Array
         (geom.nt[1] != size(data[1])[1]) && throw(judiMultiSourceException("Geometry's number of samples doesn't match the data: $(geom.nt[1]), $(size(data[1])[1])"))
+    elseif data isa Array && data[1] isa SegyIO.SeisBlock
+        (geom.nt[1] != data[1].fileheader.bfh.ns) && throw(judiMultiSourceException("Geometry's number of samples doesn't match the data: $(geom.nt[1]), $(data[1].fileheader.bfh.ns)"))
+    elseif data isa Array && data[1] isa SegyIO.SeisCon
+        (geom.nt[1] != data[1].ns) && throw(judiMultiSourceException("Geometry's number of samples doesn't match the data: $(geom.nt[1]), $(data[1].ns)"))
+    elseif data isa SegyIO.SeisBlock
+        (geom.nt[1] != data.fileheader.bfh.ns) && throw(judiMultiSourceException("Geometry's number of samples doesn't match the data: $(geom.nt[1]), $(data.fileheader.bfh.ns)"))
+    elseif data isa SegyIO.SeisCon
+        (geom.nt[1] != data.ns) && throw(judiMultiSourceException("Geometry's number of samples doesn't match the data: $(geom.nt[1]), $(data.ns)"))
     else
         (geom.nt[1] != size(data)[1]) && throw(judiMultiSourceException("Geometry's number of samples doesn't match the data: $(geom.nt[1]), $(size(data)[1])"))
     end
