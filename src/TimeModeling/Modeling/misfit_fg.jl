@@ -1,7 +1,8 @@
 
 export fwi_objective, lsrtm_objective, fwi_objective!, lsrtm_objective!
 
-function multi_src_fg(model_full::Model, source::judiVector, dObs::judiVector, dm, options::JUDIOptions, nlind::Bool, lin::Bool)
+function multi_src_fg(model_full::Model, source::judiVector, dObs::judiVector, dm, options::JUDIOptions, nlind::Bool, lin::Bool,
+                      misfit::Function)
 # Setup time-domain linear or nonlinear foward and adjoint modeling and interface to OPESCI/devito
 
     # assert this is for single source LSRTM
@@ -37,11 +38,17 @@ function multi_src_fg(model_full::Model, source::judiVector, dObs::judiVector, d
                   src_coords, qIn, rec_coords, dObserved, t_sub=options.subsampling_factor,
                   space_order=options.space_order, checkpointing=options.optimal_checkpointing,
                   freq_list=freqs, ic=options.IC, is_residual=false, born_fwd=lin, nlind=nlind,
-                  dft_sub=options.dft_subsampling_factor[1], f0=options.f0, return_obj=true)
+                  dft_sub=options.dft_subsampling_factor[1], f0=options.f0, return_obj=true, misfit=misfit)
 
     argout2 = remove_padding(argout2, modelPy.padsizes; true_adjoint=options.sum_padding)
     return Ref{Float32}(argout1), PhysicalParameter(argout2, model.d, model.o)
 end
+
+
+####### Defaults
+multi_src_fg(model_full::Model, source::judiVector, dObs::judiVector, dm, options::JUDIOptions, nlind::Bool, lin::Bool) =
+    multi_src_fg(model_full::Model, source::judiVector, dObs::judiVector, dm, options::JUDIOptions, nlind::Bool, lin::Bool, mse)
+
 
 # Find number of experiments
 """

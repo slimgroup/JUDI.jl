@@ -236,7 +236,7 @@ ic_dict = {"isic_freq": isic_freq, "as_freq": crosscorr_freq,
 ls_dict = {"isic": isic_src, "fwi": fwi_src, "as": basic_src}
 
 
-def l2_loss(dsyn, dobs, dt, is_residual=False):
+def Loss(dsyn, dobs, dt, is_residual=False, misfit=None):
     """
     L2 loss and residual between the synthetic data dsyn and observed data dobs
 
@@ -251,7 +251,15 @@ def l2_loss(dsyn, dobs, dt, is_residual=False):
         Time sampling rate
     is_residual: bool
         Whether input dobs is already the data residual
+    misfit: function
+        User provided function of the form:
+        misifit(dsyn, dob) -> obj, adjoint_source
     """
+    if misfit is not None:
+        f, r = misfit(dsyn.data[:], dobs[:])
+        dsyn.data[:] = r[:]
+        return dt  * f, dsyn.data
+
     if not is_residual:
         try:
             dsyn[0].data[:] -= dobs[:] - dsyn[1].data[:]  # input is observed data
