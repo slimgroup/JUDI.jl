@@ -1,10 +1,10 @@
-# 2D FWI with student's t misfit on Overthrust model with SPG using minConf library
+# 2D Envelope FWI on Overthrust model with SPG using minConf library and Zygote for the derivative of the Envelope misfit
 # Author: Mathias Louboutin
 # Date: September 2022
 #
 
-using Statistics, Random, LinearAlgebra, PyPlot, SlimPlotting
-using JUDI, SlimOptim, HDF5, SegyIO
+using Statistics, Random, LinearAlgebra, PyPlot
+using JUDI, SlimOptim, HDF5, SegyIO, Zygote, FFTW
 
 # Load starting model
 n,d,o,m0 = read(h5open("$(JUDI.JUDI_DATA)/overthrust_model.h5","r"), "n", "d", "o", "m0")
@@ -30,16 +30,21 @@ src_geometry = Geometry(block; key="source")
 wavelet = ricker_wavelet(src_geometry.t[1],src_geometry.dt[1],0.008f0)  # 8 Hz wavelet
 q = judiVector(src_geometry,wavelet)
 
+############################### FWI ###########################################
 
-## Add outliers to the data
-for s=1:d_obs.nsrc
-    # wrongly scale a few traces
-    nrec = d_obs[s].geometry.nrec[1]
-    inds = rand(1:nrec, 10)
-    d_obs.data[s][:, inds] .*= 20
+
+function H(x)
+    n = size(x, 1)
+    σ = sign.(-n/2+1:n/2)
+    y = imag(ifft(fftshift(σ.*fftshift(fft(x, 1), 1), 1), 1))
+    return y
 end
 
-############################### FWI ###########################################
+function myloss(x, y)
+    ϕ = sum(abs2.((x-y) .+ 1im .* H(x-y)))
+    g = gradient(xs -> sum(abs2.((xs-y) .+ 1im .* H(xs-y))), x)
+    return ϕ, real.(g[1])
+end
 
 
 # Optimization parameters
@@ -48,12 +53,12 @@ batchsize = 8
 
 # Objective function for minConf library
 count = 0
-function objective_function(x, misfit=mse)
+function objective_function(x)
     model0.m .= reshape(x,model0.n);
 
     # fwi function value and gradient
     i = randperm(d_obs.nsrc)[1:batchsize]
-    fval, grad = fwi_objective(model0, q[i], d_obs[i]; misfit=misfit)
+    fval, grad = fwi_objective(model0, q[i], d_obs[i]; misfit=myloss)
     grad = .125f0*grad/maximum(abs.(grad))  # scale for line search
 
     global count; count+= 1
@@ -63,20 +68,11 @@ end
 # Bound projection
 proj(x) = reshape(median([vec(mmin) vec(x) vec(mmax)]; dims=2),model0.n)
 
-
-# Compare l2 with students t
-ϕmse = x->objective_function(x)
-ϕst = x->objective_function(x, studentst)
-
 # FWI with SPG
-m0 = vec(model0.m)
 options = spg_options(verbose=3, maxIter=fevals, memory=3)
-solmse = spg(ϕmse, m0, proj, options)
-solst = spg(ϕst, m0, proj, options)
+sol = spg(objective_function, vec(model0.m), proj, options)
 
 # Plot result
-figure(figsize=(10, 10))
-subplot(211)
-plot_velocity(reshape(solmse.x.^(-.5), model0.n)', d; name="MSE", new_fig=false)
-subplot(212)
-plot_velocity(reshape(solst.x.^(-.5), model0.n)', d; name="Student's t", new_fig=false)
+imshow(reshape(sqrt.(1f0 ./ sol.x), model0.n)', extent=[0, 10, 3, 0])
+xlabel("Lateral position [km]")
+ylabel("Depth [km]")
