@@ -256,9 +256,14 @@ def Loss(dsyn, dobs, dt, is_residual=False, misfit=None):
         misifit(dsyn, dob) -> obj, adjoint_source
     """
     if misfit is not None:
-        f, r = misfit(dsyn.data[:], dobs[:])
-        dsyn.data[:] = r[:]
-        return dt  * f, dsyn.data
+        try:
+            f, r = misfit(dsyn[0].data[:], dobs[:] - dsyn[1].data[:])
+            dsyn[0].data[:] = r[:]
+            return dt  * f, dsyn[0].data
+        except:
+            f, r = misfit(dsyn.data[:], dobs[:])
+            dsyn.data[:] = r[:]
+            return dt  * f, dsyn.data
 
     if not is_residual:
         try:
