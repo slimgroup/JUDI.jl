@@ -9,7 +9,6 @@ datapath = joinpath(dirname(pathof(JUDI)))*"/../data/"
 
 # number of sources/receivers
 nrec = 120
-ns = 251
 ftol = 1e-6
 
 ################################################# test constructors ####################################################
@@ -19,7 +18,7 @@ ftol = 1e-6
         # set up judiVector from array
         dsize = (nsrc,)
         rec_geometry = example_rec_geometry(nsrc=nsrc, nrec=nrec)
-        data = randn(Float32, ns, nrec)
+        data = randn(Float32, rec_geometry.nt[1], nrec)
         d_obs = judiVector(rec_geometry, data)
         @test typeof(d_obs) == judiVector{Float32, Array{Float32, 2}}
         @test isequal(process_input_data(d_obs, rec_geometry), d_obs)
@@ -34,7 +33,7 @@ ftol = 1e-6
         # set up judiVector from cell array
         data = Array{Array{Float32, 2}, 1}(undef, nsrc)
         for j=1:nsrc
-            data[j] = randn(Float32, ns, nrec)
+            data[j] = randn(Float32, rec_geometry.nt[1], nrec)
         end
         d_obs =  judiVector(rec_geometry, data)
 
@@ -131,7 +130,7 @@ ftol = 1e-6
         # lmul!, rmul!, ldiv!, rdiv!
         data_ones = Array{Array{Float32, 2}, 1}(undef, nsrc)
         for j=1:nsrc
-            data_ones[j] = ones(Float32, ns, nrec)
+            data_ones[j] = ones(Float32, rec_geometry.nt[1], nrec)
         end
         d1 =  judiVector(rec_geometry, data_ones)
         lmul!(2f0, d1)
@@ -155,9 +154,9 @@ ftol = 1e-6
         @test isapprox(abs.(d_block.data[1]), abs(d_block).data[1]) # need to add iterate for JUDI vector
 
         # vector space axioms
-        u = judiVector(rec_geometry, randn(Float32, ns, nrec))
-        v = judiVector(rec_geometry, randn(Float32, ns, nrec))
-        w = judiVector(rec_geometry, randn(Float32, ns, nrec))
+        u = judiVector(rec_geometry, randn(Float32, rec_geometry.nt[1], nrec))
+        v = judiVector(rec_geometry, randn(Float32, rec_geometry.nt[1], nrec))
+        w = judiVector(rec_geometry, randn(Float32, rec_geometry.nt[1], nrec))
         a = .5f0 + rand(Float32)
         b = .5f0 + rand(Float32)
 
@@ -221,9 +220,9 @@ ftol = 1e-6
         d_scale = deepcopy(d_block)
 
         # Test norms
-        d_ones = judiVector(rec_geometry, 2f0 .* ones(Float32, ns, nrec))
-        @test isapprox(norm(d_ones, 2), sqrt(rec_geometry.dt[1]*nsrc*ns*nrec*4))
-        @test isapprox(norm(d_ones, 1), rec_geometry.dt[1]*nsrc*ns*nrec*2)
+        d_ones = judiVector(rec_geometry, 2f0 .* ones(Float32, rec_geometry.nt[1], nrec))
+        @test isapprox(norm(d_ones, 2), sqrt(rec_geometry.dt[1]*nsrc*rec_geometry.nt[1]*nrec*4))
+        @test isapprox(norm(d_ones, 1), rec_geometry.dt[1]*nsrc*rec_geometry.nt[1]*nrec*2)
         @test isapprox(norm(d_ones, Inf), 2)
 
         # Indexing and utilities
@@ -243,8 +242,8 @@ ftol = 1e-6
         @test isapprox(d0.data[1], d_obs.data[1])
 
         # broadcast multiplication
-        u = judiVector(rec_geometry, randn(Float32, ns, nrec))
-        v = judiVector(rec_geometry, randn(Float32, ns, nrec))
+        u = judiVector(rec_geometry, randn(Float32, rec_geometry.nt[1], nrec))
+        v = judiVector(rec_geometry, randn(Float32, rec_geometry.nt[1], nrec))
         u_scale = deepcopy(u)
         v_scale = deepcopy(v)
 
@@ -266,8 +265,8 @@ ftol = 1e-6
         @test isapprox(u_scale.data[1], u.data[1]./v.data[1])
 
         # broadcast identity
-        u = judiVector(rec_geometry, randn(Float32, ns, nrec))
-        v = judiVector(rec_geometry, randn(Float32, ns, nrec))
+        u = judiVector(rec_geometry, randn(Float32, rec_geometry.nt[1], nrec))
+        v = judiVector(rec_geometry, randn(Float32, rec_geometry.nt[1], nrec))
         u_id = deepcopy(u)
         v_id = deepcopy(v)
         broadcast!(identity, u_id, v_id)    # copy v_id into u_id
@@ -276,8 +275,8 @@ ftol = 1e-6
         @test isapprox(v, u_id)
 
         # in-place overwrite
-        u = judiVector(rec_geometry, randn(Float32, ns, nrec))
-        v = judiVector(rec_geometry, randn(Float32, ns, nrec))
+        u = judiVector(rec_geometry, randn(Float32, rec_geometry.nt[1], nrec))
+        v = judiVector(rec_geometry, randn(Float32, rec_geometry.nt[1], nrec))
         u_cp = deepcopy(u)
         v_cp = deepcopy(v)
         copy!(v_cp, u_cp)
@@ -305,7 +304,7 @@ ftol = 1e-6
         @test isapprox(w1.data, d_obs.data)
 
         # Test transducer
-        q = judiVector(Geometry(0f0, 0f0, 0f0; dt=2, t=1000), randn(Float32, 251))
+        q = judiVector(Geometry(0f0, 0f0, 0f0; dt=2, t=1000), randn(Float32, 501))
         tr = transducer(q, (10, 10), 30, pi/2)
         @test length(tr.geometry.xloc[1]) == 22
         @test tr.geometry.xloc[1][1:11] == range(-30., 30., length=11)
@@ -313,7 +312,7 @@ ftol = 1e-6
         @test all(tr.geometry.zloc[1][12:end] .== -10f0)
         @test all(tr.geometry.zloc[1][1:11] .== 0f0)
 
-        q = judiVector(Geometry(0f0, 0f0, 0f0; dt=2, t=1000), randn(Float32, 251))
+        q = judiVector(Geometry(0f0, 0f0, 0f0; dt=2, t=1000), randn(Float32, 501))
         tr = transducer(q, (10, 10), 30, pi)
         @test length(tr.geometry.xloc[1]) == 22
         @test isapprox(tr.geometry.zloc[1][1:11], range(30., -30., length=11); atol=1f-14, rtol=1f-14)
@@ -321,10 +320,14 @@ ftol = 1e-6
         @test isapprox(tr.geometry.xloc[1][12:end], -10f0*ones(11); atol=1f-14, rtol=1f-14)
         @test isapprox(tr.geometry.xloc[1][1:11], zeros(11); atol=1f-14, rtol=1f-14)
 
+        # Test exception if number of samples in geometry doesn't match ns of data
+        @test_throws JUDI.judiMultiSourceException judiVector(Geometry(0f0, 0f0, 0f0; dt=2, t=1000), randn(Float32, 10))
+        @test_throws JUDI.judiMultiSourceException judiVector(rec_geometry, randn(Float32, 10))        
+
         # Test integral & derivative
         refarray = Array{Array{Float32, 2}, 1}(undef, nsrc)
         for j=1:nsrc
-            refarray[j] = randn(Float32, ns, nrec)
+            refarray[j] = randn(Float32, rec_geometry.nt[1], nrec)
         end
         d_orig = judiVector(rec_geometry, refarray)
 
