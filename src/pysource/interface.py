@@ -614,7 +614,7 @@ def J_adjoint_checkpointing(model, src_coords, wavelet, rec_coords, recin, space
                                              return_op=True, isic=isic, nlind=nlind,
                                              ws=ws, f0=f0)
     op, g, kwg = gradient(model, recin, rec_coords, u, space_order=space_order,
-                          return_op=True, isic=isic, f0=f0)
+                          return_op=True, isic=isic, f0=f0, save=False)
 
     nt = wavelet.shape[0]
     rec = Receiver(name='rec', grid=model.grid, ntime=nt, coordinates=rec_coords)

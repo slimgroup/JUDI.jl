@@ -8,7 +8,6 @@ export example_src_geometry, example_rec_geometry, example_model, example_info
 """
 Simple 2D model setup used for the tests.
 """
-
 function smooth(v, sigma=3)
     v0 = 1f0 .* v
     for i=-sigma:sigma

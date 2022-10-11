@@ -112,7 +112,7 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, qwf=None, dft_sub=N
 
 
 def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8,
-             w=None, freq=None, dft_sub=None, isic=False, f0=0.015):
+             w=None, freq=None, dft_sub=None, isic=False, f0=0.015, save=True):
     """
     Low level propagator, to be used through `interface.py`
     Compute the action of the adjoint Jacobian onto a residual J'* δ d.
@@ -133,7 +133,7 @@ def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8,
     # Create operator and run
     op = adjoint_born_op(model.physical_parameters, model.is_tti, model.is_viscoacoustic,
                          space_order, model.spacing, rcv_coords is not None, model.fs, w,
-                         not return_op, t_sub, nfreq(freq), dft_sub, isic)
+                         save, t_sub, nfreq(freq), dft_sub, isic)
 
     # Update kwargs
     kw = {'dt': model.critical_dt}
