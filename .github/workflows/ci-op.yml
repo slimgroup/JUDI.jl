@@ -58,7 +58,7 @@ jobs:
 
     steps:
       - name: Checkout JUDI
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Install GCC 9
         if : runner.os == 'macOS'

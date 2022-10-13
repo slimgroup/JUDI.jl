@@ -41,6 +41,9 @@ show(io::IO, ::MIME{Symbol("text/plain")}, G::Geometry) = println(io, "$(typeof(
 ######################## shapes easy access ################################
 get_nsrc(g::GeometryIC) = length(g.xloc)
 get_nsrc(g::GeometryOOC) = length(g.container)
+get_nsrc(S::SeisCon) = length(S)
+get_nsrc(S::Vector{SeisCon}) = length(S)
+get_nsrc(S::SeisBlock) = length(unique(get_header(S, "FieldRecord")))
 
 n_samples(g::GeometryOOC, nsrc::Integer) = sum([g.nrec[j]*g.nt[j] for j=1:nsrc])
 n_samples(g::GeometryIC, nsrc::Integer) = sum([length(g.xloc[j])*g.nt[j] for j=1:nsrc])
@@ -174,55 +177,28 @@ end
 
 # Utility function to prepare dtCell, ntCell, tCell from SEGY or based on user defined dt and t.
 # Useful when creating geometry for Forward Modeling with custom timings.
-function timings_from_segy(data::Union{SegyIO.SeisBlock,SegyIO.SeisCon,Array{SegyIO.SeisCon,1}}; dt=[], t=[])
 
+_get_p(v, S, nsrc, P) = throw("User defined `dt` is neither: Real, Array of Real or the length of Array doesn't match the number of sources in SEGY")
+_get_p(::Nothing, S::SeisBlock, nsrc::Integer, p, ::Type{T}, s::T) where T = fill(T(get_header(S, p)[1]/s), nsrc)
+_get_p(::Nothing, S::SeisCon, nsrc::Integer, p, ::Type{T}, s::T) where T = [T(_get_p_SeisCon(S, p, j)/s) for j=1:nsrc]
+_get_p(::Nothing, S::Vector{SeisCon}, nsrc::Integer, p, ::Type{T}, s::T) where T  = [T(_get_p_SeisCon(S[j], p, 1)/s) for j=1:nsrc]
+_get_p(v::Real, data, nsrc::Integer, p, ::Type{T}, s::T) where T  = fill(T(v), nsrc)
+_get_p(v::Vector, data, nsrc::Integer, p, ::Type{T}, s::T) where T  = convert(Vector{T}, v)
+
+
+_get_p_SeisCon(S::SeisCon, p::String, b::Integer) = try S.blocks[b].summary[p][1] catch; getfield(S, Symbol(p)); end
+
+function timings_from_segy(data, dt=nothing, t=nothing)
     # Get nsrc
-    if isa(data,SegyIO.SeisBlock)
-        src = get_header(data,"FieldRecord")
-        nsrc = length(unique(src))
-    else
-        nsrc = length(data)
-    end
-
-    # Prepare dtCell
-    if isa(dt,Real)
-        dtCell = fill(Float32(dt), nsrc)
-    elseif isa(dt,Array{<:Real,1}) && length(dt) == nsrc
-        dtCell = Float32.(dt)
-    elseif isempty(dt) && isa(data,SegyIO.SeisBlock)
-        dtCell = fill(Float32(get_header(data, "dt")[1]/1f3), nsrc)
-    elseif isempty(dt) && isa(data,SegyIO.SeisCon)
-        dtCell = [Float32(data.blocks[j].summary["dt"][1]/1f3) for j=1:nsrc]
-    elseif isempty(dt)
-        dtCell = [Float32(data[j].blocks[1].summary["dt"][1]/1f3) for j=1:nsrc]
-    else
-        throw("User defined `dt` is neither: Real, Array of Real or the length of Array doesn't match the number of sources in SEGY")
-    end
-
-    # Prepare tCell and ntCell
-    if isa(t,Real)
-        tCell = fill(Float32(t), nsrc)
-        ntCell = floor.(Integer, tCell ./ dtCell) .+ 1
-    elseif isa(t,Array{<:Real,1}) && length(t) == nsrc
-        tCell = Float32.(t)
-        ntCell = floor.(Integer, tCell ./ dtCell) .+ 1
-    elseif isempty(t) && isa(data,SegyIO.SeisBlock)
-        ntCell = fill(Integer(get_header(data, "ns")[1]), nsrc)
-        tCell = Float32.((ntCell.-1).*dtCell)
-    elseif isempty(t) && isa(data,SegyIO.SeisCon)
-        ntCell = fill(Integer(data.ns), nsrc)
-        tCell = Float32.((ntCell.-1).*dtCell)
-    elseif isempty(t)
-        ntCell = [Integer(data[j].ns) for j=1:nsrc]
-        tCell = Float32.((ntCell.-1).*dtCell)
-    else
-        throw("User defined `t` is neither: Real, Array of Real or the length of Array doesn't match the number of sources in SEGY")
-    end
-    return dtCell,ntCell,tCell
+    nsrc = get_nsrc(data)
+    dtCell = _get_p(dt, data, nsrc, "dt", Float32, 1f3)
+    ntCell = _get_p(t, data, nsrc, "ns", Int, 1)
+    tCell = Float32.((ntCell.-1).*dtCell)   
+    return dtCell, ntCell, tCell
 end
 
 # Set up source geometry object from in-core data container
-function Geometry(data::SegyIO.SeisBlock; key="source", segy_depth_key="", dt=[], t=[])
+function Geometry(data::SegyIO.SeisBlock; key="source", segy_depth_key="", dt=nothing, t=nothing)
     src = get_header(data,"FieldRecord")
     usrc = unique(src)
     nsrc = length(usrc)
@@ -264,12 +240,12 @@ function Geometry(data::SegyIO.SeisBlock; key="source", segy_depth_key="", dt=[]
         zloc = convertToCell(zloc)
     end
 
-    dtCell,ntCell,tCell = timings_from_segy(data, dt=dt, t=t)
+    dtCell, ntCell, tCell = timings_from_segy(data, dt, t)
     return GeometryIC{Float32}(xloc,yloc,zloc,dtCell,ntCell,tCell)
 end
 
 # Set up geometry summary from out-of-core data container
-function Geometry(data::SegyIO.SeisCon; key="source", segy_depth_key="", dt=[], t=[])
+function Geometry(data::SegyIO.SeisCon; key="source", segy_depth_key="", dt=nothing, t=nothing)
 
     if key=="source"
         isempty(segy_depth_key) && (segy_depth_key="SourceSurfaceElevation")
@@ -288,12 +264,12 @@ function Geometry(data::SegyIO.SeisCon; key="source", segy_depth_key="", dt=[], 
         nrec[j] = key=="source" ? 1 : Int((data.blocks[j].endbyte - data.blocks[j].startbyte)/(240 + data.ns*4))
     end
 
-    dtCell,ntCell,tCell = timings_from_segy(data, dt=dt, t=t)
+    dtCell,ntCell,tCell = timings_from_segy(data, dt, t)
     return GeometryOOC{Float32}(container,dtCell,ntCell,tCell,nrec,key,segy_depth_key)
 end
 
 # Set up geometry summary from out-of-core data container passed as cell array
-function Geometry(data::Array{SegyIO.SeisCon,1}; key="source", segy_depth_key="", dt=[], t=[])
+function Geometry(data::Array{SegyIO.SeisCon,1}; key="source", segy_depth_key="", dt=nothing, t=nothing)
 
     if key=="source"
         isempty(segy_depth_key) && (segy_depth_key="SourceSurfaceElevation")
@@ -311,7 +287,7 @@ function Geometry(data::Array{SegyIO.SeisCon,1}; key="source", segy_depth_key=""
         nrec[j] = key=="source" ? 1 : Int((data[j].blocks[1].endbyte - data[j].blocks[1].startbyte)/(240 + data[j].ns*4))
     end
 
-    dtCell,ntCell,tCell = timings_from_segy(data, dt=dt, t=t)
+    dtCell,ntCell,tCell = timings_from_segy(data, dt, t)
     return GeometryOOC{Float32}(container,dtCell,ntCell,tCell,nrec,key,segy_depth_key)
 end
 
@@ -427,18 +403,10 @@ pushfield!(a, b) = nothing
 
 # Gets called by judiVector constructor to be sure that geometry is consistent with the data.
 # Data may be any of: Array, Array of Array, SeisBlock, SeisCon
-function check_geom(geom::Geometry, data)
-    if data isa Array && data[1] isa Array
-        (geom.nt[1] != size(data[1])[1]) && throw(judiMultiSourceException("Geometry's number of samples doesn't match the data: $(geom.nt[1]), $(size(data[1])[1])"))
-    elseif data isa Array && data[1] isa SegyIO.SeisBlock
-        (geom.nt[1] != data[1].fileheader.bfh.ns) && throw(judiMultiSourceException("Geometry's number of samples doesn't match the data: $(geom.nt[1]), $(data[1].fileheader.bfh.ns)"))
-    elseif data isa Array && data[1] isa SegyIO.SeisCon
-        (geom.nt[1] != data[1].ns) && throw(judiMultiSourceException("Geometry's number of samples doesn't match the data: $(geom.nt[1]), $(data[1].ns)"))
-    elseif data isa SegyIO.SeisBlock
-        (geom.nt[1] != data.fileheader.bfh.ns) && throw(judiMultiSourceException("Geometry's number of samples doesn't match the data: $(geom.nt[1]), $(data.fileheader.bfh.ns)"))
-    elseif data isa SegyIO.SeisCon
-        (geom.nt[1] != data.ns) && throw(judiMultiSourceException("Geometry's number of samples doesn't match the data: $(geom.nt[1]), $(data.ns)"))
-    else
-        (geom.nt[1] != size(data)[1]) && throw(judiMultiSourceException("Geometry's number of samples doesn't match the data: $(geom.nt[1]), $(size(data)[1])"))
-    end
-end
+check_geom(geom::Geometry, data::Array{T}) where T = all([check_geom(geom[s], data[s]) for s=1:get_nsrc(geom)])
+check_geom(geom::Geometry, data::Array{T}) where {T<:Number} = _check_geom(geom.nt[1],  size(data, 1))
+check_geom(geom::Geometry, data::SeisBlock) = _check_geom(geom.nt[1], data.fileheader.bfh.ns)
+check_geom(geom::Geometry, data::SeisCon) = _check_geom(geom.nt[1], data.ns)
+
+_check_geom(nt::Integer, ns::Integer) = nt == ns || _geom_missmatch(nt, ns)
+_geom_missmatch(nt::Integer, ns::Integer) = throw(judiMultiSourceException("Geometry's number of samples doesn't match the data: $(nt), $(ns)"))

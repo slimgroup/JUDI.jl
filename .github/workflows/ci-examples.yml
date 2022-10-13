@@ -22,7 +22,7 @@ jobs:
 
     steps:
       - name: Checkout JUDI
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - id: set-matrix
         run: echo "::set-output name=matrix::$(ls examples/scripts/*.jl examples/machine-learning/*.jl | xargs -n 1 | jq -R -s -c 'split("\n")[:-1]')"
@@ -55,7 +55,7 @@ jobs:
 
     steps:
       - name: Checkout JUDI
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Set julia python
         run: |
