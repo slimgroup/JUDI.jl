@@ -69,7 +69,6 @@ function twri_objective(model_full::Model, source::judiVector, dObs::judiVector,
     # Load full geometry for out-of-core geometry containers
     dObs.geometry = Geometry(dObs.geometry)
     source.geometry = Geometry(source.geometry)
-
     # Limit model to area with sources/receivers
     if options.limit_m == true
         model = deepcopy(model_full)

@@ -39,6 +39,9 @@ function setup_model(tti=false, viscoacoustic=false, nlayer=2; n=(301, 151), d=(
     m = (1f0 ./ v).^2
     m0 = (1f0 ./ v0).^2
 
+    # Check that can't build a model with wrong size
+    @test_throws ArgumentError Model(2 .* n, d, o, m)
+
     # Setup model structure
     if tti
         println("TTI Model")

@@ -38,7 +38,7 @@ jobs:
       DEVITO_LANGUAGE: "openmp"
       DEVITO_LOGGING: "ERROR"
       OMP_NUM_THREADS: 2
-      NITER: 1
+      NITER: 2
 
     strategy:
       fail-fast: false

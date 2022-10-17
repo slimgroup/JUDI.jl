@@ -1,11 +1,9 @@
 # Model structure
 # Author: Philipp Witte, pwitte@eos.ubc.ca
 # Date: January 2017
+# Author Mathias Louboutin
+# Date: 2017-2022
 #
-
-const IntTuple = Union{Tuple{Integer,Integer}, Tuple{Integer,Integer,Integer},Vector{Integer}}
-const RealTuple = Union{Tuple{Real,Real}, Tuple{Real,Real,Real},Vector{Real}}
-
 export Model, PhysicalParameter, get_dt
 
 
@@ -14,9 +12,9 @@ export Model, PhysicalParameter, get_dt
 
 """
     PhysicalParameter
-        n::IntTuple
-        d::RealTuple
-        o::RealTuple
+        n::NTuple{N, T}
+        d::NTuple{N, Tf}
+        o::NTuple{N, Tf}
         data::Union{Array, Number}
 
 PhysicalParameter structure for physical space parameter.
@@ -243,9 +241,9 @@ NpyArray(p::PhysicalParameter{vDT}, revdims::Bool) where {vDT} = NpyArray(p.data
 
 """
     Model
-        n::IntTuple
-        d::RealTuple
-        o::RealTuple
+        n::NTuple{N, Int64}
+        d::NTuple{N, Float32}
+        o::NTuple{N, Float32}
         nb::Integer
         params::Dict
         rho::Array
@@ -285,9 +283,9 @@ where
 
 """
 mutable struct Model
-    n::IntTuple
-    d::RealTuple
-    o::RealTuple
+    n::NTuple{N, Int64} where N
+    d::NTuple{N, Float32} where N
+    o::NTuple{N, Float32} where N
     nb::Integer # number of absorbing boundaries points on each side
     params::Dict
 end
@@ -295,10 +293,15 @@ end
 ###################################################################################################
 # Constructors
 
-function Model(n::IntTuple, d::RealTuple, o::RealTuple, m;
-               epsilon=nothing, delta=nothing, theta=nothing,
+function Model(n, d, o, m::Array; epsilon=nothing, delta=nothing, theta=nothing,
                phi=nothing, rho=nothing, qp=nothing, nb=40)
 
+    # Convert dimension to internal types
+    n = NTuple{length(n), Int64}(n)
+    d = NTuple{length(n), Float32}(d)
+    o = NTuple{length(n), Float32}(o)
+    
+    size(m) == n || throw(ArgumentError("Grid size $n and squared slowness size $(size(m)) don't match"))
     params = Dict(:m => PhysicalParameter(Float32.(m), d, o))
     for (name, val)=zip([:qp, :epsilon, :delta, :theta, :phi], [qp, epsilon, delta, theta, phi])
         ~isnothing(val) && (params[name] = PhysicalParameter(Float32.(val), n, d, o))
@@ -311,13 +314,8 @@ function Model(n::IntTuple, d::RealTuple, o::RealTuple, m;
     return Model(n, d, o, nb, params)
 end
 
-function Model(n::IntTuple, d::RealTuple, o::RealTuple, m, rho; nb=40)
-    return Model(n, d, o, m; rho=rho, nb=nb)
-end
-
-function Model(n::IntTuple, d::RealTuple, o::RealTuple, m, rho, qp; nb=40)
-    return Model(n, d, o, m; rho=rho, qp=qp, nb=nb)
-end
+Model(n, d, o, m::Array, rho::Array; nb=40) = Model(n, d, o, m; rho=rho, nb=nb)
+Model(n, d, o, m::Array, rho::Array, qp::Array; nb=40) = Model(n, d, o, m; rho=rho, qp=qp, nb=nb)
 
 get_dt(m::Model; dt=nothing) = calculate_dt(m; dt=dt)
 getindex(m::Model, sym::Symbol) = m.params[sym]

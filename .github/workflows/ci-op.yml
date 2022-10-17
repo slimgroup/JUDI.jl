@@ -65,7 +65,7 @@ jobs:
         run : brew install gcc@9
 
       - name: Cache julia install
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         env:
           cache-name: cache-julia-pkgs
         with:
@@ -88,8 +88,10 @@ jobs:
 
       - name: Run tests
         uses: julia-actions/julia-runtest@latest
+        with:
+          annotate: true
 
       - uses: julia-actions/julia-processcoverage@v1
-      - uses: codecov/codecov-action@v1
+      - uses: codecov/codecov-action@v3
         with:
           file: lcov.info

@@ -4,6 +4,7 @@ using Documenter, JUDI, Weave
 ex_path = "$(JUDI.JUDIPATH)/../examples/scripts"
 doc_path = "$(JUDI.JUDIPATH)/../docs"
 weave("$(ex_path)/modeling_basic_2D.jl"; out_path="$(doc_path)/src/tutorials/05_quickstart.md", doctype="github")
+weave("$(ex_path)/imaging_conditions.jl"; out_path="$(doc_path)/src/tutorials/06_imaging_conditions.md", doctype="github")
 
 # Create documentation
 makedocs(sitename="JUDI documentation",

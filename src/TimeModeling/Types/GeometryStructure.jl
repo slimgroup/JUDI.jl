@@ -188,13 +188,20 @@ _get_p(v::Vector, data, nsrc::Integer, p, ::Type{T}, s::T) where T  = convert(Ve
 
 _get_p_SeisCon(S::SeisCon, p::String, b::Integer) = try S.blocks[b].summary[p][1] catch; getfield(S, Symbol(p)); end
 
-function timings_from_segy(data, dt=nothing, t=nothing)
+function timings_from_segy(data, dt=nothing, t::T=nothing) where T
     # Get nsrc
     nsrc = get_nsrc(data)
     dtCell = _get_p(dt, data, nsrc, "dt", Float32, 1f3)
-    ntCell = _get_p(t, data, nsrc, "ns", Int, 1)
-    tCell = Float32.((ntCell.-1).*dtCell)   
-    return dtCell, ntCell, tCell
+
+    try
+        tCell = T <: Number ? fill(Float32(t), nsrc) : convert(Vector{Float32}, t)
+        ntCell = floor.(Integer, tCell ./ dtCell) .+ 1
+        return dtCell, ntCell, tCell
+    catch e
+        ntCell = _get_p(nothing, data, nsrc, "ns", Int, 1)
+        tCell = Float32.((ntCell .- 1) .* dtCell)
+        return dtCell, ntCell, tCell
+    end
 end
 
 # Set up source geometry object from in-core data container
@@ -308,7 +315,9 @@ function Geometry(geometry::GeometryOOC)
     xloc = Array{gt, 1}(undef, nsrc)
     yloc = Array{gt, 1}(undef, nsrc)
     zloc = Array{gt, 1}(undef, nsrc)
-    dt = Array{Float32}(undef, nsrc); nt = Array{Integer}(undef, nsrc); t = Array{Float32}(undef, nsrc)
+    dt = Array{Float32}(undef, nsrc)
+    nt = Array{Integer}(undef, nsrc)
+    t = Array{Float32}(undef, nsrc)
 
     for j=1:nsrc
 

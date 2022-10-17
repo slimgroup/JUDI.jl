@@ -112,7 +112,7 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, qwf=None, dft_sub=N
 
 
 def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8,
-             w=None, freq=None, dft_sub=None, isic=False, f0=0.015, save=True):
+             w=None, freq=None, dft_sub=None, ic="as", f0=0.015, save=True):
     """
     Low level propagator, to be used through `interface.py`
     Compute the action of the adjoint Jacobian onto a residual J'* δ d.
@@ -133,7 +133,7 @@ def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8,
     # Create operator and run
     op = adjoint_born_op(model.physical_parameters, model.is_tti, model.is_viscoacoustic,
                          space_order, model.spacing, rcv_coords is not None, model.fs, w,
-                         save, t_sub, nfreq(freq), dft_sub, isic)
+                         save, t_sub, nfreq(freq), dft_sub, ic)
 
     # Update kwargs
     kw = {'dt': model.critical_dt}
@@ -152,7 +152,7 @@ def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8,
 
 
 def born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
-         qwf=None, return_op=False, isic=False, freq_list=None, dft_sub=None,
+         qwf=None, return_op=False, ic="as", freq_list=None, dft_sub=None,
          ws=None, t_sub=1, nlind=False, f0=0.015):
     """
     Low level propagator, to be used through `interface.py`
@@ -173,7 +173,7 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     op = born_op(model.physical_parameters, model.is_tti, model.is_viscoacoustic,
                  space_order, model.spacing, save,
                  src_coords is not None, rcv_coords is not None, model.fs, t_sub,
-                 ws is not None, nfreq(freq_list), dft_sub, isic, nlind)
+                 ws is not None, nfreq(freq_list), dft_sub, ic, nlind)
 
     # Make kwargs
     kw = {'dt': model.critical_dt}
@@ -203,7 +203,7 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
 
 # Forward propagation
 def forward_grad(model, src_coords, rcv_coords, wavelet, v, space_order=8,
-                 q=None, ws=None, isic=False, w=None, freq=None, f0=0.015, **kwargs):
+                 q=None, ws=None, ic="as", w=None, freq=None, f0=0.015, **kwargs):
     """
     Low level propagator, to be used through `interface.py`
     Compute forward wavefield u = A(m)^{-1}*f and related quantities (u(xrcv))
@@ -228,7 +228,7 @@ def forward_grad(model, src_coords, rcv_coords, wavelet, v, space_order=8,
 
     # Setup gradient wrt m
     gradm = Function(name="gradm", grid=model.grid)
-    g_expr = grad_expr(gradm, v, u, model, w=w, isic=isic, freq=freq)
+    g_expr = grad_expr(gradm, v, u, model, w=w, ic=ic, freq=freq)
 
     # Create operator and run
     subs = model.spacing_map

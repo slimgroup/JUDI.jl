@@ -141,7 +141,7 @@ dot2 = dot(dobs, dobs)
 @show dot1, dot2, (dot2 - dot2)/(dot1 + dot2)
 
 #' # Inversion
-#' Our main goal is to provide an unversion framework for seismic inversion. To this end, as shown earlier,
+#' Our main goal is to provide an inversion framework for seismic inversion. To this end, as shown earlier,
 #' users can easily define the Jacobian operator and compute an RTM image (i.e FWI gradient) with a simple matrix-vector product.
 #' Once again, we provide both the Jacobian and its adjoint and we can compute Born linearized data.
 

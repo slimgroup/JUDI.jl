@@ -13,7 +13,14 @@ end
 n, d, o, m0 = read(h5open("$(JUDI.JUDI_DATA)/marmousi_model.h5", "r"), "n", "d", "o", "m0")
 
 # Set up model structure
-model0 = Model((n[1], n[2]), (d[1], d[2]), (o[1], o[2]), m0)
+model0 = Model(n, d, o, m0)
+grad_mem = 40 # Based on n and CFL condition
+
+# Coarsen for CI
+if get(ENV, "CI", nothing) == "true"
+    model0 = Model(ceil.(Int, n ./ 2), d .* 2, o, m0[1:2:end, 1:2:end])
+    grad_mem = 5
+end
 
 # Load data
 if ~isfile("$(JUDI.JUDI_DATA)/marmousi_2D.segy")
@@ -30,7 +37,8 @@ q = judiVector(src_geometry, wavelet)
 ###################################################################################################
 # Infer subsampling based on free memory
 mem = Sys.free_memory()/(1024^3)
-t_sub = max(1, ceil(Int, 40/mem))
+t_sub = max(1, ceil(Int, nworkers()*grad_mem/mem))
+
 # Setup operators
 opt = Options(subsampling_factor=t_sub, isic=true)  # ~40 GB of memory per source without subsampling
 M = judiModeling(model0, q.geometry, d_lin.geometry; options=opt)

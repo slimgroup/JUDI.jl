@@ -17,7 +17,7 @@ mutable struct JUDIOptions
     sum_padding::Bool
     optimal_checkpointing::Bool
     frequencies::Array
-    isic::Bool
+    IC::String
     subsampling_factor::Integer
     dft_subsampling_factor::Integer
     return_array::Bool
@@ -38,7 +38,7 @@ end
         sum_padding::Bool
         optimal_checkpointing::Bool
 	    frequencies::Array
-	    isic::Bool
+	    IC::String
         subsampling_factor::Integer
 	    dft_subsampling_factor::Integer
         return_array::Bool
@@ -73,7 +73,9 @@ Options structure for seismic modeling.
 
 `dft_subsampling_factor`: compute on-the-fly DFTs on a time axis that is reduced by a given factor (default is 1)
 
-`isic`: use linearized inverse scattering imaging condition
+`IC`: Imaging condition. Options are 'as, isic, fwi' with "as" for adjoint state, isic for the inverse scattering imaging condition and FWI for the complement of isic (i.e isic + fwi = as)
+
+`isic`: Inverse scattering imaging condition. Deprecated, use `IC="isic"` instead.
 
 `return_array`: return data from nonlinear/linear modeling as a plain Julia array.
 
@@ -114,7 +116,8 @@ Options(;space_order=8,
 		 dft_subsampling_factor=1,
          return_array=false,
          dt_comp=nothing,
-         f0=0.015f0) =
+         f0=0.015f0,
+         IC="as") =
 		 JUDIOptions(space_order,
 		 		 free_surface,
 		         limit_m,
@@ -125,7 +128,7 @@ Options(;space_order=8,
 				 sum_padding,
 				 optimal_checkpointing,
 				 frequencies,
-				 isic,
+				 imcond(isic, IC),
 				 subsampling_factor,
 				 dft_subsampling_factor,
                  return_array,
@@ -154,3 +157,12 @@ function getindex(options::JUDIOptions, srcnum)
 end
 
 subsample(options::JUDIOptions, srcnum) = getindex(options, srcnum)
+
+
+function imcond(isic::Bool, IC::String)
+    if isic
+        Base.depwarn("Deprecared isic argument use IC=\"isic\" ", :Options; force = true)
+        return "isic"
+    end
+    return lowercase(IC)
+end
