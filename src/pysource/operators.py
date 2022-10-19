@@ -167,7 +167,7 @@ def adjoint_op(p_params, tti, visco, space_order, spacing, save, nv_weights, fs,
 
 @memoized_func
 def born_op(p_params, tti, visco, space_order, spacing, save, pt_src,
-            pt_rec, fs, t_sub, ws, nfreq, dft_sub, isic, nlind):
+            pt_rec, fs, t_sub, ws, nfreq, dft_sub, ic, nlind):
     """
     Low level born operator creation, to be used through `interface.py`
     Compute linearized wavefield U = J(m)* δ m
@@ -200,7 +200,7 @@ def born_op(p_params, tti, visco, space_order, spacing, save, pt_src,
     if getattr(model, 'dm', 0) == 0:
         pdel = []
     else:
-        pdel = wave_kernel(model, ul, q=lin_src(model, u, isic=isic), f0=f0)
+        pdel = wave_kernel(model, ul, q=lin_src(model, u, ic=ic), f0=f0)
     # Setup source and receiver
     g_expr = geom_expr(model, u, rec_coords=rcords if nlind else None,
                        src_coords=scords, wavelet=wavelet)
@@ -220,7 +220,7 @@ def born_op(p_params, tti, visco, space_order, spacing, save, pt_src,
 
 @memoized_func
 def adjoint_born_op(p_params, tti, visco, space_order, spacing, pt_rec, fs, w,
-                    save, t_sub, nfreq, dft_sub, isic):
+                    save, t_sub, nfreq, dft_sub, ic):
     """
     Low level gradient operator creation, to be used through `propagators.py`
     Compute the action of the adjoint Jacobian onto a residual J'* δ d.
@@ -246,7 +246,7 @@ def adjoint_born_op(p_params, tti, visco, space_order, spacing, pt_rec, fs, w,
     # Setup gradient wrt m
     gradm = Function(name="gradm", grid=model.grid)
     g_expr = grad_expr(gradm, u, v, model, w=w, freq=freq_list,
-                       dft_sub=dft_sub, isic=isic)
+                       dft_sub=dft_sub, ic=ic)
 
     # Create operator and run
     subs = model.spacing_map

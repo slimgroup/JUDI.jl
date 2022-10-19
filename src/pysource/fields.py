@@ -122,7 +122,7 @@ def wavefield_subsampled(model, u, nt, t_sub, space_order=8):
     if t_sub > 1:
         time_subsampled = ConditionalDimension(name='t_sub', parent=model.grid.time_dim,
                                                factor=t_sub)
-        nsave = (nt-1)//t_sub + 2
+        nsave = (nt+t_sub-1)//t_sub
     else:
         return None
     wf_s = []

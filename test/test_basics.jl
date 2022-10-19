@@ -12,13 +12,7 @@ function test_model(ndim; tti=false)
     m = .5f0 .+ rand(Float32, n...)
     if !tti
         model = Model(n, d, o, m; nb=10)
-        model2 = Model(n, d, o, m, nothing; nb=10)
-        @test model.n == model2.n
-        @test model.d == model2.d
-        @test model.o == model2.o
-        @test model.m == model2.m
         @test [keys(model.params)...] == [:m]
-        @test [keys(model2.params)...] == [:m]
     else
         epsilon = .1f0 * m
         delta = .1f0 * m

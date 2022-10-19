@@ -61,13 +61,14 @@ end
 # Test if lsrtm_objective produces the same value/gradient as is done by the correct algebra
 @testset "LSRTM gradient linear algebra test with $(nlayer) layers, tti $(tti), viscoacoustic $(viscoacoustic), freesurface $(fs)" begin
 	# Draw a random case to avoid long CI.
-	isic, dft, optchk = rand([true, false], 3)
+	dft, optchk = rand([true, false], 2)
+	ic = rand(["isic", "fwi", "as"])
 	optchk = optchk && !dft
-    @timeit TIMEROUTPUT "LSRTM validity (isic=$(isic), checkpointing=$(optchk), dft=$(dft))" begin
+    @timeit TIMEROUTPUT "LSRTM validity (IC=$(ic), checkpointing=$(optchk), dft=$(dft))" begin
 		ftol = fs ? 1f-3 : 5f-4
 		freq = dft ? [[2.5, 4.5],[3.5, 5.5],[10.0, 15.0], [30.0, 32.0]] : []
 		J.options.free_surface = fs
-		J.options.isic = isic
+		J.options.IC = ic
 		J.options.optimal_checkpointing = optchk
 		J.options.frequencies = freq
 

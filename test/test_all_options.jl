@@ -10,7 +10,7 @@ dt = srcGeometry.dt[1]
         ##################################ISIC########################################################
         println("Testing isic")
         @timeit TIMEROUTPUT "ISIC" begin
-                opt = Options(sum_padding=true, free_surface=fs, isic=true, f0=f0)
+                opt = Options(sum_padding=true, free_surface=fs, IC="isic", f0=f0)
                 F = judiModeling(model0, srcGeometry, recGeometry; options=opt)
 
                 # Linearized modeling
@@ -29,7 +29,28 @@ dt = srcGeometry.dt[1]
                 @test !isnan(norm(y_hat))
                 @test !isnan(norm(x_hat1))
         end
+        ##################################ISIC########################################################
+        println("Testing fwi")
+        @timeit TIMEROUTPUT "fwi" begin
+                opt = Options(sum_padding=true, free_surface=fs, IC="fwi", f0=f0)
+                F = judiModeling(model0, srcGeometry, recGeometry; options=opt)
 
+                # Linearized modeling
+                J = judiJacobian(F, q)
+                @test norm(J*(0f0.*dm)) == 0
+
+                y0 = F*q
+                y_hat = J*dm
+                x_hat1 = adjoint(J)*y0
+
+                c = dot(y0, y_hat)
+                d = dot(dm, x_hat1)
+                @printf(" <J x, y> : %2.5e, <x, J' y> : %2.5e, relative error : %2.5e \n", c, d, c/d - 1)
+                @test isapprox(c, d, rtol=5f-2)
+                @test !isnan(norm(y0))
+                @test !isnan(norm(y_hat))
+                @test !isnan(norm(x_hat1))
+        end
         ##################################checkpointing###############################################
         println("Testing checkpointing")
         @timeit TIMEROUTPUT "Checkpointing" begin
@@ -113,7 +134,27 @@ dt = srcGeometry.dt[1]
         ##################################ISIC + DFT #########################################################
         println("Testing isic+dft")
         @timeit TIMEROUTPUT "ISIC+DFT" begin
-                opt = Options(sum_padding=true, free_surface=fs, isic=true, frequencies=[2.5, 4.5], f0=f0)
+                opt = Options(sum_padding=true, free_surface=fs, IC="isic", frequencies=[2.5, 4.5], f0=f0)
+                F = judiModeling(model0, srcGeometry, recGeometry; options=opt)
+
+                # Linearized modeling
+                J = judiJacobian(F, q)
+                @test norm(J*(0f0.*dm)) == 0
+
+                y_hat = J*dm
+                x_hat5 = adjoint(J)*y0
+
+                c = dot(y0, y_hat)
+                d = dot(dm, x_hat5)
+                @printf(" <J x, y> : %2.5e, <x, J' y> : %2.5e, relative error : %2.5e \n", c, d, c/d - 1)
+                @test !isnan(norm(y_hat))
+                @test !isnan(norm(x_hat5))
+        end
+
+        ##################################fwi + DFT #########################################################
+        println("Testing fwi+dft")
+        @timeit TIMEROUTPUT "FWI+DFT" begin
+                opt = Options(sum_padding=true, free_surface=fs, IC="fwi", frequencies=[2.5, 4.5], f0=f0)
                 F = judiModeling(model0, srcGeometry, recGeometry; options=opt)
 
                 # Linearized modeling

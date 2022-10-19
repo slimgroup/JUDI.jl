@@ -296,7 +296,7 @@ def adjoint_wf_src_norec(model, u, space_order=8, f0=0.015):
 
 # Linearized modeling ∂/∂m (Pr*F*Ps'*q)
 def born_rec(model, src_coords, wavelet, rec_coords,
-             space_order=8, isic=False, f0=0.015):
+             space_order=8, ic="as", f0=0.015):
     """
     Linearized (Born) modeling of a point source for a model perturbation
     (square slowness) dm.
@@ -313,8 +313,8 @@ def born_rec(model, src_coords, wavelet, rec_coords,
         Coordiantes of the receiver(s)
     space_order: Int (optional)
         Spatial discretization order, defaults to 8
-    isic : Bool
-        Whether or not to use ISIC imaging condition
+    ic: String
+        Imaging conditions ("as", "isic" or "fwi"), defaults to "as"
     f0: peak frequency
 
     Returns
@@ -323,13 +323,13 @@ def born_rec(model, src_coords, wavelet, rec_coords,
         Shot record
     """
     rec, _, _ = born(model, src_coords, rec_coords, wavelet, save=False,
-                     space_order=space_order, isic=isic, f0=f0)
+                     space_order=space_order, ic=ic, f0=f0)
     return rec.data
 
 
 # ∂/∂m (Pr*F*Pw'*w)
 def born_rec_w(model, weight, wavelet, rec_coords,
-               space_order=8, isic=False, f0=0.015):
+               space_order=8, ic="as", f0=0.015):
     """
     Linearized (Born) modeling of an extended source for a model
     perturbation (square slowness) dm with an extended source
@@ -346,8 +346,8 @@ def born_rec_w(model, weight, wavelet, rec_coords,
         Coordiantes of the receiver(s)
     space_order: Int (optional)
         Spatial discretization order, defaults to 8
-    isic : Bool
-        Whether or not to use ISIC imaging condition
+    ic: String
+        Imaging conditions ("as", "isic" or "fwi"), defaults to "as"
     f0: peak frequency
 
     Returns
@@ -356,7 +356,7 @@ def born_rec_w(model, weight, wavelet, rec_coords,
         Shot record
     """
     rec, _, _ = born(model, None, rec_coords, wavelet, save=False, ws=weight,
-                     space_order=space_order, isic=isic, f0=f0)
+                     space_order=space_order, ic=ic, f0=f0)
     return rec.data
 
 
@@ -390,7 +390,7 @@ def grad_fwi(model, recin, rec_coords, u, space_order=8, f0=0.015):
 
 def J_adjoint(model, src_coords, wavelet, rec_coords, recin, space_order=8,
               is_residual=False, checkpointing=False, n_checkpoints=None, t_sub=1,
-              return_obj=False, freq_list=[], dft_sub=None, isic=False,
+              return_obj=False, freq_list=[], dft_sub=None, ic="as",
               ws=None, f0=0.015, born_fwd=False, nlind=False):
     """
     Jacobian (adjoint fo born modeling operator) operator on a shot record
@@ -423,8 +423,8 @@ def J_adjoint(model, src_coords, wavelet, rec_coords, recin, space_order=8,
         List of frequencies for on-the-fly DFT
     dft_sub: Int
         Subsampling factor for on-the-fly DFT
-    isic : Bool
-        Whether or not to use ISIC imaging condition
+    ic: String
+        Imaging conditions ("as", "isic" or "fwi"), defaults to "as"
     ws : Array
         Extended source spatial distribution
     f0: peak frequency
@@ -437,24 +437,24 @@ def J_adjoint(model, src_coords, wavelet, rec_coords, recin, space_order=8,
     if checkpointing:
         return J_adjoint_checkpointing(model, src_coords, wavelet, rec_coords, recin,
                                        space_order=8, is_residual=is_residual, ws=ws,
-                                       n_checkpoints=n_checkpoints, isic=isic, f0=f0,
+                                       n_checkpoints=n_checkpoints, ic=ic, f0=f0,
                                        nlind=nlind, return_obj=return_obj,
                                        born_fwd=born_fwd)
     elif freq_list is not None:
         return J_adjoint_freq(model, src_coords, wavelet, rec_coords, recin,
                               space_order=space_order, dft_sub=dft_sub, f0=f0,
                               freq_list=freq_list, is_residual=is_residual, nlind=nlind,
-                              return_obj=return_obj, isic=isic, ws=ws, born_fwd=born_fwd)
+                              return_obj=return_obj, ic=ic, ws=ws, born_fwd=born_fwd)
     else:
         return J_adjoint_standard(model, src_coords, wavelet, rec_coords, recin,
-                                  is_residual=is_residual, isic=isic, ws=ws, t_sub=t_sub,
+                                  is_residual=is_residual, ic=ic, ws=ws, t_sub=t_sub,
                                   return_obj=return_obj, space_order=space_order,
                                   born_fwd=born_fwd, f0=f0, nlind=nlind)
 
 
 def J_adjoint_freq(model, src_coords, wavelet, rec_coords, recin, space_order=8,
                    freq_list=[], is_residual=False, return_obj=False, nlind=False,
-                   dft_sub=None, isic=False, ws=None, born_fwd=False, f0=0.015):
+                   dft_sub=None, ic="as", ws=None, born_fwd=False, f0=0.015):
     """
     Jacobian (adjoint fo born modeling operator) operator on a shot record
     as a source (i.e data residual). Outputs the gradient with Frequency
@@ -478,8 +478,8 @@ def J_adjoint_freq(model, src_coords, wavelet, rec_coords, recin, space_order=8,
         List of frequencies for on-the-fly DFT
     dft_sub: Int
         Subsampling factor for on-the-fly DFT
-    isic : Bool
-        Whether or not to use ISIC imaging condition
+    ic: String
+        Imaging conditions ("as", "isic" or "fwi"), defaults to "as"
     ws : Array
         Extended source spatial distribution
     is_residual: Bool
@@ -498,11 +498,11 @@ def J_adjoint_freq(model, src_coords, wavelet, rec_coords, recin, space_order=8,
     """
     rec, u, _ = op_fwd_J[born_fwd](model, src_coords, rec_coords, wavelet, save=False,
                                    space_order=space_order, freq_list=freq_list,
-                                   isic=isic, ws=ws, dft_sub=dft_sub, nlind=nlind, f0=f0)
+                                   ic=ic, ws=ws, dft_sub=dft_sub, nlind=nlind, f0=f0)
     # Residual and gradient
     f, residual = l2_loss(rec, recin, model.critical_dt, is_residual=is_residual)
 
-    g, _ = gradient(model, residual, rec_coords, u, space_order=space_order, isic=isic,
+    g, _ = gradient(model, residual, rec_coords, u, space_order=space_order, ic=ic,
                     freq=freq_list, dft_sub=dft_sub, f0=f0)
     if return_obj:
         return f, g.data
@@ -511,7 +511,7 @@ def J_adjoint_freq(model, src_coords, wavelet, rec_coords, recin, space_order=8,
 
 def J_adjoint_standard(model, src_coords, wavelet, rec_coords, recin, space_order=8,
                        is_residual=False, return_obj=False, born_fwd=False,
-                       isic=False, ws=None, t_sub=1, nlind=False, f0=0.015):
+                       ic="as", ws=None, t_sub=1, nlind=False, f0=0.015):
     """
     Adjoint Jacobian (adjoint fo born modeling operator) operator on a shot record
     as a source (i.e data residual). Outputs the gradient with standard
@@ -531,8 +531,8 @@ def J_adjoint_standard(model, src_coords, wavelet, rec_coords, recin, space_orde
         Receiver data
     space_order: Int (optional)
         Spatial discretization order, defaults to 8
-    isic : Bool
-        Whether or not to use ISIC imaging condition
+    ic: String
+        Imaging conditions ("as", "isic" or "fwi"), defaults to "as"
     ws : Array
         Extended source spatial distribution
     is_residual: Bool
@@ -551,12 +551,12 @@ def J_adjoint_standard(model, src_coords, wavelet, rec_coords, recin, space_orde
     """
     rec, u, _ = op_fwd_J[born_fwd](model, src_coords, rec_coords, wavelet, save=True,
                                    ws=ws, space_order=space_order,
-                                   isic=isic, t_sub=t_sub, nlind=nlind, f0=f0)
+                                   ic=ic, t_sub=t_sub, nlind=nlind, f0=f0)
 
     # Residual and gradient
     f, residual = l2_loss(rec, recin, model.critical_dt, is_residual=is_residual)
 
-    g, _ = gradient(model, residual, rec_coords, u, space_order=space_order, isic=isic,
+    g, _ = gradient(model, residual, rec_coords, u, space_order=space_order, ic=ic,
                     f0=f0)
     if return_obj:
         return f, g.data
@@ -565,7 +565,7 @@ def J_adjoint_standard(model, src_coords, wavelet, rec_coords, recin, space_orde
 
 def J_adjoint_checkpointing(model, src_coords, wavelet, rec_coords, recin, space_order=8,
                             is_residual=False, n_checkpoints=None, born_fwd=False,
-                            return_obj=False, isic=False, ws=None, nlind=False, f0=0.015):
+                            return_obj=False, ic="as", ws=None, nlind=False, f0=0.015):
     """
     Jacobian (adjoint fo born modeling operator) operator on a shot record
     as a source (i.e data residual). Outputs the gradient with Checkpointing.
@@ -590,8 +590,8 @@ def J_adjoint_checkpointing(model, src_coords, wavelet, rec_coords, recin, space
         Number of checkpoints for checkpointing
     maxmem: Float
         Maximum memory to use for checkpointing
-    isic : Bool
-        Whether or not to use ISIC imaging condition
+    ic: String
+        Imaging conditions ("as", "isic" or "fwi"), defaults to "as"
     ws : Array
         Extended source spatial distribution
     is_residual: Bool
@@ -611,10 +611,10 @@ def J_adjoint_checkpointing(model, src_coords, wavelet, rec_coords, recin, space
     # Optimal checkpointing
     op_f, u, rec_g, kwu = op_fwd_J[born_fwd](model, src_coords, rec_coords, wavelet,
                                              save=False, space_order=space_order,
-                                             return_op=True, isic=isic, nlind=nlind,
+                                             return_op=True, ic=ic, nlind=nlind,
                                              ws=ws, f0=f0)
     op, g, kwg = gradient(model, recin, rec_coords, u, space_order=space_order,
-                          return_op=True, isic=isic, f0=f0, save=False)
+                          return_op=True, ic=ic, f0=f0, save=False)
 
     nt = wavelet.shape[0]
     rec = Receiver(name='rec', grid=model.grid, ntime=nt, coordinates=rec_coords)
@@ -648,7 +648,7 @@ op_fwd_J = {False: forward, True: born}
 
 
 def wri_func(model, src_coords, wavelet, rec_coords, recin, yin, space_order=8,
-             isic=False, ws=None, t_sub=1, grad="m", grad_corr=False,
+             ic="as", ws=None, t_sub=1, grad="m", grad_corr=False,
              alpha_op=False, w_fun=None, eps=0, freq_list=[], wfilt=None, f0=0.015):
     """
     Time domain wavefield reconstruction inversion wrapper

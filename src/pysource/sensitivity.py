@@ -9,17 +9,17 @@ from fields_exprs import sub_time, freesurface
 from FD_utils import divs, grads
 
 
-def func_name(freq=None, isic=False):
+def func_name(freq=None, ic="as"):
     """
     Get key for imaging condition/linearized source function
     """
     if freq is None:
-        return 'isic' if isic else 'corr'
+        return ic
     else:
-        return 'isic_freq' if isic else 'corr_freq'
+        return "%s_%s" % (ic, "freq")
 
 
-def grad_expr(gradm, u, v, model, w=None, freq=None, dft_sub=None, isic=False):
+def grad_expr(gradm, u, v, model, w=None, freq=None, dft_sub=None, ic="as"):
     """
     Gradient update stencil
 
@@ -40,9 +40,10 @@ def grad_expr(gradm, u, v, model, w=None, freq=None, dft_sub=None, isic=False):
     isic: Bool
         Whether or not to use inverse scattering imaging condition (not supported yet)
     """
-    ic_func = ic_dict[func_name(freq=freq, isic=isic)]
+    ic_func = ic_dict[func_name(freq=freq, ic=ic)]
     expr = ic_func(as_tuple(u), as_tuple(v), model, freq=freq, factor=dft_sub, w=w)
-    if model.fs:
+    if model.fs and ic in ["fwi", "isic"]:
+        # Only need `fs` processing for isic for the spatial derivatives.
         eq_g = [Eq(gradm, gradm - expr, subdomain=model.grid.subdomains['nofsdomain'])]
         eq_g += freesurface(model, eq_g)
     else:
@@ -116,7 +117,8 @@ def isic_time(u, v, model, **kwargs):
         Model structure
     """
     w = u[0].indices[0].spacing * model.irho
-    return w * sum(uu * vv.dt2 * model.m + inner_grad(uu, vv)
+    ics = kwargs.get('icsign', 1)
+    return w * sum(uu * vv.dt2 * model.m + ics * inner_grad(uu, vv)
                    for uu, vv in zip(u, v))
 
 
@@ -133,6 +135,7 @@ def isic_freq(u, v, model, **kwargs):
     model: Model
         Model structure
     """
+    ics = kwargs.get('icsign', 1)
     freq = kwargs.get('freq')
     # Subsampled dft time axis
     time = model.grid.time_dim
@@ -142,7 +145,7 @@ def isic_freq(u, v, model, **kwargs):
     f, nfreq = frequencies(freq, fdim=fdim)
     omega_t = 2*np.pi*f*tsave*factor*dt
     w = -(2*np.pi*f)**2/time.symbolic_max
-    w2 = factor / time.symbolic_max
+    w2 = ics * factor / time.symbolic_max
 
     expr = 0
     for uu, vv in zip(u, v):
@@ -153,18 +156,20 @@ def isic_freq(u, v, model, **kwargs):
     return expr
 
 
-def lin_src(model, u, isic=False):
+def lin_src(model, u, ic="as"):
     """
     Source for linearized modeling
 
     Parameters
     ----------
-    u: TimeFunction or Tuple
-        Forward wavefield (tuple of fields for TTI or dft)
     model: Model
         Model containing the perturbation dm
+    u: TimeFunction or Tuple
+        Forward wavefield (tuple of fields for TTI or dft)
+    ic: String
+        Imaging condition of which we compute the linearized source
     """
-    ls_func = ls_dict[func_name(isic=isic)]
+    ls_func = ls_dict[func_name(ic=ic)]
     return ls_func(model, as_tuple(u))
 
 
@@ -174,10 +179,10 @@ def basic_src(model, u, **kwargs):
 
     Parameters
     ----------
-    u: TimeFunction or Tuple
-        Forward wavefield (tuple of fields for TTI or dft)
     model: Model
         Model containing the perturbation dm
+    u: TimeFunction or Tuple
+        Forward wavefield (tuple of fields for TTI or dft)
     """
     w = -model.dm * model.irho
     if model.is_tti:
@@ -191,16 +196,17 @@ def isic_src(model, u, **kwargs):
 
     Parameters
     ----------
-    u: TimeFunction or Tuple
-        Forward wavefield (tuple of fields for TTI or dft)
     model: Model
         Model containing the perturbation dm
+    u: TimeFunction or Tuple
+        Forward wavefield (tuple of fields for TTI or dft)
     """
     m, dm, irho = model.m, model.dm, model.irho
+    ics = kwargs.get('icsign', 1)
     dus = []
     for uu in u:
         du_aux = divs(dm * irho * grads(uu, so_fact=2), so_fact=2)
-        dus.append(dm * irho * uu.dt2 * m - du_aux)
+        dus.append(dm * irho * uu.dt2 * m - ics * du_aux)
     if model.is_tti:
         return (-dus[0], -dus[1])
     return -dus[0]
@@ -220,9 +226,14 @@ def inner_grad(u, v):
     return sum([a*b for a, b in zip(grads(u, so_fact=2), grads(v, so_fact=2))])
 
 
-ic_dict = {'isic_freq': isic_freq, 'corr_freq': crosscorr_freq,
-           'isic': isic_time, 'corr': crosscorr_time}
-ls_dict = {'isic': isic_src, 'corr': basic_src}
+fwi_src = lambda *ar, **kw: isic_src(*ar, icsign=-1, **kw)
+fwi_time = lambda *ar, **kw: isic_time(*ar, icsign=-1, **kw)
+fwi_freq = lambda *ar, **kw: isic_freq(*ar, icsign=-1, **kw)
+
+ic_dict = {"isic_freq": isic_freq, "as_freq": crosscorr_freq,
+           "fwi": fwi_time, "fwi_freq": fwi_freq,
+           "isic": isic_time, "as": crosscorr_time}
+ls_dict = {"isic": isic_src, "fwi": fwi_src, "as": basic_src}
 
 
 def l2_loss(dsyn, dobs, dt, is_residual=False):

@@ -35,9 +35,10 @@ function low_filter(Din::Array{Float32, 2}, dt_in; fmin=0.0, fmax=25.0)
     return Dout	
 end
 
-function low_filter(Din::judiVector, dt_in; fmin=0.0, fmax=25.0)	
+function low_filter(Din::judiVector; fmin=0.0, fmax=25.0)	
     Dout = deepcopy(Din)	
     for j=1:Dout.nsrc
+        dt_in = Din.geometry[j].dt[1]
 		if size(Din.data[j], 2) == 1
 			Dout.data[j] = low_filter(Dout.data[j], dt_in; fmin=fmin, fmax=fmax)
 		else
@@ -48,6 +49,8 @@ function low_filter(Din::judiVector, dt_in; fmin=0.0, fmax=25.0)
     end
     return Dout	
 end
+
+low_filter(Din::judiVector, dt_in; fmin=0.0, fmax=25.0)	= low_filter(Din::judiVector; fmin=fmin, fmax=fmax)	
 
 # This brrute force and should be improved into a lazy evaluation that only does the mute at read time.
 marineTopmute2D(Dobs::judiVector{T, SeisCon}, muteStart::Integer; mute=Array{Any}(undef, 3), flipmask=false) where T<:Number =
@@ -111,8 +114,8 @@ function judiMarineTopmute2D(muteStart,geometry;params=Array{Any}(undef, 3),flip
 # JOLI wrapper for the linear depth scaling function
     N = n_samples(geometry)
     D = joLinearFunctionFwd_T(N,N,
-                             v -> marineTopmute2D(v,muteStart;mute=params, flipmask=flipmask),
-                             w -> marineTopmute2D(w,muteStart;mute=params, flipmask=flipmask),
+                             v -> marineTopmute2D(v, muteStart;mute=params, flipmask=flipmask),
+                             w -> marineTopmute2D(w, muteStart;mute=params, flipmask=flipmask),
                              Float32,Float32,name="Data mute")
     return D
 end

@@ -157,7 +157,7 @@ function devito_interface(modelPy::PyObject, srcGeometry::Geometry, srcData::Arr
 
     # Devito call
     dOut = wrapcall_data(ac."born_rec", modelPy, src_coords, qIn, rec_coords,
-                  space_order=options.space_order, isic=options.isic, f0=options.f0)
+                  space_order=options.space_order, ic=options.IC, f0=options.f0)
     dOut = time_resample(dOut, dtComp, recGeometry)
 
     # Output linearized shot records as judiVector
@@ -180,7 +180,7 @@ function devito_interface(modelPy::PyObject, srcGeometry::Geometry, srcData::Arr
     grad = wrapcall_function(ac."J_adjoint", modelPy,
                   src_coords, qIn, rec_coords, dIn, t_sub=options.subsampling_factor,
                   space_order=options.space_order, checkpointing=options.optimal_checkpointing,
-                  freq_list=freqs, isic=options.isic, is_residual=true,
+                  freq_list=freqs, ic=options.IC, is_residual=true,
                   dft_sub=options.dft_subsampling_factor[1], f0=options.f0)
 
     # Remove PML and return gradient as Array
@@ -248,7 +248,7 @@ function devito_interface(modelPy::PyObject, weights::Array, srcData::Array, rec
 
     # Devito call
     dOut = wrapcall_data(ac."born_rec_w", modelPy, weights, qIn, rec_coords,
-                  space_order=options.space_order, isic=options.isic, f0=options.f0)
+                  space_order=options.space_order, ic=options.IC, f0=options.f0)
     dOut = time_resample(dOut, dtComp, recGeometry)
 
     # Output linearized shot records as judiVector
@@ -270,7 +270,7 @@ function devito_interface(modelPy::PyObject, weights::Array, srcData::Array, rec
     grad = wrapcall_function(ac."J_adjoint", modelPy,
                   nothing, qIn, rec_coords, dIn, t_sub=options.subsampling_factor,
                   space_order=options.space_order, checkpointing=options.optimal_checkpointing,
-                  freq_list=freqs, isic=options.isic, ws=weights, is_residual=true,
+                  freq_list=freqs, ic=options.IC, ws=weights, is_residual=true,
                   dft_sub=options.dft_subsampling_factor[1], f0=options.f0)
     # Remove PML and return gradient as Array
     grad = remove_padding(grad, modelPy.padsizes; true_adjoint=options.sum_padding)
