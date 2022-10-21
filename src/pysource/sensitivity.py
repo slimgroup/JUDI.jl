@@ -256,20 +256,20 @@ def Loss(dsyn, dobs, dt, is_residual=False, misfit=None):
         misifit(dsyn, dob) -> obj, adjoint_source
     """
     if misfit is not None:
-        try:
-            f, r = misfit(dsyn[0].data[:], dobs[:] - dsyn[1].data[:])
+        if isinstance(dsyn, tuple):
+            f, r = misfit(dsyn[0].data, dobs[:] - dsyn[1].data[:])
             dsyn[0].data[:] = r[:]
-            return dt  * f, dsyn[0].data
-        except:
-            f, r = misfit(dsyn.data[:], dobs[:])
+            return dt * f, dsyn[0].data
+        else:
+            f, r = misfit(dsyn.data, dobs)
             dsyn.data[:] = r[:]
-            return dt  * f, dsyn.data
+            return dt * f, dsyn.data
 
     if not is_residual:
-        try:
+        if isinstance(dsyn, tuple):
             dsyn[0].data[:] -= dobs[:] - dsyn[1].data[:]  # input is observed data
             return .5 * dt * np.linalg.norm(dsyn[0].data)**2, dsyn[0].data
-        except:
+        else:
             dsyn.data[:] -= dobs[:]   # input is observed data
     else:
         dsyn.data[:] = dobs[:]

@@ -3,8 +3,9 @@
 # Date: September 2022
 #
 
-using Statistics, Random, LinearAlgebra, PyPlot
-using JUDI, SlimOptim, HDF5, SegyIO, Zygote, FFTW
+using Statistics, Random, LinearAlgebra, PyPlot, Distributed
+using JUDI, SlimOptim, HDF5, SegyIO
+@everywhere using JUDI.FFTW, Zygote
 
 # Load starting model
 n,d,o,m0 = read(h5open("$(JUDI.JUDI_DATA)/overthrust_model.h5","r"), "n", "d", "o", "m0")
@@ -32,20 +33,18 @@ q = judiVector(src_geometry,wavelet)
 
 ############################### FWI ###########################################
 
-
-function H(x)
+@everywhere function H(x)
     n = size(x, 1)
-    σ = sign.(-n/2+1:n/2)
-    y = imag(ifft(fftshift(σ.*fftshift(fft(x, 1), 1), 1), 1))
+    σ = ifftshift(sign.(-n/2+1:n/2))
+    y = imag(ifft(σ.*fft(x, 1), 1))
     return y
 end
 
-function myloss(x, y)
-    ϕ = sum(abs2.((x-y) .+ 1im .* H(x-y)))
-    g = gradient(xs -> sum(abs2.((xs-y) .+ 1im .* H(xs-y))), x)
-    return ϕ, real.(g[1])
-end
+@everywhere envelope(x, y) = sum(abs2.((x - y) .+ 1im .* H(x - y)))
+@everywhere denvelope(x, y) = gradient(xs->envelope(xs, y), x)[1]
+@everywhere myloss(x, y)= (envelope(x, y), denvelope(x, y))
 
+@everywhere myloss(randn(Float32, 10, 10), randn(Float32, 10, 10))
 
 # Optimization parameters
 fevals = parse(Int, get(ENV, "NITER", "10"))

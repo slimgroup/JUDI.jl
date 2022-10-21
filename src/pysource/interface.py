@@ -455,7 +455,7 @@ def J_adjoint(model, src_coords, wavelet, rec_coords, recin, space_order=8,
 def J_adjoint_freq(model, src_coords, wavelet, rec_coords, recin, space_order=8,
                    freq_list=[], is_residual=False, return_obj=False, nlind=False,
                    dft_sub=None, ic="as", ws=None, born_fwd=False, f0=0.015,
-                   misfit=misfit):
+                   misfit=None):
     """
     Jacobian (adjoint fo born modeling operator) operator on a shot record
     as a source (i.e data residual). Outputs the gradient with Frequency
