@@ -1,15 +1,40 @@
 export mse, studentst
 
-function mse(x, y)
+"""
+    mse(x, y)
+
+Mean square error
+
+    `5f0 * norm(x - y, 2)^2`
+
+and its derivative w.r.t `x`
+
+    `x-y`
+
+"""
+function mse(x::Matrix{T}, y::Matrix{T}) where {T<:Number}
     f = .5f0 * norm(x - y, 2)^2
     r = x - y
-    return f, r
+    return f::T, r::Matrix{T}
 end
 
-_studentst_loss(x::T, y::T, k::T2) where {T<:Number, T2<:Real} = T(1/2) * (k + 1) * log(1 + (x-y)^2 / k)
+_studentst_loss(x::T, y::T, k::T) where {T<:Number} = T(1/2) * (k + 1) * log(1 + (x-y)^2 / k)
 
-function studentst(x, y; k=2)
+"""
+studentst(x, y)
+
+Student's T misfit 
+
+    `.5 * (k+1) * log(1 + (x-y)^2 / k)`
+
+and its derivative w.r.t x
+
+    `(k + 1) * (x - y) / (k + (x - y)^2)`
+
+"""
+function studentst(x::Matrix{T}, y::Matrix{T}; k=T(2)) where {T<:Number}
+    k = convert(T, k)
     f = sum(_studentst_loss.(x, y, k))
     r = (k + 1) .* (x - y) ./ (k .+ (x - y).^2)
-    return f, r
+    return f::T, r::Matrix{T}
 end
