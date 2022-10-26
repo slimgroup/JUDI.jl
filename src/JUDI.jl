@@ -36,7 +36,7 @@ import Base.getproperty, Base.unsafe_convert, Base.convert
 import LinearAlgebra.transpose, LinearAlgebra.conj, LinearAlgebra.vcat, LinearAlgebra.adjoint
 import LinearAlgebra.vec, LinearAlgebra.dot, LinearAlgebra.norm, LinearAlgebra.abs
 import LinearAlgebra.rmul!, LinearAlgebra.lmul!, LinearAlgebra.rdiv!, LinearAlgebra.ldiv!
-import LinearAlgebra.mul!, Base.isfinite
+import LinearAlgebra.mul!, Base.isfinite, Base.inv
 
 # JOLI
 import JOLI: jo_convert

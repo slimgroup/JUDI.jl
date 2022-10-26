@@ -5,7 +5,8 @@ from devito import Inc, Eq, ConditionalDimension
 from devito.tools import as_tuple
 from devito.symbolics import retrieve_functions, INT
 
-from fields import wavefield_subsampled, lr_src_fields, fourier_modes, norm_holder
+from fields import (wavefield_subsampled, lr_src_fields, fourier_modes, norm_holder,
+                    illumination)
 
 
 def save_subsampled(model, u, nt, t_sub, space_order=8):
@@ -170,7 +171,7 @@ def otf_dft(u, freq, dt, factor=None):
 def idft(v, freq=None):
     """
     Symbolic inverse dft of v
-
+dft_modes
     Parameters
     ----------
     v: TimeFunction or Tuple
@@ -235,3 +236,20 @@ def weighted_norm(u, weight=None):
     n_s = [Inc(nv[0], nvt / w**2)]
     # Return norm object and expr
     return (n_t, n_s)
+
+
+def illumexpr(u, illum):
+    """
+    Illumination of the wavefield `u` as the 2 norm squared of `u` over time.
+    Parameters
+    ----------
+    u: TimeFunction or Tuple of TimeFunction
+        Wavefield to take energy along time of
+    illum: bool
+        Flag on whether or not illumination is computed
+    """
+    if not illum:
+        return []
+    u0 = as_tuple(u)
+    I = illumination(u, illum)
+    return [Inc(I, sum(u0)*sum(u0))]

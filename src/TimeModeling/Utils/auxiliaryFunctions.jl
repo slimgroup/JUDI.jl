@@ -318,8 +318,10 @@ function calculate_dt(model::Model; dt=nothing)
         pycall(pm."Model", PyObject, origin=model.o, spacing=model.d, shape=model.n,
                m=m, epsilon=epsilon, nbl=0)
     end
-    return convert(Float32, modelPy.critical_dt)
+    return calculate_dt(modelPy)
 end
+
+calculate_dt(modelPy::PyObject) = convert(Float32, modelPy."critical_dt")
 
 """
     get_computational_nt(srcGeometry, recGeoemtry, model; dt=nothing)
@@ -770,3 +772,15 @@ as_vec(x::judiMultiSourceVector, ::Val{true}) = vec(x)
 
 ######### backward compat
 extend_gradient(model_full, model, array) = array
+
+### Filter out PyObject none and nothing
+pynone(::AbstractArray) = false
+pynone(m) = (m == PyObject(nothing) || isnothing(m))
+
+function filter_none(args::Tuple)
+    out = filter(m-> ~pynone(m), args)
+    out = length(out) == 1 ? out[1] : out
+    return out
+end
+
+filter_none(x) = x

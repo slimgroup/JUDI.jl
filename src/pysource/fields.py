@@ -227,3 +227,20 @@ def norm_holder(v):
     nv = Function(name="n%s" % v0.name, shape=(1,), dimensions=(i,), grid=v0.grid)
     nvt = Function(name="n%st" % v0.name, grid=v0.grid, space_order=0)
     return nv, nvt
+
+
+def illumination(u, illum):
+    """
+    Function for the wavefield illumination
+
+    Parameters
+    ----------
+    u: TimeFunction or Tuple
+        Forward wavefield
+    illum: bool
+        Whether to compute the illumination flag
+    """
+    if not illum:
+        return None
+    u0 = as_tuple(u)[0]
+    return Function(name="I%s" % u0.name, grid=u0.grid, space_order=0)

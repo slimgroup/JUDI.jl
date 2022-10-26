@@ -66,6 +66,7 @@ function multi_src_propagate(F::judiPropagator{T, O}, q::AbstractVector{T}) wher
     arg_func = i -> (F[i], src_i(F, q, i))
     # Distribute source
     res = run_and_reduce(propagate, pool, nsrc, arg_func)
+    res = update_illum(res, F)
     res = _project_to_physical_domain(res, F.model)
     res = as_vec(res, Val(F.options.return_array))
     return res
@@ -87,6 +88,7 @@ function multi_src_fg!(G, model, q, dobs, dm; options=Options(), kw...)
     arg_func = i -> (model, q[i], dobs[i], dm, options[i], values(kw)...)
     # Distribute source
     res = run_and_reduce(multi_src_fg, pool, nsrc, arg_func)
+    f, g = update_illum(res, model, :adjoint_born)
     f, g = as_vec(res, Val(options.return_array))
     G .+= g
     return f
