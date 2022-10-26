@@ -68,6 +68,7 @@ function multi_src_propagate(F::judiPropagator{T, O}, q::AbstractVector{T}) wher
     res = run_and_reduce(propagate, pool, nsrc, arg_func)
     res = update_illum(res, F)
     res = _project_to_physical_domain(res, F.model)
+    res = update_illum(res, F)
     res = as_vec(res, Val(F.options.return_array))
     return res
 end

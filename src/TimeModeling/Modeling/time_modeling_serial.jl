@@ -63,7 +63,7 @@ function post_process(v::AbstractArray{T, N}, modelPy::PyObject, ::Val{:adjoint}
     end
 end
 
-function post_process(v::AbstractArray, modelPy::PyObject, ::Val{:adjoint_born}, ::Any, options::JUDIOptions)
+function post_process(v::AbstractArray, modelPy::PyObject, ::Val{:adjoint_born}, G::Geometry, options::JUDIOptions)
     grad = remove_padding(v, modelPy.padsizes; true_adjoint=options.sum_padding)
     return PhysicalParameter(grad, modelPy.spacing, modelPy.origin)
 end
