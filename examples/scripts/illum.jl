@@ -3,7 +3,11 @@
 # Author: Mathias Louboutin, mlouboutin3@gatech.edu
 # February 2022
 
+<<<<<<< HEAD
 using JUDI, HDF5, SlimPlotting, PyPlot, LinearAlgebra, Downloads, SlimPlotting, Distributed
+=======
+using JUDI, HDF5, SlimPlotting, PyPlot, LinearAlgebra, Downloads, SlimPlotting
+>>>>>>> 83ec52b (basic wirking)
 
 # Load model
 data_path = dirname(pathof(JUDI))*"/../data/"

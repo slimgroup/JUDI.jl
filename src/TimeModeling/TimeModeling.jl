@@ -32,6 +32,8 @@ include("Modeling/losses.jl")
 include("LinearOperators/basics.jl")
 include("LinearOperators/lazy.jl")
 include("LinearOperators/operators.jl")
+include("LinearOperators/judiIllumination.jl")
+
 
 #############################################################################
 # PDE solvers
