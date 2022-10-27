@@ -22,7 +22,12 @@ transpose(I::judiIllumination{T}) where T = I
 inv(I::judiIllumination{T, M, K, R}) where {T, M, K, R} = judiIllumination{T, M, -K, R}(I.name, I.illums, I.m, I.n)
 
 # Mul
-function *(I::judiIllumination{T, M, K, R}, x::AbstractVector{T}) where {T, M, K, R}
+function *(I::judiIllumination{T, M, K, R}, x::Vector{T}) where {T, M, K, R}
+    illum = (.*(values(I.illums)...)).^(K/length(I.illums))
+    return (illum[:] .* x) ./ (illum[:].^2 .+ eps(T))
+end
+
+function *(I::judiIllumination{T, M, K, R}, x::PhysicalParameter{T}) where {T, M, K, R}
     illum = (.*(values(I.illums)...)).^(K/length(I.illums))
     return (illum .* x) ./ (illum.^2 .+ eps(T))
 end
@@ -126,7 +131,7 @@ end
 
 update_illum(vals, ::judiPropagator) = vals
 
-function update_illum(vals::Tuple, model::Model, mode)
+function update_illum(vals::Tuple, model::Model, ::Any)
     length(vals) == 2 && (return vals)
     update_illum(model, vals[3], :forward)
     update_illum(model, vals[4], :adjoint)

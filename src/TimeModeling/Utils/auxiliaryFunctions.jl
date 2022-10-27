@@ -535,7 +535,8 @@ function time_resample(data::AbstractArray{Float32, N}, dt_in::AbstractFloat, ge
     else
         timeAxis = 0f0:dt_in:geometry_out.t[1]
         timeInterp = 0f0:geometry_out.dt[1]:geometry_out.t[1]
-        return  SincInterpolation(data, timeAxis, timeInterp)
+        out = SincInterpolation(data, timeAxis, timeInterp)
+        return out
     end
 end
 
@@ -758,7 +759,6 @@ vec(::Nothing) = nothing
 SincInterpolation(Y::Matrix{T}, S::StepRangeLen{T}, Up::StepRangeLen{T}) where T<:Real = sinc.( (Up .- S') ./ (S[2] - S[1]) ) * Y
 SincInterpolation(Y::PermutedDimsArray{T, 2, (2, 1), (2, 1), Matrix{T}}, S::StepRangeLen{T}, Up::StepRangeLen{T}) where T<:Real = (Y.parent * sinc.( (Up' .- S) ./ (S[2] - S[1]) ))'
 
-
 """
     as_vec(x, ::Val{Bool})
 Vectorizes output when `return_array` is set to `true`.
@@ -783,4 +783,13 @@ function filter_none(args::Tuple)
     return out
 end
 
-filter_none(x) = x
+filter_none(x) = xfunction judiIllumination(model::Model; mode="u", k=1, recompute=true)
+n = prod(model.n)
+# Initialize the illumination as the identity
+illum = Dict(s=>PhysicalParameter(model.n, model.d, model.o, ones(Float32, model.n)) for s in split(mode, ""))
+I = judiIllumination{Float32, Symbol(mode), k, recompute}("Illumination", illum, n, n)
+init_illum(model, I)
+return I
+end
+
+judiIllumination(F::judiPropagator; kw...) = judiIllumination(F.model; kw...)

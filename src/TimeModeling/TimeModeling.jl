@@ -58,6 +58,7 @@ if VERSION>v"1.2"
     for (k, v) in m.params
       Fl.model.params[k] = v
     end
+    objectid(m) ∈ keys(_illums) && (_illums[objectid(Fl.model)] = _illums[objectid(m)])
     Fl
   end
 
@@ -69,6 +70,12 @@ if VERSION>v"1.2"
     Fl
   end
 
+  function (F::judiPropagator)(m, q)
+    Fm = F(;m=m)
+    objectid(F.model) ∈ keys(_illums) && (_illums[objectid(Fm.model)] = _illums[objectid(F.model)])
+    return Fm*as_src(q)
+  end
+
   (F::judiPropagator)(m::Model, q) = F(m)*as_src(q)
-  (F::judiPropagator)(m, q) = F(;m=m)*as_src(q)
+
 end

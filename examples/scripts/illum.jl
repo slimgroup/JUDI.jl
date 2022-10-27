@@ -51,9 +51,13 @@ wavelet = ricker_wavelet(td, dtd, f0)
 q = judiVector(srcGeometry, wavelet)
 
 ###################################################################################################
+# Infer subsampling based on free memory
+mem = Sys.free_memory()/(1024^3)
+grad_mem = 40
+t_sub = max(1, ceil(Int, nworkers()*grad_mem/mem))
 
 # Write shots as segy files to disk
-opt = Options(isic=true)
+opt = Options(IC="isic", subsampling_factor=t_sub)
 
 # Setup operators
 F = judiModeling(model, srcGeometry, recGeometry; options=opt)

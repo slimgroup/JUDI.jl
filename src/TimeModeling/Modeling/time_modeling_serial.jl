@@ -43,19 +43,19 @@ function time_modeling(model_full::Model, srcGeometry::GeomOrNot, srcData::Array
 end
 
 # Post processing of output of devito based on parameters
-geom(srcGeometry, recGeometry, ::Val{:forward}) = recGeometry
-geom(srcGeometry, recGeometry, ::Val{:born}) = recGeometry
-geom(srcGeometry, recGeometry, ::Val{:adjoint}) = srcGeometry
-geom(srcGeometry, recGeometry, ::Val{:adjoint_born}) = srcGeometry
+geom(::Any, recGeometry, ::Val{:forward}) = recGeometry
+geom(::Any, recGeometry, ::Val{:born}) = recGeometry
+geom(srcGeometry, ::Any, ::Val{:adjoint}) = srcGeometry
+geom(srcGeometry, ::Any, ::Val{:adjoint_born}) = srcGeometry
 
 post_process(t::Tuple, modelPy::PyObject, op::Val, G, o::JUDIOptions) = (post_process(t[1], modelPy, op, G, o), post_process(Base.tail(t), modelPy, Val(:adjoint_born), G, Options(;sum_padding=false))...)
-post_process(t::Tuple{}, modelPy::PyObject, op::Val, G, o::JUDIOptions) = t
+post_process(t::Tuple{}, ::PyObject, ::Val, ::Any, ::JUDIOptions) = t
 
 post_process(v::AbstractArray, modelPy::PyObject, ::Val{:forward}, G::Geometry, options::JUDIOptions) = judiVector{Float32, Matrix{Float32}}(1, G, [time_resample(v, calculate_dt(modelPy), G)])
-post_process(v::AbstractArray, modelPy::PyObject, ::Val{:forward}, G, options::JUDIOptions) = judiWavefield{Float32}(1, [calculate_dt(modelPy)], [v])
+post_process(v::AbstractArray, modelPy::PyObject, ::Val{:forward}, ::Any, options::JUDIOptions) = judiWavefield{Float32}(1, [calculate_dt(modelPy)], [v])
 
 post_process(v::AbstractArray, modelPy::PyObject, ::Val{:adjoint}, G::Geometry, options::JUDIOptions) = judiVector{Float32, Matrix{Float32}}(1, G, [time_resample(v, calculate_dt(modelPy), G)])
-function post_process(v::AbstractArray{T, N}, modelPy::PyObject, ::Val{:adjoint}, G, options::JUDIOptions) where {T, N}
+function post_process(v::AbstractArray{T, N}, modelPy::PyObject, ::Val{:adjoint}, ::Any, options::JUDIOptions) where {T, N}
     if N == modelPy.dim
         return judiWeights{Float32}(1, [remove_padding(v, modelPy.padsizes; true_adjoint=false)])
     else
@@ -63,7 +63,7 @@ function post_process(v::AbstractArray{T, N}, modelPy::PyObject, ::Val{:adjoint}
     end
 end
 
-function post_process(v::AbstractArray, modelPy::PyObject, ::Val{:adjoint_born}, G::Geometry, options::JUDIOptions)
+function post_process(v::AbstractArray, modelPy::PyObject, ::Val{:adjoint_born}, ::Any, options::JUDIOptions)
     grad = remove_padding(v, modelPy.padsizes; true_adjoint=options.sum_padding)
     return PhysicalParameter(grad, modelPy.spacing, modelPy.origin)
 end
@@ -74,7 +74,7 @@ post_process(v::AbstractArray, modelPy::PyObject, ::Val{:born}, G::Geometry, opt
 # Saving to disk utilities
 save_to_disk(shot, args...) = shot
 save_to_disk(t::Tuple, args...) = save_to_disk(t[1], args...), Base.tail(t)...
-save_to_disk(shot::judiVector, srcGeometry, srcData, options, ::Val{false}) = shot
+save_to_disk(shot::judiVector, ::Any, ::Any, ::Any, ::Val{false}) = shot
 
 function save_to_disk(shot::judiVector, srcGeometry::GeometryIC, srcData::Array, options::JUDIOptions, ::Val{true}) 
     container = write_shot_record(srcGeometry, srcData, shot.geometry[1], shot.data[1], options)

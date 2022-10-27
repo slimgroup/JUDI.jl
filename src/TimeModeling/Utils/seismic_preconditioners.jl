@@ -4,7 +4,7 @@
 
 # Updated by Ziyi Yin, November 2020, ziyi.yin@gatech.edu
 #
-export marineTopmute2D, judiMarineTopmute2D
+export marineTopmute2D, judiMarineTopmute2D, judiDataMute
 export model_topmute, judiTopmute, find_water_bottom, depth_scaling, judiDepthScaling, low_filter, judiFilter
 
 ############################################ Data space preconditioners ################################################
@@ -110,7 +110,7 @@ function marineTopmute2D(Dobs::judiVector{T, Matrix{T}}, muteStart::Integer; mut
     return Din
 end
 
-function judiMarineTopmute2D(muteStart,geometry;params=Array{Any}(undef, 3),flipmask=false)
+function judiMarineTopmute2D(muteStart, geometry; params=Array{Any}(undef, 3), flipmask=false)
 # JOLI wrapper for the linear depth scaling function
     N = n_samples(geometry)
     D = joLinearFunctionFwd_T(N,N,
@@ -120,6 +120,85 @@ function judiMarineTopmute2D(muteStart,geometry;params=Array{Any}(undef, 3),flip
     return D
 end
 
+
+############################################ Data mute ###############################################
+
+_yloc(y::Vector{T}, t::Integer) where T = length(y) > 1 ?  y[t] : y[1]
+
+radius(G1::Geometry, G2::Geometry, t::Integer) = sqrt.((G1.xloc[1][t] .- G2.xloc[1][1]).^2 .+ (_yloc(G1.yloc[1], t) .- G2.yloc[1][1]).^2 .+ (G1.zloc[1][t] .- G2.zloc[1][1]).^2)
+
+_taper(::Val{:reflection}, n::Integer=20) = convert(Vector{Float32}, (cos.(range(pi, stop=2*pi, length=n)) .+ 1) ./ 2)
+_taper(::Val{:turning}, n::Integer=20) = convert(Vector{Float32}, (cos.(range(0, stop=pi, length=n)) .+ 1) ./ 2)
+
+_tapew(i::Integer, taperwidth::Integer, ::Integer, ::Val{:reflection}) = i < taperwidth
+_tapew(i::Integer, taperwidth::Integer, nt::Integer, ::Val{:turning}) = i > (nt - taperwidth)
+
+_mutew!(t::AbstractVector{T}, taper::AbstractVector{T}, i::Integer, nt::Integer, ::Val{:reflection}) where T = broadcast!(*, t[1:i], t[1:i], taper[nt-i+1:nt])
+_mutew!(t::AbstractVector{T}, taper::AbstractVector{T}, i::Integer, nt::Integer, ::Val{:turning}) where T = broadcast!(*, t[i:nt], t[i:nt], taper[1:(nt-i+1)])
+
+function _mutetrace!(t::AbstractVector{T}, taper::AbstractVector{T}, i::Integer, taperwidth::Integer, ::Val{:reflection}) where T
+    t[1:i-taperwidth] .= 0f0
+    t[i-taperwidth+1:i] .*= taper
+end
+
+function _mutetrace!(t::AbstractVector{T}, taper::AbstractVector{T}, i::Integer, taperwidth::Integer, ::Val{:turning}) where T
+    t[i+taperwidth+1:end] .= 0f0
+    t[i+1:i+taperwidth] .*= taper
+end
+
+function muteshot!(shot::judiVector, srcGeom::Geometry; vp=1500, t0=.1, mode=:reflection, taperwidth=floor(Int, 2/t0))
+    sGeom = Geometry(srcGeom)
+    rGeom = Geometry(shot.geometry)
+    nt, nrec = size(shot.data[1])
+    taper = _taper(Val(mode), taperwidth)
+    # Loop over traces
+    @inbounds for t=1:nrec
+        r = radius(rGeom, sGeom, t) 
+        tt = 1f3 * (r / vp + t0) / rGeom.dt[1]
+        i = min(max(1, floor(Int, tt)), nt)
+        if _tapew(i, taperwidth, nt, Val(mode))
+            _mutew!(view(shot.data[1], :, t), taper, i, nt, Val(mode))
+        else
+            _mutetrace!(view(shot.data[1], :, t), taper, i, taperwidth, Val(mode))
+        end
+    end
+end
+
+
+function muteshot(shot::Vector{T}, srcGeom::Geometry, recGeom::Geometry;
+                   vp=1500, t0=.1, mode=:reflection, taperwidth=floor(Int, 2/t0)) where {T<:Number}
+    nsrc = get_nsrc(recGeom)
+    shots = Vector{Matrix{Float32}}(undef, nsrc)
+    count = 1
+    for s=1:nsrc
+        ns = recGeom.nt[s]*recGeom.nrec[s]
+        shots[s] = reshape(shot[count:count+ns-1], recGeom.nt[s], recGeom.nrec[s])
+        count += ns
+    end
+    return muteshot(judiVector(recGeom, shots), srcGeom; vp=vp, t0=t0, mode=mode, taperwidth=taperwidth)
+end
+
+muteshot(shot::judiVector, srcGeom::Geometry, recGeom::Geometry; kw...) = muteshot(shot, srcGeom; kw...)
+
+function muteshot(shot::judiVector, srcGeom::Geometry; vp=1500, t0=.1, mode=:reflection, taperwidth=20)
+    out = deepcopy(shot)
+    for s=1:out.nsrc
+        muteshot!(out[s], srcGeom[s]; vp=vp, t0=t0, mode=mode, taperwidth=taperwidth)
+    end
+    out
+end
+
+function judiDataMute(srcGeom, recGeom; vp=1500, t0=.1, mode=:reflection, taperwidth=floor(Int, 2/t0))
+    mode ∈ [:reflection, :turning] || throw(ArgumentError("Only reflection (mute turning) and turning (mute refelctions) modes supported"))
+    # JOLI wrapper for the linear depth scaling function
+    N = n_samples(recGeom)
+    D = joLinearFunctionFwd_T(N, N,
+            v -> muteshot(v, srcGeom, recGeom; vp=vp, t0=t0, mode=mode, taperwidth=taperwidth),
+            w -> muteshot(w, srcGeom, recGeom; vp=vp, t0=t0, mode=mode, taperwidth=taperwidth),
+            Float32, Float32, name="Data mute")
+    return D
+end
+    
 
 ############################################ Model space preconditioners ###############################################
 
