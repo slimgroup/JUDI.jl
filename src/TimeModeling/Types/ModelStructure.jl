@@ -58,8 +58,9 @@ end
 PhysicalParameter(v::BitArray{N}, args...) where N = v
 
 function PhysicalParameter(v::Array{vDT}, d::Tuple, o::Tuple) where {vDT}
-    length(size(v)) != length(o) && throw(PhysicalParameterException("Input array should be $(length(o))-dimensional"))
-    return PhysicalParameter{vDT}(size(v), d, o, v)
+    n = size(v)
+    length(n) != length(o) && throw(PhysicalParameterException("Input array should be $(length(o))-dimensional"))
+    return PhysicalParameter{vDT}(n, d, o, reshape(v, n))
 end
 
 function PhysicalParameter(n::Tuple, d::Tuple, o::Tuple; vDT=Float32)

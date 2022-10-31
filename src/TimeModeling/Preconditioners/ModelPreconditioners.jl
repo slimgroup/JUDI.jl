@@ -1,4 +1,79 @@
-export judiIllumination
+export judiIllumination, judiDepthScaling, judiTopmute
+export DepthScaling, TopMute
+"""
+    DepthScaling{T, N, K}
+
+Depth scaling operator in `N` dimensions scaling by `depth^K`.
+
+
+Constructor
+===========
+
+    judiDepthScaling(model::Model; K=.5)
+
+"""
+struct DepthScaling{T, N, K} <: ModelPreconditioner{T, T}
+    depth::Array{T, N}
+end
+
+function judiDepthScaling(model::Model; K=.5f0)
+    N = length(model.n)
+    depth = reshape(range(0f0, stop=(model.n[end] - 1) * model.d[end], length=model.n[end]), :, ones(Int64, N-1)...)
+    return DepthScaling{Float32, N, K}(depth)
+end
+  
+matvec(D::DepthScaling{T, N}, x::Vector{T}) where {T, N} = vec(reshape(x, D.model.n) .* D.depth.^K)
+matvec(D::DepthScaling{T, N}, x::AbstractArray{T, N}) where {T, N} = x .* D.depth.^K
+matvec(D::DepthScaling{T, N}, x::PhysicalParameter{T}) where {T, N} = x .* D.depth.^K
+
+# Diagonal operator, self-adjoint
+matvec_T(D::DepthScaling{T, N}, x) where {T, N} = matvec(D, x)
+
+
+# Real diagonal operator
+conj(I::DepthScaling{T}) where T = I
+adjoint(I::DepthScaling{T}) where T = I
+transpose(I::DepthScaling{T}) where T = I
+
+"""
+    TopMute{T, N}
+
+Mute top of the model in `N` dimensions
+
+Constructor
+===========
+    judiTopmute(model; taperwidht=10)
+    judiTopmute(n, wb, taperwidth)   # Legacy
+"""
+struct TopMute{T, N, Nw} <: ModelPreconditioner{T, T}
+    wb::Array{Int64, Nw}
+    taperwidth::Int64
+    function TopMute{T, N}(wb::Array{T, Nw}, taperwidth::Integer) where {T, N, Nw}
+        Nw == N-1 || throw(ArgumentError("Incompatible dimensions. Water bottom should be an hyperplane of dimension $(N-1)"))
+        return new{T, N, Nw}(wb, taperwidth)
+    end
+end
+
+judiTopmute(n::NTuple{N, Integer}, wb::Array{T, Nw}, taperwidth::Integer) where {T, N, Nw} = TopMute{Float32, length(n)}(wb, taperwidth)
+
+function judiTopmute(model::Model; taperwidth=10)
+    wb = find_water_bottom(model.m.data)
+    return TopMute{Float32, length(n)}(wb, taperwidth)
+end
+
+function matvec(D::TopMute{T, N}, x::Union{PhysicalParameter{T}, Array{T, N}}) where {T, N}
+    out = 1 .* x
+    taper = _taper(Val(:reflection), D.taperwidth)
+    @inbounds @simd for i in CartesianIndices(D.wb)
+        out[i, 1:wb[i]-D.taperwidth] .= 0
+        out[i, wb[i]-D.taperwidth+:wb[i]] .*= taper
+    end
+    out
+end
+
+matvec(D::TopMute{T, N}, x::Vector{T}) where {T, N} = vec(matvec(D, reshape(x, size(D.wb)..., :)))
+
+
 
 """
     judiIllumination
@@ -6,7 +81,7 @@ export judiIllumination
 Diagonal approximation of the FWI Hessian as the energy of the wavefield.
 
 """
-struct judiIllumination{DDT, M, K, R} <: joAbstractLinearOperator{DDT, DDT}
+struct judiIllumination{DDT, M, K, R} <: ModelPreconditioner{DDT, DDT}
     name::String
     illums
     m::Integer
@@ -22,12 +97,12 @@ transpose(I::judiIllumination{T}) where T = I
 inv(I::judiIllumination{T, M, K, R}) where {T, M, K, R} = judiIllumination{T, M, -K, R}(I.name, I.illums, I.m, I.n)
 
 # Mul
-function *(I::judiIllumination{T, M, K, R}, x::Vector{T}) where {T, M, K, R}
+function matvec(I::judiIllumination{T, M, K, R}, x::Vector{T}) where {T, M, K, R}
     illum = (.*(values(I.illums)...)).^(K/length(I.illums))
     return (illum[:] .* x) ./ (illum[:].^2 .+ eps(T))
 end
 
-function *(I::judiIllumination{T, M, K, R}, x::PhysicalParameter{T}) where {T, M, K, R}
+function matvec(I::judiIllumination{T, M, K, R}, x::PhysicalParameter{T}) where {T, M, K, R}
     illum = (.*(values(I.illums)...)).^(K/length(I.illums))
     return (illum .* x) ./ (illum.^2 .+ eps(T))
 end

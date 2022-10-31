@@ -37,3 +37,10 @@ function rrule(::typeof(adjoint), F::judiPropagator)
     _LinOp_pullback(y) = (NoTangent(), adjoint(y))
     return Fa, _LinOp_pullback
 end
+
+
+# Preconditioners
+function rrule(::typeof(*), P::Preconditioner, x)
+    back(y) = NoTangent(), NoTangent(), matvec_T(P, y)
+    return matvec(P, x), back
+end

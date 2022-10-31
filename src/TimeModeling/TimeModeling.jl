@@ -32,8 +32,6 @@ include("Modeling/losses.jl")
 include("LinearOperators/basics.jl")
 include("LinearOperators/lazy.jl")
 include("LinearOperators/operators.jl")
-include("LinearOperators/judiIllumination.jl")
-
 
 #############################################################################
 # PDE solvers
@@ -45,8 +43,11 @@ include("Modeling/twri_objective.jl")  # TWRI objective function value and gradi
 include("Modeling/propagation.jl")
 
 #############################################################################
-# Preconditioners and optimization
-include("Utils/seismic_preconditioners.jl")
+# Preconditioners
+include("Preconditioners/base.jl")
+include("Preconditioners/utils.jl")
+include("Preconditioners/DataPreconditioners.jl")
+include("Preconditioners/ModelPreconditioners.jl")
 
 #############################################################################
 if VERSION>v"1.2"
