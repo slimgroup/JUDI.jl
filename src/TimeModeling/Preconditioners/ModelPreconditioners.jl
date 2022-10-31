@@ -1,5 +1,6 @@
 export judiIllumination, judiDepthScaling, judiTopmute
 export DepthScaling, TopMute
+
 """
     DepthScaling{T, N, K}
 
@@ -13,30 +14,32 @@ Constructor
 
 """
 struct DepthScaling{T, N, K} <: ModelPreconditioner{T, T}
+    m::Integer
     depth::Array{T, N}
 end
 
 function judiDepthScaling(model::Model; K=.5f0)
     N = length(model.n)
-    depth = reshape(range(0f0, stop=(model.n[end] - 1) * model.d[end], length=model.n[end]), :, ones(Int64, N-1)...)
-    return DepthScaling{Float32, N, K}(depth)
+    depth = reshape(range(0f0, stop=(model.n[end] - 1) * model.d[end], length=model.n[end]), ones(Int64, N-1)..., :)
+    return DepthScaling{Float32, N, K}(prod(model.n), depth)
 end
   
-matvec(D::DepthScaling{T, N}, x::Vector{T}) where {T, N} = vec(reshape(x, D.model.n) .* D.depth.^K)
-matvec(D::DepthScaling{T, N}, x::AbstractArray{T, N}) where {T, N} = x .* D.depth.^K
-matvec(D::DepthScaling{T, N}, x::PhysicalParameter{T}) where {T, N} = x .* D.depth.^K
+matvec(D::DepthScaling{T, N, K}, x::Vector{T}) where {T, N, K} = vec(reshape(x, :, size(D.depth, N)) .* D.depth[:]'.^K)
+matvec(D::DepthScaling{T, N, K}, x::AbstractArray{T, N}) where {T, N, K} = x .* D.depth.^K
+matvec(D::DepthScaling{T, N, K}, x::PhysicalParameter{T}) where {T, N, K} = x .* D.depth.^K
+matvec(D::DepthScaling{T, N, K}, x::judiWeights{T}) where {T, N, K} = judiWeights{T}(x.nsrc, [matvec(D, x.data[s]) for s=1:x.nsrc])
 
 # Diagonal operator, self-adjoint
-matvec_T(D::DepthScaling{T, N}, x) where {T, N} = matvec(D, x)
-
+matvec_T(D::DepthScaling{T, N, K}, x) where {T, N, K} = matvec(D, x)
 
 # Real diagonal operator
 conj(I::DepthScaling{T}) where T = I
 adjoint(I::DepthScaling{T}) where T = I
 transpose(I::DepthScaling{T}) where T = I
+inv(I::DepthScaling{T, N, K}) where {T, N, K} = DepthScaling{Float32, N, -K}(I.depth)
 
 """
-    TopMute{T, N}
+    TopMute{T, N, Nw}
 
 Mute top of the model in `N` dimensions
 
@@ -46,99 +49,42 @@ Constructor
     judiTopmute(n, wb, taperwidth)   # Legacy
 """
 struct TopMute{T, N, Nw} <: ModelPreconditioner{T, T}
+    m::Integer
     wb::Array{Int64, Nw}
     taperwidth::Int64
-    function TopMute{T, N}(wb::Array{T, Nw}, taperwidth::Integer) where {T, N, Nw}
-        Nw == N-1 || throw(ArgumentError("Incompatible dimensions. Water bottom should be an hyperplane of dimension $(N-1)"))
-        return new{T, N, Nw}(wb, taperwidth)
-    end
+    TopMute(m::Integer, wb::Array{T, Nw}, taperwidth::Integer) where {T, Nw} =  new{Float32, Nw+1, Nw}(m, wb, taperwidth)
 end
 
-judiTopmute(n::NTuple{N, Integer}, wb::Array{T, Nw}, taperwidth::Integer) where {T, N, Nw} = TopMute{Float32, length(n)}(wb, taperwidth)
+judiTopmute(::NTuple{N, Integer}, wb::Array{T, Nw}, taperwidth::Integer) where {T, N, Nw} = TopMute(prod(n), wb, taperwidth)
+judiTopmute(n::NTuple{N, Integer}, wb::Integer, taperwidth::Integer) where {N} = TopMute(prod(n), wb*ones(Int64, n[1:end-1]), taperwidth)
 
 function judiTopmute(model::Model; taperwidth=10)
     wb = find_water_bottom(model.m.data)
-    return TopMute{Float32, length(n)}(wb, taperwidth)
+    return TopMute(prod(model.n), wb, taperwidth)
 end
 
-function matvec(D::TopMute{T, N}, x::Union{PhysicalParameter{T}, Array{T, N}}) where {T, N}
+
+function matvec(D::TopMute{T, N}, x::Array{T, N}) where {T, N}
     out = 1 .* x
-    taper = _taper(Val(:reflection), D.taperwidth)
-    @inbounds @simd for i in CartesianIndices(D.wb)
-        out[i, 1:wb[i]-D.taperwidth] .= 0
-        out[i, wb[i]-D.taperwidth+:wb[i]] .*= taper
+    taper = D.taperwidth < 2 ? 1 : _taper(Val(:reflection), D.taperwidth)
+    for i in CartesianIndices(D.wb)
+        out[i, 1:D.wb[i]-D.taperwidth] .= 0
+        out[i, D.wb[i]-D.taperwidth+1:D.wb[i]] .*= taper
     end
     out
 end
 
+matvec(D::TopMute{T, N}, x::PhysicalParameter{T}) where {T, N} = PhysicalParameter(x, matvec(D, x.data))
+matvec(D::TopMute{T, N}, x::judiWeights{T}) where {T, N} = judiWeights{T}(x.nsrc, [matvec(D, x.data[s]) for s=1:x.nsrc])
 matvec(D::TopMute{T, N}, x::Vector{T}) where {T, N} = vec(matvec(D, reshape(x, size(D.wb)..., :)))
 
-
-
-"""
-    judiIllumination
-
-Diagonal approximation of the FWI Hessian as the energy of the wavefield.
-
-"""
-struct judiIllumination{DDT, M, K, R} <: ModelPreconditioner{DDT, DDT}
-    name::String
-    illums
-    m::Integer
-    n::Integer
-end
-
 # Real diagonal operator
-conj(I::judiIllumination{T}) where T = I
-adjoint(I::judiIllumination{T}) where T = I
-transpose(I::judiIllumination{T}) where T = I
+conj(I::TopMute{T, N}) where {T, N} = I
+adjoint(I::TopMute{T, N}) where {T, N} = I
+transpose(I::TopMute{T, N}) where {T, N} = I
+inv(::TopMute{T, N}) where {T, N} = throw(MethodError(inv, "Topmute masks contains zeros cannot be inverted"))
 
-# Inverse
-inv(I::judiIllumination{T, M, K, R}) where {T, M, K, R} = judiIllumination{T, M, -K, R}(I.name, I.illums, I.m, I.n)
 
-# Mul
-function matvec(I::judiIllumination{T, M, K, R}, x::Vector{T}) where {T, M, K, R}
-    illum = (.*(values(I.illums)...)).^(K/length(I.illums))
-    return (illum[:] .* x) ./ (illum[:].^2 .+ eps(T))
-end
-
-function matvec(I::judiIllumination{T, M, K, R}, x::PhysicalParameter{T}) where {T, M, K, R}
-    illum = (.*(values(I.illums)...)).^(K/length(I.illums))
-    return (illum .* x) ./ (illum.^2 .+ eps(T))
-end
-
-# Functor
-function (I::judiIllumination{T, M, K, R})(mode::String) where {T, M, K, R}
-    illum = Dict(s=>similar(first(values(I.illums))) for s in split(mode, ""))
-    for k ∈ keys(illum)
-        if k ∈ keys(I.illums)
-            illum[k] = deepcopy(I.illums[k])
-        else
-            fill!(illum[k], 1)
-        end
-    end
-    judiIllumination{T, Symbol(mode), K, R}(I.name, illum, I.m, I.n)
-end
-
-# Assignment
-function set_val(I::judiIllumination{T, M, K, R}, mode, v) where {T, M, K, R}
-    key = mode ∈ [:forward, :born] ? "u" : "v"
-    if key in keys(I.illums)
-        I.illums[key] .= v
-    end
-end
-
-# status
-function is_updated(I::judiIllumination{T, M, K, R}) where {T, M, K, R}
-    updated = true
-    for (k, v) in I.illums
-        im, iM = extrema(v)
-        updated = (im == iM == 1) && updated
-    end
-    return ~updated
-end
-
-# Constructor
 """
     judiIllumination(model; mode="u", k=1, recompute=true)
 
@@ -175,16 +121,73 @@ Construct the diagonal operator such that I*x = x ./ |||u||_2^2
 
 
 """
+struct judiIllumination{DDT, M, K, R} <: ModelPreconditioner{DDT, DDT}
+    name::String
+    illums
+    m::Integer
+end
+
 function judiIllumination(model::Model; mode="u", k=1, recompute=true)
     n = prod(model.n)
     # Initialize the illumination as the identity
     illum = Dict(s=>PhysicalParameter(model.n, model.d, model.o, ones(Float32, model.n)) for s in split(mode, ""))
-    I = judiIllumination{Float32, Symbol(mode), k, recompute}("Illumination", illum, n, n)
+    I = judiIllumination{Float32, Symbol(mode), k, recompute}("Illumination", illum, n)
     init_illum(model, I)
     return I
 end
 
 judiIllumination(F::judiPropagator; kw...) = judiIllumination(F.model; kw...)
+
+
+# Real diagonal operator
+conj(I::judiIllumination{T}) where T = I
+adjoint(I::judiIllumination{T}) where T = I
+transpose(I::judiIllumination{T}) where T = I
+
+# Inverse
+inv(I::judiIllumination{T, M, K, R}) where {T, M, K, R} = judiIllumination{T, M, -K, R}(I.name, I.illums, I.m)
+
+# Mul
+function matvec(I::judiIllumination{T, M, K, R}, x::Vector{T}) where {T, M, K, R}
+    illum = (.*(values(I.illums)...)).^(K/length(I.illums))
+    return (illum[:] .* x) ./ (illum[:].^2 .+ eps(T))
+end
+
+function matvec(I::judiIllumination{T, M, K, R}, x::PhysicalParameter{T}) where {T, M, K, R}
+    illum = (.*(values(I.illums)...)).^(K/length(I.illums))
+    return (illum .* x) ./ (illum.^2 .+ eps(T))
+end
+
+# Functor
+function (I::judiIllumination{T, M, K, R})(mode::String) where {T, M, K, R}
+    illum = Dict(s=>similar(first(values(I.illums))) for s in split(mode, ""))
+    for k ∈ keys(illum)
+        if k ∈ keys(I.illums)
+            illum[k] = deepcopy(I.illums[k])
+        else
+            fill!(illum[k], 1)
+        end
+    end
+    judiIllumination{T, Symbol(mode), K, R}(I.name, illum, I.m)
+end
+
+# Assignment
+function set_val(I::judiIllumination{T, M, K, R}, mode, v) where {T, M, K, R}
+    key = mode ∈ [:forward, :born] ? "u" : "v"
+    if key in keys(I.illums)
+        I.illums[key] .= v
+    end
+end
+
+# status
+function is_updated(I::judiIllumination{T, M, K, R}) where {T, M, K, R}
+    updated = true
+    for (k, v) in I.illums
+        im, iM = extrema(v)
+        updated = (im == iM == 1) && updated
+    end
+    return ~updated
+end
 
 ##################  Illumination tracker. ####################
 # We carry a global tracker that associate an illumination operator

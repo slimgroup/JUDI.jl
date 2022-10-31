@@ -608,15 +608,18 @@ Preprocesses input Array into an Array of Array for modeling
 Parameters:
 * `input`: Input to preprocess.
 * `geometry`: Geometry containing physical parameters.
+* `nsrc`: Number of sources
 """
-function process_input_data(input::AbstractArray{Float32}, recGeom::Geometry)
-    nsrc = get_nsrc(recGeom)
-    dataCell = Vector{Matrix{Float32}}(undef, nsrc)
-    count = 1
-    for s=1:nsrc
-        ns = recGeom.nt[s]*recGeom.nrec[s]
-        dataCell[s] = reshape(input[count:count+ns-1], recGeom.nt[s], recGeom.nrec[s])
-        count += ns
+function process_input_data(input::AbstractArray{Float32}, geometry::Geometry)
+    # Input data is pure Julia array: assume fixed no.
+    # of receivers and reshape into data cube nt x nrec x nsrc
+    nt = Int(geometry.nt[1])
+    nrec = geometry.nrec[1]
+    nsrc = length(geometry.xloc)
+    data = reshape(input, nt, nrec, nsrc)
+    dataCell = Array{Array{Float32, 2}, 1}(undef, nsrc)
+    for j=1:nsrc
+        dataCell[j] = data[:,:,j]
     end
     return dataCell
 end
@@ -780,13 +783,4 @@ function filter_none(args::Tuple)
     return out
 end
 
-filter_none(x) = xfunction judiIllumination(model::Model; mode="u", k=1, recompute=true)
-n = prod(model.n)
-# Initialize the illumination as the identity
-illum = Dict(s=>PhysicalParameter(model.n, model.d, model.o, ones(Float32, model.n)) for s in split(mode, ""))
-I = judiIllumination{Float32, Symbol(mode), k, recompute}("Illumination", illum, n, n)
-init_illum(model, I)
-return I
-end
-
-judiIllumination(F::judiPropagator; kw...) = judiIllumination(F.model; kw...)
+filter_none(x) = x

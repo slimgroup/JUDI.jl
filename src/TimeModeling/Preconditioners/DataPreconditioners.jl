@@ -37,6 +37,7 @@ The following optional paramet where {T, N}rs control the muting operator
 - `taperwidth`: Width of the cosine taper in number of samples. Defaults to `2 / t0`
 """
 struct DataMute{T, mode} <: DataPreconditioner{T, T}
+    m::Integer
     srcGeom::Geometry
     recGeom::Geometry
     vp::Vector{T}
@@ -51,14 +52,15 @@ function judiDataMute(srcGeom::Geometry, recGeom::Geometry; vp=1500, t0=.1, mode
     VP = Vector{Float32}(undef, nsrc); VP .= vp
     T0 = Vector{Float32}(undef, nsrc); T0 .=t0
     TW = Vector{Int64}(undef, nsrc); TW .= taperwidth
-    return DatMute{Float32, nsrc, mode}(srcGeom, recGeom, vp, t0, taperwidth)
+    m = n_samples(recGeom)
+    return DataMute{Float32, mode}(m, srcGeom, recGeom, VP, T0, TW)
 end
     
 judiDataMute(q::judiVector, d::judiVector; kw...) = judiDataMute(q.geometry, d.geometry; kw...)
 
 # Implementation
 matvec_T(D::DataMute{T, mode} , x::AbstractVector{T}) where {T, mode} = matvec(D, x)  # Basically a mask so symmetric and self adjoint
-matvec(D::DataMute{T, mode} , x::AbstractVector{T}) where {T, mode} = muteshot(x, D.srcGeom; vp=D.vp, t0=D.t0, mode=mode, taperwidth=D.taperwidth)
+matvec(D::DataMute{T, mode} , x::AbstractVector{T}) where {T, mode} = muteshot(x, D.srcGeom, D.recGeom; vp=D.vp, t0=D.t0, mode=mode, taperwidth=D.taperwidth)
 
 # Real diagonal operator
 conj(I::DataMute{T, mode}) where {T, mode} = I
@@ -66,7 +68,11 @@ adjoint(I::DataMute{T, mode}) where {T, mode} = I
 transpose(I::DataMute{T, mode}) where {T, mode} = I
 
 # getindex for source subsampling
-getindex(P::DataMute{T, mode}, i) where {T, mode} = DataMute{T, mode}(P.srcGeom[i], P.recGeom[i], vp[i], t0[i], taperwidth[i])
+function getindex(P::DataMute{T, mode}, i) where {T, mode}
+    geomi = P.recGeom[i]
+    m = n_samples(geomi)
+    DataMute{T, mode}(m, P.srcGeom[i], geomi, P.vp[i], P.t0[i], P.taperwidth[i])
+end
 
 # Comptuee functions
 _yloc(y::Vector{T}, t::Integer) where T = length(y) > 1 ?  y[t] : y[1]
@@ -117,9 +123,9 @@ end
 muteshot(shot::judiVector, srcGeom::Geometry, recGeom::Geometry; kw...) = muteshot(shot, srcGeom; kw...)
 
 function muteshot(shot::judiVector, srcGeom::Geometry; vp=1500, t0=.1, mode=:reflection, taperwidth=20)
-    out = deepcopy(shot)
+    out = deepcopy(get_data(shot))
     for s=1:out.nsrc
-        muteshot!(out[s], srcGeom[s]; vp=vp, t0=t0, mode=mode, taperwidth=taperwidth)
+        muteshot!(out[s], srcGeom[s]; vp=vp[s], t0=t0[s], mode=mode, taperwidth=taperwidth[s])
     end
     out
 end
@@ -136,11 +142,12 @@ Constructor
     judiFilter(judivector, fmin, fmax)
 """
 struct FrequencyFilter{T, fm, FM} <: DataPreconditioner{T, T}
+    m::Integer
     recGeom::Geometry
 end
 
 judiFilter(geometry::Geometry, fmin::T, fmax::T) where T = judiFilter(geometry, Float32(fmin), Float32(fmax))
-judiFilter(geometry::Geometry, fmin::Float32, fmax::Float32) = FrequencyFilter{Float32, fmin, fmax}(geometry)
+judiFilter(geometry::Geometry, fmin::Float32, fmax::Float32) = FrequencyFilter{Float32, fmin, fmax}(n_samples(geometry), geometry)
 judiFilter(v::judiVector, fmin, fmax) = judiFilter(v.geometry, fmin, fmax)
 
 matvec(D::FrequencyFilter{T, fm, FM}, x::Vector{T}) where {T, fm, FM} = vec(matvec(D, process_input_data(x, D.recGeom)))
@@ -154,7 +161,10 @@ function matvec(::FrequencyFilter{T, fm, FM}, Din::judiVector{T, AT}) where {T, 
 end
 
 # getindex for source subsampling
-getindex(P::FrequencyFilter{T, fm, FM}, i) where {T, fm, FM} = FrequencyFilter{T, fm, FM}(getindex(P.recGeom, i))
+function getindex(P::FrequencyFilter{T, fm, FM}, i) where {T, fm, FM}
+    geomi = P.recGeom[i]
+    return FrequencyFilter{T, fm, FM}(n_samples(geomi), geomi)
+end
 
 # filtering is self-adjoint (diagonal in fourier domain)
 matvec_T(D::FrequencyFilter{T, fm, FM}, x) where {T, fm, FM} = matvec(D, x)
@@ -172,10 +182,15 @@ function filter!(dout::Array{T, N}, din::Array{T, N}, dt::T; fmin=T(0.01), fmax=
     map(i-> tracefilt!(selectdim(dout, N, i), selectdim(din, N, i)), 1:size(dout, 2))
 end
 
-low_filter(Din::judiVector; fmin=0.0, fmax=25.0) = FrequencyFilter{Float32, fmin, fmax}(Din.geometry)*Din
-low_filter(Din::judiVector, ::Any; fmin=0.0, fmax=25.0)	= low_filter(Din; fmin=fmin, fmax=fmax)
+low_filter(Din::judiVector; fmin=0.01, fmax=100.0) = FrequencyFilter{Float32, fmin, fmax}(Din.geometry)*Din
+low_filter(Din::judiVector, ::Any; fmin=0.01, fmax=100.0)	= low_filter(Din; fmin=fmin, fmax=fmax)
 
-function low_filter(Din::Matrix{T}, dt_in; fmin=0.0, fmax=25.0) where T
+"""
+    low_filter(Din, dt_in; fmin=0, fmax=25)
+
+Performs a causal band pass filtering [fmin, fmax] on the input data bases on its sampling rate `dt`.
+"""
+function low_filter(Din::Matrix{T}, dt_in; fmin=0.01, fmax=100.0) where T
     out = similar(Din)
     filter!(out, Din, dt_in; fmin=T(fmin), fmax=T(fmax))
     return out

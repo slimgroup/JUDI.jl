@@ -1,3 +1,5 @@
+export find_water_bottom
+
 # Taper function. Used for data and model muting
 _taper(::Val{:reflection}, n::Integer=20) = convert(Vector{Float32}, (cos.(range(pi, stop=2*pi, length=n)) .+ 1) ./ 2)
 _taper(::Val{:turning}, n::Integer=20) = convert(Vector{Float32}, (cos.(range(0, stop=pi, length=n)) .+ 1) ./ 2)
@@ -14,9 +16,9 @@ function find_water_bottom(m::AbstractArray{avDT, N};eps = 1e-4) where {avDT, N}
     #return the indices of the water bottom of a seismic image
     n = size(m)
     idx = zeros(Integer, n[1:end-1])
-    wbfunc(x) = abs(x - x[1]) > eps
-    @inbounds @simd for i in CartesianIndices(idx)
-        idx[i] = findfirst(wbfuncm[i, :])
+    wbfunc(x, x1) = abs(x - x1) > eps
+    for i in CartesianIndices(idx)
+        idx[i] = findfirst(x->wbfunc(x, m[i, 1]), m[i, :])
     end
     return idx
 end

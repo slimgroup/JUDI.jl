@@ -83,6 +83,7 @@ end
 
 PhysicalParameter(p::PhysicalParameter, n::Tuple, d::Tuple, o::Tuple) = p 
 PhysicalParameter(p::PhysicalParameter) = p 
+PhysicalParameter(p::PhysicalParameter{T}, v::Array{T, N}) where {T, N} = PhysicalParameter(v, p.d, p.o)
 
 # transpose and such.....
 conj(x::PhysicalParameter{vDT}) where vDT = x
@@ -223,8 +224,10 @@ materialize!(A::AbstractArray, B::Broadcast.Broadcasted{Broadcast.ArrayStyle{Phy
 
 for op in [:+, :-, :*, :/, :\]
     @eval begin
-        broadcasted(::typeof($op), A::PhysicalParameter{T}, B::DenseArray{T}) where T = PhysicalParameter{T}(A.n, A.d, A.o, materialize(broadcasted($(op), A.data, reshape(B, A.n))))
-        broadcasted(::typeof($op), B::DenseArray{T}, A::PhysicalParameter{T}) where T = PhysicalParameter{T}(A.n, A.d, A.o, materialize(broadcasted($(op), reshape(B, A.n), A.data)))
+        broadcasted(::typeof($op), A::PhysicalParameter{T}, B::DenseVector{T}) where T = PhysicalParameter{T}(A.n, A.d, A.o, materialize(broadcasted($(op), A.data, reshape(B, A.n))))
+        broadcasted(::typeof($op), B::DenseVector{T}, A::PhysicalParameter{T}) where T = PhysicalParameter{T}(A.n, A.d, A.o, materialize(broadcasted($(op), reshape(B, A.n), A.data)))
+        broadcasted(::typeof($op), A::PhysicalParameter{T}, B::DenseArray{T, N}) where {T, N} = PhysicalParameter{T}(A.n, A.d, A.o, materialize(broadcasted($(op), A.data, B)))
+        broadcasted(::typeof($op), B::DenseArray{T, N}, A::PhysicalParameter{T}) where {T, N} = PhysicalParameter{T}(A.n, A.d, A.o, materialize(broadcasted($(op), B, A.data)))
         broadcasted(::typeof($op), A::PhysicalParameter{T}, B::PhysicalParameter{T}) where T = $(op)(A, B)
     end
 end

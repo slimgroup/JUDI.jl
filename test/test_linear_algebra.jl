@@ -73,9 +73,10 @@
         dlin = J*dm
         @test isapprox(dobs_out, dlin; rtol=ftol)
         @test isapprox(dobs_out, dobs; rtol=ftol)
+
         # JUDI precon make sure it runs
         F = judiFilter(recGeometry, .002, .030)
-        Md = judiMarineTopmute2D(0, recGeometry)
+        Md = judiDataMute(srcGeometry, recGeometry)
         D = judiDepthScaling(model)
         M = judiTopmute(model.n, 20, 1)
 
@@ -89,7 +90,6 @@
         @test isapprox(dobs_out, Md'*dobs; rtol=ftol)
 
         # Check JUDI-JOLI compat
-        
         # check JOLI operator w/ judiVector
         mul!(dobs_out, J*D, dm)
         mul!(dobs, J*D, vec(dm.data))
@@ -124,34 +124,34 @@
         
         dobs1 = deepcopy(dobs)
         for Op in [F, F', Md , Md']
-                m = Op*dobs 
-                # Test that dobs wasn't modified
-                @test isapprox(dobs,dobs1,rtol=eps())
-                # Test that it did compute something 
-                @test m != dobs
+            m = Op*dobs 
+            # Test that dobs wasn't modified
+            @test isapprox(dobs,dobs1,rtol=eps())
+            # Test that it did compute something 
+            @test m != dobs
         end
 
         w1 = deepcopy(w)
 
         for Op in [D, D']
-                m = Op*w
-                # Test that w wasn't modified
-                @test isapprox(w,w1,rtol=eps())
+            m = Op*w
+            # Test that w wasn't modified
+            @test isapprox(w,w1,rtol=eps())
 
-                w_expect = deepcopy(w)
-                for j = 1:model.n[2]
-                        w_expect.weights[1][:,j] = w.weights[1][:,j] * Float32(sqrt(model.d[2]*(j-1)))
-                end
-                @test isapprox(w_expect,m)
+            w_expect = deepcopy(w)
+            for j = 1:model.n[2]
+                w_expect.weights[1][:,j] = w.weights[1][:,j] * Float32(sqrt(model.d[2]*(j-1)))
+            end
+           @test isapprox(w_expect,m)
         end
 
         for Op in [M , M']
-                m = Op*w
-                # Test that w wasn't modified
-                @test isapprox(w,w1,rtol=eps())
+            m = Op*w
+            # Test that w wasn't modified
+            @test isapprox(w,w1,rtol=eps())
 
-                @test all(isapprox.(m.weights[1][:,1:18], 0))
-                @test isapprox(m.weights[1][:,21:end],w.weights[1][:,21:end])
+            @test all(isapprox.(m.weights[1][:,1:18], 0))
+            @test isapprox(m.weights[1][:,21:end],w.weights[1][:,21:end])
         end
 
         
@@ -166,26 +166,26 @@
         dm = randn(Float32,prod(n))
         dm1 = deepcopy(dm)
         for Op in [D3, D3']
-                opt_out = Op*dm
-                # Test that dm wasn't modified
-                @test dm1 == dm
+            opt_out = Op*dm
+            # Test that dm wasn't modified
+            @test dm1 == dm
 
-                dm_expect = zeros(Float32,model3D.n)
-                for j = 1:model3D.n[3]
-                        dm_expect[:,:,j] = reshape(dm,model3D.n)[:,:,j] * Float32(sqrt(model3D.d[3]*(j-1)))
-                end
-                @test isapprox(vec(dm_expect),opt_out)
+            dm_expect = zeros(Float32,model3D.n)
+            for j = 1:model3D.n[3]
+                dm_expect[:,:,j] = reshape(dm,model3D.n)[:,:,j] * Float32(sqrt(model3D.d[3]*(j-1)))
+            end
+            @test isapprox(vec(dm_expect),opt_out)
         end
 
         M3 = judiTopmute(model3D.n, 20, 1)
 
         for Op in [M3, M3']
-                opt_out = Op*dm
-                # Test that dm wasn't modified
-                @test dm1 == dm
+            opt_out = Op*dm
+            # Test that dm wasn't modified
+            @test dm1 == dm
 
-                @test all(isapprox.(reshape(opt_out,model3D.n)[:,:,1:18], 0))
-                @test isapprox(reshape(opt_out,model3D.n)[:,:,21:end],reshape(dm,model3D.n)[:,:,21:end])
+            @test all(isapprox.(reshape(opt_out,model3D.n)[:,:,1:18], 0))
+            @test isapprox(reshape(opt_out,model3D.n)[:,:,21:end],reshape(dm,model3D.n)[:,:,21:end])
         end
 
         # test find_water_bottom in 3D

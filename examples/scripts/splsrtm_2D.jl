@@ -45,7 +45,10 @@ M = judiModeling(model0, q.geometry, d_lin.geometry; options=opt)
 J = judiJacobian(M, q)
 
 # Right-hand preconditioners (model topmute)
-Mr = judiTopmute(model0.n, 52, 10)
+Mr = judiTopmute(model0; taperwidth=10)
+# Left-hand Preconditionners (data top mute)
+Ml = judiDataMute(q.geometry, d_lin.geometry)
+
 # Sparsity
 C = joEye(prod(model0.n); DDT=Float32, RDT=Float32)
 # If available use curvelet instead for better result
@@ -59,12 +62,10 @@ function obj(x)
     flush(stdout)
     dm = PhysicalParameter(x, model0.n, model0.d, model0.o)
     inds = randperm(q.nsrc)[1:batchsize]
-    # Preconditionners
-    Ml = judiMarineTopmute2D(30, d_lin[inds].geometry)
 
-    residual = Ml*J[inds]*Mr*dm - Ml*d_lin[inds]
+    residual = Ml[inds]*J[inds]*Mr*dm - Ml[inds]*d_lin[inds]
     # grad
-    G = reshape(Mr'J[inds]'*Ml'*residual, model0.n)
+    G = reshape(Mr'J[inds]'*Ml[inds]'*residual, model0.n)
     g_scale == 0 && (global g_scale = .05f0/maximum(G))
     G .*= g_scale
     return .5f0*norm(residual)^2, G[:]

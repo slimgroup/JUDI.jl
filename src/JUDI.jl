@@ -59,7 +59,6 @@ const ac = PyNULL()
 # https://github.com/JuliaPy/PyCall.jl/issues/882
 
 const PYLOCK = Ref{ReentrantLock}()
-PYLOCK[] = ReentrantLock()
 
 # acquire the lock before any code calls Python
 pylock(f::Function) = Base.lock(PYLOCK[]) do
@@ -100,6 +99,7 @@ function __init__()
     pushfirst!(PyVector(pyimport("sys")."path"), joinpath(JUDIPATH, "pysource"))
     copy!(pm, pyimport("models"))
     copy!(ac, pyimport("interface"))
+    PYLOCK[] = ReentrantLock()
 end
 
 # JUDI time modeling

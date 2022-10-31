@@ -1,39 +1,56 @@
 export devito_interface
 
+_outtype(::Nothing, ::Integer, type) = type
+
+function _outtype(b::Bool, n::Integer, type)
+    T = b ? PyArray : PyObject
+    IT = n==1 ? (T,) : (T, T)
+    return Tuple{type, IT...}
+end
+
+
 function wrapcall_data(func, args...;kw...)
-    IT = kw[:illum] ? PyArray : PyObject
+    rtype = _outtype(get(kw, :illum, nothing), 1, PyArray)
     out = pylock() do
-        pycall(func, Tuple{PyArray, IT}, args...;kw...)
+        pycall(func, rtype, args...;kw...)
     end
+    tup = isa(out, Tuple)
     # The returned array `out` is a Python Row-Major array with dimension (time, rec).
     # Unlike standard array we want to keep this ordering in julia (time first) so we need to
     # make a wrapper around the pointer, to flip the dimension the re-permute the dimensions.
-    return PermutedDimsArray(unsafe_wrap(Array, out[1].data, reverse(size(out[1]))), length(size(out[1])):-1:1), out[2]
+    shot = tup ? out[1] : out
+    shot = PermutedDimsArray(unsafe_wrap(Array, shot.data, reverse(size(shot))), length(size(shot)):-1:1)
+    # Check what to return
+    out = tup ? (shot, out[2]) : shot
+    return out
 end
 
 function wrapcall_weights(func, args...;kw...)
-    IT = kw[:illum] ? PyArray : PyObject
+    rtype = _outtype(get(kw, :illum, nothing), 1, PyArray)
     out = pylock() do 
-        pycall(func, Tuple{PyArray, IT}, args...;kw...)
+        pycall(func, rtype, args...;kw...)
     end
     return out
 end
 
 function wrapcall_wf(func, args...;kw...)
-    IT = kw[:illum] ? PyArray : PyObject
+    rtype = _outtype(get(kw, :illum, nothing), 1, Array{Float32})
     out = pylock() do
-        pycall(func, Tuple{Array{Float32}, IT}, args...;kw...)
+        pycall(func, rtype, args...;kw...)
     end
     return out
 end
 
 function wrapcall_grad(func, args...;kw...)
-    IT = kw[:illum] ? (PyArray, PyArray) : (PyObject, PyObject)
+    rtype = _outtype(get(kw, :illum, nothing), 2, PyArray)
     out = pylock() do 
-        pycall(func, Tuple{PyArray, IT...}, args...;kw...)
+        pycall(func, rtype, args...;kw...)
     end
     return out
 end
+
+# legacy
+wrapcall_function = wrapcall_grad
 
 # d_obs = Pr*F*Ps'*q
 function devito_interface(modelPy::PyObject, srcGeometry::Geometry, srcData::Array, recGeometry::Geometry, recData::Nothing, dm::Nothing, options::JUDIOptions, illum::Bool)

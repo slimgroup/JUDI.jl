@@ -64,7 +64,7 @@ for j=1:d_lin.nsrc
 end
 
 # Topmute
-Ml = judiMarineTopmute2D(35, d_lin.geometry)    # data topmute
+Ml = judiDataMute(q.geometry, d_lin.geometry)
 d_lin = Ml*d_lin
 
 # RTM
