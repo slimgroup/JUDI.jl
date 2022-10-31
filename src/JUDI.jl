@@ -54,6 +54,27 @@ import ChainRulesCore: rrule
 const pm = PyNULL()
 const ac = PyNULL()
 
+# Create a lock for pycall FOR THREAD/TASK SAFETY
+# See discussion at
+# https://github.com/JuliaPy/PyCall.jl/issues/882
+
+const PYLOCK = Ref{ReentrantLock}()
+PYLOCK[] = ReentrantLock()
+
+# acquire the lock before any code calls Python
+pylock(f::Function) = Base.lock(PYLOCK[]) do
+    prev_gc = GC.enable(false)
+    try 
+        return f()
+    finally
+        GC.enable(prev_gc) # recover previous state
+    end
+end
+
+# Redirect python standard outputs to Julia's
+pyimport("sys")."stdout" = PyTextIO(stdout)
+pyimport("sys")."stderr" = PyTextIO(stderr)
+
 # Constants
 function _worker_pool()
     p = default_worker_pool()

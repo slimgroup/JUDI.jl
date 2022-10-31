@@ -6,7 +6,7 @@ from pyrevolve import Revolver
 
 from checkpoint import CheckpointOperator, DevitoCheckpoint
 from propagators import forward, adjoint, born, gradient, forward_grad
-from sensitivity import l2_loss
+from sensitivity import Loss
 from sources import Receiver
 from utils import weight_fun, compute_optalpha
 from fields import memory_field, src_wavefield
@@ -391,7 +391,7 @@ def grad_fwi(model, recin, rec_coords, u, space_order=8, f0=0.015):
 def J_adjoint(model, src_coords, wavelet, rec_coords, recin, space_order=8,
               is_residual=False, checkpointing=False, n_checkpoints=None, t_sub=1,
               return_obj=False, freq_list=[], dft_sub=None, ic="as",
-              ws=None, f0=0.015, born_fwd=False, nlind=False):
+              ws=None, f0=0.015, born_fwd=False, nlind=False, misfit=None):
     """
     Jacobian (adjoint fo born modeling operator) operator on a shot record
     as a source (i.e data residual). Supports three modes:
@@ -439,22 +439,23 @@ def J_adjoint(model, src_coords, wavelet, rec_coords, recin, space_order=8,
                                        space_order=8, is_residual=is_residual, ws=ws,
                                        n_checkpoints=n_checkpoints, ic=ic, f0=f0,
                                        nlind=nlind, return_obj=return_obj,
-                                       born_fwd=born_fwd)
+                                       born_fwd=born_fwd, misfit=misfit)
     elif freq_list is not None:
-        return J_adjoint_freq(model, src_coords, wavelet, rec_coords, recin,
-                              space_order=space_order, dft_sub=dft_sub, f0=f0,
+        return J_adjoint_freq(model, src_coords, wavelet, rec_coords, recin, ws=ws,
+                              space_order=space_order, dft_sub=dft_sub, f0=f0, ic=ic,
                               freq_list=freq_list, is_residual=is_residual, nlind=nlind,
-                              return_obj=return_obj, ic=ic, ws=ws, born_fwd=born_fwd)
+                              return_obj=return_obj, misfit=misfit, born_fwd=born_fwd)
     else:
         return J_adjoint_standard(model, src_coords, wavelet, rec_coords, recin,
                                   is_residual=is_residual, ic=ic, ws=ws, t_sub=t_sub,
                                   return_obj=return_obj, space_order=space_order,
-                                  born_fwd=born_fwd, f0=f0, nlind=nlind)
+                                  born_fwd=born_fwd, f0=f0, nlind=nlind, misfit=misfit)
 
 
 def J_adjoint_freq(model, src_coords, wavelet, rec_coords, recin, space_order=8,
                    freq_list=[], is_residual=False, return_obj=False, nlind=False,
-                   dft_sub=None, ic="as", ws=None, born_fwd=False, f0=0.015):
+                   dft_sub=None, ic="as", ws=None, born_fwd=False, f0=0.015,
+                   misfit=None):
     """
     Jacobian (adjoint fo born modeling operator) operator on a shot record
     as a source (i.e data residual). Outputs the gradient with Frequency
@@ -500,7 +501,8 @@ def J_adjoint_freq(model, src_coords, wavelet, rec_coords, recin, space_order=8,
                                    space_order=space_order, freq_list=freq_list,
                                    ic=ic, ws=ws, dft_sub=dft_sub, nlind=nlind, f0=f0)
     # Residual and gradient
-    f, residual = l2_loss(rec, recin, model.critical_dt, is_residual=is_residual)
+    f, residual = Loss(rec, recin, model.critical_dt,
+                       is_residual=is_residual, misfit=misfit)
 
     g, _ = gradient(model, residual, rec_coords, u, space_order=space_order, ic=ic,
                     freq=freq_list, dft_sub=dft_sub, f0=f0)
@@ -511,7 +513,7 @@ def J_adjoint_freq(model, src_coords, wavelet, rec_coords, recin, space_order=8,
 
 def J_adjoint_standard(model, src_coords, wavelet, rec_coords, recin, space_order=8,
                        is_residual=False, return_obj=False, born_fwd=False,
-                       ic="as", ws=None, t_sub=1, nlind=False, f0=0.015):
+                       ic="as", ws=None, t_sub=1, nlind=False, f0=0.015, misfit=None):
     """
     Adjoint Jacobian (adjoint fo born modeling operator) operator on a shot record
     as a source (i.e data residual). Outputs the gradient with standard
@@ -554,7 +556,8 @@ def J_adjoint_standard(model, src_coords, wavelet, rec_coords, recin, space_orde
                                    ic=ic, t_sub=t_sub, nlind=nlind, f0=f0)
 
     # Residual and gradient
-    f, residual = l2_loss(rec, recin, model.critical_dt, is_residual=is_residual)
+    f, residual = Loss(rec, recin, model.critical_dt,
+                       is_residual=is_residual, misfit=misfit)
 
     g, _ = gradient(model, residual, rec_coords, u, space_order=space_order, ic=ic,
                     f0=f0)
@@ -565,7 +568,8 @@ def J_adjoint_standard(model, src_coords, wavelet, rec_coords, recin, space_orde
 
 def J_adjoint_checkpointing(model, src_coords, wavelet, rec_coords, recin, space_order=8,
                             is_residual=False, n_checkpoints=None, born_fwd=False,
-                            return_obj=False, ic="as", ws=None, nlind=False, f0=0.015):
+                            return_obj=False, ic="as", ws=None, nlind=False, f0=0.015,
+                            misfit=None):
     """
     Jacobian (adjoint fo born modeling operator) operator on a shot record
     as a source (i.e data residual). Outputs the gradient with Checkpointing.
@@ -634,7 +638,8 @@ def J_adjoint_checkpointing(model, src_coords, wavelet, rec_coords, recin, space
     wrp.apply_forward()
 
     # Residual and gradient
-    f, _ = l2_loss(rec_g, recin, model.critical_dt, is_residual=is_residual)
+    f, _ = Loss(rec_g, recin, model.critical_dt, is_residual=is_residual,
+                misfit=misfit)
     rec.data[:] = as_tuple(rec_g)[0].data[:]
 
     wrp.apply_reverse()

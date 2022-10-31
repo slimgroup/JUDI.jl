@@ -3,10 +3,10 @@
 
 Inplace reduction of y into x.
 """
-@inline single_reduce!(x, y) = begin x .+= y; x end
+@inline single_reduce!(x::T, y::T) where T = x .+= y
 
 for T in [judiVector, judiWeights, judiWavefield]
-    @eval @inline single_reduce!(x::$T, y) = begin push!(x, y); x end
+    @eval @inline single_reduce!(x::$T, y::$T) = begin push!(x, y); x end
 end
 
 @inline single_reduce!(x::Ref, y::Ref) = begin x[] += y[]; x end
@@ -35,7 +35,7 @@ Reduce `other` future into local `future`. This is perform remotely on the julia
 `future.where`.
 """
 function local_reduce!(my_future::_TFuture, other_future::_TFuture)
-    y = fetch(other_future)
+    y = remotecall_fetch(fetch, other_future.where, other_future)
     x = fetch(my_future)
     single_reduce!(x, y)
     y = []
@@ -60,16 +60,8 @@ end
     reduce!(x)
 binary-tree reduction of a Vector of Futures `x`
 
-Modified from `DistributedOperations.jl` (Striped from custom types in it) and extended to multiple outputs
+Adapted from `DistributedOperations.jl` (MIT license). Striped from custom types in it and extended to multiple outputs
 with different reduction functions.
-
-Copyright (c) 2020: Chevron U.S.A Inc.
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
 function reduce!(futures::Vector{_TFuture})
     # Get length a next power of two for binary reduction

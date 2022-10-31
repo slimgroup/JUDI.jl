@@ -1,7 +1,8 @@
 
 export fwi_objective, lsrtm_objective, fwi_objective!, lsrtm_objective!
 
-function multi_src_fg(model_full::Model, source::judiVector, dObs::judiVector, dm, options::JUDIOptions, nlind::Bool, lin::Bool)
+function multi_src_fg(model_full::Model, source::judiVector, dObs::judiVector, dm, options::JUDIOptions, nlind::Bool, lin::Bool,
+                      misfit::Function)
 # Setup time-domain linear or nonlinear foward and adjoint modeling and interface to OPESCI/devito
 
     # assert this is for single source LSRTM
@@ -32,16 +33,26 @@ function multi_src_fg(model_full::Model, source::judiVector, dObs::judiVector, d
     src_coords = setup_grid(source.geometry, model.n)  # shifts source coordinates by origin
     rec_coords = setup_grid(dObs.geometry, model.n)    # shifts rec coordinates by origin
 
+    mfunc = pyfunction(misfit, Matrix{Float32}, Matrix{Float32})
+
     length(options.frequencies) == 0 ? freqs = nothing : freqs = options.frequencies
-    argout1, argout2 = pycall(ac."J_adjoint", Tuple{Float32, PyArray}, modelPy,
-                  src_coords, qIn, rec_coords, dObserved, t_sub=options.subsampling_factor,
-                  space_order=options.space_order, checkpointing=options.optimal_checkpointing,
-                  freq_list=freqs, ic=options.IC, is_residual=false, born_fwd=lin, nlind=nlind,
-                  dft_sub=options.dft_subsampling_factor[1], f0=options.f0, return_obj=true)
+    argout1, argout2 = pylock() do
+        pycall(ac."J_adjoint", Tuple{Float32, PyArray}, modelPy,
+               src_coords, qIn, rec_coords, dObserved, t_sub=options.subsampling_factor,
+               space_order=options.space_order, checkpointing=options.optimal_checkpointing,
+               freq_list=freqs, ic=options.IC, is_residual=false, born_fwd=lin, nlind=nlind,
+               dft_sub=options.dft_subsampling_factor[1], f0=options.f0, return_obj=true, misfit=mfunc)
+    end
 
     argout2 = remove_padding(argout2, modelPy.padsizes; true_adjoint=options.sum_padding)
     return Ref{Float32}(argout1), PhysicalParameter(argout2, model.d, model.o)
 end
+
+
+####### Defaults
+multi_src_fg(model_full::Model, source::judiVector, dObs::judiVector, dm, options::JUDIOptions, nlind::Bool, lin::Bool) =
+    multi_src_fg(model_full::Model, source::judiVector, dObs::judiVector, dm, options::JUDIOptions, nlind::Bool, lin::Bool, mse)
+
 
 # Find number of experiments
 """

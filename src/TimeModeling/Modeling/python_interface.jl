@@ -1,15 +1,28 @@
 export devito_interface
 
 function wrapcall_data(func, args...;kw...)
-    out = pycall(func, PyArray, args...;kw...)
+    out = pylock() do
+        pycall(func, PyArray, args...;kw...)
+    end
     # The returned array `out` is a Python Row-Major array with dimension (time, rec).
     # Unlike standard array we want to keep this ordering in julia (time first) so we need to
     # make a wrapper around the pointer, to flip the dimension the re-permute the dimensions.
     return PermutedDimsArray(unsafe_wrap(Array, out.data, reverse(size(out))), length(size(out)):-1:1)
 end
 
-wrapcall_function(func, args...;kw...) = pycall(func, PyArray, args...;kw...)
-wrapcall_wf(func, args...;kw...) = pycall(func, Array{Float32}, args...;kw...)
+function wrapcall_function(func, args...;kw...) 
+    out = pylock() do 
+        pycall(func, PyArray, args...;kw...)
+    end
+    return out
+end
+
+function wrapcall_wf(func, args...;kw...)
+    out = pylock() do
+        pycall(func, Array{Float32}, args...;kw...)
+    end
+    return out
+end
 
 # d_obs = Pr*F*Ps'*q
 function devito_interface(modelPy::PyObject, srcGeometry::Geometry, srcData::Array, recGeometry::Geometry, recData::Nothing, dm::Nothing, options::JUDIOptions)

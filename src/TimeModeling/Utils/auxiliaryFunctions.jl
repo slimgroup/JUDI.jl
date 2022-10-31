@@ -28,9 +28,11 @@ function devito_model(model::Model, options::JUDIOptions, dm)
     m = pad_array(model[:m].data, pad)
     dm = pad_array(dm, pad)
     physpar = Dict((n, pad_array(v.data, pad)) for (n, v) in model.params if n != :m)
-    modelPy = pm."Model"(model.o, model.d, model.n, m, fs=options.free_surface,
-                         nbl=model.nb, space_order=options.space_order, dt=options.dt_comp, dm=dm;
-                         physpar...)
+    modelPy = pylock() do 
+        pycall(pm."Model", PyObject, model.o, model.d, model.n, m, fs=options.free_surface,
+                   nbl=model.nb, space_order=options.space_order, dt=options.dt_comp, dm=dm;
+                   physpar...)
+    end
     return modelPy
 end
 
@@ -312,8 +314,10 @@ function calculate_dt(model::Model; dt=nothing)
     end
     m = minimum(model[:m])
     epsilon = maximum(get(model.params, :epsilon, 0))
-    modelPy = pm."Model"(origin=model.o, spacing=model.d, shape=model.n,
-                         m=m, epsilon=epsilon, nbl=0)
+    modelPy = pylock() do
+        pycall(pm."Model", PyObject, origin=model.o, spacing=model.d, shape=model.n,
+               m=m, epsilon=epsilon, nbl=0)
+    end
     return convert(Float32, modelPy.critical_dt)
 end
 
@@ -749,8 +753,9 @@ vec(x::Int64) = x;
 vec(x::Int32) = x;
 vec(::Nothing) = nothing
 
-SincInterpolation(Y::AbstractMatrix{T}, S::AbstractRange{T}, Up::AbstractRange{T}) where T<:AbstractFloat =
-    sinc.( (Up .- S') ./ (S[2] - S[1]) ) * Y
+SincInterpolation(Y::Matrix{T}, S::StepRangeLen{T}, Up::StepRangeLen{T}) where T<:Real = sinc.( (Up .- S') ./ (S[2] - S[1]) ) * Y
+SincInterpolation(Y::PermutedDimsArray{T, 2, (2, 1), (2, 1), Matrix{T}}, S::StepRangeLen{T}, Up::StepRangeLen{T}) where T<:Real = (Y.parent * sinc.( (Up' .- S) ./ (S[2] - S[1]) ))'
+
 
 """
     as_vec(x, ::Val{Bool})
