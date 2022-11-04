@@ -92,7 +92,7 @@ if VERSION>v"1.2"
     return newJ
   end
 
-    
+
   function (J::judiJacobian{D, O, FT})(x::Array{D, N}) where {D, O, FT, N}
     if length(x) == prod(J.model.n)
       return J(;m=m)
