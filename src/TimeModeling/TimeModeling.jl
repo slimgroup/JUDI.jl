@@ -61,7 +61,7 @@ if VERSION>v"1.2"
     for (k, v) in m.params
       Fl.model.params[k] = v
     end
-    objectid(m) ∈ keys(_illums) && (_illums[objectid(Fl.model)] = _illums[objectid(m)])
+    _track_illum(m, Fl.model)
     Fl
   end
 
@@ -75,10 +75,21 @@ if VERSION>v"1.2"
 
   function (F::judiPropagator)(m, q)
     Fm = F(;m=m)
-    objectid(F.model) ∈ keys(_illums) && (_illums[objectid(Fm.model)] = _illums[objectid(F.model)])
+    _track_illum(F.model, Fm.model)
     return Fm*as_src(q)
   end
 
+  function (F::judiPropagator)(m::PhysicalParameter)
+    @info "Assuming m to be suqared slowness for F(m)"
+    return F(;m=m)
+  end
+
   (F::judiPropagator)(m::Model, q) = F(m)*as_src(q)
+  
+  function (J::judiJacobian{D, O, FT})(q::judiVector) where {D, O, FT}
+    newJ = judiJacobian{D, O, FT}(J.m, J.n, J.F, q)
+    _track_illum(J.model, newJ.model)
+    return newJ
+  end
 
 end

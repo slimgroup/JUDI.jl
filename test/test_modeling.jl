@@ -57,9 +57,9 @@ cases = [(true, true), (true, false), (false, true), (false, false)]
 		dfull = Ffull*q
 		@test isapprox(get_data(d1), dfull, rtol=ftol)
 
-		qad = (Ps*adjoint(F))*adjoint(Pr)*d1
+		qad = Ps*adjoint(F)*adjoint(Pr)*d1
 		qfull = adjoint(Ffull)*d1
-		@test isapprox(qad, qfull, rtol=ftol)
+		@test isapprox(get_data(qad), qfull, rtol=ftol)
 
 		# fwi objective function
 		f, g = fwi_objective(model0, q, d1; options=opt)

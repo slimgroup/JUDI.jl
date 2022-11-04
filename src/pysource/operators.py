@@ -72,8 +72,8 @@ class memoized_func(object):
 
 
 @memoized_func
-def forward_op(p_params, tti, visco, space_order, spacing, save, t_sub, fs, pt_src,
-               pt_rec, nfreq, dft_sub, ws, full_q, illum):
+def forward_op(p_params, tti, visco, space_order, fw, spacing, save, t_sub, fs, pt_src,
+               pt_rec, nfreq, dft_sub, ws, wr, full_q, nv_weights, illum):
     """
     Low level forward operator creation, to be used through `propagator.py`
     Compute forward wavefield u = A(m)^{-1}*f and related quantities (u(xrcv))
@@ -91,20 +91,23 @@ def forward_op(p_params, tti, visco, space_order, spacing, save, t_sub, fs, pt_s
     wsrc = Function(name='src_weight', grid=model.grid, space_order=0) if ws else None
 
     # Setting forward wavefield
-    u = wavefield(model, space_order, save=save, nt=nt, t_sub=t_sub)
+    u = wavefield(model, space_order, save=save, nt=nt, t_sub=t_sub, fw=fw)
 
     # Expression for saving wavefield if time subsampling is used
     eq_save = save_subsampled(model, u, nt, t_sub)
 
-    # Add extended source
+    # Extended source
     q = extented_src(model, wsrc, wavelet, q=q)
 
+    # Extended rec
+    wrec = extended_rec(model, wavelet if wr else None, u)
+
     # Set up PDE expression and rearrange
-    pde = wave_kernel(model, u, q=q, f0=Constant('f0'))
+    pde = wave_kernel(model, u, q=q, f0=Constant('f0'), fw=fw)
 
     # Setup source and receiver
     g_expr = geom_expr(model, u, src_coords=scords, nt=nt,
-                       rec_coords=rcords, wavelet=wavelet)
+                       rec_coords=rcords, wavelet=wavelet, fw=fw)
 
     # On-the-fly Fourier
     dft = otf_dft(u, freq_list, model.grid.time_dim.spacing, factor=dft_sub)
@@ -112,67 +115,21 @@ def forward_op(p_params, tti, visco, space_order, spacing, save, t_sub, fs, pt_s
     # Illumination
     Ieq = illumexpr(u, illum)
 
-    # Create operator and run
-    subs = model.spacing_map
-    op = Operator(pde + dft + g_expr + eq_save + Ieq,
-                  subs=subs, name="forward"+name(model),
-                  opt=opt_op(model))
-    op.cfunction
-    return op
-
-
-@memoized_func
-def adjoint_op(p_params, tti, visco, space_order, spacing, save, nv_weights, fs,
-               pt_src, pt_rec, nfreq, dft_sub, ws, full_q, illum):
-    """
-    Low level adjoint operator creation, to be used through `propagators.py`
-    Compute adjoint wavefield v = adjoint(F(m))*y
-    and related quantities (||v||_w, v(xsrc))
-    """
-    info("Building adjoint operator")
-    # Some small dummy dims
-    model = EmptyModel(tti, visco, spacing, fs, space_order, p_params)
-    nt = 10
-    ndim = len(spacing)
-    scords = np.ones((1, ndim)) if pt_src else None
-    rcords = np.ones((1, ndim)) if pt_rec else None
-    wavelet = np.ones((nt, 1))
-    freq_list = np.ones((nfreq,)) if nfreq > 0 else None
-    q = wavefield(model, 0, save=True, nt=nt, fw=False, name="qwf") if full_q else 0
-
-    # Setting adjoint wavefield
-    v = wavefield(model, space_order, save=save, nt=nt, fw=False)
-
-    # Set up PDE expression and rearrange
-    pde = wave_kernel(model, v, q=q, fw=False, f0=Constant('f0'))
-
-    # On-the-fly Fourier
-    dft = otf_dft(v, freq_list, model.grid.time_dim.spacing, factor=dft_sub)
-
-    # Setup source and receiver
-    g_expr = geom_expr(model, v, src_coords=rcords, nt=nt,
-                       rec_coords=scords, wavelet=wavelet, fw=False)
-
-    # Extended source
-    wsrc = extended_rec(model, wavelet if ws else None, v)
-
     # Wavefield norm
-    nv_t, nv_s = weighted_norm(v, weight=nv_weights) if nv_weights else ([], [])
-
-    # Illumination
-    Ieq = illumexpr(v, illum)
+    nv_t, nv_s = weighted_norm(u, weight=nv_weights) if nv_weights else ([], [])
 
     # Create operator and run
     subs = model.spacing_map
-    op = Operator(pde + wsrc + nv_t + dft + g_expr + nv_s + Ieq,
-                  subs=subs, name="adjoint"+name(model),
+    pname = "forward" if fw else "adjoint"
+    op = Operator(pde + wrec + nv_t + dft + g_expr + eq_save + nv_s + Ieq,
+                  subs=subs, name=pname+name(model),
                   opt=opt_op(model))
     op.cfunction
     return op
 
 
 @memoized_func
-def born_op(p_params, tti, visco, space_order, spacing, save, pt_src,
+def born_op(p_params, tti, visco, space_order, fw, spacing, save, pt_src,
             pt_rec, fs, t_sub, ws, nfreq, dft_sub, ic, nlind, illum):
     """
     Low level born operator creation, to be used through `interface.py`
@@ -192,8 +149,8 @@ def born_op(p_params, tti, visco, space_order, spacing, save, pt_src,
     f0 = Constant('f0')
 
     # Setting wavefield
-    u = wavefield(model, space_order, save=save, nt=nt, t_sub=t_sub)
-    ul = wavefield(model, space_order, name="l")
+    u = wavefield(model, space_order, save=save, nt=nt, t_sub=t_sub, fw=fw)
+    ul = wavefield(model, space_order, name="l", fw=fw)
 
     # Expression for saving wavefield if time subsampling is used
     eq_save = save_subsampled(model, u, nt, t_sub)
@@ -202,15 +159,15 @@ def born_op(p_params, tti, visco, space_order, spacing, save, pt_src,
     q = extented_src(model, wsrc, wavelet)
 
     # Set up PDE expression and rearrange
-    pde = wave_kernel(model, u, q=q, f0=f0)
+    pde = wave_kernel(model, u, q=q, f0=f0, fw=fw)
     if getattr(model, 'dm', 0) == 0:
         pdel = []
     else:
-        pdel = wave_kernel(model, ul, q=lin_src(model, u, ic=ic), f0=f0)
+        pdel = wave_kernel(model, ul, q=lin_src(model, u, ic=ic), f0=f0, fw=fw)
     # Setup source and receiver
     g_expr = geom_expr(model, u, rec_coords=rcords if nlind else None,
-                       src_coords=scords, wavelet=wavelet)
-    g_exprl = geom_expr(model, ul, rec_coords=rcords, nt=nt)
+                       src_coords=scords, wavelet=wavelet, fw=fw)
+    g_exprl = geom_expr(model, ul, rec_coords=rcords, nt=nt, fw=fw)
 
     # On-the-fly Fourier
     dft = otf_dft(u, freq_list, model.critical_dt, factor=dft_sub)
@@ -228,7 +185,7 @@ def born_op(p_params, tti, visco, space_order, spacing, save, pt_src,
 
 
 @memoized_func
-def adjoint_born_op(p_params, tti, visco, space_order, spacing, pt_rec, fs, w,
+def adjoint_born_op(p_params, tti, visco, space_order, fw, spacing, pt_rec, fs, w,
                     save, t_sub, nfreq, dft_sub, ic, illum):
     """
     Low level gradient operator creation, to be used through `propagators.py`
@@ -242,15 +199,15 @@ def adjoint_born_op(p_params, tti, visco, space_order, spacing, pt_rec, fs, w,
     rcords = np.ones((1, ndim)) if pt_rec else None
     freq_list = np.ones((nfreq,)) if nfreq > 0 else None
     # Setting adjoint wavefieldgradient
-    v = wavefield(model, space_order, fw=False)
+    v = wavefield(model, space_order, fw=not fw)
     u = forward_wavefield(model, space_order, save=save, nt=nt,
-                          dft=nfreq > 0, t_sub=t_sub)
+                          dft=nfreq > 0, t_sub=t_sub, fw=fw)
 
     # Set up PDE expression and rearrange
     pde = wave_kernel(model, v, fw=False, f0=Constant('f0'))
 
     # Setup source and receiver
-    r_expr = geom_expr(model, v, src_coords=rcords, wavelet=residual, fw=False)
+    r_expr = geom_expr(model, v, src_coords=rcords, wavelet=residual, fw=not fw)
 
     # Setup gradient wrt m
     gradm = Function(name="gradm", grid=model.grid)

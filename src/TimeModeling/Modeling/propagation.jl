@@ -6,12 +6,7 @@ with `q` as a source. The return type is infered from `F`.
 """
 function propagate(F::judiPropagator{T, O}, q::AbstractArray{T}) where {T, O}
     srcGeometry, srcData, recGeometry, recData, dm = make_input(F, q)
-    return time_modeling(F.model, srcGeometry, srcData, recGeometry, recData, dm, O, F.options)
-end
-
-function propagate(F::judiPropagator{T, :adjoint}, q::AbstractArray{T}) where {T}
-    srcGeometry, srcData, recGeometry, recData, dm = make_input(F, q)
-    return time_modeling(F.model, recGeometry, recData, srcGeometry, srcData, dm, :adjoint, F.options)
+    return time_modeling(F.model, srcGeometry, srcData, recGeometry, recData, dm, O, F.options, _prop_fw(F))
 end
 
 propagate(t::Tuple{judiPropagator, AbstractArray}) = propagate(t[1], t[2])
@@ -42,6 +37,10 @@ function run_and_reduce(func, ::Nothing, nsrc, arg_func::Function)
     out
 end
 
+
+_prop_fw(::judiPropagator{T, O}) where {T, O} = true 
+_prop_fw(::judiPropagator{T, :adjoint}) where T = false
+_prop_fw(J::judiJacobian) = _prop_fw(J.F)
 
 
 src_i(::judiAbstractJacobian{T, :born, FT}, q::dmType{T}, ::Integer) where {T<:Number, FT} = q

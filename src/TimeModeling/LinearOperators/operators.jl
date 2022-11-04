@@ -78,6 +78,8 @@ end
 _get_property(J::judiPropagator, ::Val{:fop}) = x -> J*x
 _get_property(J::judiPropagator, ::Val{:fop_T}) = x -> J'*x
 _get_property(J::judiPropagator, ::Val{:name}) = "$(typeof(J))"
+_get_property(J::judiAbstractJacobian, ::Val{:rInterpolation}) = J.F.rInterpolation
+_get_property(J::judiAbstractJacobian, ::Val{:qInjection}) = J.F.qInjection
 _get_property(J::judiPropagator, ::Val{s}) where {s} = getfield(J, s)
 
 _get_property(C::judiComposedPropagator, ::Val{:model}) = C.F.model

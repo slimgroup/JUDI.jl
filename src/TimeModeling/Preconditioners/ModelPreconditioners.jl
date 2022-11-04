@@ -241,3 +241,10 @@ function compute_illum(model::AbstractModel, mode::Symbol)
     objectid(model) ∉ keys(_illums) && (return false)
     return _compute_illum(_illums[objectid(model)]..., mode)
 end
+
+
+function _track_illum(old_m::Model, new_m::Model)
+    if (objectid(old_m) ∈ keys(_illums)) && (objectid(new_m) ∉ keys(_illums))
+        _illums[objectid(new_m)] = _illums[objectid(old_m)]
+    end
+end

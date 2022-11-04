@@ -1,4 +1,4 @@
-############################ AD rules ############################################
+############################ Two params rules ############################################
 function rrule(F::judiPropagator{T, O}, m::AbstractArray{T}, q::AbstractArray{T}) where {T, O}
     y = F(m, q)
     function pullback(Δy)
@@ -27,6 +27,30 @@ function ∇m(F::judiPropagator{T, :forward}, m::AbstractArray{T}, q::AbstractAr
 end
 
 ∇m(F::judiPropagator{T, :adjoint}, m, q, Δy) where {T} = ∇m(adjoint(F), m, Δy, q)
+
+############################ Single param rules ############################################
+function rrule(::typeof(*), F::judiPropagator, x::AbstractArray{T}) where T
+    y = F*x
+    function Fback(Δy)
+        dx = @thunk(F' * Δy)
+        dF = @thunk(∇prop(F, x, Δy))
+        return NoTangent(), dF, dx
+    end
+    return y, Fback
+end
+
+function rrule(F::judiPropagator, x)
+    Fx = F(x)
+    function backx(ΔF)
+        dx = @thunk(ΔF.F * ΔF.dir)
+        return NoTangent(), dx
+    end
+    return Fx, backx
+end
+
+∇prop(F::judiPropagator, q::AbstractArray, dy::AbstractArray) = (F=judiJacobian(F, q)', dir=dy)
+∇prop(J::judiJacobian{D, :born, FT}, dm::AbstractArray, δd::AbstractArray) where {D, FT} = (F=judiJacobian(adjoint(J.F), δd), dir=dm)
+∇prop(J::judiJacobian{D, :adjoint_born, FT}, δd::AbstractArray, dm::AbstractArray) where {D, FT} = (F=judiJacobian(adjoint(J.F), δd), dir=dm)
 
 # projection
 (project::ProjectTo{AbstractArray})(dx::PhysicalParameter) = project(reshape(dx.data, project.axes))
