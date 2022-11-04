@@ -1,5 +1,6 @@
 export DataMute, FrequencyFilter
 export judiFilter, low_filter, judiDataMute, muteshot
+
 ############################################ Data mute ###############################################
 """
     struct DataMute{T, mode} <: DataPreconditioner{T, T}
@@ -132,14 +133,15 @@ end
 
 
 """
-    judiFilter
+    struct FrequencyFilter
+        recGeom
 
 Bandpass filter linear operator. Filters the input `judiVector` or `Vector`
 
 Constructor
 ============
     judiFilter(geometry, fmin, fmax) 
-    judiFilter(judivector, fmin, fmax)
+    judiFilter(judiVector, fmin, fmax)
 """
 struct FrequencyFilter{T, fm, FM} <: DataPreconditioner{T, T}
     m::Integer
@@ -182,8 +184,8 @@ function filter!(dout::Array{T, N}, din::Array{T, N}, dt::T; fmin=T(0.01), fmax=
     map(i-> tracefilt!(selectdim(dout, N, i), selectdim(din, N, i)), 1:size(dout, 2))
 end
 
-low_filter(Din::judiVector; fmin=0.01, fmax=100.0) = FrequencyFilter{Float32, fmin, fmax}(Din.geometry)*Din
-low_filter(Din::judiVector, ::Any; fmin=0.01, fmax=100.0)	= low_filter(Din; fmin=fmin, fmax=fmax)
+low_filter(Din::judiVector; fmin=0.01, fmax=100.0) = judiFilter(Din.geometry, fmin, fmax)*Din
+low_filter(Din::judiVector, ::Any; fmin=0.01, fmax=100.0) = low_filter(Din; fmin=fmin, fmax=fmax)
 
 """
     low_filter(Din, dt_in; fmin=0, fmax=25)
@@ -198,3 +200,4 @@ end
 
 # Legacy top mute is deprecated since only working for marine data
 judiMarineTopmute2D(muteStart::Integer, geometry::Geometry; params=Array{Any}(undef, 3), flipmask=false) = throw(MethodError(judiMarineTopmute2D, "judiMarineTopmute2D is deprecated due to its limiations and inaccuracy, please use judiDataMute"))
+

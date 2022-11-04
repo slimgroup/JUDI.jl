@@ -149,13 +149,19 @@ inv(I::judiIllumination{T, M, K, R}) where {T, M, K, R} = judiIllumination{T, M,
 
 # Mul
 function matvec(I::judiIllumination{T, M, K, R}, x::Vector{T}) where {T, M, K, R}
-    illum = (.*(values(I.illums)...)).^(K/length(I.illums))
-    return (illum[:] .* x) ./ (illum[:].^2 .+ eps(T))
+    illum = (.*(values(I.illums)...)).^(1/length(I.illums))
+    inds = findall(illum[:] .> eps(T))
+    out = T(0) * x
+    out[inds] .= illum[:][inds].^K .* x[inds]
+    return out
 end
 
 function matvec(I::judiIllumination{T, M, K, R}, x::PhysicalParameter{T}) where {T, M, K, R}
-    illum = (.*(values(I.illums)...)).^(K/length(I.illums))
-    return (illum .* x) ./ (illum.^2 .+ eps(T))
+    illum = (.*(values(I.illums)...)).^(1/length(I.illums))
+    inds = findall(illum .> eps(T))
+    out = T(0) * x
+    out[inds] .= illum[inds].^K .* x[inds]
+    return out
 end
 
 # Functor
