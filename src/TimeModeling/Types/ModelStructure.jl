@@ -341,3 +341,13 @@ ndims(m::Model) = ndims(m.m.data)
 display(m::Model) = println("Model (n=$(m.n), d=$(m.d), o=$(m.o)) with parameters $(keys(m.params))")
 show(io::IO, m::Model) = print(io, "Model (n=$(m.n), d=$(m.d), o=$(m.o)) with parameters $(keys(m.params))")
 show(io::IO, ::MIME{Symbol("text/plain")}, m::Model) = print(io, "Model (n=$(m.n), d=$(m.d), o=$(m.o)) with parameters $(keys(m.params))")
+
+# Pad gradient if aperture doesn't match full domain
+_project_to_physical_domain(p, ::Any) = p
+
+function _project_to_physical_domain(p::PhysicalParameter, model::Model)
+    p.n == model.n && (return p)
+    pp = similar(p, model)
+    pp .+= p
+    return pp
+end

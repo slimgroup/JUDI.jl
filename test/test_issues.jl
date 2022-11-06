@@ -71,3 +71,50 @@ end
         @test ~isnan(norm(dobs))
     end
 end
+
+@testset "Tests limit_m issue 156" begin
+    @timeit TIMEROUTPUT "Issue 156" begin
+        model, model0, dm = setup_model(tti, viscoacoustic, nlayer)
+        q, srcGeometry, recGeometry, f0 = setup_geom(model; nsrc=1)
+        # Restrict rec to middle of the model
+        recGeometry.xloc[1] .= range(11*model.d[1], stop=(model.n[1] - 12)*model.d[1],
+                                     length=length(recGeometry.xloc[1]))
+        # Data
+        F = judiModeling(model, srcGeometry, recGeometry)
+        dobs = F*q
+        # Run gradient and check output size
+        opt = Options(limit_m=true, buffer_size=0f0)
+        F0 = judiModeling(model0, srcGeometry, recGeometry; options=opt)
+    
+        # fwi wrapper
+        g_ap = JUDI.multi_src_fg(model0, q , dobs, nothing, opt, false, false, mse)[2]
+        @test g_ap.n == (model.n .- (22, 0))
+        @test g_ap.o[1] == model.d[1]*11
+    
+        g1 = fwi_objective(model0, q, dobs; options=opt)[2]
+        @test g1.n  == model.n
+        @test norm(g1.data[1:10, :]) == 0
+        @test norm(g1.data[end-10:end, :]) == 0
+
+        # lsrtm wrapper
+        g_ap = JUDI.multi_src_fg(model0, q , dobs, dm, opt, false, true, mse)[2]
+        @test g_ap.n == (model.n .- (22, 0))
+        @test g_ap.o[1] == model.d[1]*11
+
+        g2 = lsrtm_objective(model0, q, dobs, dm; options=opt)[2]
+        @test g2.n  == model.n
+        @test norm(g2.data[1:10, :]) == 0
+        @test norm(g2.data[end-10:end, :]) == 0
+
+        # Lin op
+        Jp = judiJacobian(F0, q)'
+        g_ap = JUDI.propagate(Jp, dobs)
+        @test g_ap.n == (model.n .- (22, 0))
+        @test g_ap.o[1] == model.d[1]*11
+
+        g3 = Jp * dobs
+        @test g3.n  == model.n
+        @test norm(g3.data[1:10, :]) == 0
+        @test norm(g3.data[end-10:end, :]) == 0
+    end
+end

@@ -13,12 +13,8 @@ function time_modeling(model_full::Model, srcGeometry::GeomOrNot, srcData::Array
     srcGeometry = Geometry(srcGeometry)
 
     # Reutrn directly for J*0
-    if op==:born
-        if norm(dm) == 0 && options.return_array == false
-            return judiVector(recGeometry, zeros(Float32, recGeometry.nt[1], length(recGeometry.xloc[1])))
-        elseif norm(dm) == 0 && options.return_array == true
-            return vec(zeros(Float32, recGeometry.nt[1], length(recGeometry.xloc[1])))
-        end
+    if (op==:born && norm(dm) == 0)
+        return judiVector(recGeometry, zeros(Float32, recGeometry.nt[1], length(recGeometry.xloc[1])))
     end
 
     # limit model to area with sources/receivers
