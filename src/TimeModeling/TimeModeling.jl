@@ -32,8 +32,6 @@ include("Modeling/losses.jl")
 include("LinearOperators/basics.jl")
 include("LinearOperators/lazy.jl")
 include("LinearOperators/operators.jl")
-include("LinearOperators/judiIllumination.jl")
-
 
 #############################################################################
 # PDE solvers
@@ -91,7 +89,6 @@ if VERSION>v"1.2"
     _track_illum(J.model, newJ.model)
     return newJ
   end
-
 
   function (J::judiJacobian{D, O, FT})(x::Array{D, N}) where {D, O, FT, N}
     if length(x) == prod(J.model.n)

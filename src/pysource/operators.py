@@ -118,9 +118,6 @@ def forward_op(p_params, tti, visco, space_order, fw, spacing, save, t_sub, fs, 
     # Wavefield norm
     nv_t, nv_s = weighted_norm(u, weight=nv_weights) if nv_weights else ([], [])
 
-    # Illumination
-    Ieq = illumexpr(v, illum)
-
     # Create operator and run
     subs = model.spacing_map
     pname = "forward" if fw else "adjoint"
