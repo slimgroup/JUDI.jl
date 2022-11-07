@@ -610,7 +610,7 @@ Parameters:
 * `geometry`: Geometry containing physical parameters.
 * `nsrc`: Number of sources
 """
-function process_input_data(input::AbstractArray{Float32}, geometry::Geometry)
+function process_input_data(input::DenseArray{Float32}, geometry::Geometry)
     # Input data is pure Julia array: assume fixed no.
     # of receivers and reshape into data cube nt x nrec x nsrc
     nt = Int(geometry.nt[1])
@@ -634,9 +634,9 @@ Parameters:
 * `model`: Model containing physical parameters.
 * `nsrc`: Number of sources
 """
-function process_input_data(input::AbstractArray{Float32}, model::AbstractModel, nsrc::Integer)
-    ndims = length(model.n)
-    dataCell = Array{Array{Float32, ndims}, 1}(undef, nsrc)
+function process_input_data(input::DenseArray{Float32}, model::Model, nsrc::Integer)
+    ND = length(model.n)
+    dataCell = Array{Array{Float32, ND}, 1}(undef, nsrc)
 
     input = reshape(input, model.n..., nsrc)
     nd = ndims(input)
@@ -646,12 +646,12 @@ function process_input_data(input::AbstractArray{Float32}, model::AbstractModel,
     return dataCell
 end
 
-process_input_data(input::AbstractArray{Float32}, model::AbstractModel) = process_input_data(input, model, length(input) ÷ prod(model.n))
+process_input_data(input::DenseArray{Float32}, model::Model) = process_input_data(input, model, length(input) ÷ prod(model.n))
 process_input_data(input::judiVector, ::Geometry) = input
 process_input_data(input::judiVector) = input.data
 process_input_data(input::judiWeights, ::AbstractModel) = input.weights
 
-function process_input_data(input::AbstractArray{T}, v::Vector{<:Array}) where T
+function process_input_data(input::DenseArray{T}, v::Vector{<:Array}) where T
     nsrc = length(v)
     dataCell = Vector{Vector{T}}(undef, nsrc)
     input = reshape(input, :, nsrc)
@@ -664,7 +664,7 @@ end
 """
     reshape(x::Array{Float32, 1}, geometry::Geometry)
 
-Reshapes input vector intu a 3D `nt x nrec x nsrc` Array.
+Reshapes input vector into a 3D `nt x nrec x nsrc` Array.
 """
 function reshape(x::AbstractArray{Float32}, geometry::Geometry)
     nt = geometry.nt[1]

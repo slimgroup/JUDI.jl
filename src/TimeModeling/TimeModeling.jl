@@ -32,8 +32,6 @@ include("Modeling/losses.jl")
 include("LinearOperators/basics.jl")
 include("LinearOperators/lazy.jl")
 include("LinearOperators/operators.jl")
-include("LinearOperators/judiIllumination.jl")
-
 
 #############################################################################
 # PDE solvers
@@ -79,15 +77,26 @@ if VERSION>v"1.2"
     return Fm*as_src(q)
   end
 
-  function (F::judiPropagator)(m::PhysicalParameter)
-    @info "Assuming m to be suqared slowness for F(m)"
+  function (F::judiPropagator)(m::AbstractArray)
+    @info "Assuming m to be squared slowness for $(typeof(F))"
     return F(;m=m)
   end
 
   (F::judiPropagator)(m::Model, q) = F(m)*as_src(q)
   
-  function (J::judiJacobian{D, O, FT})(q::judiVector) where {D, O, FT}
+  function (J::judiJacobian{D, O, FT})(q::judiMultiSourceVector) where {D, O, FT}
     newJ = judiJacobian{D, O, FT}(J.m, J.n, J.F, q)
+    _track_illum(J.model, newJ.model)
+    return newJ
+  end
+
+    
+  function (J::judiJacobian{D, O, FT})(x::Array{D, N}) where {D, O, FT, N}
+    if length(x) == prod(J.model.n)
+      return J(;m=m)
+    end
+    new_q = _as_src(J.qInjection.op, J.model, x)
+    newJ = judiJacobian{D, O, FT}(J.m, J.n, J.F, new_q)
     _track_illum(J.model, newJ.model)
     return newJ
   end

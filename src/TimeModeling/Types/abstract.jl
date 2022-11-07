@@ -2,7 +2,7 @@ export subsample
 
 ############################################################################################################################
 # Base multi source abstract type
-abstract type judiMultiSourceVector{T} <: DenseVector{T} end
+abstract type judiMultiSourceVector{T} <: AbstractVector{T} end
 
 mutable struct judiMultiSourceException <: Exception
     msg :: String
@@ -187,5 +187,5 @@ tof32(x::Number) = [Float32(x)]
 tof32(x::Array{T, N}) where {N, T<:Real} = T==Float32 ? x : Float32.(x)
 tof32(x::Array{Array{T, N}, 1}) where {N, T<:Real} = T==Float32 ? x : tof32.(x)
 tof32(x::Array{Any, 1}) = try Float32.(x) catch e tof32.(x) end
-tof32(x::StepRangeLen) = tof32.(x)
-tof32(x::Array{StepRangeLen}) = tof32.(x)
+tof32(x::StepRangeLen) = convert(Vector{Float32}, x)
+tof32(x::Vector{<:StepRangeLen}) = tof32.(x)

@@ -53,12 +53,13 @@ sinput = zip(["Point", "Extended"], [Ps, Pw], (q, w))
 #####################################################################################
 ftol = sqrt(eps(1f0))
 
-@testset "AD correctness check return_array=$(ra)" for ra in [true, false]
+@testset "AD correctness check return_array:$(ra)" for ra in [true, false]
     opt = Options(return_array=ra, sum_padding=true, f0=f0)
     A_inv = judiModeling(model; options=opt)
     A_inv0 = judiModeling(model0; options=opt)
     @testset "AD correctness check source type: $(stype)" for (stype, Pq, q) in sinput
         @timeit TIMEROUTPUT "$(stype) source AD, array=$(ra)" begin
+            printstyled("$(stype) source AD test ra: $(ra) \n", color=:red)
             # Linear operators
             q0 = perturb(q)
             # Operators
@@ -119,7 +120,7 @@ end
             m00 = ra ? m0 : model0.m
             #####################################################################################
             for (mi, misfit) in enumerate(misf)
-                printstyled("Gradient test for $(mi) input operator\n"; color = :red)
+                printstyled("$(stype) source gradient test for $(mi) input operator\n"; color = :red)
                 f0, gq, gm = loss(misfit, d, q0, m00, F)
                 # Gradient test for extended modeling: source
                 print("\nGradient test source $(stype) source, array=$(ra)\n")
@@ -144,12 +145,14 @@ end
         # derivative of J w.r.t to `q`
         printstyled("Gradient J(q) w.r.t q\n"; color = :red)
         f0q, gm, gq = loss(misfit_objective_1p, δd, dm, q0, J)
-        @test isa(gm, PhysicalParameter)
+        @test isa(gm, JUDI.LazyPropagation)
+        @test isa(JUDI.eval_prop(gm), PhysicalParameter)
         grad_test(x-> misfit_objective_1p(δd, dm, x, J), q0, dq, gq)
 
         printstyled("Gradient J'(q) w.r.t q\n"; color = :red)
         f0qt, gd, gqt = loss(misfit_objective_1p, rtm, δd, q0, adjoint(J))
-        @test isa(gd, judiVector)
+        @test isa(gd, JUDI.LazyPropagation)
+        @test isa(JUDI.eval_prop(gd), judiVector)
         grad_test(x-> misfit_objective_1p(rtm, δd, x, adjoint(J)), q0, dq, gqt)
     end
 end

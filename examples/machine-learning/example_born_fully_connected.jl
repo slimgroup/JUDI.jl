@@ -72,7 +72,7 @@ b3 = randn(Float32, n_out)
 
 function network(x)
     x = W1*x .+ b1
-    x = W2*x .+ b2
+    x = vec(W2*x) .+ b2
     x = W3*x .+ b3
     return x
 end

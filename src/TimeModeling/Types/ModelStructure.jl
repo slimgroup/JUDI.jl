@@ -84,7 +84,7 @@ end
 
 PhysicalParameter(p::PhysicalParameter, n::Tuple, d::Tuple, o::Tuple) = p 
 PhysicalParameter(p::PhysicalParameter) = p 
-PhysicalParameter(p::PhysicalParameter{T}, v::Array{T, N}) where {T, N} = PhysicalParameter(v, p.d, p.o)
+PhysicalParameter(p::PhysicalParameter{T}, v::Array{T, N}) where {T, N} = PhysicalParameter(reshape(v, p.n), p.d, p.o)
 
 # transpose and such.....
 conj(x::PhysicalParameter{vDT}) where vDT = x

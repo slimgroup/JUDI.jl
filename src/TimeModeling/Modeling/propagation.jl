@@ -57,7 +57,7 @@ get_nsrc(J::judiAbstractJacobian, ::dmType{T}) where T<:Number = J.q.nsrc
 Propagates the source `q` with the `F` propagator. The return type is infered from `F` and the 
 propagation kernel is defined by `O` (forward, adjoint, born or adjoint_born).
 """
-function multi_src_propagate(F::judiPropagator{T, O}, q::AbstractVector{T}) where {T<:Number, O}
+function multi_src_propagate(F::judiPropagator{T, O}, q::AbstractArray{T}) where {T<:Number, O}
     q = process_input_data(F, q)
     # Number of sources and init result
     nsrc = get_nsrc(F, q)
