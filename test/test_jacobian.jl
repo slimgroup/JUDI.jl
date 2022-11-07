@@ -8,31 +8,38 @@
 
 ### Model
 model, model0, dm = setup_model(tti, viscoacoustic, nlayer)
-q, srcGeometry, recGeometry, f0 = setup_geom(model)
+q, srcGeometry, recGeometry, f0 = setup_geom(model; nsrc=2)
 dt = srcGeometry.dt[1]
 
 m0 = model0.m
 ######################## WITH DENSITY ############################################
 
 @testset "Jacobian test with $(nlayer) layers and tti $(tti) and viscoacoustic $(viscoacoustic) freesurface $(fs)" begin
-    # Write shots as segy files to disk
-    opt = Options(sum_padding=true, dt_comp=dt, free_surface=fs, f0=f0)
+    @timeit TIMEROUTPUT "Jacobian generic tests" begin
+        # Write shots as segy files to disk
+        opt = Options(sum_padding=true, dt_comp=dt, free_surface=fs, f0=f0)
 
-    # Setup operators
-    F = judiModeling(model, srcGeometry, recGeometry; options=opt)
-    F0 = judiModeling(model0, srcGeometry, recGeometry; options=opt)
-    J = judiJacobian(F0, q)
+        # Setup operators
+        F = judiModeling(model, srcGeometry, recGeometry; options=opt)
+        F0 = judiModeling(model0, srcGeometry, recGeometry; options=opt)
+        J = judiJacobian(F0, q)
 
-    # Linear modeling
-    dobs = F*q
-    dD = J*dm
+        # Linear modeling
+        dobs = F*q
+        dD = J*dm
+        dlin0 = J*(0f0.*dm)
+    
+        @test norm(dlin0) == 0
+        @test isapprox(dD, J*vec(dm.data); rtol=1f-6)
 
-    @test norm(J*(0f0.*dm)) == 0
-    @test isapprox(dD, J*vec(dm.data); rtol=1f-6)
+        # Gradient test
+        grad_test(x-> F(;m=x)*q, m0, dm, dD; data=true)
 
-    # Gradient test
-    grad_test(x-> F(;m=x)*q, m0, dm, dD; data=true)
-
+        # Check return_array returns correct size with zero dm and multiple shots
+        J.options.return_array = true
+        dlin0v = J*(0f0.*dm)
+        @test length(dlin0) == length(vec(dlin0))
+    end
 end
 
 ### Extended source
@@ -45,14 +52,14 @@ end
         Pr = judiProjection(recGeometry)
         F = judiModeling(model; options=opt)
         F0 = judiModeling(model0; options=opt)
-        Pw = judiLRWF(q.geometry.dt[1], q.data[1])
+        Pw = judiLRWF(q.geometry.dt, q.data)
 
         # Combined operators
         A = Pr*F*adjoint(Pw)
         A0 = Pr*F0*adjoint(Pw)
 
         # Extended source weights
-        w = judiWeights(randn(Float32, model0.n))
+        w = judiWeights(randn(Float32, model0.n); nsrc=2)
         J = judiJacobian(A0, w)
 
         # Nonlinear modeling

@@ -79,6 +79,11 @@ jobs:
           version: ${{ matrix.version }}
           arch: x64
 
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.9
+
       - name: Set julia python
         run: |
           PYTHON=$(which python3) julia -e 'using Pkg;Pkg.add("PyCall");Pkg.build("PyCall")'

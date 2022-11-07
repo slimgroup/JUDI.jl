@@ -16,7 +16,12 @@ jobs:
     steps:
       - name: Checkout master
         uses: actions/checkout@v2
-      
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.9
+
       - uses: julia-actions/setup-julia@latest
       
       - name: Install dependencies
