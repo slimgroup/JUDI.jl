@@ -12,7 +12,7 @@ abstract type judiAbstractJacobian{D, O, FT} <: judiComposedPropagator{D, O} end
 struct judiModeling{D, O} <: judiPropagator{D, O}
     m::AbstractSize
     n::AbstractSize
-    model::Model
+    model::AbstractModel
     options::JUDIOptions
 end
 
@@ -107,13 +107,13 @@ Example
     F = judiModeling(model, q.geometry, rec_geometry)
     dobs = F*q
 """
-function judiModeling(model::Model; options=Options())
+function judiModeling(model::AbstractModel; options=Options())
     D = eltype(model.m)
     m = time_space(model.n)
     return judiModeling{D, :forward}(m, m, model, options)
 end
 
-judiModeling(model::Model, src_geom::Geometry, rec_geom::Geometry; options=Options()) =
+judiModeling(model::AbstractModel, src_geom::Geometry, rec_geom::Geometry; options=Options()) =
     judiProjection(rec_geom) * judiModeling(model; options=options) * adjoint(judiProjection(src_geom))
 
 """

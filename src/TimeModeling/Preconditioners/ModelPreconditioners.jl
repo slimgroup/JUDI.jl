@@ -10,7 +10,7 @@ Depth scaling operator in `N` dimensions scaling by `depth^K`.
 Constructor
 ===========
 
-    judiDepthScaling(model::Model; K=.5)
+    judiDepthScaling(model::AbstractModel; K=.5)
 
 """
 struct DepthScaling{T, N, K} <: ModelPreconditioner{T, T}
@@ -18,7 +18,7 @@ struct DepthScaling{T, N, K} <: ModelPreconditioner{T, T}
     depth::Array{T, N}
 end
 
-function judiDepthScaling(model::Model; K=.5f0)
+function judiDepthScaling(model::AbstractModel; K=.5f0)
     N = length(model.n)
     depth = reshape(range(0f0, stop=(model.n[end] - 1) * model.d[end], length=model.n[end]), ones(Int64, N-1)..., :)
     return DepthScaling{Float32, N, K}(prod(model.n), depth)
@@ -26,7 +26,7 @@ end
   
 matvec(D::DepthScaling{T, N, K}, x::Vector{T}) where {T, N, K} = vec(reshape(x, :, size(D.depth, N)) .* D.depth[:]'.^K)
 matvec(D::DepthScaling{T, N, K}, x::AbstractArray{T, N}) where {T, N, K} = x .* D.depth.^K
-matvec(D::DepthScaling{T, N, K}, x::PhysicalParameter{T}) where {T, N, K} = x .* D.depth.^K
+matvec(D::DepthScaling{T, N, K}, x::PhysicalParameter{T}) where {T, N, K} = PhysicalParameter{T}(x.n, x.d, x.o, x.data .* D.depth.^K)
 matvec(D::DepthScaling{T, N, K}, x::judiWeights{T}) where {T, N, K} = judiWeights{T}(x.nsrc, [matvec(D, x.data[s]) for s=1:x.nsrc])
 
 # Diagonal operator, self-adjoint
@@ -58,7 +58,7 @@ end
 judiTopmute(::NTuple{N, Integer}, wb::Array{T, Nw}, taperwidth::Integer) where {T, N, Nw} = TopMute(prod(n), wb, taperwidth)
 judiTopmute(n::NTuple{N, Integer}, wb::Integer, taperwidth::Integer) where {N} = TopMute(prod(n), wb*ones(Int64, n[1:end-1]), taperwidth)
 
-function judiTopmute(model::Model; taperwidth=10)
+function judiTopmute(model::AbstractModel; taperwidth=10)
     wb = find_water_bottom(model.m.data)
     return TopMute(prod(model.n), wb, taperwidth)
 end
@@ -127,7 +127,7 @@ struct judiIllumination{DDT, M, K, R} <: ModelPreconditioner{DDT, DDT}
     m::Integer
 end
 
-function judiIllumination(model::Model; mode="u", k=1, recompute=true)
+function judiIllumination(model::AbstractModel; mode="u", k=1, recompute=true)
     n = prod(model.n)
     # Initialize the illumination as the identity
     illum = Dict(s=>PhysicalParameter(model.n, model.d, model.o, ones(Float32, model.n)) for s in split(mode, ""))
@@ -201,7 +201,7 @@ end
 
 _illums = Dict()
 
-init_illum(model::Model, I::judiIllumination) = (_illums[objectid(model)] = [I, false])
+init_illum(model::AbstractModel, I::judiIllumination) = (_illums[objectid(model)] = [I, false])
 
 function update_illum(vals::Tuple, F::judiPropagator{D, O}) where {D, O}
     if length(vals) == 3
@@ -215,14 +215,14 @@ end
 
 update_illum(vals, ::judiPropagator) = vals
 
-function update_illum(vals::Tuple, model::Model, ::Any)
+function update_illum(vals::Tuple, model::AbstractModel, ::Any)
     length(vals) == 2 && (return vals)
     update_illum(model, vals[3], :forward)
     update_illum(model, vals[4], :adjoint)
     return vals[1:2]
 end
 
-function update_illum(model::Model, i::PhysicalParameter, mode)
+function update_illum(model::AbstractModel, i::PhysicalParameter, mode)
     set_val(_illums[objectid(model)][1], mode, i)
     _illums[objectid(model)][2] = is_updated(_illums[objectid(model)][1])
 end
@@ -237,7 +237,7 @@ function _compute_illum(::judiIllumination{T, M, K, R}, status, mode) where {T, 
     end
 end
 
-function compute_illum(model::Model, mode::Symbol)
+function compute_illum(model::AbstractModel, mode::Symbol)
     objectid(model) ∉ keys(_illums) && (return false)
     return _compute_illum(_illums[objectid(model)]..., mode)
 end

@@ -102,7 +102,7 @@ end
 
 # Type of accepted input
 Dtypes = Union{<:judiVector, NTuple{N, <:judiVector} where N, Vector{<:judiVector}}
-MTypes = Union{Model, NTuple{N, Model} where N, Vector{Model}}
+MTypes = Union{<:AbstractModel, NTuple{N, Model} where N, Vector{<:AbstractModel}}
 dmTypes = Union{dmType, NTuple{N, dmType} where N, Vector{dmType}}
 
 

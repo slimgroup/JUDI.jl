@@ -1,4 +1,4 @@
-export DataMute, FrequencyFilter
+export DataMute, FrequencyFilter, judiTimeDerivative, judiTimeIntegration
 export judiFilter, low_filter, judiDataMute, muteshot
 
 ############################################ Data mute ###############################################
@@ -201,3 +201,65 @@ end
 # Legacy top mute is deprecated since only working for marine data
 judiMarineTopmute2D(muteStart::Integer, geometry::Geometry; params=Array{Any}(undef, 3), flipmask=false) = throw(MethodError(judiMarineTopmute2D, "judiMarineTopmute2D is deprecated due to its limiations and inaccuracy, please use judiDataMute"))
 
+"""
+    TimeDifferential{K}
+        recGeom
+
+Differential operator of order `K` to be applied along the time dimension. Applies the ilter `w^k` where `k` is the order. For example,
+the tinme derivative is `TimeDifferential{1}` and the time integration is `TimeDifferential{-1}`
+
+Constructor
+============
+
+    judiTimeIntegration(recGeom, order)
+    judiTimeIntegration(judiVector, order)
+
+    judiTimeDerivative(recGeom, order)
+    judiTimeDerivative(judiVector, order)
+"""
+
+struct TimeDifferential{T, K} <: DataPreconditioner{T, T}
+    m::Integer
+    recGeom::Geometry
+end
+
+TimeDifferential(g::Geometry{T}, order::Integer) where T = TimeDifferential{T, order}(n_samples(g), g)
+
+
+judiTimeDerivative(v::judiVector{T, AT}, order::Integer) where {T, AT} = TimeDifferential(v.geometry, order)
+judiTimeDerivative(g::Geometry{T}, order::Integer) where {T} = TimeDifferential(g, order)
+
+judiTimeIntegration(v::judiVector{T, AT}, order::Integer) where {T, AT} = TimeDifferential(v.geometry, -order)
+judiTimeIntegration(g::Geometry{T}, order::Integer) where {T} = TimeDifferential(g, -order)
+
+
+# Real diagonal operator
+conj(D::TimeDifferential{T, K}) where {T, K} = D
+adjoint(D::TimeDifferential{T, K}) where {T, K} = D
+transpose(D::TimeDifferential{T, K}) where {T, K} = D
+inv(D::TimeDifferential{T, K}) where {T, K} = TimeDifferential{T, -K}(D.m, D.recGeom)
+
+# diagonal in fourier domain so self-adjoint
+matvec_T(D::TimeDifferential{T, K}, x) where {T, K} = matvec(D, x)
+
+function matvec(::TimeDifferential{T, K}, x::judiVector{T, AT}) where {T, AT, K}
+    out = deepcopy(x)
+    for s=1:out.nsrc
+        # make omega^K
+        ω = Vector{T}(2 .* pi .* fftfreq(out.geometry.nt[s], 1/out.geometry.dt[s]))
+        ω[ω.==0] .= 1f0
+        ω .= abs.(ω).^K
+        out.data[s] = real.(ifft(ω .* fft(x.data[s], 1), 1))
+    end
+    return out
+end
+
+function matvec(D::TimeDifferential{T, K}, x::Array{T}) where {T, K}
+    xr = reshape(x, D.recGeom)
+    # make omega^K
+    ω = Vector{T}(2 .* pi .* fftfreq(D.recGeom.nt[1], 1/D.recGeom.dt[1]))
+    ω[ω.==0] .= 1f0
+    ω .= abs.(ω).^K
+    out = real.(ifft(ω .* fft(xr, 1), 1))
+    return reshape(out, size(x))
+end

@@ -22,12 +22,12 @@ Parameters
 * `options`: JUDI Options structure.
 * `dm`: Squared slowness perturbation (optional), Array or PhysicalParameter.
 """
-function devito_model(model::Model, options::JUDIOptions, dm)
+function devito_model(model::AbstractModel, options::JUDIOptions, dm)
     pad = pad_sizes(model, options)
     # Set up Python model structure
     m = pad_array(model[:m].data, pad)
     dm = pad_array(dm, pad)
-    physpar = Dict((n, pad_array(v.data, pad)) for (n, v) in model.params if n != :m)
+    physpar = Dict((n, pad_array(v.data, pad)) for (n, v) in model.params if (n != :m && v.n == model.n))
     modelPy = pylock() do 
         pycall(pm."Model", PyObject, model.o, model.d, model.n, m, fs=options.free_surface,
                    nbl=model.nb, space_order=options.space_order, dt=options.dt_comp, dm=dm;
@@ -36,9 +36,9 @@ function devito_model(model::Model, options::JUDIOptions, dm)
     return modelPy
 end
 
-devito_model(model::Model, options::JUDIOptions, dm::PhysicalParameter) = devito_model(model, options, reshape(dm.data, model.n))
-devito_model(model::Model, options::JUDIOptions, dm::Vector{T}) where T = devito_model(model, options, reshape(dm, model.n))
-devito_model(model::Model, options::JUDIOptions) = devito_model(model, options, nothing)
+devito_model(model::AbstractModel, options::JUDIOptions, dm::PhysicalParameter) = devito_model(model, options, reshape(dm.data, model.n))
+devito_model(model::AbstractModel, options::JUDIOptions, dm::Vector{T}) where T = devito_model(model, options, reshape(dm, model.n))
+devito_model(model::AbstractModel, options::JUDIOptions) = devito_model(model, options, nothing)
 
 """
     pad_sizes(model, options; so=nothing)
@@ -143,7 +143,7 @@ Parameters
 * `pert`: Model perturbation (optional) to be cropped as well.
 """
 function limit_model_to_receiver_area(srcGeometry::Geometry, recGeometry::Geometry,
-                                      model::Model, buffer::Number; pert=nothing)
+                                      model::AbstractModel, buffer::Number; pert=nothing)
     # Restrict full velocity model to area that contains either sources and receivers
     ndim = length(model.n)
     # scan for minimum and maximum x and y source/receiver coordinates
@@ -197,7 +197,7 @@ Parameters
 * `recGeometry`: Geometry of receivers in which out of bounds will be removed.
 * `model`: Model defining the computational domain.
 """
-function remove_out_of_bounds_receivers(recGeometry::Geometry, model::Model)
+function remove_out_of_bounds_receivers(recGeometry::Geometry, model::AbstractModel)
 
     # Only keep receivers within the model
     xmin, xmax = model.o[1], model.o[1] + (model.n[1] - 1)*model.d[1]
@@ -229,7 +229,7 @@ Parameters
 * `recData`: Shot record for that geometry in which traces will be removed.
 * `model`: Model defining the computational domain.
 """
-function remove_out_of_bounds_receivers(recGeometry::Geometry, recData::Matrix{T}, model::Model) where T
+function remove_out_of_bounds_receivers(recGeometry::Geometry, recData::Matrix{T}, model::AbstractModel) where T
 
     # Only keep receivers within the model
     xmin, xmax = model.o[1], model.o[1] + (model.n[1] - 1)*model.d[1]
@@ -251,11 +251,11 @@ function remove_out_of_bounds_receivers(recGeometry::Geometry, recData::Matrix{T
     return recGeometry, recData
 end
 
-remove_out_of_bounds_receivers(G::Geometry, ::Nothing, M::Model) = (remove_out_of_bounds_receivers(G, M), nothing)
-remove_out_of_bounds_receivers(::Nothing, ::Nothing, M::Model) = (nothing, nothing)
-remove_out_of_bounds_receivers(w, r::AbstractArray, M::Model) = (w, r)
-remove_out_of_bounds_receivers(G::Geometry, r::AbstractArray, M::Model) = remove_out_of_bounds_receivers(G, convert(Matrix{Float32}, r), M)
-remove_out_of_bounds_receivers(w::AbstractArray, ::Nothing, M::Model) = (w, nothing)
+remove_out_of_bounds_receivers(G::Geometry, ::Nothing, M::AbstractModel) = (remove_out_of_bounds_receivers(G, M), nothing)
+remove_out_of_bounds_receivers(::Nothing, ::Nothing, M::AbstractModel) = (nothing, nothing)
+remove_out_of_bounds_receivers(w, r::AbstractArray, M::AbstractModel) = (w, r)
+remove_out_of_bounds_receivers(G::Geometry, r::AbstractArray, M::AbstractModel) = remove_out_of_bounds_receivers(G, convert(Matrix{Float32}, r), M)
+remove_out_of_bounds_receivers(w::AbstractArray, ::Nothing, M::AbstractModel) = (w, nothing)
 
 """
     convertToCell(x)
@@ -308,7 +308,7 @@ Parameters
 * `model`: Model structure
 * `dt`: User defined time step (optional), will be the value returned if provided.
 """
-function calculate_dt(model::Model; dt=nothing)
+function calculate_dt(model::AbstractModel; dt=nothing)
     if ~isnothing(dt)
         return dt
     end
@@ -332,7 +332,7 @@ and receiver geometries of type `Geometry` and `model` is the model structure of
 `Model`.
 
 """
-function get_computational_nt(srcGeometry, recGeometry, model::Model; dt=nothing)
+function get_computational_nt(srcGeometry, recGeometry, model::AbstractModel; dt=nothing)
     # Determine number of computational time steps
     if typeof(srcGeometry) <: GeometryOOC
         nsrc = length(srcGeometry.container)
@@ -358,7 +358,7 @@ and receiver geometries of type `Geometry` and `model` is the model structure of
 `Model`.
 
 """
-function get_computational_nt(Geometry, model::Model; dt=nothing)
+function get_computational_nt(Geometry, model::AbstractModel; dt=nothing)
     # Determine number of computational time steps
     if typeof(Geometry) <: GeometryOOC
         nsrc = length(Geometry.container)
@@ -634,7 +634,7 @@ Parameters:
 * `model`: Model containing physical parameters.
 * `nsrc`: Number of sources
 """
-function process_input_data(input::AbstractArray{Float32}, model::Model, nsrc::Integer)
+function process_input_data(input::AbstractArray{Float32}, model::AbstractModel, nsrc::Integer)
     ndims = length(model.n)
     dataCell = Array{Array{Float32, ndims}, 1}(undef, nsrc)
 
@@ -646,10 +646,10 @@ function process_input_data(input::AbstractArray{Float32}, model::Model, nsrc::I
     return dataCell
 end
 
-process_input_data(input::AbstractArray{Float32}, model::Model) = process_input_data(input, model, length(input) ÷ prod(model.n))
+process_input_data(input::AbstractArray{Float32}, model::AbstractModel) = process_input_data(input, model, length(input) ÷ prod(model.n))
 process_input_data(input::judiVector, ::Geometry) = input
 process_input_data(input::judiVector) = input.data
-process_input_data(input::judiWeights, ::Model) = input.weights
+process_input_data(input::judiWeights, ::AbstractModel) = input.weights
 
 function process_input_data(input::AbstractArray{T}, v::Vector{<:Array}) where T
     nsrc = length(v)
@@ -666,7 +666,7 @@ end
 
 Reshapes input vector intu a 3D `nt x nrec x nsrc` Array.
 """
-function reshape(x::AbstractArray{Float32, 1}, geometry::Geometry)
+function reshape(x::AbstractArray{Float32}, geometry::Geometry)
     nt = geometry.nt[1]
     nrec = geometry.nrec[1]
     nsrc = Int(length(x) / nt / nrec)

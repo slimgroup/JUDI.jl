@@ -90,41 +90,43 @@ end
 
 ############################# Full wavefield ############################################
 
-@testset "Basic judiWavefield modeling tests" begin
-	@timeit TIMEROUTPUT "Wavefield modeling" begin
-		opt = Options(dt_comp=dt, f0=f0)
-		F = judiModeling(model; options=opt)
-		Fa = adjoint(F)
-		Ps = judiProjection(srcGeometry)
-		Pr = judiProjection(recGeometry)
+if VERSION>v"1.6"
+	@testset "Basic judiWavefield modeling tests" begin
+		@timeit TIMEROUTPUT "Wavefield modeling" begin
+			opt = Options(dt_comp=dt, f0=f0)
+			F = judiModeling(model; options=opt)
+			Fa = adjoint(F)
+			Ps = judiProjection(srcGeometry)
+			Pr = judiProjection(recGeometry)
 
-		# Return wavefields
-		u = F * adjoint(Ps) * q
+			# Return wavefields
+			u = F * adjoint(Ps) * q
 
-		# Adjoint from data
-		dobs = Pr*F*u
-		v = Fa*adjoint(Pr)*dobs
+			# Adjoint from data
+			dobs = Pr*F*u
+			v = Fa*adjoint(Pr)*dobs
 
-		a = dot(u, v)
-		b = dot(dobs, dobs)
-		@printf(" <F x, y> : %2.5e, <x, F' y> : %2.5e, relative error : %2.5e \n", b, a, (a-b)/(a+b))
-		@test isapprox(a/(a+b), b/(a+b), atol=2.5f-5, rtol=0)
+			a = dot(u, v)
+			b = dot(dobs, dobs)
+			@printf(" <F x, y> : %2.5e, <x, F' y> : %2.5e, relative error : %2.5e \n", b, a, (a-b)/(a+b))
+			@test isapprox(a/(a+b), b/(a+b), atol=2.5f-5, rtol=0)
 
-		# Forward from data
-		qa = Ps*Fa*v
+			# Forward from data
+			qa = Ps*Fa*v
 
-		a = dot(u, v)
-		b = dot(q, qa)
-		@printf(" <F x, y> : %2.5e, <x, F' y> : %2.5e, relative error : %2.5e \n", b, a, (a-b)/(a+b))
-		@test isapprox(a/(a+b), b/(a+b), atol=2.5f-5, rtol=0)
+			a = dot(u, v)
+			b = dot(q, qa)
+			@printf(" <F x, y> : %2.5e, <x, F' y> : %2.5e, relative error : %2.5e \n", b, a, (a-b)/(a+b))
+			@test isapprox(a/(a+b), b/(a+b), atol=2.5f-5, rtol=0)
 
-		# Wavefields as source + return wavefields
-		u2 = F*u
-		v2 = Fa*v
+			# Wavefields as source + return wavefields
+			u2 = F*u
+			v2 = Fa*v
 
-		a = dot(u2, v)
-		b = dot(v2, u)
-		@printf(" <F x, y> : %2.5e, <x, F' y> : %2.5e, relative error : %2.5e \n", a, b, (a-b)/(a+b))
-		@test isapprox(a/(a+b), b/(a+b), atol=1f-4, rtol=0)
+			a = dot(u2, v)
+			b = dot(v2, u)
+			@printf(" <F x, y> : %2.5e, <x, F' y> : %2.5e, relative error : %2.5e \n", a, b, (a-b)/(a+b))
+			@test isapprox(a/(a+b), b/(a+b), atol=1f-4, rtol=0)
+		end
 	end
 end
