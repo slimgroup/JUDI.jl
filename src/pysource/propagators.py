@@ -1,6 +1,6 @@
 from kernels import wave_kernel
 from geom_utils import src_rec, geom_expr
-from fields import (fourier_modes, wavefield, lr_src_fields,
+from fields import (fourier_modes, wavefield, lr_src_fields, illumination,
                     wavefield_subsampled, norm_holder, frequencies)
 from fields_exprs import extented_src
 from sensitivity import grad_expr
@@ -14,7 +14,7 @@ from devito.tools import as_tuple
 # Forward propagation
 def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
             qwf=None, return_op=False, freq_list=None, dft_sub=None,
-            ws=None, t_sub=1, f0=0.015, **kwargs):
+            ws=None, t_sub=1, f0=0.015, illum=False, **kwargs):
     """
     Low level propagator, to be used through `interface.py`
     Compute forward wavefield u = A(m)^{-1}*f and related quantities (u(xrcv))
@@ -32,7 +32,7 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     op = forward_op(model.physical_parameters, model.is_tti, model.is_viscoacoustic,
                     space_order, model.spacing, save, t_sub, model.fs,
                     src_coords is not None, rcv_coords is not None,
-                    nfreq(freq_list), dft_sub, ws is not None, qwf is not None)
+                    nfreq(freq_list), dft_sub, ws is not None, qwf is not None, illum)
 
     # Make kwargs
     kw = {'dt': model.critical_dt}
@@ -41,6 +41,9 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     # Expression for saving wavefield if time subsampling is used
     u_save = wavefield_subsampled(model, u, nt, t_sub)
 
+    # Illumination
+    I = illumination(u, illum)
+
     # On-the-fly Fourier
     dft_modes, fr = fourier_modes(u, freq_list)
 
@@ -48,7 +51,7 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     ws, wt = lr_src_fields(model, ws, wavelet)
 
     # Update kwargs
-    kw.update(fields_kwargs(u, qwf, src, rcv, u_save, dft_modes, fr, ws, wt, f0q))
+    kw.update(fields_kwargs(u, qwf, src, rcv, u_save, dft_modes, fr, ws, wt, f0q, I))
     kw.update(model.physical_params())
 
     if return_op:
@@ -57,11 +60,12 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     summary = op(**kw)
 
     # Output
-    return rcv, dft_modes or (u_save if t_sub > 1 else u), summary
+    return rcv, dft_modes or (u_save if t_sub > 1 else u), I, summary
 
 
 def adjoint(model, y, src_coords, rcv_coords, space_order=8, qwf=None, dft_sub=None,
-            save=False, ws=None, norm_v=False, w_fun=None, freq_list=None, f0=0.015):
+            save=False, ws=None, norm_v=False, w_fun=None, freq_list=None, f0=0.015,
+            illum=False):
     """
     Low level propagator, to be used through `interface.py`
     Compute adjoint wavefield v = adjoint(F(m))*y
@@ -83,7 +87,7 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, qwf=None, dft_sub=N
     op = adjoint_op(model.physical_parameters, model.is_tti, model.is_viscoacoustic,
                     space_order, model.spacing, save, nv_weights, model.fs,
                     src_coords is not None, rcv_coords is not None,
-                    nfreq(freq_list), dft_sub, ws is not None, qwf is not None)
+                    nfreq(freq_list), dft_sub, ws is not None, qwf is not None, illum)
 
     # On-the-fly Fourier
     dft_modes, fr = fourier_modes(v, freq_list)
@@ -91,13 +95,16 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, qwf=None, dft_sub=N
     # Extended source
     ws, wt = lr_src_fields(model, None, ws, empty_ws=True)
 
+    # Illumination
+    I = illumination(v, illum)
+
     # Norm v
     nv2, nvt2 = norm_holder(v) if norm_v else (None, None)
 
     # Update kwargs
     kw = {'dt': model.critical_dt}
     f0q = Constant('f0', value=f0) if model.is_viscoacoustic else None
-    kw.update(fields_kwargs(v, nv2, nvt2, qwf, src, rcv, dft_modes, fr, ws, wt, f0q))
+    kw.update(fields_kwargs(v, nv2, nvt2, qwf, src, rcv, dft_modes, fr, ws, wt, f0q, I))
     kw.update(model.physical_params())
 
     # Run op
@@ -105,14 +112,14 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, qwf=None, dft_sub=N
 
     # Output
     if ws:
-        return ws, summary
+        return ws, I, summary
     if norm_v:
         return rcv, dft_modes or v, nv2.data[0], summary
-    return rcv, v, summary
+    return rcv, v, I, summary
 
 
 def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8,
-             w=None, freq=None, dft_sub=None, ic="as", f0=0.015, save=True):
+             w=None, freq=None, dft_sub=None, ic="as", f0=0.015, save=True, illum=False):
     """
     Low level propagator, to be used through `interface.py`
     Compute the action of the adjoint Jacobian onto a residual J'* δ d.
@@ -133,13 +140,17 @@ def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8,
     # Create operator and run
     op = adjoint_born_op(model.physical_parameters, model.is_tti, model.is_viscoacoustic,
                          space_order, model.spacing, rcv_coords is not None, model.fs, w,
-                         save, t_sub, nfreq(freq), dft_sub, ic)
+                         save, t_sub, nfreq(freq), dft_sub, ic, illum)
 
     # Update kwargs
     kw = {'dt': model.critical_dt}
     f, _factor = frequencies(freq)
     f0q = Constant('f0', value=f0) if model.is_viscoacoustic else None
-    kw.update(fields_kwargs(src, u, v, gradm, f0q, f))
+
+    # Illumination
+    I = illumination(v, illum)
+
+    kw.update(fields_kwargs(src, u, v, gradm, f0q, f, I))
     kw.update(model.physical_params())
 
     if return_op:
@@ -148,12 +159,12 @@ def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8,
     summary = op(**kw)
 
     # Output
-    return gradm, summary
+    return gradm, I, summary
 
 
 def born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
          qwf=None, return_op=False, ic="as", freq_list=None, dft_sub=None,
-         ws=None, t_sub=1, nlind=False, f0=0.015):
+         ws=None, t_sub=1, nlind=False, f0=0.015, illum=False):
     """
     Low level propagator, to be used through `interface.py`
     Compute linearized wavefield U = J(m)* δ m
@@ -173,7 +184,7 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     op = born_op(model.physical_parameters, model.is_tti, model.is_viscoacoustic,
                  space_order, model.spacing, save,
                  src_coords is not None, rcv_coords is not None, model.fs, t_sub,
-                 ws is not None, nfreq(freq_list), dft_sub, ic, nlind)
+                 ws is not None, nfreq(freq_list), dft_sub, ic, nlind, illum)
 
     # Make kwargs
     kw = {'dt': model.critical_dt}
@@ -181,14 +192,17 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     # Expression for saving wavefield if time subsampling is used
     u_save = wavefield_subsampled(model, u, nt, t_sub)
 
+    # Illumination
+    I = illumination(u, illum)
+
     # On-the-fly Fourier
-    dft_modes, fr = fourier_modes(u, freq_list)
+    dft_m, fr = fourier_modes(u, freq_list)
 
     # Extended source
     ws, wt = lr_src_fields(model, ws, wavelet)
 
     # Update kwargs
-    kw.update(fields_kwargs(u, ul, snl, rnl, rcvl, u_save, dft_modes, fr, ws, wt, f0q))
+    kw.update(fields_kwargs(u, ul, snl, rnl, rcvl, u_save, dft_m, fr, ws, wt, f0q, I))
     kw.update(model.physical_params(born=True))
 
     outrec = (rcvl, rnl) if nlind else rcvl
@@ -198,7 +212,7 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     summary = op(**kw)
 
     # Output
-    return outrec, dft_modes or (u_save if t_sub > 1 else u), summary
+    return outrec, dft_m or (u_save if t_sub > 1 else u), I, summary
 
 
 # Forward propagation

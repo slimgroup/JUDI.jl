@@ -235,6 +235,9 @@ J = judiJacobian(F, q)
 # Right-hand preconditioners (model topmute)
 Mr = judiTopmute(model0.n, 52, 10)	# mute up to grid point 52, with 10 point taper
 
+# Left-hand preconditioners
+Ml = judiDataMute(q.geometry, dD.geometry; t0=.120)	# data topmute starting at 120ms (30 samples)
+
 # Stochastic gradient
 x = zeros(Float32, info.n)	# zero initial guess
 batchsize = 10	# use subset of 10 shots per iteration
@@ -246,11 +249,10 @@ for j=1:niter
 
 	# Select batch and set up left-hand preconditioner
 	i = randperm(dD.nsrc)[1:batchsize]
-	Ml = judiMarineTopmute2D(30, dD[i].geometry)	# data topmute starting at time sample 30
 
 	# Compute residual and gradient
-	r = Ml*J[i]*Mr*x - Ml*dD[i]
-	g = adjoint(Mr)*adjoint(J[i])*adjoint(Ml)*r
+	r = Ml[i]*J[i]*Mr*x - Ml[i]*dD[i]
+	g = adjoint(Mr)*adjoint(J[i])*adjoint(Ml[i])*r
 
 	# Step size and update variable
 	fval[j] = .5f0*norm(r)^2

@@ -57,6 +57,7 @@ base = ["test_geometry.jl",
         "test_compat.jl"]
 
 devito = ["test_linearity.jl",
+          "test_preconditioners.jl",
           "test_adjoint.jl",
           "test_all_options.jl",
           "test_jacobian.jl",

@@ -14,7 +14,8 @@ from fields_exprs import wf_as_src
 
 
 # Forward wrappers Pr*F*Ps'*q
-def forward_rec(model, src_coords, wavelet, rec_coords, space_order=8, f0=0.015):
+def forward_rec(model, src_coords, wavelet, rec_coords, space_order=8, f0=0.015,
+                illum=False):
     """
     Forward modeling of a point source with receivers Pr*F*Ps^T*q.
 
@@ -30,20 +31,23 @@ def forward_rec(model, src_coords, wavelet, rec_coords, space_order=8, f0=0.015)
         Coordiantes of the receiver(s)
     space_order: Int (optional)
         Spatial discretization order, defaults to 8
-    f0: peak frequency
-
+    f0: float
+        peak frequency
+    illum: bool
+        Whether to compute illumination during propagation
     Returns
     ----------
     Array
         Shot record
     """
-    rec, _, _ = forward(model, src_coords, rec_coords, wavelet, save=False,
-                        space_order=space_order, f0=f0)
-    return rec.data
+    rec, _, I, _ = forward(model, src_coords, rec_coords, wavelet, save=False,
+                           space_order=space_order, f0=f0, illum=illum)
+    return rec.data, getattr(I, "data", None)
 
 
 #  Pr*F*Pw'*w
-def forward_rec_w(model, weight, wavelet, rec_coords, space_order=8, f0=0.015):
+def forward_rec_w(model, weight, wavelet, rec_coords, space_order=8, f0=0.015,
+                  illum=False):
     """
     Forward modeling of an extended source with receivers  Pr*F*Pw^T*w
 
@@ -59,20 +63,23 @@ def forward_rec_w(model, weight, wavelet, rec_coords, space_order=8, f0=0.015):
         Coordiantes of the receiver(s)
     space_order: Int (optional)
         Spatial discretization order, defaults to 8
-    f0: peak frequency
+    f0: float
+        peak frequency
+    illum: bool
+        Whether to compute illumination during propagation
 
     Returns
     ----------
     Array
         Shot record
     """
-    rec, _, _ = forward(model, None, rec_coords, wavelet, save=False, ws=weight,
-                        space_order=space_order, f0=f0)
-    return rec.data
+    rec, _, I, _ = forward(model, None, rec_coords, wavelet, save=False, ws=weight,
+                           space_order=space_order, f0=f0, illum=illum)
+    return rec.data, getattr(I, "data", None)
 
 
 # F*Ps'*q
-def forward_no_rec(model, src_coords, wavelet, space_order=8, f0=0.015):
+def forward_no_rec(model, src_coords, wavelet, space_order=8, f0=0.015, illum=False):
     """
     Forward modeling of a point source without receiver.
 
@@ -86,20 +93,23 @@ def forward_no_rec(model, src_coords, wavelet, space_order=8, f0=0.015):
         Source signature
     space_order: Int (optional)
         Spatial discretization order, defaults to 8
-    f0: peak frequency
+    f0: float
+        peak frequency
+    illum: bool
+        Whether to compute illumination during propagation
 
     Returns
     ----------
     Array
         Wavefield
     """
-    _, u, _ = forward(model, src_coords, None, wavelet, space_order=space_order,
-                      save=True, f0=f0)
-    return u.data
+    _, u, I, _ = forward(model, src_coords, None, wavelet, space_order=space_order,
+                         save=True, f0=f0, illum=illum)
+    return u.data, getattr(I, "data", None)
 
 
 # Pr*F*u
-def forward_wf_src(model, u, rec_coords, space_order=8, f0=0.015):
+def forward_wf_src(model, u, rec_coords, space_order=8, f0=0.015, illum=False):
     """
     Forward modeling of a full wavefield source Pr*F*u.
 
@@ -113,7 +123,10 @@ def forward_wf_src(model, u, rec_coords, space_order=8, f0=0.015):
         Coordiantes of the receiver(s)
     space_order: Int (optional)
         Spatial discretization order, defaults to 8
-    f0: peak frequency
+    f0: float
+        peak frequency
+    illum: bool
+        Whether to compute illumination during propagation
 
     Returns
     ----------
@@ -121,12 +134,13 @@ def forward_wf_src(model, u, rec_coords, space_order=8, f0=0.015):
         Shot record
     """
     wsrc = src_wavefield(model, u, fw=True)
-    rec, _, _ = forward(model, None, rec_coords, None, space_order=space_order, qwf=wsrc)
-    return rec.data
+    rec, _, I, _ = forward(model, None, rec_coords, None, space_order=space_order,
+                           qwf=wsrc, illum=illum, f0=f0)
+    return rec.data, getattr(I, "data", None)
 
 
 # F*u
-def forward_wf_src_norec(model, u, space_order=8, f0=0.015):
+def forward_wf_src_norec(model, u, space_order=8, f0=0.015, illum=False):
     """
     Forward modeling of a full wavefield source without receiver F*u.
 
@@ -138,7 +152,10 @@ def forward_wf_src_norec(model, u, space_order=8, f0=0.015):
         Time-space dependent wavefield
     space_order: Int (optional)
         Spatial discretization order, defaults to 8
-    f0: peak frequency
+    f0: float
+        peak frequency
+    illum: bool
+        Whether to compute illumination during propagation
 
     Returns
     ----------
@@ -146,14 +163,14 @@ def forward_wf_src_norec(model, u, space_order=8, f0=0.015):
         Wavefield
     """
     wf_src = src_wavefield(model, u, fw=True)
-    _, u, _ = forward(model, None, None, None, space_order=space_order, save=True,
-                      qwf=wf_src, f0=f0)
-    return u.data
+    _, u, I, _ = forward(model, None, None, None, space_order=space_order, save=True,
+                         qwf=wf_src, f0=f0, illum=illum)
+    return u.data, getattr(I, "data", None)
 
 
 # Adjoint wrappers Ps*F'*Pr'*d_obs
 def adjoint_rec(model, src_coords, rec_coords, data,
-                space_order=8, f0=0.015):
+                space_order=8, f0=0.015, illum=False):
     """
     Adjoint/backward modeling of a shot record (receivers as source) Ps*F^T*Pr^T*d.
 
@@ -169,20 +186,23 @@ def adjoint_rec(model, src_coords, rec_coords, data,
         Shot gather
     space_order: Int (optional)
         Spatial discretization order, defaults to 8
-    f0: peak frequency
+    f0: float
+        peak frequency
+    illum: bool
+        Whether to compute illumination during propagation
 
     Returns
     ----------
     Array
         Shot record (adjoint wavefield at source position(s))
     """
-    rec, _, _ = adjoint(model, data, src_coords, rec_coords, space_order=space_order,
-                        f0=f0)
-    return rec.data
+    rec, _, I, _ = adjoint(model, data, src_coords, rec_coords, space_order=space_order,
+                           f0=f0, illum=illum)
+    return rec.data, getattr(I, "data", None)
 
 
 # Pw*F'*Pr'*d_obs
-def adjoint_w(model, rec_coords, data, wavelet, space_order=8, f0=0.015):
+def adjoint_w(model, rec_coords, data, wavelet, space_order=8, f0=0.015, illum=False):
     """
     Adjoint/backward modeling of a shot record (receivers as source) for an
     extended source setup Pw*F^T*Pr^T*d_obs.
@@ -199,20 +219,23 @@ def adjoint_w(model, rec_coords, data, wavelet, space_order=8, f0=0.015):
         Time signature of the forward source for stacking along time
     space_order: Int (optional)
         Spatial discretization order, defaults to 8
-    f0: peak frequency
+    f0: float
+        peak frequency
+    illum: bool
+        Whether to compute illumination during propagation
 
     Returns
     ----------
     Array
         spatial distribution
     """
-    w, _ = adjoint(model, data, None, rec_coords, ws=wavelet, space_order=space_order,
-                   f0=f0)
-    return w.data
+    w, I, _ = adjoint(model, data, None, rec_coords, ws=wavelet, space_order=space_order,
+                      f0=f0, illum=illum)
+    return w.data, getattr(I, "data", None)
 
 
 # F'*Pr'*d_obs
-def adjoint_no_rec(model, rec_coords, data, space_order=8, f0=0.015):
+def adjoint_no_rec(model, rec_coords, data, space_order=8, f0=0.015, illum=False):
     """
     Adjoint/backward modeling of a shot record (receivers as source)
     without source sampling F^T*Pr^T*d_obs.
@@ -227,20 +250,23 @@ def adjoint_no_rec(model, rec_coords, data, space_order=8, f0=0.015):
         Shot gather
     space_order: Int (optional)
         Spatial discretization order, defaults to 8
-    f0: peak frequency
+    f0: float
+        peak frequency
+    illum: bool
+        Whether to compute illumination during propagation
 
     Returns
     ----------
     Array
         Adjoint wavefield
     """
-    _, v, _ = adjoint(model, data, None, rec_coords, space_order=space_order, save=True,
-                      f0=f0)
-    return v.data
+    _, v, I, _ = adjoint(model, data, None, rec_coords, space_order=space_order,
+                         save=True, f0=f0, illum=illum)
+    return v.data, getattr(I, "data", None)
 
 
 # Ps*F'*u
-def adjoint_wf_src(model, u, src_coords, space_order=8, f0=0.015):
+def adjoint_wf_src(model, u, src_coords, space_order=8, f0=0.015, illum=False):
     """
     Adjoint/backward modeling of a full wavefield (full wavefield as adjoint source)
     Ps*F^T*u.
@@ -255,7 +281,10 @@ def adjoint_wf_src(model, u, src_coords, space_order=8, f0=0.015):
         Source coordinates
     space_order: Int (optional)
         Spatial discretization order, defaults to 8
-    f0: peak frequency
+    f0: float
+        peak frequency
+    illum: bool
+        Whether to compute illumination during propagation
 
     Returns
     ----------
@@ -263,12 +292,13 @@ def adjoint_wf_src(model, u, src_coords, space_order=8, f0=0.015):
         Shot record (sampled at source position(s))
     """
     wsrc = src_wavefield(model, u, fw=False)
-    rec, _, _ = adjoint(model, None, src_coords, None, space_order=space_order, qwf=wsrc)
-    return rec.data
+    rec, _, I, _ = adjoint(model, None, src_coords, None, space_order=space_order,
+                           qwf=wsrc, f0=f0, illum=illum)
+    return rec.data, getattr(I, "data", None)
 
 
 # F'*u
-def adjoint_wf_src_norec(model, u, space_order=8, f0=0.015):
+def adjoint_wf_src_norec(model, u, space_order=8, f0=0.015, illum=False):
     """
     Adjoint/backward modeling of a full wavefield (full wavefield as adjoint source)
     F^T*u.
@@ -281,7 +311,10 @@ def adjoint_wf_src_norec(model, u, space_order=8, f0=0.015):
         Time-space dependent source
     space_order: Int (optional)
         Spatial discretization order, defaults to 8
-    f0: peak frequency
+    f0: float
+        peak frequency
+    illum: bool
+        Whether to compute illumination during propagation
 
     Returns
     ----------
@@ -289,14 +322,14 @@ def adjoint_wf_src_norec(model, u, space_order=8, f0=0.015):
         Adjoint wavefield
     """
     wf_src = src_wavefield(model, u, fw=False)
-    _, v, _ = adjoint(model, None, None, None, space_order=space_order,
-                      save=True, qwf=wf_src, f0=f0)
-    return v.data
+    _, v, I, _ = adjoint(model, None, None, None, space_order=space_order,
+                         save=True, qwf=wf_src, f0=f0, illum=illum)
+    return v.data, getattr(I, "data", None)
 
 
 # Linearized modeling ∂/∂m (Pr*F*Ps'*q)
 def born_rec(model, src_coords, wavelet, rec_coords,
-             space_order=8, ic="as", f0=0.015):
+             space_order=8, ic="as", f0=0.015, illum=False):
     """
     Linearized (Born) modeling of a point source for a model perturbation
     (square slowness) dm.
@@ -315,21 +348,24 @@ def born_rec(model, src_coords, wavelet, rec_coords,
         Spatial discretization order, defaults to 8
     ic: String
         Imaging conditions ("as", "isic" or "fwi"), defaults to "as"
-    f0: peak frequency
+    f0: float
+        peak frequency
+    illum: bool
+        Whether to compute illumination during propagation
 
     Returns
     ----------
     Array
         Shot record
     """
-    rec, _, _ = born(model, src_coords, rec_coords, wavelet, save=False,
-                     space_order=space_order, ic=ic, f0=f0)
-    return rec.data
+    rec, _, I, _ = born(model, src_coords, rec_coords, wavelet, save=False,
+                        space_order=space_order, ic=ic, f0=f0, illum=illum)
+    return rec.data, getattr(I, "data", None)
 
 
 # ∂/∂m (Pr*F*Pw'*w)
 def born_rec_w(model, weight, wavelet, rec_coords,
-               space_order=8, ic="as", f0=0.015):
+               space_order=8, ic="as", f0=0.015, illum=False):
     """
     Linearized (Born) modeling of an extended source for a model
     perturbation (square slowness) dm with an extended source
@@ -348,20 +384,23 @@ def born_rec_w(model, weight, wavelet, rec_coords,
         Spatial discretization order, defaults to 8
     ic: String
         Imaging conditions ("as", "isic" or "fwi"), defaults to "as"
-    f0: peak frequency
+    f0: float
+        peak frequency
+    illum: bool
+        Whether to compute illumination during propagation
 
     Returns
     ----------
     Array
         Shot record
     """
-    rec, _, _ = born(model, None, rec_coords, wavelet, save=False, ws=weight,
-                     space_order=space_order, ic=ic, f0=f0)
-    return rec.data
+    rec, _, I, _ = born(model, None, rec_coords, wavelet, save=False, ws=weight,
+                        space_order=space_order, ic=ic, f0=f0, illum=illum)
+    return rec.data, getattr(I, "data", None)
 
 
 # Gradient wrappers
-def grad_fwi(model, recin, rec_coords, u, space_order=8, f0=0.015):
+def grad_fwi(model, recin, rec_coords, u, space_order=8, f0=0.015, illum=False):
     """
     FWI gradient, i.e adjoint Jacobian on a data residual.
 
@@ -377,20 +416,24 @@ def grad_fwi(model, recin, rec_coords, u, space_order=8, f0=0.015):
         Forward wavefield
     space_order: Int (optional)
         Spatial discretization order, defaults to 8
-    f0: peak frequency
+    f0: float
+        peak frequency
+    illum: bool
+        Whether to compute illumination during propagation
 
     Returns
     ----------
     Array
         FWI gradient
     """
-    g, _ = gradient(model, recin, rec_coords, u, space_order=space_order, f0=f0)
-    return g.data
+    g, I, _ = gradient(model, recin, rec_coords, u, space_order=space_order,
+                       f0=f0, illum=illum)
+    return g.data, getattr(I, "data", None)
 
 
 def J_adjoint(model, src_coords, wavelet, rec_coords, recin, space_order=8,
               is_residual=False, checkpointing=False, n_checkpoints=None, t_sub=1,
-              return_obj=False, freq_list=[], dft_sub=None, ic="as",
+              return_obj=False, freq_list=[], dft_sub=None, ic="as", illum=False,
               ws=None, f0=0.015, born_fwd=False, nlind=False, misfit=None):
     """
     Jacobian (adjoint fo born modeling operator) operator on a shot record
@@ -427,7 +470,10 @@ def J_adjoint(model, src_coords, wavelet, rec_coords, recin, space_order=8,
         Imaging conditions ("as", "isic" or "fwi"), defaults to "as"
     ws : Array
         Extended source spatial distribution
-    f0: peak frequency
+    f0: float
+        peak frequency
+    illum: bool
+        Whether to compute illumination during propagation
 
     Returns
     ----------
@@ -438,24 +484,26 @@ def J_adjoint(model, src_coords, wavelet, rec_coords, recin, space_order=8,
         return J_adjoint_checkpointing(model, src_coords, wavelet, rec_coords, recin,
                                        space_order=8, is_residual=is_residual, ws=ws,
                                        n_checkpoints=n_checkpoints, ic=ic, f0=f0,
-                                       nlind=nlind, return_obj=return_obj,
+                                       nlind=nlind, return_obj=return_obj, illum=illum,
                                        born_fwd=born_fwd, misfit=misfit)
     elif freq_list is not None:
         return J_adjoint_freq(model, src_coords, wavelet, rec_coords, recin, ws=ws,
                               space_order=space_order, dft_sub=dft_sub, f0=f0, ic=ic,
                               freq_list=freq_list, is_residual=is_residual, nlind=nlind,
-                              return_obj=return_obj, misfit=misfit, born_fwd=born_fwd)
+                              return_obj=return_obj, misfit=misfit, born_fwd=born_fwd,
+                              illum=illum)
     else:
         return J_adjoint_standard(model, src_coords, wavelet, rec_coords, recin,
                                   is_residual=is_residual, ic=ic, ws=ws, t_sub=t_sub,
                                   return_obj=return_obj, space_order=space_order,
-                                  born_fwd=born_fwd, f0=f0, nlind=nlind, misfit=misfit)
+                                  born_fwd=born_fwd, f0=f0, nlind=nlind,
+                                  illum=illum, misfit=misfit)
 
 
 def J_adjoint_freq(model, src_coords, wavelet, rec_coords, recin, space_order=8,
                    freq_list=[], is_residual=False, return_obj=False, nlind=False,
                    dft_sub=None, ic="as", ws=None, born_fwd=False, f0=0.015,
-                   misfit=None):
+                   misfit=None, illum=False):
     """
     Jacobian (adjoint fo born modeling operator) operator on a shot record
     as a source (i.e data residual). Outputs the gradient with Frequency
@@ -490,29 +538,33 @@ def J_adjoint_freq(model, src_coords, wavelet, rec_coords, recin, space_order=8,
     nlind: Bool
         Whether to remove the non linear data from the input data. This option is
         only available in combination with `born_fwd`
-    f0: peak frequency
+    f0: float
+        peak frequency
+    illum: bool
+        Whether to compute illumination during propagation
 
     Returns
     ----------
     Array
         Adjoint jacobian on the input data (gradient)
     """
-    rec, u, _ = op_fwd_J[born_fwd](model, src_coords, rec_coords, wavelet, save=False,
-                                   space_order=space_order, freq_list=freq_list,
-                                   ic=ic, ws=ws, dft_sub=dft_sub, nlind=nlind, f0=f0)
+    ffunc = op_fwd_J[born_fwd]
+    rec, u, Iu, _ = ffunc(model, src_coords, rec_coords, wavelet, save=False,
+                          space_order=space_order, freq_list=freq_list, ic=ic, ws=ws,
+                          dft_sub=dft_sub, nlind=nlind, illum=illum, f0=f0)
     # Residual and gradient
     f, residual = Loss(rec, recin, model.critical_dt,
                        is_residual=is_residual, misfit=misfit)
 
-    g, _ = gradient(model, residual, rec_coords, u, space_order=space_order, ic=ic,
-                    freq=freq_list, dft_sub=dft_sub, f0=f0)
+    g, Iv, _ = gradient(model, residual, rec_coords, u, space_order=space_order, ic=ic,
+                        freq=freq_list, dft_sub=dft_sub, f0=f0, illum=illum)
     if return_obj:
-        return f, g.data
-    return g.data
+        return f, g.data, getattr(Iu, "data", None), getattr(Iv, "data", None)
+    return g.data, getattr(Iu, "data", None), getattr(Iv, "data", None)
 
 
 def J_adjoint_standard(model, src_coords, wavelet, rec_coords, recin, space_order=8,
-                       is_residual=False, return_obj=False, born_fwd=False,
+                       is_residual=False, return_obj=False, born_fwd=False, illum=False,
                        ic="as", ws=None, t_sub=1, nlind=False, f0=0.015, misfit=None):
     """
     Adjoint Jacobian (adjoint fo born modeling operator) operator on a shot record
@@ -544,32 +596,36 @@ def J_adjoint_standard(model, src_coords, wavelet, rec_coords, recin, space_orde
     nlind: Bool
         Whether to remove the non linear data from the input data. This option is
         only available in combination with `born_fwd`
-    f0: peak frequency
+    f0: float
+        peak frequency
+    illum: bool
+        Whether to compute illumination during propagation
 
     Returns
     ----------
     Array
         Adjoint jacobian on the input data (gradient)
     """
-    rec, u, _ = op_fwd_J[born_fwd](model, src_coords, rec_coords, wavelet, save=True,
-                                   ws=ws, space_order=space_order,
-                                   ic=ic, t_sub=t_sub, nlind=nlind, f0=f0)
+    ffunc = op_fwd_J[born_fwd]
+    rec, u, Iu, _ = ffunc(model, src_coords, rec_coords, wavelet, save=True, nlind=nlind,
+                          f0=f0, ws=ws, space_order=space_order, illum=illum, ic=ic,
+                          t_sub=t_sub)
 
     # Residual and gradient
     f, residual = Loss(rec, recin, model.critical_dt,
                        is_residual=is_residual, misfit=misfit)
 
-    g, _ = gradient(model, residual, rec_coords, u, space_order=space_order, ic=ic,
-                    f0=f0)
+    g, Iv, _ = gradient(model, residual, rec_coords, u, space_order=space_order, ic=ic,
+                        f0=f0, illum=illum)
     if return_obj:
-        return f, g.data
-    return g.data
+        return f, g.data, getattr(Iu, "data", None), getattr(Iv, "data", None)
+    return g.data, getattr(Iu, "data", None), getattr(Iv, "data", None)
 
 
 def J_adjoint_checkpointing(model, src_coords, wavelet, rec_coords, recin, space_order=8,
                             is_residual=False, n_checkpoints=None, born_fwd=False,
                             return_obj=False, ic="as", ws=None, nlind=False, f0=0.015,
-                            misfit=None):
+                            misfit=None, illum=False):
     """
     Jacobian (adjoint fo born modeling operator) operator on a shot record
     as a source (i.e data residual). Outputs the gradient with Checkpointing.
@@ -605,20 +661,23 @@ def J_adjoint_checkpointing(model, src_coords, wavelet, rec_coords, recin, space
     nlind: Bool
         Whether to remove the non linear data from the input data. This option is
         only available in combination with `born_fwd`
-    f0: peak frequency
+    f0: float
+        peak frequency
+    illum: bool
+        Whether to compute illumination during propagation
 
     Returns
     ----------
      Array
         Adjoint jacobian on the input data (gradient)
     """
+    ffunc = op_fwd_J[born_fwd]
     # Optimal checkpointing
-    op_f, u, rec_g, kwu = op_fwd_J[born_fwd](model, src_coords, rec_coords, wavelet,
-                                             save=False, space_order=space_order,
-                                             return_op=True, ic=ic, nlind=nlind,
-                                             ws=ws, f0=f0)
+    op_f, u, rec_g, kwu = ffunc(model, src_coords, rec_coords, wavelet,
+                                save=False, space_order=space_order, return_op=True,
+                                ic=ic, nlind=nlind, ws=ws, f0=f0, illum=illum)
     op, g, kwg = gradient(model, recin, rec_coords, u, space_order=space_order,
-                          return_op=True, ic=ic, f0=f0, save=False)
+                          return_op=True, ic=ic, f0=f0, save=False, illum=illum)
 
     nt = wavelet.shape[0]
     rec = Receiver(name='rec', grid=model.grid, ntime=nt, coordinates=rec_coords)
@@ -644,9 +703,11 @@ def J_adjoint_checkpointing(model, src_coords, wavelet, rec_coords, recin, space
 
     wrp.apply_reverse()
 
+    Iu = getattr(kwu.get("Iu", None), "data", None)
+    Iv = getattr(kwg.get("Iv", None), "data", None)
     if return_obj:
-        return f, g.data
-    return g.data
+        return f, g.data, Iu, Iv
+    return g.data, Iu, Iv
 
 
 op_fwd_J = {False: forward, True: born}
@@ -669,8 +730,8 @@ def wri_func(model, src_coords, wavelet, rec_coords, recin, yin, space_order=8,
 
     # F(m0) * q if y is not an input and compute y = r(m0)
     if yin is None or grad_corr:
-        y, u0, _ = forward(model, src_coords, rec_coords, wavelet, save=grad_corr,
-                           space_order=space_order, ws=ws, f0=f0)
+        y, u0, _, _ = forward(model, src_coords, rec_coords, wavelet, save=grad_corr,
+                              space_order=space_order, ws=ws, f0=f0)
         ydat = recin[:] - y.data[:]
     else:
         ydat = yin
@@ -711,7 +772,7 @@ def wri_func(model, src_coords, wavelet, rec_coords, recin, yin, space_order=8,
         if not grad_corr:
             gradm = gradm.data
         else:
-            gradm_corr, _ = gradient(model, grady, rec_coords, u0, f0=f0)
+            gradm_corr, _, _ = gradient(model, grady, rec_coords, u0, f0=f0)
             # Reduced gradient post-processing
             gradm = gradm.data + gradm_corr.data
 

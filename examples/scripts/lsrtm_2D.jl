@@ -44,8 +44,11 @@ opt = Options(subsampling_factor=t_sub, isic=true)  # ~40 GB of memory per sourc
 M = judiModeling(model0, q.geometry, d_lin.geometry; options=opt)
 J = judiJacobian(M, q)
 
+
 # Right-hand preconditioners (model topmute)
-Mr = judiTopmute(model0.n, 52, 10)
+Mr = judiTopmute(model0; taperwidth=10)
+# Left-hand Preconditionners (data top mute)
+Ml = judiDataMute(q.geometry, d_lin.geometry)
 
 #' set up number of iterations
 niter = parse(Int, get(ENV, "NITER", "10"))
@@ -58,8 +61,7 @@ lsqr_sol = zeros(Float32, prod(model0.n))
 dinv = d_lin[indsrc]
 Jinv = J[indsrc]
 
-Ml = judiMarineTopmute2D(30, dinv.geometry)
-lsqr!(lsqr_sol, Ml*Jinv*Mr, Ml*dinv; maxiter=niter)
+lsqr!(lsqr_sol, Ml[indsrc]*Jinv*Mr, Ml[indsrc]*dinv; maxiter=niter)
 
 # Save final velocity model, function value and history
 h5open("lsrtm_marmousi_lsqr_result.h5", "w") do file

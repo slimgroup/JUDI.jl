@@ -58,6 +58,9 @@ D = judiDepthScaling(model0)
 T = judiTopmute(model0.n, (1 .- water_bottom), [])
 Mr = D*T
 
+# Left-hand preconditioners
+Ml = judiDataMute(q.geometry, d_obs.geometry)
+
 # Linearized Bregman parameters
 x = zeros(Float32, prod(model0.n))
 z = zeros(Float32, prod(model0.n))
@@ -87,18 +90,17 @@ for j=1:niter
     # Select batch and set up left-hand preconditioner
     i = randperm(d_obs.nsrc)[1:batchsize]
     d_sub = get_data(d_obs[i])
-    Ml = judiMarineTopmute2D(35, d_sub.geometry)
 
     # Compute residual and estimate source
     if j > 1
         d_pred = J[i]*Mr*x
-        r = Ml*d_pred - Ml*d_sub
+        r = Ml[i]*d_pred - Ml[i]*d_sub
     else
-        r = Ml*d_sub*(-1f0)    # skip forward modeling in first iteration
+        r = Ml[i]*d_sub*(-1f0)    # skip forward modeling in first iteration
     end
 
     # Residual and gradient
-    g = adjoint(Mr)*adjoint(J[i])*adjoint(Ml)*r
+    g = adjoint(Mr)*adjoint(J[i])*adjoint(Ml[i])*r
 
     # Step size and update variable
     fval[j] = .5*norm(r)^2

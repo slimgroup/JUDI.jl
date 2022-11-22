@@ -8,7 +8,7 @@ from models import EmptyModel
 from kernels import wave_kernel
 from geom_utils import geom_expr
 from fields import wavefield, forward_wavefield
-from fields_exprs import (otf_dft, extended_rec,
+from fields_exprs import (otf_dft, extended_rec, illumexpr,
                           extented_src, save_subsampled, weighted_norm)
 from sensitivity import grad_expr, lin_src
 from utils import opt_op
@@ -73,7 +73,7 @@ class memoized_func(object):
 
 @memoized_func
 def forward_op(p_params, tti, visco, space_order, spacing, save, t_sub, fs, pt_src,
-               pt_rec, nfreq, dft_sub, ws, full_q):
+               pt_rec, nfreq, dft_sub, ws, full_q, illum):
     """
     Low level forward operator creation, to be used through `propagator.py`
     Compute forward wavefield u = A(m)^{-1}*f and related quantities (u(xrcv))
@@ -109,9 +109,12 @@ def forward_op(p_params, tti, visco, space_order, spacing, save, t_sub, fs, pt_s
     # On-the-fly Fourier
     dft = otf_dft(u, freq_list, model.grid.time_dim.spacing, factor=dft_sub)
 
+    # Illumination
+    Ieq = illumexpr(u, illum)
+
     # Create operator and run
     subs = model.spacing_map
-    op = Operator(pde + dft + g_expr + eq_save,
+    op = Operator(pde + dft + g_expr + eq_save + Ieq,
                   subs=subs, name="forward"+name(model),
                   opt=opt_op(model))
     op.cfunction
@@ -120,7 +123,7 @@ def forward_op(p_params, tti, visco, space_order, spacing, save, t_sub, fs, pt_s
 
 @memoized_func
 def adjoint_op(p_params, tti, visco, space_order, spacing, save, nv_weights, fs,
-               pt_src, pt_rec, nfreq, dft_sub, ws, full_q):
+               pt_src, pt_rec, nfreq, dft_sub, ws, full_q, illum):
     """
     Low level adjoint operator creation, to be used through `propagators.py`
     Compute adjoint wavefield v = adjoint(F(m))*y
@@ -156,9 +159,12 @@ def adjoint_op(p_params, tti, visco, space_order, spacing, save, nv_weights, fs,
     # Wavefield norm
     nv_t, nv_s = weighted_norm(v, weight=nv_weights) if nv_weights else ([], [])
 
+    # Illumination
+    Ieq = illumexpr(v, illum)
+
     # Create operator and run
     subs = model.spacing_map
-    op = Operator(pde + wsrc + nv_t + dft + g_expr + nv_s,
+    op = Operator(pde + wsrc + nv_t + dft + g_expr + nv_s + Ieq,
                   subs=subs, name="adjoint"+name(model),
                   opt=opt_op(model))
     op.cfunction
@@ -167,7 +173,7 @@ def adjoint_op(p_params, tti, visco, space_order, spacing, save, nv_weights, fs,
 
 @memoized_func
 def born_op(p_params, tti, visco, space_order, spacing, save, pt_src,
-            pt_rec, fs, t_sub, ws, nfreq, dft_sub, ic, nlind):
+            pt_rec, fs, t_sub, ws, nfreq, dft_sub, ic, nlind, illum):
     """
     Low level born operator creation, to be used through `interface.py`
     Compute linearized wavefield U = J(m)* δ m
@@ -209,9 +215,12 @@ def born_op(p_params, tti, visco, space_order, spacing, save, pt_src,
     # On-the-fly Fourier
     dft = otf_dft(u, freq_list, model.critical_dt, factor=dft_sub)
 
+    # Illumination
+    Ieq = illumexpr(u, illum)
+
     # Create operator and run
     subs = model.spacing_map
-    op = Operator(pde + g_expr + g_exprl + pdel + dft + eq_save,
+    op = Operator(pde + g_expr + g_exprl + pdel + dft + eq_save + Ieq,
                   subs=subs, name="born"+name(model),
                   opt=opt_op(model))
     op.cfunction
@@ -220,7 +229,7 @@ def born_op(p_params, tti, visco, space_order, spacing, save, pt_src,
 
 @memoized_func
 def adjoint_born_op(p_params, tti, visco, space_order, spacing, pt_rec, fs, w,
-                    save, t_sub, nfreq, dft_sub, ic):
+                    save, t_sub, nfreq, dft_sub, ic, illum):
     """
     Low level gradient operator creation, to be used through `propagators.py`
     Compute the action of the adjoint Jacobian onto a residual J'* δ d.
@@ -248,9 +257,12 @@ def adjoint_born_op(p_params, tti, visco, space_order, spacing, pt_rec, fs, w,
     g_expr = grad_expr(gradm, u, v, model, w=w, freq=freq_list,
                        dft_sub=dft_sub, ic=ic)
 
+    # Illumination
+    Ieq = illumexpr(v, illum)
+
     # Create operator and run
     subs = model.spacing_map
-    op = Operator(pde + r_expr + g_expr, subs=subs, name="gradient"+name(model),
+    op = Operator(pde + r_expr + g_expr + Ieq, subs=subs, name="gradient"+name(model),
                   opt=opt_op(model))
     try:
         op.cfunction

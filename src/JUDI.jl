@@ -36,7 +36,7 @@ import Base.getproperty, Base.unsafe_convert, Base.convert
 import LinearAlgebra.transpose, LinearAlgebra.conj, LinearAlgebra.vcat, LinearAlgebra.adjoint
 import LinearAlgebra.vec, LinearAlgebra.dot, LinearAlgebra.norm, LinearAlgebra.abs
 import LinearAlgebra.rmul!, LinearAlgebra.lmul!, LinearAlgebra.rdiv!, LinearAlgebra.ldiv!
-import LinearAlgebra.mul!, Base.isfinite
+import LinearAlgebra.mul!, Base.isfinite, Base.inv
 
 # JOLI
 import JOLI: jo_convert
@@ -59,7 +59,6 @@ const ac = PyNULL()
 # https://github.com/JuliaPy/PyCall.jl/issues/882
 
 const PYLOCK = Ref{ReentrantLock}()
-PYLOCK[] = ReentrantLock()
 
 # acquire the lock before any code calls Python
 pylock(f::Function) = Base.lock(PYLOCK[]) do
@@ -100,6 +99,7 @@ function __init__()
     pushfirst!(PyVector(pyimport("sys")."path"), joinpath(JUDIPATH, "pysource"))
     copy!(pm, pyimport("models"))
     copy!(ac, pyimport("interface"))
+    PYLOCK[] = ReentrantLock()
 end
 
 # JUDI time modeling

@@ -37,7 +37,10 @@ M = judiModeling(model0, q.geometry, d_lin.geometry;options=opt)
 J = judiJacobian(M, q)
 
 # Right-hand preconditioners (model topmute)
-Mr = judiTopmute(model0.n, 52, 10)
+Mr = judiTopmute(model0; taperwidth=10)
+
+# Left preconditioner
+Ml = judiDataMute(q.geometry, d_lin.geometry)    # data topmute
 
 # Elastic average stochastic gradient descent
 niter = 20
@@ -71,13 +74,11 @@ for j = 1: niter
 
     @sync begin
         for k = 1: p
-
             # Select batch
             batchsize == 1 ? i = randperm(d_lin.nsrc)[1] : i = randperm(d_lin.nsrc)[1:batchsize]
-            Ml = judiMarineTopmute2D(30, d_lin[i].geometry)    # data topmute
 
             # Calculate x update
-            @async xnew[:, k] = update_x_par(Ml, J[i], Mr, x[:,k], d_lin[i], eta, alpha, xav)
+            @async xnew[:, k] = update_x_par(Ml[i], J[i], Mr, x[:,k], d_lin[i], eta, alpha, xav)
         end
     end
 

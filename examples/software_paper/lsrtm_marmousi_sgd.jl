@@ -37,7 +37,10 @@ M = judiModeling(model0, q.geometry, d_lin.geometry; options=opt)
 J = judiJacobian(M, q)
 
 # Right-hand preconditioners (model topmute)
-Mr = judiTopmute(model0.n, 52, 10)
+Mr = judiTopmute(model0; taperwidth=10)
+
+# Left preconditioner
+Ml = judiDataMute(q.geometry, d_lin.geometry)    # data topmute
 
 # Stochastic gradient
 x = zeros(Float32, prod(model.n))
@@ -51,11 +54,10 @@ for j = 1: niter
 
     # Select batch and set up left-hand preconditioner
     i = randperm(d_lin.nsrc)[1: batchsize]
-    Ml = judiMarineTopmute2D(30, d_lin[i].geometry)    # data topmute
 
     # Compute residual and gradient
-    r = Ml*J[i]*Mr*x - Ml*d_lin[i]
-    g = adjoint(Mr)*adjoint(J[i])*adjoint(Ml)*r
+    r = Ml[i]*J[i]*Mr*x - Ml[i]*d_lin[i]
+    g = adjoint(Mr)*adjoint(J[i])*adjoint(Ml[i])*r
 
     # Step size and update variable
     fval[j] = .5f0*norm(r)^2

@@ -6,6 +6,7 @@
 #
 export Model, PhysicalParameter, get_dt
 
+abstract type AbstractModel end
 
 ###################################################################################################
 # PhysicalParameter abstract vector
@@ -58,8 +59,9 @@ end
 PhysicalParameter(v::BitArray{N}, args...) where N = v
 
 function PhysicalParameter(v::Array{vDT}, d::Tuple, o::Tuple) where {vDT}
-    length(size(v)) != length(o) && throw(PhysicalParameterException("Input array should be $(length(o))-dimensional"))
-    return PhysicalParameter{vDT}(size(v), d, o, v)
+    n = size(v)
+    length(n) != length(o) && throw(PhysicalParameterException("Input array should be $(length(o))-dimensional"))
+    return PhysicalParameter{vDT}(n, d, o, reshape(v, n))
 end
 
 function PhysicalParameter(n::Tuple, d::Tuple, o::Tuple; vDT=Float32)
@@ -82,6 +84,7 @@ end
 
 PhysicalParameter(p::PhysicalParameter, n::Tuple, d::Tuple, o::Tuple) = p 
 PhysicalParameter(p::PhysicalParameter) = p 
+PhysicalParameter(p::PhysicalParameter{T}, v::Array{T, N}) where {T, N} = PhysicalParameter(v, p.d, p.o)
 
 # transpose and such.....
 conj(x::PhysicalParameter{vDT}) where vDT = x
@@ -222,8 +225,10 @@ materialize!(A::AbstractArray, B::Broadcast.Broadcasted{Broadcast.ArrayStyle{Phy
 
 for op in [:+, :-, :*, :/, :\]
     @eval begin
-        broadcasted(::typeof($op), A::PhysicalParameter{T}, B::DenseArray{T}) where T = PhysicalParameter{T}(A.n, A.d, A.o, materialize(broadcasted($(op), A.data, reshape(B, A.n))))
-        broadcasted(::typeof($op), B::DenseArray{T}, A::PhysicalParameter{T}) where T = PhysicalParameter{T}(A.n, A.d, A.o, materialize(broadcasted($(op), reshape(B, A.n), A.data)))
+        broadcasted(::typeof($op), A::PhysicalParameter{T}, B::DenseVector{T}) where T = PhysicalParameter{T}(A.n, A.d, A.o, materialize(broadcasted($(op), A.data, reshape(B, A.n))))
+        broadcasted(::typeof($op), B::DenseVector{T}, A::PhysicalParameter{T}) where T = PhysicalParameter{T}(A.n, A.d, A.o, materialize(broadcasted($(op), reshape(B, A.n), A.data)))
+        broadcasted(::typeof($op), A::PhysicalParameter{T}, B::DenseArray{T, N}) where {T, N} = PhysicalParameter{T}(A.n, A.d, A.o, materialize(broadcasted($(op), A.data, B)))
+        broadcasted(::typeof($op), B::DenseArray{T, N}, A::PhysicalParameter{T}) where {T, N} = PhysicalParameter{T}(A.n, A.d, A.o, materialize(broadcasted($(op), B, A.data)))
         broadcasted(::typeof($op), A::PhysicalParameter{T}, B::PhysicalParameter{T}) where T = $(op)(A, B)
     end
 end
@@ -282,7 +287,7 @@ where
 `rho`: density (g / m^3)
 
 """
-mutable struct Model
+mutable struct Model <: AbstractModel
     n::NTuple{N, Int64} where N
     d::NTuple{N, Float32} where N
     o::NTuple{N, Float32} where N
@@ -317,12 +322,12 @@ end
 Model(n, d, o, m::Array, rho::Array; nb=40) = Model(n, d, o, m; rho=rho, nb=nb)
 Model(n, d, o, m::Array, rho::Array, qp::Array; nb=40) = Model(n, d, o, m; rho=rho, qp=qp, nb=nb)
 
-get_dt(m::Model; dt=nothing) = calculate_dt(m; dt=dt)
-getindex(m::Model, sym::Symbol) = m.params[sym]
+get_dt(m::AbstractModel; dt=nothing) = calculate_dt(m; dt=dt)
+getindex(m::AbstractModel, sym::Symbol) = m.params[sym]
 
-Base.setproperty!(m::Model, s::Symbol, p::PhysicalParameter{Float32}) = (m.params[s] = p)
+Base.setproperty!(m::AbstractModel, s::Symbol, p::PhysicalParameter{Float32}) = (m.params[s] = p)
 
-function Base.getproperty(obj::Model, sym::Symbol)
+function Base.getproperty(obj::AbstractModel, sym::Symbol)
     if sym == :params
         return getfield(obj, sym)
     elseif sym in keys(obj.params)
@@ -333,19 +338,19 @@ function Base.getproperty(obj::Model, sym::Symbol)
     end
 end
 
-similar(::PhysicalParameter{vDT}, m::Model) where {vDT} = PhysicalParameter(m.n, m.d, m.o; vDT=vDT)
-similar(x::Array, m::Model) = similar(x, m.n)
+similar(::PhysicalParameter{vDT}, m::AbstractModel) where {vDT} = PhysicalParameter(m.n, m.d, m.o; vDT=vDT)
+similar(x::Array, m::AbstractModel) = similar(x, m.n)
 
-ndims(m::Model) = ndims(m.m.data)
+ndims(m::AbstractModel) = ndims(m.m.data)
 
-display(m::Model) = println("Model (n=$(m.n), d=$(m.d), o=$(m.o)) with parameters $(keys(m.params))")
-show(io::IO, m::Model) = print(io, "Model (n=$(m.n), d=$(m.d), o=$(m.o)) with parameters $(keys(m.params))")
-show(io::IO, ::MIME{Symbol("text/plain")}, m::Model) = print(io, "Model (n=$(m.n), d=$(m.d), o=$(m.o)) with parameters $(keys(m.params))")
+display(m::AbstractModel) = println("Model (n=$(m.n), d=$(m.d), o=$(m.o)) with parameters $(keys(m.params))")
+show(io::IO, m::AbstractModel) = print(io, "Model (n=$(m.n), d=$(m.d), o=$(m.o)) with parameters $(keys(m.params))")
+show(io::IO, ::MIME{Symbol("text/plain")}, m::AbstractModel) = print(io, "Model (n=$(m.n), d=$(m.d), o=$(m.o)) with parameters $(keys(m.params))")
 
 # Pad gradient if aperture doesn't match full domain
 _project_to_physical_domain(p, ::Any) = p
 
-function _project_to_physical_domain(p::PhysicalParameter, model::Model)
+function _project_to_physical_domain(p::PhysicalParameter, model::AbstractModel)
     p.n == model.n && (return p)
     pp = similar(p, model)
     pp .+= p
