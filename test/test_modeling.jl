@@ -90,7 +90,7 @@ end
 
 ############################# Full wavefield ############################################
 
-if VERSION>v"1.6"
+if VERSION >= v"1.7"
 	@testset "Basic judiWavefield modeling tests" begin
 		@timeit TIMEROUTPUT "Wavefield modeling" begin
 			opt = Options(dt_comp=dt, f0=f0)

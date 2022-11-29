@@ -80,6 +80,12 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     return rout, uout, I, summary
 
 
+# legacy
+def adjoint(*args, **kwargs):
+    fw = not kwargs.pop('fw', True)
+    return forward(*args, fw=fw, **kwargs)
+
+
 def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8, fw=True,
              w=None, freq=None, dft_sub=None, ic="as", f0=0.015, save=True, illum=False):
     """
