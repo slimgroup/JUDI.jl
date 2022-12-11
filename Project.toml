@@ -26,7 +26,7 @@ Flux = "0.12, 0.13"
 JOLI = "0.7, 0.8"
 PyCall = "1.18, 1.90, 1.91, 1.62"
 Reexport = "0.2, 1"
-SegyIO = "0.7.7"
+SegyIO = "0.7.7, 0.8"
 TimerOutputs = "0.5"
 julia = "1"
 
