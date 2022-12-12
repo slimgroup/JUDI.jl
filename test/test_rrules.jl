@@ -31,15 +31,16 @@ perturb(x::Array{T, N}) where {T, N} = circshift(x, (rand(1:20), zeros(N-1)...))
 perturb(x::judiVector) = judiVector(x.geometry, [randx(x.data[i]) for i=1:x.nsrc])
 reverse(x::judiVector) = judiVector(x.geometry, [x.data[i][end:-1:1, :] for i=1:x.nsrc])
 
-misfit_objective(d_obs, q0, m0, F) = .5f0*norm(F(m0, q0) - d_obs)^2
+misfit_objective_2p(d_obs, q0, m0, F) = .5f0*norm(F(m0, q0) - d_obs)^2
+misfit_objective_1p(d_obs, q0, m0, F) = .5f0*norm(F(m0)*q0 - d_obs)^2
     
-function loss(d_obs, q0, m0, F)
+function loss(misfit, d_obs, q0, m0, F)
     local ϕ
     # Reshape as ML size if returns array
     d_obs = F.options.return_array ? reshape(d_obs, F.rInterpolation, F.model; with_batch=true) : d_obs
     # Misfit and gradient
     g = gradient(Flux.params(q0, m0)) do
-        ϕ = misfit_objective(d_obs, q0, m0, F)
+        ϕ = misfit(d_obs, q0, m0, F)
         return ϕ
     end
     return ϕ, g[q0], g[m0]
@@ -52,12 +53,13 @@ sinput = zip(["Point", "Extended"], [Ps, Pw], (q, w))
 #####################################################################################
 ftol = sqrt(eps(1f0))
 
-@testset "AD correctness check return_array=$(ra)" for ra in [true, false]
+@testset "AD correctness check return_array:$(ra)" for ra in [true, false]
     opt = Options(return_array=ra, sum_padding=true, f0=f0)
     A_inv = judiModeling(model; options=opt)
     A_inv0 = judiModeling(model0; options=opt)
     @testset "AD correctness check source type: $(stype)" for (stype, Pq, q) in sinput
         @timeit TIMEROUTPUT "$(stype) source AD, array=$(ra)" begin
+            printstyled("$(stype) source AD test ra: $(ra) \n", color=:red)
             # Linear operators
             q0 = perturb(q)
             # Operators
@@ -78,10 +80,19 @@ ftol = sqrt(eps(1f0))
             d_obs = ra ? reshape(d_obs, Pr, model; with_batch=true) : d_obs
 
             # Gradient with m array
-            gs_inv = gradient(x -> misfit_objective(d_obs, q0, x, F), m0)
+            gs_inv = gradient(x -> misfit_objective_2p(d_obs, q0, x, F), m0)
+            if ~ra
+                gs_inv1 = gradient(x -> misfit_objective_1p(d_obs, q0, x, F), model0.m)
+                @test gs_inv[1][:] ≈ gs_inv1[1][:] rtol=ftol
+            end
             # Gradient with m PhysicalParameter
-            gs_inv2 = gradient(x -> misfit_objective(d_obs, q0, x, F), model0.m)
+            gs_inv2 = gradient(x -> misfit_objective_2p(d_obs, q0, x, F), model0.m)
             @test gs_inv[1][:] ≈ gs_inv2[1][:] rtol=ftol
+
+            if ~ra
+                gs_inv21 = gradient(x -> misfit_objective_1p(d_obs, q0, x, F), model0.m)
+                @test gs_inv21[1][:] ≈ gs_inv2[1][:] rtol=ftol
+            end
 
             g1 = vec(gradient_m)
             g2 = vec(gs_inv[1])
@@ -97,7 +108,7 @@ end
 @testset "AD Gradient test return_array=$(ra)" for ra in [true, false]
     opt = Options(return_array=ra, sum_padding=true, f0=f0, dt_comp=dt)
     F = judiModeling(model; options=opt)
-    ginput = zip(["Point", "Extended", "Adjoint Extended"], [Pr*F*Ps', Pr*F*Pw', Pw*F'*Ps'], (q, w, reverse(q)))
+    ginput = zip(["Point", "Extended"], [Pr*F*Ps', Pr*F*Pw'], (q, w))
     @testset "Gradient test: $(stype) source" for (stype, F, q) in ginput
         @timeit TIMEROUTPUT "$(stype) source gradient, array=$(ra)" begin
             # Initialize source for source perturbation
@@ -105,15 +116,43 @@ end
             # Data and source perturbation
             d, dq = F*q, q-q0
 
+            misf = ra ? [misfit_objective_2p] : [misfit_objective_1p, misfit_objective_2p]
+            m00 = ra ? m0 : model0.m
             #####################################################################################
-            f0, gq, gm = loss(d, q0, m0, F)
-            # Gradient test for extended modeling: source
-            print("\nGradient test source $(stype) source, array=$(ra)\n")
-            grad_test(x-> misfit_objective(d, x, m0, F), q0, dq, gq)
-  
-            # Gradient test for extended modeling: model
-            print("\nGradient test model $(stype) source, array=$(ra)\n")
-            grad_test(x-> misfit_objective(d, q0, x, F), m0, dm, gm)
+            for (mi, misfit) in enumerate(misf)
+                printstyled("$(stype) source gradient test for $(mi) input operator\n"; color = :red)
+                f0, gq, gm = loss(misfit, d, q0, m00, F)
+                # Gradient test for extended modeling: source
+                print("\nGradient test source $(stype) source, array=$(ra)\n")
+                grad_test(x-> misfit(d, x, m00, F), q0, dq, gq)
+    
+                # Gradient test for extended modeling: model
+                print("\nGradient test model $(stype) source, array=$(ra)\n")
+                grad_test(x-> misfit(d, q0, x, F), m00, dm, gm)
+            end
         end
+    end
+end
+
+
+@testset "AD Gradient test Jacobian w.r.t q with $(nlayer) layers, tti $(tti), viscoacoustic $(viscoacoustic), freesurface $(fs)" begin
+    @timeit TIMEROUTPUT "Jacobian gradient w.r.t source" begin
+        J = judiJacobian(judiModeling(model0, srcGeometry, recGeometry; options=Options(sum_padding=true)), q)
+        q0 = judiVector(q.geometry, ricker_wavelet(srcGeometry.t[1], srcGeometry.dt[1], 0.0125f0))
+        dq = q0 - q
+        δd = J*dm
+        rtm = J'*δd
+        # derivative of J w.r.t to `q`
+        printstyled("Gradient J(q) w.r.t q\n"; color = :red)
+        f0q, gm, gq = loss(misfit_objective_1p, δd, dm, q0, J)
+        @test isa(gm, JUDI.LazyPropagation)
+        @test isa(JUDI.eval_prop(gm), PhysicalParameter)
+        grad_test(x-> misfit_objective_1p(δd, dm, x, J), q0, dq, gq)
+
+        printstyled("Gradient J'(q) w.r.t q\n"; color = :red)
+        f0qt, gd, gqt = loss(misfit_objective_1p, rtm, δd, q0, adjoint(J))
+        @test isa(gd, JUDI.LazyPropagation)
+        @test isa(JUDI.eval_prop(gd), judiVector)
+        grad_test(x-> misfit_objective_1p(rtm, δd, x, adjoint(J)), q0, dq, gqt)
     end
 end

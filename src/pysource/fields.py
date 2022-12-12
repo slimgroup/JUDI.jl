@@ -39,7 +39,7 @@ def wavefield(model, space_order, save=False, nt=None, fw=True, name='', t_sub=1
                             space_order=space_order, save=None if not save else nt)
 
 
-def forward_wavefield(model, space_order, save=True, nt=10, dft=False, t_sub=1):
+def forward_wavefield(model, space_order, save=True, nt=10, dft=False, t_sub=1, fw=True):
     """
     Return the wavefield to be used in the gradient calculations depending on the options.
 
@@ -57,7 +57,7 @@ def forward_wavefield(model, space_order, save=True, nt=10, dft=False, t_sub=1):
     dft: Bool
         Whether to use on the fly dft
     """
-    u = wavefield(model, space_order, save=save, nt=nt, t_sub=t_sub)
+    u = wavefield(model, space_order, save=save, nt=nt, t_sub=t_sub, fw=fw)
     if dft:
         return fourier_modes(u, np.ones((10,)))[0]
     elif t_sub > 1:
@@ -134,7 +134,7 @@ def wavefield_subsampled(model, u, nt, t_sub, space_order=8):
     return wf_s
 
 
-def lr_src_fields(model, weight, wavelet, empty_ws=False):
+def lr_src_fields(model, weight, wavelet, empty_w=False, rec=False):
     """
     Extended source for modeling where the source is the outer product of
     a spatially varying weight and a time-dependent wavelet i.e.:
@@ -152,16 +152,17 @@ def lr_src_fields(model, weight, wavelet, empty_ws=False):
     q: Symbol or Expr (optional)
         Previously existing source to be added to (source will be q +  w(x)*q(t))
     """
-    if (weight is None and not empty_ws) or wavelet is None:
+    if (weight is None and not empty_w) or wavelet is None:
         return None, None
     time = model.grid.time_dim
     nt = wavelet.shape[0]
-    wavelett = Function(name='wf_src', dimensions=(time,), shape=(nt,))
+    wn = 'rec' if rec else 'src'
+    wavelett = Function(name='wf_%s' % wn, dimensions=(time,), shape=(nt,))
     wavelett.data[:] = np.array(wavelet)[:, 0]
-    if empty_ws:
-        source_weight = Function(name='src_weight', grid=model.grid, space_order=0)
+    if empty_w:
+        source_weight = Function(name='%s_weight' % wn, grid=model.grid, space_order=0)
     else:
-        source_weight = Function(name='src_weight', grid=model.grid, space_order=0,
+        source_weight = Function(name='%s_weight' % wn, grid=model.grid, space_order=0,
                                  allocator=ExternalAllocator(weight),
                                  initializer=lambda x: None)
     return source_weight, wavelett

@@ -16,6 +16,7 @@ using DSP, FFTW, Dierckx
 using PyCall
 using JOLI, SegyIO
 using ChainRulesCore
+using Requires
 
 # Import Base functions to dispatch on JUDI types
 import Base.depwarn
@@ -70,10 +71,6 @@ pylock(f::Function) = Base.lock(PYLOCK[]) do
     end
 end
 
-# Redirect python standard outputs to Julia's
-pyimport("sys")."stdout" = PyTextIO(stdout)
-pyimport("sys")."stderr" = PyTextIO(stderr)
-
 # Constants
 function _worker_pool()
     p = default_worker_pool()
@@ -95,13 +92,6 @@ const RangeOrVec = Union{AbstractRange, Vector}
 set_verbosity(x::Bool) = begin global _verbose = x; end
 judilog(msg) = _verbose ? println(msg) : nothing
 
-function __init__()
-    pushfirst!(PyVector(pyimport("sys")."path"), joinpath(JUDIPATH, "pysource"))
-    copy!(pm, pyimport("models"))
-    copy!(ac, pyimport("interface"))
-    PYLOCK[] = ReentrantLock()
-end
-
 # JUDI time modeling
 include("TimeModeling/TimeModeling.jl")
 
@@ -120,4 +110,26 @@ include("compat.jl")
 
 # Automatic Differentiation
 include("rrules.jl")
+
+# Initialize
+function __init__()
+    pushfirst!(PyVector(pyimport("sys")."path"), joinpath(JUDIPATH, "pysource"))
+    copy!(pm, pyimport("models"))
+    copy!(ac, pyimport("interface"))
+    # Initialize lock at session start
+    PYLOCK[] = ReentrantLock()
+
+    @require Zygote="e88e6eb3-aa80-5325-afca-941959d7151f" begin
+        Zygote.unbroadcast(x::AbstractArray, x̄::LazyPropagation) = Zygote.unbroadcast(x, eval_prop(x̄))
+    end
+
+    @require Flux="587475ba-b771-5e3f-ad9e-33799f191a9c" begin
+        Flux.Zygote.unbroadcast(x::AbstractArray, x̄::LazyPropagation) = Zygote.unbroadcast(x, eval_prop(x̄))
+        Flux.cpu(x::LazyPropagation) = Flux.cpu(eval_prop(x))
+        Flux.gpu(x::LazyPropagation) = Flux.gpu(eval_prop(x))
+        Flux.CUDA.cu(F::LazyPropagation) = Flux.CUDA.cu(eval_prop(F))
+    end
+end
+
+
 end

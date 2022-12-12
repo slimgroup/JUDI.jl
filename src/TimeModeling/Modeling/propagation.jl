@@ -6,12 +6,7 @@ with `q` as a source. The return type is infered from `F`.
 """
 function propagate(F::judiPropagator{T, O}, q::AbstractArray{T}) where {T, O}
     srcGeometry, srcData, recGeometry, recData, dm = make_input(F, q)
-    return time_modeling(F.model, srcGeometry, srcData, recGeometry, recData, dm, O, F.options)
-end
-
-function propagate(F::judiPropagator{T, :adjoint}, q::AbstractArray{T}) where {T}
-    srcGeometry, srcData, recGeometry, recData, dm = make_input(F, q)
-    return time_modeling(F.model, recGeometry, recData, srcGeometry, srcData, dm, :adjoint, F.options)
+    return time_modeling(F.model, srcGeometry, srcData, recGeometry, recData, dm, O, F.options, _prop_fw(F))
 end
 
 propagate(t::Tuple{judiPropagator, AbstractArray}) = propagate(t[1], t[2])
@@ -43,6 +38,10 @@ function run_and_reduce(func, ::Nothing, nsrc, arg_func::Function)
 end
 
 
+_prop_fw(::judiPropagator{T, O}) where {T, O} = true 
+_prop_fw(::judiPropagator{T, :adjoint}) where T = false
+_prop_fw(J::judiJacobian) = _prop_fw(J.F)
+
 
 src_i(::judiAbstractJacobian{T, :born, FT}, q::dmType{T}, ::Integer) where {T<:Number, FT} = q
 src_i(::judiPropagator{T, O}, q::judiMultiSourceVector{T}, i::Integer) where {T, O} = q[i]
@@ -58,7 +57,7 @@ get_nsrc(J::judiAbstractJacobian, ::dmType{T}) where T<:Number = J.q.nsrc
 Propagates the source `q` with the `F` propagator. The return type is infered from `F` and the 
 propagation kernel is defined by `O` (forward, adjoint, born or adjoint_born).
 """
-function multi_src_propagate(F::judiPropagator{T, O}, q::AbstractVector{T}) where {T<:Number, O}
+function multi_src_propagate(F::judiPropagator{T, O}, q::AbstractArray{T}) where {T<:Number, O}
     q = process_input_data(F, q)
     # Number of sources and init result
     nsrc = get_nsrc(F, q)
@@ -68,6 +67,7 @@ function multi_src_propagate(F::judiPropagator{T, O}, q::AbstractVector{T}) wher
     res = run_and_reduce(propagate, pool, nsrc, arg_func)
     res = update_illum(res, F)
     res = _project_to_physical_domain(res, F.model)
+    res = update_illum(res, F)
     res = as_vec(res, Val(F.options.return_array))
     return res
 end

@@ -97,7 +97,7 @@ def extended_rec(model, wavelet, v):
     """
     if wavelet is None:
         return []
-    ws, wt = lr_src_fields(model, None, wavelet, empty_ws=True)
+    ws, wt = lr_src_fields(model, None, wavelet, empty_w=True, rec=True)
     wf = v[0] + v[1] if model.is_tti else v
     return [Inc(ws, model.grid.time_dim.spacing * wf * wt)]
 

@@ -7,7 +7,8 @@ PhysOrNot = Union{PhysicalParameter, Array, Nothing}
 
 # Setup time-domain linear or nonlinear foward and adjoint modeling and interface to devito
 function time_modeling(model_full::Model, srcGeometry::GeomOrNot, srcData::ArrayOrNot,
-                       recGeometry::GeomOrNot, recData::ArrayOrNot, dm::PhysOrNot, op::Symbol, options::JUDIOptions)
+                       recGeometry::GeomOrNot, recData::ArrayOrNot, dm::PhysOrNot,
+                       op::Symbol, options::JUDIOptions, fw::Bool)
     # Load full geometry for out-of-core geometry containers
     recGeometry = Geometry(recGeometry)
     srcGeometry = Geometry(srcGeometry)
@@ -35,19 +36,14 @@ function time_modeling(model_full::Model, srcGeometry::GeomOrNot, srcData::Array
     recGeometry, recData = remove_out_of_bounds_receivers(recGeometry, recData, model)
 
     # Devito interface
-    argout = devito_interface(modelPy, srcGeometry, srcData, recGeometry, recData, dm, options, illum)
+    argout = devito_interface(modelPy, srcGeometry, srcData, recGeometry, recData, dm, options, illum, fw)
     argout = filter_none(argout)
-    argout = post_process(argout, modelPy, Val(op), geom(srcGeometry, recGeometry, Val(op)), options)
-    argout = save_to_disk(argout, srcGeometry, srcData, options, Val(options.save_data_to_disk))
+    argout = post_process(argout, modelPy, Val(op), recGeometry, options)
+    argout = save_to_disk(argout, srcGeometry, srcData, options, Val(fw), Val(options.save_data_to_disk))
     return argout
 end
 
 # Post processing of output of devito based on parameters
-geom(::Any, recGeometry, ::Val{:forward}) = recGeometry
-geom(::Any, recGeometry, ::Val{:born}) = recGeometry
-geom(srcGeometry, ::Any, ::Val{:adjoint}) = srcGeometry
-geom(srcGeometry, ::Any, ::Val{:adjoint_born}) = srcGeometry
-
 post_process(t::Tuple, modelPy::PyObject, op::Val, G, o::JUDIOptions) = (post_process(t[1], modelPy, op, G, o), post_process(Base.tail(t), modelPy, Val(:adjoint_born), G, Options(;sum_padding=false))...)
 post_process(t::Tuple{}, ::PyObject, ::Val, ::Any, ::JUDIOptions) = t
 
@@ -63,7 +59,7 @@ function post_process(v::AbstractArray{T, N}, modelPy::PyObject, ::Val{:adjoint}
     end
 end
 
-function post_process(v::AbstractArray, modelPy::PyObject, ::Val{:adjoint_born}, ::Any, options::JUDIOptions)
+function post_process(v::AbstractArray, modelPy::PyObject, ::Val{:adjoint_born}, G::Geometry, options::JUDIOptions)
     grad = remove_padding(v, modelPy.padsizes; true_adjoint=options.sum_padding)
     return PhysicalParameter(grad, modelPy.spacing, modelPy.origin)
 end
@@ -74,9 +70,10 @@ post_process(v::AbstractArray, modelPy::PyObject, ::Val{:born}, G::Geometry, opt
 # Saving to disk utilities
 save_to_disk(shot, args...) = shot
 save_to_disk(t::Tuple, args...) = save_to_disk(t[1], args...), Base.tail(t)...
-save_to_disk(shot::judiVector, ::Any, ::Any, ::Any, ::Val{false}) = shot
+save_to_disk(shot::judiVector, ::Any, ::Any, ::Any, ::Any, ::Val{false}) = shot
 
-function save_to_disk(shot::judiVector, srcGeometry::GeometryIC, srcData::Array, options::JUDIOptions, ::Val{true}) 
+function save_to_disk(shot::judiVector, srcGeometry::GeometryIC, srcData::Array, options::JUDIOptions,
+                      ::Val{true}, ::Val{true}) 
     container = write_shot_record(srcGeometry, srcData, shot.geometry[1], shot.data[1], options)
     return judiVector(container)
 end
