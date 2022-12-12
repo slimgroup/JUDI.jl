@@ -7,7 +7,7 @@
 
 ## Overview
 
-[JUDI] is a framework for large-scale seismic modeling and inversion and is designed to enable rapid translations of algorithms to fast and efficient code that scales to industry-size 3D problems. The focus of the package lies on seismic modeling as well as PDE-constrained optimization such as full-waveform inversion (FWI) and imaging (LS-RTM). Wave equations in [JUDI] are solved with [Devito], a Python domain-specific language for automated finite-difference (FD) computations. JUDI's modeling operators can also be used as layers in (convolutional) neural networks to implement physics-augmented deep learning algorithms. For this, check out JUDI's deep learning extension [JUDI4Flux](https://github.com/slimgroup/JUDI4Flux.jl).
+[JUDI] is a framework for large-scale seismic modeling and inversion and is designed to enable rapid translations of algorithms to fast and efficient code that scales to industry-size 3D problems. The focus of the package lies on seismic modeling as well as PDE-constrained optimization such as full-waveform inversion (FWI) and imaging (LS-RTM). Wave equations in [JUDI] are solved with [Devito], a Python domain-specific language for automated finite-difference (FD) computations. JUDI's modeling operators can also be used as layers in (convolutional) neural networks to implement physics-augmented deep learning algorithms thanks to its implementation of [ChainRules](https://github.com/JuliaDiff/ChainRules.jl)'s `rrule` for the linear operators representing the discre wave equation.
 
 ## Interact and contribute
 
