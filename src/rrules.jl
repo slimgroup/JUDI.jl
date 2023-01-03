@@ -45,6 +45,24 @@ for op in [:+, :-, :*, :/]
     end
 end
 
+for op in [:*, :/]
+    @eval begin
+        $(op)(F::LazyPropagation, y::T) where T <: Number = LazyPropagation(F.post, F.F, $(op)(F.q, y))
+        $(op)(y::T, F::LazyPropagation) where T <: Number = LazyPropagation(F.post, F.F, $(op)(y, F.q))
+        broadcasted(::typeof($op), F::LazyPropagation, y::T) where T <: Number = LazyPropagation(F.post, F.F, broadcasted($(op), F.q, y))
+        broadcasted(::typeof($op), y::T, F::LazyPropagation) where T <: Number = LazyPropagation(F.post, F.F, broadcasted($(op), y, F.q))
+    end
+end
+
+for op in [:+, :-]
+    @eval begin
+        $(op)(F::LazyPropagation, y::T) where T <: Number = $(op)(eval_prop(F), y)
+        $(op)(y::T, F::LazyPropagation) where T <: Number = $(op)(y, eval_prop(F))
+        broadcasted(::typeof($op), F::LazyPropagation, y::T) where T <: Number = broadcasted($(op), eval_prop(F), y)
+        broadcasted(::typeof($op), y::T, F::LazyPropagation) where T <: Number = broadcasted($(op), y, eval_prop(F))
+    end
+end
+
 broadcasted(::typeof(^), y::LazyPropagation, p::Real) = eval_prop(y).^(p)
 *(F::judiPropagator, q::LazyPropagation) = F*eval_prop(q)
 
