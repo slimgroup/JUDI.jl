@@ -55,7 +55,7 @@ struct TopMute{T, N, Nw} <: ModelPreconditioner{T, T}
     TopMute(m::Integer, wb::Array{T, Nw}, taperwidth::Integer) where {T, Nw} =  new{Float32, Nw+1, Nw}(m, wb, taperwidth)
 end
 
-judiTopmute(::NTuple{N, Integer}, wb::Array{T, Nw}, taperwidth::Integer) where {T, N, Nw} = TopMute(prod(n), wb, taperwidth)
+judiTopmute(n::NTuple{N, Integer}, wb::Array{T, Nw}, taperwidth::Integer) where {T, N, Nw} = TopMute(prod(n), wb, taperwidth)
 judiTopmute(n::NTuple{N, Integer}, wb::Integer, taperwidth::Integer) where {N} = TopMute(prod(n), wb*ones(Int64, n[1:end-1]), taperwidth)
 
 function judiTopmute(model::AbstractModel; taperwidth=10)
