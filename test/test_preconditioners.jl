@@ -25,6 +25,7 @@ dm = model0.m - model.m
         It = judiTimeIntegration(recGeometry, 1)
         Ds = judiDepthScaling(model)
         Mm = judiTopmute(model.n, 20, 1)
+        Mm2 = judiTopmute(model.n, 20 * ones(model.n[1]), 1)
 
         # Time differential onlu
         @test inv(It) == Dt
@@ -103,7 +104,7 @@ dm = model0.m - model.m
            @test isapprox(w_expect,m)
         end
 
-        for Op in [Mm , Mm']
+        for Op in [Mm , Mm', Mm2, Mm2']
             m = Op*w
             # Test that w wasn't modified
             @test isapprox(w,w1,rtol=eps())
