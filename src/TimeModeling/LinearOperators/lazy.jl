@@ -130,7 +130,7 @@ end
 size(jA::jAdjoint) = (jA.op.n, jA.op.m)
 display(P::jAdjoint) = println("Adjoint($(P.op))")
 display(P::judiProjection{D}) where D = println("JUDI projection operator $(repr(P.n)) -> $(repr(P.m))")
-display(P::judiWavelet{T}) where T = println("JUDI wavelet injected at every grid point")
+display(P::judiWavelet{T}) where T = println("JUDI wavelet")
 
 ############################################################################################################################
 # Indexing

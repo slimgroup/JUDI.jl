@@ -30,8 +30,8 @@ function eval_prop(F::LazyPropagation)
     return F.post(F.val)
 end
 Base.collect(F::LazyPropagation) = eval_prop(F)
-LazyPropagation(post, F::judiPropagator, q) = LazyPropagation(post, F, q, nothing)
-LazyPropagation(F::judiPropagator, q) = LazyPropagation(identity, F, q)
+LazyPropagation(post::Function, F::judiPropagator, q) = LazyPropagation(post, F, q, nothing)
+LazyPropagation(F::judiPropagator, q) = LazyPropagation(identity, F, q, nothing)
 
 # Only a few arithmetic operation are supported
 
@@ -78,7 +78,6 @@ dot(x::AbstractArray, F::LazyPropagation) = dot(x, eval_prop(F))
 dot(F::LazyPropagation, x::AbstractArray) = dot(x, F)
 norm(F::LazyPropagation, p::Real=2) = norm(eval_prop(F), p)
 adjoint(F::JUDI.LazyPropagation) = F
-length(F::JUDI.LazyPropagation) = size(F.F, 1)
 
 ############################ Two params rules ############################################
 function rrule(F::judiPropagator{T, O}, m::AbstractArray{T}, q::AbstractArray{T}) where {T, O}
