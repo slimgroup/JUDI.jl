@@ -32,9 +32,8 @@ perturb(x::judiVector) = judiVector(x.geometry, [randx(x.data[i]) for i=1:x.nsrc
 reverse(x::judiVector) = judiVector(x.geometry, [x.data[i][end:-1:1, :] for i=1:x.nsrc])
 
 misfit_objective_2p(d_obs, q0, m0, F) = .5f0*norm(F(m0, q0) - d_obs)^2
-misfit_objective_1p(d_obs, q0, m0, F) = .5f0*norm(F(m0)*q0 - d_obs)^2
-misfit_objective_1p_(d_obs, q0, m0, F) = .5f0*norm(F(1f0*m0)*q0 - d_obs)^2
-
+misfit_objective_1p(d_obs, q0, m0, F) = .5f0*norm(F(1f0*m0)*q0 - d_obs)^2
+    
 function loss(misfit, d_obs, q0, m0, F)
     local ϕ
     # Reshape as ML size if returns array
@@ -84,7 +83,6 @@ ftol = sqrt(eps(1f0))
             gs_inv = gradient(x -> misfit_objective_2p(d_obs, q0, x, F), m0)
             if ~ra
                 gs_inv1 = gradient(x -> misfit_objective_1p(d_obs, q0, x, F), model0.m)
-                gs_inv1_ = gradient(x -> misfit_objective_1p_(d_obs, q0, x, F), model0.m)
                 @test gs_inv[1][:] ≈ gs_inv1[1][:] rtol=ftol
             end
             # Gradient with m PhysicalParameter
