@@ -73,7 +73,15 @@ vec(x::judiMultiSourceVector) = vcat(vec.(x.data)...)
 
 time_sampling(ms::judiMultiSourceVector) = [1 for i=1:ms.nsrc]
 
-reshape(ms::judiMultiSourceVector, dims::Dims{N}) where N = reshape(vec(ms), dims)
+function reshape(ms::judiMultiSourceVector, dims::Dims{N}) where N
+    try
+        return reshape(vec(ms), dims)
+    catch e
+        @assert dims[1] == ms.nsrc  ### during AD, size(ms::judiVector) = ms.nsrc
+        return ms
+    end
+end
+
 ############################################################################################################################
 # Linear algebra `*`
 (msv::judiMultiSourceVector{mT})(x::AbstractVector{T}) where {mT, T<:Number} = x

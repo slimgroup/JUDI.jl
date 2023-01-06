@@ -72,6 +72,7 @@ broadcasted(::typeof(^), y::LazyPropagation, p::Real) = eval_prop(y).^(p)
 *(F::judiPropagator, q::LazyPropagation) = F*eval_prop(q)
 
 reshape(F::LazyPropagation, dims...) = LazyPropagation(x->reshape(x, dims...), F.F, F.q, F.val)
+vec(F::LazyPropagation) = LazyPropagation(vec, F.F, F.q, F.val)
 copyto!(x::AbstractArray, F::LazyPropagation) = copyto!(x, eval_prop(F))
 dot(x::AbstractArray, F::LazyPropagation) = dot(x, eval_prop(F))
 dot(F::LazyPropagation, x::AbstractArray) = dot(x, F)
