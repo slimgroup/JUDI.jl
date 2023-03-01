@@ -25,8 +25,10 @@ setindex!(S::AbstractSize, v, I::Symbol) = setindex!(S.dims, v, I)
 iterate(S::AbstractSize) = iterate(S.dims)
 iterate(S::AbstractSize, state) = iterate(S.dims, state)
 
+Base.isless(i::Int64, a::AbstractSize) = isless(i, nsamples(a))
+
 convert(::Type{T}, S::AbstractSize) where T<:Number = convert(T, nsamples(S))
-(::Type{T})(S::AbstractSize) where T<:Number = convert(T, nsamples(S))
+(::Type{T})(S::AbstractSize) where T<:Union{Integer, AbstractFloat} = convert(T, nsamples(S))
 (c::Colon)(i::T, S::AbstractSize) where T = c(i, T(S))
 
 Base.keys(S::AbstractSize) = keys(S.dims)

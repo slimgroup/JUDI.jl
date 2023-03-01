@@ -78,6 +78,9 @@ matvec(D::TopMute{T, N}, x::PhysicalParameter{T}) where {T, N} = PhysicalParamet
 matvec(D::TopMute{T, N}, x::judiWeights{T}) where {T, N} = judiWeights{T}(x.nsrc, [matvec(D, x.data[s]) for s=1:x.nsrc])
 matvec(D::TopMute{T, N}, x::Vector{T}) where {T, N} = vec(matvec(D, reshape(x, size(D.wb)..., :)))
 
+# Diagonal operator, self-adjoint
+matvec_T(D::TopMute{T, N}, x) where {T, N} = matvec(D, x)
+
 # Real diagonal operator
 conj(I::TopMute{T, N}) where {T, N} = I
 adjoint(I::TopMute{T, N}) where {T, N} = I

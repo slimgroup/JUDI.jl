@@ -129,6 +129,12 @@ function __init__()
         Flux.gpu(x::LazyPropagation) = Flux.gpu(eval_prop(x))
         Flux.CUDA.cu(F::LazyPropagation) = Flux.CUDA.cu(eval_prop(F))
     end
+    # init openacc
+    if get(ENV, "DEVITO_PLATFORM", "") == "nvidiaX"
+        println("Initializing openacc/openmp offloading")
+        devito_model(Model((21, 21, 21), (10., 10., 10.), (0., 0., 0.), randn(Float32, 21, 21, 21)), Options())
+    end
+
 end
 
 
