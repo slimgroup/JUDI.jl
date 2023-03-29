@@ -82,7 +82,7 @@ reshape(ms::judiMultiSourceVector, dims::Dims{N}) where N = reshape(vec(ms), dim
 (msv::judiMultiSourceVector{T})(x::judiMultiSourceVector{T}) where {T<:Number} = x
 (msv::judiMultiSourceVector{mT})(x::AbstractVector{T}) where {mT, T<:Array} = begin y = deepcopy(msv); y.data .= x; return y end
 
-function *(J::Union{Matrix{vDT}, joAbstractLinearOperator}, x::judiMultiSourceVector{vDT}) where vDT
+function *(J::joAbstractLinearOperator, x::judiMultiSourceVector{vDT}) where vDT
     outvec = try J.fop(x) catch; J*vec(x) end
     outdata = try reshape(outvec, size(x.data[1]), x.nsrc) catch; outvec end
     return x(outdata)
@@ -91,6 +91,16 @@ end
 function *(J::joCoreBlock, x::judiMultiSourceVector{vDT}) where vDT
     outvec = vcat([J.fop[i]*x for i=1:J.l]...)
     outdata = try reshape(outvec, size(x.data[1]), J.l*x.nsrc); catch; outvec end
+    return x(outdata)
+end
+
+function *(M::Matrix{vDT}, x::judiMultiSourceVector{vDT}) where vDT
+    if size(M, 2) == x.nsrc
+        return simsource(M, x)
+    end
+    # Not a per source matrix, reverting to standard matvec
+    outvec = M*vec(x)
+    outdata = try reshape(outvec, size(x.data[1]), x.nsrc) catch; outvec end
     return x(outdata)
 end
 
@@ -149,6 +159,16 @@ function vcat(ai::Vararg{<:judiMultiSourceVector{T}, N}) where {T, N}
     res = deepcopy(a)
     push!(res, b)
     return res
+end
+
+# Combine as simsource
+function simsource(M::Matrix{T}, x::judiMultiSourceVector{T}) where T
+    nout = size(M, 1)
+    simmsv = zero(T, x; nsrc=nout)
+    for so = 1:nout
+        simmsv.data[so] = mapreduce((x, y)-> x*y, +, M[so, :], x.data)
+    end
+    return simmsv
 end
 
 ############################################################################################################################

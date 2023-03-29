@@ -134,7 +134,7 @@ time_sampling(jv::judiVector) = jv.geometry.dt
 # JOLI conversion
 jo_convert(::Type{T}, jv::judiVector{T, Array{T, N}}, ::Bool) where {T<:AbstractFloat, N} = jv
 jo_convert(::Type{T}, jv::judiVector{vT, Array{vT, N}}, B::Bool) where {T<:AbstractFloat, vT, N} = judiVector{T, Array{T, N}}(jv.nsrc, jv.geometry, jo_convert.(T, jv.data, B))
-zero(::Type{T}, v::judiVector{vT, AT}; nsrc::Integer=v.nsrc) where {T, vT, AT} = judiVector{T, AT}(nsrc, deepcopy(v.geometry), T(0) .* v.data[1:nsrc])
+zero(::Type{T}, v::judiVector{vT, AT}; nsrc::Integer=v.nsrc) where {T, vT, AT} = judiVector{T, AT}(nsrc, deepcopy(v.geometry[1:nsrc]), T(0) .* v.data[1:nsrc])
 function copy!(jv::judiVector, jv2::judiVector)
     jv.geometry = deepcopy(jv2.geometry)
     jv.data .= jv2.data
@@ -146,6 +146,20 @@ make_input(jv::judiVector{T, Matrix{T}}) where T = jv.data[1]
 make_input(jv::judiVector{T, SeisCon}) where T = convert(Matrix{T}, jv.data[1][1].data)
 
 check_compat(ms::Vararg{judiVector, N}) where N = all(y -> compareGeometry(y.geometry, first(ms).geometry), ms)
+
+function simsource(M::Matrix{T}, x::judiVector{T, AT}) where {T, AT}
+    nout = size(M, 1)
+    newgeom = super_shot_geometry(x.geometry)
+    simdata = [zeros(Float32, newgeom.nt[1], newgeom.nrec[1]) for _=1:nout]
+
+    d0 = judiVector{Float32, Matrix{Float32}}(nout, newgeom, simdata)
+    # Loop over input so that data is only read once
+    for si = 1:x.nsrc
+        gin = Geometry(x.geometry[si])
+        din = make_input(x[si])
+    end
+    return d0
+end
 ##########################################################
 
 # Overload needed base function for SegyIO objects

@@ -3,7 +3,7 @@
 # Date: January 2017
 #
 
-export Geometry, compareGeometry, GeometryIC, GeometryOOC, get_nsrc, n_samples
+export Geometry, compareGeometry, GeometryIC, GeometryOOC, get_nsrc, n_samples, super_shot_geometry
 
 abstract type Geometry{T} end
 
@@ -431,10 +431,68 @@ check_geom(geom::Geometry, data::Array{T}) where T = all([check_geom(geom[s], da
 check_geom(geom::Geometry, data::Array{T}) where {T<:Number} = _check_geom(geom.nt[1],  size(data, 1))
 check_geom(geom::Geometry, data::SeisBlock) = _check_geom(geom.nt[1], data.fileheader.bfh.ns)
 check_geom(geom::Geometry, data::SeisCon) = _check_geom(geom.nt[1], data.ns)
-
 _check_geom(nt::Integer, ns::Integer) = nt == ns || _geom_missmatch(nt, ns)
-_geom_missmatch(nt::Integer, ns::Integer) = throw(GeometryException("Geometry's number of samples doesn't match the data: $(nt), $(ns)"))
 
 check_time(dt::Number, t::Number, segy::Bool=false) = (t/dt == div(t, dt, RoundNearest)) || throw(GeometryException("Recording time t=$(t) not divisible by sampling rate dt=$(dt)"))
 check_time(::Nothing, ::Nothing, segy::Bool=false) = segy || throw(GeometryException("Recording time `t` and sampling rate `dt` must be provided"))
 check_time(dt::AbstractVector, t::AbstractVector, segy::Bool=false) = check_time.(dt, t)
+_geom_missmatch(nt::Integer, ns::Integer) = throw(judiMultiSourceException("Geometry's number of samples doesn't match the data: $(nt), $(ns)"))
+
+
+################################# Merge geometries ##############################################################
+allsame(x, val=first(x)) = all(y->y==val, x)
+settype(ny, ::Type{T}, ::Nothing) where T = Set{ny == 1 ? Tuple{T, T} : Tuple{T, T, T}}([])
+settype(ny, ::Type{T}, ::MT) where MT = Dict{ny == 1 ? Tuple{T, T} : Tuple{T, T, T}, MT}()
+
+update_set(S::Set, xloc::Vector{T}, yloc::Vector{T}, zloc::Vector{T}, ::Nothing, ::Nothing) where T = map(t->push!(S, t), zip(xloc, zloc))
+update_set(S::Set, xloc::Vector{T}, yloc::Vector{T}, zloc::Vector{T}, ::Nothing, ::Nothing) where T = map(t->push!(S, t), zip(xloc, yloc, zloc))
+update_set(S::Set, xloc::Vector{T}, yloc::T, zloc::Vector{T}, data::Matrix{T}, M::Vector{T}) where T = map(t->push!(S, t), zip(xloc, zloc, (c*M' for c in eachcol(data))))
+update_set(S::Set, xloc::Vector{T}, yloc::Vector{T}, zloc::Vector{T}, data::Matrix{T}, M::Vector{T}) where T = map(t->push!(S, t), zip(xloc, yloc, zloc, (c*M' for c in eachcol(data))))
+
+
+function super_shot(G::Geometry{T}, data=nothing, M=nothing) where T
+    if !isnothing(data) && isnothing(M)
+        throw(ArgumentError("SimSource weight matrix must be provided"))
+    end
+    @assert allsame(G.nt)
+    @assert allsame(G.t)
+    @assert allsame(G.dt)
+    # Collect the first one to be in core
+    G0 = Geometry(G[1])
+    # Make Set to easily get unique coords
+    ny = length(G0.yloc[1])
+    ny == 1 && @info "No y coordinates found in the first Geometry, assuming 2D"
+    SetType = settype(ny, T, M)
+    new_coords = Set{coordtype}([])
+    # Merge all coords
+    @inbounds for i=1:get_nsrc(G)
+        Gloc = Geometry(G[i])
+        mrow = isnothing(M) ? nothing : M[:, i]
+        di = isnothing(data) ? nothing : make_input(data[i])
+        update_set(merged, Gloc.xloc[1], Gloc.yloc[1], Gloc.zloc[1], di, mrow)
+    end
+    xloc = first.(merged)
+    yloc = ny == 1 ? G0.yloc[1] : getindex.(merged, 2)
+    zloc = ny == 1 ? getindex.(merged, 2): getindex.(merged, 3)
+    simdata = last.(merged)
+    # Need to sort to make sure things didn't move
+    # Check if can use x
+    if length(xloc) == length(unique(xloc))
+        idx = sortperm(xloc)
+    # x has duplicates, check y
+    elseif length(yloc) == length(unique(yloc)) && ny > 1
+        idx = sortperm(yloc)
+    # Try to sort in (x, y)
+    else
+        idx = sortperm(getindex.(new_coords, ([1,2],)))
+    end
+    yloc = ny == 1 ? [yloc] : [yloc[idx]]
+    simgeom = GeometryIC{T}([xloc[idx]], yloc, [zloc[idx]], G0.dt, G0.nt, G0.t)
+    # Return geometry if no data
+    isnothing(data) && (return simgeom)
+    # reorganize the data currently organized as (nt, nsimsrc) for each coord
+    sim_data = [hcat(simdata[i][:, s] for s=1:size(M, 1)) for i ∈idx]
+end
+
+
+uper_shot_geometry(G::Geometry{T}) where T = super_shot(G)

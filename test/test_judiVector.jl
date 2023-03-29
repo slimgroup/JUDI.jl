@@ -357,5 +357,21 @@ ftol = 1e-6
             @test isapprox(refarray[i][:,1], d_diff_rec.data[i][:,1])
             @test isapprox(d_diff_rec.data[i][:,2:end], diff(refarray[i],dims=2))
         end
+
+        # test simsources
+        if nsrc == 2
+            dic = judiVector(rec_geometry, refarray)
+            for jvec in [dic, d_obs]
+                for nsim=1:3
+                    M1 = randn(Float32, nsim, 2)
+                    ds = M1 * d_obs
+                    @test ds.nsrc == nsim
+                    for s=1:nsim
+                        @test ds.data[s] ≈ mapreduce((x, y)->x*y, +, M1[s,:], d_obs.data)
+                    end
+                    @test all(ds.geometry[i] == d_obs.geometry[1] for i=1:nsim)
+                end
+            end
+        end
     end
 end

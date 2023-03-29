@@ -79,6 +79,10 @@ matvec(D::TopMute{T, N}, x::judiWeights{T}) where {T, N} = judiWeights{T}(x.nsrc
 matvec(D::TopMute{T, N}, x::Vector{T}) where {T, N} = vec(matvec(D, reshape(x, size(D.wb)..., :)))
 matvec_T(D::TopMute{T, N}, x) where {T, N} = matvec(D, x)
 
+# Diagonal operator, self-adjoint
+matvec_T(D::TopMute{T, N}, x) where {T, N} = matvec(D, x)
+
+
 # Real diagonal operator
 conj(I::TopMute{T, N}) where {T, N} = I
 adjoint(I::TopMute{T, N}) where {T, N} = I
@@ -202,7 +206,7 @@ end
 
 _illums = Dict()
 
-init_illum(model::AbstractModel, I::judiIllumination) = (_illums[objectid(model)] = [I, false])
+init_illum(model::AbstractModel, Tm::judiIllumination) = (_illums[objectid(model)] = [Tm, false])
 
 function update_illum(vals::Tuple, F::judiPropagator{D, O}) where {D, O}
     if length(vals) == 3
