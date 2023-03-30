@@ -3,7 +3,7 @@
 # Date: January 2017
 #
 
-export Geometry, compareGeometry, GeometryIC, GeometryOOC, get_nsrc, n_samples, super_shot_geometry
+export Geometry, compareGeometry, GeometryIC, GeometryOOC, get_nsrc, n_samples, super_shot, super_shot_geometry
 
 abstract type Geometry{T} end
 
@@ -442,13 +442,18 @@ _geom_missmatch(nt::Integer, ns::Integer) = throw(judiMultiSourceException("Geom
 ################################# Merge geometries ##############################################################
 allsame(x, val=first(x)) = all(y->y==val, x)
 settype(ny, ::Type{T}, ::Nothing) where T = Set{ny == 1 ? Tuple{T, T} : Tuple{T, T, T}}([])
-settype(ny, ::Type{T}, ::MT) where MT = Dict{ny == 1 ? Tuple{T, T} : Tuple{T, T, T}, MT}()
+settype(ny, ::Type{T}, ::MT) where {T, MT} = Dict{ny == 1 ? Tuple{T, T} : Tuple{T, T, T}, MT}()
 
-update_set(S::Set, xloc::Vector{T}, yloc::Vector{T}, zloc::Vector{T}, ::Nothing, ::Nothing) where T = map(t->push!(S, t), zip(xloc, zloc))
+update_set(S::Set, xloc::Vector{T}, yloc::T, zloc::Vector{T}, ::Nothing, ::Nothing) where T = map(t->push!(S, t), zip(xloc, zloc))
 update_set(S::Set, xloc::Vector{T}, yloc::Vector{T}, zloc::Vector{T}, ::Nothing, ::Nothing) where T = map(t->push!(S, t), zip(xloc, yloc, zloc))
-update_set(S::Set, xloc::Vector{T}, yloc::T, zloc::Vector{T}, data::Matrix{T}, M::Vector{T}) where T = map(t->push!(S, t), zip(xloc, zloc, (c*M' for c in eachcol(data))))
-update_set(S::Set, xloc::Vector{T}, yloc::Vector{T}, zloc::Vector{T}, data::Matrix{T}, M::Vector{T}) where T = map(t->push!(S, t), zip(xloc, yloc, zloc, (c*M' for c in eachcol(data))))
+update_set(S::Dict, xloc::Vector{T}, yloc::T, zloc::Vector{T}, data::Matrix{T}, M::Vector{T}) where T = map(t->mergewith!(+, S, Dict(t[1:2]=>t[3])), zip(xloc, zloc, (c*M' for c in eachcol(data))))
+update_set(S::Dict, xloc::Vector{T}, yloc::Vector{T}, zloc::Vector{T}, data::Matrix{T}, M::Vector{T}) where T = map(t->mergewith!(+, S, Dict(t[1:3]=>t[4])), zip(xloc, yloc, zloc, (c*M' for c in eachcol(data))))
 
+coords(S::Set, i::Integer) = getindex.(S, i)
+coords(S::Dict, i::Integer) = getindex.(keys(S), i)
+
+tomatrix(m::Matrix{T}) where T = m
+tomatrix(v::Vector{T}) where T = reshape(v, :, 1)
 
 function super_shot(G::Geometry{T}, data=nothing, M=nothing) where T
     if !isnothing(data) && isnothing(M)
@@ -462,19 +467,18 @@ function super_shot(G::Geometry{T}, data=nothing, M=nothing) where T
     # Make Set to easily get unique coords
     ny = length(G0.yloc[1])
     ny == 1 && @info "No y coordinates found in the first Geometry, assuming 2D"
-    SetType = settype(ny, T, M)
-    new_coords = Set{coordtype}([])
+    merged = settype(ny, T, M)
     # Merge all coords
     @inbounds for i=1:get_nsrc(G)
         Gloc = Geometry(G[i])
         mrow = isnothing(M) ? nothing : M[:, i]
         di = isnothing(data) ? nothing : make_input(data[i])
-        update_set(merged, Gloc.xloc[1], Gloc.yloc[1], Gloc.zloc[1], di, mrow)
+        yloc = ny == 1 ? Gloc.yloc[1][1] : Gloc.yloc[1]
+        update_set(merged, Gloc.xloc[1], yloc, Gloc.zloc[1], di, mrow)
     end
-    xloc = first.(merged)
-    yloc = ny == 1 ? G0.yloc[1] : getindex.(merged, 2)
-    zloc = ny == 1 ? getindex.(merged, 2): getindex.(merged, 3)
-    simdata = last.(merged)
+    xloc = coords(merged, 1)
+    yloc = ny == 1 ? G0.yloc[1] :  coords(merged, 2)
+    zloc = ny == 1 ?  coords(merged, 2) :  coords(merged, 3)
     # Need to sort to make sure things didn't move
     # Check if can use x
     if length(xloc) == length(unique(xloc))
@@ -484,15 +488,18 @@ function super_shot(G::Geometry{T}, data=nothing, M=nothing) where T
         idx = sortperm(yloc)
     # Try to sort in (x, y)
     else
-        idx = sortperm(getindex.(new_coords, ([1,2],)))
+        idx = sortperm(getindex.(merged, ([1,2],)))
     end
     yloc = ny == 1 ? [yloc] : [yloc[idx]]
     simgeom = GeometryIC{T}([xloc[idx]], yloc, [zloc[idx]], G0.dt, G0.nt, G0.t)
     # Return geometry if no data
     isnothing(data) && (return simgeom)
-    # reorganize the data currently organized as (nt, nsimsrc) for each coord
-    sim_data = [hcat(simdata[i][:, s] for s=1:size(M, 1)) for i ∈idx]
+    # reorganize the data currently organized as nrec of (nt, nsimsrc) for each coord
+    simdata = cat(values(merged)..., dims=3)
+    nsim = size(M, 1)
+    sim_data = [simdata[:, s, idx] for s=1:nsim]::Vector{Matrix{T}}
+    return simgeom, sim_data
 end
 
 
-uper_shot_geometry(G::Geometry{T}) where T = super_shot(G)
+super_shot_geometry(G::Geometry{T}) where T = super_shot(G)

@@ -148,17 +148,12 @@ make_input(jv::judiVector{T, SeisCon}) where T = convert(Matrix{T}, jv.data[1][1
 check_compat(ms::Vararg{judiVector, N}) where N = all(y -> compareGeometry(y.geometry, first(ms).geometry), ms)
 
 function simsource(M::Matrix{T}, x::judiVector{T, AT}) where {T, AT}
-    nout = size(M, 1)
-    newgeom = super_shot_geometry(x.geometry)
-    simdata = [zeros(Float32, newgeom.nt[1], newgeom.nrec[1]) for _=1:nout]
-
-    d0 = judiVector{Float32, Matrix{Float32}}(nout, newgeom, simdata)
-    # Loop over input so that data is only read once
-    for si = 1:x.nsrc
-        gin = Geometry(x.geometry[si])
-        din = make_input(x[si])
+    geom, simdata = super_shot(x.geometry, x.data, M)
+    simgeom = deepcopy(geom)
+    for s=2:size(M, 1)
+        push!(simgeom, geom)
     end
-    return d0
+    return judiVector{T, Matrix{Float32}}(size(M,1), simgeom, simdata)
 end
 ##########################################################
 

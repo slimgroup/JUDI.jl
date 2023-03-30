@@ -358,19 +358,35 @@ ftol = 1e-6
             @test isapprox(d_diff_rec.data[i][:,2:end], diff(refarray[i],dims=2))
         end
 
-        # test simsources
+        # test simsources with fixed rec geom
         if nsrc == 2
             dic = judiVector(rec_geometry, refarray)
             for jvec in [dic, d_obs]
                 for nsim=1:3
                     M1 = randn(Float32, nsim, 2)
-                    ds = M1 * d_obs
+                    ds = M1 * jvec
                     @test ds.nsrc == nsim
                     for s=1:nsim
-                        @test ds.data[s] ≈ mapreduce((x, y)->x*y, +, M1[s,:], d_obs.data)
+                        @test ds.data[s] ≈ mapreduce((x, y)->x*y, +, M1[s,:], jvec.data)
                     end
-                    @test all(ds.geometry[i] == d_obs.geometry[1] for i=1:nsim)
+                    @test all(ds.geometry[i] == Geometry(jvec.geometry[1]) for i=1:nsim)
                 end
+            end
+        end
+        # test simsources with "marine" rec geom
+        refarray = randn(Float32, 251, 2)
+        if nsrc == 2
+            dic = judiVector(example_src_geometry(), [refarray[:, 1:1], refarray[:, 2:2]])
+            for nsim=1:3
+                M1 = randn(Float32, nsim, 2)
+                ds = M1 * dic
+                @test ds.nsrc == nsim
+                @test all(ds.geometry.nrec .== 2)
+                for s=1:nsim
+                    @test ds.data[s] ≈ hcat(M1[s,1]*refarray[:, 1],M1[s, 2]*refarray[:, 2])
+                end
+                @test ds.geometry[1].xloc[1][1] == dic.geometry[1].xloc[1][1]
+                @test ds.geometry[1].xloc[1][2] == dic.geometry[2].xloc[1][1]
             end
         end
     end
