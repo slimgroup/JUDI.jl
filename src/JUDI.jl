@@ -119,6 +119,11 @@ function __init__()
     # Initialize lock at session start
     PYLOCK[] = ReentrantLock()
 
+    if get(ENV, "DEVITO_PLATFORM", "") == "nvidiaX"
+        @info "Initializing openacc/openmp offloading"
+        devito_model(Model((21, 21, 21), (10., 10., 10.), (0., 0., 0.), randn(Float32, 21, 21, 21)), Options())
+    end
+
     @require Zygote="e88e6eb3-aa80-5325-afca-941959d7151f" begin
         Zygote.unbroadcast(x::AbstractArray, x̄::LazyPropagation) = Zygote.unbroadcast(x, eval_prop(x̄))
     end
