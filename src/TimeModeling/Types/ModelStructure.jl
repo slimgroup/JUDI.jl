@@ -203,6 +203,8 @@ function similar(bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{PhysicalParamete
     PhysicalParameter(Ad, A.d, A.o)
 end
 
+similar(bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{PhysicalParameter}}) = similar(bc, eltype(find_pm(bc)))
+
 "`A = find_pm(As)` returns the first PhysicalParameter among the arguments."
 find_pm(bc::Base.Broadcast.Broadcasted) = find_pm(bc.args)
 find_pm(args::Tuple) = find_pm(find_pm(args[1]), Base.tail(args))
