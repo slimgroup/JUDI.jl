@@ -164,5 +164,13 @@ ftol = 1f-6
         w1 .= w
         @test w1.nsrc == w.nsrc
         @test isapprox(w1.weights, w.weights)
+
+        # SimSources
+        if nsrc == 2
+            M = randn(Float32, 1, nsrc)
+            sw = M*w
+            @test sw.nsrc == 1
+            @test isapprox(sw.data[1], M[1]*w.data[1] + M[2]*w.data[2])
+        end
     end
 end

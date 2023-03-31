@@ -143,13 +143,14 @@ end
 
 copyto!(jv::judiVector, jv2::judiVector) = copy!(jv, jv2)
 make_input(jv::judiVector{T, Matrix{T}}) where T = jv.data[1]
+make_input(jv::judiVector{T, Vector{T}}) where T = reshape(jv.data[1], :, 1)
 make_input(jv::judiVector{T, SeisCon}) where T = convert(Matrix{T}, jv.data[1][1].data)
 
 check_compat(ms::Vararg{judiVector, N}) where N = all(y -> compareGeometry(y.geometry, first(ms).geometry), ms)
 
 function as_ordered_dict(x::judiVector{T, AT}; v=1) where {T, AT}
     x.nsrc == 1 || throw(ArgumentError("as_ordered_dict only supported for single shot records"))
-    jdict = OrderedDict(zip(as_coord_set(x.geometry[1]), v*eachcol(make_input(x))))
+    jdict = OrderedDict(zip(as_coord_set(x.geometry[1]), eachcol(v.*make_input(x))))
     return jdict
 end
 

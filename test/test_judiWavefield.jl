@@ -86,5 +86,14 @@ ftol = 1f-6
         fwf = ifft(fw)
         @test isapprox(dot(fwf, w), real(dot(fw, fw)); rtol=ftol)
         @test isapprox(fwf, w; rtol=ftol)
+
+
+        # SimSources
+        if nsrc == 2
+            M = randn(Float32, 1, nsrc)
+            sw = M*w
+            @test sw.nsrc == 1
+            @test isapprox(sw.data[1], M[1]*w.data[1] + M[2]*w.data[2])
+        end
     end
 end

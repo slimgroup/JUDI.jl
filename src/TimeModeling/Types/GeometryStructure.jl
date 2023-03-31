@@ -3,7 +3,7 @@
 # Date: January 2017
 #
 
-export Geometry, compareGeometry, GeometryIC, GeometryOOC, get_nsrc, n_samples, super_shot, super_shot_geometry
+export Geometry, compareGeometry, GeometryIC, GeometryOOC, get_nsrc, n_samples, super_shot_geometry
 
 abstract type Geometry{T} end
 

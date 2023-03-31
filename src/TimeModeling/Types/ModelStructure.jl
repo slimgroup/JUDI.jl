@@ -410,6 +410,7 @@ end
 
 Model(n, d, o, m::Array, rho::Array; nb=40) = Model(n, d, o, m; rho=rho, nb=nb)
 Model(n, d, o, m::Array, rho::Array, qp::Array; nb=40) = Model(n, d, o, m; rho=rho, qp=qp, nb=nb)
+Model(d, o, m; kw...) = Model(size(m), d, o, m; kw...)
 
 size(m::AbstractModel) = size(m.G)
 origin(m::AbstractModel) = origin(m.G)
