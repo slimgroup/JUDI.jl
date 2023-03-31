@@ -361,21 +361,22 @@ ftol = 1e-6
         # test simsources with fixed rec geom
         if nsrc == 2
             dic = judiVector(rec_geometry, refarray)
-            for jvec in [dic, d_obs]
+            for jvec in [dic, d_obs, d_cont]
                 for nsim=1:3
                     M1 = randn(Float32, nsim, 2)
                     ds = M1 * jvec
                     @test ds.nsrc == nsim
                     for s=1:nsim
-                        @test ds.data[s] ≈ mapreduce((x, y)->x*y, +, M1[s,:], jvec.data)
+                        @test ds.data[s] ≈ mapreduce((x, y)->x*y, +, M1[s,:], get_data(jvec).data)
                     end
-                    @test all(ds.geometry[i] == Geometry(jvec.geometry[1]) for i=1:nsim)
+                    gtest = Geometry(jvec.geometry[1])
+                    @test all(ds.geometry[i] == gtest for i=1:nsim)
                 end
             end
-        end
-        # test simsources with "marine" rec geom
-        refarray = randn(Float32, 251, 2)
-        if nsrc == 2
+
+            # test simsources with "marine" rec geom
+            refarray = randn(Float32, 251, 2)
+
             dic = judiVector(example_src_geometry(), [refarray[:, 1:1], refarray[:, 2:2]])
             for nsim=1:3
                 M1 = randn(Float32, nsim, 2)
@@ -388,6 +389,27 @@ ftol = 1e-6
                 @test ds.geometry[1].xloc[1][1] == dic.geometry[1].xloc[1][1]
                 @test ds.geometry[1].xloc[1][2] == dic.geometry[2].xloc[1][1]
             end
+
+            # Test "simsource" without reduction
+            refarray = randn(Float32, 251, 4)
+            dic = judiVector(example_src_geometry(), [refarray[:, 1:1], refarray[:, 2:2]])
+            M1 = randn(Float32, 2)
+            @test all(dic.geometry.nrec .== 1)
+            sd1 = simsource(M1, dic; reduction=nothing)
+            @test sd1.nsrc == 2
+            @test all(sd1.geometry.nrec .== 2)
+            @test norm(sd1.data[1][:, 2]) == 0
+            @test norm(sd1.data[2][:, 1]) == 0
+            @test isapprox(sd1.data[1][:, 1], M1[1]*refarray[:, 1])
+            @test isapprox(sd1.data[2][:, 2], M1[2]*refarray[:, 2])
+
+            dic = judiVector(example_rec_geometry(nsrc=2, nrec=2), [refarray[:, 1:2], refarray[:, 3:4]])
+            @test all(dic.geometry.nrec .== 2)
+            sd1 = simsource(M1[:], dic; reduction=nothing)
+            @test sd1.nsrc == 2
+            @test all(sd1.geometry.nrec .== 2)
+            @test isapprox(sd1.data[1], M1[1]*refarray[:, 1:2])
+            @test isapprox(sd1.data[2], M1[2]*refarray[:, 3:4])
         end
     end
 end

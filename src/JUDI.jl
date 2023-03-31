@@ -17,6 +17,7 @@ using PyCall
 using JOLI, SegyIO
 using ChainRulesCore
 using Requires
+using OrderedCollections
 
 # Import Base functions to dispatch on JUDI types
 import Base.depwarn

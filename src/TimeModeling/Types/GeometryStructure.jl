@@ -230,9 +230,9 @@ function Geometry(data::SegyIO.SeisBlock; key="source", segy_depth_key="", dt=no
     else
         throw(GeometryException("Specified keyword not supported"))
     end
-    xloc = Array{gt, 1}(undef, nsrc)
-    yloc = Array{gt, 1}(undef, nsrc)
-    zloc = Array{gt, 1}(undef, nsrc)
+    xloc = Vector{gt}(undef, nsrc)
+    yloc = Vector{gt}(undef, nsrc)
+    zloc = Vector{gt}(undef, nsrc)
 
     xloc_full = get_header(data, params[1])
     yloc_full = get_header(data, params[2])
@@ -441,65 +441,37 @@ _geom_missmatch(nt::Integer, ns::Integer) = throw(judiMultiSourceException("Geom
 
 ################################# Merge geometries ##############################################################
 allsame(x, val=first(x)) = all(y->y==val, x)
-settype(ny, ::Type{T}, ::Nothing) where T = Set{ny == 1 ? Tuple{T, T} : Tuple{T, T, T}}([])
-settype(ny, ::Type{T}, ::MT) where {T, MT} = Dict{ny == 1 ? Tuple{T, T} : Tuple{T, T, T}, MT}()
 
-update_set(S::Set, xloc::Vector{T}, yloc::T, zloc::Vector{T}, ::Nothing, ::Nothing) where T = map(t->push!(S, t), zip(xloc, zloc))
-update_set(S::Set, xloc::Vector{T}, yloc::Vector{T}, zloc::Vector{T}, ::Nothing, ::Nothing) where T = map(t->push!(S, t), zip(xloc, yloc, zloc))
-update_set(S::Dict, xloc::Vector{T}, yloc::T, zloc::Vector{T}, data::Matrix{T}, M::Vector{T}) where T = map(t->mergewith!(+, S, Dict(t[1:2]=>t[3])), zip(xloc, zloc, (c*M' for c in eachcol(data))))
-update_set(S::Dict, xloc::Vector{T}, yloc::Vector{T}, zloc::Vector{T}, data::Matrix{T}, M::Vector{T}) where T = map(t->mergewith!(+, S, Dict(t[1:3]=>t[4])), zip(xloc, yloc, zloc, (c*M' for c in eachcol(data))))
+as_coord_set(x::Vector{T}, y::T, z::Vector{T}) where T = OrderedSet(zip(x, z))
+as_coord_set(x::Vector{T}, y::Vector{T}, z::Vector{T}) where T = OrderedSet(zip(x, y, z))
 
-coords(S::Set, i::Integer) = getindex.(S, i)
-coords(S::Dict, i::Integer) = getindex.(keys(S), i)
+yloc(y::Vector{T}, ::Val{1}) where T<:Number = y[1]
+yloc(y::T, ::Val{1}) where T<:Number = y
+yloc(y, ::Val) = y
 
-tomatrix(m::Matrix{T}) where T = m
-tomatrix(v::Vector{T}) where T = reshape(v, :, 1)
+_get_coords(G::Geometry, ny::Val) = begin gloc = Geometry(G); return tuple(gloc.xloc[1], yloc(gloc.yloc[1], ny), gloc.zloc[1]) end
 
-function super_shot(G::Geometry{T}, data=nothing, M=nothing) where T
-    if !isnothing(data) && isnothing(M)
-        throw(ArgumentError("SimSource weight matrix must be provided"))
-    end
+function as_coord_set(G::Geometry)
     @assert allsame(G.nt)
-    @assert allsame(G.t)
     @assert allsame(G.dt)
-    # Collect the first one to be in core
+    @assert allsame(G.t)
     G0 = Geometry(G[1])
-    # Make Set to easily get unique coords
-    ny = length(G0.yloc[1])
-    ny == 1 && @info "No y coordinates found in the first Geometry, assuming 2D"
-    merged = settype(ny, T, M)
-    # Merge all coords
-    @inbounds for i=1:get_nsrc(G)
-        Gloc = Geometry(G[i])
-        mrow = isnothing(M) ? nothing : M[:, i]
-        di = isnothing(data) ? nothing : make_input(data[i])
-        yloc = ny == 1 ? Gloc.yloc[1][1] : Gloc.yloc[1]
-        update_set(merged, Gloc.xloc[1], yloc, Gloc.zloc[1], di, mrow)
+    ny = Val(length(G0.yloc[1]))
+    s = as_coord_set(_get_coords(G0, ny::Val)...)
+    nsrc = get_nsrc(G)
+    if nsrc > 1
+        map(i->union!(s, as_coord_set(_get_coords(G[i], ny::Val)...)), 2:nsrc)
     end
-    xloc = coords(merged, 1)
-    yloc = ny == 1 ? G0.yloc[1] :  coords(merged, 2)
-    zloc = ny == 1 ?  coords(merged, 2) :  coords(merged, 3)
-    # Need to sort to make sure things didn't move
-    # Check if can use x
-    if length(xloc) == length(unique(xloc))
-        idx = sortperm(xloc)
-    # x has duplicates, check y
-    elseif length(yloc) == length(unique(yloc)) && ny > 1
-        idx = sortperm(yloc)
-    # Try to sort in (x, y)
-    else
-        idx = sortperm(getindex.(merged, ([1,2],)))
-    end
-    yloc = ny == 1 ? [yloc] : [yloc[idx]]
-    simgeom = GeometryIC{T}([xloc[idx]], yloc, [zloc[idx]], G0.dt, G0.nt, G0.t)
-    # Return geometry if no data
-    isnothing(data) && (return simgeom)
-    # reorganize the data currently organized as nrec of (nt, nsimsrc) for each coord
-    simdata = cat(values(merged)..., dims=3)
-    nsim = size(M, 1)
-    sim_data = [simdata[:, s, idx] for s=1:nsim]::Vector{Matrix{T}}
-    return simgeom, sim_data
+    sort!(s)
+    return s
 end
 
+coords_from_set(S::OrderedSet{Tuple{T, T}}) where T = tuple([first.(S)], [[0f0]], [last.(S)])
+coords_from_set(S::OrderedSet{Tuple{T, T, T}}) where T = tuple([first.(S)], [getindex.(S, 2)], [last.(S)])
+coords_from_keys(S::Vector{Tuple{T, T}}) where T = tuple([first.(S)], [[0f0]], [last.(S)])
+coords_from_keys(S::Vector{Tuple{T, T, T}}) where T = tuple([first.(S)], [getindex.(S, 2)], [last.(S)])
 
-super_shot_geometry(G::Geometry{T}) where T = super_shot(G)
+function super_shot_geometry(G::Geometry{T}) where T
+    as_set = coords_from_set(as_coord_set(G))
+    return GeometryIC{T}(as_set..., [G.dt[1]], [G.nt[1]], [G.t[1]])
+end
