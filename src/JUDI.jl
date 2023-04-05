@@ -93,7 +93,37 @@ ftp_data(ftp::String) = Base.Downloads().download(ftp, "$(JUDI.JUDI_DATA)/$(spli
 const RangeOrVec = Union{AbstractRange, Vector}
 
 set_verbosity(x::Bool) = begin global _verbose = x; end
-judilog(msg) = _verbose ? println(msg) : nothing
+judilog(msg) = _verbose ? printstyled("JUDI: $(msg) \n", color=:magenta) : nothing
+
+function human_readable_time(t::Float64, decimals=2)
+    units = ["ns", "μs", "ms", "s", "min", "hour"]
+    scales = [1e-9, 1e-6, 1e-3, 1, 60, 3600]
+    if t < 1e-9
+        tr = round(t/1e-9; sigdigits=decimals)
+        return "$(tr) ns"
+    end
+
+    for i=2:6
+        if t < scales[i]
+            tr = round(t/scales[i-1]; sigdigits=decimals)
+            return "$(tr) $(units[i-1])"
+        end
+    end
+    tr1 = div(t, 3600)
+    tr2 = round(Int, rem(t, 3600))
+    return "$(tr1) h $(tr2) min"
+end 
+
+    
+
+macro juditime(msg, ex)
+    return quote
+       local t
+       t = @elapsed $(esc(ex))
+       tr = human_readable_time(t)
+       judilog($(esc(msg))*": $(tr)")
+    end
+end
 
 # JUDI time modeling
 include("TimeModeling/TimeModeling.jl")
