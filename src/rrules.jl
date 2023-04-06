@@ -47,8 +47,10 @@ end
 
 broadcasted(::typeof(^), y::LazyPropagation, p::Real) = eval_prop(y).^(p)
 *(F::judiPropagator, q::LazyPropagation) = F*eval_prop(q)
+*(M::Preconditioner, q::LazyPropagation) = M*eval_prop(q)
+matvec(M::Preconditioner, q::LazyPropagation) = matvec(M, eval_prop(q))
 
-reshape(F::LazyPropagation, dims...) = LazyPropagation(x->reshape(x, dims...), F.F, Q.q)
+reshape(F::LazyPropagation, dims...) = LazyPropagation(x->reshape(x, dims...), F.F, F.q)
 copyto!(x::AbstractArray, F::LazyPropagation) = copyto!(x, eval_prop(F))
 dot(x::AbstractArray, F::LazyPropagation) = dot(x, eval_prop(F))
 dot(F::LazyPropagation, x::AbstractArray) = dot(x, F)

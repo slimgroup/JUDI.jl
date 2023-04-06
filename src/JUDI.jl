@@ -161,6 +161,10 @@ function __init__()
 
     @require Zygote="e88e6eb3-aa80-5325-afca-941959d7151f" begin
         Zygote.unbroadcast(x::AbstractArray, x̄::LazyPropagation) = Zygote.unbroadcast(x, eval_prop(x̄))
+	function Zygote.accum(x::judiVector{T, AT}, y::DenseArray) where {T, AT}
+	    newd = [Zygote.accum(x.data[i], y[:, :, i, 1]) for i=1:x.nsrc]
+	    return judiVector{T, AT}(x.nsrc, x.geometry, newd)
+	end
     end
 
     @require Flux="587475ba-b771-5e3f-ad9e-33799f191a9c" begin
@@ -168,6 +172,8 @@ function __init__()
         Flux.cpu(x::LazyPropagation) = Flux.cpu(eval_prop(x))
         Flux.gpu(x::LazyPropagation) = Flux.gpu(eval_prop(x))
         Flux.CUDA.cu(F::LazyPropagation) = Flux.CUDA.cu(eval_prop(F))
+	Flux.CUDA.cu(x::Vector{Matrix{T}}) where T = [Flux.CUDA.cu(x[i]) for i=1:length(x)]
+	Flux.CUDA.cu(x::judiVector{T, Matrix{T}}) where T = judiVector{T, Flux.CUDA.CuMatrix{T}}(x.nsrc, x.geometry, Flux.CUDA.cu(x.data))
     end
 end
 
