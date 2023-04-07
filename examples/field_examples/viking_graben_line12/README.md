@@ -12,4 +12,8 @@ As a rule you have to process the data before inversion/migration.
 
 To download the data use `download_data.ipynb` notebook.
 
+To run FWI/RTM examples you will probably need to have 20-30 Gb RAM available.
+
+The results that the user may get are shown in `FWI_RTM_LSRTM_VikingGraben_line12.pdf` presentation.
+
 The example is provided by [Kerim Khemraev](https://github.com/kerim371)
