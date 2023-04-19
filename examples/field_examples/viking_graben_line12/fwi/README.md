@@ -15,3 +15,4 @@ For example first iteration we run FWI with raw segy file (`seismic.segy`) filte
 The second iteration FWI is ran using raw segy file filtered with 8 Hz lowpass filter and with the model calculated from previous iteration.
 
 Continue doing so until required resolution is achieved.
+
