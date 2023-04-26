@@ -125,7 +125,7 @@ def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8, fw=
 
     if return_op:
         return op, gradm, kw
-
+    
     summary = op(**kw)
 
     # Output
