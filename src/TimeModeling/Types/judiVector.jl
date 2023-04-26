@@ -150,7 +150,7 @@ check_compat(ms::Vararg{judiVector, N}) where N = all(y -> compareGeometry(y.geo
 
 function as_ordered_dict(x::judiVector{T, AT}; v=1) where {T, AT}
     x.nsrc == 1 || throw(ArgumentError("as_ordered_dict only supported for single shot records"))
-    jdict = OrderedDict(zip(as_coord_set(x.geometry[1]), eachcol(v.*make_input(x))))
+    jdict = OrderedDict(zip(as_coord_set(x.geometry[1]), collect.(eachcol(v.*make_input(x)))))
     return jdict
 end
 
