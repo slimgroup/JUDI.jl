@@ -185,8 +185,13 @@ function limit_model_to_receiver_area(srcGeometry::Geometry, recGeometry::Geomet
     new_model = MT(DiscreteGrid(n, spacing(model), o, nbl(model)), values(newp)...)
     isnothing(pert) && (return new_model, nothing)
 
+<<<<<<< HEAD
     pert = reshape(pert, n_orig)[inds...]
     return new_model, pert[:]
+=======
+    newpert = reshape(pert, n_orig)[inds...]
+    return model, vec(newpert)
+>>>>>>> 5491217 (plain subs for int resample)
 end
 
 """
@@ -501,7 +506,6 @@ Parameters
 """
 time_resample(data::AbstractArray{T, N}, G_in::Geometry, dt_new::AbstractFloat) where {T<:AbstractFloat, N} = time_resample(data, G_in.dt[1], dt_new, G_in.t[1])
 
-
 """
     time_resample(data, dt_in, dt_new)
 
@@ -517,6 +521,9 @@ function time_resample(data::AbstractArray{T, N}, dt_in::T, dt_new::T, t::T) whe
 
     if dt_new==dt_in
         return data
+    elseif (dt_new % dt_in) == 0
+        rate = Int64(div(dt_new, dt_in))
+        return data[1:rate:end, :]
     else
         @juditime "Data time sinc-interpolation" begin
             nt = size(data, 1)

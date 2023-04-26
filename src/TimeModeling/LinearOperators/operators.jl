@@ -221,12 +221,11 @@ end
 
 ############################################################################################################################
 # Size update based on linear operator
-
 update_size(w::judiProjection, F::judiPropagator) = set_space_size!(w.n, size(F.model))
 update_size(w::jAdjoint{<:judiProjection}, F::judiPropagator) = set_space_size!(w.op.n, size(F.model))
-
 update_size(w::judiWavelet, F::judiPropagator) = set_space_size!(w.m, size(F.model))
 update_size(w::jAdjoint{<:judiWavelet}, F::judiPropagator) = set_space_size!(w.op.m, size(F.model))
+
 ############################################################################################################################
 # indexing
 getindex(F::judiModeling{D, O}, i) where {D, O} = judiModeling{D, O}(F.m[i], F.n[i], F.model, F.options[i])

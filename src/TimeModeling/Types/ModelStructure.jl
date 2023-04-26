@@ -203,7 +203,7 @@ for op in [:+, :-, :*, :/]
             # same grid but difference origin/shape, merging
             return combine($(op), A, B)
         else
-            throw(PhysicalParameterException("Incompatible grid"))
+            throw(PhysicalParameterException("Incompatible grids: ($(A.d), $(B.d))"))
         end
     end
 end
