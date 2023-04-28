@@ -185,13 +185,8 @@ function limit_model_to_receiver_area(srcGeometry::Geometry, recGeometry::Geomet
     new_model = MT(DiscreteGrid(n, spacing(model), o, nbl(model)), values(newp)...)
     isnothing(pert) && (return new_model, nothing)
 
-<<<<<<< HEAD
-    pert = reshape(pert, n_orig)[inds...]
-    return new_model, pert[:]
-=======
     newpert = reshape(pert, n_orig)[inds...]
     return model, vec(newpert)
->>>>>>> 5491217 (plain subs for int resample)
 end
 
 """
