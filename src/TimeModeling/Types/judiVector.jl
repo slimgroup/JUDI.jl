@@ -238,8 +238,8 @@ function judiVector_to_SeisBlock(d::judiVector{avDT, AT}, q::judiVector{avDT, QT
                                  source_depth_key="SourceSurfaceElevation",
                                  receiver_depth_key="RecGroupElevation") where {avDT, AT, QT}
 
-    typeof(d.geometry) <: GeometryOOC && (d.geometry = Geometry(d.geometry))
-    typeof(q.geometry) <: GeometryOOC && (q.geometry = Geometry(q.geometry))
+    d.geometry = Geometry(d.geometry)
+    q.geometry = Geometry(q.geometry)
 
     blocks = Array{Any}(undef, d.nsrc)
     count = 0

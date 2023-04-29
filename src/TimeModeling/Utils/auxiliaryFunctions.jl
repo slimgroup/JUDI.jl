@@ -518,7 +518,7 @@ function time_resample(data::AbstractArray{T, N}, dt_in::T, dt_new::T, t::T) whe
         return data
     elseif (dt_new % dt_in) == 0
         rate = Int64(div(dt_new, dt_in))
-        return data[1:rate:end, :]
+	    return _time_resample(data, rate)
     else
         @juditime "Data time sinc-interpolation" begin
             nt = size(data, 1)
@@ -545,6 +545,9 @@ Parameters
 * `dt_in`: Time sampling rate of the `data.`
 """
 time_resample(data::AbstractArray{Float32, N}, dt_in::AbstractFloat, G_out::Geometry) where N = time_resample(data, dt_in, G_out.dt[1], G_out.t[1])
+
+_time_resample(data::Matrix{T}, rate::Integer) where T = data[1:rate:end, :]
+_time_resample(data::PermutedDimsArray{T, 2, (2, 1), (2, 1), Matrix{T}}, rate::Integer) where T = data.parent[:, 1:rate:end]'
 
 """
     generate_distribution(x; src_no=1)
