@@ -153,20 +153,23 @@ function __init__()
     # Initialize lock at session start
     PYLOCK[] = ReentrantLock()
 
+    # Make sure there is no conflict for the cuda init thread with CUDA.jl
     if get(ENV, "DEVITO_PLATFORM", "") == "nvidiaX"
         @info "Initializing openacc/openmp offloading"
         devito_model(Model((21, 21, 21), (10., 10., 10.), (0., 0., 0.), randn(Float32, 21, 21, 21)), Options())
         global _devices = parse.(Int, get(ENV, "CUDA_VISIBLE_DEVICES", "-1"))
     end
 
+    # Additional Zygote compat if in use
     @require Zygote="e88e6eb3-aa80-5325-afca-941959d7151f" begin
         Zygote.unbroadcast(x::AbstractArray, x̄::LazyPropagation) = Zygote.unbroadcast(x, eval_prop(x̄))
-	function Zygote.accum(x::judiVector{T, AT}, y::DenseArray) where {T, AT}
-	    newd = [Zygote.accum(x.data[i], y[:, :, i, 1]) for i=1:x.nsrc]
-	    return judiVector{T, AT}(x.nsrc, x.geometry, newd)
-	end
+        function Zygote.accum(x::judiVector{T, AT}, y::DenseArray) where {T, AT}
+            newd = [Zygote.accum(x.data[i], y[:, :, i, 1]) for i=1:x.nsrc]
+            return judiVector{T, AT}(x.nsrc, x.geometry, newd)
+        end
     end
 
+     # Additional Flux compat if in use
     @require Flux="587475ba-b771-5e3f-ad9e-33799f191a9c" begin
         Flux.Zygote.unbroadcast(x::AbstractArray, x̄::LazyPropagation) = Zygote.unbroadcast(x, eval_prop(x̄))
         Flux.cpu(x::LazyPropagation) = Flux.cpu(eval_prop(x))
@@ -175,6 +178,9 @@ function __init__()
 	Flux.CUDA.cu(x::Vector{Matrix{T}}) where T = [Flux.CUDA.cu(x[i]) for i=1:length(x)]
 	Flux.CUDA.cu(x::judiVector{T, Matrix{T}}) where T = judiVector{T, Flux.CUDA.CuMatrix{T}}(x.nsrc, x.geometry, Flux.CUDA.cu(x.data))
     end
+
+    # BLAS num threads for dense LA such as sinc interpolation
+    BLAS.set_num_threads(Threads.nthreads())
 end
 
 end
