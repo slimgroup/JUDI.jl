@@ -186,7 +186,7 @@ function limit_model_to_receiver_area(srcGeometry::Geometry, recGeometry::Geomet
     isnothing(pert) && (return new_model, nothing)
 
     newpert = reshape(pert, n_orig)[inds...]
-    return model, vec(newpert)
+    return new_model, newpert[1:end]
 end
 
 """

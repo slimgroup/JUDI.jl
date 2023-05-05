@@ -428,7 +428,7 @@ pushfield!(a, b) = nothing
 # Gets called by judiVector constructor to be sure that geometry is consistent with the data.
 # Data may be any of: Array, Array of Array, SeisBlock, SeisCon
 check_geom(geom::Geometry, data::Array{T}) where T = all([check_geom(geom[s], data[s]) for s=1:get_nsrc(geom)])
-check_geom(geom::Geometry, data::Array{T}) where {T<:Number} = _check_geom(geom.nt[1],  size(data, 1))
+check_geom(geom::Geometry, data::Array{T}) where {T<:Number} = _check_geom(geom.nt[1],  size(data, 1)) && _check_geom(geom.nrec[1],  size(data, 2))
 check_geom(geom::Geometry, data::SeisBlock) = _check_geom(geom.nt[1], data.fileheader.bfh.ns)
 check_geom(geom::Geometry, data::SeisCon) = _check_geom(geom.nt[1], data.ns)
 _check_geom(nt::Integer, ns::Integer) = nt == ns || _geom_missmatch(nt, ns)

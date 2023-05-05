@@ -135,9 +135,9 @@ function promote_shape(p::PhysicalParameter{T, N}, A::Array{T, Na}) where {T, N,
     return promote_shape(A, A)
 end
 
-promote_shape(A::Array{vDT, N}, p::PhysicalParameter) where {vDT, N} = promote_shape(p, A)
-reshape(p::PhysicalParameter, n::Tuple{Vararg{Int64,N}}) where N = (n == p.n ? p : reshape(p.data, n))
-reshape(p::PhysicalParameter, pr::PhysicalParameter) = (p.n == pr.n ? p : throw(ArgumentError("Incompatible PhysicalParameter sizes ($(p.n), $(po.n)    )")))
+promote_shape(A::Array{T, Na}, p::PhysicalParameter{T, N}) where {T<:AbstractFloat, N, Na}  = promote_shape(p, A)
+reshape(p::PhysicalParameter{T, N}, n::Tuple{Vararg{Int64,N}}) where {T<:AbstractFloat, N} = (n == p.n ? p : reshape(p.data, n))
+reshape(p::PhysicalParameter, pr::PhysicalParameter) = (p.n == pr.n ? p : throw(ArgumentError("Incompatible PhysicalParameter sizes ($(p.n), $(po.n))")))
 
 dotview(m::PhysicalParameter, i) = Base.dotview(m.data, i)
 

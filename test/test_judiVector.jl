@@ -321,8 +321,8 @@ ftol = 1e-6
         @test isapprox(tr.geometry.xloc[1][1:11], zeros(11); atol=1f-14, rtol=1f-14)
 
         # Test exception if number of samples in geometry doesn't match ns of data
-        @test_throws JUDI.GeometryException judiVector(Geometry(0f0, 0f0, 0f0; dt=2, t=1000), randn(Float32, 10))
-        @test_throws JUDI.GeometryException judiVector(rec_geometry, randn(Float32, 10))        
+        @test_throws JUDI.judiMultiSourceException judiVector(Geometry(0f0, 0f0, 0f0; dt=2, t=1000), randn(Float32, 10))
+        @test_throws JUDI.judiMultiSourceException judiVector(rec_geometry, randn(Float32, 10))        
 
         # Test integral & derivative
         refarray = Array{Array{Float32, 2}, 1}(undef, nsrc)
@@ -410,6 +410,27 @@ ftol = 1e-6
             @test all(sd1.geometry.nrec .== 2)
             @test isapprox(sd1.data[1], M1[1]*refarray[:, 1:2])
             @test isapprox(sd1.data[2], M1[2]*refarray[:, 3:4])
+
+            # Test minimal supershot (only keep common coordinates)
+            geometry = Geometry([[1f0, 2f0], [.5f0, 2f0]], [[0f0], [0f0]], [[0f0, 0.25f0], [0f0, 0.25f0]];
+                                 dt=4f0, t=1000f0)
+            refarray = randn(Float32, 251, 4)
+            dic = judiVector(geometry, [refarray[:, 1:2], refarray[:, 3:4]])
+            M1 = randn(Float32, 1, 2)
+            dsim = simsource(M1, dic; minimal=true)
+            @test dsim.nsrc == 1
+            @test dsim.geometry.nrec[1] == 1
+            @test dsim.geometry.xloc[1] == [2f0]
+            @test dsim.geometry.zloc[1] == [.25f0]
+
+            # Check no common receiver errors
+            geometry = Geometry([[1f0, 2f0], [.5f0, 1.5f0]], [[0f0], [0f0]], [[0f0, 0.25f0], [0f0, 0.25f0]];
+                        dt=4f0, t=1000f0)
+            refarray = randn(Float32, 251, 4)
+            dic = judiVector(geometry, [refarray[:, 1:2], refarray[:, 3:4]])
+            M1 = randn(Float32, 1, 2)
+            @test_throws ArgumentError dsim = simsource(M1, dic; minimal=true)
+
         end
     end
 end
