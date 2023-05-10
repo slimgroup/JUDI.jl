@@ -4,7 +4,7 @@ from fields import (fourier_modes, wavefield, lr_src_fields, illumination,
                     wavefield_subsampled, norm_holder, frequencies)
 from fields_exprs import extented_src
 from sensitivity import grad_expr
-from utils import weight_fun, opt_op, fields_kwargs, nfreq
+from utils import weight_fun, opt_op, fields_kwargs, nfreq, base_kwargs
 from operators import forward_op, born_op, adjoint_born_op
 
 from devito import Operator, Function, Constant
@@ -40,7 +40,7 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
                     wr is not None, qwf is not None, nv_weights, illum)
 
     # Make kwargs
-    kw = {'dt': model.critical_dt}
+    kw = base_kwargs(model.critical_dt)
     f0q = Constant('f0', value=f0) if model.is_viscoacoustic else None
 
     # Expression for saving wavefield if time subsampling is used
@@ -111,7 +111,7 @@ def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8, fw=
                          w, save, t_sub, nfreq(freq), dft_sub, ic, illum)
 
     # Update kwargs
-    kw = {'dt': model.critical_dt}
+    kw = base_kwargs(model.critical_dt)
     f, _ = frequencies(freq)
     f0q = Constant('f0', value=f0) if model.is_viscoacoustic else None
 
@@ -155,7 +155,7 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
                  ws is not None, nfreq(freq_list), dft_sub, ic, nlind, illum)
 
     # Make kwargs
-    kw = {'dt': model.critical_dt}
+    kw = base_kwargs(model.critical_dt)
     f0q = Constant('f0', value=f0) if model.is_viscoacoustic else None
     # Expression for saving wavefield if time subsampling is used
     u_save = wavefield_subsampled(model, u, nt, t_sub)
@@ -218,7 +218,8 @@ def forward_grad(model, src_coords, rcv_coords, wavelet, v, space_order=8,
                   subs=subs, name="forward_grad",
                   opt=opt_op(model))
 
-    summary = op(dt=model.critical_dt, rcvu=rcv)
+    kw = base_kwargs(model.critical_dt)
+    summary = op(rcvu=rcv, **kw)
 
     # Output
     return rcv, gradm, summary

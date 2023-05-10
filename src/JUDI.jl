@@ -54,6 +54,7 @@ import ChainRulesCore: rrule
 # Set python paths
 const pm = PyNULL()
 const ac = PyNULL()
+const pyut = PyNULL()
 
 # Create a lock for pycall FOR THREAD/TASK SAFETY
 # See discussion at
@@ -80,6 +81,7 @@ end
 
 _TFuture = Future
 _verbose = false
+_devices = []
 
 # Utility for data loading
 JUDI_DATA = joinpath(JUDIPATH, "../data")
@@ -116,12 +118,14 @@ function __init__()
     pushfirst!(PyVector(pyimport("sys")."path"), joinpath(JUDIPATH, "pysource"))
     copy!(pm, pyimport("models"))
     copy!(ac, pyimport("interface"))
+    copy!(pyut, pyimport("utils"))
     # Initialize lock at session start
     PYLOCK[] = ReentrantLock()
 
     if get(ENV, "DEVITO_PLATFORM", "") == "nvidiaX"
         @info "Initializing openacc/openmp offloading"
         devito_model(Model((21, 21, 21), (10., 10., 10.), (0., 0., 0.), randn(Float32, 21, 21, 21)), Options())
+        global _devices = parse.(Int, get(ENV, "CUDA_VISIBLE_DEVICES", "-1"))
     end
 
     @require Zygote="e88e6eb3-aa80-5325-afca-941959d7151f" begin

@@ -1,8 +1,11 @@
+
+from itertools import cycle
 import numpy as np
 from sympy import sqrt
 from devito import configuration
 
 from devito.tools import as_tuple
+from devito.types.parallel import DeviceID
 
 
 # Weighting
@@ -112,3 +115,20 @@ def fields_kwargs(*args):
                     kw.update({ff.name: ff for ff in f})
 
     return kw
+
+
+_device = -1
+
+
+def set_device_ids(id):
+    _device = cycle(id)
+
+
+def base_kwargs(dt):
+    """
+    Most basic keyword arguments needed by the operator.
+    """
+    if configuration['platform'].name == 'nvidiaX':
+        return {'dt': dt, 'deviceid': _device}
+    else:
+        return {'dt': dt}
