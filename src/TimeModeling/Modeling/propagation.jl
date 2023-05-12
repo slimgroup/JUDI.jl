@@ -42,6 +42,9 @@ end
 
 function _set_devices!()
     ndevices = length(_devices)
+    if ndevices < 2
+        return
+    end
     asyncmap(enumerate(workers())) do (pi, p)
         remotecall_wait(p) do
             pyut.set_device_ids(_devices[pi % ndevices + 1])
