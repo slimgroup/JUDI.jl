@@ -120,8 +120,8 @@ def fields_kwargs(*args):
 _device = -1
 
 
-def set_device_ids(id):
-    _device = cycle(id)
+def set_device_ids(did):
+    _device = did
 
 
 def base_kwargs(dt):
