@@ -6,7 +6,7 @@ ArrayOrNot = Union{Array, PyArray, PyObject, Nothing}
 PhysOrNot = Union{PhysicalParameter, Array, Nothing}
 
 # Setup time-domain linear or nonlinear foward and adjoint modeling and interface to devito
-function time_modeling(model_full::Model, srcGeometry::GeomOrNot, srcData::ArrayOrNot,
+function time_modeling(model_full::AbstractModel, srcGeometry::GeomOrNot, srcData::ArrayOrNot,
                        recGeometry::GeomOrNot, recData::ArrayOrNot, dm::PhysOrNot,
                        op::Symbol, options::JUDIOptions, fw::Bool)
     # Load full geometry for out-of-core geometry containers

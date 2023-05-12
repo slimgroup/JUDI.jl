@@ -132,7 +132,7 @@ def SLS_2nd_order(model, p, fw=True, q=None, f0=0.015):
 
 def tti_kernel(model, u1, u2, fw=True, q=None):
     """
-    TTI wave equation (one from my paper) time stepper
+    TTI wave equation time stepper
 
     Parameters
     ----------
@@ -174,3 +174,38 @@ def tti_kernel(model, u1, u2, fw=True, q=None):
         second_stencil = Eq(u2_n, stencilr)
 
     return [first_stencil, second_stencil] + pdea
+
+
+def elastic_kernel(model, v, fw=True, q=None):
+    """
+    Elastic wave equation time stepper
+
+    Parameters
+    ----------
+    model: Model
+        Physical model
+    v : VectorTimeFunction
+        Particle Velocity
+    tau : TensorTimeFunction
+        Stress tensor
+    fw: Bool
+        Whether forward or backward in time propagation
+    q : TimeFunction or Expr
+        Full time-space source as a tuple (one value for each component)
+    """
+    if 'nofsdomain' in model.grid.subdomains:
+        raise NotImplementedError("Free surface not supported for elastic modelling")
+    if not fw:
+        raise NotImplementedError("Only forward modeling for the elastic equation")
+
+    # Lame parameters
+    lam, mu, b = model.lam, model.mu, model.b
+
+     # Particle velocity
+    eq_v = v.dt - b * div(tau)
+    # Stress
+    e = (grad(v.forward) + grad(v.forward).transpose(inner=False))
+    eq_tau = tau.dt - lam * diag(div(v.forward)) - mu * e
+
+    u_v = Eq(v.forward, model.damp * solve(eq_v, v.forward))
+    u_t = Eq(tau.forward, model.damp * solve(eq_tau, tau.forward))

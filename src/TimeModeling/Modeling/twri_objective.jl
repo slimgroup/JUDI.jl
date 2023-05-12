@@ -64,7 +64,7 @@ Example
 =======
     function_value, gradient_m, gradient_y = twri_objective(model, source, dobs; options=Options(), optionswri=TWRIOptions())
 """
-function twri_objective(model_full::Model, source::judiVector, dObs::judiVector, y::Union{judiVector, Nothing},
+function twri_objective(model_full::AbstractModel, source::judiVector, dObs::judiVector, y::Union{judiVector, Nothing},
                         options::JUDIOptions, optionswri::TWRIOptions)
     # Load full geometry for out-of-core geometry containers
     dObs.geometry = Geometry(dObs.geometry)
@@ -141,7 +141,7 @@ Example
 =======
     function_value, gradient = fwi_objective(model, source, dobs)
 """
-function twri_objective(model::Model, source::judiVector, dObs::judiVector, y::Union{judiVector, Nothing};
+function twri_objective(model::AbstractModel, source::judiVector, dObs::judiVector, y::Union{judiVector, Nothing};
                         options=Options(), optionswri=TWRIOptions())
     pool = _worker_pool()
     if isnothing(y)

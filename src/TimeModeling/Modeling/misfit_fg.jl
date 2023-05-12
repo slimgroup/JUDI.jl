@@ -1,7 +1,7 @@
 
 export fwi_objective, lsrtm_objective, fwi_objective!, lsrtm_objective!
 
-function multi_src_fg(model_full::Model, source::judiVector, dObs::judiVector, dm, options::JUDIOptions, nlind::Bool, lin::Bool,
+function multi_src_fg(model_full::AbstractModel, source::judiVector, dObs::judiVector, dm, options::JUDIOptions, nlind::Bool, lin::Bool,
                       misfit::Function)
 # Setup time-domain linear or nonlinear foward and adjoint modeling and interface to OPESCI/devito
 
@@ -61,8 +61,8 @@ end
 
 
 ####### Defaults
-multi_src_fg(model_full::Model, source::judiVector, dObs::judiVector, dm, options::JUDIOptions, nlind::Bool, lin::Bool) =
-    multi_src_fg(model_full::Model, source::judiVector, dObs::judiVector, dm, options::JUDIOptions, nlind::Bool, lin::Bool, mse)
+multi_src_fg(model_full::AbstractModel, source::judiVector, dObs::judiVector, dm, options::JUDIOptions, nlind::Bool, lin::Bool) =
+    multi_src_fg(model_full::AbstractModel, source::judiVector, dObs::judiVector, dm, options::JUDIOptions, nlind::Bool, lin::Bool, mse)
 
 
 # Find number of experiments
@@ -73,7 +73,7 @@ Get number of experiments given a JUDI type. By default we have only one experim
 a Vector of judiType such as [model, model] to compute gradient for different cases at once.
 """
 get_nexp(x) = 1
-for T in [judiVector, Model, judiWeights, judiWavefield, PhysicalParameter, Vector{Float32}]
+for T in [judiVector, AbstractModel, judiWeights, judiWavefield, PhysicalParameter, Vector{Float32}]
     @eval get_nexp(v::Vector{<:$T}) = length(v)
     @eval get_nexp(v::Tuple{N, <:$T}) where N = length(v)
 end   
@@ -86,7 +86,7 @@ Filter input `x`` for experiment number `i`. Returns `x` is a constant not depen
 """
 get_exp(x, i) = x
 get_exp(x::Tuple{}, i::Any) = x[i]
-for T in [judiVector, Model, judiWeights, judiWavefield, Array{Float32}, PhysicalParameter]
+for T in [judiVector, AbstractModel, judiWeights, judiWavefield, Array{Float32}, PhysicalParameter]
     @eval get_exp(v::Vector{<:$T}, i) = v[i]
     @eval get_exp(v::NTuple{N, <:$T}, i) where N = v[i]
 end

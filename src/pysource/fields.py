@@ -34,6 +34,12 @@ def wavefield(model, space_order, save=False, nt=None, fw=True, name='', t_sub=1
         v = TimeFunction(name="%s2" % name, grid=model.grid, time_order=2,
                          space_order=space_order, save=None if not save else nt)
         return (u, v)
+    elif model.is_elastic:
+        v = VectorTimeFunction(name="v", grid=model.grid, time_order=1,
+                               space_order=space_order, save=None)
+        tau = TensorTimeFunction(name="tau", grid=model.grid, time_order=1,
+                                 space_order=space_order, save=None)
+        return (v, tau)
     else:
         return TimeFunction(name=name, grid=model.grid, time_order=2,
                             space_order=space_order, save=None if not save else nt)

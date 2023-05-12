@@ -51,7 +51,7 @@ include("Preconditioners/ModelPreconditioners.jl")
 
 #############################################################################
 if VERSION>v"1.2"
-  function (F::judiPropagator)(m::Model)
+  function (F::judiPropagator)(m::AbstractModel)
     Fl = deepcopy(F)
     Fl.model.n = m.n
     Fl.model.d = m.d
@@ -82,7 +82,7 @@ if VERSION>v"1.2"
     return F(;m=m)
   end
 
-  (F::judiPropagator)(m::Model, q) = F(m)*as_src(q)
+  (F::judiPropagator)(m::AbstractModel, q) = F(m)*as_src(q)
   
   function (J::judiJacobian{D, O, FT})(q::judiMultiSourceVector) where {D, O, FT}
     newJ = judiJacobian{D, O, FT}(J.m, J.n, J.F, q)

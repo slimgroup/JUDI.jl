@@ -634,7 +634,7 @@ Parameters:
 * `model`: Model containing physical parameters.
 * `nsrc`: Number of sources
 """
-function process_input_data(input::DenseArray{Float32}, model::Model, nsrc::Integer)
+function process_input_data(input::DenseArray{Float32}, model::AbstractModel, nsrc::Integer)
     ND = length(model.n)
     dataCell = Array{Array{Float32, ND}, 1}(undef, nsrc)
 
@@ -646,7 +646,7 @@ function process_input_data(input::DenseArray{Float32}, model::Model, nsrc::Inte
     return dataCell
 end
 
-process_input_data(input::DenseArray{Float32}, model::Model) = process_input_data(input, model, length(input) ÷ prod(model.n))
+process_input_data(input::DenseArray{Float32}, model::AbstractModel) = process_input_data(input, model, length(input) ÷ prod(model.n))
 process_input_data(input::judiVector, ::Geometry) = input
 process_input_data(input::judiVector) = input.data
 process_input_data(input::judiWeights, ::AbstractModel) = input.weights

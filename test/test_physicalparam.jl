@@ -15,16 +15,16 @@ ftol = 1f-5
         @test PhysicalParameter(p.data, n, d, o) == p
         @test PhysicalParameter(vec(p.data), n, d, o) == p
 
-        @test size(p) == (prod(n),)
-        @test size(conj(p)) == (prod(n),)
+        @test size(p) == n
+        @test size(conj(p)) == n
 
-        @test size(adjoint(p)) == (prod(n),)
+        @test size(adjoint(p)) == n[end:-1:1]
         @test adjoint(p).n == p.n[end:-1:1]
         @test adjoint(p).d == p.d[end:-1:1]
         @test adjoint(p).o == p.o[end:-1:1]
         @test isapprox(adjoint(p).data, permutedims(p.data, nd:-1:1))
 
-        @test size(transpose(p)) == (prod(n),)
+        @test size(transpose(p)) == n[end:-1:1]
         @test transpose(p).n == p.n[end:-1:1]
         @test transpose(p).d == p.d[end:-1:1]
         @test transpose(p).o == p.o[end:-1:1]
@@ -123,7 +123,6 @@ ftol = 1f-5
         w = PhysicalParameter(randn(Float32, n...), d, o)
         a = .5f0 + rand(Float32)
         b = .5f0 + rand(Float32)
-        c2 = randn(Float32, size(v, 1), size(v, 1))
 
         @test isapprox(u + (v + w), (u + v) + w; rtol=ftol)
         @test isapprox(u + v, v + u; rtol=ftol)
@@ -134,8 +133,6 @@ ftol = 1f-5
         @test isapprox(u, u .* 1; rtol=ftol)
         @test isapprox(a .* (u + v), a .* u + a .* v; rtol=1f-5)
         @test isapprox((a + b) .* v, a .* v + b.* v; rtol=1f-5)
-        @test isapprox(c2*v, c2*vec(v.data))
-        @test isapprox(c2\v, c2\vec(v.data))
         @test isapprox(c + v, 1 .+ v)
         @test isapprox(c - v, 1 .- v)
         @test isapprox(v + c, 1 .+ v)
@@ -188,7 +185,7 @@ ftol = 1f-5
         end
 
         # Test that works with JOLI
-        A = joEye(size(v, 1); DDT=Float32, RDT=Float32)
+        A = joEye(length(v); DDT=Float32, RDT=Float32)
         u2 = A*u
         @test isequal(u2, vec(u.data))
         u2 = [A;A]*u

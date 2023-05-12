@@ -56,11 +56,20 @@ def geom_expr(model, u, src_coords=None, rec_coords=None, wavelet=None, fw=True,
     geom_expr = []
     src, rcv = src_rec(model, u, src_coords, rec_coords, wavelet, nt)
     if src is not None:
-        u_n = as_tuple(u)[0].forward if fw else as_tuple(u)[0].backward
-        geom_expr += src.inject(field=u_n, expr=src*dt**2/m)
+        # Elastic inject into diagonal of stress
+        if u.is_TensorValued:
+            for ud in u.diagonal():
+                geom_expr += src.inject(field=ud.forward, expr=src*dt/irho)
+        else:
+            # Acoustic inject into pressure
+            u_n = as_tuple(u)[0].forward if fw else as_tuple(u)[0].backward
+            geom_expr += src.inject(field=u_n, expr=src*dt**2/m)
     # Setup adjoint wavefield sampling at source locations
     if rcv is not None:
-        rec_expr = u[0] if model.is_tti else u
+        try:
+            rec_expr = u.trace()
+        except AttributeError:
+            rec_expr = u[0] if model.is_tti else u
         adj_rcv = rcv.interpolate(expr=rec_expr)
         geom_expr += adj_rcv
     return geom_expr

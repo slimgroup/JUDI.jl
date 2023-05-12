@@ -244,7 +244,7 @@ function compute_illum(model::AbstractModel, mode::Symbol)
 end
 
 
-function _track_illum(old_m::Model, new_m::Model)
+function _track_illum(old_m::AbstractModel, new_m::AbstractModel)
     if (objectid(old_m) ∈ keys(_illums)) && (objectid(new_m) ∉ keys(_illums))
         _illums[objectid(new_m)] = _illums[objectid(old_m)]
     end
