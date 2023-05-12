@@ -338,6 +338,13 @@ struct ViscIsoModel{T, N} <: AbstractModel{T, N}
     qp::ModelParam{T, N}
 end
 
+_params(m::TTIModel) = [(:m, m.m), (:rho, m.rho), (:epsilon, m.epsilon), (:delta, m.delta), (:theta, m.theta), (:phi, m.phi)]
+_params(m::IsoModel) = [(:m, m.m), (:rho, m.rho)]
+_params(m::IsoElModel) = [(:lam, m.lambda), (:mu, m.mu), (:b, m.b)]
+_params(m::IsoElModel) = [(:m, m.m), (:rho, m.rho), (:qp, m.qp)]
+
+_mparams(m::AbstractModel) = first.(_params(m))
+
 ###################################################################################################
 # Constructors
 _scalar(::Nothing, ::Type{T}, def=1) where T = T(def)
