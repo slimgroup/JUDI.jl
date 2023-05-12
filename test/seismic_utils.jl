@@ -58,8 +58,8 @@ function setup_model(tti=false, viscoacoustic=false, nlayer=2; n=(301, 151), d=(
     else
         model = Model(n, d, o, m, rho0)
         model0 = Model(n, d, o, m0, rho0)
-        @test all(Model(n, d, o, m0; rho=rho0).b[:] .== 1f0 ./ rho0[:])
-        @test Model(n, d, o, m0; rho=rho0).b == model0.b
+        @test all(Model(n, d, o, m0; rho=rho0).rho[:] .== rho0[:])
+        @test Model(n, d, o, m0; rho=rho0).rho == model0.rho
     end
     dm = model.m - model0.m
     return model, model0, dm

@@ -1,4 +1,4 @@
-from devito import Eq, solve
+from devito import Eq, solve, diag, div, grad
 from sympy import sqrt
 
 from fields import memory_field
@@ -26,6 +26,8 @@ def wave_kernel(model, u, fw=True, q=None, f0=0.015):
         pde = tti_kernel(model, u[0], u[1], fw=fw, q=q)
     elif model.is_viscoacoustic:
         pde = SLS_2nd_order(model, u, fw=fw, q=q, f0=f0)
+    elif model.is_elastic:
+        pde = elastic_kernel(model, u[0], u[1], fw=fw, q=q)
     else:
         pde = acoustic_kernel(model, u, fw=fw, q=q)
     return pde
@@ -176,7 +178,7 @@ def tti_kernel(model, u1, u2, fw=True, q=None):
     return [first_stencil, second_stencil] + pdea
 
 
-def elastic_kernel(model, v, fw=True, q=None):
+def elastic_kernel(model, v, tau, fw=True, q=None):
     """
     Elastic wave equation time stepper
 
@@ -199,13 +201,20 @@ def elastic_kernel(model, v, fw=True, q=None):
         raise NotImplementedError("Only forward modeling for the elastic equation")
 
     # Lame parameters
-    lam, mu, b = model.lam, model.mu, model.b
+    lam, mu, b = model.lam, model.mu, model.irho
 
-     # Particle velocity
+    # Particle velocity
     eq_v = v.dt - b * div(tau)
     # Stress
-    e = (grad(v.forward) + grad(v.forward).transpose(inner=False))
+    try:
+        e = (grad(v.forward) + grad(v.forward).transpose(inner=False))
+    except TypeError:
+        # Older devito version
+        e = (grad(v.forward) + grad(v.forward).T)
+
     eq_tau = tau.dt - lam * diag(div(v.forward)) - mu * e
 
     u_v = Eq(v.forward, model.damp * solve(eq_v, v.forward))
     u_t = Eq(tau.forward, model.damp * solve(eq_tau, tau.forward))
+
+    return [u_v, u_t]

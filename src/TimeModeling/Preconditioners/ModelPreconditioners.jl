@@ -26,7 +26,7 @@ end
   
 matvec(D::DepthScaling{T, N, K}, x::Vector{T}) where {T, N, K} = vec(reshape(x, :, size(D.depth, N)) .* D.depth[:]'.^K)
 matvec(D::DepthScaling{T, N, K}, x::AbstractArray{T, N}) where {T, N, K} = x .* D.depth.^K
-matvec(D::DepthScaling{T, N, K}, x::PhysicalParameter{T}) where {T, N, K} = PhysicalParameter{T}(x.n, x.d, x.o, x.data .* D.depth.^K)
+matvec(D::DepthScaling{T, N, K}, x::PhysicalParameter{T}) where {T, N, K} = PhysicalParameter(x.n, x.d, x.o, x.data .* D.depth.^K)
 matvec(D::DepthScaling{T, N, K}, x::judiWeights{T}) where {T, N, K} = judiWeights{T}(x.nsrc, [matvec(D, x.data[s]) for s=1:x.nsrc])
 
 # Diagonal operator, self-adjoint

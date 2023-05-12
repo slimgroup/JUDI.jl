@@ -1,7 +1,8 @@
 import numpy as np
 
 from devito import (TimeFunction, ConditionalDimension, Function,
-                    DefaultDimension, Dimension)
+                    DefaultDimension, Dimension, VectorTimeFunction,
+                    TensorTimeFunction)
 from devito.data.allocators import ExternalAllocator
 from devito.tools import as_tuple
 

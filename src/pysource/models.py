@@ -154,9 +154,9 @@ class Model(object):
     dt: Float
         User provided computational time-step
     """
-    def __init__(self, origin, spacing, shape, space_order=2, nbl=40,
-                 dtype=np.float32, m=None, epsilon=None, delta=None, theta=None, phi=None,
-                 rho=None, b=None, qp=None, lam=None, mu=None, dm=None, fs=False, **kwargs):
+    def __init__(self, origin, spacing, shape, space_order=2, nbl=40, dtype=np.float32,
+                 m=None, epsilon=None, delta=None, theta=None, phi=None, rho=None,
+                 b=None, qp=None, lam=None, mu=None, dm=None, fs=False, **kwargs):
         # Setup devito grid
         self.shape = tuple(shape)
         self.nbl = int(nbl)
@@ -218,7 +218,7 @@ class Model(object):
             self.delta = self._gen_phys_param(delta, 'delta', space_order)
             self.theta = self._gen_phys_param(theta, 'theta', space_order)
             self.phi = self._gen_phys_param(phi, 'phi', space_order)
-        
+
         # Additional parameter fields for elastic
         if self._is_elastic:
             self.lam = self._gen_phys_param(lam, 'lam', space_order, is_param=True)
@@ -361,6 +361,13 @@ class Model(object):
         return self._is_viscoacoustic
 
     @property
+    def is_elastic(self):
+        """
+        Whether the model is TTI or isotopic
+        """
+        return self._is_elastic
+
+    @property
     def _max_vp(self):
         """
         Maximum velocity
@@ -404,14 +411,14 @@ class Model(object):
         # The CFL condtion is then given by
         # dt <= coeff * h / (max(velocity))
         dt = self._cfl_coeff * np.min(self.spacing) / (self._thomsen_scale*self._max_vp)
-        dt = self.dtype("%.3e" % (self.dt_scale * dt))
+        dt = self.dtype("%.3e" % dt)
         if self.dt:
             if self.dt > dt:
                 warnings.warn("Provided dt=%s is bigger than maximum stable dt %s "
                               % (self.dt, dt))
             else:
                 return self.dtype("%.3e" % self.dt)
-        return self.dtype("%.2e" % dt)
+        return dt
 
     @property
     def dm(self):
@@ -503,9 +510,10 @@ class EmptyModel(object):
     This Model should not be used for propagation.
     """
 
-    def __init__(self, tti, visco, spacing, fs, space_order, p_params):
+    def __init__(self, tti, visco, elastic, spacing, fs, space_order, p_params):
         self.is_tti = tti
         self.is_viscoacoustic = visco
+        self.is_elastic = elastic
         self.spacing = spacing
         self.fs = fs
         if fs:
