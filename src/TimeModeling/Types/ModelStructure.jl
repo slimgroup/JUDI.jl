@@ -4,7 +4,7 @@
 # Author Mathias Louboutin
 # Date: 2017-2022
 #
-export Model, PhysicalParameter, get_dt
+export Model, PhysicalParameter, get_dt, size, origin, spacing, nbl
 
 abstract type AbstractModel{T, N} end
 
@@ -19,6 +19,10 @@ size(G::DiscreteGrid) = G.n
 origin(G::DiscreteGrid) = G.o
 spacing(G::DiscreteGrid) = G.d
 nbl(G::DiscreteGrid) = G.nb
+
+size(G::DiscreteGrid, i::Int) = G.n[i]
+origin(G::DiscreteGrid, i::Int) = G.o[i]
+spacing(G::DiscreteGrid, i::Int) = G.d[i]
 
 ###################################################################################################
 # PhysicalParameter abstract vector
@@ -157,6 +161,11 @@ setindex!(A::PhysicalParameter{T, N}, v, i::Int) where {T<:AbstractFloat, N} = (
 
 # Constructiors by copy
 similar(x::PhysicalParameter{T, N}) where {T<:AbstractFloat, N} = PhysicalParameter(x.n, x.d, x.o, fill!(similar(x.data), 0))
+
+function similar(p::PhysicalParameter{T, N}, ::Type{nT}, s::AbstractSize) where {T, N, nT}
+    nn = tuple(last.(sort(collect(s.dims), by = x->x[1]))...)
+    return PhysicalParameter(nn, p.d, p.o, zeros(nT, nn))
+end
 
 copy(x::PhysicalParameter{T, N}) where {T<:AbstractFloat, N} = PhysicalParameter(x.n, x.d, x.o, copy(x.data))
 unsafe_convert(::Type{Ptr{T}}, p::PhysicalParameter{T, N}) where {T<:AbstractFloat, N} = unsafe_convert(Ptr{T}, p.data)
@@ -373,23 +382,23 @@ function Model(n, d, o, m::Array{mT, N}; epsilon=nothing, delta=nothing, theta=n
         if any(!isnothing(p) for p in [epsilon, delta, theta, phi])
             @warn "Thomsen parameters no supported for elastic (vs) ignoring them"
         end
-        qp = PhysicalParameter(convert(Array{T, N}, qp), n, d, o)
+        qp = isa(qp, Array) ? PhysicalParameter(convert(Array{T, N}, qp), n, d, o)  : _scalar(qp, T)
         m = PhysicalParameter(m, n, d, o)
         rho = isa(rho, Array) ? PhysicalParameter(convert(Array{T, N}, rho), n, d, o) : _scalar(rho, T)
         return ViscIsoModel{T, N}(G, m, rho, qp)
     end
 
     ## TTI
-    if !isnothing(qp)
+    if !isnothing(epsilon) || !isnothing(delta) || !isnothing(theta) || !isnothing(phi)
         if any(!isnothing(p) for p in [vs, qp])
             @warn "Elastic (vs) and attenuation (qp) not supported for TTI/VTI"
         end
         m = PhysicalParameter(m, n, d, o)
         rho = isa(rho, Array) ? PhysicalParameter(convert(Array{T, N}, rho), n, d, o) : _scalar(rho, T)
-        epsilon = isa(rho, Array) ? PhysicalParameter(convert(Array{T, N}, epsilon), n, d, o) : _scalar(epsilon, T, 0)
-        delta = isa(rho, Array) ? PhysicalParameter(convert(Array{T, N}, delta), n, d, o) : _scalar(delta, T, 0)
-        theta = isa(rho, Array) ? PhysicalParameter(convert(Array{T, N}, theta), n, d, o) : _scalar(theta, T, 0)
-        phi = isa(rho, Array) ? PhysicalParameter(convert(Array{T, N}, phi), n, d, o) : _scalar(phi, T, 0)
+        epsilon = isa(epsilon, Array) ? PhysicalParameter(convert(Array{T, N}, epsilon), n, d, o) : _scalar(epsilon, T, 0)
+        delta = isa(delta, Array) ? PhysicalParameter(convert(Array{T, N}, delta), n, d, o) : _scalar(delta, T, 0)
+        theta = isa(theta, Array) ? PhysicalParameter(convert(Array{T, N}, theta), n, d, o) : _scalar(theta, T, 0)
+        phi = isa(phi, Array) ? PhysicalParameter(convert(Array{T, N}, phi), n, d, o) : _scalar(phi, T, 0)
         return TTIModel{T, N}(G, m, rho, epsilon, delta, theta, phi)
     end
 
@@ -406,6 +415,10 @@ size(m::AbstractModel) = size(m.G)
 origin(m::AbstractModel) = origin(m.G)
 spacing(m::AbstractModel) = spacing(m.G)
 nbl(m::AbstractModel) = nbl(m.G)
+
+size(m::AbstractModel, i::Int) = size(m.G, i)
+origin(m::AbstractModel, i::Int) = origin(m.G, i)
+spacing(m::AbstractModel, i::Int) = spacing(m.G, i)
 
 eltype(::AbstractModel{T, N}) where {T, N} = T
 

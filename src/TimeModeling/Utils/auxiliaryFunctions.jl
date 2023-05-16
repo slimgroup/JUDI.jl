@@ -27,7 +27,7 @@ function devito_model(model::AbstractModel, options::JUDIOptions, dm)
     # Set up Python model structure
     dm = pad_array(dm, pad)
     physpar = Dict((n, isa(v, PhysicalParameter) ? pad_array(v.data, pad) : v) for (n, v) in _params(model))
-    
+
     modelPy = pylock() do 
         pycall(pm."Model", PyObject, origin(model), spacing(model), size(model), fs=options.free_surface,
                    nbl=nbl(model), space_order=options.space_order, dt=options.dt_comp, dm=dm;
@@ -157,20 +157,20 @@ function limit_model_to_receiver_area(srcGeometry::Geometry, recGeometry::Geomet
     end
 
     # add buffer zone if possible
-    min_x = max(origin(model)[1], min_x - buffer) + 1
-    max_x = min(origin(model)[1] + spacing(model)[1]*(size(model)[1]-1), max_x + buffer)
+    min_x = max(origin(model, 1), min_x - buffer) + 1
+    max_x = min(origin(model, 1) + spacing(model, 1)*(size(model, 1)-1), max_x + buffer)
     if ndim == 3
-        min_y = max(origin(model)[2], min_y - buffer)
-        max_y = min(origin(model)[2] + spacing(model)[2]*(size(model)[2]-1), max_y + buffer)
+        min_y = max(origin(model, 2), min_y - buffer)
+        max_y = min(origin(model, 2) + spacing(model, 2)*(size(model, 2)-1), max_y + buffer)
     end
 
     # extract part of the model that contains sources/receivers
-    nx_min = Int((min_x-origin(model)[1]) ÷ spacing(model)[1]) + 1
-    nx_max = Int((max_x-origin(model)[1]) ÷ spacing(model)[1]) + 1
+    nx_min = Int((min_x-origin(model, 1)) ÷ spacing(model, 1)) + 1
+    nx_max = Int((max_x-origin(model, 1)) ÷ spacing(model, 1)) + 1
     inds = [max(1, nx_min):nx_max, 1:size(model)[end]]
     if ndim == 3
-        ny_min = Int((min_y-origin(model)[2]) ÷ spacing(model)[2]) + 1
-        ny_max = Int((max_y-origin(model)[2]) ÷ spacing(model)[2]) + 1
+        ny_min = Int((min_y-origin(model, 2)) ÷ spacing(model, 2)) + 1
+        ny_max = Int((max_y-origin(model, 2)) ÷ spacing(model, 2)) + 1
         insert!(inds, 2, max(1, ny_min):ny_max)
     end
 
@@ -201,7 +201,7 @@ Parameters
 function remove_out_of_bounds_receivers(recGeometry::Geometry, model::AbstractModel)
 
     # Only keep receivers within the model
-    xmin, xmax = origin(model)[1], origin(model)[1] + (size(model)[1] - 1)*spacing(model)[1]
+    xmin, xmax = origin(model, 1), origin(model, 1) + (size(model)[1] - 1)*spacing(model, 1)
     if typeof(recGeometry.xloc[1]) <: Array
         idx_xrec = findall(x -> xmax >= x >= xmin, recGeometry.xloc[1])
         recGeometry.xloc[1] = recGeometry.xloc[1][idx_xrec]
@@ -211,7 +211,7 @@ function remove_out_of_bounds_receivers(recGeometry::Geometry, model::AbstractMo
 
     # For 3D shot records, scan also y-receivers
     if length(size(model)) == 3 && typeof(recGeometry.yloc[1]) <: Array
-        ymin, ymax = origin(model)[2], origin(model)[2] + (size(model)[2] - 1)*spacing(model)[2]
+        ymin, ymax = origin(model, 2), origin(model, 2) + (size(model, 2) - 1)*spacing(model, 2)
         idx_yrec = findall(x -> ymax >= x >= ymin, recGeometry.yloc[1])
         recGeometry.xloc[1] = recGeometry.xloc[1][idx_yrec]
         recGeometry.yloc[1] = recGeometry.yloc[1][idx_yrec]
@@ -233,7 +233,7 @@ Parameters
 function remove_out_of_bounds_receivers(recGeometry::Geometry, recData::Matrix{T}, model::AbstractModel) where T
 
     # Only keep receivers within the model
-    xmin, xmax = origin(model)[1], origin(model)[1] + (size(model)[1] - 1)*spacing(model)[1]
+    xmin, xmax = origin(model, 1), origin(model, 1) + (size(model)[1] - 1)*spacing(model, 1)
     if typeof(recGeometry.xloc[1]) <: Array
         idx_xrec = findall(x -> xmax >= x >= xmin, recGeometry.xloc[1])
         recGeometry.xloc[1] = recGeometry.xloc[1][idx_xrec]
@@ -243,7 +243,7 @@ function remove_out_of_bounds_receivers(recGeometry::Geometry, recData::Matrix{T
 
     # For 3D shot records, scan also y-receivers
     if length(size(model)) == 3 && typeof(recGeometry.yloc[1]) <: Array
-        ymin, ymax = origin(model)[2], origin(model)[2] + (size(model)[2] - 1)*spacing(model)[2]
+        ymin, ymax = origin(model, 2), origin(model, 2) + (size(model, 2) - 1)*spacing(model, 2)
         idx_yrec = findall(x -> ymax >= x >= ymin, recGeometry.yloc[1])
         recGeometry.yloc[1] = recGeometry.yloc[1][idx_yrec]
         recGeometry.zloc[1] = recGeometry.zloc[1][idx_yrec]
@@ -314,6 +314,7 @@ function calculate_dt(model::Union{ViscIsoModel{T, N}, IsoModel{T, N}}; dt=nothi
         return dt
     end
     m = minimum(model.m)
+
     modelPy = pylock() do
         pycall(pm."Model", PyObject, origin=origin(model), spacing=spacing(model), shape=ntuple(_ -> 11, N),
                m=m, nbl=0)
@@ -325,8 +326,9 @@ function calculate_dt(model::IsoElModel{T, N}; dt=nothing) where {T, N}
     if ~isnothing(dt)
         return dt
     end
-    lam = maximum(model.lambda)
+    lam = maximum(model.lam)
     mu = maximum(model.mu)
+
     modelPy = pylock() do
         pycall(pm."Model", PyObject, origin=origin(model), spacing=spacing(model), shape=ntuple(_ -> 11, N),
                lam=lam, mu=mu, nbl=0)
@@ -339,6 +341,7 @@ function calculate_dt(model::TTIModel{T, N}; dt=nothing) where {T, N}
         return dt
     end
     m = minimum(model.m)
+
     epsilon = maximum(model.epsilon)
     modelPy = pylock() do
         pycall(pm."Model", PyObject, origin=origin(model), spacing=spacing(model), shape=ntuple(_ -> 11, N),
@@ -368,8 +371,8 @@ function get_computational_nt(srcGeometry, recGeometry, model::AbstractModel; dt
     nt = Array{Integer}(undef, nsrc)
     dtComp = calculate_dt(model; dt=dt)
     for j=1:nsrc
-        ntRec = Int(recGeometry.dt[j]*(recGeometry.nt[j]-1) ÷ dtComp) + 1
-        ntSrc = Int(srcGeometry.dt[j]*(srcGeometry.nt[j]-1) ÷ dtComp) + 1
+        ntRec = length(0:dtComp:(dtComp*ceil(recGeometry.t[j]/dtComp)))
+        ntSrc = length(0:dtComp:(dtComp*ceil(srcGeometry.t[j]/dtComp)))
         nt[j] = max(ntRec, ntSrc)
     end
     return nt
@@ -386,15 +389,11 @@ and receiver geometries of type `Geometry` and `model` is the model structure of
 """
 function get_computational_nt(Geometry, model::AbstractModel; dt=nothing)
     # Determine number of computational time steps
-    if typeof(Geometry) <: GeometryOOC
-        nsrc = length(Geometry.container)
-    else
-        nsrc = length(Geometry.xloc)
-    end
+    nsrc = get_nsrc(Geometry)
     nt = Array{Integer}(undef, nsrc)
     dtComp = calculate_dt(model; dt=dt)
     for j=1:nsrc
-        nt[j] = Int(Geometry.dt[j]*(Geometry.nt[j]-1) ÷ dtComp) + 1
+        nt[j] = length(0:dtComp:(dtComp*ceil(Geometry.t[j]/dtComp)))
     end
     return nt
 end
@@ -500,22 +499,7 @@ Parameters
 * `geometry_in`: Geometry on which `data` is defined.
 * `dt_new`: New time sampling rate to interpolate onto.
 """
-function time_resample(data::AbstractArray{Float32, N}, geometry_in::Geometry, dt_new::AbstractFloat) where N
-    @assert N<=2
-    if dt_new==geometry_in.dt[1]
-        return data, geometry_in
-    else
-        geometry = deepcopy(geometry_in)
-        timeAxis = 0f0:geometry.dt[1]:geometry.t[1]
-        timeInterp = 0f0:dt_new:geometry.t[1]
-        dataInterp = SincInterpolation(data, timeAxis, timeInterp)
-
-        geometry.dt[1] = dt_new
-        geometry.nt[1] = length(timeInterp)
-        geometry.t[1] = (geometry.nt[1] - 1)*geometry.dt[1]
-        return dataInterp, geometry
-    end
-end
+time_resample(data::AbstractArray{T, N}, G_in::Geometry, dt_new::AbstractFloat) where {T<:AbstractFloat, N} = time_resample(data, G_in.dt[1], dt_new, G_in.t[1])
 
 
 """
@@ -529,18 +513,20 @@ Parameters
 * `dt_in`: Time sampling of input
 * `dt_new`: New time sampling rate to interpolate onto.
 """
-function time_resample(data::Array, dt_in::T1, dt_new::T2) where {T1<:AbstractFloat, T2<:AbstractFloat}
+function time_resample(data::AbstractArray{T, N}, dt_in::T, dt_new::T, t::T) where {T<:AbstractFloat, N}
 
     if dt_new==dt_in
         return data
     else
         nt = size(data, 1)
-        timeAxis = 0:dt_in:(nt-1)*dt_in
-        timeInterp = 0:dt_new:(nt-1)*dt_in
+        timeAxis = 0:dt_in:(dt_in*ceil(t/dt_in))
+        timeInterp = 0:dt_new:(dt_new*ceil(t/dt_new))
         dataInterp = Float32.(SincInterpolation(data, timeAxis, timeInterp))
         return dataInterp
     end
 end
+
+time_resample(data::AbstractArray{T, N}, dt_in::Number, dt_new::Number, t::Number) where {T<:AbstractFloat, N} = time_resample(data, T(dt_in), T(dt_new), T(t))
 
 
 """
@@ -554,17 +540,7 @@ Parameters
 * `geometry_out`: Geometry on which `data` is to be interpolated.
 * `dt_in`: Time sampling rate of the `data.`
 """
-function time_resample(data::AbstractArray{Float32, N}, dt_in::AbstractFloat, geometry_out::Geometry) where N
-    @assert N<=2
-    if dt_in == geometry_out.dt[1]
-        return data
-    else
-        timeAxis = 0f0:dt_in:geometry_out.t[1]
-        timeInterp = 0f0:geometry_out.dt[1]:geometry_out.t[1]
-        out = SincInterpolation(data, timeAxis, timeInterp)
-        return out
-    end
-end
+time_resample(data::AbstractArray{Float32, N}, dt_in::AbstractFloat, G_out::Geometry) where N = time_resample(data, dt_in, G_out.dt[1], G_out.t[1])
 
 """
     generate_distribution(x; src_no=1)

@@ -36,7 +36,7 @@ matvec_T(D::DepthScaling{T, N, K}, x) where {T, N, K} = matvec(D, x)
 conj(I::DepthScaling{T}) where T = I
 adjoint(I::DepthScaling{T}) where T = I
 transpose(I::DepthScaling{T}) where T = I
-inv(I::DepthScaling{T, N, K}) where {T, N, K} = DepthScaling{Float32, N, -K}(I.depth)
+inv(I::DepthScaling{T, N, K}) where {T, N, K} = DepthScaling{Float32, N, -K}(I.m, I.depth)
 
 """
     TopMute{T, N, Nw}

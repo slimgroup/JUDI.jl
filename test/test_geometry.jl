@@ -14,6 +14,11 @@ datapath = joinpath(dirname(pathof(JUDI)))*"/../data/"
         ysrc = convertToCell(range(0f0, stop=0f0, length=nsrc))
         zsrc = convertToCell(range(20f0, stop=20f0, length=nsrc))
 
+        # Error handling
+        @test_throws JUDI.GeometryException Geometry(xsrc, ysrc, zsrc; dt=.75f0, t=70f0)
+        @test_throws JUDI.GeometryException Geometry(xsrc, ysrc, zsrc)
+
+        # Geometry for testing
         geometry =  Geometry(xsrc, ysrc, zsrc; dt=2f0, t=1000f0)
         geometry_t =  Geometry(xsrc, ysrc, zsrc; dt=2, t=1000)
         @test geometry_t == geometry

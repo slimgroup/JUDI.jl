@@ -232,8 +232,13 @@ class Model(object):
         either density or inverse density is setup.
         """
         if rho is not None:
-            self.rho = self._gen_phys_param(rho, 'rho', so)
-            self.irho = 1 / self.rho
+            rm, rM = np.amin(rho), np.amax(rho)
+            if rm/rM > .1:
+                self.irho = self._gen_phys_param(np.reciprocal(rho), 'irho', so)
+                self.rho = 1 / self.irho
+            else:
+                self.rho = self._gen_phys_param(rho, 'rho', so)
+                self.irho = 1 / self.rho
         elif b is not None:
             self.irho = self._gen_phys_param(b, 'irho', so)
         else:
@@ -249,8 +254,9 @@ class Model(object):
         """
         Return all set physical parameters and update to input values if provided
         """
-        known = [getattr(self, i) for i in self.physical_parameters]
-        params = {i.name: kwargs.get(i.name, i) or i for i in known}
+        params = {i: kwargs.get(i, getattr(self, i)) for i in self.physical_parameters
+                  if isinstance(getattr(self, i), Function)}
+
         if not kwargs.get('born', False):
             params.pop('dm', None)
         return params
@@ -261,12 +267,12 @@ class Model(object):
 
     @switchconfig(log_level='ERROR')
     def _gen_phys_param(self, field, name, space_order, is_param=False,
-                        default_value=0, func=lambda x: x):
+                        default_value=0):
         """
         Create symbolic object an initiliaze its data
         """
         if field is None:
-            return func(default_value)
+            return default_value
         if isinstance(field, np.ndarray) and (name == 'm' or
                                               np.min(field) != np.max(field)):
             if field.shape == self.shape:
@@ -279,7 +285,7 @@ class Model(object):
                                     allocator=ExternalAllocator(field),
                                     initializer=lambda x: None, parameter=is_param)
         else:
-            return func(np.min(field))
+            return np.amin(field)
         self._physical_parameters.append(name)
         return function
 
@@ -386,18 +392,18 @@ class Model(object):
         - https://library.seg.org/doi/pdf/10.1190/1.1444605 for the acoustic case
         """
         # Elasic coefficient (see e.g )
-        if 'lam' in self._physical_parameters:
-            coeffs = fd_w(1, range(-self.space_order//2+1, self.space_order//2+1), .5)
+        if self.is_elastic:
+            coeffs = fd_w(1, range(-4, 5), .5)
             c_fd = sum(np.abs(coeffs[-1][-1])) / 2
             return np.sqrt(self.dim) / self.dim / c_fd
         a1 = 4  # 2nd order in time
-        coeffs = fd_w(2, range(-self.space_order, self.space_order+1), 0)[-1][-1]
+        coeffs = fd_w(2, range(-8, 9), 0)[-1][-1]
         return np.sqrt(a1/float(self.grid.dim * sum(np.abs(coeffs))))
 
     @property
     def _thomsen_scale(self):
         # Update scale for tti
-        if 'epsilon' in self._physical_parameters:
+        if self.is_tti:
             return np.sqrt(1 + 2 * getmax(self.epsilon))
         return 1
 

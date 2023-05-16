@@ -41,7 +41,6 @@ Base.merge!(S1::AbstractSize, S2::AbstractSize) = merge!(S1.dims, S2.dims)
 
 Base.repr(S::AbstractSize) = "($(join(keys(S.dims), " * ")))"
 
-similar(x::judiMultiSourceVector, ::Type{ET}, dims::AbstractSize) where ET = similar(x, ET)
 similar(x::AbstractVector, ::Type{ET}, dims::AbstractSize) where ET = similar(x, ET, Int(dims))
 
 # Update size
@@ -68,5 +67,3 @@ time_space_src(nsrc::Integer, nt) = AbstractSize((:src, :time, :x, :y, :z), (nsr
 space_src(nsrc::Integer) = AbstractSize((:src, :x, :y, :z), (nsrc, 0, 0, 0))
 
 time_src(nsrc::Integer, nt) = AbstractSize((:src, :time), (nsrc, nt))
-
-rec_space(G::Geometry) = AbstractSize((:src, :time, :rec), (get_nsrc(G), G.nt, G.nrec))

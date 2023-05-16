@@ -4,6 +4,10 @@
 # Updated, December 2020, Mathias Louboutin, mlouboutin3@gatech.edu
 
 #############################################################################
+# Basics
+include("LinearOperators/basics.jl")
+
+#############################################################################
 # Containers
 include("Types/ModelStructure.jl")    # model container
 include("Types/GeometryStructure.jl") # source or receiver setup, recording time and sampling
@@ -29,7 +33,6 @@ include("Modeling/losses.jl")
 
 #############################################################################
 # Linear operators
-include("LinearOperators/basics.jl")
 include("LinearOperators/lazy.jl")
 include("LinearOperators/operators.jl")
 include("LinearOperators/callable.jl")

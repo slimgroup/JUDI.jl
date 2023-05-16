@@ -67,14 +67,15 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     kw.update(fields)
     kw.update(model.physical_params())
 
-    if return_op:
-        return op, u, rcv, kw
-
-    summary = op(**kw)
-
     # Output
     rout = wr or rcv
     uout = dft_modes or (u_save if t_sub > 1 else u)
+
+    if return_op:
+        return op, uout, rout, kw
+
+    summary = op(**kw)
+
     if norm_wf:
         return rout, uout, nv2.data[0], I, summary
     return rout, uout, I, summary
@@ -140,14 +141,33 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     and related quantities.
     """
     nt = wavelet.shape[0]
-    # Setting wavefield
+
+    # Wavefields
     u = wavefield(model, space_order, save=save, nt=nt, t_sub=t_sub, fw=fw)
     ul = wavefield(model, space_order, name="l", fw=fw)
+
+    # Illumination
+    I = illumination(u, illum)
 
     # Setup source and receiver
     snl, rnl = src_rec(model, u, rec_coords=rcv_coords if nlind else None,
                        src_coords=src_coords, wavelet=wavelet)
     _, rcvl = src_rec(model, ul, rec_coords=rcv_coords, nt=nt)
+    outrec = (rcvl, rnl) if nlind else rcvl
+
+    # If the perturbation is zero, run only the forward and return zero data
+    if getattr(model, 'dm', 0) == 0:
+        op, u, _, kw = forward(model, src_coords, rcv_coords, wavelet,
+                               space_order=space_order, save=save,
+                               qwf=qwf, return_op=True, freq_list=freq_list,
+                               dft_sub=dft_sub, ws=ws, t_sub=t_sub, f0=f0, illum=illum)
+
+        kw.update(fields_kwargs(rnl, I))
+        if return_op:
+            return op, u, outrec, kw
+
+        summary = op(**kw)
+        return outrec, u, I, summary
 
     # Create operator and run
     op = born_op(model.physical_parameters, model.is_tti, model.is_viscoacoustic,
@@ -161,9 +181,6 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     # Expression for saving wavefield if time subsampling is used
     u_save = wavefield_subsampled(model, u, nt, t_sub)
 
-    # Illumination
-    I = illumination(u, illum)
-
     # On-the-fly Fourier
     dft_m, fr = fourier_modes(u, freq_list)
 
@@ -174,7 +191,6 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     kw.update(fields_kwargs(u, ul, snl, rnl, rcvl, u_save, dft_m, fr, ws, wt, f0q, I))
     kw.update(model.physical_params(born=True))
 
-    outrec = (rcvl, rnl) if nlind else rcvl
     if return_op:
         return op, u, outrec, kw
 

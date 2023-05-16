@@ -53,9 +53,7 @@ ftol = 1f-5
 
         # Subsampling
         inds = [3:11 for i=1:nd]
-        @show typeof.(inds)
         b = p[inds...]
-        @show b
         @test b.o == tuple([o+d*2 for (o,d)=zip(p.o,p.d)]...)
         @test b.n == tuple([9 for i=1:nd]...)
         @test b.d == p.d

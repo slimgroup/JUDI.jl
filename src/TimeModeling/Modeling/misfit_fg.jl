@@ -3,7 +3,7 @@ export fwi_objective, lsrtm_objective, fwi_objective!, lsrtm_objective!
 
 function multi_src_fg(model_full::AbstractModel, source::judiVector, dObs::judiVector, dm, options::JUDIOptions, nlind::Bool, lin::Bool,
                       misfit::Function)
-# Setup time-domain linear or nonlinear foward and adjoint modeling and interface to OPESCI/devito
+    # Setup time-domain linear or nonlinear foward and adjoint modeling and interface to devito
 
     # assert this is for single source LSRTM
     @assert source.nsrc == 1 "Multiple sources are used in a single-source fwi_objective"
@@ -29,8 +29,8 @@ function multi_src_fg(model_full::AbstractModel, source::judiVector, dObs::judiV
     dtComp = convert(Float32, modelPy."critical_dt")
 
     # Extrapolate input data to computational grid
-    qIn = time_resample(make_input(source), source.geometry, dtComp)[1]
-    dObserved = time_resample(make_input(dObs), dObs.geometry, dtComp)[1]
+    qIn = time_resample(make_input(source), source.geometry, dtComp)
+    dObserved = time_resample(make_input(dObs), dObs.geometry, dtComp)
 
     # Set up coordinates
     src_coords = setup_grid(source.geometry, model.n)  # shifts source coordinates by origin

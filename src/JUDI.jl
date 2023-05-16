@@ -85,8 +85,8 @@ _devices = []
 
 # Utility for data loading
 JUDI_DATA = joinpath(JUDIPATH, "../data")
-ftp_data(ftp::String, name::String) = run(`curl -L $(ftp) --create-dirs -o $(JUDI.JUDI_DATA)/$(name)`)
-ftp_data(ftp::String) = run(`curl -L $(ftp) --create-dirs -o $(JUDI.JUDI_DATA)/$(split(ftp, "/")[end])`)
+ftp_data(ftp::String, name::String) = Base.Downloads().download("$(ftp)/$(name)", "$(JUDI.JUDI_DATA)/$(name)")
+ftp_data(ftp::String) = Base.Downloads().download(ftp, "$(JUDI.JUDI_DATA)/$(split(ftp, "/")[end])")
 
 # Some usefull types
 const RangeOrVec = Union{AbstractRange, Vector}
