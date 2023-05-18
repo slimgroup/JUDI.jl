@@ -201,7 +201,11 @@ def elastic_kernel(model, v, tau, fw=True, q=None):
         raise NotImplementedError("Only forward modeling for the elastic equation")
 
     # Lame parameters
-    lam, mu, b = model.lam, model.mu, model.irho
+    lam, b = model.lam, model.irho
+    try:
+        mu = model.mu
+    except AttributeError:
+        mu = 0
 
     # Particle velocity
     eq_v = v.dt - b * div(tau)

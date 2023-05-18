@@ -435,6 +435,6 @@ check_geom(geom::Geometry, data::SeisCon) = _check_geom(geom.nt[1], data.ns)
 _check_geom(nt::Integer, ns::Integer) = nt == ns || _geom_missmatch(nt, ns)
 _geom_missmatch(nt::Integer, ns::Integer) = throw(GeometryException("Geometry's number of samples doesn't match the data: $(nt), $(ns)"))
 
-check_time(dt::Number, t::Number, segy::Bool=false) = (t/dt == div(t, dt)) || throw(GeometryException("Recording time t=$(t) not divisible by sampling rate dt=$(dt)"))
+check_time(dt::Number, t::Number, segy::Bool=false) = (t/dt == div(t, dt, RoundNearest)) || throw(GeometryException("Recording time t=$(t) not divisible by sampling rate dt=$(dt)"))
 check_time(::Nothing, ::Nothing, segy::Bool=false) = segy || throw(GeometryException("Recording time `t` and sampling rate `dt` must be provided"))
 check_time(dt::AbstractVector, t::AbstractVector, segy::Bool=false) = check_time.(dt, t)

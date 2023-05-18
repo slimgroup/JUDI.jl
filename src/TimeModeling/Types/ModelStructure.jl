@@ -371,7 +371,7 @@ function Model(n, d, o, m::Array{mT, N}; epsilon=nothing, delta=nothing, theta=n
         if any(!isnothing(p) for p in [epsilon, delta, theta, phi])
             @warn "Thomsen parameters no supported for elastic (vs) ignoring them"
         end
-        lambda = PhysicalParameter(convert(Array{T, N}, (m.^(-1) - T(2) * vs.^2) .* rho), n, d, o)
+        lambda = PhysicalParameter(convert(Array{T, N}, (m.^(-1) .- T(2) .* vs.^2) .* rho), n, d, o)
         mu = PhysicalParameter(convert(Array{T, N}, vs.^2 .* rho), n, d, o)
         b = isa(rho, Array) ? PhysicalParameter(convert(Array{T, N}, 1 ./ rho), n, d, o) : _scalar(rho, T)
         return IsoElModel{T, N}(G, lambda, mu, b)
