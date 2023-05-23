@@ -6,13 +6,13 @@ The processing is partly based on [Rodrigo Morelatto work](https://github.com/rm
 
 The processing is pretty straightforward:
 
-0. geometry correction
-1. deghosting
-2. gain
-3. turning waves muting
-4. turning waves supression using dip filter (not necessary but good for Madagascar use experience)
-5. multiples supression using Radon transform
-6. automatic velocity picking
-7. export to segy
+0. Geometry correction
+1. Deghosting
+2. Gain
+3. Turning waves muting
+4. Turning waves supression using dip filter (not necessary but good for Madagascar use experience)
+5. Multiples supression using Radon transform
+6. Automatic velocity picking
+7. Export to segy
 
 The result of processing (exported to segy) is used by JUDI while RTM/LSRTM.

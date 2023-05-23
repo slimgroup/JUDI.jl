@@ -5,7 +5,6 @@
 # Pkg.add("Interpolations")
 # Pkg.add("DelimitedFiles")
 # Pkg.add("Distributed")
-# Pkg.add("DSP")
 # Pkg.add("SlimOptim")
 # Pkg.add("NLopt")
 # Pkg.add("HDF5")
@@ -13,19 +12,21 @@
 # Pkg.add("Plots")
 # Pkg.add("SetIntersectionProjection")
 
-using Statistics, Random, LinearAlgebra, Interpolations, DelimitedFiles, Distributed, DSP
+using Statistics, Random, LinearAlgebra, Interpolations, DelimitedFiles, Distributed
 using JUDI, NLopt, HDF5, SegyIO, Plots
 
+include("$(@__DIR__)/../utils.jl")
+
 ############# INITIAL DATA #############
-modeling_type = "acoustic"  # scalar, acoustic
+modeling_type = "bulk"  # slowness, bulk
 
 prestk_dir = "$(@__DIR__)/../proc/"
 prestk_file = "s_deghost_gain_mute_dip_radon.sgy"
 
 dir_out = "$(@__DIR__)/"
 
-# set frequency in that path to get the latest updated model
-model_file = "$(@__DIR__)/../fwi/fwi_$(modeling_type)/0.005Hz/model.h5"
+# choose the most accurate model
+model_file = "$(@__DIR__)/../fwi/fwi_$(modeling_type)/0.005Hz/model 10.h5"
 
 # use original wavelet file 
 # wavelet_file = "$(@__DIR__)/../FarField.dat" # dt=1, skip=25
@@ -67,17 +68,14 @@ max_cdp_x = (max_src_x+max_grp_x)/2f0
 min_x = minimum([min_src_x, min_grp_x])
 max_x = maximum([max_src_x, max_grp_x])
 
-# helpful functions
-rho_from_slowness(m) = 0.23.*(sqrt.(1f0 ./ m).*1000f0).^0.25
-
 # Load starting model (mlog - slowness built with Vs from logs; mvsp - built from VSP)
 n, d, o, m0 = read(h5open(model_file, "r"), "n", "d", "o", "m")
 n = Tuple(Int64(i) for i in n)
 d = Tuple(Float32(i) for i in d)
 o = Tuple(Float32(i) for i in o)
-if modeling_type == "scalar"
+if modeling_type == "slowness"
     model0 = Model(n, d, o, m0)
-elseif modeling_type == "acoustic"
+elseif modeling_type == "bulk"
     rho0 = rho_from_slowness(m0)
     model0 = Model(n, d, o, m0, rho=rho0)
 end
@@ -86,20 +84,15 @@ x = (o[1]:d[1]:o[1]+(n[1]-1)*d[1])./1000f0
 z = (o[2]:d[2]:o[2]+(n[2]-1)*d[2])./1000f0
 
 global seabed_ind = Int.(round.(seabed./d[2]))
-if modeling_type == "scalar"
+if modeling_type == "slowness"
     model0.m[:,1:seabed_ind] .= (1/vwater)^2
-elseif modeling_type == "acoustic"
+elseif modeling_type == "bulk"
     model0.m[:,1:seabed_ind] .= (1/vwater)^2
     model0.b[:,1:seabed_ind] .= 1f0/rhowater
 end
 
 # Set up wavelet and source vector
 src_geometry = Geometry(container; key = "source", segy_depth_key = segy_depth_key_src)
-
-# sampling frequency
-fs = 1000f0/src_geometry.dt[1]
-# Nyquist frequency
-f_nyq = fs/2f0
 
 # setup wavelet
 wavelet_raw = readdlm(wavelet_file, skipstart=wavelet_skip_start)
@@ -108,14 +101,7 @@ wavelet = Matrix{Float32}(undef,src_geometry.nt[1],1)
 wavelet[:,1] = itp(0:src_geometry.dt[1]:src_geometry.t[1])
 q = judiVector(src_geometry, wavelet)
 
-############################################## FWI #################################################
-
-grad_mem = 40 # Based on n and CFL condition
-
-mem = Sys.free_memory()/(1024^3)
-t_sub = max(1, ceil(Int, nworkers()*grad_mem/mem))
-@info "modeling_type: $modeling_type"
-@info "subsampling factor: $t_sub"
+############################################## RTM #################################################
 
 # JUDI options
 jopt = JUDI.Options(
@@ -123,9 +109,7 @@ jopt = JUDI.Options(
     limit_m = true,
     buffer_size = buffer_size,
     optimal_checkpointing=false,
-    IC = "isic",
-    # subsampling_factor=t_sub     # subsampling_factor with space_order set leads to exception (probably bug)
-    )
+    IC = "isic")
 
 # Right-hand preconditioners (model topmute)
 idx_wb = find_water_bottom(reshape(model0.m, model0.n))
@@ -154,33 +138,19 @@ d_obs = Ml[indsrc]*d_obs[indsrc]
 # RTM
 rtm = adjoint(Mr)*adjoint(J[indsrc])*d_obs
 
-rtm_plt = Plots.heatmap(x, z, adjoint(reshape(rtm, model0.n[1], model0.n[2])), c=:bluesreds, 
-    xlims=(x[1],x[end]), 
-    ylims=(z[1],z[end]), yflip=true,
-    clim=(-maximum(rtm)/3f0, maximum(rtm)/3f0),
+data = rtm isa Vector ? rtm : rtm.data
+
+# save RTM as HDF5 and plots
+save_data(x,z,adjoint(reshape(data, model0.n)); 
+    pltfile=dir_out * "RTM_$(modeling_type).png",
     title="RTM",
-    xlabel="Lateral position [km]",
-    ylabel="Depth [km]",
-    dpi=600)
-Plots.savefig(rtm_plt, dir_out * "RTM_$(modeling_type).png")
-
-h5open(dir_out * "rtm_$(modeling_type).h5", "w") do file
-    write(file, 
-        "rtm", reshape(rtm, model0.n), 
-        "x", collect(x), 
-        "z", collect(z), 
-        "v", sqrt.(1f0 ./ reshape(model0.m.data, model0.n)), 
-        "m", reshape(model0.m.data, model0.n), 
-        "o", collect(model0.o), 
-        "n", collect(model0.n), 
-        "d", collect(model0.d),
-        "model_file", model_file,
-        "prestk_file", prestk_file)
-end
-
+    clim=(-maximum(data)/3f0, maximum(data)/3f0),
+    colormap=:bluesreds,
+    h5file=dir_out * "rtm_$(modeling_type).h5",
+    h5openflag="w",
+    h5varname="rtm")
 
 # save RTM as SEGY
-data = rtm isa Vector ? rtm : rtm.data
 block_out = SeisBlock(collect(reshape(data, model0.n)'))
 set_header!(block_out, "dt", Int16(round(z[2]*1e6)))
 set_header!(block_out, "CDP", collect(1:size(data)[1]))
