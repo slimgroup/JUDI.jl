@@ -26,7 +26,7 @@ end
   
 matvec(D::DepthScaling{T, N, K}, x::Vector{T}) where {T, N, K} = vec(reshape(x, :, size(D.depth, N)) .* D.depth[:]'.^K)
 matvec(D::DepthScaling{T, N, K}, x::AbstractArray{T, N}) where {T, N, K} = x .* D.depth.^K
-matvec(D::DepthScaling{T, N, K}, x::PhysicalParameter{T}) where {T, N, K} = PhysicalParameter{T}(x.n, x.d, x.o, x.data .* D.depth.^K)
+matvec(D::DepthScaling{T, N, K}, x::PhysicalParameter{T}) where {T, N, K} = PhysicalParameter(x.n, x.d, x.o, x.data .* D.depth.^K)
 matvec(D::DepthScaling{T, N, K}, x::judiWeights{T}) where {T, N, K} = judiWeights{T}(x.nsrc, [matvec(D, x.data[s]) for s=1:x.nsrc])
 
 # Diagonal operator, self-adjoint
@@ -36,7 +36,7 @@ matvec_T(D::DepthScaling{T, N, K}, x) where {T, N, K} = matvec(D, x)
 conj(I::DepthScaling{T}) where T = I
 adjoint(I::DepthScaling{T}) where T = I
 transpose(I::DepthScaling{T}) where T = I
-inv(I::DepthScaling{T, N, K}) where {T, N, K} = DepthScaling{Float32, N, -K}(I.depth)
+inv(I::DepthScaling{T, N, K}) where {T, N, K} = DepthScaling{Float32, N, -K}(I.m, I.depth)
 
 """
     TopMute{T, N, Nw}
@@ -244,7 +244,7 @@ function compute_illum(model::AbstractModel, mode::Symbol)
 end
 
 
-function _track_illum(old_m::Model, new_m::Model)
+function _track_illum(old_m::AbstractModel, new_m::AbstractModel)
     if (objectid(old_m) ∈ keys(_illums)) && (objectid(new_m) ∉ keys(_illums))
         _illums[objectid(new_m)] = _illums[objectid(old_m)]
     end

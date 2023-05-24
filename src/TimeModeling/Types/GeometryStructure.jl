@@ -7,6 +7,11 @@ export Geometry, compareGeometry, GeometryIC, GeometryOOC, get_nsrc, n_samples
 
 abstract type Geometry{T} end
 
+mutable struct GeometryException <: Exception
+    msg :: String
+end
+
+
 const CoordT = Union{Vector{T}, Vector{Vector{T}}} where T<:Number
 (::Type{CoordT})(x::Vector{Any}) = rebuild_maybe_jld(x)
 
@@ -49,6 +54,7 @@ n_samples(g::GeometryOOC, nsrc::Integer) = sum([g.nrec[j]*g.nt[j] for j=1:nsrc])
 n_samples(g::GeometryIC, nsrc::Integer) = sum([length(g.xloc[j])*g.nt[j] for j=1:nsrc])
 n_samples(g::Geometry) = n_samples(g, get_nsrc(g))
 
+rec_space(G::Geometry) = AbstractSize((:src, :time, :rec), (get_nsrc(G), G.nt, G.nrec))
 ################################################ Constructors ####################################################################
 
 """
@@ -135,7 +141,8 @@ geometry object `GeometryOOC` without the source/receiver coordinates, but a loo
     src_geometry = Geometry(seis_container; key="source", segy_depth_key="SourceDepth")
 
 """
-function Geometry(xloc, yloc, zloc; dt=[], t=[], nsrc=nothing)
+function Geometry(xloc, yloc, zloc; dt=nothing, t=nothing, nsrc=nothing)
+    check_time(dt, t)
     if any(typeof(x) <: AbstractRange for x=[xloc, yloc, zloc])
         args = [typeof(x) <: AbstractRange ? collect(x) : x for x=[xloc, yloc, zloc]]
         isnothing(nsrc) && (return Geometry(args...; dt=dt, t=t))
@@ -150,12 +157,13 @@ Geometry(xloc::CoordT, yloc::CoordT, zloc::CoordT, dt::Array{T,1}, nt::Array{Int
 # Fallback constructors for non standard input types 
 
 # Constructor if nt is not passed
-function Geometry(xloc::Array{Array{T, 1},1}, yloc::CoordT, zloc::Array{Array{T, 1},1};dt=[],t=[]) where {T<:Real}
+function Geometry(xloc::Array{Array{T, 1},1}, yloc::CoordT, zloc::Array{Array{T, 1},1}; dt=nothing, t=nothing) where {T<:Real}
+    check_time(dt, t)
     nsrc = length(xloc)
     # Check if single dt was passed
-    dtCell = typeof(dt) <: Real ? [T(dt) for j=1:nsrc] : T.(dt)
+    dtCell = isa(dt, Real) ? [T(dt) for j=1:nsrc] : T.(dt)
     # Check if single t was passed
-    tCell = typeof(t) <: Real ? [T(t) for j=1:nsrc] : T.(t)
+    tCell = isa(t, Real) ? [T(t) for j=1:nsrc] : T.(t)
 
     # Calculate number of time steps
     ntCell = floor.(Int, tCell ./ dtCell) .+ 1
@@ -163,7 +171,8 @@ function Geometry(xloc::Array{Array{T, 1},1}, yloc::CoordT, zloc::Array{Array{T,
 end
 
 # Constructor if coordinates are not passed as a cell arrays
-function Geometry(xloc::Array{T, 1}, yloc::CoordT, zloc::Array{T, 1}; dt=[], t=[], nsrc::Integer=1) where {T<:Real}
+function Geometry(xloc::Array{T, 1}, yloc::CoordT, zloc::Array{T, 1}; dt=nothing, t=nothing, nsrc::Integer=1) where {T<:Real}
+    check_time(dt, t)
     xlocCell = [xloc for j=1:nsrc]
     ylocCell = [yloc for j=1:nsrc]
     zlocCell = [zloc for j=1:nsrc]
@@ -178,7 +187,7 @@ end
 # Utility function to prepare dtCell, ntCell, tCell from SEGY or based on user defined dt and t.
 # Useful when creating geometry for Forward Modeling with custom timings.
 
-_get_p(v, S, nsrc, P) = throw("User defined `dt` is neither: Real, Array of Real or the length of Array doesn't match the number of sources in SEGY")
+_get_p(v, S, nsrc, P) = throw(GeometryException("User defined `dt` is neither: Real, Array of Real or the length of Array doesn't match the number of sources in SEGY"))
 _get_p(::Nothing, S::SeisBlock, nsrc::Integer, p, ::Type{T}, s::T) where T = fill(T(get_header(S, p)[1]/s), nsrc)
 _get_p(::Nothing, S::SeisCon, nsrc::Integer, p, ::Type{T}, s::T) where T = [T(_get_p_SeisCon(S, p, j)/s) for j=1:nsrc]
 _get_p(::Nothing, S::Vector{SeisCon}, nsrc::Integer, p, ::Type{T}, s::T) where T  = [T(_get_p_SeisCon(S[j], p, 1)/s) for j=1:nsrc]
@@ -206,6 +215,7 @@ end
 
 # Set up source geometry object from in-core data container
 function Geometry(data::SegyIO.SeisBlock; key="source", segy_depth_key="", dt=nothing, t=nothing)
+    check_time(dt, t, true)
     src = get_header(data,"FieldRecord")
     usrc = unique(src)
     nsrc = length(usrc)
@@ -218,7 +228,7 @@ function Geometry(data::SegyIO.SeisBlock; key="source", segy_depth_key="", dt=no
         params = ["GroupX","GroupY",segy_depth_key]
         gt = Array{Float32, 1}
     else
-        throw("Specified keyword not supported")
+        throw(GeometryException("Specified keyword not supported"))
     end
     xloc = Array{gt, 1}(undef, nsrc)
     yloc = Array{gt, 1}(undef, nsrc)
@@ -253,13 +263,14 @@ end
 
 # Set up geometry summary from out-of-core data container
 function Geometry(data::SegyIO.SeisCon; key="source", segy_depth_key="", dt=nothing, t=nothing)
+    check_time(dt, t, true)
 
     if key=="source"
         isempty(segy_depth_key) && (segy_depth_key="SourceSurfaceElevation")
     elseif key=="receiver"
         isempty(segy_depth_key) && (segy_depth_key="RecGroupElevation")
     else
-        throw("Specified keyword not supported")
+        throw(GeometryException("Specified keyword not supported"))
     end
 
     # read either source or receiver geometry
@@ -277,13 +288,14 @@ end
 
 # Set up geometry summary from out-of-core data container passed as cell array
 function Geometry(data::Array{SegyIO.SeisCon,1}; key="source", segy_depth_key="", dt=nothing, t=nothing)
+    check_time(dt, t, true)
 
     if key=="source"
         isempty(segy_depth_key) && (segy_depth_key="SourceSurfaceElevation")
     elseif key=="receiver"
         isempty(segy_depth_key) && (segy_depth_key="RecGroupElevation")
     else
-        throw("Specified keyword not supported")
+        throw(GeometryException("Specified keyword not supported"))
     end
 
     nsrc = length(data)
@@ -310,7 +322,7 @@ function Geometry(geometry::GeometryOOC)
         params = ["GroupX","GroupY",geometry.segy_depth_key,"dt","ns"]
         gt = Array{Float32, 1}
     else
-        throw("Specified keyword not supported")
+        throw(GeometryException("Specified keyword not supported"))
     end
     xloc = Array{gt, 1}(undef, nsrc)
     yloc = Array{gt, 1}(undef, nsrc)
@@ -367,6 +379,7 @@ getindex(geometry::GeometryIC{T}, srcnum::Integer) where T = getindex(geometry, 
 # getindex out-of-core geometry structure
 getindex(geometry::GeometryOOC, srcnum) = Geometry(geometry.container[srcnum]; key=geometry.key, segy_depth_key=geometry.segy_depth_key, dt=geometry.dt[srcnum], t=geometry.t[srcnum])
 
+###########################################################################################################################################
 # Compare if geometries match
 function compareGeometry(geometry_A::Geometry, geometry_B::Geometry)
     if isequal(geometry_A.xloc, geometry_B.xloc) && isequal(geometry_A.yloc, geometry_B.yloc) && isequal(geometry_A.zloc, geometry_B.zloc) &&
@@ -399,6 +412,8 @@ end
 compareGeometry(geometry_A::GeometryOOC, geometry_B::Geometry) = true
 compareGeometry(geometry_A::Geometry, geometry_B::GeometryOOC) = true
 
+###########################################################################################################################################
+
 for G in [GeometryOOC, GeometryIC]
     @eval function push!(G1::$G, G2::$G)
         for k in fieldnames($G)
@@ -418,4 +433,8 @@ check_geom(geom::Geometry, data::SeisBlock) = _check_geom(geom.nt[1], data.fileh
 check_geom(geom::Geometry, data::SeisCon) = _check_geom(geom.nt[1], data.ns)
 
 _check_geom(nt::Integer, ns::Integer) = nt == ns || _geom_missmatch(nt, ns)
-_geom_missmatch(nt::Integer, ns::Integer) = throw(judiMultiSourceException("Geometry's number of samples doesn't match the data: $(nt), $(ns)"))
+_geom_missmatch(nt::Integer, ns::Integer) = throw(GeometryException("Geometry's number of samples doesn't match the data: $(nt), $(ns)"))
+
+check_time(dt::Number, t::Number, segy::Bool=false) = (t/dt == div(t, dt, RoundNearest)) || throw(GeometryException("Recording time t=$(t) not divisible by sampling rate dt=$(dt)"))
+check_time(::Nothing, ::Nothing, segy::Bool=false) = segy || throw(GeometryException("Recording time `t` and sampling rate `dt` must be provided"))
+check_time(dt::AbstractVector, t::AbstractVector, segy::Bool=false) = check_time.(dt, t)

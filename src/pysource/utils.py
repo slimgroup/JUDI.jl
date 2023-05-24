@@ -1,7 +1,11 @@
+try:
+    from collections.abc import Iterable
+except ImportError:
+    from collections import Iterable
 import numpy as np
 from sympy import sqrt
-from devito import configuration
 
+from devito import configuration
 from devito.tools import as_tuple
 
 
@@ -105,10 +109,30 @@ def fields_kwargs(*args):
     for field in args:
         if field is not None:
             # In some case could be a tuple of fields, such as dft modes
-            try:
-                kw.update({f.name: f for f in as_tuple(field)})
-            except AttributeError:
-                for f in field:
-                    kw.update({ff.name: ff for ff in f})
+            if isinstance(field, Iterable):
+                kw.update(fields_kwargs(*field))
+            else:
+                try:
+                    kw.update({f.name: f for f in field.flat()})
+                    continue
+                except AttributeError:
+                    kw.update({field.name: field})
 
     return kw
+
+
+DEVICE = {"id": -1}  # noqa
+
+
+def set_device_ids(devid):
+    DEVICE["id"] = devid
+
+
+def base_kwargs(dt):
+    """
+    Most basic keyword arguments needed by the operator.
+    """
+    if configuration['platform'].name == 'nvidiaX':
+        return {'dt': dt, 'deviceid': DEVICE["id"]}
+    else:
+        return {'dt': dt}

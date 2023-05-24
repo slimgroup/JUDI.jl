@@ -54,6 +54,7 @@ similar(x::judiMultiSourceVector, nsrc::Integer) = nsrc < x.nsrc ? zero(eltype(E
 similar(x::judiMultiSourceVector, ::Type{ET}) where ET = zero(eltype(ET), x)
 similar(x::judiMultiSourceVector, ::Type{ET}, dims::AbstractUnitRange) where ET = similar(x, ET)
 similar(x::judiMultiSourceVector, ::Type{ET}, nsrc::Integer) where ET = nsrc <= x.nsrc ? zero(eltype(ET), x; nsrc=nsrc) : similar(x, ET)
+similar(x::judiMultiSourceVector, ::Type{ET}, dims::AbstractSize) where ET = similar(x, ET)
 
 jo_convert(::Type{Array{T, N}}, v::judiMultiSourceVector, B::Bool) where {T, N} = jo_convert(T, v, B)
 
@@ -76,6 +77,7 @@ time_sampling(ms::judiMultiSourceVector) = [1 for i=1:ms.nsrc]
 reshape(ms::judiMultiSourceVector, dims::Dims{N}) where N = reshape(vec(ms), dims)
 ############################################################################################################################
 # Linear algebra `*`
+(msv::judiMultiSourceVector{mT})(x::DenseArray{T}) where {mT, T<:Number} = x
 (msv::judiMultiSourceVector{mT})(x::AbstractVector{T}) where {mT, T<:Number} = x
 (msv::judiMultiSourceVector{T})(x::judiMultiSourceVector{T}) where {T<:Number} = x
 (msv::judiMultiSourceVector{mT})(x::AbstractVector{T}) where {mT, T<:Array} = begin y = deepcopy(msv); y.data .= x; return y end

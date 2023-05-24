@@ -1,12 +1,27 @@
 import numpy as np
 import warnings
+from sympy import finite_diff_weights as fd_w
 from devito import (Grid, Function, SubDomain, SubDimension, Eq, Inc,
-                    Operator, mmin, initialize_function, switchconfig,
+                    Operator, mmin, mmax, initialize_function, switchconfig,
                     Abs, sqrt, sin)
 from devito.data.allocators import ExternalAllocator
 from devito.tools import as_tuple, memoized_func
 
 __all__ = ['Model']
+
+
+def getmin(f):
+    try:
+        return mmin(f)
+    except ValueError:
+        return np.min(f)
+
+
+def getmax(f):
+    try:
+        return mmax(f)
+    except ValueError:
+        return np.max(f)
 
 
 class PhysicalDomain(SubDomain):
@@ -139,14 +154,14 @@ class Model(object):
     dt: Float
         User provided computational time-step
     """
-    def __init__(self, origin, spacing, shape, m, space_order=2, nbl=40,
-                 dtype=np.float32, epsilon=None, delta=None, theta=None, phi=None,
-                 rho=None, b=None, qp=None, dm=None, fs=False, **kwargs):
+    def __init__(self, origin, spacing, shape, space_order=2, nbl=40, dtype=np.float32,
+                 m=None, epsilon=None, delta=None, theta=None, phi=None, rho=None,
+                 b=None, qp=None, lam=None, mu=None, dm=None, fs=False, **kwargs):
         # Setup devito grid
         self.shape = tuple(shape)
         self.nbl = int(nbl)
         self.origin = tuple([dtype(o) for o in origin])
-        abc_type = "mask" if qp is not None else "damp"
+        abc_type = "mask" if (qp is not None or mu is not None) else "damp"
         self.fs = fs
         # Origin of the computational domain with boundary to inject/interpolate
         # at the correct index
@@ -179,19 +194,16 @@ class Model(object):
         self.scale = 1
         self._space_order = space_order
         # Create square slowness of the wave as symbol `m`
-        self._m = self._gen_phys_param(m, 'm', space_order)
+        if m is not None:
+            self._m = self._gen_phys_param(m, 'm', space_order)
         # density
         self._init_density(rho, b, space_order)
         self._dm = self._gen_phys_param(dm, 'dm', space_order)
 
         # Model type
         self._is_viscoacoustic = qp is not None
+        self._is_elastic = mu is not None
         self._is_tti = any(p is not None for p in [epsilon, delta, theta, phi])
-        # Cannot be tti and visco at the moment
-        if self._is_viscoacoustic and self._is_tti:
-            raise NotImplementedError("Viscosity not supported for TTI")
-        if self._is_viscoacoustic and self.fs:
-            raise NotImplementedError("Freesurface not supported for viscoacoustic")
 
         # Additional parameter fields for Viscoacoustic operators
         if self._is_viscoacoustic:
@@ -206,6 +218,11 @@ class Model(object):
             self.delta = self._gen_phys_param(delta, 'delta', space_order)
             self.theta = self._gen_phys_param(theta, 'theta', space_order)
             self.phi = self._gen_phys_param(phi, 'phi', space_order)
+
+        # Additional parameter fields for elastic
+        if self._is_elastic:
+            self.lam = self._gen_phys_param(lam, 'lam', space_order, is_param=True)
+            self.mu = self._gen_phys_param(mu, 'mu', space_order, is_param=True)
         # User provided dt
         self._dt = kwargs.get('dt')
 
@@ -215,8 +232,13 @@ class Model(object):
         either density or inverse density is setup.
         """
         if rho is not None:
-            self.rho = self._gen_phys_param(rho, 'rho', so)
-            self.irho = 1 / self.rho
+            rm, rM = np.amin(rho), np.amax(rho)
+            if rm/rM > .1:
+                self.irho = self._gen_phys_param(np.reciprocal(rho), 'irho', so)
+                self.rho = 1 / self.irho
+            else:
+                self.rho = self._gen_phys_param(rho, 'rho', so)
+                self.irho = 1 / self.rho
         elif b is not None:
             self.irho = self._gen_phys_param(b, 'irho', so)
         else:
@@ -232,8 +254,9 @@ class Model(object):
         """
         Return all set physical parameters and update to input values if provided
         """
-        known = [getattr(self, i) for i in self.physical_parameters]
-        params = {i.name: kwargs.get(i.name, i) or i for i in known}
+        params = {i: kwargs.get(i, getattr(self, i)) for i in self.physical_parameters
+                  if isinstance(getattr(self, i), Function)}
+
         if not kwargs.get('born', False):
             params.pop('dm', None)
         return params
@@ -244,12 +267,12 @@ class Model(object):
 
     @switchconfig(log_level='ERROR')
     def _gen_phys_param(self, field, name, space_order, is_param=False,
-                        default_value=0, func=lambda x: x):
+                        default_value=0):
         """
         Create symbolic object an initiliaze its data
         """
         if field is None:
-            return func(default_value)
+            return default_value
         if isinstance(field, np.ndarray) and (name == 'm' or
                                               np.min(field) != np.max(field)):
             if field.shape == self.shape:
@@ -262,7 +285,7 @@ class Model(object):
                                     allocator=ExternalAllocator(field),
                                     initializer=lambda x: None, parameter=is_param)
         else:
-            return func(np.min(field))
+            return np.amin(field)
         self._physical_parameters.append(name)
         return function
 
@@ -344,14 +367,45 @@ class Model(object):
         return self._is_viscoacoustic
 
     @property
+    def is_elastic(self):
+        """
+        Whether the model is TTI or isotopic
+        """
+        return self._is_elastic
+
+    @property
     def _max_vp(self):
         """
         Maximum velocity
         """
-        try:
-            return np.sqrt(1./mmin(self.m))
-        except ValueError:
-            return np.sqrt(1./np.min(self.m))
+        if self.is_elastic:
+            return np.sqrt(getmin(self.irho) * (getmax(self.lam) + 2 * getmax(self.mu)))
+        else:
+            return np.sqrt(1./getmin(self.m))
+
+    @property
+    def _cfl_coeff(self):
+        """
+        Courant number from the physics and spatial discretization order.
+        The CFL coefficients are described in:
+        - https://doi.org/10.1137/0916052 for the elastic case
+        - https://library.seg.org/doi/pdf/10.1190/1.1444605 for the acoustic case
+        """
+        # Elasic coefficient (see e.g )
+        if self.is_elastic:
+            coeffs = fd_w(1, range(-4, 5), .5)
+            c_fd = sum(np.abs(coeffs[-1][-1])) / 2
+            return np.sqrt(self.dim) / self.dim / c_fd
+        a1 = 4  # 2nd order in time
+        coeffs = fd_w(2, range(-8, 9), 0)[-1][-1]
+        return np.sqrt(a1/float(self.grid.dim * sum(np.abs(coeffs))))
+
+    @property
+    def _thomsen_scale(self):
+        # Update scale for tti
+        if self.is_tti:
+            return np.sqrt(1 + 2 * getmax(self.epsilon))
+        return 1
 
     @property
     def critical_dt(self):
@@ -362,15 +416,15 @@ class Model(object):
         #
         # The CFL condtion is then given by
         # dt <= coeff * h / (max(velocity))
-        coeff = .9*0.38 if len(self.shape) == 3 else .9*0.42
-        dt = self.dtype(coeff * np.min(self.spacing) / (self.scale*self._max_vp))
+        dt = self._cfl_coeff * np.min(self.spacing) / (self._thomsen_scale*self._max_vp)
+        dt = self.dtype("%.3e" % dt)
         if self.dt:
             if self.dt > dt:
                 warnings.warn("Provided dt=%s is bigger than maximum stable dt %s "
                               % (self.dt, dt))
             else:
                 return self.dtype("%.3e" % self.dt)
-        return self.dtype("%.2e" % dt)
+        return dt
 
     @property
     def dm(self):
@@ -462,9 +516,10 @@ class EmptyModel(object):
     This Model should not be used for propagation.
     """
 
-    def __init__(self, tti, visco, spacing, fs, space_order, p_params):
+    def __init__(self, tti, visco, elastic, spacing, fs, space_order, p_params):
         self.is_tti = tti
         self.is_viscoacoustic = visco
+        self.is_elastic = elastic
         self.spacing = spacing
         self.fs = fs
         if fs:

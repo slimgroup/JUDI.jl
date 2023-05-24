@@ -28,7 +28,7 @@ zrec = range(d[1], stop=d[1], length=nxrec)
 
 # receiver sampling and recording time
 timeR = 250f0   # receiver recording time [ms]
-dtR = 0.2f0    # receiver sampling interval [ms]
+dtR = 0.25f0    # receiver sampling interval [ms]
 
 # Set up receiver structure
 recGeometry = Geometry(xrec, yrec, zrec; dt=dtR, t=timeR, nsrc=nsrc)
@@ -40,7 +40,7 @@ zsrc = d[1]
 
 # source sampling and number of time steps
 timeS = 250f0     # ms
-dtS =  0.2f0    # ms
+dtS =  0.25f0    # ms
 
 # Set up source structure
 srcGeometry = Geometry(xsrc, ysrc, zsrc; dt=dtS, t=timeS)

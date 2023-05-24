@@ -88,7 +88,8 @@ qnew = Ps*adjoint(F)*u
 dtComp = get_dt(model)
 ntComp = get_computational_nt(q.geometry, model)
 u0 = zeros(Float32, ntComp[1], model.n[1] + 2*model.nb, model.n[2] + 2*model.nb)
-u0[:, 100, 45] = wavelet = -ricker_wavelet(timeS, dtComp, f0)
+wavelet = -ricker_wavelet(timeS, dtComp, f0)
+u0[1:length(wavelet), 100, 45] .= wavelet
 uf = judiWavefield(dtComp, u0)
 dobs2 = Pr*F*uf # same as dobs
 

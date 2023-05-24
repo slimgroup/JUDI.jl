@@ -64,7 +64,7 @@ Example
 =======
     function_value, gradient_m, gradient_y = twri_objective(model, source, dobs; options=Options(), optionswri=TWRIOptions())
 """
-function twri_objective(model_full::Model, source::judiVector, dObs::judiVector, y::Union{judiVector, Nothing},
+function twri_objective(model_full::AbstractModel, source::judiVector, dObs::judiVector, y::Union{judiVector, Nothing},
                         options::JUDIOptions, optionswri::TWRIOptions)
     # Load full geometry for out-of-core geometry containers
     dObs.geometry = Geometry(dObs.geometry)
@@ -82,10 +82,10 @@ function twri_objective(model_full::Model, source::judiVector, dObs::judiVector,
     dtComp = convert(Float32, modelPy."critical_dt")
 
     # Extrapolate input data to computational grid
-    qIn = time_resample(source.data[1], source.geometry, dtComp)[1]
-    dObserved = time_resample(make_input(dObs), dObs.geometry, dtComp)[1]
+    qIn = time_resample(source.data[1], source.geometry, dtComp)
+    dObserved = time_resample(make_input(dObs), dObs.geometry, dtComp)
 
-    isnothing(y) ? Y = nothing : Y = time_resample(make_input(y), y.geometry, dtComp)[1]
+    isnothing(y) ? Y = nothing : Y = time_resample(make_input(y), y.geometry, dtComp)
 
     # Set up coordinates
     src_coords = setup_grid(source.geometry, model.n)  # shifts source coordinates by origin
@@ -141,7 +141,7 @@ Example
 =======
     function_value, gradient = fwi_objective(model, source, dobs)
 """
-function twri_objective(model::Model, source::judiVector, dObs::judiVector, y::Union{judiVector, Nothing};
+function twri_objective(model::AbstractModel, source::judiVector, dObs::judiVector, y::Union{judiVector, Nothing};
                         options=Options(), optionswri=TWRIOptions())
     pool = _worker_pool()
     if isnothing(y)

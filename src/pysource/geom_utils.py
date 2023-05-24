@@ -5,7 +5,7 @@ from sources import *
 
 def src_rec(model, u, src_coords=None, rec_coords=None, wavelet=None, nt=None):
     nt = nt or wavelet.shape[0]
-    namef = as_tuple(u)[0].name
+    namef = as_tuple(u)[1][0].name if model.is_elastic else as_tuple(u)[0].name
     src = None
     if src_coords is not None:
         if isinstance(wavelet, PointSource):
@@ -50,17 +50,27 @@ def geom_expr(model, u, src_coords=None, rec_coords=None, wavelet=None, fw=True,
     nt: int
         Number of time steps
     """
-    m, irho = model.m, model.irho
-    m = m * irho
+    irho = model.irho
+    if not model.is_elastic:
+        m = model.m * irho
     dt = model.grid.time_dim.spacing
     geom_expr = []
     src, rcv = src_rec(model, u, src_coords, rec_coords, wavelet, nt)
     if src is not None:
-        u_n = as_tuple(u)[0].forward if fw else as_tuple(u)[0].backward
-        geom_expr += src.inject(field=u_n, expr=src*dt**2/m)
+        # Elastic inject into diagonal of stress
+        if model.is_elastic:
+            for ud in as_tuple(u)[1].diagonal():
+                geom_expr += src.inject(field=ud.forward, expr=src*dt/irho)
+        else:
+            # Acoustic inject into pressure
+            u_n = as_tuple(u)[0].forward if fw else as_tuple(u)[0].backward
+            geom_expr += src.inject(field=u_n, expr=src*dt**2/m)
     # Setup adjoint wavefield sampling at source locations
     if rcv is not None:
-        rec_expr = u[0] if model.is_tti else u
+        if model.is_elastic:
+            rec_expr = u[1].trace()
+        else:
+            rec_expr = u[0] if model.is_tti else u
         adj_rcv = rcv.interpolate(expr=rec_expr)
         geom_expr += adj_rcv
     return geom_expr

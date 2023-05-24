@@ -19,6 +19,9 @@ the pool is empty, a standard loop and accumulation is ran. If the pool is a jul
 any custom Distributed pool, the loop is distributed via `remotecall` followed by are binary tree remote reduction.
 """
 function run_and_reduce(func, pool, nsrc, arg_func::Function)
+    # Allocate devices
+    _set_devices!()
+    # Run distributed loop
     res = Vector{_TFuture}(undef, nsrc)
     for i = 1:nsrc
         args_loc = arg_func(i)
@@ -37,6 +40,17 @@ function run_and_reduce(func, ::Nothing, nsrc, arg_func::Function)
     out
 end
 
+function _set_devices!()
+    ndevices = length(_devices)
+    if ndevices < 2
+        return
+    end
+    asyncmap(enumerate(workers())) do (pi, p)
+        remotecall_wait(p) do
+            pyut.set_device_ids(_devices[pi % ndevices + 1])
+        end
+    end
+end
 
 _prop_fw(::judiPropagator{T, O}) where {T, O} = true 
 _prop_fw(::judiPropagator{T, :adjoint}) where T = false

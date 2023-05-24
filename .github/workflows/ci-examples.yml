@@ -29,7 +29,7 @@ jobs:
         uses: actions/checkout@v3
 
       - id: set-matrix
-        run: echo "::set-output name=matrix::$(ls examples/scripts/*.jl examples/machine-learning/*.jl | xargs -n 1 | jq -R -s -c 'split("\n")[:-1]')"
+        run: echo "matrix=$(ls examples/scripts/*.jl examples/machine-learning/*.jl | xargs -n 1 | jq -R -s -c 'split("\n")[:-1]')" >> $GITHUB_OUTPUT
         shell: bash
 
   run-examples:

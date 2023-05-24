@@ -37,7 +37,7 @@ zrec = 50f0
 (xrec, yrec, zrec) = setup_3D_grid(xrec, yrec, zrec)
 
 # receiver sampling and recording time
-time = 50f0   # receiver recording time [ms]
+time = 60f0   # receiver recording time [ms]
 dt = 4f0    # receiver sampling interval [ms]
 
 # Set up receiver structure

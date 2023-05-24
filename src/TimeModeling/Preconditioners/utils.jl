@@ -4,6 +4,16 @@ export find_water_bottom
 _taper(::Val{:reflection}, n::Integer=20) = convert(Vector{Float32}, (cos.(range(pi, stop=2*pi, length=n)) .+ 1) ./ 2)
 _taper(::Val{:turning}, n::Integer=20) = convert(Vector{Float32}, (cos.(range(0, stop=pi, length=n)) .+ 1) ./ 2)
 
+# Muting utils
+_yloc(y::Vector{T}, t::Integer) where T = length(y) > 1 ?  y[t] : y[1]
+
+radius(G1::Geometry, G2::Geometry, t::Integer) = sqrt.((G1.xloc[1][t] .- G2.xloc[1][1]).^2 .+ (_yloc(G1.yloc[1], t) .- G2.yloc[1][1]).^2 .+ (G1.zloc[1][t] .- G2.zloc[1][1]).^2)
+
+_tapew(i::Integer, taperwidth::Integer, ::Integer, ::Val{:reflection}) = i < taperwidth
+_tapew(i::Integer, taperwidth::Integer, nt::Integer, ::Val{:turning}) = i > (nt - taperwidth)
+
+_mutew!(t::AbstractVector{T}, taper::AbstractVector{T}, i::Integer, nt::Integer, ::Val{:reflection}) where T = broadcast!(*, t[1:i], t[1:i], taper[nt-i+1:nt])
+_mutew!(t::AbstractVector{T}, taper::AbstractVector{T}, i::Integer, nt::Integer, ::Val{:turning}) where T = broadcast!(*, t[i:nt], t[i:nt], taper[1:(nt-i+1)])
 
 # water bottom
 """

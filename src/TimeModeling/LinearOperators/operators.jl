@@ -23,7 +23,7 @@ struct judiPointSourceModeling{D, O} <: judiComposedPropagator{D, O}
     qInjection::AdjointProjection{D}
     function judiPointSourceModeling{D, O}(F::judiModeling{D, O}, qInjection::AdjointProjection{D}) where {D, O}
         # instantiate un-initialized sizes
-        ts = time_space_src(get_nsrc(qInjection), get_nt(qInjection), F.model.n)
+        ts = time_space_src(get_nsrc(qInjection), get_nt(qInjection), size(F.model))
         merge!(F.n, ts)
         merge!(F.m, ts)
         update_size(qInjection, F)
@@ -37,7 +37,7 @@ struct judiDataModeling{D, O} <: judiComposedPropagator{D, O}
     rInterpolation::Projection{D}
     F::judiModeling{D, O}
     function judiDataModeling{D, O}(rInterpolation::Projection{D}, F::judiModeling{D, O}) where {D, O}
-        ts = time_space_src(get_nsrc(rInterpolation), get_nt(rInterpolation), F.model.n)
+        ts = time_space_src(get_nsrc(rInterpolation), get_nt(rInterpolation), size(F.model))
         merge!(F.n, ts)
         merge!(F.m, ts)
         update_size(rInterpolation, F)
@@ -52,7 +52,7 @@ struct judiDataSourceModeling{D, O} <: judiComposedPropagator{D, O}
     F::judiModeling{D, O}
     qInjection::AdjointProjection{D}
     function judiDataSourceModeling{D, O}(rInterpolation::Projection{D}, F::judiModeling{D, O}, qInjection::AdjointProjection{D}) where {D, O}
-        ts = time_space_src(get_nsrc(rInterpolation), get_nt(rInterpolation), F.model.n)
+        ts = time_space_src(get_nsrc(rInterpolation), get_nt(rInterpolation), size(F.model))
         merge!(F.n, ts)
         merge!(F.m, ts)
         update_size(rInterpolation, F)
@@ -110,8 +110,8 @@ Example
     dobs = F*q
 """
 function judiModeling(model::AbstractModel; options=Options())
-    D = eltype(model.m)
-    m = time_space(model.n)
+    D = eltype(model)
+    m = time_space(size(model))
     return judiModeling{D, :forward}(m, m, model, options)
 end
 
@@ -135,7 +135,7 @@ Examples
 """
 function judiJacobian(F::judiComposedPropagator{D, O}, q::judiMultiSourceVector; options=nothing) where {D, O}
     update!(F.F.options, options)
-    return judiJacobian{D, :born, typeof(F)}(F.m, space(F.model.n), F, q)
+    return judiJacobian{D, :born, typeof(F)}(F.m, space(size(F.model)), F, q)
 end
 
 # Backward compat with giving weights as array. Not recommened
@@ -209,7 +209,7 @@ make_input(F::judiDataSourceModeling, q::Matrix{T}) where {T} = (F.qInjection.da
 
 function make_input(J::judiJacobian{D, :born, FT}, q::dmType{D}) where {D<:Number, FT}
     srcGeom, srcData = make_src(J.q, J.F.qInjection)
-    return srcGeom, srcData, J.F.rInterpolation.data[1], nothing, reshape(q, J.model.n)
+    return srcGeom, srcData, J.F.rInterpolation.data[1], nothing, reshape(q, size(J.model))
 end 
 
 function make_input(J::judiJacobian{D, :adjoint_born, FT}, q::SourceType{D}) where {D, FT}
@@ -222,11 +222,11 @@ end
 ############################################################################################################################
 # Size update based on linear operator
 
-update_size(w::judiProjection, F::judiPropagator) = set_space_size!(w.n, F.model.n)
-update_size(w::jAdjoint{<:judiProjection}, F::judiPropagator) = set_space_size!(w.op.n, F.model.n)
+update_size(w::judiProjection, F::judiPropagator) = set_space_size!(w.n, size(F.model))
+update_size(w::jAdjoint{<:judiProjection}, F::judiPropagator) = set_space_size!(w.op.n, size(F.model))
 
-update_size(w::judiWavelet, F::judiPropagator) = set_space_size!(w.m, F.model.n)
-update_size(w::jAdjoint{<:judiWavelet}, F::judiPropagator) = set_space_size!(w.op.m, F.model.n)
+update_size(w::judiWavelet, F::judiPropagator) = set_space_size!(w.m, size(F.model))
+update_size(w::jAdjoint{<:judiWavelet}, F::judiPropagator) = set_space_size!(w.op.m, size(F.model))
 ############################################################################################################################
 # indexing
 getindex(F::judiModeling{D, O}, i) where {D, O} = judiModeling{D, O}(F.m[i], F.n[i], F.model, F.options[i])

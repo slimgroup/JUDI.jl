@@ -48,7 +48,7 @@ function objective_function(x)
     grad = .125f0*grad/maximum(abs.(grad))  # scale for line search
 
     global count; count+= 1
-    return fval, vec(grad.data)
+    return fval, grad
 end
 
 # Bound projection
@@ -56,7 +56,7 @@ proj(x) = reshape(median([vec(mmin) vec(x) vec(mmax)]; dims=2),model0.n)
 
 # FWI with SPG
 options = spg_options(verbose=3, maxIter=fevals, memory=3)
-sol = spg(objective_function, vec(model0.m), proj, options)
+sol = spg(objective_function, model0.m, proj, options)
 
 # Plot result
 imshow(reshape(sqrt.(1f0 ./ sol.x), model0.n)', extent=[0, 10, 3, 0])
