@@ -1,17 +1,3 @@
-# using Pkg
-# Pkg.add("Statistics")
-# Pkg.add("Random")
-# Pkg.add("LinearAlgebra")
-# Pkg.add("Interpolations")
-# Pkg.add("DelimitedFiles")
-# Pkg.add("Distributed")
-# Pkg.add("SlimOptim")
-# Pkg.add("NLopt")
-# Pkg.add("HDF5")
-# Pkg.add("SegyIO")
-# Pkg.add("Plots")
-# Pkg.add("SetIntersectionProjection")
-
 using Statistics, Random, LinearAlgebra, Interpolations, DelimitedFiles, Distributed
 using JUDI, NLopt, HDF5, SegyIO, Plots
 
