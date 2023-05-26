@@ -10,6 +10,8 @@ After preprocessing is done FWI is the way to go. Inversion scripts is in `fwi` 
 
 The last steps are RTM and LSRTM wich are in `rtm` and `lsrtm` subfolders repectively.
 
+Before runnig FWI/RTM be sure to preinstall julia dependencies: `julia requirements.jl`
+
 To run FWI/RTM examples you will probably need to have 20-30 Gb RAM available.
 
 Here are the results of RTM/LSRTM.
