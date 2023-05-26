@@ -2,9 +2,11 @@
 
 The processing is done using [Madagascar](https://www.reproducibility.org/wiki/Main_Page) open source software. Thus we assume that Madagascar is present on the system.
 
+To install python dependencies use `requirements.txt` file: `python -m pip install -r requirements.txt`
+
 The processing is partly based on [Rodrigo Morelatto work](https://github.com/rmorel/Viking).
 
-The processing is pretty straightforward:
+The graph is pretty straightforward:
 
 0. Geometry correction
 1. Deghosting
