@@ -55,7 +55,7 @@ copyto!(x::AbstractArray, F::LazyPropagation) = copyto!(x, eval_prop(F))
 dot(x::AbstractArray, F::LazyPropagation) = dot(x, eval_prop(F))
 dot(F::LazyPropagation, x::AbstractArray) = dot(x, F)
 norm(F::LazyPropagation, p::Real=2) = norm(eval_prop(F), p)
-adjoint(F::JUDI.LazyPropagation) = F
+adjoint(F::JUDI.LazyPropagation) = LazyPropagation(x->adjoint(F.post(x)), F.F, F.q)
 
 ############################ Two params rules ############################################
 function rrule(F::judiPropagator{T, O}, m::AbstractArray{T}, q::AbstractArray{T}) where {T, O}

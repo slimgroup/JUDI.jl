@@ -518,11 +518,11 @@ function time_resample(data::AbstractArray{T, N}, dt_in::T, dt_new::T, t::T) whe
         return data
     elseif (dt_new % dt_in) == 0
         rate = Int64(div(dt_new, dt_in))
-	return _time_resample(data, rate)
+        return _time_resample(data, rate)
     else
         @juditime "Data time sinc-interpolation" begin
             nt = size(data, 1)
-            timeAxis = 0:dt_in:(dt_in*ceil(t/dt_in))
+            timeAxis = StepRangeLen(0f0, T(dt_in), nt)
             timeInterp = 0:dt_new:(dt_new*ceil(t/dt_new))
             dataInterp = Float32.(SincInterpolation(data, timeAxis, timeInterp))
         end
