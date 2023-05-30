@@ -518,7 +518,7 @@ function time_resample(data::AbstractArray{T, N}, dt_in::T, dt_new::T, t::T) whe
         return data
     elseif (dt_new % dt_in) == 0
         rate = Int64(div(dt_new, dt_in))
-	    return _time_resample(data, rate)
+	return _time_resample(data, rate)
     else
         @juditime "Data time sinc-interpolation" begin
             nt = size(data, 1)
