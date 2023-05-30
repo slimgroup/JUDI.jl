@@ -77,7 +77,10 @@ def damp_op(ndim, padsizes, abc_type, fs):
     damp = Function(name="damp", grid=Grid(tuple([11]*ndim)), space_order=0)
     eqs = [Eq(damp, 1.0 if abc_type == "mask" else 0.0)]
     for (nbl, nbr), d in zip(padsizes, damp.dimensions):
+        # 3 Point buffer to avoid weird interaction with abc
+        nbr = nbr - 3
         if not fs or d is not damp.dimensions[-1]:
+            nbl = nbl - 3
             dampcoeff = 1.5 * np.log(1.0 / 0.001) / (nbl)
             # left
             dim_l = SubDimension.left(name='abc_%s_l' % d.name, parent=d,
@@ -534,7 +537,7 @@ class EmptyModel(object):
         self.dimensions = self.grid.dimensions
 
         # Create the function for the physical parameters
-        self.damp = Function(name='damp', grid=self.grid, space_order=0)
+        self.damp = Function(name='damp', grid=self.grid)
         for p in set(p_params) - {'damp'}:
             setattr(self, p, Function(name=p, grid=self.grid, space_order=space_order))
         if 'irho' not in p_params:
