@@ -32,7 +32,7 @@ perturb(x::judiVector) = judiVector(x.geometry, [randx(x.data[i]) for i=1:x.nsrc
 reverse(x::judiVector) = judiVector(x.geometry, [x.data[i][end:-1:1, :] for i=1:x.nsrc])
 
 misfit_objective_2p(d_obs, q0, m0, F) = .5f0*norm(F(m0, q0) - d_obs)^2
-misfit_objective_1p(d_obs, q0, m0, F) = .5f0*norm(F(m0)*q0 - d_obs)^2
+misfit_objective_1p(d_obs, q0, m0, F) = .5f0*norm(F(1f0.*m0)*q0 - d_obs)^2
     
 function loss(misfit, d_obs, q0, m0, F)
     local ϕ

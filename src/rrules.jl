@@ -18,15 +18,20 @@ Parameters
 * `F`: the JUDI propgator
 * `q`: The source to compute F*q
 """
-struct LazyPropagation
+mutable struct LazyPropagation
     post::Function
     F::judiPropagator
     q
+    val # store F * q
 end
 
-eval_prop(F::LazyPropagation) = F.post(F.F * F.q)
+function eval_prop(F::LazyPropagation)
+    isnothing(F.val) && (F.val = F.F * F.q)
+    return F.post(F.val)
+end
 Base.collect(F::LazyPropagation) = eval_prop(F)
-LazyPropagation(F::judiPropagator, q) = LazyPropagation(identity, F, q)
+LazyPropagation(post::Function, F::judiPropagator, q) = LazyPropagation(post, F, q, nothing)
+LazyPropagation(F::judiPropagator, q) = LazyPropagation(identity, F, q, nothing)
 
 # Only a few arithmetic operation are supported
 
@@ -45,10 +50,29 @@ for op in [:+, :-, :*, :/]
     end
 end
 
+for op in [:*, :/]
+    @eval begin
+        $(op)(F::LazyPropagation, y::T) where T <: Number = LazyPropagation(F.post, F.F, $(op)(F.q, y), isnothing(F.val) ? nothing : $(op)(F.val, y))
+        $(op)(y::T, F::LazyPropagation) where T <: Number = LazyPropagation(F.post, F.F, $(op)(y, F.q), isnothing(F.val) ? nothing : $(op)(y, F.val))
+        broadcasted(::typeof($op), F::LazyPropagation, y::T) where T <: Number = LazyPropagation(F.post, F.F, broadcasted($(op), F.q, y), isnothing(F.val) ? nothing : broadcasted($(op), F.val, y))
+        broadcasted(::typeof($op), y::T, F::LazyPropagation) where T <: Number = LazyPropagation(F.post, F.F, broadcasted($(op), y, F.q), isnothing(F.val) ? nothing : broadcasted($(op), y, F.val))
+    end
+end
+
+for op in [:+, :-]
+    @eval begin
+        $(op)(F::LazyPropagation, y::T) where T <: Number = $(op)(eval_prop(F), y)
+        $(op)(y::T, F::LazyPropagation) where T <: Number = $(op)(y, eval_prop(F))
+        broadcasted(::typeof($op), F::LazyPropagation, y::T) where T <: Number = broadcasted($(op), eval_prop(F), y)
+        broadcasted(::typeof($op), y::T, F::LazyPropagation) where T <: Number = broadcasted($(op), y, eval_prop(F))
+    end
+end
+
 broadcasted(::typeof(^), y::LazyPropagation, p::Real) = eval_prop(y).^(p)
 *(F::judiPropagator, q::LazyPropagation) = F*eval_prop(q)
 
-reshape(F::LazyPropagation, dims...) = LazyPropagation(x->reshape(x, dims...), F.F, Q.q)
+reshape(F::LazyPropagation, dims...) = LazyPropagation(x->reshape(x, dims...), F.F, F.q, F.val)
+vec(F::LazyPropagation) = LazyPropagation(vec, F.F, F.q, F.val)
 copyto!(x::AbstractArray, F::LazyPropagation) = copyto!(x, eval_prop(F))
 dot(x::AbstractArray, F::LazyPropagation) = dot(x, eval_prop(F))
 dot(F::LazyPropagation, x::AbstractArray) = dot(x, F)
