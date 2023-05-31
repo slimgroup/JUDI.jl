@@ -202,7 +202,7 @@ end
 
 _illums = Dict()
 
-init_illum(model::AbstractModel, I::judiIllumination) = (_illums[objectid(model)] = [I, false])
+init_illum(model::AbstractModel, Tm::judiIllumination) = (_illums[objectid(model)] = [Tm, false])
 
 function update_illum(vals::Tuple, F::judiPropagator{D, O}) where {D, O}
     if length(vals) == 3

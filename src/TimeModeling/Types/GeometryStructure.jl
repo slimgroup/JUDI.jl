@@ -3,7 +3,7 @@
 # Date: January 2017
 #
 
-export Geometry, compareGeometry, GeometryIC, GeometryOOC, get_nsrc, n_samples
+export Geometry, compareGeometry, GeometryIC, GeometryOOC, get_nsrc, n_samples, super_shot_geometry
 
 abstract type Geometry{T} end
 
@@ -230,9 +230,9 @@ function Geometry(data::SegyIO.SeisBlock; key="source", segy_depth_key="", dt=no
     else
         throw(GeometryException("Specified keyword not supported"))
     end
-    xloc = Array{gt, 1}(undef, nsrc)
-    yloc = Array{gt, 1}(undef, nsrc)
-    zloc = Array{gt, 1}(undef, nsrc)
+    xloc = Vector{gt}(undef, nsrc)
+    yloc = Vector{gt}(undef, nsrc)
+    zloc = Vector{gt}(undef, nsrc)
 
     xloc_full = get_header(data, params[1])
     yloc_full = get_header(data, params[2])
@@ -428,13 +428,50 @@ pushfield!(a, b) = nothing
 # Gets called by judiVector constructor to be sure that geometry is consistent with the data.
 # Data may be any of: Array, Array of Array, SeisBlock, SeisCon
 check_geom(geom::Geometry, data::Array{T}) where T = all([check_geom(geom[s], data[s]) for s=1:get_nsrc(geom)])
-check_geom(geom::Geometry, data::Array{T}) where {T<:Number} = _check_geom(geom.nt[1],  size(data, 1))
+check_geom(geom::Geometry, data::Array{T}) where {T<:Number} = _check_geom(geom.nt[1],  size(data, 1)) && _check_geom(geom.nrec[1],  size(data, 2))
 check_geom(geom::Geometry, data::SeisBlock) = _check_geom(geom.nt[1], data.fileheader.bfh.ns)
 check_geom(geom::Geometry, data::SeisCon) = _check_geom(geom.nt[1], data.ns)
-
 _check_geom(nt::Integer, ns::Integer) = nt == ns || _geom_missmatch(nt, ns)
-_geom_missmatch(nt::Integer, ns::Integer) = throw(GeometryException("Geometry's number of samples doesn't match the data: $(nt), $(ns)"))
 
 check_time(dt::Number, t::Number, segy::Bool=false) = (t/dt == div(t, dt, RoundNearest)) || throw(GeometryException("Recording time t=$(t) not divisible by sampling rate dt=$(dt)"))
 check_time(::Nothing, ::Nothing, segy::Bool=false) = segy || throw(GeometryException("Recording time `t` and sampling rate `dt` must be provided"))
 check_time(dt::AbstractVector, t::AbstractVector, segy::Bool=false) = check_time.(dt, t)
+_geom_missmatch(nt::Integer, ns::Integer) = throw(judiMultiSourceException("Geometry's number of samples doesn't match the data: $(nt), $(ns)"))
+
+
+################################# Merge geometries ##############################################################
+allsame(x, val=first(x)) = all(y->y==val, x)
+
+as_coord_set(x::Vector{T}, y::T, z::Vector{T}) where T = OrderedSet(zip(x, z))
+as_coord_set(x::Vector{T}, y::Vector{T}, z::Vector{T}) where T = OrderedSet(zip(x, y, z))
+
+yloc(y::Vector{T}, ::Val{1}) where T<:Number = y[1]
+yloc(y::T, ::Val{1}) where T<:Number = y
+yloc(y, ::Val) = y
+
+_get_coords(G::Geometry, ny::Val) = begin gloc = Geometry(G); return tuple(gloc.xloc[1], yloc(gloc.yloc[1], ny), gloc.zloc[1]) end
+
+function as_coord_set(G::Geometry)
+    @assert allsame(G.nt)
+    @assert allsame(G.dt)
+    @assert allsame(G.t)
+    G0 = Geometry(G[1])
+    ny = Val(length(G0.yloc[1]))
+    s = as_coord_set(_get_coords(G0, ny::Val)...)
+    nsrc = get_nsrc(G)
+    if nsrc > 1
+        map(i->union!(s, as_coord_set(_get_coords(G[i], ny::Val)...)), 2:nsrc)
+    end
+    sort!(s)
+    return s
+end
+
+coords_from_set(S::OrderedSet{Tuple{T, T}}) where T = tuple([first.(S)], [[0f0]], [last.(S)])
+coords_from_set(S::OrderedSet{Tuple{T, T, T}}) where T = tuple([first.(S)], [getindex.(S, 2)], [last.(S)])
+coords_from_keys(S::Vector{Tuple{T, T}}) where T = tuple([first.(S)], [[0f0]], [last.(S)])
+coords_from_keys(S::Vector{Tuple{T, T, T}}) where T = tuple([first.(S)], [getindex.(S, 2)], [last.(S)])
+
+function super_shot_geometry(G::Geometry{T}) where T
+    as_set = coords_from_set(as_coord_set(G))
+    return GeometryIC{T}(as_set..., [G.dt[1]], [G.nt[1]], [G.t[1]])
+end

@@ -137,6 +137,7 @@ end
 
 promote_shape(A::Array{T, Na}, p::PhysicalParameter{T, N}) where {T<:AbstractFloat, N, Na}  = promote_shape(p, A)
 reshape(p::PhysicalParameter{T, N}, n::Tuple{Vararg{Int64,N}}) where {T<:AbstractFloat, N} = (n == p.n ? p : reshape(p.data, n))
+reshape(p::PhysicalParameter, pr::PhysicalParameter) = (p.n == pr.n ? p : throw(ArgumentError("Incompatible PhysicalParameter sizes ($(p.n), $(po.n))")))
 
 dotview(m::PhysicalParameter, i) = Base.dotview(m.data, i)
 
@@ -202,7 +203,7 @@ for op in [:+, :-, :*, :/]
             # same grid but difference origin/shape, merging
             return combine($(op), A, B)
         else
-            throw(PhysicalParameterException("Incompatible grid"))
+            throw(PhysicalParameterException("Incompatible grids: ($(A.d), $(B.d))"))
         end
     end
 end
@@ -410,6 +411,7 @@ end
 
 Model(n, d, o, m::Array, rho::Array; nb=40) = Model(n, d, o, m; rho=rho, nb=nb)
 Model(n, d, o, m::Array, rho::Array, qp::Array; nb=40) = Model(n, d, o, m; rho=rho, qp=qp, nb=nb)
+Model(d, o, m; kw...) = Model(size(m), d, o, m; kw...)
 
 size(m::AbstractModel) = size(m.G)
 origin(m::AbstractModel) = origin(m.G)

@@ -485,6 +485,7 @@ def J_adjoint_standard(model, src_coords, wavelet, rec_coords, recin, space_orde
 
     g, Iv, _ = gradient(model, residual, rec_coords, u, space_order=space_order, ic=ic,
                         f0=f0, illum=illum, fw=fw)
+
     if return_obj:
         return f, g.data, getattr(Iu, "data", None), getattr(Iv, "data", None)
     return g.data, getattr(Iu, "data", None), getattr(Iv, "data", None)

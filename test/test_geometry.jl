@@ -127,5 +127,29 @@ datapath = joinpath(dirname(pathof(JUDI)))*"/../data/"
 
         @test compareGeometry(src_geometry, src_geometry)
         @test compareGeometry(rec_geometry, rec_geometry)
+
+        # test supershot geometry
+        if nsrc == 2
+            # same geom
+            geometry = Geometry(xsrc, ysrc, zsrc; dt=4f0, t=1000f0, nsrc=nsrc)
+            sgeom = super_shot_geometry(geometry)
+            @test get_nsrc(sgeom) == 1
+            @test sgeom.xloc[1] == xsrc
+            @test sgeom.yloc[1] == ysrc
+            @test sgeom.zloc[1] == zsrc
+            @test sgeom.dt[1] == 4f0
+            @test sgeom.t[1] == 1000f0
+            # now make two geoms
+            xall = collect(1f0:4f0)
+            geometry = Geometry([[1f0, 2f0], [.5f0, 1.75f0]], [[0f0], [0f0]], [[0f0, 0f0], [0f0, 0f0]]; dt=4f0, t=1000f0)
+            sgeom = super_shot_geometry(geometry)
+            @test get_nsrc(sgeom) == 1
+            @test sgeom.xloc[1] == [.5f0, 1f0, 1.75f0, 2f0]
+            @test sgeom.yloc[1] == [0f0]
+            @test sgeom.zloc[1] == zeros(Float32, 4)
+            @test sgeom.dt[1] == 4f0
+            @test sgeom.t[1] == 1000f0
+        end
+
     end
 end

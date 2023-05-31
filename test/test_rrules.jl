@@ -2,6 +2,8 @@
 # Author: Mathias Louboutin, mathias.louboutin@gmail.com
 # April 2022
 using Flux
+import JUDI: judiPropagator, LazyPropagation
+import Base.Broadcast: broadcasted
 Flux.Random.seed!(2022)
 
 ### Model
@@ -154,5 +156,66 @@ end
         @test isa(gd, JUDI.LazyPropagation)
         @test isa(JUDI.eval_prop(gd), judiVector)
         grad_test(x-> misfit_objective_1p(rtm, δd, x, adjoint(J)), q0, dq, gqt)
+    end
+end
+
+#####################################################################################
+struct TestPropagator{D, O} <: judiPropagator{D, O}
+    v::D
+end
+
+Base.:*(T::TestPropagator{D, O}, x::Vector{D}) where {D, O} = T.v .* x
+Base.:*(T::TestPropagator{D, O}, x::Matrix{D}) where {D, O} = T.v .* x
+
+T1 = TestPropagator{Float32, :test}(2)
+T2 = TestPropagator{Float32, :test}(3)
+
+xtest1 = randn(Float32, 16)
+xtest2 = randn(Float32, 16)
+xtest3 = randn(Float32, 4, 4)
+
+xeval = reshape(2 .* xtest1, 4, 4)
+xeval2 = reshape(3 .* xtest2, 4, 4)
+
+p = x -> reshape(x, 4, 4)
+
+LP1 = LazyPropagation(p, T1, xtest1)
+LP2 = LazyPropagation(p, T2, xtest2)
+
+
+@testset "LazyPropagation tests" begin
+    @timeit TIMEROUTPUT "LazyPropagation" begin
+        # Manipulation
+        @test collect(reshape(LP1, 8, 2)) == reshape(xeval, 8, 2)
+        @test JUDI.eval_prop(LP1) == reshape(xeval, 4, 4)
+        @test collect(LP1) == reshape(xeval, 4, 4)
+        # Arithmetic
+        for op in [Base.:+, Base.:-, Base.:*, Base.:/]
+            @test op(LP1, xtest3) ≈ op(xeval, xtest3)
+            @test op(xtest3, LP1) ≈ op(xtest3, xeval)
+            @test op(LP1, LP2) ≈ op(xeval, xeval2)
+            @test op.(LP1, LP2) ≈ op.(xeval, xeval2)
+            @test op.(LP1, xtest3) ≈ op.(xeval, xtest3)
+            @test op.(xtest3, LP2) ≈ op.(xtest3, xeval2)
+        end
+        @test LP1.^2 ≈ xeval.^2
+        @test T2 * LP1 ≈ reshape(6 .* xtest1, 4, 4)
+        @test collect(adjoint(LP1)) ≈ collect(adjoint(xeval))
+        @test norm(LP1) ≈ norm(xeval)
+
+        copyto!(xtest3, LP1)
+        @test xtest3 ≈ xeval
+    end
+end
+
+
+#####################################################################################
+# Preconditioners
+@testset "Preconditionners AD tests" begin
+    @timeit TIMEROUTPUT "Preconditionners AD" begin
+        T = judiDepthScaling(model)
+        b = T*model.m
+        g = gradient(x->.5f0*norm(T*x - b)^2, model0.m)
+        @test g[1] ≈ T'*(T*model0.m - b)
     end
 end

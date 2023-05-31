@@ -18,42 +18,58 @@ function multi_src_fg(model_full::AbstractModel, source::judiVector, dObs::judiV
 
     # Limit model to area with sources/receivers
     if options.limit_m == true
-        model = deepcopy(model_full)
-        model, dm = limit_model_to_receiver_area(source.geometry, dObs.geometry, model, options.buffer_size; pert=dm)
+        @juditime "Limit model to geometry" begin
+            model = deepcopy(model_full)
+            model, dm = limit_model_to_receiver_area(source.geometry, dObs.geometry, model, options.buffer_size; pert=dm)
+        end
     else
         model = model_full
     end
 
     # Set up Python model
-    modelPy = devito_model(model, options, dm)
-    dtComp = convert(Float32, modelPy."critical_dt")
+    @juditime "Devito Model" begin
+        modelPy = devito_model(model, options, dm)
+        dtComp = convert(Float32, modelPy."critical_dt")
+    end
 
     # Extrapolate input data to computational grid
     qIn = time_resample(make_input(source), source.geometry, dtComp)
     dObserved = time_resample(make_input(dObs), dObs.geometry, dtComp)
 
     # Set up coordinates
-    src_coords = setup_grid(source.geometry, model.n)  # shifts source coordinates by origin
-    rec_coords = setup_grid(dObs.geometry, model.n)    # shifts rec coordinates by origin
+    @juditime "Sparse coords setup" begin
+        src_coords = setup_grid(source.geometry, model.n)  # shifts source coordinates by origin
+        rec_coords = setup_grid(dObs.geometry, model.n)    # shifts rec coordinates by origin
+    end
 
     mfunc = pyfunction(misfit, Matrix{Float32}, Matrix{Float32})
 
     length(options.frequencies) == 0 ? freqs = nothing : freqs = options.frequencies
     IT = illum ? (PyArray, PyArray) : (PyObject, PyObject)
-    argout = pylock() do
-        pycall(ac."J_adjoint", Tuple{Float32, PyArray, IT...}, modelPy,
-               src_coords, qIn, rec_coords, dObserved, t_sub=options.subsampling_factor,
-               space_order=options.space_order, checkpointing=options.optimal_checkpointing,
-               freq_list=freqs, ic=options.IC, is_residual=false, born_fwd=lin, nlind=nlind,
-               dft_sub=options.dft_subsampling_factor[1], f0=options.f0, return_obj=true, misfit=mfunc, illum=illum)
+    @juditime "Python call to J_adjoint" begin
+        argout = pylock() do
+            pycall(ac."J_adjoint", Tuple{Float32, PyArray, IT...}, modelPy,
+                src_coords, qIn, rec_coords, dObserved, t_sub=options.subsampling_factor,
+                space_order=options.space_order, checkpointing=options.optimal_checkpointing,
+                freq_list=freqs, ic=options.IC, is_residual=false, born_fwd=lin, nlind=nlind,
+                dft_sub=options.dft_subsampling_factor[1], f0=options.f0, return_obj=true, misfit=mfunc, illum=illum)
+        end
     end
 
-    argout = filter_none(argout)
-    grad = PhysicalParameter(remove_padding(argout[2], modelPy.padsizes; true_adjoint=options.sum_padding),  model.d, model.o)
+    @juditime "Filter empty output" begin
+        argout = filter_none(argout)
+    end
+
+    @juditime "Remove padding from gradient" begin
+        grad = PhysicalParameter(remove_padding(argout[2], modelPy.padsizes; true_adjoint=options.sum_padding),  model.d, model.o)
+    end
+
     fval = Ref{Float32}(argout[1])
     if illum
-        illumu = PhysicalParameter(remove_padding(argout[3], modelPy.padsizes; true_adjoint=false), model.d, model.o)
-        illumv = PhysicalParameter(remove_padding(argout[4], modelPy.padsizes; true_adjoint=false), model.d, model.o)
+        @juditime "Process illumination" begin
+            illumu = PhysicalParameter(remove_padding(argout[3], modelPy.padsizes; true_adjoint=false), model.d, model.o)
+            illumv = PhysicalParameter(remove_padding(argout[4], modelPy.padsizes; true_adjoint=false), model.d, model.o)
+        end
         return fval, grad, illumu, illumv
     end
     return fval, grad

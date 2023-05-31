@@ -47,13 +47,15 @@ end
 
 broadcasted(::typeof(^), y::LazyPropagation, p::Real) = eval_prop(y).^(p)
 *(F::judiPropagator, q::LazyPropagation) = F*eval_prop(q)
+*(M::Preconditioner, q::LazyPropagation) = M*eval_prop(q)
+matvec(M::Preconditioner, q::LazyPropagation) = matvec(M, eval_prop(q))
 
-reshape(F::LazyPropagation, dims...) = LazyPropagation(x->reshape(x, dims...), F.F, Q.q)
+reshape(F::LazyPropagation, dims...) = LazyPropagation(x->reshape(x, dims...), F.F, F.q)
 copyto!(x::AbstractArray, F::LazyPropagation) = copyto!(x, eval_prop(F))
 dot(x::AbstractArray, F::LazyPropagation) = dot(x, eval_prop(F))
 dot(F::LazyPropagation, x::AbstractArray) = dot(x, F)
 norm(F::LazyPropagation, p::Real=2) = norm(eval_prop(F), p)
-adjoint(F::JUDI.LazyPropagation) = F
+adjoint(F::JUDI.LazyPropagation) = LazyPropagation(x->adjoint(F.post(x)), F.F, F.q)
 
 ############################ Two params rules ############################################
 function rrule(F::judiPropagator{T, O}, m::AbstractArray{T}, q::AbstractArray{T}) where {T, O}

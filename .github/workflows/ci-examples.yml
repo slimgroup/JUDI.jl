@@ -69,6 +69,8 @@ jobs:
 
       - name: Set julia python
         run: |
+          python3 -m pip install -U pip
+          python3 -m pip install matplotlib seiscm colorcet
           PYTHON=$(which python3) julia -e 'using Pkg;Pkg.add("PyCall");Pkg.build("PyCall")'
 
       - name: Build JUDI

@@ -89,9 +89,11 @@ def opt_op(model):
     if configuration['platform'].name in ['nvidiaX', 'amdgpuX']:
         opts = {'openmp': True if configuration['language'] == 'openmp' else None,
                 'mpi': configuration['mpi']}
+        mode = 'advanced'
     else:
         opts = {'openmp': True, 'par-collapse-ncores': 2, 'mpi': configuration['mpi']}
-    return ('advanced', opts)
+        mode = 'advanced'
+    return (mode, opts)
 
 
 def nfreq(freq_list):

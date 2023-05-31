@@ -170,6 +170,16 @@ for (op, s) in zip([:+, :-], (1, -1))
     end
 end
 
+function *(M::Matrix{T}, P::judiProjection{T}) where T
+    @assert size(M, 2) == get_nsrc(P)
+    g = super_shot_geometry(P.geometry)
+    geom = Geometry(g.xloc[1], g.yloc[1], g.zloc[1]; dt=g.dt[1], t=g.t[1], nsrc=size(M, 1))
+    return judiProjection(geom)
+end
+
+*(M::Matrix{T}, P::jAdjoint{judiProjection{T}}) where T = jAdjoint(M*P.op)
+*(M::Matrix{T}, R::judiRHS{T}) where T = judiRHS{T}(size(M, 1), M*R.P, M*R.d)
+
 ############################################################################################################################
 # Comparison
 ==(jA1::jAdjoint, jA2::jAdjoint) = jA1.op  == jA2.op

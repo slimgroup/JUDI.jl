@@ -32,9 +32,13 @@ function run_and_reduce(func, pool, nsrc, arg_func::Function)
 end
 
 function run_and_reduce(func, ::Nothing, nsrc, arg_func::Function)
-    out = func(arg_func(1)...)
+    @juditime "Running $(func) for first src" begin
+        out = func(arg_func(1)...)
+    end
     for i=2:nsrc
-        next = func(arg_func(i)...)
+        @juditime "Running $(func) for src $(i)" begin
+            next = func(arg_func(i)...)
+        end
         single_reduce!(out, next)
     end
     out

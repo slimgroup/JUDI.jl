@@ -6,7 +6,9 @@
 # Date: January 2017
 
 export judiVector, judiVector_to_SeisBlock, src_to_SeisBlock
-export write_shot_record, get_data, convert_to_array, rebuild_jv
+export write_shot_record, get_data, convert_to_array, rebuild_jv, simsource
+
+import Base: mergewith!
 
 ############################################################
 
@@ -18,7 +20,6 @@ mutable struct judiVector{T, AT} <: judiMultiSourceVector{T}
 end
 
 ############################################################
-
 ## outer constructors
 
 """
@@ -134,7 +135,8 @@ time_sampling(jv::judiVector) = jv.geometry.dt
 # JOLI conversion
 jo_convert(::Type{T}, jv::judiVector{T, Array{T, N}}, ::Bool) where {T<:AbstractFloat, N} = jv
 jo_convert(::Type{T}, jv::judiVector{vT, Array{vT, N}}, B::Bool) where {T<:AbstractFloat, vT, N} = judiVector{T, Array{T, N}}(jv.nsrc, jv.geometry, jo_convert.(T, jv.data, B))
-zero(::Type{T}, v::judiVector{vT, AT}; nsrc::Integer=v.nsrc) where {T, vT, AT} = judiVector{T, AT}(nsrc, deepcopy(v.geometry), T(0) .* v.data[1:nsrc])
+zero(::Type{T}, v::judiVector{vT, AT}; nsrc::Integer=v.nsrc) where {T, vT, AT} = judiVector{T, AT}(nsrc, deepcopy(v.geometry[1:nsrc]), T(0) .* v.data[1:nsrc])
+
 function copy!(jv::judiVector, jv2::judiVector)
     jv.geometry = deepcopy(jv2.geometry)
     jv.data .= jv2.data
@@ -143,12 +145,76 @@ end
 
 copyto!(jv::judiVector, jv2::judiVector) = copy!(jv, jv2)
 make_input(jv::judiVector{T, Matrix{T}}) where T = jv.data[1]
+make_input(jv::judiVector{T, Vector{T}}) where T = reshape(jv.data[1], :, 1)
 make_input(jv::judiVector{T, SeisCon}) where T = convert(Matrix{T}, jv.data[1][1].data)
 
 check_compat(ms::Vararg{judiVector, N}) where N = all(y -> compareGeometry(y.geometry, first(ms).geometry), ms)
-##########################################################
 
+function as_ordered_dict(x::judiVector{T, AT}; v=1) where {T, AT}
+    x.nsrc == 1 || throw(ArgumentError("as_ordered_dict only supported for single shot records"))
+    jdict = OrderedDict(zip(as_coord_set(x.geometry[1]), collect.(eachcol(v.*make_input(x)))))
+    return jdict
+end
+
+function from_ordered_dict(d::OrderedDict{NTuple{N, T}}, dt::T, nt::Integer, t::T) where {N, T}
+    Gnew = GeometryIC{T}(coords_from_keys(d.keys)..., [dt], [nt], [t])
+    return judiVector{T, Matrix{T}}(1, Gnew, [hcat(d.vals...)])
+end
+
+function pad_zeros(zpad::OrderedDict, m::T, d::judiVector{T, AT}) where {T, AT}
+    @assert d.nsrc == 1
+    dloc = as_ordered_dict(d; v=m)
+    sort!(merge!(.+, dloc, zpad))
+    return from_ordered_dict(dloc, d.geometry.dt[1], d.geometry.nt[1], d.geometry.t[1])
+end
+
+function simsource(M::Vector{T}, x::judiVector{T, AT}; reduction=+, minimal::Bool=false) where {T, AT}
+    reduction in [+, nothing] || throw(ArgumentError("$(reduction): Only + and nothing supported for reduction (supershot or supershot before sum)"))
+    # Without reduction, add zero trace for all missing coords
+    if isnothing(reduction)
+        sgeom = as_coord_set(x.geometry)
+        zpad = OrderedDict(zip(sgeom, [zeros(Float32, x.geometry.nt[1]) for s=1:length(sgeom)]))
+        dOut = vcat([pad_zeros(zpad, M[s], x[s]) for s=1:x.nsrc]...)
+    # With reduction. COuld reuse the previous but cheaper to compute the sum directly
+    else
+        reduction = minimal ? PopZero() : reduction
+        sdict = mergewith!(reduction, map((d, m)->as_ordered_dict(d; v=m), x, M)...)
+        sort!(sdict)
+        dOut = from_ordered_dict(sdict, x.geometry.dt[1], x.geometry.nt[1], x.geometry.t[1])
+    end
+    return dOut
+end
+
+function simsource(M::Matrix{T}, x::judiVector{T, AT}; reduction=+, minimal::Bool=false) where {T, AT}
+    isnothing(reduction) && @assert size(M, 1) == 1
+    return vcat([simsource(vec(M[si,:]), x; reduction=reduction, minimal=minimal) for si=1:size(M, 1)]...)
+end
+
+## Merging utility
+struct PopZero end
+
+no_sim_msg = """
+No common receiver poisiton found to construct a super shot. You can
+
+- Input shot records with at least one receiver position in common
+- Use `simsource(M, data; minimal=false)`or `M*data` to construct a supershot with zero-padded missing traces.
+"""
+
+function mergewith!(::PopZero, d1::OrderedDict{K, V}, d2::OrderedDict{K, V}) where {K, V}
+    k1 = keys(d1)
+    k2 = keys(d2)
+    mergekeys = intersect(k1, k2)
+    isempty(mergekeys) && throw(ArgumentError(no_sim_msg))
+    for k ∈ mergekeys
+        d1[k] .+= d2[k]
+    end
+    Base.filter!(p->p.first ∈ mergekeys, d1)
+    return d1
+end
+
+##########################################################
 # Overload needed base function for SegyIO objects
+
 vec(x::SegyIO.SeisCon) = vec(x[1].data)
 dot(x::SegyIO.SeisCon, y::SegyIO.SeisCon) = dot(x[1].data, y[1].data)
 norm(x::SegyIO.SeisCon, p::Real=2) = norm(x[1].data, p)
@@ -197,8 +263,8 @@ function judiVector_to_SeisBlock(d::judiVector{avDT, AT}, q::judiVector{avDT, QT
                                  source_depth_key="SourceSurfaceElevation",
                                  receiver_depth_key="RecGroupElevation") where {avDT, AT, QT}
 
-    typeof(d.geometry) <: GeometryOOC && (d.geometry = Geometry(d.geometry))
-    typeof(q.geometry) <: GeometryOOC && (q.geometry = Geometry(q.geometry))
+    d.geometry = Geometry(d.geometry)
+    q.geometry = Geometry(q.geometry)
 
     blocks = Array{Any}(undef, d.nsrc)
     count = 0
@@ -240,6 +306,7 @@ function judiVector_to_SeisBlock(d::judiVector{avDT, AT}, q::judiVector{avDT, QT
     return fullblock
 end
 
+
 function src_to_SeisBlock(q::judiVector{avDT, QT};
                                  source_depth_key="SourceSurfaceElevation",
                                  receiver_depth_key="RecGroupElevation") where {avDT, QT}
@@ -248,6 +315,7 @@ function src_to_SeisBlock(q::judiVector{avDT, QT};
         source_depth_key=source_depth_key,
         receiver_depth_key=receiver_depth_key)
 end
+
 
 function write_shot_record(srcGeometry::GeometryIC, srcData, recGeometry::GeometryIC, recData, options)
     q = judiVector(srcGeometry, srcData)
@@ -263,6 +331,7 @@ function write_shot_record(srcGeometry::GeometryIC, srcData, recGeometry::Geomet
     return container
 end
 
+
 ####################################################################################################
 # Load OOC
 function get_data(x::judiVector{T, SeisCon}) where T
@@ -274,8 +343,10 @@ function get_data(x::judiVector{T, SeisCon}) where T
     return judiVector(rec_geometry, shots)
 end
 
+
 get_data(x::judiVector{T, Array{Float32, 2}}) where T = x
 convert_to_array(x::judiVector) = vcat(vec.(x.data)...)
+
 
 ##### Rebuild bad vector
 """
@@ -284,6 +355,7 @@ rebuild a judiVector from previous version type or JLD2 reconstructed type
 """
 rebuild_jv(v::judiVector{T, AT}) where {T, AT} = v
 rebuild_jv(v) = judiVector(convgeom(v), convdata(v))
+
 
 function rebuild_maybe_jld(x::Vector{Any})
     try
@@ -295,6 +367,7 @@ function rebuild_maybe_jld(x::Vector{Any})
         return x
     end
 end
+
 
 # Rebuild for backward compatinility
 convgeom(x) = GeometryIC{Float32}([getfield(x.geometry, s) for s=fieldnames(GeometryIC)]...)

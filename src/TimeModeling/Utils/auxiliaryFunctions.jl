@@ -185,8 +185,8 @@ function limit_model_to_receiver_area(srcGeometry::Geometry, recGeometry::Geomet
     new_model = MT(DiscreteGrid(n, spacing(model), o, nbl(model)), values(newp)...)
     isnothing(pert) && (return new_model, nothing)
 
-    pert = reshape(pert, n_orig)[inds...]
-    return new_model, pert[:]
+    newpert = reshape(pert, n_orig)[inds...]
+    return new_model, newpert[1:end]
 end
 
 """
@@ -501,7 +501,6 @@ Parameters
 """
 time_resample(data::AbstractArray{T, N}, G_in::Geometry, dt_new::AbstractFloat) where {T<:AbstractFloat, N} = time_resample(data, G_in.dt[1], dt_new, G_in.t[1])
 
-
 """
     time_resample(data, dt_in, dt_new)
 
@@ -517,11 +516,16 @@ function time_resample(data::AbstractArray{T, N}, dt_in::T, dt_new::T, t::T) whe
 
     if dt_new==dt_in
         return data
+    elseif (dt_new % dt_in) == 0
+        rate = Int64(div(dt_new, dt_in))
+        return _time_resample(data, rate)
     else
-        nt = size(data, 1)
-        timeAxis = 0:dt_in:(dt_in*ceil(t/dt_in))
-        timeInterp = 0:dt_new:(dt_new*ceil(t/dt_new))
-        dataInterp = Float32.(SincInterpolation(data, timeAxis, timeInterp))
+        @juditime "Data time sinc-interpolation" begin
+            nt = size(data, 1)
+            timeAxis = StepRangeLen(0f0, T(dt_in), nt)
+            timeInterp = 0:dt_new:(dt_new*ceil(t/dt_new))
+            dataInterp = Float32.(SincInterpolation(data, timeAxis, timeInterp))
+        end
         return dataInterp
     end
 end
@@ -541,6 +545,9 @@ Parameters
 * `dt_in`: Time sampling rate of the `data.`
 """
 time_resample(data::AbstractArray{Float32, N}, dt_in::AbstractFloat, G_out::Geometry) where N = time_resample(data, dt_in, G_out.dt[1], G_out.t[1])
+
+_time_resample(data::Matrix{T}, rate::Integer) where T = data[1:rate:end, :]
+_time_resample(data::PermutedDimsArray{T, 2, (2, 1), (2, 1), Matrix{T}}, rate::Integer) where T = data.parent[:, 1:rate:end]'
 
 """
     generate_distribution(x; src_no=1)

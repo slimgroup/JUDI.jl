@@ -221,12 +221,11 @@ end
 
 ############################################################################################################################
 # Size update based on linear operator
-
 update_size(w::judiProjection, F::judiPropagator) = set_space_size!(w.n, size(F.model))
 update_size(w::jAdjoint{<:judiProjection}, F::judiPropagator) = set_space_size!(w.op.n, size(F.model))
-
 update_size(w::judiWavelet, F::judiPropagator) = set_space_size!(w.m, size(F.model))
 update_size(w::jAdjoint{<:judiWavelet}, F::judiPropagator) = set_space_size!(w.op.m, size(F.model))
+
 ############################################################################################################################
 # indexing
 getindex(F::judiModeling{D, O}, i) where {D, O} = judiModeling{D, O}(F.m[i], F.n[i], F.model, F.options[i])
@@ -234,6 +233,12 @@ getindex(F::judiDataModeling{D, O}, i) where {D, O} = judiDataModeling{D, O}(F.r
 getindex(F::judiPointSourceModeling{D, O}, i) where {D, O}= judiPointSourceModeling{D, O}(F.F[i], F.qInjection[i])
 getindex(F::judiDataSourceModeling{D, O}, i) where {D, O} = judiDataSourceModeling{D, O}(F.rInterpolation[i], F.F[i], F.qInjection[i])
 getindex(J::judiJacobian{D, O, FT}, i) where {D, O, FT} = judiJacobian{D, O, FT}(J.m[i], J.n[i], J.F[i], J.q[i])
+
+# SimSource
+*(M::Matrix{T}, F::judiPointSourceModeling{D, O}) where {T, D, O} = judiPointSourceModeling{D, O}(F.F, M*F.qInjection)
+*(M::Matrix{T}, F::judiDataModeling{D, O}) where {T, D, O} = judiDataModeling{D, O}(M*F.rInterpolation, F.F)
+*(M::Matrix{T}, F::judiDataSourceModeling{D, O}) where {T, D, O} = judiDataSourceModeling{D, O}(M*F.rInterpolation, F.F, M*F.qInjection)
+*(M::Matrix{T}, J::judiJacobian{D, O, FT}) where {T, D, O, FT} = judiJacobian(M*J.F, M*J.q)
 
 ############################################################################################################################
 # Comparisons
