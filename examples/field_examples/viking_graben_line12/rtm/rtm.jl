@@ -12,7 +12,7 @@ prestk_file = "s_deghost_gain_mute_dip_radon.sgy"
 dir_out = "$(@__DIR__)/"
 
 # choose the most accurate model
-model_file = "$(@__DIR__)/../fwi/fwi_$(modeling_type)/0.005Hz/model 10.h5"
+model_file = "$(@__DIR__)/../fwi/fwi_$(modeling_type)/0.035Hz/model 10.h5"
 
 # use original wavelet file 
 # wavelet_file = "$(@__DIR__)/../FarField.dat" # dt=1, skip=25
@@ -91,7 +91,7 @@ q = judiVector(src_geometry, wavelet)
 
 # JUDI options
 jopt = JUDI.Options(
-    space_order=16,
+    space_order=32,
     limit_m = true,
     buffer_size = buffer_size,
     optimal_checkpointing=false,
