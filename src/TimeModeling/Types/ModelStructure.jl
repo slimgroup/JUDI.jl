@@ -258,51 +258,6 @@ end
 NpyArray(p::PhysicalParameter{T, N}, revdims::Bool) where {T<:AbstractFloat, N} = NpyArray(p.data, revdims)
 
 ###################################################################################################
-# Isotropic acoustic
-
-"""
-    Model
-        n::NTuple{N, Int64}
-        d::NTuple{N, Float32}
-        o::NTuple{N, Float32}
-        nb::Integer
-        params::Dict
-        rho::Array
-
-Model structure for seismic velocity models.
-
-`n`: number of gridpoints in (x,y,z) for 3D or (x,z) for 2D
-
-`d`: grid spacing in (x,y,z) or (x,z) (in meters)
-
-`o`: origin of coordinate system in (x,y,z) or (x,z) (in meters)
-
-`nb`: number of absorbing boundary points in each direction
-
-`params`: Physical parameters such has squared slowness, denisty or THomesne parameters
-
-Constructor
-===========
-
-The parameters `n`, `d`, `o` and `m` are mandatory, whith `nb` and other physical parameters being optional input arguments.
-
-    Model(n, d, o, m; nb=40, rho=1, epsilon=0, delta=0, theta=0, phi=0)
-
-where
-
-`m`: velocity model in slowness squared (s^2/km^2)
-
-`epsilon`: Epsilon thomsen parameter ( between -1 and 1)
-
-`delta`: Delta thomsen parameter ( between -1 and 1 and delta < epsilon)
-
-`theta`: Anisotopy dip in radian
-
-`phi`: Anisotropy asymuth in radian
-
-`rho`: density (g / m^3)
-
-"""
 const ModelParam{T, N} = Union{T, PhysicalParameter{T, N}}
 
 # Acoustic
@@ -352,6 +307,34 @@ _mparams(m::AbstractModel) = first.(_params(m))
 _scalar(::Nothing, ::Type{T}, def=1) where T = T(def)
 _scalar(v::Number, ::Type{T}, def=1) where T = T(v)
 
+"""
+    Model(n, d, o, m; epsilon=nothing, delta=nothing, theta=nothing,
+            phi=nothing, rho=nothing, qp=nothing, vs=nothing, nb=40)
+
+
+The parameters `n`, `d`, `o` and `m` are mandatory, whith `nb` and other physical parameters being optional input arguments.
+
+where
+
+`m`: velocity model in slowness squared (s^2/km^2)
+
+`epsilon`: Epsilon thomsen parameter ( between -1 and 1)
+
+`delta`: Delta thomsen parameter ( between -1 and 1 and delta < epsilon)
+
+`theta`: Anisotopy dip in radian
+
+`phi`: Anisotropy asymuth in radian
+
+`rho`: density (g / m^3)
+
+`qp`: P-wave attenuation for visco-acoustic models
+
+`vs`: S-wave velocity for elastic models.
+
+`nb`: Number of ABC points
+
+"""
 function Model(n, d, o, m::Array{mT, N}; epsilon=nothing, delta=nothing, theta=nothing,
                phi=nothing, rho=nothing, qp=nothing, vs=nothing, nb=40) where {mT<:AbstractFloat, N}
 
