@@ -221,13 +221,13 @@ struct TimeDifferential{T, K} <: DataPreconditioner{T, T}
     recGeom::Geometry
 end
 
-TimeDifferential(g::Geometry{T}, order::Integer) where T = TimeDifferential{T, order}(n_samples(g), g)
+TimeDifferential(g::Geometry{T}, order::Number) where T = TimeDifferential{T, order}(n_samples(g), g)
 
-judiTimeDerivative(v::judiVector{T, AT}, order::Integer) where {T, AT} = TimeDifferential(v.geometry, order)
-judiTimeDerivative(g::Geometry{T}, order::Integer) where {T} = TimeDifferential(g, order)
+judiTimeDerivative(v::judiVector{T, AT}, order::Number) where {T, AT} = TimeDifferential(v.geometry, order)
+judiTimeDerivative(g::Geometry{T}, order::Number) where {T} = TimeDifferential(g, order)
 
-judiTimeIntegration(v::judiVector{T, AT}, order::Integer) where {T, AT} = TimeDifferential(v.geometry, -order)
-judiTimeIntegration(g::Geometry{T}, order::Integer) where {T} = TimeDifferential(g, -order)
+judiTimeIntegration(v::judiVector{T, AT}, order::Number) where {T, AT} = TimeDifferential(v.geometry, -order)
+judiTimeIntegration(g::Geometry{T}, order::Number) where {T} = TimeDifferential(g, -order)
 
 # Real diagonal operator
 conj(D::TimeDifferential{T, K}) where {T, K} = D

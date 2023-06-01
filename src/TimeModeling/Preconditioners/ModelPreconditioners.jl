@@ -19,9 +19,9 @@ struct DepthScaling{T, N, K} <: ModelPreconditioner{T, T}
 end
 
 function judiDepthScaling(model::AbstractModel; K=.5f0)
-    N = length(model.n)
-    depth = reshape(range(0f0, stop=(model.n[end] - 1) * model.d[end], length=model.n[end]), ones(Int64, N-1)..., :)
-    return DepthScaling{Float32, N, K}(prod(model.n), depth)
+    N = length(size(model))
+    depth = reshape(range(0f0, stop=(size(model)[end] - 1) * spacing(model)[end], length=size(model)[end]), ones(Int64, N-1)..., :)
+    return DepthScaling{Float32, N, K}(prod(size(model)), depth)
 end
   
 matvec(D::DepthScaling{T, N, K}, x::Vector{T}) where {T, N, K} = vec(reshape(x, :, size(D.depth, N)) .* D.depth[:]'.^K)
@@ -60,7 +60,7 @@ judiTopmute(n::NTuple{N, Integer}, wb::Integer, taperwidth::Integer) where {N} =
 
 function judiTopmute(model::AbstractModel; taperwidth=10)
     wb = find_water_bottom(model.m.data)
-    return TopMute(prod(model.n), wb, taperwidth)
+    return TopMute(prod(size(model)), wb, taperwidth)
 end
 
 
@@ -129,9 +129,9 @@ struct judiIllumination{DDT, M, K, R} <: ModelPreconditioner{DDT, DDT}
 end
 
 function judiIllumination(model::AbstractModel; mode="u", k=1, recompute=true)
-    n = prod(model.n)
+    n = prod(size(model))
     # Initialize the illumination as the identity
-    illum = Dict(s=>PhysicalParameter(model.n, model.d, model.o, ones(Float32, model.n)) for s in split(mode, ""))
+    illum = Dict(s=>PhysicalParameter(size(model), spacing(model), origin(model), ones(Float32, size(model))) for s in split(mode, ""))
     I = judiIllumination{Float32, Symbol(mode), k, recompute}("Illumination", illum, n)
     init_illum(model, I)
     return I
