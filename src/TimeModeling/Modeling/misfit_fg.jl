@@ -38,8 +38,8 @@ function multi_src_fg(model_full::AbstractModel, source::judiVector, dObs::judiV
 
     # Set up coordinates
     @juditime "Sparse coords setup" begin
-        src_coords = setup_grid(source.geometry, model.n)  # shifts source coordinates by origin
-        rec_coords = setup_grid(dObs.geometry, model.n)    # shifts rec coordinates by origin
+        src_coords = setup_grid(source.geometry, size(model))  # shifts source coordinates by origin
+        rec_coords = setup_grid(dObs.geometry, size(model))    # shifts rec coordinates by origin
     end
 
     mfunc = pyfunction(misfit, Matrix{Float32}, Matrix{Float32})
@@ -61,14 +61,14 @@ function multi_src_fg(model_full::AbstractModel, source::judiVector, dObs::judiV
     end
 
     @juditime "Remove padding from gradient" begin
-        grad = PhysicalParameter(remove_padding(argout[2], modelPy.padsizes; true_adjoint=options.sum_padding),  model.d, model.o)
+        grad = PhysicalParameter(remove_padding(argout[2], modelPy.padsizes; true_adjoint=options.sum_padding),  spacing(model), origin(model))
     end
 
     fval = Ref{Float32}(argout[1])
     if illum
         @juditime "Process illumination" begin
-            illumu = PhysicalParameter(remove_padding(argout[3], modelPy.padsizes; true_adjoint=false), model.d, model.o)
-            illumv = PhysicalParameter(remove_padding(argout[4], modelPy.padsizes; true_adjoint=false), model.d, model.o)
+            illumu = PhysicalParameter(remove_padding(argout[3], modelPy.padsizes; true_adjoint=false), spacing(model), origin(model))
+            illumv = PhysicalParameter(remove_padding(argout[4], modelPy.padsizes; true_adjoint=false), spacing(model), origin(model))
         end
         return fval, grad, illumu, illumv
     end

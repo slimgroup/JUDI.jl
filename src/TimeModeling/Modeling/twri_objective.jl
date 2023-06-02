@@ -88,8 +88,8 @@ function twri_objective(model_full::AbstractModel, source::judiVector, dObs::jud
     isnothing(y) ? Y = nothing : Y = time_resample(make_input(y), y.geometry, dtComp)
 
     # Set up coordinates
-    src_coords = setup_grid(source.geometry, model.n)  # shifts source coordinates by origin
-    rec_coords = setup_grid(dObs.geometry, model.n)    # shifts rec coordinates by origin
+    src_coords = setup_grid(source.geometry, size(model))  # shifts source coordinates by origin
+    rec_coords = setup_grid(dObs.geometry, size(model))    # shifts rec coordinates by origin
 
     ~isempty(options.frequencies) ? freqs = options.frequencies : freqs = nothing
     ~isempty(options.frequencies) ? (wfilt, freqs) =  filter_w(qIn, dtComp, freqs) : wfilt = nothing
@@ -104,7 +104,7 @@ function twri_objective(model_full::AbstractModel, source::judiVector, dObs::jud
 
     if (optionswri.params in [:m, :all])
         gradm = remove_padding(gradm, modelPy.padsizes; true_adjoint=options.sum_padding)
-        gradm = PhysicalParameter(gradm, model.d, model.o)
+        gradm = PhysicalParameter(gradm, spacing(model), origin(model))
     end
     if ~isnothing(grady)
         grady = time_resample(grady, dtComp, dObs.geometry)

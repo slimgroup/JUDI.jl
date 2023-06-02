@@ -41,7 +41,7 @@ function (J::judiJacobian{D, O, FT})(q::judiMultiSourceVector) where {D, O, FT}
 end
 
 function (J::judiJacobian{D, O, FT})(x::Array{D, N}) where {D, O, FT, N}
-    if length(x) == prod(J.model.n)
+    if length(x) == prod(size(J.model))
         return J(;m=m)
     end
     new_q = _as_src(J.qInjection.op, J.model, x)
