@@ -53,6 +53,7 @@ Create a probability distribution with the shape of the source spectrum from whi
 
 ```@docs
 generate_distribution
+select_frequencies
 ```
 
 We can draw random samples from `dist` by passing it values between 0 and 1:
@@ -83,3 +84,32 @@ d_ic = get_data(d_ooc, inds)
 ```
 
 where `inds` is either a single index, a list of index or a range of index.
+
+## Restrict model to acquisition
+
+In practice, and in particular for marine data, the aperture of a single shot is much smaller than the full model size. We provide a function (automatically used when the option `limit_m` is set in [`Options`](@ref)) that limits the model to the acquisition area.
+
+```@docs
+limit_model_to_receiver_area
+```
+
+We also provide it's complement that removes receivers outside of the computational domain if the dataset contains locations that are not wanted
+
+```@docs
+remove_out_of_bounds_receivers
+```
+
+## Additional miscellanous utilities
+
+```@docs
+devito_model
+setup_grid
+pad_sizes
+pad_array
+remove_padding
+convertToCell
+process_input_data
+reshape
+transducer
+as_vec
+```

@@ -53,9 +53,13 @@ import PyCall.NpyArray
 import ChainRulesCore: rrule
 
 # Set python paths
+export devito, set_devito_config
 const pm = PyNULL()
 const ac = PyNULL()
 const pyut = PyNULL()
+const devito = PyNULL()
+
+set_devito_config(key::String, val::String) = set!(devito."configuration", key, val)
 
 # Create a lock for pycall FOR THREAD/TASK SAFETY
 # See discussion at
@@ -156,6 +160,7 @@ function __init__()
     copy!(pm, pyimport("models"))
     copy!(ac, pyimport("interface"))
     copy!(pyut, pyimport("utils"))
+    copy!(devito, pyimport("devito"))
     # Initialize lock at session start
     PYLOCK[] = ReentrantLock()
 

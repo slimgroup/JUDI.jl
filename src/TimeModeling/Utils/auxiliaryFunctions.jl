@@ -10,7 +10,7 @@ export convertToCell, limit_model_to_receiver_area, remove_out_of_bounds_receive
 export time_resample, remove_padding, subsample, process_input_data
 export generate_distribution, select_frequencies
 export devito_model, pad_sizes, pad_array
-export transducer
+export transducer, as_vec
 
 """
     devito_model(model, options;dm=nothing)
@@ -121,21 +121,26 @@ of the problem when the model si large and the source and receiver located in a 
 In the cartoon below, the full model will be cropped to the center area containg the source (o) receivers (x) and
 buffer area (*)
 
---------------------------------------------
-| . . . . . . . . . . . . . . . . . . . . . |
-| . . . . . . . . . . . . . . . . . . . . . |  - o Source position
-| . . . . * * * * * * * * * * * * . . . . . |  - x receiver positions
-| . . . . * x x x x x x x x x x * . . . . . |  - * Extra buffer (grid spacing in that simple case)
-| . . . . * x x x x x x x x x x * . . . . . |
-| . . . . * x x x x x x x x x x * . . . . . |
-| . . . . * x x x x x o x x x x * . . . . . |
-| . . . . * x x x x x x x x x x * . . . . . |
-| . . . . * x x x x x x x x x x * . . . . . |
-| . . . . * x x x x x x x x x x * . . . . . |
-| . . . . * * * * * * * * * * * * . . . . . |
-| . . . . . . . . . . . . . . . . . . . . . |
-| . . . . . . . . . . . . . . . . . . . . . |
---------------------------------------------
+- o Source position
+- x receiver positions
+- * Extra buffer (grid spacing in that simple case)
+
+--------------------------------------------  \n
+| . . . . . . . . . . . . . . . . . . . . . | \n
+| . . . . . . . . . . . . . . . . . . . . . | \n
+| . . . . * * * * * * * * * * * * . . . . . | \n
+| . . . . * x x x x x x x x x x * . . . . . | \n
+| . . . . * x x x x x x x x x x * . . . . . | \n
+| . . . . * x x x x x x x x x x * . . . . . | \n
+| . . . . * x x x x x o x x x x * . . . . . | \n
+| . . . . * x x x x x x x x x x * . . . . . | \n
+| . . . . * x x x x x x x x x x * . . . . . | \n
+| . . . . * x x x x x x x x x x * . . . . . | \n
+| . . . . * * * * * * * * * * * * . . . . . | \n
+| . . . . . . . . . . . . . . . . . . . . . | \n
+| . . . . . . . . . . . . . . . . . . . . . | \n
+--------------------------------------------  \n
+
 Parameters
 * `srcGeometry`: Geometry of the source.
 * `recGeometry`: Geometry of the receivers.
@@ -282,7 +287,7 @@ convertToCell(x::Number) = convertToCell([x])
 
 # 1D source time function
 """
-    source(tmax, dt, f0)
+    ricker_wavelet(tmax, dt, f0)
 
 Create seismic Ricker wavelet of length `tmax` (in milliseconds) with sampling interval `dt` (in milliseonds)\\
 and central frequency `f0` (in kHz).

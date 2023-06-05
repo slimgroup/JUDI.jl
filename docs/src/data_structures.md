@@ -42,7 +42,7 @@ model.n
 JUDI's geometry structure contains the information of either the source **or** the receiver geometry. Construct an (in-core) geometry object for **either** a source or receiver set up:
 
 ```@docs
- Geometry(xloc, yloc, zloc; dt=[], t=[], nsrc=nothing)
+ Geometry
 ```
 
 From the optional arguments, you have to pass (at least) **two** of `dt`, `nt` and `t`. The third value is automatically determined and set from the two other values. a `Geometry` can be constructed in a number of different ways for in-core and out-of-core cases. Check our examples and the source for additional details while the documentation is being extended.
@@ -62,6 +62,14 @@ geometry.xloc[i]
 geometry.xloc[i][j]
 ```
 
+### Geometry utilities
+
+A few utilities to manipulates geometries are provided as well.
+
+```@docs
+super_shot_geometry
+reciprocal_geom
+```
 ## Options structure
 
 The options structure allows setting several modeling parameters.
