@@ -162,7 +162,7 @@ function limit_model_to_receiver_area(srcGeometry::Geometry{T}, recGeometry::Geo
     end
 
     # add buffer zone if possible
-    min_x = max(origin(model, 1), min_x - buffer) + 1
+    min_x = max(origin(model, 1), min_x - buffer)
     max_x = min(origin(model, 1) + spacing(model, 1)*(size(model, 1)-1), max_x + buffer)
     if ndim == 3
         min_y = max(origin(model, 2), min_y - buffer)
