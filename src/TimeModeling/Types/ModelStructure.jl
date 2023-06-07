@@ -220,7 +220,7 @@ BroadcastStyle(::Type{<:PhysicalParameter}) = Broadcast.ArrayStyle{PhysicalParam
 
 function similar(bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{PhysicalParameter}}, ::Type{ElType}) where ElType
     # Scan the inputs
-    A = find_pm(bc)
+    A = find_bc(bc, PhysicalParameter)
     # Use the char field of A to create the output
     newT = ElType <: Nothing ? eltype(A) : ElType
     Ad = zeros(newT, axes(A.data))
@@ -228,9 +228,6 @@ function similar(bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{PhysicalParamete
 end
 
 similar(bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{PhysicalParameter}}) = similar(bc, nothing)
-
-find_pm(bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{PhysicalParameter}}) = find_pm(bc.args)
-find_pm(t::Tuple) = t[findfirst(p->isa(p, PhysicalParameter), t)]
 
 function materialize!(A::PhysicalParameter{T, N}, ev::PhysicalParameter{T, N}) where {T<:AbstractFloat, N}
     if compare(A, ev)

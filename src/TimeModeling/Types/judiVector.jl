@@ -219,7 +219,7 @@ vec(x::SegyIO.SeisCon) = vec(x[1].data)
 dot(x::SegyIO.SeisCon, y::SegyIO.SeisCon) = dot(x[1].data, y[1].data)
 norm(x::SegyIO.SeisCon, p::Real=2) = norm(x[1].data, p)
 abs(x::SegyIO.IBMFloat32) = abs(Float32(x))
-*(n::Number, s::SegyIO.SeisCon) = copy(s)
+*(::Number, ::SeisCon) = throw(judiMultiSourceException("Cannot multiply out of core SeisCon byt scalar"))
 
 # push!
 function push!(a::judiVector{T, mT}, b::judiVector{T, mT}) where {T, mT}

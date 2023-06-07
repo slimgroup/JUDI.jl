@@ -2,9 +2,18 @@ BroadcastStyle(::Type{<:judiMultiSourceVector}) = ArrayStyle{judiMultiSourceVect
 
 function similar(bc::Broadcast.Broadcasted{ArrayStyle{judiMultiSourceVector}}, ::Type{ElType}) where ElType
     # Scan the inputs
-    A = bc.args[findfirst(m -> isa(m, judiMultiSourceVector), bc.args)]
+    A = find_bc(bc, judiMultiSourceVector)
     return similar(A, ElType)
 end
+
+
+"`A = find_pm(As)` returns the first PhysicalParameter among the arguments."
+find_bc(bc::Base.Broadcast.Broadcasted, ::Type{T}) where T = find_bc(bc.args, T)
+find_bc(args::Tuple, ::Type{T}) where T = find_bc(find_bc(args[1], T), Base.tail(args), T)
+find_bc(x, ::Type{T}) where T = x
+find_bc(::Tuple{}, ::Type{T}) where T = nothing
+find_bc(a::T, rest, ::Type{T}) where T = a
+find_bc(::Any, rest, ::Type{T}) where T = find_bc(rest, T)
 
 extrude(x::judiMultiSourceVector) = extrude(x.data)
 

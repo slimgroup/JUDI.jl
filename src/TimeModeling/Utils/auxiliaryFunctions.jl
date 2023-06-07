@@ -549,6 +549,9 @@ time_resample(data::AbstractArray{Float32, N}, dt_in::AbstractFloat, G_out::Geom
 _time_resample(data::Matrix{T}, rate::Integer) where T = data[1:rate:end, :]
 _time_resample(data::PermutedDimsArray{T, 2, (2, 1), (2, 1), Matrix{T}}, rate::Integer) where T = data.parent[:, 1:rate:end]'
 
+SincInterpolation(Y::Matrix{T}, S::StepRangeLen{T}, Up::StepRangeLen{T}) where T<:Real = sinc.( (Up .- S') ./ (S[2] - S[1]) ) * Y
+SincInterpolation(Y::PermutedDimsArray{T, 2, (2, 1), (2, 1), Matrix{T}}, S::StepRangeLen{T}, Up::StepRangeLen{T}) where T<:Real = (Y.parent * sinc.( (Up' .- S) ./ (S[2] - S[1]) ))'
+
 """
     generate_distribution(x; src_no=1)
 
@@ -764,9 +767,6 @@ vec(x::Float32) = x;
 vec(x::Int64) = x;
 vec(x::Int32) = x;
 vec(::Nothing) = nothing
-
-SincInterpolation(Y::Matrix{T}, S::StepRangeLen{T}, Up::StepRangeLen{T}) where T<:Real = sinc.( (Up .- S') ./ (S[2] - S[1]) ) * Y
-SincInterpolation(Y::PermutedDimsArray{T, 2, (2, 1), (2, 1), Matrix{T}}, S::StepRangeLen{T}, Up::StepRangeLen{T}) where T<:Real = (Y.parent * sinc.( (Up' .- S) ./ (S[2] - S[1]) ))'
 
 """
     as_vec(x, ::Val{Bool})
