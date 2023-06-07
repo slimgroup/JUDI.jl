@@ -180,16 +180,18 @@ isapprox(A::AbstractArray{T, N}, B::PhysicalParameter{T, N}; kwargs...) where {T
 # # Arithmetic operations
 compare(A::PhysicalParameter{T, N}, B::PhysicalParameter{T, N}) where {T<:AbstractFloat, N} =  (A.o == B.o &&  A.d == B.d &&  A.n == B.n)
 
+
 function combine(op, A::PhysicalParameter{T, N}, B::PhysicalParameter{T, N}) where {T<:AbstractFloat, N}
+    A.d == B.d || throw(PhysicalParameterException("Incompatible grids: ($(A.d), $(B.d))"))
     o = min.(A.o, B.o)
     sa = floor.(Int, (A.o .- o) ./ A.d) .+ 1
     ea = sa .+ A.n .- 1
     sb = floor.(Int, (B.o .- o) ./ B.d) .+ 1
     eb = sb .+ B.n .- 1
     mn = max.(ea, eb)
-    out = zeros(T, mn)
     ia = [s:e for (s, e) in zip(sa, ea)]
     ib = [s:e for (s, e) in zip(sb, eb)]
+    out = zeros(T, mn)
     out[ia...] .= A.data
     broadcast!(op, view(out, ib...),  view(out, ib...), B.data)
     return PhysicalParameter(mn, A.d, o, out)
@@ -217,26 +219,25 @@ end
 BroadcastStyle(::Type{<:PhysicalParameter}) = Broadcast.ArrayStyle{PhysicalParameter}()
 
 function similar(bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{PhysicalParameter}}, ::Type{ElType}) where ElType
-    # Scan the inputs for the ArrayAndChar:
-    A = find_pm(bc)
+    # Scan the inputs
+    A = find_bc(bc, PhysicalParameter)
     # Use the char field of A to create the output
-    ElType == Bool ? Ad = similar(Array{ElType}, axes(A.data)) : Ad = similar(A.data)
+    newT = ElType <: Nothing ? eltype(A) : ElType
+    Ad = zeros(newT, axes(A.data))
     PhysicalParameter(Ad, A.d, A.o)
 end
 
-similar(bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{PhysicalParameter}}) = similar(bc, eltype(find_pm(bc)))
-
-"`A = find_pm(As)` returns the first PhysicalParameter among the arguments."
-find_pm(bc::Base.Broadcast.Broadcasted) = find_pm(bc.args)
-find_pm(args::Tuple) = find_pm(find_pm(args[1]), Base.tail(args))
-find_pm(x) = x
-find_pm(::Tuple{}) = nothing
-find_pm(a::PhysicalParameter, rest) = a
-find_pm(::Any, rest) = find_pm(rest)
+similar(bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{PhysicalParameter}}) = similar(bc, nothing)
 
 function materialize!(A::PhysicalParameter{T, N}, ev::PhysicalParameter{T, N}) where {T<:AbstractFloat, N}
-    compare(A, ev)
-    A.data .= ev.data
+    if compare(A, ev)
+        A.data .= ev.data
+    else
+        A.n = ev.n
+        A.d = ev.d
+        A.o = ev.o
+        A.data = copy(ev.data)
+    end
     nothing
 end
 
