@@ -208,6 +208,8 @@ for op in [:+, :-, :*, :/]
             throw(PhysicalParameterException("Incompatible grids: ($(A.d), $(B.d))"))
         end
     end
+    @eval $(op)(A::PhysicalParameter{T, N}, B::T2) where {T<:AbstractFloat, T2<:Number, N} = PhysicalParameter(broadcast($(op), A.data, T(B)), A)
+    @eval $(op)(A::T2, B::PhysicalParameter{T, N}) where {T<:AbstractFloat, T2<:Number, N} = PhysicalParameter(broadcast($(op), T(A), B.data), B)
 end
 
 function *(A::Union{joMatrix, joLinearFunction, joLinearOperator, joCoreBlock}, p::PhysicalParameter{RDT, N}) where {RDT<:AbstractFloat, N}
@@ -252,6 +254,8 @@ for op in [:+, :-, :*, :/, :\]
         broadcasted(::typeof($op), A::PhysicalParameter{T, N}, B::DenseArray{T, N}) where {T<:AbstractFloat, N} = PhysicalParameter(A.n, A.d, A.o, materialize(broadcasted($(op), A.data, B)))
         broadcasted(::typeof($op), B::DenseArray{T, N}, A::PhysicalParameter{T, N}) where {T<:AbstractFloat, N} = PhysicalParameter(A.n, A.d, A.o, materialize(broadcasted($(op), B, A.data)))
         broadcasted(::typeof($op), A::PhysicalParameter{T, N}, B::PhysicalParameter{T, N}) where {T<:AbstractFloat, N} = $(op)(A, B)
+        broadcasted(::typeof($op), A::PhysicalParameter{T, N}, B::T2) where {T<:AbstractFloat, T2<:Number, N} = PhysicalParameter(broadcast($(op), A.data, T(B)), A)
+        broadcasted(::typeof($op), A::T2, B::PhysicalParameter{T, N}) where {T<:AbstractFloat, T2<:Number, N} = PhysicalParameter(broadcast($(op), T(A), B.data), B)
     end
 end
 
