@@ -9,7 +9,7 @@
 #' This example is converted to a markdown file for the documentation.
 
 #' # Import JUDI, Linear algebra utilities and Plotting
-using JUDI, LinearAlgebra, PyPlot
+using JUDI, LinearAlgebra, PyPlot, SlimPlotting
 
 #+ echo = false; results = "hidden"
 close("all")
@@ -125,17 +125,15 @@ ffwi, g_fwi = fwi_objective(model0, q, 0*dobs; options=Options(IC="fwi", space_o
 
 #' We show below the sensitivity kernels for a single source-receiver pair highlighting the inversion properties of these imaging conditions
 
-ni(x) = 10 * x ./ norm(x, Inf)
-
-fig = figure(figsize=(8, 12))
-subplot(311)
-imshow(ni(g_isic'), cmap="seismic", aspect="auto", vmin=-1, vmax=1)
+fig = figure(figsize=(12, 4))
+subplot(131)
+plot_simage(g_isic'; cmap="seismic", new_fig=false)
 title("ISIC")
-subplot(312)
-imshow(ni(g_fwi'), cmap="seismic",  aspect="auto", vmin=-1, vmax=1)
+subplot(133)
+plot_simage(g_fwi'; cmap="seismic", new_fig=false)
 title("FWI")
-subplot(313)
-imshow(ni(g_as'), cmap="seismic",  aspect="auto", vmin=-1, vmax=1)
+subplot(132)
+plot_simage(g_as'; cmap="seismic", new_fig=false)
 title("Adjoint State")
 tight_layout()
 display(fig)

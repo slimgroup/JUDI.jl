@@ -83,7 +83,6 @@ function multi_src_propagate(F::judiPropagator{T, O}, q::AbstractArray{T}) where
     arg_func = i -> (F[i], src_i(F, q, i))
     # Distribute source
     res = run_and_reduce(propagate, pool, nsrc, arg_func)
-    res = update_illum(res, F)
     res = _project_to_physical_domain(res, F.model)
     res = update_illum(res, F)
     res = as_vec(res, Val(F.options.return_array))

@@ -2,11 +2,57 @@ try:
     from collections.abc import Iterable
 except ImportError:
     from collections import Iterable
+from collections.abc import Hashable
+from functools import partial
 import numpy as np
 from sympy import sqrt
 
 from devito import configuration
 from devito.tools import as_tuple
+
+
+class memoized_func(object):
+    """
+    Decorator. Caches a function's return value each time it is called.
+    If called later with the same arguments, the cached value is returned
+    (not reevaluated). This decorator may also be used on class methods,
+    but it will cache at the class level; to cache at the instance level,
+    use ``memoized_meth``.
+
+    Adapted from: ::
+
+        https://github.com/devitocodes/devito/blob/master/devito/tools/memoization.py
+
+
+    This version is made task safe to prevent access conflicts between different julia
+    workers.
+
+    """
+
+    def __init__(self, func):
+        self.func = func
+        self.cache = {}
+
+    def __call__(self, *args, **kw):
+        if not isinstance(args, Hashable):
+            # Uncacheable, a list, for instance.
+            # Better to not cache than blow up.
+            return self.func(*args, **kw)
+        key = (self.func, args, frozenset(kw.items()))
+        if key in self.cache:
+            while True:
+                try:
+                    return self.cache[key]
+                except RuntimeError:
+                    pass
+
+        value = self.func(*args, **kw)
+        self.cache[key] = value
+        return value
+x
+    def __get__(self, obj, objtype):
+        """Support instance methods."""
+        return partial(self.__call__, obj)
 
 
 # Weighting

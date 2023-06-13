@@ -3,11 +3,18 @@ import warnings
 from sympy import finite_diff_weights as fd_w
 from devito import (Grid, Function, SubDomain, SubDimension, Eq, Inc,
                     Operator, mmin, mmax, initialize_function, switchconfig,
-                    Abs, sqrt, sin)
+                    Abs, sqrt, sin, DefaultDimension)
 from devito.data.allocators import ExternalAllocator
 from devito.tools import as_tuple, memoized_func
 
+from utils import memoized_func
+
 __all__ = ['Model']
+
+
+@memoized_func
+def def_dim(name, i):
+    return DefaultDimension(name, default_value=i)
 
 
 def getmin(f):
@@ -162,13 +169,15 @@ class Model(object):
     """
     def __init__(self, origin, spacing, shape, space_order=8, nbl=40, dtype=np.float32,
                  m=None, epsilon=None, delta=None, theta=None, phi=None, rho=None,
-                 b=None, qp=None, lam=None, mu=None, dm=None, fs=False, **kwargs):
+                 b=None, qp=None, lam=None, mu=None, dm=None, fs=False, 
+                 physics=None, **kwargs):
         # Setup devito grid
         self.shape = tuple(shape)
         self.nbl = int(nbl)
         self.origin = tuple([dtype(o) for o in origin])
         abc_type = "mask" if (qp is not None or mu is not None) else "damp"
         self.fs = fs
+
         # Origin of the computational domain with boundary to inject/interpolate
         # at the correct index
         origin_pml = [dtype(o - s*nbl) for o, s in zip(origin, spacing)]
@@ -181,6 +190,7 @@ class Model(object):
             shape_pml[-1] -= self.nbl
         else:
             subdomains = ()
+
         # Physical extent is calculated per cell, so shape - 1
         extent = tuple(np.array(spacing) * (shape_pml - 1))
         self.grid = Grid(extent=extent, shape=shape_pml, origin=tuple(origin_pml),
@@ -214,6 +224,7 @@ class Model(object):
         # Additional parameter fields for Viscoacoustic operators
         if self._is_viscoacoustic:
             self.qp = self._gen_phys_param(qp, 'qp', space_order)
+            self._physics = 'visco-acoustic'
 
         # Additional parameter fields for TTI operators
         if self._is_tti:
@@ -230,8 +241,17 @@ class Model(object):
         if self._is_elastic:
             self.lam = self._gen_phys_param(lam, 'lam', space_order, is_param=True)
             self.mu = self._gen_phys_param(mu, 'mu', space_order, is_param=True)
+            self._physics = 'elastic'
+    
+        self._physics = physics or 'acoustic'
         # User provided dt
         self._dt = kwargs.get('dt')
+        
+        # Initialize potential extra physical parameters
+        for k, v in kwargs.items():
+            if isinstance(v, np.ndarray):
+                param = self._gen_phys_param(v, k, space_order)
+                setattr(self, k, param)
 
     def _init_density(self, rho, b, so):
         """
@@ -261,7 +281,7 @@ class Model(object):
         """
         Return all set physical parameters and update to input values if provided
         """
-        params = {i: kwargs.get(i, getattr(self, i)) for i in self.physical_parameters
+        params = {i: kwargs.get(i, getattr(self, i)) for (_, i) in self.physical_parameters
                   if isinstance(getattr(self, i), Function)}
 
         if not kwargs.get('born', False):
@@ -293,10 +313,34 @@ class Model(object):
                                     parameter=is_param)
                 initialize_function(function, field, self.padsizes)
             else:
-                # We take advantage of the external allocator
-                function = Function(name=name, grid=self.grid, space_order=space_order,
-                                    allocator=ExternalAllocator(field),
-                                    initializer=lambda x: None, parameter=is_param)
+                if field.ndim != self.grid.dim:
+                    shape = field.shape
+                    nextra = field.ndim - self.grid.dim
+                    gshape = tuple(s+2*space_order for s in self.grid.shape)
+                    if shape[:self.grid.dim] == gshape:
+                        extra = [def_dim('e%s' % i, s)
+                                 for (i, s) in zip(range(nextra), shape[self.grid.dim:])]
+                        dims = (*self.grid.dimensions, *extra)
+                        shape = (*self.grid.shape, *shape[self.grid.dim:])
+                    elif shape[nextra:] == gshape:
+                        extra = [def_dim('e%s' % i, s)
+                                 for (i, s) in zip(range(nextra), shape[:nextra])]
+                        dims = (*extra, *self.grid.dimensions)
+                        shape = (*shape[:nextra], *self.grid.shape)
+                    else:
+                        raise ValueError("Cannot infer dimensions for input shape")
+                                        # We take advantage of the external allocator
+                    function = Function(name=name, grid=self.grid,
+                                        shape=shape, dimensions=dims,
+                                        space_order=space_order,
+                                        allocator=ExternalAllocator(field),
+                                        initializer=lambda x: None, parameter=is_param)
+                else:
+                    # We take advantage of the external allocator
+                    function = Function(name=name, grid=self.grid,
+                                        space_order=space_order,
+                                        allocator=ExternalAllocator(field),
+                                        initializer=lambda x: None, parameter=is_param)
         else:
             return np.amin(field)
         self._physical_parameters.append(name)
@@ -307,7 +351,12 @@ class Model(object):
         """
         List of physical parameteres
         """
-        return as_tuple(self._physical_parameters)
+        params = as_tuple(self._physical_parameters)
+        return tuple((getattr(self, p).dimensions, p) for p in params)
+
+    @property
+    def physics(self):
+        return self._physics
 
     @property
     def dim(self):
@@ -531,10 +580,12 @@ class EmptyModel(object):
     This Model should not be used for propagation.
     """
 
-    def __init__(self, tti, visco, elastic, spacing, fs, space_order, p_params):
-        self.is_tti = tti
-        self.is_viscoacoustic = visco
-        self.is_elastic = elastic
+    def __init__(self, physics, spacing, fs, space_order, p_params):
+        self.is_tti = physics == 'tti'
+        self.is_viscoacoustic = physics == 'visco-acoustic'
+        self.is_elastic = physics == 'elastic'
+        self._physics = physics
+
         self.spacing = spacing
         self.fs = fs
         N = 2 * space_order + 1
@@ -544,17 +595,32 @@ class EmptyModel(object):
             subdomains = (physdomain, fsdomain)
         else:
             subdomains = ()
-        self.grid = Grid(tuple([N]*len(spacing)),
-                         extent=[s*(N-1) for s in spacing],
-                         subdomains=subdomains)
+        
+        for (d, p) in p_params:
+            if p == 'damp':
+                dims = d
+    
+        self.grid = Grid(tuple([space_order+1]*len(spacing)),
+                         extent=[s*space_order for s in spacing],
+                         subdomains=subdomains, dimensions=dims)
         self.dimensions = self.grid.dimensions
 
         # Create the function for the physical parameters
-        self.damp = Function(name='damp', grid=self.grid, space_order=0)
-        for p in set(p_params) - {'damp'}:
-            setattr(self, p, Function(name=p, grid=self.grid, space_order=space_order))
+        self.damp = Function(name='damp', grid=self.grid)
+        for (d, p) in set(p_params) - {(dims, 'damp')}:
+            if d is not dims:
+                shape = [getattr(di, '_default_value', space_order+1) for di in d]
+                setattr(self, p, Function(name=p, grid=self.grid, space_order=space_order,
+                                          dimensions=d, shape=shape))
+            else:
+                setattr(self, p, Function(name=p, grid=self.grid, space_order=space_order))
+
         if 'irho' not in p_params:
             self.irho = 1 if 'rho' not in p_params else 1 / self.rho
+
+    @property
+    def physics(self):
+        return self._physics
 
     @property
     def spacing_map(self):

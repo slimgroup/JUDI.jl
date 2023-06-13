@@ -430,7 +430,9 @@ get_dt(m::AbstractModel; dt=nothing) = calculate_dt(m; dt=dt)
 similar(::PhysicalParameter{T, N}, m::AbstractModel) where {T<:Real, N} = PhysicalParameter(size(m), spacing(m), origin(m); DT=T)
 similar(x::Array, m::AbstractModel) = similar(x, size(m))
 
-ndims(m::AbstractModel{T, N}) where {T, N} = N
+PhysicalParameter(p::AbstractArray{T, N}, m::AbstractModel{T, N}) where {T, N} = PhysicalParameter(p, spacing(m), origin(m))
+
+ndims(m::AbstractModel) = ndims(m.m.data)
 
 _repr(m::AbstractModel) = "Model (n=$(size(m)), d=$(spacing(m)), o=$(origin(m))) with parameters $(_mparams(m))"
 display(m::AbstractModel) = println(_repr(m))

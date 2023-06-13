@@ -1,6 +1,4 @@
 import numpy as np
-from collections.abc import Hashable
-from functools import partial
 
 from devito import Constant, Operator, Function, info
 
@@ -11,7 +9,7 @@ from fields import wavefield, forward_wavefield
 from fields_exprs import (otf_dft, extended_rec, illumexpr,
                           extented_src, save_subsampled, weighted_norm)
 from sensitivity import grad_expr, lin_src
-from utils import opt_op
+from utils import opt_op, memoized_func
 
 
 def name(model):
@@ -23,56 +21,8 @@ def name(model):
         return ""
 
 
-class memoized_func(object):
-    """
-    Decorator. Caches a function's return value each time it is called.
-    If called later with the same arguments, the cached value is returned
-    (not reevaluated). This decorator may also be used on class methods,
-    but it will cache at the class level; to cache at the instance level,
-    use ``memoized_meth``.
-
-    Adapted from: ::
-
-        https://github.com/devitocodes/devito/blob/master/devito/tools/memoization.py
-
-
-    This version is made task safe to prevent access conflicts between different julia
-    workers.
-
-    """
-
-    def __init__(self, func):
-        self.func = func
-        self.cache = {}
-
-    def __call__(self, *args, **kw):
-        if not isinstance(args, Hashable):
-            # Uncacheable, a list, for instance.
-            # Better to not cache than blow up.
-            return self.func(*args, **kw)
-        key = (self.func, args, frozenset(kw.items()))
-        if key in self.cache:
-            while True:
-                try:
-                    return self.cache[key]
-                except RuntimeError:
-                    pass
-
-        value = self.func(*args, **kw)
-        self.cache[key] = value
-        return value
-
-    def __repr__(self):
-        """Return the function's docstring."""
-        return self.func.__doc__
-
-    def __get__(self, obj, objtype):
-        """Support instance methods."""
-        return partial(self.__call__, obj)
-
-
 @memoized_func
-def forward_op(p_params, tti, visco, elas, space_order, fw, spacing, save, t_sub, fs,
+def forward_op(p_params, physics, space_order, fw, spacing, save, t_sub, fs,
                pt_src, pt_rec, nfreq, dft_sub, ws, wr, full_q, nv_weights, illum):
     """
     Low level forward operator creation, to be used through `propagator.py`
@@ -80,7 +30,7 @@ def forward_op(p_params, tti, visco, elas, space_order, fw, spacing, save, t_sub
     """
     info("Building forward operator")
     # Some small dummy dims
-    model = EmptyModel(tti, visco, elas, spacing, fs, space_order, p_params)
+    model = EmptyModel(physics, spacing, fs, space_order, p_params)
     nt = 10
     ndim = len(spacing)
     scords = np.ones((1, ndim)) if pt_src else None
@@ -129,7 +79,7 @@ def forward_op(p_params, tti, visco, elas, space_order, fw, spacing, save, t_sub
 
 
 @memoized_func
-def born_op(p_params, tti, visco, elas, space_order, fw, spacing, save, pt_src,
+def born_op(p_params, physics, space_order, fw, spacing, save, pt_src,
             pt_rec, fs, t_sub, ws, nfreq, dft_sub, ic, nlind, illum):
     """
     Low level born operator creation, to be used through `interface.py`
@@ -138,7 +88,7 @@ def born_op(p_params, tti, visco, elas, space_order, fw, spacing, save, pt_src,
     """
     info("Building born operator")
     # Some small dummy dims
-    model = EmptyModel(tti, visco, elas, spacing, fs, space_order, p_params)
+    model = EmptyModel(physics, spacing, fs, space_order, p_params)
     nt = 10
     ndim = len(spacing)
     wavelet = np.ones((nt, 1))
@@ -185,14 +135,14 @@ def born_op(p_params, tti, visco, elas, space_order, fw, spacing, save, pt_src,
 
 
 @memoized_func
-def adjoint_born_op(p_params, tti, visco, elas, space_order, fw, spacing, pt_rec, fs, w,
+def adjoint_born_op(p_params, physics, space_order, fw, spacing, pt_rec, fs, w,
                     save, t_sub, nfreq, dft_sub, ic, illum):
     """
     Low level gradient operator creation, to be used through `propagators.py`
     Compute the action of the adjoint Jacobian onto a residual J'* δ d.
     """
     info("Building adjoint born operator")
-    model = EmptyModel(tti, visco, elas, spacing, fs, space_order, p_params)
+    model = EmptyModel(physics, spacing, fs, space_order, p_params)
     nt = 10
     ndim = len(spacing)
     residual = np.ones((nt, 1))

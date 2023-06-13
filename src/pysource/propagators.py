@@ -33,8 +33,8 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     nv_weights = weight_fun(w_fun, model, src_coords) if norm_wf else None
 
     # Create operator and run
-    op = forward_op(model.physical_parameters, model.is_tti, model.is_viscoacoustic,
-                    model.is_elastic, space_order, fw, model.spacing, save,
+    op = forward_op(model.physical_parameters, model.physics,
+                    space_order, fw, model.spacing, save,
                     t_sub, model.fs, src_coords is not None, rcv_coords is not None,
                     nfreq(freq_list), dft_sub, ws is not None,
                     wr is not None, qwf is not None, nv_weights, illum)
@@ -109,10 +109,9 @@ def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8, fw=
     src, _ = src_rec(model, v, src_coords=rcv_coords, wavelet=residual)
 
     # Create operator and run
-    op = adjoint_born_op(model.physical_parameters, model.is_tti, model.is_viscoacoustic,
-                         model.is_elastic, space_order, fw, model.spacing,
-                         rcv_coords is not None, model.fs, w, save, t_sub, nfreq(freq),
-                         dft_sub, ic, illum)
+    op = adjoint_born_op(model.physical_parameters, model.physics, space_order,
+                         fw, model.spacing, rcv_coords is not None, model.fs, w,
+                         save, t_sub, nfreq(freq), dft_sub, ic, illum)
 
     # Update kwargs
     kw = base_kwargs(model.critical_dt)
@@ -172,8 +171,8 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
         return outrec, u, I, summary
 
     # Create operator and run
-    op = born_op(model.physical_parameters, model.is_tti, model.is_viscoacoustic,
-                 model.is_elastic, space_order, fw, model.spacing, save,
+    op = born_op(model.physical_parameters, model.physics,
+                 space_order, fw, model.spacing, save,
                  src_coords is not None, rcv_coords is not None, model.fs, t_sub,
                  ws is not None, nfreq(freq_list), dft_sub, ic, nlind, illum)
 

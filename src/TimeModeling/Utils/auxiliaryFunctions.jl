@@ -26,7 +26,7 @@ function devito_model(model::MT, options::JUDIOptions, dm) where {MT<:AbstractMo
     pad = pad_sizes(model, options)
     # Set up Python model structure
     dm = pad_array(dm, pad)
-    physpar = Dict((n, isa(v, PhysicalParameter) ? pad_array(v.data, pad) : v) for (n, v) in _params(model))
+    physpar = Dict((n, pad_array(v.data, pad)) for (n, v) in _params(model))
 
     modelPy = rlock_pycall(pm."Model", PyObject, origin(model), spacing(model), size(model), fs=options.free_surface,
                    nbl=nbl(model), space_order=options.space_order, dt=options.dt_comp, dm=dm;
@@ -74,7 +74,7 @@ Parameters
 * `nb`: Size of padding. Array of tuple with one (nb_left, nb_right) tuple per dimension.
 * `mode`: Padding mode (optional), defaults to :border.
 """
-function pad_array(m::Array{DT}, nb::NTuple{N, Tuple{Int64, Int64}}; mode::Symbol=:border) where {DT, N}
+function pad_array(m::Array{DT, N}, nb::NTuple{N, NTuple{2, Int64}}; mode::Symbol=:border) where {DT, N}
     n = size(m)
     new_size = Tuple([n[i] + sum(nb[i]) for i=1:length(nb)])
     Ei = []
@@ -86,8 +86,9 @@ function pad_array(m::Array{DT}, nb::NTuple{N, Tuple{Int64, Int64}}; mode::Symbo
     return PyReverseDims(reshape(padded, reverse(new_size)))
 end
 
-pad_array(::Nothing, ::NTuple{N, Tuple{Int64, Int64}}; s::Symbol=:border) where N = nothing
-pad_array(m::Number, ::NTuple{N, Tuple{Int64, Int64}}; s::Symbol=:border) where N = m
+pad_array(::Nothing, ::NTuple{N, NTuple{2, Int64}}; s::Symbol=:border) where N = nothing
+pad_array(m::Number, ::NTuple{N, NTuple{2, Int64}}; s::Symbol=:border) where N = m
+pad_array(m::PhysicalParameter, nb::NTuple{N, NTuple{2, Int64}}; mode::Symbol=:border) where {N} = pad_array(m.data, nb; mode=mode)
 
 """
     remove_padding(m, nb; true_adjoint=False)

@@ -6,7 +6,7 @@ from fields_exprs import freesurface
 from FD_utils import laplacian, sa_tti
 
 
-def wave_kernel(model, u, fw=True, q=None, f0=0.015):
+def wave_kernel(model, u, fw=True, q=None, **kwargs):
     """
     Pde kernel corresponding the the model for the input wavefield
 
@@ -22,18 +22,10 @@ def wave_kernel(model, u, fw=True, q=None, f0=0.015):
         Full time-space source
     f0 : Peak frequency
     """
-    if model.is_tti:
-        pde = tti_kernel(model, u[0], u[1], fw=fw, q=q)
-    elif model.is_viscoacoustic:
-        pde = SLS_2nd_order(model, u, fw=fw, q=q, f0=f0)
-    elif model.is_elastic:
-        pde = elastic_kernel(model, u[0], u[1], fw=fw, q=q)
-    else:
-        pde = acoustic_kernel(model, u, fw=fw, q=q)
-    return pde
+    return _kernels[model.physics](model, u, fw=fw, q=q, **kwargs)
 
 
-def acoustic_kernel(model, u, fw=True, q=None):
+def acoustic_kernel(model, u, fw=True, q=None, **kwargs):
     """
     Acoustic wave equation time stepper
 
@@ -67,7 +59,7 @@ def acoustic_kernel(model, u, fw=True, q=None):
     return pde
 
 
-def SLS_2nd_order(model, p, fw=True, q=None, f0=0.015):
+def SLS_2nd_order(model, p, fw=True, q=None, f0=0.015, **kwargs):
     """
     Viscoacoustic 2nd SLS wave equation.
     https://library.seg.org/doi/10.1190/geo2013-0030.1
@@ -132,7 +124,7 @@ def SLS_2nd_order(model, p, fw=True, q=None, f0=0.015):
         return [u_r, u_p]
 
 
-def tti_kernel(model, u1, u2, fw=True, q=None):
+def tti_kernel(model, u, fw=True, q=None, **kwargs):
     """
     TTI wave equation time stepper
 
@@ -149,6 +141,7 @@ def tti_kernel(model, u1, u2, fw=True, q=None):
     q : TimeFunction or Expr
         Full time-space source as a tuple (one value for each component)
     """
+    u1, u2 = u
     m, damp, irho = model.m, model.damp, model.irho
     wmr = (irho * m)
     q = q or (0, 0)
@@ -178,7 +171,7 @@ def tti_kernel(model, u1, u2, fw=True, q=None):
     return [first_stencil, second_stencil] + pdea
 
 
-def elastic_kernel(model, v, tau, fw=True, q=None):
+def elastic_kernel(model,u, fw=True, q=None, **kwargs):
     """
     Elastic wave equation time stepper
 
@@ -195,6 +188,7 @@ def elastic_kernel(model, v, tau, fw=True, q=None):
     q : TimeFunction or Expr
         Full time-space source as a tuple (one value for each component)
     """
+    v, tau = u
     if 'nofsdomain' in model.grid.subdomains:
         raise NotImplementedError("Free surface not supported for elastic modelling")
     if not fw:
@@ -222,3 +216,7 @@ def elastic_kernel(model, v, tau, fw=True, q=None):
     u_t = Eq(tau.forward, model.damp * solve(eq_tau, tau.forward))
 
     return [u_v, u_t]
+
+
+_kernels = {'acoustic': acoustic_kernel, 'tti': tti_kernel, 'visco-acousic': SLS_2nd_order,
+           'elastic': elastic_kernel}

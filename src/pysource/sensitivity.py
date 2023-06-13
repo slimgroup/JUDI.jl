@@ -118,7 +118,11 @@ def isic_time(u, v, model, **kwargs):
     """
     w = u[0].indices[0].spacing * model.irho
     ics = kwargs.get('icsign', 1)
-    return w * sum(uu * vv.dt2 * model.m + ics * inner_grad(uu, vv)
+    if ics == -1:
+        w1, w2 = 1 - model.m, -1
+    else:
+        w1, w2 = model.m, 1
+    return w * sum(uu * vv.dt2 * w1 + w2 * inner_grad(uu, vv)
                    for uu, vv in zip(u, v))
 
 
@@ -228,10 +232,11 @@ def inner_grad(u, v):
 
 fwi_src = lambda *ar, **kw: isic_src(*ar, icsign=-1, **kw)
 fwi_time = lambda *ar, **kw: isic_time(*ar, icsign=-1, **kw)
+fwi_time2 = lambda *ar, **kw: isic_time(*ar, icsign=-2, **kw)
 fwi_freq = lambda *ar, **kw: isic_freq(*ar, icsign=-1, **kw)
 
 ic_dict = {"isic_freq": isic_freq, "as_freq": crosscorr_freq,
-           "fwi": fwi_time, "fwi_freq": fwi_freq,
+           "fwi": fwi_time, "fwi2": fwi_time2, "fwi_freq": fwi_freq,
            "isic": isic_time, "as": crosscorr_time}
 ls_dict = {"isic": isic_src, "fwi": fwi_src, "as": basic_src}
 
