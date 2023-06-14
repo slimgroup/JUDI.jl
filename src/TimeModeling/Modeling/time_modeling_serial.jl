@@ -58,33 +58,32 @@ end
 post_process(t::Tuple, modelPy::PyObject, op::Val, G, o::JUDIOptions) = (post_process(t[1], modelPy, op, G, o), post_process(Base.tail(t), modelPy, Val(:adjoint_born), G, Options(;sum_padding=false))...)
 post_process(t::Tuple{}, ::PyObject, ::Val, ::Any, ::JUDIOptions) = t
 
-post_process(v::AbstractArray, modelPy::PyObject, ::Val{:forward}, G::Geometry, options::JUDIOptions) = judiVector{Float32, Matrix{Float32}}(1, G, [time_resample(v, calculate_dt(modelPy), G)])
-post_process(v::AbstractArray, modelPy::PyObject, ::Val{:forward}, ::Any, options::JUDIOptions) = judiWavefield{Float32}(1, [calculate_dt(modelPy)], [v])
-post_process(v::AbstractArray, modelPy::PyObject, ::Val{:adjoint}, G::Geometry, options::JUDIOptions) = judiVector{Float32, Matrix{Float32}}(1, G, [time_resample(v, calculate_dt(modelPy), G)])
+post_process(v::AbstractArray{T}, modelPy::PyObject, ::Val{:forward}, G::Geometry{T}, options::JUDIOptions) where {T<:Number} = judiVector{T, Matrix{T}}(1, G, [time_resample(v, calculate_dt(modelPy), G)])
+post_process(v::AbstractArray{T}, modelPy::PyObject, ::Val{:forward}, ::Any, options::JUDIOptions) where {T<:Number} = judiWavefield{T}(1, [calculate_dt(modelPy)], [v])
+post_process(v::AbstractArray{T}, modelPy::PyObject, ::Val{:adjoint}, G::Geometry{T}, options::JUDIOptions) where {T<:Number} = judiVector{T, Matrix{T}}(1, G, [time_resample(v, calculate_dt(modelPy), G)])
 
 function post_process(v::AbstractArray{T, N}, modelPy::PyObject, ::Val{:adjoint}, ::Any, options::JUDIOptions) where {T, N}
     if N == modelPy.dim
-        return judiWeights{Float32}(1, [remove_padding(v, modelPy.padsizes; true_adjoint=false)])
+        return judiWeights{T}(1, [remove_padding(v, modelPy.padsizes; true_adjoint=false)])
     else
-        return judiWavefield{Float32}(1, [calculate_dt(modelPy)], [v])
+        return judiWavefield{T}(1, [calculate_dt(modelPy)], [v])
     end
 end
 
-function post_process(v::AbstractArray, modelPy::PyObject, ::Val{:adjoint_born}, G::Geometry, options::JUDIOptions)
+function post_process(v::AbstractArray{T}, modelPy::PyObject, ::Val{:adjoint_born}, G::Geometry{T}, options::JUDIOptions) where {T<:Number}
     grad = remove_padding(v, modelPy.padsizes; true_adjoint=options.sum_padding)
     return PhysicalParameter(grad, modelPy.spacing, modelPy.origin)
 end
 
-post_process(v::AbstractArray, modelPy::PyObject, ::Val{:born}, G::Geometry, options::JUDIOptions) = judiVector{Float32, Matrix{Float32}}(1, G, [time_resample(v, calculate_dt(modelPy), G)])
-
+post_process(v::AbstractArray{T}, modelPy::PyObject, ::Val{:born}, G::Geometry{T}, options::JUDIOptions) where {T<:Number} = judiVector{T, Matrix{T}}(1, G, [time_resample(v, calculate_dt(modelPy), G)])
 
 # Saving to disk utilities
 save_to_disk(shot, args...) = shot
 save_to_disk(t::Tuple, args...) = save_to_disk(t[1], args...), Base.tail(t)...
-save_to_disk(shot::judiVector, ::Any, ::Any, ::Any, ::Any, ::Val{false}) = shot
+save_to_disk(shot::judiVector{T, Matrix{T}}, ::Any, ::Any, ::Any, ::Any, ::Val{false}) where {T<:Number} = shot
 
-function save_to_disk(shot::judiVector, srcGeometry::GeometryIC, srcData::Array, options::JUDIOptions,
-                      ::Val{true}, ::Val{true})
+function save_to_disk(shot::judiVector{T}, srcGeometry::GeometryIC{T}, srcData::Array, options::JUDIOptions,
+                      ::Val{true}, ::Val{true}) where {T<:Number}
     @juditime "Dump data to segy" begin
         container = write_shot_record(srcGeometry, srcData, shot.geometry[1], shot.data[1], options)
         dout = judiVector(container)

@@ -9,10 +9,10 @@ abstract type judiAbstractJacobian{D, O, FT} <: judiComposedPropagator{D, O} end
 
 ############################################################################################################################
 # Concrete types
-struct judiModeling{D, O} <: judiPropagator{D, O}
+struct judiModeling{D, O, MT} <: judiPropagator{D, O}
     m::AbstractSize
     n::AbstractSize
-    model::AbstractModel
+    model::MT
     options::JUDIOptions
 end
 
@@ -109,13 +109,13 @@ Example
     F = judiModeling(model, q.geometry, rec_geometry)
     dobs = F*q
 """
-function judiModeling(model::AbstractModel; options=Options())
+function judiModeling(model::MT; options=Options()) where {MT<:AbstractModel}
     D = eltype(model)
     m = time_space(size(model))
-    return judiModeling{D, :forward}(m, m, model, options)
+    return judiModeling{D, :forward, MT}(m, m, model, options)
 end
 
-judiModeling(model::AbstractModel, src_geom::Geometry, rec_geom::Geometry; options=Options()) =
+judiModeling(model::MT, src_geom::Geometry, rec_geom::Geometry; options=Options()) where {MT<:AbstractModel} =
     judiProjection(rec_geom) * judiModeling(model; options=options) * adjoint(judiProjection(src_geom))
 
 """
@@ -152,7 +152,7 @@ conj(F::judiPropagator) = F
 transpose(F::judiPropagator) = adjoint(F)
 
 adjoint(s::Symbol) = adjoint_map[s]
-adjoint(F::judiModeling{D, O}) where {D, O} = judiModeling{D, adjoint(O)}(F.n, F.m, F.model, F.options)
+adjoint(F::judiModeling{D, O, MT}) where {D, O, MT} = judiModeling{D, adjoint(O), MT}(F.n, F.m, F.model, F.options)
 adjoint(F::judiDataModeling{D, O}) where {D, O} = judiPointSourceModeling{D, adjoint(O)}(adjoint(F.F), adjoint(F.rInterpolation))
 adjoint(F::judiPointSourceModeling{D, O}) where {D, O}= judiDataModeling{D, adjoint(O)}(adjoint(F.qInjection), adjoint(F.F))
 adjoint(F::judiDataSourceModeling{D, O}) where {D, O} = judiDataSourceModeling{D, adjoint(O)}(adjoint(F.qInjection), adjoint(F.F), adjoint(F.rInterpolation))
@@ -228,7 +228,7 @@ update_size(w::jAdjoint{<:judiWavelet}, F::judiPropagator) = set_space_size!(w.o
 
 ############################################################################################################################
 # indexing
-getindex(F::judiModeling{D, O}, i) where {D, O} = judiModeling{D, O}(F.m[i], F.n[i], F.model, F.options[i])
+getindex(F::judiModeling{D, O, MT}, i) where {D, O, MT} = judiModeling{D, O, MT}(F.m[i], F.n[i], F.model, F.options[i])
 getindex(F::judiDataModeling{D, O}, i) where {D, O} = judiDataModeling{D, O}(F.rInterpolation[i], F.F[i])
 getindex(F::judiPointSourceModeling{D, O}, i) where {D, O}= judiPointSourceModeling{D, O}(F.F[i], F.qInjection[i])
 getindex(F::judiDataSourceModeling{D, O}, i) where {D, O} = judiDataSourceModeling{D, O}(F.rInterpolation[i], F.F[i], F.qInjection[i])

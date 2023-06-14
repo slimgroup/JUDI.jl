@@ -7,10 +7,10 @@ export Options, JUDIOptions
 
 # Object for velocity/slowness models
 mutable struct JUDIOptions
-    space_order::Integer
+    space_order::Int64
     free_surface::Bool
     limit_m::Bool
-    buffer_size::AbstractFloat
+    buffer_size::Float32
     save_data_to_disk::Bool
     file_path::String
     file_name::String
@@ -18,11 +18,11 @@ mutable struct JUDIOptions
     optimal_checkpointing::Bool
     frequencies::Array
     IC::String
-    subsampling_factor::Integer
-    dft_subsampling_factor::Integer
+    subsampling_factor::Int64
+    dft_subsampling_factor::Int64
     return_array::Bool
-    dt_comp::Union{Real, Nothing}
-    f0::Real
+    dt_comp::Union{Float32, Nothing}
+    f0::Float32
 end
 
 """

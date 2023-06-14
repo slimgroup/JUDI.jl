@@ -12,12 +12,17 @@ function test_model(ndim; tti=false, elas=false, visco=false)
     m = .5f0 .+ rand(Float32, n...)
     if tti
         epsilon = .1f0 * m
-        delta = .1f0 * m
-        theta = .1f0 * m
-        phi = .1f0 * m
+        delta = .05f0 * m
+        theta = .23f0 * m
+        phi = .12f0 * m
         model = Model(n, d, o, m; nb=10, epsilon=epsilon, delta=delta, theta=theta, phi=phi)
         @test all(k in JUDI._mparams(model) for k in [:m, :epsilon, :delta, :theta, :phi])
         @test isa(model, JUDI.TTIModel)
+
+        delta2 = 1.1f0 * model.epsilon
+        @test sum(delta2 .>= epsilon) == length(delta2)
+        JUDI._clip_delta!(delta2, model.epsilon)
+        @test sum(delta2 .>= epsilon) == 0
     elseif elas
         vs = .1f0 * m
         model = Model(n, d, o, m; nb=10, vs=vs,)

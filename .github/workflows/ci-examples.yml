@@ -41,7 +41,7 @@ jobs:
       DEVITO_ARCH: gcc-9
       DEVITO_LANGUAGE: "openmp"
       DEVITO_LOGGING: "ERROR"
-      OMP_NUM_THREADS: 2
+      OMP_NUM_THREADS: 1
       NITER: 2
 
     strategy:
@@ -83,4 +83,4 @@ jobs:
           julia -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd()))'
 
       - name: Run examples
-        run: julia -p 2 ${{ matrix.example }}
+        run: julia -p 2 -t 1 ${{ matrix.example }}

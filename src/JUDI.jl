@@ -73,6 +73,13 @@ pylock(f::Function) = Base.lock(PYLOCK[]) do
     end
 end
 
+function rlock_pycall(meth, ::Type{T}, args...; kw...) where T
+    out::T = pylock() do
+        pycall(meth, T, args...; kw...)
+    end
+    return out
+end
+
 # Constants
 function _worker_pool()
     p = default_worker_pool()
@@ -114,7 +121,6 @@ function human_readable_time(t::Float64, decimals=2)
     return "$(tr1) h $(tr2) min"
 end 
 
-    
 
 macro juditime(msg, ex)
     return quote

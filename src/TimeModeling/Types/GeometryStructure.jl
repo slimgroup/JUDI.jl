@@ -12,28 +12,29 @@ mutable struct GeometryException <: Exception
 end
 
 
-const CoordT = Union{Vector{T}, Vector{Vector{T}}} where T<:Number
-(::Type{CoordT})(x::Vector{Any}) = rebuild_maybe_jld(x)
+const CoordT{T} = Union{Vector{T}, Vector{Vector{T}}} where T<:Number
+(::Type{CoordT{T}})(x::Vector{Any}) where {T<:Real} = rebuild_maybe_jld(x)
+Base.convert(::Type{CoordT}, a::Vector{Any}) = Vector{typeof(a[1])}(a)
 
 # In-core geometry structure for seismic header information
 mutable struct GeometryIC{T} <: Geometry{T}
-    xloc::CoordT  # Array of receiver positions (fixed for all experiments)
-    yloc::CoordT
-    zloc::CoordT
-    dt::Array{T,1}
-    nt::Array{Integer,1}
-    t::Array{T,1}
+    xloc::CoordT{T}  # Array of receiver positions (fixed for all experiments)
+    yloc::CoordT{T}
+    zloc::CoordT{T}
+    dt::Vector{T}
+    nt::Vector{Integer}
+    t::Vector{T}
 end
 
 getproperty(G::GeometryIC, s::Symbol) = s == :nrec ? length.(G.xloc) : getfield(G, s)
 
 # Out-of-core geometry structure, contains look-up table instead of coordinates
 mutable struct GeometryOOC{T} <: Geometry{T}
-    container::Array{SegyIO.SeisCon,1}
-    dt::Array{T,1}
-    nt::Array{Integer,1}
-    t::Array{T,1}
-    nrec::Array{Integer,1}
+    container::Vector{SegyIO.SeisCon}
+    dt::Vector{T}
+    nt::Vector{<:Integer}
+    t::Vector{T}
+    nrec::Vector{<:Integer}
     key::String
     segy_depth_key::String
 end
