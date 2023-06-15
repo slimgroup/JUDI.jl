@@ -152,7 +152,7 @@ end
 # vcat
 vcat(a::Array{<:judiMultiSourceVector, 1}) = vcat(a...)
 
-function vcat(ai::Vararg{judiMultiSourceVector{T}, N}) where {T, N}
+function vcat(ai::Vararg{T, N}) where {T<:judiMultiSourceVector, N}
     N == 1 && (return ai[1])
     N > 2 && (return vcat(ai[1], vcat(ai[2:end]...)))
     a, b = ai

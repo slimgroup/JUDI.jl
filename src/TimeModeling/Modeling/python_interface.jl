@@ -16,9 +16,8 @@ end
 
 function wrapcall_data(func, args...;kw...)
     rtype = _outtype(get(kw, :illum, nothing), 1, PyArray)
-    out = pylock() do
-        pycall(func, rtype, args...;kw...)
-    end
+    out = rlock_pycall(func, rtype, args...;kw...)
+
     tup = isa(out, Tuple)
     # The returned array `out` is a Python Row-Major array with dimension (time, rec).
     # Unlike standard array we want to keep this ordering in julia (time first) so we need to
@@ -32,25 +31,19 @@ end
 
 function wrapcall_weights(func, args...;kw...)
     rtype = _outtype(get(kw, :illum, nothing), 1, PyArray)
-    out = pylock() do 
-        pycall(func, rtype, args...;kw...)
-    end
+    out = rlock_pycall(func, rtype, args...;kw...)
     return out
 end
 
 function wrapcall_wf(func, args...;kw...)
     rtype = _outtype(get(kw, :illum, nothing), 1, Array{Float32})
-    out = pylock() do
-        pycall(func, rtype, args...;kw...)
-    end
+    out = rlock_pycall(func, rtype, args...;kw...)
     return out
 end
 
 function wrapcall_grad(func, args...;kw...)
     rtype = _outtype(get(kw, :illum, nothing), 2, PyArray)
-    out = pylock() do 
-        pycall(func, rtype, args...;kw...)
-    end
+    out = rlock_pycall(func, rtype, args...;kw...)
     return out
 end
 

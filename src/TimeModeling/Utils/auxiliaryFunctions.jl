@@ -22,17 +22,16 @@ Parameters
 * `options`: JUDI Options structure.
 * `dm`: Squared slowness perturbation (optional), Array or PhysicalParameter.
 """
-function devito_model(model::AbstractModel, options::JUDIOptions, dm)
+function devito_model(model::MT, options::JUDIOptions, dm) where {MT<:AbstractModel}
     pad = pad_sizes(model, options)
     # Set up Python model structure
     dm = pad_array(dm, pad)
     physpar = Dict((n, isa(v, PhysicalParameter) ? pad_array(v.data, pad) : v) for (n, v) in _params(model))
 
-    modelPy = pylock() do 
-        pycall(pm."Model", PyObject, origin(model), spacing(model), size(model), fs=options.free_surface,
+    modelPy = rlock_pycall(pm."Model", PyObject, origin(model), spacing(model), size(model), fs=options.free_surface,
                    nbl=nbl(model), space_order=options.space_order, dt=options.dt_comp, dm=dm;
                    physpar...)
-    end
+
     return modelPy
 end
 
@@ -52,6 +51,7 @@ Parameters
 """
 function pad_sizes(model::PyObject, options; so=nothing)
     isnothing(so) && (so = options.space_order)
+    N = model.grid.dim
     return tuple([(nbl + so, nbr + so) for (nbl, nbr)=model.padsizes]...)
 end
 
@@ -74,7 +74,7 @@ Parameters
 * `nb`: Size of padding. Array of tuple with one (nb_left, nb_right) tuple per dimension.
 * `mode`: Padding mode (optional), defaults to :border.
 """
-function pad_array(m::Array{DT}, nb::NTuple{N, NTuple{2, Int64}}; mode::Symbol=:border) where {DT, N}
+function pad_array(m::Array{DT}, nb::NTuple{N, Tuple{Int64, Int64}}; mode::Symbol=:border) where {DT, N}
     n = size(m)
     new_size = Tuple([n[i] + sum(nb[i]) for i=1:length(nb)])
     Ei = []
@@ -86,8 +86,8 @@ function pad_array(m::Array{DT}, nb::NTuple{N, NTuple{2, Int64}}; mode::Symbol=:
     return PyReverseDims(reshape(padded, reverse(new_size)))
 end
 
-pad_array(::Nothing, ::NTuple{N, NTuple{2, Int64}}; s::Symbol=:border) where N = nothing
-pad_array(m::Number, ::NTuple{N, NTuple{2, Int64}}; s::Symbol=:border) where N = m
+pad_array(::Nothing, ::NTuple{N, Tuple{Int64, Int64}}; s::Symbol=:border) where N = nothing
+pad_array(m::Number, ::NTuple{N, Tuple{Int64, Int64}}; s::Symbol=:border) where N = m
 
 """
     remove_padding(m, nb; true_adjoint=False)
@@ -100,7 +100,7 @@ Parameters
 * `true_adjoint`: Unpadding mode, defaults to False. Will sum the padding to the edge point with `true_adjoint=true`
  and should only be used this way for adjoint testing purpose.
 """
-function remove_padding(gradient::AbstractArray{DT}, nb::NTuple{ND, NTuple{2, Int64}}; true_adjoint::Bool=false) where {ND, DT}
+function remove_padding(gradient::AbstractArray{DT}, nb::NTuple{ND, Tuple{Int64, Int64}}; true_adjoint::Bool=false) where {ND, DT}
     N = size(gradient)
     if true_adjoint
         for (dim, (nbl, nbr)) in enumerate(nb)
@@ -143,8 +143,8 @@ Parameters
 * `buffer`: Size of the buffer on each side.
 * `pert`: Model perturbation (optional) to be cropped as well.
 """
-function limit_model_to_receiver_area(srcGeometry::Geometry, recGeometry::Geometry,
-                                      model::MT, buffer::Number; pert=nothing) where {MT<:AbstractModel}
+function limit_model_to_receiver_area(srcGeometry::Geometry{T}, recGeometry::Geometry{T},
+                                      model::MT, buffer::Number; pert=nothing) where {MT<:AbstractModel, T<:Real}
     # Restrict full velocity model to area that contains either sources and receivers
     ndim = length(size(model))
     n_orig = size(model)
@@ -175,7 +175,7 @@ function limit_model_to_receiver_area(srcGeometry::Geometry, recGeometry::Geomet
     end
 
     # Extract relevant model part from full domain
-    newp = Dict()
+    newp = OrderedDict()
     for (p, v) in _params(model)
         newp[p] = isa(v, AbstractArray) ? v[inds...] : v
     end
@@ -198,7 +198,7 @@ Parameters
 * `recGeometry`: Geometry of receivers in which out of bounds will be removed.
 * `model`: Model defining the computational domain.
 """
-function remove_out_of_bounds_receivers(recGeometry::Geometry, model::AbstractModel)
+function remove_out_of_bounds_receivers(recGeometry::Geometry{T}, model::AbstractModel{T, N}) where {T<:Real, N}
 
     # Only keep receivers within the model
     xmin, xmax = origin(model, 1), origin(model, 1) + (size(model)[1] - 1)*spacing(model, 1)
@@ -230,7 +230,7 @@ Parameters
 * `recData`: Shot record for that geometry in which traces will be removed.
 * `model`: Model defining the computational domain.
 """
-function remove_out_of_bounds_receivers(recGeometry::Geometry, recData::Matrix{T}, model::AbstractModel) where T
+function remove_out_of_bounds_receivers(recGeometry::Geometry{T}, recData::Matrix{T}, model::AbstractModel) where {T<:Real}
 
     # Only keep receivers within the model
     xmin, xmax = origin(model, 1), origin(model, 1) + (size(model)[1] - 1)*spacing(model, 1)
@@ -254,7 +254,7 @@ end
 
 remove_out_of_bounds_receivers(G::Geometry, ::Nothing, M::AbstractModel) = (remove_out_of_bounds_receivers(G, M), nothing)
 remove_out_of_bounds_receivers(::Nothing, ::Nothing, M::AbstractModel) = (nothing, nothing)
-remove_out_of_bounds_receivers(w, r::AbstractArray, M::AbstractModel) = (w, r)
+remove_out_of_bounds_receivers(w, r::AbstractArray, ::AbstractModel) = (w, r)
 remove_out_of_bounds_receivers(G::Geometry, r::AbstractArray, M::AbstractModel) = remove_out_of_bounds_receivers(G, convert(Matrix{Float32}, r), M)
 remove_out_of_bounds_receivers(w::AbstractArray, ::Nothing, M::AbstractModel) = (w, nothing)
 
@@ -267,7 +267,7 @@ where the i-th cell contains the i-th entry of `x`.
 Parameters
 * `x`: Array to be converted into and array of array
 """
-function convertToCell(x::Array{T, 1}) where T
+function convertToCell(x::Vector{T}) where T<:Number
     n = length(x)
     y = Array{Array{T, 1}, 1}(undef, n)
     for j=1:n
@@ -276,7 +276,7 @@ function convertToCell(x::Array{T, 1}) where T
     return y
 end
 
-convertToCell(x::Array{Array{T, N}, 1}) where {T, N} = x
+convertToCell(x::Vector{Array{T, N}}) where {T<:Number, N} = x
 convertToCell(x::StepRangeLen) = convertToCell(Float32.(x))
 convertToCell(x::Number) = convertToCell([x])
 
@@ -288,16 +288,18 @@ Create seismic Ricker wavelet of length `tmax` (in milliseconds) with sampling i
 and central frequency `f0` (in kHz).
 
 """
-function ricker_wavelet(tmax, dt, f0; t0=nothing)
-    R = typeof(dt)
-    isnothing(t0) ? t0 = R(0) : tmax = R(tmax - t0)
+function ricker_wavelet(tmax::T, dt::T, f0::T; t0=nothing) where {T<:Real}
+    isnothing(t0) ? t0 = T(0) : tmax = T(tmax - t0)
     nt = floor(Int, tmax / dt) + 1
     t = range(t0, stop=tmax, length=nt)
     r = (pi * f0 * (t .- 1 / f0))
-    q = zeros(Float32,nt,1)
-    q[:,1] = (1f0 .- 2f0 .* r.^2f0) .* exp.(-r.^2f0)
+    q = zeros(T, nt, 1)
+    q[:,1] .= (T(1) .- T(2) .* r.^T(2)) .* exp.(-r.^T(2))
     return q
 end
+
+ricker_wavelet(tmax::T, dt, f0; t0=nothing) where {T<:Real} = ricker_wavelet(tmax, T(dt), T(f0); t0=t0)
+
 
 """
     calculate_dt(model; dt=nothing)
@@ -309,44 +311,41 @@ Parameters
 * `model`: Model structure
 * `dt`: User defined time step (optional), will be the value returned if provided.
 """
-function calculate_dt(model::Union{ViscIsoModel{T, N}, IsoModel{T, N}}; dt=nothing) where {T, N}
+function calculate_dt(model::Union{ViscIsoModel{T, N}, IsoModel{T, N}}; dt=nothing) where {T<:Real, N}
     if ~isnothing(dt)
         return dt
     end
     m = minimum(model.m)
 
-    modelPy = pylock() do
-        pycall(pm."Model", PyObject, origin=origin(model), spacing=spacing(model), shape=ntuple(_ -> 11, N),
+    modelPy = rlock_pycall(pm."Model", PyObject, origin=origin(model), spacing=spacing(model), shape=ntuple(_ -> 11, N),
                m=m, nbl=0)
-    end
+
     return calculate_dt(modelPy)
 end
 
-function calculate_dt(model::IsoElModel{T, N}; dt=nothing) where {T, N}
+function calculate_dt(model::IsoElModel{T, N}; dt=nothing) where {T<:Real, N}
     if ~isnothing(dt)
         return dt
     end
     lam = maximum(model.lam)
     mu = maximum(model.mu)
 
-    modelPy = pylock() do
-        pycall(pm."Model", PyObject, origin=origin(model), spacing=spacing(model), shape=ntuple(_ -> 11, N),
+    modelPy = rlock_pycall(pm."Model", PyObject, origin=origin(model), spacing=spacing(model), shape=ntuple(_ -> 11, N),
                lam=lam, mu=mu, nbl=0)
-    end
+
     return calculate_dt(modelPy)
 end
 
-function calculate_dt(model::TTIModel{T, N}; dt=nothing) where {T, N}
+function calculate_dt(model::TTIModel{T, N}; dt=nothing) where {T<:Real, N}
     if ~isnothing(dt)
         return dt
     end
     m = minimum(model.m)
 
     epsilon = maximum(model.epsilon)
-    modelPy = pylock() do
-        pycall(pm."Model", PyObject, origin=origin(model), spacing=spacing(model), shape=ntuple(_ -> 11, N),
+    modelPy = rlock_pycall(pm."Model", PyObject, origin=origin(model), spacing=spacing(model), shape=ntuple(_ -> 11, N),
                m=m, epsilon=epsilon, nbl=0)
-    end
+
     return calculate_dt(modelPy)
 end
 
@@ -361,14 +360,10 @@ and receiver geometries of type `Geometry` and `model` is the model structure of
 `Model`.
 
 """
-function get_computational_nt(srcGeometry, recGeometry, model::AbstractModel; dt=nothing)
+function get_computational_nt(srcGeometry::Geometry{T}, recGeometry::Geometry{T}, model::AbstractModel; dt=nothing) where {T<:Real}
     # Determine number of computational time steps
-    if typeof(srcGeometry) <: GeometryOOC
-        nsrc = length(srcGeometry.container)
-    else
-        nsrc = length(srcGeometry.xloc)
-    end
-    nt = Array{Integer}(undef, nsrc)
+    nsrc = get_nsrc(srcGeometry)
+    nt = Vector{Int64}(undef, nsrc)
     dtComp = calculate_dt(model; dt=dt)
     for j=1:nsrc
         ntRec = length(0:dtComp:(dtComp*ceil(recGeometry.t[j]/dtComp)))
@@ -387,7 +382,7 @@ and receiver geometries of type `Geometry` and `model` is the model structure of
 `Model`.
 
 """
-function get_computational_nt(Geometry, model::AbstractModel; dt=nothing)
+function get_computational_nt(Geometry::Geometry{T}, model::AbstractModel; dt=nothing) where {T<:Real}
     # Determine number of computational time steps
     nsrc = get_nsrc(Geometry)
     nt = Array{Integer}(undef, nsrc)
@@ -407,9 +402,9 @@ Parameters:
 * `geometry`: Geometry containing the coordinates
 * `n`: Domain size
 """
-setup_grid(geometry, ::NTuple{3, T}) where T = hcat(geometry.xloc[1], geometry.yloc[1], geometry.zloc[1])
-setup_grid(geometry, ::NTuple{2, T}) where T = hcat(geometry.xloc[1], geometry.zloc[1])
-setup_grid(geometry, ::NTuple{1, T}) where T = geometry.xloc[1]
+setup_grid(geometry::GeometryIC{T}, ::NTuple{3, <:Integer}) where {T<:Real} = hcat(geometry.xloc[1], geometry.yloc[1], geometry.zloc[1])
+setup_grid(geometry::GeometryIC{T}, ::NTuple{2, <:Integer}) where {T<:Real} = hcat(geometry.xloc[1], geometry.zloc[1])
+setup_grid(geometry::GeometryIC{T}, ::NTuple{1, <:Integer}) where {T<:Real} = geometry.xloc[1]
 
 """
     setup_3D_grid(x, y, z)
@@ -425,9 +420,9 @@ Parameters:
 function setup_3D_grid(xrec::Vector{<:AbstractVector{T}},yrec::Vector{<:AbstractVector{T}},zrec::AbstractVector{T}) where T<:Real
     # Take input 1d x and y coordinate vectors and generate 3d grid. Input are cell arrays
     nsrc = length(xrec)
-    xloc = Vector{Array{T}}(undef, nsrc)
-    yloc = Vector{Array{T}}(undef, nsrc)
-    zloc = Vector{Array{T}}(undef, nsrc)
+    xloc = Vector{Vector{T}}(undef, nsrc)
+    yloc = Vector{Vector{T}}(undef, nsrc)
+    zloc = Vector{Vector{T}}(undef, nsrc)
     for i=1:nsrc
         nxrec = length(xrec[i])
         nyrec = length(yrec[i])
@@ -499,7 +494,7 @@ Parameters
 * `geometry_in`: Geometry on which `data` is defined.
 * `dt_new`: New time sampling rate to interpolate onto.
 """
-time_resample(data::AbstractArray{T, N}, G_in::Geometry, dt_new::AbstractFloat) where {T<:AbstractFloat, N} = time_resample(data, G_in.dt[1], dt_new, G_in.t[1])
+time_resample(data::AbstractArray{T, N}, G_in::Geometry, dt_new::Real) where {T<:Real, N} = time_resample(data, G_in.dt[1], dt_new, G_in.t[1])
 
 """
     time_resample(data, dt_in, dt_new)
@@ -512,7 +507,7 @@ Parameters
 * `dt_in`: Time sampling of input
 * `dt_new`: New time sampling rate to interpolate onto.
 """
-function time_resample(data::AbstractArray{T, N}, dt_in::T, dt_new::T, t::T) where {T<:AbstractFloat, N}
+function time_resample(data::AbstractArray{T, N}, dt_in::T, dt_new::T, t::T) where {T<:Real, N}
 
     if dt_new==dt_in
         return data
@@ -530,7 +525,7 @@ function time_resample(data::AbstractArray{T, N}, dt_in::T, dt_new::T, t::T) whe
     end
 end
 
-time_resample(data::AbstractArray{T, N}, dt_in::Number, dt_new::Number, t::Number) where {T<:AbstractFloat, N} = time_resample(data, T(dt_in), T(dt_new), T(t))
+time_resample(data::AbstractArray{T, N}, dt_in::Number, dt_new::Number, t::Number) where {T<:Real, N} = time_resample(data, T(dt_in), T(dt_new), T(t))
 
 
 """
@@ -544,10 +539,10 @@ Parameters
 * `geometry_out`: Geometry on which `data` is to be interpolated.
 * `dt_in`: Time sampling rate of the `data.`
 """
-time_resample(data::AbstractArray{Float32, N}, dt_in::AbstractFloat, G_out::Geometry) where N = time_resample(data, dt_in, G_out.dt[1], G_out.t[1])
+time_resample(data::AbstractArray{T, N}, dt_in::Real, G_out::Geometry{T}) where {T<:Real, N} = time_resample(data, dt_in, G_out.dt[1], G_out.t[1])
 
 _time_resample(data::Matrix{T}, rate::Integer) where T = data[1:rate:end, :]
-_time_resample(data::PermutedDimsArray{T, 2, (2, 1), (2, 1), Matrix{T}}, rate::Integer) where T = data.parent[:, 1:rate:end]'
+_time_resample(data::PermutedDimsArray{T, 2, (2, 1), (2, 1), Matrix{T}}, rate::Integer) where {T<:Real} = data.parent[:, 1:rate:end]'
 
 SincInterpolation(Y::Matrix{T}, S::StepRangeLen{T}, Up::StepRangeLen{T}) where T<:Real = sinc.( (Up .- S') ./ (S[2] - S[1]) ) * Y
 SincInterpolation(Y::PermutedDimsArray{T, 2, (2, 1), (2, 1), Matrix{T}}, S::StepRangeLen{T}, Up::StepRangeLen{T}) where T<:Real = (Y.parent * sinc.( (Up' .- S) ./ (S[2] - S[1]) ))'
@@ -561,7 +556,7 @@ Parameters
 * `x`: judiVector. Usualy a source with a single trace per source position.
 * `src_no`: Index of the source to select out of `x`
 """
-function generate_distribution(x; src_no=1)
+function generate_distribution(x::judiVector{T, Matrix{T}}; src_no=1) where {T<:Real}
 	# Generate interpolator to sample from probability distribution given
 	# from spectrum of the input data
 
@@ -602,7 +597,7 @@ Parameters
 * `f_max`: Maximum acceptable frequency to sample (defaults to Inf).
 * `fd`: Number of frequnecies to sample (defaults to 1).
 """
-function select_frequencies(q_dist; fmin=0f0, fmax=Inf, nf=1)
+function select_frequencies(q_dist::Spline1D; fmin=0f0, fmax=Inf, nf=1)
 	freq = zeros(Float32, nf)
 	for j=1:nf
 		while (freq[j] <= fmin) || (freq[j] > fmax)
@@ -622,14 +617,14 @@ Parameters:
 * `geometry`: Geometry containing physical parameters.
 * `nsrc`: Number of sources
 """
-function process_input_data(input::DenseArray{Float32}, geometry::Geometry)
+function process_input_data(input::DenseArray{T}, geometry::Geometry{T}) where {T<:Real}
     # Input data is pure Julia array: assume fixed no.
     # of receivers and reshape into data cube nt x nrec x nsrc
     nt = Int(geometry.nt[1])
     nrec = geometry.nrec[1]
     nsrc = length(geometry.xloc)
     data = reshape(input, nt, nrec, nsrc)
-    dataCell = Array{Array{Float32, 2}, 1}(undef, nsrc)
+    dataCell = Vector{Matrix{T}}(undef, nsrc)
     for j=1:nsrc
         dataCell[j] = data[:,:,j]
     end
@@ -646,9 +641,8 @@ Parameters:
 * `model`: Model containing physical parameters.
 * `nsrc`: Number of sources
 """
-function process_input_data(input::DenseArray{Float32}, model::AbstractModel, nsrc::Integer)
-    ND = length(size(model))
-    dataCell = Array{Array{Float32, ND}, 1}(undef, nsrc)
+function process_input_data(input::DenseArray{T}, model::AbstractModel{T, N}, nsrc::Integer) where {T<:Real, N}
+    dataCell = Vector{Array{T, N}}(undef, nsrc)
 
     input = reshape(input, size(model)..., nsrc)
     nd = ndims(input)
@@ -658,10 +652,10 @@ function process_input_data(input::DenseArray{Float32}, model::AbstractModel, ns
     return dataCell
 end
 
-process_input_data(input::DenseArray{Float32}, model::AbstractModel) = process_input_data(input, model, length(input) ÷ prod(size(model)))
-process_input_data(input::judiVector, ::Geometry) = input
-process_input_data(input::judiVector) = input.data
-process_input_data(input::judiWeights, ::AbstractModel) = input.weights
+process_input_data(input::DenseArray{T}, model::AbstractModel{T, N}) where {T<:Real, N} = process_input_data(input, model, length(input) ÷ prod(size(model)))
+process_input_data(input::judiVector{T, AT}, ::Geometry{T}) where {T<:Real, AT} = input
+process_input_data(input::judiVector{T, AT}) where {T<:Real, AT} = input.data
+process_input_data(input::judiWeights{T}, ::AbstractModel{T, N}) where {T<:Real, N} = input.weights
 
 function process_input_data(input::DenseArray{T}, v::Vector{<:Array}) where T
     nsrc = length(v)
@@ -678,7 +672,7 @@ end
 
 Reshapes input vector into a 3D `nt x nrec x nsrc` Array.
 """
-function reshape(x::AbstractArray{Float32}, geometry::Geometry)
+function reshape(x::AbstractArray{T}, geometry::Geometry{T}) where {T<:Real}
     nt = geometry.nt[1]
     nrec = geometry.nrec[1]
     nsrc = Int(length(x) / nt / nrec)
@@ -690,7 +684,7 @@ end
 
 Reshapes input vector into a `Vector{Array{T, N}}` of length `nblock` with each subarray of size `n`
 """
-function reshape(x::Vector{T}, d::Dims, nsrc::Integer) where {T<:Number}
+function reshape(x::Vector{T}, d::Dims, nsrc::Integer) where {T<:Real}
     length(x) == prod(d)*nsrc || throw(judiMultiSourceException("Incompatible size"))
     as_nd = reshape(x, d..., nsrc)
     return [collect(selectdim(as_nd, ndims(as_nd), s)) for s=1:nsrc]
@@ -725,7 +719,7 @@ Theta=pi/2 points right:
 2D only, to extend to 3D
 
 """
-function transducer(q::judiVector, d::Tuple, r::Number, theta)
+function transducer(q::judiVector{T, AT}, d::Tuple, r::Number, theta) where {T<:Real, AT}
     length(theta) != length(q.geometry.xloc) && throw("Need one angle per source position")
     size(q.data[1], 2) > 1 && throw("Only point sources can be converted to transducer source")
     # Array of source
@@ -736,24 +730,24 @@ function transducer(q::judiVector, d::Tuple, r::Number, theta)
     y_base_b = zeros(nsrc_loc) .- d[end]
 
     # New coords and data
-    xloc = Array{Array{Float32, 1}, 1}(undef, nsrc)
-    yloc = Array{Array{Float32, 1}, 1}(undef, nsrc)
-    zloc = Array{Array{Float32, 1}, 1}(undef, nsrc)
-    data = Array{Array{Float32, 2}}(undef, nsrc)
+    xloc = Vector{Vector{T}}(undef, nsrc)
+    yloc = Vector{Vector{T}}(undef, nsrc)
+    zloc = Vector{Vector{T}}(undef, nsrc)
+    data = Vector{Matrix{T}}(undef, nsrc)
     t = q.geometry.t[1]
     dt = q.geometry.dt[1]
 
     for i=1:nsrc
         # Build the rotated array of dipole
-        R = Float32.([cos(theta[i] - pi/2) sin(theta[i] - pi/2);-sin(theta[i] - pi/2) cos(theta[i] - pi/2)])
+        R = T.([cos(theta[i] - pi/2) sin(theta[i] - pi/2);-sin(theta[i] - pi/2) cos(theta[i] - pi/2)])
         # +1 coords
         r_loc = R * [x_base';y_base']
         # -1 coords
         r_loc_b = R * [x_base';y_base_b']
         xloc[i] = q.geometry.xloc[i] .+ vec(vcat(r_loc[1, :], r_loc_b[1, :]))
         zloc[i] = q.geometry.zloc[i] .+ vec(vcat(r_loc[2, :], r_loc_b[2, :]))
-        yloc[i] = zeros(Float32, 2*nsrc_loc)
-        data[i] = zeros(Float32, length(q.data[i]), 2*nsrc_loc)
+        yloc[i] = zeros(T, 2*nsrc_loc)
+        data[i] = zeros(T, length(q.data[i]), 2*nsrc_loc)
         data[i][:, 1:nsrc_loc] .= q.data[i]/nsrc_loc
         data[i][:, nsrc_loc+1:end] .= -q.data[i]/nsrc_loc
     end

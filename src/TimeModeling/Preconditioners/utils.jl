@@ -12,7 +12,7 @@ radius(G1::Geometry, G2::Geometry, t::Integer) = sqrt.((G1.xloc[1][t] .- G2.xloc
 _tapew(i::Integer, taperwidth::Integer, ::Integer, ::Val{:reflection}) = i < taperwidth
 _tapew(i::Integer, taperwidth::Integer, nt::Integer, ::Val{:turning}) = i > (nt - taperwidth)
 
-_mutew!(t::AbstractVector{T}, taper::AbstractVector{T}, i::Integer, nt::Integer, ::Val{:reflection}) where T = broadcast!(*, t[1:i], t[1:i], taper[nt-i+1:nt])
+_mutew!(t::AbstractVector{T}, taper::AbstractVector{T}, i::Integer, ::Integer, ::Val{:reflection}) where T = broadcast!(*, t[1:i], t[1:i], taper[end-i+1:end])
 _mutew!(t::AbstractVector{T}, taper::AbstractVector{T}, i::Integer, nt::Integer, ::Val{:turning}) where T = broadcast!(*, t[i:nt], t[i:nt], taper[1:(nt-i+1)])
 
 # water bottom

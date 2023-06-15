@@ -8,11 +8,11 @@ export Model, PhysicalParameter, get_dt, size, origin, spacing, nbl
 
 abstract type AbstractModel{T, N} end
 
-struct DiscreteGrid{T<:AbstractFloat, N}
-    n::NTuple{N, <:Integer}
+struct DiscreteGrid{T, N}
+    n::NTuple{N, Int64}
     d::NTuple{N, <:T}
     o::NTuple{N, <:T}
-    nb::Integer # number of absorbing boundaries points on each side
+    nb::Int64 # number of absorbing boundaries points on each side
 end
 
 size(G::DiscreteGrid) = G.n
@@ -54,15 +54,15 @@ cannot be infered from the array.
 
     PhysicalParameter(n, d, o; T=Float32) Creates a zero PhysicalParameter
 
-    PhysicalParameter(v::Array{T}, A::PhysicalParameter{T, N}) where {T<:AbstractFloat, N} Creates a PhysicalParameter from the Array `v` with n, d, o from `A`
+    PhysicalParameter(v::Array{T}, A::PhysicalParameter{T, N}) where {T<:Real, N} Creates a PhysicalParameter from the Array `v` with n, d, o from `A`
 
     PhysicalParameter(v::Array{T, N}, n::NTuple{N, T}, d::NTuple{N, T}, o::Tuple) where `v` is a vector or nd-array that is reshaped into shape `n`
 
     PhysicalParameter(v::T, n::NTuple{N, T}, d::NTuple{N, T}, o::Tuple) Creates a constant (single number) PhyicalParameter
 
 """
-mutable struct PhysicalParameter{T<:AbstractFloat, N} <: DenseArray{T, N}
-    n::NTuple{N, <:Integer}
+mutable struct PhysicalParameter{T, N} <: DenseArray{T, N}
+    n::NTuple{N, Int64}
     d::NTuple{N, T}
     o::NTuple{N, T}
     data::Union{Array{T, N}, T}
@@ -75,59 +75,59 @@ mutable struct PhysicalParameterException <: Exception
 end
 
 PhysicalParameter(v::BitArray{N}, args...) where N = v
-PhysicalParameter(v::Array{Bool}, args...) = v
+PhysicalParameter(v::Array{Bool, N}, ::NTuple, ::NTuple) where N = v
 
-function PhysicalParameter(v::Array{T, N}, d::NTuple, o::NTuple) where {T<:AbstractFloat, N}
+function PhysicalParameter(v::Array{T, N}, d::NTuple, o::NTuple) where {T<:Real, N}
     n = size(v)
     length(n) != length(o) && throw(PhysicalParameterException("Input array should be $(length(o))-dimensional"))
     return PhysicalParameter(n, d, o, v)
 end
 
-PhysicalParameter(n::NTuple{N}, d::NTuple{N}, o::NTuple{N}; DT::Type{dT}=eltype(d)) where {dT<:AbstractFloat, N} = PhysicalParameter(n, d, o, zeros(dT, n))
-PhysicalParameter(v::Array{T, N}, A::PhysicalParameter{ADT, N}) where {T<:AbstractFloat, ADT<:AbstractFloat, N} = PhysicalParameter(A.n, A.d, A.o, reshape(v, A.n))
+PhysicalParameter(n::NTuple{N}, d::NTuple{N}, o::NTuple{N}; DT::Type{dT}=eltype(d)) where {dT<:Real, N} = PhysicalParameter(n, d, o, zeros(dT, n))
+PhysicalParameter(v::Array{T, N}, A::PhysicalParameter{ADT, N}) where {T<:Real, ADT<:Real, N} = PhysicalParameter(A.n, A.d, A.o, reshape(v, A.n))
 
-function PhysicalParameter(v::Array{T, N1}, n::NTuple{N, Int}, d::NTuple{N, T}, o::NTuple{N, T}) where {T<:AbstractFloat, N, N1}
+function PhysicalParameter(v::Array{T, N1}, n::NTuple{N, Int}, d::NTuple{N, T}, o::NTuple{N, T}) where {T<:Real, N, N1}
     length(v) != prod(n) && throw(PhysicalParameterException("Incompatible number of element in input $(length(v)) with n=$(n)"))
     N1 == 1 && (v = reshape(v, n))
     return PhysicalParameter(n, d, o, v)
 end
 
-PhysicalParameter(v::AbstractFloat, n::NTuple{N}, d::NTuple{N}, o::NTuple{N}) where {N} = PhysicalParameter(n, d, o, v)
+PhysicalParameter(v::Real, n::NTuple{N}, d::NTuple{N}, o::NTuple{N}) where {N} = PhysicalParameter(n, d, o, v)
 PhysicalParameter(v::Integer, n::NTuple{N}, d::NTuple{N}, o::NTuple{N}) where {N} = PhysicalParameter(n, d, o, Float32.(v))
-PhysicalParameter(v::Array{T, N}, n::NTuple{N}, d::NTuple{N}, o::NTuple{N}) where {T<:AbstractFloat, N} = PhysicalParameter(n, d, o, v)
+PhysicalParameter(v::Array{T, N}, n::NTuple{N}, d::NTuple{N}, o::NTuple{N}) where {T<:Real, N} = PhysicalParameter(n, d, o, v)
 
-PhysicalParameter(p::PhysicalParameter{T, N}, ::NTuple{N, Int}, ::NTuple{N, T}, ::NTuple{N, T}) where {T<:AbstractFloat, N} = p 
-PhysicalParameter(p::PhysicalParameter{T, N}) where {T<:AbstractFloat, N} = p 
-PhysicalParameter(p::PhysicalParameter{T, N}, v::Array{T, Nv}) where {T<:AbstractFloat, N, Nv} = PhysicalParameter(p.n, p.d, p.o, reshape(v, p.n))
+PhysicalParameter(p::PhysicalParameter{T, N}, ::NTuple{N, Int}, ::NTuple{N, T}, ::NTuple{N, T}) where {T<:Real, N} = p 
+PhysicalParameter(p::PhysicalParameter{T, N}) where {T<:Real, N} = p 
+PhysicalParameter(p::PhysicalParameter{T, N}, v::Array{T, Nv}) where {T<:Real, N, Nv} = PhysicalParameter(p.n, p.d, p.o, reshape(v, p.n))
 
 # transpose and such.....
-conj(x::PhysicalParameter{T, N}) where {T<:AbstractFloat, N} = x
-transpose(x::PhysicalParameter{T, N}) where {T<:AbstractFloat, N} = PhysicalParameter(x.n[N:-1:1], x.d[N:-1:1], x.o[N:-1:1], permutedims(x.data, N:-1:1))
-adjoint(x::PhysicalParameter{T, N}) where {T<:AbstractFloat, N} = transpose(x)
+conj(x::PhysicalParameter{T, N}) where {T<:Real, N} = x
+transpose(x::PhysicalParameter{T, N}) where {T<:Real, N} = PhysicalParameter(x.n[N:-1:1], x.d[N:-1:1], x.o[N:-1:1], permutedims(x.data, N:-1:1))
+adjoint(x::PhysicalParameter{T, N}) where {T<:Real, N} = transpose(x)
 
 # Basic overloads
-size(A::PhysicalParameter{T, N}) where {T<:AbstractFloat, N} = A.n
-length(A::PhysicalParameter{T, N}) where {T<:AbstractFloat, N} = prod(A.n)
+size(A::PhysicalParameter{T, N}) where {T<:Real, N} = A.n
+length(A::PhysicalParameter{T, N}) where {T<:Real, N} = prod(A.n)
 
-function norm(A::PhysicalParameter{T, N}, order::Real=2) where {T<:AbstractFloat, N}
+function norm(A::PhysicalParameter{T, N}, order::Real=2) where {T<:Real, N}
     return norm(vec(A.data), order)
 end
 
-dot(A::PhysicalParameter{T, N}, B::PhysicalParameter{T, N}) where {T<:AbstractFloat, N} = dot(vec(A.data), vec(B.data))
-dot(A::PhysicalParameter{T, N}, B::Array{T, N}) where {T<:AbstractFloat, N} = dot(vec(A.data), vec(B))
-dot(A::Array{T, N}, B::PhysicalParameter{T, N}) where {T<:AbstractFloat, N} = dot(vec(A), vec(B.data))
+dot(A::PhysicalParameter{T, N}, B::PhysicalParameter{T, N}) where {T<:Real, N} = dot(vec(A.data), vec(B.data))
+dot(A::PhysicalParameter{T, N}, B::Array{T, N}) where {T<:Real, N} = dot(vec(A.data), vec(B))
+dot(A::Array{T, N}, B::PhysicalParameter{T, N}) where {T<:Real, N} = dot(vec(A), vec(B.data))
 
-_repr(A::PhysicalParameter{T, N}) where {T<:AbstractFloat, N} = "$(typeof(A)) of size $(A.n) with origin $(A.o) and spacing $(A.d)"
-display(A::PhysicalParameter{T, N}) where {T<:AbstractFloat, N} = println(_repr(A))
-show(io::IO, A::PhysicalParameter{T, N}) where {T<:AbstractFloat, N} = print(io, _repr(A))
-summary(io::IO, A::PhysicalParameter{T, N}) where {T<:AbstractFloat, N} = print(io, _repr(A))
+_repr(A::PhysicalParameter{T, N}) where {T<:Real, N} = "$(typeof(A)) of size $(A.n) with origin $(A.o) and spacing $(A.d)"
+display(A::PhysicalParameter{T, N}) where {T<:Real, N} = println(_repr(A))
+show(io::IO, A::PhysicalParameter{T, N}) where {T<:Real, N} = print(io, _repr(A))
+summary(io::IO, A::PhysicalParameter{T, N}) where {T<:Real, N} = print(io, _repr(A))
 showarg(io::IO, A::PhysicalParameter, toplevel) = print(io, _repr(A))
-show(io::IO, ::MIME{Symbol("text/plain")}, A::PhysicalParameter{T, N}) where {T<:AbstractFloat, N} = println(io, _repr(A))
+show(io::IO, ::MIME{Symbol("text/plain")}, A::PhysicalParameter{T, N}) where {T<:Real, N} = println(io, _repr(A))
 
 # Indexing
-firstindex(A::PhysicalParameter{T, N}) where {T<:AbstractFloat, N} = 1
-lastindex(A::PhysicalParameter{T, N}) where {T<:AbstractFloat, N} = length(A)
-lastindex(A::PhysicalParameter{T, N}, dim::Int) where {T<:AbstractFloat, N} = A.n[dim]
+firstindex(A::PhysicalParameter{T, N}) where {T<:Real, N} = 1
+lastindex(A::PhysicalParameter{T, N}) where {T<:Real, N} = length(A)
+lastindex(A::PhysicalParameter{T, N}, dim::Int) where {T<:Real, N} = A.n[dim]
 
 function promote_shape(p::PhysicalParameter{T, N}, A::Array{T, Na}) where {T, N, Na}
     (size(A) != p.n && N>1) && return promote_shape(p.data, A)
@@ -135,19 +135,19 @@ function promote_shape(p::PhysicalParameter{T, N}, A::Array{T, Na}) where {T, N,
     return promote_shape(A, A)
 end
 
-promote_shape(A::Array{T, Na}, p::PhysicalParameter{T, N}) where {T<:AbstractFloat, N, Na}  = promote_shape(p, A)
-reshape(p::PhysicalParameter{T, N}, n::Tuple{Vararg{Int64,N}}) where {T<:AbstractFloat, N} = (n == p.n ? p : reshape(p.data, n))
+promote_shape(A::Array{T, Na}, p::PhysicalParameter{T, N}) where {T<:Real, N, Na}  = promote_shape(p, A)
+reshape(p::PhysicalParameter{T, N}, n::Tuple{Vararg{Int64,N}}) where {T<:Real, N} = (n == p.n ? p : reshape(p.data, n))
 reshape(p::PhysicalParameter, pr::PhysicalParameter) = (p.n == pr.n ? p : throw(ArgumentError("Incompatible PhysicalParameter sizes ($(p.n), $(po.n))")))
 
 dotview(m::PhysicalParameter, i) = Base.dotview(m.data, i)
 
-getindex(A::PhysicalParameter{T, N}, i::Int) where {T<:AbstractFloat, N} = A.data[i]
-getindex(A::PhysicalParameter{T, N}, ::Colon) where {T<:AbstractFloat, N} = A.data[:]
+getindex(A::PhysicalParameter{T, N}, i::Int) where {T<:Real, N} = A.data[i]
+getindex(A::PhysicalParameter{T, N}, ::Colon) where {T<:Real, N} = A.data[:]
 
 get_step(r::StepRange) = r.step
 get_step(r) = 1
 
-function getindex(A::PhysicalParameter{T, N}, I::Vararg{Union{Int, BitArray, Function, StepRange{Int}, UnitRange{Int}}, Ni}) where {N, Ni, T<:AbstractFloat}
+function getindex(A::PhysicalParameter{T, N}, I::Vararg{Union{Int, BitArray, Function, StepRange{Int}, UnitRange{Int}}, Ni}) where {N, Ni, T<:Real}
     new_v = getindex(A.data, I...)
     length(size(new_v)) != length(A.n) && (return new_v)
     s = [i == Colon() ? 0 : i[1]-1 for i=I]
@@ -157,31 +157,31 @@ function getindex(A::PhysicalParameter{T, N}, I::Vararg{Union{Int, BitArray, Fun
     PhysicalParameter(size(new_v), tuple(new_d...), tuple(new_o...), new_v)
 end
 
-setindex!(A::PhysicalParameter{T, N}, v, I::Vararg{Union{Int, Function, UnitRange{Int}}, Ni}) where {T<:AbstractFloat, N, Ni}  = setindex!(A.data, v, I...)
-setindex!(A::PhysicalParameter{T, N}, v, i::Int) where {T<:AbstractFloat, N} = (A.data[i] = v)
+setindex!(A::PhysicalParameter{T, N}, v, I::Vararg{Union{Int, Function, UnitRange{Int}}, Ni}) where {T<:Real, N, Ni}  = setindex!(A.data, v, I...)
+setindex!(A::PhysicalParameter{T, N}, v, i::Int) where {T<:Real, N} = (A.data[i] = v)
 
 # Constructiors by copy
-similar(x::PhysicalParameter{T, N}) where {T<:AbstractFloat, N} = PhysicalParameter(x.n, x.d, x.o, fill!(similar(x.data), 0))
+similar(x::PhysicalParameter{T, N}) where {T<:Real, N} = PhysicalParameter(x.n, x.d, x.o, fill!(similar(x.data), 0))
 
 function similar(p::PhysicalParameter{T, N}, ::Type{nT}, s::AbstractSize) where {T, N, nT}
     nn = tuple(last.(sort(collect(s.dims), by = x->x[1]))...)
     return PhysicalParameter(nn, p.d, p.o, zeros(nT, nn))
 end
 
-copy(x::PhysicalParameter{T, N}) where {T<:AbstractFloat, N} = PhysicalParameter(x.n, x.d, x.o, copy(x.data))
-unsafe_convert(::Type{Ptr{T}}, p::PhysicalParameter{T, N}) where {T<:AbstractFloat, N} = unsafe_convert(Ptr{T}, p.data)
+copy(x::PhysicalParameter{T, N}) where {T<:Real, N} = PhysicalParameter(x.n, x.d, x.o, copy(x.data))
+unsafe_convert(::Type{Ptr{T}}, p::PhysicalParameter{T, N}) where {T<:Real, N} = unsafe_convert(Ptr{T}, p.data)
 
 # Equality
-==(A::PhysicalParameter{T, N}, B::PhysicalParameter{T, N}) where {T<:AbstractFloat, N} = (A.data == B.data && A.o == B.o && A.d == B.d)
-isapprox(A::PhysicalParameter{T, N}, B::PhysicalParameter{T, N}; kwargs...) where {T<:AbstractFloat, N} = (isapprox(A.data, B.data) && A.o == B.o && A.d == B.d)
-isapprox(A::PhysicalParameter{T, N}, B::AbstractArray{T, N}; kwargs...) where {T<:AbstractFloat, N} = isapprox(A.data, B)
-isapprox(A::AbstractArray{T, N}, B::PhysicalParameter{T, N}; kwargs...) where {T<:AbstractFloat, N} = isapprox(A, B.data)
+==(A::PhysicalParameter{T, N}, B::PhysicalParameter{T, N}) where {T<:Real, N} = (A.data == B.data && A.o == B.o && A.d == B.d)
+isapprox(A::PhysicalParameter{T, N}, B::PhysicalParameter{T, N}; kwargs...) where {T<:Real, N} = (isapprox(A.data, B.data) && A.o == B.o && A.d == B.d)
+isapprox(A::PhysicalParameter{T, N}, B::AbstractArray{T, N}; kwargs...) where {T<:Real, N} = isapprox(A.data, B)
+isapprox(A::AbstractArray{T, N}, B::PhysicalParameter{T, N}; kwargs...) where {T<:Real, N} = isapprox(A, B.data)
 
 # # Arithmetic operations
-compare(A::PhysicalParameter{T, N}, B::PhysicalParameter{T, N}) where {T<:AbstractFloat, N} =  (A.o == B.o &&  A.d == B.d &&  A.n == B.n)
+compare(A::PhysicalParameter{T, N}, B::PhysicalParameter{T, N}) where {T<:Real, N} =  (A.o == B.o &&  A.d == B.d &&  A.n == B.n)
 
 
-function combine(op, A::PhysicalParameter{T, N}, B::PhysicalParameter{T, N}) where {T<:AbstractFloat, N}
+function combine(op, A::PhysicalParameter{T, N}, B::PhysicalParameter{T, N}) where {T<:Real, N}
     A.d == B.d || throw(PhysicalParameterException("Incompatible grids: ($(A.d), $(B.d))"))
     o = min.(A.o, B.o)
     sa = floor.(Int, (A.o .- o) ./ A.d) .+ 1
@@ -198,7 +198,7 @@ function combine(op, A::PhysicalParameter{T, N}, B::PhysicalParameter{T, N}) whe
 end
 
 for op in [:+, :-, :*, :/]
-    @eval function $(op)(A::PhysicalParameter{T, N}, B::PhysicalParameter{T, N}) where {T<:AbstractFloat, N}
+    @eval function $(op)(A::PhysicalParameter{T, N}, B::PhysicalParameter{T, N}) where {T<:Real, N}
         if compare(A, B)
             return PhysicalParameter(broadcast($(op), A.data, B.data), A)
         elseif A.d == B.d
@@ -208,11 +208,11 @@ for op in [:+, :-, :*, :/]
             throw(PhysicalParameterException("Incompatible grids: ($(A.d), $(B.d))"))
         end
     end
-    @eval $(op)(A::PhysicalParameter{T, N}, B::T2) where {T<:AbstractFloat, T2<:Number, N} = PhysicalParameter(broadcast($(op), A.data, T(B)), A)
-    @eval $(op)(A::T2, B::PhysicalParameter{T, N}) where {T<:AbstractFloat, T2<:Number, N} = PhysicalParameter(broadcast($(op), T(A), B.data), B)
+    @eval $(op)(A::PhysicalParameter{T, N}, B::T2) where {T<:Real, T2<:Number, N} = PhysicalParameter(broadcast($(op), A.data, T(B)), A)
+    @eval $(op)(A::T2, B::PhysicalParameter{T, N}) where {T<:Real, T2<:Number, N} = PhysicalParameter(broadcast($(op), T(A), B.data), B)
 end
 
-function *(A::Union{joMatrix, joLinearFunction, joLinearOperator, joCoreBlock}, p::PhysicalParameter{RDT, N}) where {RDT<:AbstractFloat, N}
+function *(A::Union{joMatrix, joLinearFunction, joLinearOperator, joCoreBlock}, p::PhysicalParameter{RDT, N}) where {RDT<:Real, N}
     @warn "JOLI linear operator, returning julia Array"
     return A*vec(p.data)
 end
@@ -231,7 +231,7 @@ end
 
 similar(bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{PhysicalParameter}}) = similar(bc, nothing)
 
-function materialize!(A::PhysicalParameter{T, N}, ev::PhysicalParameter{T, N}) where {T<:AbstractFloat, N}
+function materialize!(A::PhysicalParameter{T, N}, ev::PhysicalParameter{T, N}) where {T<:Real, N}
     if compare(A, ev)
         A.data .= ev.data
     else
@@ -243,24 +243,24 @@ function materialize!(A::PhysicalParameter{T, N}, ev::PhysicalParameter{T, N}) w
     nothing
 end
 
-materialize!(A::PhysicalParameter{T, N}, B::Broadcast.Broadcasted{Broadcast.DefaultArrayStyle{PhysicalParameter}}) where {T<:AbstractFloat, N} = materialize!(A, B.f(B.args...))
-materialize!(A::PhysicalParameter{T, N}, B::Broadcast.Broadcasted{Broadcast.DefaultArrayStyle{N}}) where {T<:AbstractFloat, N} = materialize!(A.data, reshape(materialize(B), A.n))
-materialize!(A::AbstractArray{T, N}, B::Broadcast.Broadcasted{Broadcast.ArrayStyle{PhysicalParameter}}) where {T<:AbstractFloat, N} = materialize!(A, reshape(materialize(B).data, size(A)))
+materialize!(A::PhysicalParameter{T, N}, B::Broadcast.Broadcasted{Broadcast.DefaultArrayStyle{PhysicalParameter}}) where {T<:Real, N} = materialize!(A, B.f(B.args...))
+materialize!(A::PhysicalParameter{T, N}, B::Broadcast.Broadcasted{Broadcast.DefaultArrayStyle{N}}) where {T<:Real, N} = materialize!(A.data, reshape(materialize(B), A.n))
+materialize!(A::AbstractArray{T, N}, B::Broadcast.Broadcasted{Broadcast.ArrayStyle{PhysicalParameter}}) where {T<:Real, N} = materialize!(A, reshape(materialize(B).data, size(A)))
 
 for op in [:+, :-, :*, :/, :\]
     @eval begin
-        broadcasted(::typeof($op), A::PhysicalParameter{T, N}, B::DenseVector{T}) where {T<:AbstractFloat, N} = PhysicalParameter(A.n, A.d, A.o, materialize(broadcasted($(op), A.data, reshape(B, A.n))))
-        broadcasted(::typeof($op), B::DenseVector{T}, A::PhysicalParameter{T, N}) where {T<:AbstractFloat, N} = PhysicalParameter(A.n, A.d, A.o, materialize(broadcasted($(op), reshape(B, A.n), A.data)))
-        broadcasted(::typeof($op), A::PhysicalParameter{T, N}, B::DenseArray{T, N}) where {T<:AbstractFloat, N} = PhysicalParameter(A.n, A.d, A.o, materialize(broadcasted($(op), A.data, B)))
-        broadcasted(::typeof($op), B::DenseArray{T, N}, A::PhysicalParameter{T, N}) where {T<:AbstractFloat, N} = PhysicalParameter(A.n, A.d, A.o, materialize(broadcasted($(op), B, A.data)))
-        broadcasted(::typeof($op), A::PhysicalParameter{T, N}, B::PhysicalParameter{T, N}) where {T<:AbstractFloat, N} = $(op)(A, B)
-        broadcasted(::typeof($op), A::PhysicalParameter{T, N}, B::T2) where {T<:AbstractFloat, T2<:Number, N} = PhysicalParameter(broadcast($(op), A.data, T(B)), A)
-        broadcasted(::typeof($op), A::T2, B::PhysicalParameter{T, N}) where {T<:AbstractFloat, T2<:Number, N} = PhysicalParameter(broadcast($(op), T(A), B.data), B)
+        broadcasted(::typeof($op), A::PhysicalParameter{T, N}, B::DenseVector{T}) where {T<:Real, N} = PhysicalParameter(A.n, A.d, A.o, materialize(broadcasted($(op), A.data, reshape(B, A.n))))
+        broadcasted(::typeof($op), B::DenseVector{T}, A::PhysicalParameter{T, N}) where {T<:Real, N} = PhysicalParameter(A.n, A.d, A.o, materialize(broadcasted($(op), reshape(B, A.n), A.data)))
+        broadcasted(::typeof($op), A::PhysicalParameter{T, N}, B::DenseArray{T, N}) where {T<:Real, N} = PhysicalParameter(A.n, A.d, A.o, materialize(broadcasted($(op), A.data, B)))
+        broadcasted(::typeof($op), B::DenseArray{T, N}, A::PhysicalParameter{T, N}) where {T<:Real, N} = PhysicalParameter(A.n, A.d, A.o, materialize(broadcasted($(op), B, A.data)))
+        broadcasted(::typeof($op), A::PhysicalParameter{T, N}, B::PhysicalParameter{T, N}) where {T<:Real, N} = $(op)(A, B)
+        broadcasted(::typeof($op), A::PhysicalParameter{T, N}, B::T2) where {T<:Real, T2<:Number, N} = PhysicalParameter(broadcast($(op), A.data, T(B)), A)
+        broadcasted(::typeof($op), A::T2, B::PhysicalParameter{T, N}) where {T<:Real, T2<:Number, N} = PhysicalParameter(broadcast($(op), T(A), B.data), B)
     end
 end
 
 # For ploting
-NpyArray(p::PhysicalParameter{T, N}, revdims::Bool) where {T<:AbstractFloat, N} = NpyArray(p.data, revdims)
+NpyArray(p::PhysicalParameter{T, N}, revdims::Bool) where {T<:Real, N} = NpyArray(p.data, revdims)
 
 ###################################################################################################
 const ModelParam{T, N} = Union{T, PhysicalParameter{T, N}}
@@ -300,10 +300,10 @@ struct ViscIsoModel{T, N} <: AbstractModel{T, N}
     qp::ModelParam{T, N}
 end
 
-_params(m::IsoModel) = [(:m, m.m), (:rho, m.rho)]
-_params(m::TTIModel) = [(:m, m.m), (:rho, m.rho), (:epsilon, m.epsilon), (:delta, m.delta), (:theta, m.theta), (:phi, m.phi)]
-_params(m::IsoElModel) = [(:lam, m.lam), (:mu, m.mu), (:b, m.b)]
-_params(m::ViscIsoModel) = [(:m, m.m), (:rho, m.rho), (:qp, m.qp)]
+_params(m::IsoModel) = ((:m, m.m), (:rho, m.rho))
+_params(m::TTIModel) = ((:m, m.m), (:rho, m.rho), (:epsilon, m.epsilon), (:delta, m.delta), (:theta, m.theta), (:phi, m.phi))
+_params(m::IsoElModel) = ((:lam, m.lam), (:mu, m.mu), (:b, m.b))
+_params(m::ViscIsoModel) = ((:m, m.m), (:rho, m.rho), (:qp, m.qp))
 
 _mparams(m::AbstractModel) = first.(_params(m))
 
@@ -341,7 +341,7 @@ where
 
 """
 function Model(n, d, o, m::Array{mT, N}; epsilon=nothing, delta=nothing, theta=nothing,
-               phi=nothing, rho=nothing, qp=nothing, vs=nothing, nb=40) where {mT<:AbstractFloat, N}
+               phi=nothing, rho=nothing, qp=nothing, vs=nothing, nb=40) where {mT<:Real, N}
 
     # Currently force single precision
     m = convert(Array{Float32, N}, m)
@@ -386,6 +386,8 @@ function Model(n, d, o, m::Array{mT, N}; epsilon=nothing, delta=nothing, theta=n
         rho = isa(rho, Array) ? PhysicalParameter(convert(Array{T, N}, rho), n, d, o) : _scalar(rho, T)
         epsilon = isa(epsilon, Array) ? PhysicalParameter(convert(Array{T, N}, epsilon), n, d, o) : _scalar(epsilon, T, 0)
         delta = isa(delta, Array) ? PhysicalParameter(convert(Array{T, N}, delta), n, d, o) : _scalar(delta, T, 0)
+        # For safety remove delta values unsupported (delta > epsilon)
+        _clip_delta!(delta, epsilon)
         theta = isa(theta, Array) ? PhysicalParameter(convert(Array{T, N}, theta), n, d, o) : _scalar(theta, T, 0)
         phi = isa(phi, Array) ? PhysicalParameter(convert(Array{T, N}, phi), n, d, o) : _scalar(phi, T, 0)
         return TTIModel{T, N}(G, m, rho, epsilon, delta, theta, phi)
@@ -401,23 +403,23 @@ Model(n, d, o, m::Array, rho::Array; nb=40) = Model(n, d, o, m; rho=rho, nb=nb)
 Model(n, d, o, m::Array, rho::Array, qp::Array; nb=40) = Model(n, d, o, m; rho=rho, qp=qp, nb=nb)
 Model(d, o, m; kw...) = Model(size(m), d, o, m; kw...)
 
-size(m::AbstractModel) = size(m.G)
-origin(m::AbstractModel) = origin(m.G)
-spacing(m::AbstractModel) = spacing(m.G)
-nbl(m::AbstractModel) = nbl(m.G)
+size(m::MT) where {MT<:AbstractModel} = size(m.G)
+origin(m::MT) where {MT<:AbstractModel} = origin(m.G)
+spacing(m::MT) where {MT<:AbstractModel} = spacing(m.G)
+nbl(m::MT) where {MT<:AbstractModel} = nbl(m.G)
 
-size(m::AbstractModel, i::Int) = size(m.G, i)
-origin(m::AbstractModel, i::Int) = origin(m.G, i)
-spacing(m::AbstractModel, i::Int) = spacing(m.G, i)
+size(m::MT, i::Int) where {MT<:AbstractModel} = size(m.G, i)
+origin(m::MT, i::Int) where {MT<:AbstractModel} = origin(m.G, i)
+spacing(m::MT, i::Int) where {MT<:AbstractModel} = spacing(m.G, i)
 
 eltype(::AbstractModel{T, N}) where {T, N} = T
 
 get_dt(m::AbstractModel; dt=nothing) = calculate_dt(m; dt=dt)
 
-similar(::PhysicalParameter{T, N}, m::AbstractModel) where {T<:AbstractFloat, N} = PhysicalParameter(size(m), spacing(m), origin(m); DT=T)
+similar(::PhysicalParameter{T, N}, m::AbstractModel) where {T<:Real, N} = PhysicalParameter(size(m), spacing(m), origin(m); DT=T)
 similar(x::Array, m::AbstractModel) = similar(x, size(m))
 
-ndims(m::AbstractModel) = ndims(m.m.data)
+ndims(m::AbstractModel{T, N}) where {T, N} = N
 
 _repr(m::AbstractModel) = "Model (n=$(size(m)), d=$(spacing(m)), o=$(origin(m))) with parameters $(_mparams(m))"
 display(m::AbstractModel) = println(_repr(m))
@@ -433,3 +435,8 @@ function _project_to_physical_domain(p::PhysicalParameter, model::AbstractModel)
     pp .+= p
     return pp
 end
+
+# Utils
+_clip_delta!(::T, epsilon) where {T<:Number} = nothing
+_clip_delta!(delta::PhysicalParameter{T}, epsilon::T) where {T<:Number} = delta.data[delta.data .>= epsilon] .= T(.99) * epsilon
+_clip_delta!(delta::PhysicalParameter{T}, epsilon::PhysicalParameter{T}) where {T<:Number} = delta.data[delta.data .>= epsilon.data] .= T(.99) * epsilon[delta.data .>= epsilon.data]

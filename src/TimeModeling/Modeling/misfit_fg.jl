@@ -47,13 +47,11 @@ function multi_src_fg(model_full::AbstractModel, source::judiVector, dObs::judiV
     length(options.frequencies) == 0 ? freqs = nothing : freqs = options.frequencies
     IT = illum ? (PyArray, PyArray) : (PyObject, PyObject)
     @juditime "Python call to J_adjoint" begin
-        argout = pylock() do
-            pycall(ac."J_adjoint", Tuple{Float32, PyArray, IT...}, modelPy,
+        argout = rlock_pycall(ac."J_adjoint", Tuple{Float32, PyArray, IT...}, modelPy,
                 src_coords, qIn, rec_coords, dObserved, t_sub=options.subsampling_factor,
                 space_order=options.space_order, checkpointing=options.optimal_checkpointing,
                 freq_list=freqs, ic=options.IC, is_residual=false, born_fwd=lin, nlind=nlind,
                 dft_sub=options.dft_subsampling_factor[1], f0=options.f0, return_obj=true, misfit=mfunc, illum=illum)
-        end
     end
 
     @juditime "Filter empty output" begin

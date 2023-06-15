@@ -74,8 +74,8 @@ model = example_model()
         @test Int(size(F_forward)[1]) == nsrc * nt * prod(model.n)
 
         @test adjoint(F_adjoint) == F_forward
-        @test isequal(typeof(F_forward), judiModeling{Float32, :forward})
-        @test isequal(typeof(F_adjoint), judiModeling{Float32, :adjoint})
+        @test isequal(typeof(F_forward), judiModeling{Float32, :forward, JUDI.IsoModel{Float32, 2}})
+        @test isequal(typeof(F_adjoint), judiModeling{Float32, :adjoint, JUDI.IsoModel{Float32, 2}})
 
         # get index
         test_getindex(F_forward, nsrc)
