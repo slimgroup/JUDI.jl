@@ -30,3 +30,9 @@ getproperty(J::Preconditioner, s::Symbol) = _get_property(J, Val{s}())
 *(J::Preconditioner, v::Vector{T}) where T = matvec(J, v)
 mul!(out::judiMultiSourceVector, J::Preconditioner, ms::judiMultiSourceVector) = copyto!(out, matvec(J, ms))
 mul!(out::PhysicalParameter, J::Preconditioner, ms::PhysicalParameter) = copyto!(out, matvec(J, ms))
+
+# Unsupported OOC
+function *(J::DataPreconditioner, v::judiVector{T, SegyIO.SeisCon}) where T
+    @warn  "Data preconditionners only support in-core judiVector. Converting (might run out of memory)"
+    return J * get_data(v)
+end

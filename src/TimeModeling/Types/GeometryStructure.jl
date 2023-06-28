@@ -4,6 +4,7 @@
 #
 
 export Geometry, compareGeometry, GeometryIC, GeometryOOC, get_nsrc, n_samples, super_shot_geometry
+export reciprocal_geom
 
 abstract type Geometry{T} end
 
@@ -154,6 +155,9 @@ function Geometry(xloc, yloc, zloc; dt=nothing, t=nothing, nsrc=nothing)
 end
 
 Geometry(xloc::CoordT, yloc::CoordT, zloc::CoordT, dt::Array{T,1}, nt::Array{Integer,1}, t::Array{T,1}) where {T<:Real} = GeometryIC{T}(xloc,yloc,zloc,dt,nt,t)
+
+# For easy 2D setup
+Geometry(xloc, zloc; kw...) = Geometry(xloc, 0 .* xloc, zloc; kw...)
 
 # Fallback constructors for non standard input types 
 
@@ -472,7 +476,64 @@ coords_from_set(S::OrderedSet{Tuple{T, T, T}}) where T = tuple([first.(S)], [get
 coords_from_keys(S::Vector{Tuple{T, T}}) where T = tuple([first.(S)], [[0f0]], [last.(S)])
 coords_from_keys(S::Vector{Tuple{T, T, T}}) where T = tuple([first.(S)], [getindex.(S, 2)], [last.(S)])
 
+"""
+    super_shot_geometry(Geometry)
+
+Merge all the sub-geometries `1:get_nsrc(Geometry)` into a single supershot geometry
+"""
 function super_shot_geometry(G::Geometry{T}) where T
     as_set = coords_from_set(as_coord_set(G))
     return GeometryIC{T}(as_set..., [G.dt[1]], [G.nt[1]], [G.t[1]])
+end
+
+
+###################### reciprocity ###############################
+
+"""
+    reciprocal_geom(sourceGeom, recGeom)
+
+Applies reciprocity to the par of geometries `sourceGeom` and `recGeom` where each source
+becomes a receiver and each receiver becomes a source.
+
+This method expects:
+- Both geometries to be In Core. If the geometries are OOC they will be converted to in core geometries
+- The metadata to be compatible. In details all the time sampling rates (dt) and recording times (t) must be the same
+- The source to be single point sources. This method will error if a simultaneous sources (multiple poisiton for a single source) are used.
+"""
+function reciprocal_geom(sGeom::GeometryIC{T}, rGeom::GeometryIC{T}) where T
+    # The geometry need to have the same recording and sampling times
+    @assert sGeom.dt == rGeom.dt
+    @assert sGeom.t == rGeom.t
+    @assert sGeom.nt == rGeom.nt
+    @assert allsame(sGeom.dt)
+    @assert allsame(sGeom.t)
+    @assert allsame(sGeom.nt)
+    # Make sure it's not simultaneous sources
+    if !all(length(x) == 1 for x in sGeom.xloc)
+        throw(GeometryException("Cannot apply reciprocity to simultaneous sources"))
+    end
+    # Curretnly only support geometry with all sources seeing the same receivers
+    if !allsame(rGeom.xloc)
+        throw(GeometryException("Currently expects all sources to see the same receivers (i.e OBNs)"))
+    end
+    # Reciprocal source geom
+    xsrc = convertToCell(rGeom.xloc[1])
+    if length(rGeom.yloc[1]) > 1
+        ysrc = convertToCell(rGeom.yloc[1])
+    else
+        ysrc = 0 .* xsrc
+    end
+    zsrc = convertToCell(rGeom.zloc[1])
+    sgeom = Geometry(xsrc, ysrc, zsrc; dt=rGeom.dt[1], t=rGeom.t[1])
+    # Reciprocal recc geom
+    xrec = Vector{T}([x[1] for x in sGeom.xloc])
+    yrec = Vector{T}([x[1] for x in sGeom.yloc])
+    zrec = Vector{T}([x[1] for x in sGeom.zloc])
+    rgeom = Geometry(xrec, yrec, zrec; dt=rGeom.dt[1], t=rGeom.t[1], nsrc=length(xsrc))
+    return sgeom, rgeom
+end
+
+function reciprocal_geom(sGeom::Geometry, rGeom::Geometry)
+    @warn "reciprocal_geom only supports in core geometries, converting"
+    return reciprocal_geom(Geometry(sGeom), Geometry(rGeom))
 end

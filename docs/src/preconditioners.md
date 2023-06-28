@@ -3,7 +3,7 @@
 JUDI provides a selected number of preconditioners known to be beneficial to FWI and RTM. We welcome additional preconditionners from the community. Additionnaly, any JOLI operator can be used as a preconditiner in conbination with JUDI operator thanks to the fundamental interface between JUDI and JOLI.
 
 ```@contents
-Pages = ["precinditioners.md"]
+Pages = ["preconditioners.md"]
 ```
 
 ## Model domain preconditioners
@@ -91,7 +91,13 @@ While not purely a preconditioner, because this operator acts on the data and is
 
 ```@docs
 FrequencyFilter
-low_filter
+filter_data
 ```
 
+### Data time derivative/intergraton
 
+A `TimeDifferential{K}` is a linear operator that implements a time derivative (K>0) or time integration (K<0) of order `K` for any real `K` including fractional values.
+
+```@docs
+TimeDifferential
+```

@@ -20,8 +20,9 @@ dm = model0.m - model.m
         F = judiFilter(recGeometry, .002, .030)
         Mdr = judiDataMute(srcGeometry, recGeometry; mode=:reflection)
         Mdt = judiDataMute(srcGeometry, recGeometry; mode=:turning)
-        Dt = judiTimeDerivative(recGeometry, 1)
-        It = judiTimeIntegration(recGeometry, 1)
+        order = .25f0
+        Dt = judiTimeDerivative(recGeometry, order)
+        It = judiTimeIntegration(recGeometry, order)
         Mm = judiTopmute(model.n, 20, 1)
 
         # Time differential only

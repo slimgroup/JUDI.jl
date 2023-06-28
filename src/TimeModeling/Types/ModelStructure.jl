@@ -8,7 +8,7 @@ export Model, PhysicalParameter, get_dt, size, origin, spacing, nbl
 
 abstract type AbstractModel{T, N} end
 
-struct DiscreteGrid{T, N}
+struct DiscreteGrid{T<:Real, N}
     n::NTuple{N, Int64}
     d::NTuple{N, <:T}
     o::NTuple{N, <:T}
@@ -340,18 +340,18 @@ where
 `nb`: Number of ABC points
 
 """
-function Model(n, d, o, m::Array{mT, N}; epsilon=nothing, delta=nothing, theta=nothing,
+function Model(d, o, m::Array{mT, N}; epsilon=nothing, delta=nothing, theta=nothing,
                phi=nothing, rho=nothing, qp=nothing, vs=nothing, nb=40) where {mT<:Real, N}
 
     # Currently force single precision
     m = convert(Array{Float32, N}, m)
     T = Float32
     # Convert dimension to internal types
-    n = NTuple{length(n), Int64}(n)
-    d = NTuple{length(n), Float32}(d)
-    o = NTuple{length(n), Float32}(o)
-    G = DiscreteGrid(n, d, o, nb)
-    
+    n = size(m)
+    d = tuple(Float32.(d)...)
+    o = tuple(Float32.(o)...)
+    G = DiscreteGrid{T, N}(n, d, o, nb)
+
     size(m) == n || throw(ArgumentError("Grid size $n and squared slowness size $(size(m)) don't match"))
 
     # Elastic
@@ -399,9 +399,9 @@ function Model(n, d, o, m::Array{mT, N}; epsilon=nothing, delta=nothing, theta=n
     return IsoModel{T, N}(G, m, rho)
 end
 
-Model(n, d, o, m::Array, rho::Array; nb=40) = Model(n, d, o, m; rho=rho, nb=nb)
-Model(n, d, o, m::Array, rho::Array, qp::Array; nb=40) = Model(n, d, o, m; rho=rho, qp=qp, nb=nb)
-Model(d, o, m; kw...) = Model(size(m), d, o, m; kw...)
+Model(n, d, o, m::Array, rho::Array; nb=40) = Model(d, o, m; rho=rho, nb=nb)
+Model(n, d, o, m::Array, rho::Array, qp::Array; nb=40) = Model(d, o, m; rho=rho, qp=qp, nb=nb)
+Model(n, d, o, m::Array; kw...) = Model(d, o, m; kw...)
 
 size(m::MT) where {MT<:AbstractModel} = size(m.G)
 origin(m::MT) where {MT<:AbstractModel} = origin(m.G)

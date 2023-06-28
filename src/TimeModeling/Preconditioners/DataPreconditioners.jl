@@ -1,5 +1,5 @@
-export DataMute, FrequencyFilter, judiTimeDerivative, judiTimeIntegration
-export judiFilter, low_filter, judiDataMute, muteshot
+export DataMute, FrequencyFilter, judiTimeDerivative, judiTimeIntegration, TimeDifferential
+export judiFilter, filter_data, judiDataMute, muteshot
 
 ############################################ Data mute ###############################################
 """
@@ -176,31 +176,41 @@ adjoint(I::FrequencyFilter{T}) where T = I
 transpose(I::FrequencyFilter{T}) where T = I
 
 function filter!(dout::AbstractArray{T, N}, din::AbstractArray{T, N}, dt::T; fmin=T(0.01), fmax=T(100)) where {T, N}
-    responsetype = Bandpass(fmin, fmax; fs=1e3/dt)	
+    if fmin == 0
+        responsetype = Lowpass(fmax; fs=1e3/dt)
+    elseif isinf(fmax)
+        responsetype = Highpass(fmin; fs=1e3/dt)
+    else
+        responsetype = Bandpass(fmin, fmax; fs=1e3/dt)
+    end
     designmethod = Butterworth(5)
     tracefilt!(x, y) = filt!(x, digitalfilter(responsetype, designmethod), y)
     map(i-> tracefilt!(selectdim(dout, N, i), selectdim(din, N, i)), 1:size(dout, 2))
 end
 
-low_filter(Din::judiVector; fmin=0.01, fmax=100.0) = judiFilter(Din.geometry, fmin, fmax)*Din
-low_filter(Din::judiVector, ::Any; fmin=0.01, fmax=100.0) = low_filter(Din; fmin=fmin, fmax=fmax)
+filter_data(Din::judiVector; fmin=0, fmax=Inf) = judiFilter(Din.geometry, fmin, fmax)*Din
+filter_data(Din::judiVector, ::Any; fmin=0, fmax=Inf) = filter_data(Din; fmin=fmin, fmax=fmax)
 
 """
-    low_filter(Din, dt_in; fmin=0, fmax=25)
+    filter(Din, dt_in; fmin=0, fmax=25)
 
-Performs a causal band pass filtering [fmin, fmax] on the input data bases on its sampling rate `dt`.
+Performs a causal filtering [fmin, fmax] on the input data bases on its sampling rate `dt`. 
+Automatically perfroms a lowpass if fmin=0 (default)
 """
-function low_filter(Din::Matrix{T}, dt_in; fmin=0.01, fmax=100.0) where T
+function filter_data(Din::Matrix{T}, dt_in; fmin=0, fmax=Inf) where T
     out = similar(Din)
     filter!(out, Din, dt_in; fmin=T(fmin), fmax=T(fmax))
     return out
 end
 
+# Legacy `low_filter`
+low_filter(ar...) = filter_data(ar...)
+
 # Legacy top mute is deprecated since only working for marine data
 judiMarineTopmute2D(::Integer, geometry::Geometry; params=Array{Any}(undef, 3), flipmask=false) = throw(MethodError(judiMarineTopmute2D, "judiMarineTopmute2D is deprecated due to its limitations and inaccuracy, please use judiDataMute"))
 
 """
-    TimeDifferential{K}
+    struct TimeDifferential
         recGeom
 
 Differential operator of order `K` to be applied along the time dimension. Applies the ilter `w^k` where `k` is the order. For example,
@@ -215,7 +225,6 @@ Constructor
     judiTimeDerivative(recGeom, order)
     judiTimeDerivative(judiVector, order)
 """
-
 struct TimeDifferential{T, K} <: DataPreconditioner{T, T}
     m::Integer
     recGeom::Geometry
