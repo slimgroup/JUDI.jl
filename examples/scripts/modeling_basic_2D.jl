@@ -91,7 +91,7 @@ q = judiVector(srcGeometry, wavelet)
 #' condition for the propagation.
 
 # Setup options
-opt = Options(subsampling_factor=2, dt_comp=1.0)
+opt = Options(subsampling_factor=2, space_order=32)
 
 #' Linear Operators
 #' The core idea behind JUDI is to abstract seismic inverse problems in term of linear algebra. In its simplest form, seismic inversion can be formulated as

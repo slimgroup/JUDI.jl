@@ -94,7 +94,7 @@ def forward_op(p_params, tti, visco, elas, space_order, fw, spacing, save, t_sub
     u = wavefield(model, space_order, save=save, nt=nt, t_sub=t_sub, fw=fw)
 
     # Expression for saving wavefield if time subsampling is used
-    eq_save = save_subsampled(model, u, nt, t_sub)
+    eq_save = save_subsampled(model, u, nt, t_sub, space_order=space_order)
 
     # Extended source
     q = extented_src(model, wsrc, wavelet, q=q)
@@ -153,7 +153,7 @@ def born_op(p_params, tti, visco, elas, space_order, fw, spacing, save, pt_src,
     ul = wavefield(model, space_order, name="l", fw=fw)
 
     # Expression for saving wavefield if time subsampling is used
-    eq_save = save_subsampled(model, u, nt, t_sub)
+    eq_save = save_subsampled(model, u, nt, t_sub, space_order=space_order)
 
     # Add extended source
     q = extented_src(model, wsrc, wavelet)

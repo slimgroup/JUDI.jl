@@ -24,6 +24,9 @@ def getmax(f):
         return np.max(f)
 
 
+_thomsen = [('epsilon', 1), ('delta', 1), ('theta', 0), ('phi', 0)]
+
+
 class PhysicalDomain(SubDomain):
 
     name = 'nofsdomain'
@@ -157,7 +160,7 @@ class Model(object):
     dt: Float
         User provided computational time-step
     """
-    def __init__(self, origin, spacing, shape, space_order=2, nbl=40, dtype=np.float32,
+    def __init__(self, origin, spacing, shape, space_order=8, nbl=40, dtype=np.float32,
                  m=None, epsilon=None, delta=None, theta=None, phi=None, rho=None,
                  b=None, qp=None, lam=None, mu=None, dm=None, fs=False, **kwargs):
         # Setup devito grid
@@ -267,7 +270,13 @@ class Model(object):
 
     @property
     def zero_thomsen(self):
-        return {self.epsilon: 1, self.delta: 1, self.theta: 0, self.phi: 0}
+        out = {}
+        for (t, v) in _thomsen:
+            try:
+                out.update({getattr(self, t): v})
+            except AttributeError:
+                pass
+        return out
 
     @switchconfig(log_level='ERROR')
     def _gen_phys_param(self, field, name, space_order, is_param=False,
@@ -397,12 +406,14 @@ class Model(object):
         """
         # Elasic coefficient (see e.g )
         if self.is_elastic:
-            coeffs = fd_w(1, range(-4, 5), .5)
+            so = max(self._space_order // 2, 2)
+            coeffs = fd_w(1, range(-so, so), .5)
             c_fd = sum(np.abs(coeffs[-1][-1])) / 2
             return np.sqrt(self.dim) / self.dim / c_fd
         a1 = 4  # 2nd order in time
-        coeffs = fd_w(2, range(-8, 9), 0)[-1][-1]
-        return np.sqrt(a1/float(self.grid.dim * sum(np.abs(coeffs))))
+        so = max(self._space_order // 2, 4)
+        coeffs = fd_w(2, range(-so, so), 0)[-1][-1]
+        return .9 * np.sqrt(a1/float(self.grid.dim * sum(np.abs(coeffs))))
 
     @property
     def _thomsen_scale(self):
@@ -526,14 +537,15 @@ class EmptyModel(object):
         self.is_elastic = elastic
         self.spacing = spacing
         self.fs = fs
+        N = 2 * space_order + 1
         if fs:
-            fsdomain = FSDomain(space_order + 1)
-            physdomain = PhysicalDomain(space_order + 1, fs=fs)
+            fsdomain = FSDomain(N)
+            physdomain = PhysicalDomain(N, fs=fs)
             subdomains = (physdomain, fsdomain)
         else:
             subdomains = ()
-        self.grid = Grid(tuple([space_order+1]*len(spacing)),
-                         extent=[s*space_order for s in spacing],
+        self.grid = Grid(tuple([N]*len(spacing)),
+                         extent=[s*(N-1) for s in spacing],
                          subdomains=subdomains)
         self.dimensions = self.grid.dimensions
 
@@ -564,3 +576,13 @@ class EmptyModel(object):
         Spatial dimension of the problem and model domain.
         """
         return self.grid.dim
+
+    @property
+    def zero_thomsen(self):
+        out = {}
+        for (t, v) in _thomsen:
+            try:
+                out.update({getattr(self, t): v})
+            except AttributeError:
+                pass
+        return out

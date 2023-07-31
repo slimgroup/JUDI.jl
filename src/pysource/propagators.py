@@ -44,7 +44,7 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     f0q = Constant('f0', value=f0) if model.is_viscoacoustic else None
 
     # Expression for saving wavefield if time subsampling is used
-    u_save = wavefield_subsampled(model, u, nt, t_sub)
+    u_save = wavefield_subsampled(model, u, nt, t_sub, space_order=space_order)
 
     # Illumination
     I = illumination(u, illum)
@@ -179,7 +179,7 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     kw = base_kwargs(model.critical_dt)
     f0q = Constant('f0', value=f0) if model.is_viscoacoustic else None
     # Expression for saving wavefield if time subsampling is used
-    u_save = wavefield_subsampled(model, u, nt, t_sub)
+    u_save = wavefield_subsampled(model, u, nt, t_sub, space_order=space_order)
 
     # On-the-fly Fourier
     dft_m, fr = fourier_modes(u, freq_list)
