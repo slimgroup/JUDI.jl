@@ -170,6 +170,7 @@ end
 
 copy(x::PhysicalParameter{T, N}) where {T<:Real, N} = PhysicalParameter(x.n, x.d, x.o, copy(x.data))
 unsafe_convert(::Type{Ptr{T}}, p::PhysicalParameter{T, N}) where {T<:Real, N} = unsafe_convert(Ptr{T}, p.data)
+Base.Vector{T}(m::PhysicalParameter) where T = Vector{T}(m.data[:])
 
 # Equality
 ==(A::PhysicalParameter{T, N}, B::PhysicalParameter{T, N}) where {T<:Real, N} = (A.data == B.data && A.o == B.o && A.d == B.d)
