@@ -86,12 +86,14 @@ model = example_model()
         test_getindex(F_adjoint, nsrc)
 
         if VERSION>v"1.2"
-            a = randn(Float32, model.n...)
-            F2 = F_forward(;m=a)
-            @test isapprox(F2.model.m, a)
-            F2 = F_forward(Model(model.n, model.d, model.o, a))
-            @test isapprox(F2.model.m, a)
-            @test F2.model.n == model.n
+            a0 = a = randn(Float32, model.n...)
+            for a in [a0, a0[:]]
+                F2 = F_forward(;m=a)
+                @test isapprox(F2.model.m, a0)
+                F2 = F_forward(Model(model.n, model.d, model.o, a))
+                @test isapprox(F2.model.m, a0)
+                @test F2.model.n == model.n
+            end
         end
     end
 end
@@ -128,12 +130,14 @@ end
         test_getindex(F_adjoint, nsrc)
 
         if VERSION>v"1.2"
-            a = randn(Float32, model.n...)
-            F2 = F_forward(;m=a)
-            @test isapprox(F2.model.m, a)
-            F2 = F_forward(Model(model.n, model.d, model.o, a))
-            @test isapprox(F2.model.m, a)
-            @test F2.model.n == model.n
+            a0 = a = randn(Float32, model.n...)
+            for a in [a0, a0[:]]
+                F2 = F_forward(;m=a)
+                @test isapprox(F2.model.m, a0)
+                F2 = F_forward(Model(model.n, model.d, model.o, a))
+                @test isapprox(F2.model.m, a0)
+                @test F2.model.n == model.n
+            end
         end
 
         # SimSources
@@ -180,12 +184,14 @@ end
         test_getindex(F_adjoint, nsrc)
 
         if VERSION>v"1.2"
-            a = randn(Float32, model.n...)
-            F2 = F_forward(;m=a)
-            @test isapprox(F2.model.m, a)
-            F2 = F_forward(Model(model.n, model.d, model.o, a))
-            @test isapprox(F2.model.m, a)
-            @test F2.model.n == model.n
+            a0 = a = randn(Float32, model.n...)
+            for a in [a0, a0[:]]
+                F2 = F_forward(;m=a)
+                @test isapprox(F2.model.m, a0)
+                F2 = F_forward(Model(model.n, model.d, model.o, a))
+                @test isapprox(F2.model.m, a0)
+                @test F2.model.n == model.n
+            end
         end
 
         # SimSources
@@ -236,12 +242,14 @@ end
         test_getindex(F_adjoint, nsrc)
 
         if VERSION>v"1.2"
-            a = randn(Float32, model.n...)
-            F2 = F_forward(;m=a)
-            @test isapprox(F2.model.m, a)
-            F2 = F_forward(Model(model.n, model.d, model.o, a))
-            @test isapprox(F2.model.m, a)
-            @test F2.model.n == model.n
+            a0 = a = randn(Float32, model.n...)
+            for a in [a0, a0[:]]
+                F2 = F_forward(;m=a)
+                @test isapprox(F2.model.m, a0)
+                F2 = F_forward(Model(model.n, model.d, model.o, a))
+                @test isapprox(F2.model.m, a0)
+                @test F2.model.n == model.n
+            end
         end
 
         # SimSources

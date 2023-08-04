@@ -162,6 +162,12 @@ ftol = 1f-5
         @test u.data[1:10] == 1:10
         @test u[11] == 0f0
 
+        u .= u.data[:]
+        @test norm(u, 1) == 55
+        @test u[1:10] == 1:10
+        @test u.data[1:10] == 1:10
+        @test u[11] == 0f0
+
         if nd == 2
             tmp = randn(Float32, u[1:10, :].n)
             u[1:10, :] .= tmp
