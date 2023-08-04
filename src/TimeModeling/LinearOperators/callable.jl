@@ -16,7 +16,7 @@ end
 function (F::judiPropagator)(;kwargs...)
     Fl = deepcopy(F)
     for (k, v) in kwargs
-        k in _mparams(Fl.model) && getfield(Fl.model, k) .= v
+        k in _mparams(Fl.model) && getfield(Fl.model, k) .= reshape(v, size(Fl.model))
     end
     Fl
 end
@@ -29,7 +29,7 @@ end
 
 function (F::judiPropagator)(m::AbstractArray)
     @info "Assuming m to be squared slowness for $(typeof(F))"
-    return F(;m=m)
+    return F(;m=reshape(m, size(F.model)))
 end
 
 (F::judiPropagator)(m::AbstractModel, q) = F(m)*as_src(q)
@@ -42,7 +42,7 @@ end
 
 function (J::judiJacobian{D, O, FT})(x::Array{D, N}) where {D, O, FT, N}
     if length(x) == prod(size(J.model))
-        return J(;m=m)
+        return J(;m=reshape(x, size(F.model.n)))
     end
     new_q = _as_src(J.qInjection.op, J.model, x)
     newJ = judiJacobian{D, O, FT}(J.m, J.n, J.F, new_q)

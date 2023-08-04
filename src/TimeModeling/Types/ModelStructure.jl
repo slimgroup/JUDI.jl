@@ -245,7 +245,7 @@ function materialize!(A::PhysicalParameter{T, N}, ev::PhysicalParameter{T, N}) w
 end
 
 materialize!(A::PhysicalParameter{T, N}, B::Broadcast.Broadcasted{Broadcast.DefaultArrayStyle{PhysicalParameter}}) where {T<:Real, N} = materialize!(A, B.f(B.args...))
-materialize!(A::PhysicalParameter{T, N}, B::Broadcast.Broadcasted{Broadcast.DefaultArrayStyle{N}}) where {T<:Real, N} = materialize!(A.data, reshape(materialize(B), A.n))
+materialize!(A::PhysicalParameter{T, N}, B::Broadcast.Broadcasted{Broadcast.DefaultArrayStyle{Na}}) where {T<:Real, N, Na} = materialize!(A.data, reshape(materialize(B), A.n))
 materialize!(A::AbstractArray{T, N}, B::Broadcast.Broadcasted{Broadcast.ArrayStyle{PhysicalParameter}}) where {T<:Real, N} = materialize!(A, reshape(materialize(B).data, size(A)))
 
 for op in [:+, :-, :*, :/, :\]
@@ -400,9 +400,9 @@ function Model(d, o, m::Array{mT, N}; epsilon=nothing, delta=nothing, theta=noth
     return IsoModel{T, N}(G, m, rho)
 end
 
-Model(n, d, o, m::Array, rho::Array; nb=40) = Model(d, o, m; rho=rho, nb=nb)
-Model(n, d, o, m::Array, rho::Array, qp::Array; nb=40) = Model(d, o, m; rho=rho, qp=qp, nb=nb)
-Model(n, d, o, m::Array; kw...) = Model(d, o, m; kw...)
+Model(n, d, o, m::Array, rho::Array; nb=40) = Model(d, o, reshape(m, n...); rho=reshape(rho, n...), nb=nb)
+Model(n, d, o, m::Array, rho::Array, qp::Array; nb=40) = Model(d, o, reshape(m, n...); rho=reshape(rho, n...), qp=reshape(qp, n...), nb=nb)
+Model(n, d, o, m::Array; kw...) = Model(d, o, reshape(m, n...); kw...)
 
 size(m::MT) where {MT<:AbstractModel} = size(m.G)
 origin(m::MT) where {MT<:AbstractModel} = origin(m.G)
