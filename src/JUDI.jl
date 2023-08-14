@@ -86,6 +86,7 @@ end
 
 # Constants
 _serial = false
+get_serial() = _serial
 set_serial(x::Bool) = begin global _serial = x; end
 set_serial() = begin global _serial = true; end
 set_parallel() = begin global _serial = false; end
