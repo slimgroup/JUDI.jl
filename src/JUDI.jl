@@ -6,7 +6,7 @@
 __precompile__()
 module JUDI
 
-export JUDIPATH, set_verbosity, ftp_data
+export JUDIPATH, set_verbosity, ftp_data, set_serial, set_parallel
 JUDIPATH = dirname(pathof(JUDI))
 
 # Dependencies
@@ -85,7 +85,15 @@ function rlock_pycall(meth, ::Type{T}, args...; kw...) where T
 end
 
 # Constants
+_serial = false
+set_serial(x::Bool) = begin global _serial = x; end
+set_serial() = begin global _serial = true; end
+set_parallel() = begin global _serial = false; end
+
 function _worker_pool()
+    if _serial
+        return nothing
+    end
     p = default_worker_pool()
     pool = length(p) < 2 ? nothing : p
     return pool
