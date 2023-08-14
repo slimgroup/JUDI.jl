@@ -6,7 +6,7 @@
 __precompile__()
 module JUDI
 
-export JUDIPATH, set_verbosity, ftp_data, set_serial, set_parallel
+export JUDIPATH, set_verbosity, ftp_data, get_serial, set_serial, set_parallel
 JUDIPATH = dirname(pathof(JUDI))
 
 # Dependencies
