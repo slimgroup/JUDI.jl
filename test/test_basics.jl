@@ -171,6 +171,9 @@ function test_serial()
 
     set_serial(true)
     @test get_serial()
+
+    set_serial(false)
+    @test !get_serial()
 end
 
 @testset "Test basic utilities" begin
