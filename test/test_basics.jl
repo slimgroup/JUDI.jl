@@ -160,9 +160,26 @@ function test_ftp()
     rm("$(JUDI.JUDI_DATA)/overthrust_model_2D.h5")
 end
 
+function test_serial()
+    @test !get_serial()
+
+    set_serial()
+    @test get_serial()
+
+    set_parallel()
+    @test !get_serial()
+
+    set_serial(true)
+    @test get_serial()
+
+    set_serial(false)
+    @test !get_serial()
+end
+
 @testset "Test basic utilities" begin
     @timeit TIMEROUTPUT "Basic setup utilities" begin
         test_ftp()
+        test_serial()
         setup_3d()
         for ndim=[2, 3]
             test_padding(ndim)
@@ -193,7 +210,7 @@ end
                 modelPy = devito_model(model, Options(dt_comp=.5f0))
                 @test modelPy.critical_dt == .5f0
 
-                # Verify nt
+                # Verify nt
                 srcGeometry = example_src_geometry()
                 recGeometry = example_rec_geometry(cut=true)
                 nt1 = get_computational_nt(srcGeometry, recGeometry, model)
