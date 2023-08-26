@@ -98,8 +98,8 @@ jopt = JUDI.Options(
     IC = "isic")
 
 # Right-hand preconditioners (model topmute)
-idx_wb = find_water_bottom(reshape(model0.m, model0.n))
-Tm = judiTopmute(model0.n, idx_wb, 10)  # Mute water column
+idx_wb = find_water_bottom(reshape(model0.m, size(model0)))
+Tm = judiTopmute(size(model0), idx_wb, 10)  # Mute water column
 S = judiDepthScaling(model0)
 Mr = S*Tm
 
@@ -127,7 +127,7 @@ rtm = adjoint(Mr)*adjoint(J[indsrc])*d_obs
 data = rtm isa Vector ? rtm : rtm.data
 
 # save RTM as HDF5 and plots
-save_data(x,z,adjoint(reshape(data, model0.n)); 
+save_data(x,z,adjoint(reshape(data, size(model0))); 
     pltfile=dir_out * "RTM_$(modeling_type).png",
     title="RTM",
     clim=(-maximum(data)/3f0, maximum(data)/3f0),
@@ -137,7 +137,7 @@ save_data(x,z,adjoint(reshape(data, model0.n));
     h5varname="rtm")
 
 # save RTM as SEGY
-block_out = SeisBlock(collect(reshape(data, model0.n)'))
+block_out = SeisBlock(collect(reshape(data, size(model0))'))
 set_header!(block_out, "dt", Int16(round(z[2]*1e6)))
 set_header!(block_out, "CDP", collect(1:size(data)[1]))
 set_header!(block_out, "CDPX", collect(Int32.(round.(x*100f0))))
