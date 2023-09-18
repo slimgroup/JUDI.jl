@@ -10,7 +10,7 @@ python = PyCall.pyprogramname
 
 ################## Devito ##################
 # pip command
-cmd = Cmd([python, "-m", "pip", "install", "-U", "--user", "devito>=4.4"])
+cmd = Cmd([python, "-m", "pip", "install", "-U", "--user", "devito[extras,tests]>=4.4"])
 
 try
     dv_ver = split(pk.get_distribution("devito").version, "+")[1]
