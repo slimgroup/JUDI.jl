@@ -19,12 +19,7 @@ jobs:
 
     steps:
       - name: Checkout master
-        uses: actions/checkout@v2
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v4
-        with:
-          python-version: 3.9
+        uses: actions/checkout@v3
 
       - uses: julia-actions/setup-julia@latest
       
@@ -32,6 +27,13 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: 3.9
+
+      - name: Set julia python
+        run: |
+          PYTHON=$(which python3) julia -e 'using Pkg;Pkg.add("PyCall");Pkg.build("PyCall")'
+  
+      - name: Build JUDI
+        uses: julia-actions/julia-buildpkg@latest
 
       - name: Install dependencies
         run: julia --project=docs/ -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
