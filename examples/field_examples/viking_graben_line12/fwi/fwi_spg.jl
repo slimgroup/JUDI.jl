@@ -1,6 +1,7 @@
 using Statistics, Random, LinearAlgebra, Interpolations, DelimitedFiles, Distributed
 using JUDI, SlimOptim, NLopt, HDF5, SegyIO, Plots, ImageFiltering
 using SetIntersectionProjection
+@everywhere using JUDI.FFTW, Zygote, Flux
 
 include("$(@__DIR__)/../utils.jl")
 
@@ -9,12 +10,14 @@ modeling_type = "bulk"    # slowness, bulk
 frq = 0.005 # kHz
 
 prestk_dir = "$(@__DIR__)/trim_segy/"
+# prestk_dir = "$(@__DIR__)/trim_segy_200_500/"
 prestk_file = "shot"
-dir_out = "$(@__DIR__)/fwi_pqn_$(modeling_type)/$(frq)Hz/"
+dir_out = "$(@__DIR__)/fwi_spg_$(modeling_type)/$(frq)Hz/"
+# dir_out = "$(@__DIR__)/fwi_spg_$(modeling_type)_buffer_3km/$(frq)Hz/"
 
 model_file = "$(@__DIR__)/initial_model/model.h5"
 # after each iteration you should set an appropriate model file computed with previous step
-# model_file = "$(@__DIR__)/fwi_pqn_$(modeling_type)/0.005Hz/model 10.h5"
+# model_file = "$(@__DIR__)/fwi_spg_$(modeling_type)/0.008Hz/model 10.h5"
 model_file_out = "model"
 
 # use original wavelet file 
@@ -121,10 +124,7 @@ global jopt = JUDI.Options(
     space_order=16)     # increase space order for > 12 Hz source wavelet
 
 # optimization parameters
-niterations = 10
-shot_from = 1
-shot_to = length(d_obs)
-shot_step = 3   # we may want to calculate only each Nth shot to economy time
+niterations = 20
 count = 0
 fhistory = Vector{Float32}(undef, 0)
 mute_reflections = false
@@ -154,140 +154,84 @@ mmaxArr = ones(Float32, size(model0)) .* mmax
 # ind = model0.m .> mmaxArr
 # mmaxArr[ind] .= model0.m[ind]
 
-# bounds:
-set_type = "bounds"
-TD_OP = "identity"
-app_mode = ("matrix","")
-custom_TD_OP = ([],false)
-push!(constraint, set_definitions(set_type,TD_OP,vec(mminArr),vec(mmaxArr),app_mode,custom_TD_OP));
-
-#TV
-(TV,dummy1,dummy2,dummy3) = get_TD_operator(model0.m,"TV",options.FL)
-mvar_min = 0.0
-mvar_max = norm(TV*vec(m0),1) * 2.5
-set_type = "l1"
-TD_OP = "TV"
-app_mode = ("matrix","")
-custom_TD_OP = ([],false)
-push!(constraint, set_definitions(set_type,TD_OP,mvar_min,mvar_max,app_mode,custom_TD_OP));
-
-# set up constraints with bounds and TV
-(P_sub,TD_OP,set_Prop) = setup_constraints(constraint, model0,options.FL)
-(TD_OP,AtA,l,y) = PARSDMM_precompute_distribute(TD_OP,set_Prop,model0,options)
-options.rho_ini = ones(Float32, length(TD_OP))*10.0f0
-
-proj_intersection = x-> PARSDMM(x, AtA, TD_OP, set_Prop, P_sub, model0, options)
-
-# Projection function
-function prj(input)
-  @info "prj minimum(input): $(minimum(input))"
-  input = Float32.(input)
-  (x,dummy1,dummy2,dymmy3) = proj_intersection(vec(input))
-  return x
+@everywhere function H(x)
+    n = size(x, 1)
+    σ = ifftshift(sign.(-n/2+1:n/2))
+    y = imag(ifft(σ.*fft(x, 1), 1))
+    return y
 end
 
-# Set water bottom mask
-wb_mask = ones(Float32,size(m0))
-wb_mask[:, 1:seabed_ind] .= 0f0
-# wb_mask[:, 1:seabed_ind+20] .= 0f0
+@everywhere envelope(x, y) = sum(abs2.((x - y) .+ 1im .* H(x - y)))
+@everywhere denvelope(x, y) = Zygote.gradient(xs->envelope(xs, y), x)[1]
+@everywhere myloss(x, y) = (envelope(x, y), denvelope(x, y))
 
-# Build small cluster
-nthread = Sys.CPU_THREADS
-nw = 2
+@everywhere myloss(randn(Float32, 10, 10), randn(Float32, 10, 10))
 
-ENV["OMP_DISPLAY_ENV"] = "true"
-ENV["OMP_PROC_BIND"] = "close"
-ENV["OMP_NUM_THREADS"] = "$(div(nthread, nw))" 
-addprocs(nw)
-@show workers()
-for k in 1:nworkers()
-    place1 = (k - 1) * div(nthread,nworkers())
-    place2 = (k + 0) * div(nthread,nworkers()) - 1
-    @show place1, place2, div(nthread, nw)
-    @spawnat workers()[k] ENV["GOMP_CPU_AFFINITY"] = "$(place1)-$(place2)";
-end
+# Optimization parameters
+batchsize = 300
 
-@everywhere using Distributed, JUDI.TimeModeling, SlimOptim, LinearAlgebra, PyPlot, SetIntersectionProjection, SegyIO
+# Objective function for minConf library
+count = 0
+function objective_function(m_update)
+    global x, z, count, jopt, seabed_ind;
+    count += 1
 
-function objective(m, d_obs, wb_mask)
+    # Update model
+    model0.m .= Float32.(reshape(m_update, size(model0)))
+    if modeling_type == "bulk"
+        model0.rho .= Float32.(reshape(rho_from_slowness(model0.m), size(model0)))
+        model0.rho[:,1:seabed_ind] .= rhowater
+    end
 
-  global x, z, count, jopt, seabed_ind, mminArr, mmaxArr;
-  count += 1
-
-  @info "objective minimum(m): $(minimum(m))"
-  m = reshape(m, size(model0))
-
-  # pqn may cross the mmin/mmax limits
-  ind = m .< mminArr
-  m[ind] .= mminArr[ind]
-  ind = m .> mmaxArr
-  m[ind] .= mmaxArr[ind]
-
-  model0.m .= Float32.(reshape(m, size(model0)))
-  if modeling_type == "bulk"
-    model0.rho .= Float32.(reshape(rho_from_slowness(model0.m), size(model0)))
-    model0.rho[:,1:seabed_ind] .= rhowater
-  end
-  t = @elapsed begin
-    indsrc = shot_from:shot_step:shot_to
+    # fwi function value and gradient
+    indsrc = randperm(d_obs.nsrc)[1:batchsize]
     if mute_reflections
-        fval, gradient = fwi_objective(model0, Mr_freq[indsrc]*q[indsrc], Ml_tur[indsrc]*Ml_freq[indsrc]*get_data(d_obs[indsrc]), options=jopt)
+        fval, gradient = fwi_objective(model0, Mr_freq[indsrc]*q[indsrc], Ml_tur[indsrc]*Ml_freq[indsrc]*get_data(d_obs[indsrc]), options=jopt, misfit=myloss)
     elseif mute_turning
-        fval, gradient = fwi_objective(model0, Mr_freq[indsrc]*q[indsrc], Ml_ref[indsrc]*Ml_freq[indsrc]*get_data(d_obs[indsrc]), options=jopt)
+        fval, gradient = fwi_objective(model0, Mr_freq[indsrc]*q[indsrc], Ml_ref[indsrc]*Ml_freq[indsrc]*get_data(d_obs[indsrc]), options=jopt, misfit=myloss)
     else
-        fval, gradient = fwi_objective(model0, Mr_freq[indsrc]*q[indsrc], Ml_freq[indsrc]*get_data(d_obs[indsrc]), options=jopt)
+        fval, gradient = fwi_objective(model0, Mr_freq[indsrc]*q[indsrc], Ml_freq[indsrc]*get_data(d_obs[indsrc]), options=jopt, misfit=myloss)
     end
     gradient = reshape(gradient, size(model0))
-  end
-  @info "elapsed fwi_objective time: $t"
-  gradient .*= wb_mask
-  if gscale == 0f0
-      # compute scalar from first gradient, apply to future gradients
-      global gscale = .25f0 ./ maximum(gradient) 
-      @show gscale
-  end
-  gradient .*= gscale
+    gradient[:, 1:seabed_ind] .= 0f0
+    gradient = .125f0*gradient/maximum(abs.(gradient))  # scale for line search
 
-  push!(fhistory, fval)
+    push!(fhistory, fval)
 
-  println("iteration: ", count, "\tfval: ", fval, "\tnorm: ", norm(gradient))
-  save_data(x,z,adjoint(reshape(model0.m.data,size(model0))); 
-          pltfile=dir_out * "FWI slowness $count.png",
-          title="FWI slowness^2 with PQN $modeling_type: $(frq*1000)Hz, iter $count",
-          colormap=:rainbow,
-          h5file=dir_out * model_file_out * " " * string(count) * ".h5",
-          h5openflag="w",
-          h5varname="m")
-  save_data(x,z,sqrt.(1f0 ./ adjoint(reshape(model0.m.data,size(model0)))); 
-          pltfile=dir_out * "FWI $count.png",
-          title="FWI velocity with PQN $modeling_type: $(frq*1000)Hz, iter $count",
-          colormap=:rainbow,
-          h5file=dir_out * model_file_out * " " * string(count) * ".h5",
-          h5openflag="r+",
-          h5varname="v")
-  save_data(x,z,adjoint(reshape(gradient.data,size(model0))); 
-          pltfile=dir_out * "Gradient $count.png",
-          title="FWI gradient with PQN $modeling_type: $(frq*1000)Hz, iter $count",
-          clim=(-maximum(gradient.data)/5f0, maximum(gradient.data)/5f0),
-          colormap=:bluesreds,
-          h5file=dir_out * model_file_out * " " * string(count) * ".h5",
-          h5openflag="r+",
-          h5varname="grad")
-  save_fhistory(fhistory; 
-          h5file=dir_out * model_file_out * " " * string(count) * ".h5",
-          h5openflag="r+",
-          h5varname="fhistory")
+    println("iteration: ", count, "\tfval: ", fval, "\tnorm: ", norm(gradient))
+    save_data(x,z,adjoint(reshape(model0.m.data,size(model0))); 
+            pltfile=dir_out * "FWI slowness $count.png",
+            title="FWI slowness^2 with L-BFGS $modeling_type: $(frq*1000)Hz, iter $count",
+            colormap=:rainbow,
+            h5file=dir_out * model_file_out * " " * string(count) * ".h5",
+            h5openflag="w",
+            h5varname="m")
+    save_data(x,z,sqrt.(1f0 ./ adjoint(reshape(model0.m.data,size(model0)))); 
+            pltfile=dir_out * "FWI $count.png",
+            title="FWI velocity with L-BFGS $modeling_type: $(frq*1000)Hz, iter $count",
+            colormap=:rainbow,
+            h5file=dir_out * model_file_out * " " * string(count) * ".h5",
+            h5openflag="r+",
+            h5varname="v")
+    save_data(x,z,adjoint(reshape(gradient.data,size(model0))); 
+            pltfile=dir_out * "Gradient $count.png",
+            title="FWI gradient with L-BFGS $modeling_type: $(frq*1000)Hz, iter $count",
+            clim=(-maximum(gradient.data)/5f0, maximum(gradient.data)/5f0),
+            colormap=:bluesreds,
+            h5file=dir_out * model_file_out * " " * string(count) * ".h5",
+            h5openflag="r+",
+            h5varname="grad")
+    save_fhistory(fhistory; 
+            h5file=dir_out * model_file_out * " " * string(count) * ".h5",
+            h5openflag="r+",
+            h5varname="fhistory")
 
-  return fval, vec(gradient.data)
+    return fval, gradient
 end
 
-# struct to save the first gradient scalar
-gscale = 0f0
-g(x) = objective(x, d_obs, wb_mask)
+# Bound projection
+proj(x) = reshape(median([vec(mminArr) vec(x) vec(mmaxArr)]; dims=2), size(model0))
 
-# FWI with PQN
-gscale = 0f0
-options_pqn = pqn_options(progTol=0, store_trace=true, verbose=3, maxIter=niterations)
-sol = pqn(g, vec(m0), prj, options_pqn);
-
-rmprocs(workers());
+# FWI with SPG
+options = spg_options(verbose=3, maxIter=niterations, memory=3)
+sol = spg(objective_function, model0.m.data, proj, options)

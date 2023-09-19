@@ -9,10 +9,14 @@ modeling_type = "bulk"  # slowness, bulk
 prestk_dir = "$(@__DIR__)/../proc/"
 prestk_file = "s_deghost_gain_mute_dip_radon.sgy"
 
-dir_out = "$(@__DIR__)/"
+# dir_out = "$(@__DIR__)/rtm_pqn/"
+# dir_out = "$(@__DIR__)/rtm_spg/"
+dir_out = "$(@__DIR__)/rtm_lbfgs/"
 
 # choose the most accurate model
-model_file = "$(@__DIR__)/../fwi/fwi_$(modeling_type)/0.035Hz/model 10.h5"
+# model_file = "$(@__DIR__)/../fwi/fwi_pqn_$(modeling_type)/0.005Hz/model 10.h5"
+# model_file = "$(@__DIR__)/../fwi/fwi_spg_$(modeling_type)/0.005Hz/model 10.h5"
+model_file = "$(@__DIR__)/../fwi/fwi_lbfgs_$(modeling_type)/0.005Hz/model 10.h5"
 
 # use original wavelet file 
 # wavelet_file = "$(@__DIR__)/../FarField.dat" # dt=1, skip=25
@@ -24,6 +28,7 @@ wavelet_dt = 4          # 1 [ms] for raw source and 4 [ms] for deghosted source
 segy_depth_key_src = "SourceSurfaceElevation"
 segy_depth_key_rec = "RecGroupElevation"
 
+dense_factor = 2 # make model n-times denser to achieve better stability
 seabed = 355  # [m]
 
 # water velocity, km/s
@@ -59,8 +64,17 @@ n, d, o, m0 = read(h5open(model_file, "r"), "n", "d", "o", "m")
 n = Tuple(Int64(i) for i in n)
 d = Tuple(Float32(i) for i in d)
 o = Tuple(Float32(i) for i in o)
+
+i_dense = 1:1/Float32(dense_factor):size(m0)[1]
+j_dense = 1:1/Float32(dense_factor):size(m0)[2]
+
+m0_itp = interpolate(m0, BSpline(Linear()))
+m0 = m0_itp(i_dense, j_dense)
+n = size(m0)
+d = Tuple(Float32(i/dense_factor) for i in d)
+
 if modeling_type == "slowness"
-    model0 = Model(n, d, o, m0)
+    model0 = Model(n, d, o, m0_dense)
 elseif modeling_type == "bulk"
     rho0 = rho_from_slowness(m0)
     model0 = Model(n, d, o, m0, rho=rho0)
@@ -74,7 +88,7 @@ if modeling_type == "slowness"
     model0.m[:,1:seabed_ind] .= (1/vwater)^2
 elseif modeling_type == "bulk"
     model0.m[:,1:seabed_ind] .= (1/vwater)^2
-    model0.b[:,1:seabed_ind] .= 1f0/rhowater
+    model0.rho[:,1:seabed_ind] .= rhowater
 end
 
 # Set up wavelet and source vector
@@ -126,12 +140,15 @@ rtm = adjoint(Mr)*adjoint(J[indsrc])*d_obs
 
 data = rtm isa Vector ? rtm : rtm.data
 
+zmax = 3.2f0  # km
+nz = sum(z .<= zmax)
+
 # save RTM as HDF5 and plots
-save_data(x,z,adjoint(reshape(data, size(model0))); 
+save_data(x,z[1:nz],adjoint(reshape(data, size(model0))[:,1:nz]); 
     pltfile=dir_out * "RTM_$(modeling_type).png",
     title="RTM",
-    clim=(-maximum(data)/3f0, maximum(data)/3f0),
-    colormap=:bluesreds,
+    clim=(-mean(abs.(data))*15f0, mean(abs.(data))*15f0),
+    colormap=:seismic,
     h5file=dir_out * "rtm_$(modeling_type).h5",
     h5openflag="w",
     h5varname="rtm")

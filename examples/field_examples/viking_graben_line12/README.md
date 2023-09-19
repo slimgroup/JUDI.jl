@@ -14,9 +14,12 @@ Before runnig FWI/RTM be sure to preinstall julia dependencies: `julia requireme
 
 To run FWI/RTM examples you will probably need to have 20-30 Gb RAM available.
 
-Here are the results of RTM/LSRTM.
+Here are the results of FWI/RTM/LSRTM.
+
+![FWI](fwi/fwi.png "FWI")
 
 ![RTM](rtm/rtm.png "RTM")
+
 ![LSRTM](lsrtm/lsrtm.png "LSRTM")
 
 The example is provided by [Kerim Khemraev](https://github.com/kerim371)
