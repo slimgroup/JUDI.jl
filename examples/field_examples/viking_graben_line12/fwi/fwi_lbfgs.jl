@@ -1,5 +1,5 @@
 using Statistics, Random, LinearAlgebra, Interpolations, DelimitedFiles, Distributed
-using JUDI, SlimOptim, NLopt, HDF5, SegyIO, Plots
+using JUDI, SlimOptim, NLopt, HDF5, SegyIO, Plots, ImageFiltering
 using SetIntersectionProjection
 
 include("$(@__DIR__)/../utils.jl")
@@ -14,7 +14,7 @@ dir_out = "$(@__DIR__)/fwi_lbfgs_$(modeling_type)/$(frq)Hz/"
 
 model_file = "$(@__DIR__)/initial_model/model.h5"
 # after each iteration you should set an appropriate model file computed with previous step
-# model_file = "$(@__DIR__)/fwi_$(modeling_type)/0.005Hz/model 10.h5"
+# model_file = "$(@__DIR__)/fwi_lbfgs_$(modeling_type)/0.005Hz/model 10.h5"
 model_file_out = "model"
 
 # use original wavelet file 
