@@ -55,7 +55,15 @@ def acoustic_kernel(model, u, fw=True, q=None):
     # Set up PDE expression and rearrange
     ulaplace = laplacian(u, model.irho)
     wmr = model.irho * model.m
-    damp = model.damp
+    # damp = model.damp
+    damp = model.damp[0]
+    print("type(damp): ", type(damp))
+    print("damp.data.shape: ", damp.data.shape)
+    print("wmr.data.shape: ", wmr.data.shape)
+    print("ulaplace.grid.shape: ", ulaplace.grid.shape)
+    print("u.dt2.grid.shape: ", u.dt2.grid.shape)
+    print("udt.grid.shape: ", udt.grid.shape)
+    print("q: ", q)
     stencil = solve(wmr * u.dt2 + damp * udt - ulaplace - q, u_n)
 
     if 'nofsdomain' in model.grid.subdomains:
@@ -90,6 +98,7 @@ def SLS_2nd_order(model, p, fw=True, q=None, f0=0.015):
         Full time-space source as a tuple (one value for each component)
     f0 : Peak frequency
     """
+    print("SLS_2nd_order")
     qp, b, damp, m = model.qp, model.irho, model.damp, model.m
     m = m * b
     # Source
@@ -149,6 +158,7 @@ def tti_kernel(model, u1, u2, fw=True, q=None):
     q : TimeFunction or Expr
         Full time-space source as a tuple (one value for each component)
     """
+    print("tti_kernel")
     m, damp, irho = model.m, model.damp, model.irho
     wmr = (irho * m)
     q = q or (0, 0)
@@ -195,6 +205,7 @@ def elastic_kernel(model, v, tau, fw=True, q=None):
     q : TimeFunction or Expr
         Full time-space source as a tuple (one value for each component)
     """
+    print("elastic_kernel")
     if 'nofsdomain' in model.grid.subdomains:
         raise NotImplementedError("Free surface not supported for elastic modelling")
     if not fw:

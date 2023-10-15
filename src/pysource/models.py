@@ -104,6 +104,49 @@ def damp_op(ndim, padsizes, abc_type, fs):
     return Operator(eqs, name='initdamp')
 
 
+# @memoized_func
+# def damp_op(ndim, padsizes, abc_type, fs):
+#     """
+#     Create damping field initialization operator.
+
+#     Parameters
+#     ----------
+#     padsize : List of tuple
+#         Number of points in the damping layer for each dimension and side.
+#     spacing :
+#         Grid spacing coefficient.
+#     mask : bool, optional
+#         whether the dampening is a mask or layer.
+#         mask => 1 inside the domain and decreases in the layer
+#         not mask => 0 inside the domain and increase in the layer
+#     """
+#     damp = Function(name="damp", grid=Grid(tuple([11]*ndim)), space_order=0)
+#     eqs = [Eq(damp, 1.0 if abc_type == "mask" else 0.0)]
+#     for (nbl, nbr), d in zip(padsizes, damp.dimensions):
+#         # 3 Point buffer to avoid weird interaction with abc
+#         nbr = nbr - 3
+#         if not fs or d is not damp.dimensions[-1]:
+#             nbl = nbl - 3
+#             dampcoeff = 1.5 * np.log(1.0 / 0.001) / (nbl)
+#             # left
+#             dim_l = SubDimension.left(name='abc_%s_l' % d.name, parent=d,
+#                                       thickness=nbl)
+#             pos = Abs((nbl - (dim_l - d.symbolic_min) + 1) / float(nbl))
+#             val = dampcoeff * (pos - sin(2*np.pi*pos)/(2*np.pi))
+#             val = -val if abc_type == "mask" else val
+#             eqs += [Inc(damp.subs({d: dim_l}), val/d.spacing)]
+#         # right
+#         dampcoeff = 1.5 * np.log(1.0 / 0.001) / (nbr)
+#         dim_r = SubDimension.right(name='abc_%s_r' % d.name, parent=d,
+#                                    thickness=nbr)
+#         pos = Abs((nbr - (d.symbolic_max - dim_r) + 1) / float(nbr))
+#         val = dampcoeff * (pos - sin(2*np.pi*pos)/(2*np.pi))
+#         val = -val if abc_type == "mask" else val
+#         eqs += [Inc(damp.subs({d: dim_r}), val/d.spacing)]
+
+#     return Operator(eqs, name='initdamp')
+
+
 @switchconfig(log_level='ERROR')
 def initialize_damp(damp, padsizes, abc_type="damp", fs=False):
     """
@@ -125,6 +168,7 @@ def initialize_damp(damp, padsizes, abc_type="damp", fs=False):
         not mask => 0 inside the domain and increase in the layer
     """
     op = damp_op(damp.grid.dim, padsizes, abc_type, fs)
+    # op = damp_op(damp, padsizes, abc_type, fs)
     op(damp=damp)
 
 
@@ -189,11 +233,17 @@ class Model(object):
         # Absorbing boundary layer
         if self.nbl != 0:
             # Create dampening field as symbol `damp`
-            self.damp = Function(name="damp", grid=self.grid)
-            initialize_damp(self.damp, self.padsizes, abc_type=abc_type, fs=fs)
+            # self.damp = Function(name="damp", grid=self.grid)
+            # self.damp = [Function(name="damp", grid=self.grid) for _ in range(len(shape)*2)]
+            self.damp = [Function(name="damp", grid=self.grid)]
+            # initialize_damp(self.damp, self.padsizes, abc_type=abc_type, fs=fs)
+            # [initialize_damp(damp, self.padsizes, abc_type=abc_type, fs=fs) for damp in self.damp]
+            initialize_damp(self.damp[0], self.padsizes, abc_type=abc_type, fs=fs)
             self._physical_parameters = ['damp']
         else:
             self.damp = 1
+            # self.damp = [1 for _ in range(len(shape)*2)]
+            # self.damp = [1]
             self._physical_parameters = []
 
         # Seismic fields and properties
@@ -550,7 +600,9 @@ class EmptyModel(object):
         self.dimensions = self.grid.dimensions
 
         # Create the function for the physical parameters
-        self.damp = Function(name='damp', grid=self.grid)
+        # self.damp = Function(name='damp', grid=self.grid)
+        # self.damp = [Function(name="damp", grid=self.grid) for _ in range(len(self.dimensions)*2)]
+        self.damp = [Function(name="damp", grid=self.grid)]
         for p in set(p_params) - {'damp'}:
             setattr(self, p, Function(name=p, grid=self.grid, space_order=space_order))
         if 'irho' not in p_params:
