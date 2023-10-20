@@ -646,12 +646,15 @@ class EmptyModel(object):
 
         # Create the function for the physical parameters
         self.damp = Function(name='damp', grid=self.grid)
+        excl = [self.damp.name]
         for d in self.grid.dimensions:
             pml0 = "pml"+d.name+"0"
             pml1 = "pml"+d.name+"1"
             setattr(self, pml0, Function(name=pml0, grid=self.grid))
             setattr(self, pml1, Function(name=pml1, grid=self.grid,staggered=self.grid.dimensions))
-        for p in set(p_params) - {'damp','pmlx0','pmly0','pmlz0','pmlx1','pmly1','pmlz1'}:
+            excl += [pml0]
+            excl += [pml1]
+        for p in set(p_params) - set(excl):
             setattr(self, p, Function(name=p, grid=self.grid, space_order=space_order))
         if 'irho' not in p_params:
             self.irho = 1 if 'rho' not in p_params else 1 / self.rho
