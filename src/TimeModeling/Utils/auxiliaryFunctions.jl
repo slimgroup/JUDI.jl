@@ -29,7 +29,7 @@ function devito_model(model::MT, options::JUDIOptions, dm) where {MT<:AbstractMo
     physpar = Dict((n, isa(v, PhysicalParameter) ? pad_array(v.data, pad) : v) for (n, v) in _params(model))
 
     modelPy = rlock_pycall(pm."Model", PyObject, origin(model), spacing(model), size(model), fs=options.free_surface,
-                   nbl=nbl(model), space_order=options.space_order, dt=options.dt_comp, dm=dm;
+                   nbl=nbl(model), space_order=options.space_order, dt=options.dt_comp, dm=dm, abc_type=options.abc_type;
                    physpar...)
 
     return modelPy

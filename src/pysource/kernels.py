@@ -55,15 +55,7 @@ def acoustic_kernel(model, u, fw=True, q=None):
     # Set up PDE expression and rearrange
     ulaplace = laplacian(u, model.irho)
     wmr = model.irho * model.m
-    # damp = model.damp
-    damp = model.damp[0]
-    print("type(damp): ", type(damp))
-    print("damp.data.shape: ", damp.data.shape)
-    print("wmr.data.shape: ", wmr.data.shape)
-    print("ulaplace.grid.shape: ", ulaplace.grid.shape)
-    print("u.dt2.grid.shape: ", u.dt2.grid.shape)
-    print("udt.grid.shape: ", udt.grid.shape)
-    print("q: ", q)
+    damp = model.damp
     stencil = solve(wmr * u.dt2 + damp * udt - ulaplace - q, u_n)
 
     if 'nofsdomain' in model.grid.subdomains:

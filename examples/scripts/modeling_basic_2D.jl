@@ -91,7 +91,7 @@ q = judiVector(srcGeometry, wavelet)
 #' condition for the propagation.
 
 # Setup options
-opt = Options(subsampling_factor=2, space_order=32, limit_m=true, buffer_size=100)
+opt = Options(subsampling_factor=2, space_order=32, limit_m=true, buffer_size=0, abc_type="damp")
 
 #' Linear Operators
 #' The core idea behind JUDI is to abstract seismic inverse problems in term of linear algebra. In its simplest form, seismic inversion can be formulated as
@@ -125,126 +125,126 @@ ylabel("Time (s)")
 title("Synthetic data")
 display(fig)
 
-# #' Because we have abstracted the linear algebra, we can solve the adjoint wave-equation as well 
-# #' where the data becomes the source. This adjoint solve will be part of the imaging procedure.
-# # # Adjoint
-# qad = Ps*adjoint(F)*adjoint(Pr)*dobs
+#' Because we have abstracted the linear algebra, we can solve the adjoint wave-equation as well 
+#' where the data becomes the source. This adjoint solve will be part of the imaging procedure.
+# # Adjoint
+qad = Ps*adjoint(F)*adjoint(Pr)*dobs
 
-# #' We can easily now test the adjointness of our operator with the standard dot test. Because we
-# #' intend to conserve our linear algebra abstraction, `judiVector` implements all the necessary linear 
-# #' algebra functions such as dot product or norm to be used directly.
-# # <x, F'y>
-# dot1 = dot(q, qad)
-# # <F x, y>
-# dot2 = dot(dobs, dobs)
-# # Compare
-# @show dot1, dot2, (dot2 - dot2)/(dot1 + dot2)
+#' We can easily now test the adjointness of our operator with the standard dot test. Because we
+#' intend to conserve our linear algebra abstraction, `judiVector` implements all the necessary linear 
+#' algebra functions such as dot product or norm to be used directly.
+# <x, F'y>
+dot1 = dot(q, qad)
+# <F x, y>
+dot2 = dot(dobs, dobs)
+# Compare
+@show dot1, dot2, (dot2 - dot2)/(dot1 + dot2)
 
-# #' # Inversion
-# #' Our main goal is to provide an inversion framework for seismic inversion. To this end, as shown earlier,
-# #' users can easily define the Jacobian operator and compute an RTM image (i.e FWI gradient) with a simple matrix-vector product.
-# #' Once again, we provide both the Jacobian and its adjoint and we can compute Born linearized data.
+#' # Inversion
+#' Our main goal is to provide an inversion framework for seismic inversion. To this end, as shown earlier,
+#' users can easily define the Jacobian operator and compute an RTM image (i.e FWI gradient) with a simple matrix-vector product.
+#' Once again, we provide both the Jacobian and its adjoint and we can compute Born linearized data.
 
-# # Linearized modeling J*dm
-# dD = J*dm
-# # Adjoint jacobian, RTM image
-# rtm = adjoint(J)*dD
+# Linearized modeling J*dm
+dD = J*dm
+# Adjoint jacobian, RTM image
+rtm = adjoint(J)*dD
 
-# #' We show the linearized data.
-# fig = figure()
-# imshow(dD.data[1], vmin=-1, vmax=1, cmap="PuOr", extent=[xrec[1], xrec[end], timeD/1000, 0], aspect="auto")
-# xlabel("Receiver position (m)")
-# ylabel("Time (s)")
-# title("Linearized data")
-# display(fig)
-
-
-# #' And the RTM image
-# fig = figure()
-# imshow(rtm', vmin=-1e2, vmax=1e2, cmap="Greys", extent=[0, (n[1]-1)*d[1], (n[2]-1)*d[2], 0 ], aspect="auto")
-# xlabel("Lateral position(m)")
-# ylabel("Depth (m)")
-# title("RTM image")
-# display(fig)
-
-# #' ## Inversion utility functions
-# #' We currently introduced the lineaar operators that allow to write seismic modeling and inversion in a high-level, linear algebra way. These linear operators allow the script to closely follow the mathematics and to be readable and understandable.
-# #' 
-# #' However, these come with overhead. In particular, consider the following compuation on the FWI gradient:
-# #' 
-# #' ```julia
-# #' d_syn = F*q
-# #' r = judiJacobian(F, q)' * (d_syn - d_obs)
-# #' ```
-# #' 
-# #' In this two lines, the forward modeling is performed twice: once to compute `d_syn` then once again to compute the Jacobian adjoint. In order to avoid this overhead for practical inversion, we provide utility function that directly comput the gradient and objective function (L2- misfit) of FWI, LSRTM and TWRI with minimum overhead.
-
-# #' FWI misfit and gradient
-# # evaluate FWI objective function
-# f, g = fwi_objective(model0, q, dobs; options=opt)
-
-# #' Plot gradient
-# fig = figure()
-# imshow(g', vmin=-1e2, vmax=1e2, cmap="Greys", extent=[0, (n[1]-1)*d[1], (n[2]-1)*d[2], 0 ], aspect="auto")
-# xlabel("Lateral position(m)")
-# ylabel("Depth (m)")
-# title("FWI gradient")
-# display(fig)
+#' We show the linearized data.
+fig = figure()
+imshow(dD.data[1], vmin=-1, vmax=1, cmap="PuOr", extent=[xrec[1], xrec[end], timeD/1000, 0], aspect="auto")
+xlabel("Receiver position (m)")
+ylabel("Time (s)")
+title("Linearized data")
+display(fig)
 
 
-# #' LSRTM misfit and gradient
-# # evaluate LSRTM objective function
-# fj, gj = lsrtm_objective(model0, q, dD, dm; options=opt)
-# fjn, gjn = lsrtm_objective(model0, q, dobs, dm; nlind=true, options=opt)
+#' And the RTM image
+fig = figure()
+imshow(rtm', vmin=-1e2, vmax=1e2, cmap="Greys", extent=[0, (n[1]-1)*d[1], (n[2]-1)*d[2], 0 ], aspect="auto")
+xlabel("Lateral position(m)")
+ylabel("Depth (m)")
+title("RTM image")
+display(fig)
 
-# #' Plot gradients
-# fig = figure()
-# imshow(gj', vmin=-1, vmax=1, cmap="Greys", extent=[0, (n[1]-1)*d[1], (n[2]-1)*d[2], 0 ], aspect="auto")
-# xlabel("Lateral position(m)")
-# ylabel("Depth (m)")
-# title("LSRTM gradient")
-# display(fig)
+#' ## Inversion utility functions
+#' We currently introduced the lineaar operators that allow to write seismic modeling and inversion in a high-level, linear algebra way. These linear operators allow the script to closely follow the mathematics and to be readable and understandable.
+#' 
+#' However, these come with overhead. In particular, consider the following compuation on the FWI gradient:
+#' 
+#' ```julia
+#' d_syn = F*q
+#' r = judiJacobian(F, q)' * (d_syn - d_obs)
+#' ```
+#' 
+#' In this two lines, the forward modeling is performed twice: once to compute `d_syn` then once again to compute the Jacobian adjoint. In order to avoid this overhead for practical inversion, we provide utility function that directly comput the gradient and objective function (L2- misfit) of FWI, LSRTM and TWRI with minimum overhead.
 
-# fig = figure()
-# imshow(gjn', vmin=-1, vmax=1, cmap="Greys", extent=[0, (n[1]-1)*d[1], (n[2]-1)*d[2], 0 ], aspect="auto")
-# xlabel("Lateral position(m)")
-# ylabel("Depth (m)")
-# title("LSRTM gradient with background data substracted")
-# display(fig)
+#' FWI misfit and gradient
+# evaluate FWI objective function
+f, g = fwi_objective(model0, q, dobs; options=opt)
 
-# #' By extension, lsrtm_objective is the same as fwi_objecive when `dm` is zero
-# #' And with computing of the residual. Small noise can be seen in the difference
-# #' due to floating point roundoff errors with openMP, but running with 
-# #' OMP_NUM_THREADS=1 (no parllelism) produces the exact (difference == 0) same result
-# #' gjn2 == g
-# fjn2, gjn2 = lsrtm_objective(model0, q, dobs, 0f0.*dm; nlind=true, options=opt)
-# fig = figure()
-
-# #' Plot gradient
-# imshow(gjn2', vmin=-1e2, vmax=1e2, cmap="Greys", extent=[0, (n[1]-1)*d[1], (n[2]-1)*d[2], 0 ], aspect="auto")
-# xlabel("Lateral position(m)")
-# ylabel("Depth (m)")
-# title("LSRTM gradient with zero perturbation")
-# display(fig)
+#' Plot gradient
+fig = figure()
+imshow(g', vmin=-1e2, vmax=1e2, cmap="Greys", extent=[0, (n[1]-1)*d[1], (n[2]-1)*d[2], 0 ], aspect="auto")
+xlabel("Lateral position(m)")
+ylabel("Depth (m)")
+title("FWI gradient")
+display(fig)
 
 
-# #' # TWRI
-# #' Finally, JUDI implements TWRI, an augmented method to tackle cycle skipping. Once again we provide a computationnally efficient wrapper function that returns the objective value and necessary gradients
-# f, gm, gy = twri_objective(model0, q, dobs, nothing; options=opt, optionswri=TWRIOptions(params=:all))
-# # With on-the-fly DFT, experimental
-# f, gmf = twri_objective(model0, q, dobs, nothing; options=Options(frequencies=[[.009, .011], [.008, .012]]), optionswri=TWRIOptions(params=:m))
+#' LSRTM misfit and gradient
+# evaluate LSRTM objective function
+fj, gj = lsrtm_objective(model0, q, dD, dm; options=opt)
+fjn, gjn = lsrtm_objective(model0, q, dobs, dm; nlind=true, options=opt)
 
-# #' Plot gradients
-# fig = figure()
-# imshow(gm', vmin=-1, vmax=1, cmap="Greys", extent=[0, (n[1]-1)*d[1], (n[2]-1)*d[2], 0 ], aspect="auto")
-# xlabel("Lateral position(m)")
-# ylabel("Depth (m)")
-# title("TWRI gradient w.r.t m")
-# display(fig)
+#' Plot gradients
+fig = figure()
+imshow(gj', vmin=-1, vmax=1, cmap="Greys", extent=[0, (n[1]-1)*d[1], (n[2]-1)*d[2], 0 ], aspect="auto")
+xlabel("Lateral position(m)")
+ylabel("Depth (m)")
+title("LSRTM gradient")
+display(fig)
 
-# fig = figure()
-# imshow(gy.data[1], vmin=-1e2, vmax=1e2, cmap="PuOr", extent=[xrec[1], xrec[end], timeD/1000, 0], aspect="auto")
-# xlabel("Receiver position (m)")
-# ylabel("Time (s)")
-# title("TWRI gradient w.r.t y")
-# display(fig)
+fig = figure()
+imshow(gjn', vmin=-1, vmax=1, cmap="Greys", extent=[0, (n[1]-1)*d[1], (n[2]-1)*d[2], 0 ], aspect="auto")
+xlabel("Lateral position(m)")
+ylabel("Depth (m)")
+title("LSRTM gradient with background data substracted")
+display(fig)
+
+#' By extension, lsrtm_objective is the same as fwi_objecive when `dm` is zero
+#' And with computing of the residual. Small noise can be seen in the difference
+#' due to floating point roundoff errors with openMP, but running with 
+#' OMP_NUM_THREADS=1 (no parllelism) produces the exact (difference == 0) same result
+#' gjn2 == g
+fjn2, gjn2 = lsrtm_objective(model0, q, dobs, 0f0.*dm; nlind=true, options=opt)
+fig = figure()
+
+#' Plot gradient
+imshow(gjn2', vmin=-1e2, vmax=1e2, cmap="Greys", extent=[0, (n[1]-1)*d[1], (n[2]-1)*d[2], 0 ], aspect="auto")
+xlabel("Lateral position(m)")
+ylabel("Depth (m)")
+title("LSRTM gradient with zero perturbation")
+display(fig)
+
+
+#' # TWRI
+#' Finally, JUDI implements TWRI, an augmented method to tackle cycle skipping. Once again we provide a computationnally efficient wrapper function that returns the objective value and necessary gradients
+f, gm, gy = twri_objective(model0, q, dobs, nothing; options=opt, optionswri=TWRIOptions(params=:all))
+# With on-the-fly DFT, experimental
+f, gmf = twri_objective(model0, q, dobs, nothing; options=Options(frequencies=[[.009, .011], [.008, .012]]), optionswri=TWRIOptions(params=:m))
+
+#' Plot gradients
+fig = figure()
+imshow(gm', vmin=-1, vmax=1, cmap="Greys", extent=[0, (n[1]-1)*d[1], (n[2]-1)*d[2], 0 ], aspect="auto")
+xlabel("Lateral position(m)")
+ylabel("Depth (m)")
+title("TWRI gradient w.r.t m")
+display(fig)
+
+fig = figure()
+imshow(gy.data[1], vmin=-1e2, vmax=1e2, cmap="PuOr", extent=[xrec[1], xrec[end], timeD/1000, 0], aspect="auto")
+xlabel("Receiver position (m)")
+ylabel("Time (s)")
+title("TWRI gradient w.r.t y")
+display(fig)
