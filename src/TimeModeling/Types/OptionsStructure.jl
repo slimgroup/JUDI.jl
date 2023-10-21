@@ -23,7 +23,6 @@ mutable struct JUDIOptions
     return_array::Bool
     dt_comp::Union{Float32, Nothing}
     f0::Float32
-    abc_type::String
 end
 
 """
@@ -45,7 +44,6 @@ end
         return_array::Bool
         dt_comp::Real
         f0::Real
-        abc_type::String
 
 
 
@@ -85,8 +83,6 @@ Options structure for seismic modeling.
 
 `f0`: define peak frequency.
 
-`abc_type`: type of absorbing boundary condition ("damp" by default or "pml")
-
 Constructor
 ==========
 
@@ -100,7 +96,7 @@ All arguments are optional keyword arguments with the following default values:
             num_checkpoints=nothing, checkpoints_maxmem=nothing,
             frequencies=[], isic=false,
             subsampling_factor=1, dft_subsampling_factor=1, return_array=false,
-            dt_comp=nothing, f0=0.015f0, abc_type="damp")
+            dt_comp=nothing, f0=0.015f0)
 
 """
 Options(;space_order=8,
@@ -121,8 +117,7 @@ Options(;space_order=8,
          return_array=false,
          dt_comp=nothing,
          f0=0.015f0,
-         IC="as",
-         abc_type="damp") =
+         IC="as") =
 		 JUDIOptions(space_order,
 		 		 free_surface,
 		         limit_m,
@@ -138,8 +133,7 @@ Options(;space_order=8,
 				 dft_subsampling_factor,
                  return_array,
                  dt_comp,
-                 f0,
-                 abc_type)
+                 f0)
 
 JUDIOptions(;kw...) = Options(kw...)
 

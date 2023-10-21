@@ -220,6 +220,8 @@ class Model(object):
         Squared slownes in s^2/km^2
     nbl : int, optional
         The number of absorbin layers for boundary damping.
+    abc_type: str
+        Type of absorbing boundary condition (default "damp" or "pml").
     dtype : np.float32 or np.float64
         Defaults to 32.
     epsilon : array_like or float, optional
@@ -232,12 +234,10 @@ class Model(object):
         Asymuth angle in radian.
     dt: Float
         User provided computational time-step
-    abc_type: str
-        Type of absorbing boundary condition (default "damp" or "pml")
     """
-    def __init__(self, origin, spacing, shape, space_order=8, nbl=40, dtype=np.float32,
+    def __init__(self, origin, spacing, shape, space_order=8, nbl=40, abc_type="damp", dtype=np.float32,
                  m=None, epsilon=None, delta=None, theta=None, phi=None, rho=None,
-                 b=None, qp=None, lam=None, mu=None, dm=None, fs=False, abc_type="damp", **kwargs):
+                 b=None, qp=None, lam=None, mu=None, dm=None, fs=False, **kwargs):
         # Setup devito grid
         self.shape = tuple(shape)
         self.nbl = int(nbl)

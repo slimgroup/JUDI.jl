@@ -13,16 +13,20 @@ struct DiscreteGrid{T<:Real, N}
     d::NTuple{N, <:T}
     o::NTuple{N, <:T}
     nb::Int64 # number of absorbing boundaries points on each side
+    abc_type::String # type of absorbing boundary condition
 end
 
 size(G::DiscreteGrid) = G.n
 origin(G::DiscreteGrid) = G.o
 spacing(G::DiscreteGrid) = G.d
 nbl(G::DiscreteGrid) = G.nb
+abc_type(G::DiscreteGrid) = G.abc_type
 
 size(G::DiscreteGrid, i::Int) = G.n[i]
 origin(G::DiscreteGrid, i::Int) = G.o[i]
 spacing(G::DiscreteGrid, i::Int) = G.d[i]
+nbl(G::DiscreteGrid, i::Int) = G.nb[i]
+abc_type(G::DiscreteGrid, i::Int) = G.abc_type[i]
 
 ###################################################################################################
 # PhysicalParameter abstract vector
@@ -340,9 +344,11 @@ where
 
 `nb`: Number of ABC points
 
+`abc_type`: Type of absorbing boundary condition (default is `damp` or `pml`)
+
 """
 function Model(d, o, m::Array{mT, N}; epsilon=nothing, delta=nothing, theta=nothing,
-               phi=nothing, rho=nothing, qp=nothing, vs=nothing, nb=40) where {mT<:Real, N}
+               phi=nothing, rho=nothing, qp=nothing, vs=nothing, nb=40, abc_type="damp") where {mT<:Real, N}
 
     # Currently force single precision
     m = convert(Array{Float32, N}, m)
@@ -351,7 +357,7 @@ function Model(d, o, m::Array{mT, N}; epsilon=nothing, delta=nothing, theta=noth
     n = size(m)
     d = tuple(Float32.(d)...)
     o = tuple(Float32.(o)...)
-    G = DiscreteGrid{T, N}(n, d, o, nb)
+    G = DiscreteGrid{T, N}(n, d, o, nb, abc_type)
 
     size(m) == n || throw(ArgumentError("Grid size $n and squared slowness size $(size(m)) don't match"))
 
@@ -400,18 +406,20 @@ function Model(d, o, m::Array{mT, N}; epsilon=nothing, delta=nothing, theta=noth
     return IsoModel{T, N}(G, m, rho)
 end
 
-Model(n, d, o, m::Array, rho::Array; nb=40) = Model(d, o, reshape(m, n...); rho=reshape(rho, n...), nb=nb)
-Model(n, d, o, m::Array, rho::Array, qp::Array; nb=40) = Model(d, o, reshape(m, n...); rho=reshape(rho, n...), qp=reshape(qp, n...), nb=nb)
+Model(n, d, o, m::Array, rho::Array; nb=40, abc_type="damp") = Model(d, o, reshape(m, n...); rho=reshape(rho, n...), nb=nb, abc_type=abc_type)
+Model(n, d, o, m::Array, rho::Array, qp::Array; nb=40, abc_type="damp") = Model(d, o, reshape(m, n...); rho=reshape(rho, n...), qp=reshape(qp, n...), nb=nb, abc_type=abc_type)
 Model(n, d, o, m::Array; kw...) = Model(d, o, reshape(m, n...); kw...)
 
 size(m::MT) where {MT<:AbstractModel} = size(m.G)
 origin(m::MT) where {MT<:AbstractModel} = origin(m.G)
 spacing(m::MT) where {MT<:AbstractModel} = spacing(m.G)
 nbl(m::MT) where {MT<:AbstractModel} = nbl(m.G)
+abc_type(m::MT) where {MT<:AbstractModel} = abc_type(m.G)
 
 size(m::MT, i::Int) where {MT<:AbstractModel} = size(m.G, i)
 origin(m::MT, i::Int) where {MT<:AbstractModel} = origin(m.G, i)
 spacing(m::MT, i::Int) where {MT<:AbstractModel} = spacing(m.G, i)
+abc_type(m::MT, i::Int) where {MT<:AbstractModel} = abc_type(m.G, i)
 
 eltype(::AbstractModel{T, N}) where {T, N} = T
 
