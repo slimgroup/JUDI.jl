@@ -62,23 +62,25 @@ class FSDomain(SubDomain):
 
 
 @memoized_func
-def damp_op(ndim, padsizes, abc_type, fs):
+def damp_op(ndim, padsizes, mask_abc, fs):
     """
     Create damping field initialization operator.
 
     Parameters
     ----------
-    padsize : List of tuple
+    ndim : int, number of dimensions
+    padsizes : List of tuple
         Number of points in the damping layer for each dimension and side.
     spacing :
         Grid spacing coefficient.
-    mask : bool, optional
+    mask_abc : bool, optional
         whether the dampening is a mask or layer.
         mask => 1 inside the domain and decreases in the layer
         not mask => 0 inside the domain and increase in the layer
+    fs : bool, free surface
     """
     damp = Function(name="damp", grid=Grid(tuple([11]*ndim)), space_order=0)
-    eqs = [Eq(damp, 1.0 if abc_type == "mask" else 0.0)]
+    eqs = [Eq(damp, 1.0 if mask_abc else 0.0)]
     for (nbl, nbr), d in zip(padsizes, damp.dimensions):
         # 3 Point buffer to avoid weird interaction with abc
         nbr = nbr - 3
@@ -90,7 +92,7 @@ def damp_op(ndim, padsizes, abc_type, fs):
                                       thickness=nbl)
             pos = Abs((nbl - (dim_l - d.symbolic_min) + 1) / float(nbl))
             val = dampcoeff * (pos - sin(2*np.pi*pos)/(2*np.pi))
-            val = -val if abc_type == "mask" else val
+            val = -val if mask_abc else val
             eqs += [Inc(damp.subs({d: dim_l}), val/d.spacing)]
         # right
         dampcoeff = 1.5 * np.log(1.0 / 0.001) / (nbr)
@@ -98,14 +100,14 @@ def damp_op(ndim, padsizes, abc_type, fs):
                                    thickness=nbr)
         pos = Abs((nbr - (d.symbolic_max - dim_r) + 1) / float(nbr))
         val = dampcoeff * (pos - sin(2*np.pi*pos)/(2*np.pi))
-        val = -val if abc_type == "mask" else val
+        val = -val if mask_abc else val
         eqs += [Inc(damp.subs({d: dim_r}), val/d.spacing)]
 
     return Operator(eqs, name='initdamp')
 
 
 @switchconfig(log_level='ERROR')
-def initialize_damp(damp, padsizes, abc_type="damp", fs=False):
+def initialize_damp(damp, padsizes, mask_abc=False, fs=False):
     """
     Initialise damping field with an absorbing boundary layer.
     Includes basic constant Q setup (not interfaced yet) and assumes that
@@ -115,17 +117,88 @@ def initialize_damp(damp, padsizes, abc_type="damp", fs=False):
     ----------
     damp : Function
         The damping field for absorbing boundary condition.
-    nbl : int
-        Number of points in the damping layer.
-    spacing :
-        Grid spacing coefficient.
-    mask : bool, optional
+    padsizes : List of tuple
+        Number of points in the damping layer for each dimension and side.
+    mask_abc : bool, optional
         whether the dampening is a mask or layer.
         mask => 1 inside the domain and decreases in the layer
         not mask => 0 inside the domain and increase in the layer
+    fs : bool, free surface
     """
-    op = damp_op(damp.grid.dim, padsizes, abc_type, fs)
+    op = damp_op(damp.grid.dim, padsizes, mask_abc, fs)
     op(damp=damp)
+
+
+@memoized_func
+def pml_op(ndim, padsizes, mask_abc, fs):
+    """
+    Create damping field initialization operator.
+
+    Parameters
+    ----------
+    ndim : int, number of dimensions
+    padsizes : List of tuple
+        Number of points in the damping layer for each dimension and side.
+    mask_abc : bool, optional
+        whether the dampening is a mask or layer.
+        mask => 1 inside the domain and decreases in the layer
+        not mask => 0 inside the domain and increase in the layer
+    fs : bool, free surface
+    """
+    dims = Grid(shape=(2 for d in range(0,ndim))).dimensions
+    eqs = []
+    for (nbl, nbr), d in zip(padsizes, dims):
+        f0_name = "pml"+d.name+"0"
+        f1_name = "pml"+d.name+"1"
+        pml0 = Function(name=f0_name, grid=Grid(tuple([11]*ndim)), space_order=0)
+        pml1 = Function(name=f1_name, grid=Grid(tuple([11]*ndim)), space_order=0, staggered=dims)
+        eqs += [Eq(pml0, 1.0 if mask_abc else 0.0)]
+        eqs += [Eq(pml1, 1.0 if mask_abc else 0.0)]
+        # 3 Point buffer to avoid weird interaction with abc
+        nbr = nbr - 3
+        if not fs or d is not dims[-1]:
+            nbl = nbl - 3
+            dampcoeff = 0.05
+            # left
+            dim_l = SubDimension.left(name='abc_%s_l' % d.name, parent=d,
+                                      thickness=nbl)
+            pos = Abs((nbl - (dim_l - d.symbolic_min) + 1) / float(nbl))
+            val = dampcoeff * (pos - sin(2*np.pi*pos)/(2*np.pi))
+            val = -val if mask_abc else val
+            eqs += [Inc(pml0.subs({d: dim_l}), val/d.spacing)]
+            eqs += [Inc(pml1.subs({d: dim_l}), val/d.spacing)]
+        # right
+        dampcoeff = 0.05
+        dim_r = SubDimension.right(name='abc_%s_r' % d.name, parent=d,
+                                   thickness=nbr)
+        pos = Abs((nbr - (d.symbolic_max - dim_r) + 1) / float(nbr))
+        val = dampcoeff * (pos - sin(2*np.pi*pos)/(2*np.pi))
+        val = -val if mask_abc else val
+        eqs += [Inc(pml0.subs({d: dim_r}), val/d.spacing)]
+        eqs += [Inc(pml1.subs({d: dim_r}), val/d.spacing)]
+
+    return Operator(eqs, name='initpml')
+
+
+@switchconfig(log_level='ERROR')
+def initialize_pml(pmllist, padsizes, mask_abc=False, fs=False):
+    """
+    Initialise damping field with an pml.
+
+    Parameters
+    ----------
+    pmllist : list of pml Functions
+        The damping field for pml boundary condition.
+    padsizes : List of tuple
+        Number of points in the damping layer for each dimension and side.
+    mask_abc : bool, optional
+        whether the dampening is a mask or layer.
+        mask => 1 inside the domain and decreases in the layer
+        not mask => 0 inside the domain and increase in the layer
+    fs : bool, free surface
+    """
+    op = pml_op(pmllist[0].grid.dim, padsizes, mask_abc, fs)
+    op(**{pml.name : pml for pml in pmllist})
 
 
 class Model(object):
@@ -147,6 +220,8 @@ class Model(object):
         Squared slownes in s^2/km^2
     nbl : int, optional
         The number of absorbin layers for boundary damping.
+    abc_type: str
+        Type of absorbing boundary condition (default "damp" or "pml").
     dtype : np.float32 or np.float64
         Defaults to 32.
     epsilon : array_like or float, optional
@@ -160,14 +235,15 @@ class Model(object):
     dt: Float
         User provided computational time-step
     """
-    def __init__(self, origin, spacing, shape, space_order=8, nbl=40, dtype=np.float32,
+    def __init__(self, origin, spacing, shape, space_order=8, nbl=40, abc_type="damp", dtype=np.float32,
                  m=None, epsilon=None, delta=None, theta=None, phi=None, rho=None,
                  b=None, qp=None, lam=None, mu=None, dm=None, fs=False, **kwargs):
         # Setup devito grid
         self.shape = tuple(shape)
         self.nbl = int(nbl)
         self.origin = tuple([dtype(o) for o in origin])
-        abc_type = "mask" if (qp is not None or mu is not None) else "damp"
+        self.abc_type = abc_type
+        mask_abc = True if (qp is not None or mu is not None) else False
         self.fs = fs
         # Origin of the computational domain with boundary to inject/interpolate
         # at the correct index
@@ -185,16 +261,36 @@ class Model(object):
         extent = tuple(np.array(spacing) * (shape_pml - 1))
         self.grid = Grid(extent=extent, shape=shape_pml, origin=tuple(origin_pml),
                          dtype=dtype, subdomains=subdomains)
-
+        
         # Absorbing boundary layer
         if self.nbl != 0:
-            # Create dampening field as symbol `damp`
-            self.damp = Function(name="damp", grid=self.grid)
-            initialize_damp(self.damp, self.padsizes, abc_type=abc_type, fs=fs)
-            self._physical_parameters = ['damp']
+            if abc_type == "damp":
+                # Create dampening field as symbol `damp`
+                self._physical_parameters = ['damp']
+                self.damp = Function(name=self._physical_parameters[0], grid=self.grid)
+                initialize_damp(self.damp, self.padsizes, mask_abc=mask_abc, fs=fs)
+            elif abc_type == "pml":
+                # Create dampening field as symbols following pattern: "pmlx0", "pmlx1" etc
+                self._physical_parameters = []
+                pmllist = []
+                for d in self.grid.dimensions:
+                    pml0 = "pml"+d.name+"0"
+                    pml1 = "pml"+d.name+"1"
+                    self._physical_parameters += [pml0]
+                    self._physical_parameters += [pml1]
+                    setattr(self, pml0, Function(name=pml0, grid=self.grid))
+                    setattr(self, pml1, Function(name=pml1, grid=self.grid,staggered=self.grid.dimensions))
+                    pmllist += [getattr(self, pml0)]
+                    pmllist += [getattr(self, pml1)]
+                initialize_pml(pmllist, self.padsizes, mask_abc=mask_abc, fs=fs)
         else:
-            self.damp = 1
             self._physical_parameters = []
+            if abc_type == "damp":
+                self.damp = 1
+            elif abc_type == "pml":
+                for d in self.grid.dimensions:
+                    setattr(self, "pml"+d.name+"0", 1)
+                    setattr(self, "pml"+d.name+"1", 1)
 
         # Seismic fields and properties
         self.scale = 1
@@ -531,12 +627,13 @@ class EmptyModel(object):
     This Model should not be used for propagation.
     """
 
-    def __init__(self, tti, visco, elastic, spacing, fs, space_order, p_params):
+    def __init__(self, tti, visco, elastic, spacing, fs, space_order, p_params, abc_type):
         self.is_tti = tti
         self.is_viscoacoustic = visco
         self.is_elastic = elastic
         self.spacing = spacing
         self.fs = fs
+        self.abc_type = abc_type
         N = 2 * space_order + 1
         if fs:
             fsdomain = FSDomain(N)
@@ -551,7 +648,15 @@ class EmptyModel(object):
 
         # Create the function for the physical parameters
         self.damp = Function(name='damp', grid=self.grid)
-        for p in set(p_params) - {'damp'}:
+        excl = [self.damp.name]
+        for d in self.grid.dimensions:
+            pml0 = "pml"+d.name+"0"
+            pml1 = "pml"+d.name+"1"
+            setattr(self, pml0, Function(name=pml0, grid=self.grid))
+            setattr(self, pml1, Function(name=pml1, grid=self.grid,staggered=self.grid.dimensions))
+            excl += [pml0]
+            excl += [pml1]
+        for p in set(p_params) - set(excl):
             setattr(self, p, Function(name=p, grid=self.grid, space_order=space_order))
         if 'irho' not in p_params:
             self.irho = 1 if 'rho' not in p_params else 1 / self.rho

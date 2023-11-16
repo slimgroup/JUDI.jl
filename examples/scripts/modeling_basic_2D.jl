@@ -41,8 +41,8 @@ dm = vec(m0 - m)
 
 # Setup model structure
 nsrc = 2	# number of sources
-model = Model(n, d, o, m)
-model0 = Model(n, d, o, m0)
+model = Model(n, d, o, m; nb=40, abc_type="pml")
+model0 = Model(n, d, o, m0; nb=40, abc_type="pml")
 
 #' # Create acquisition geometry
 #' In this simple usage example, we create a simple acquisiton by hand. In practice the acquisition geometry will be defined by the dataset
@@ -91,7 +91,7 @@ q = judiVector(srcGeometry, wavelet)
 #' condition for the propagation.
 
 # Setup options
-opt = Options(subsampling_factor=2, space_order=32)
+opt = Options(subsampling_factor=2, space_order=32, limit_m=true, buffer_size=0)
 
 #' Linear Operators
 #' The core idea behind JUDI is to abstract seismic inverse problems in term of linear algebra. In its simplest form, seismic inversion can be formulated as

@@ -53,16 +53,31 @@ def acoustic_kernel(model, u, fw=True, q=None):
     q = q or 0
 
     # Set up PDE expression and rearrange
-    ulaplace = laplacian(u, model.irho)
-    wmr = model.irho * model.m
-    damp = model.damp
-    stencil = solve(wmr * u.dt2 + damp * udt - ulaplace - q, u_n)
+    if model.abc_type == "damp":
+        ulaplace = laplacian(u, model.irho)
+        wmr = model.irho * model.m
+        damp = model.damp
+        stencil = solve(wmr * u.dt2 + damp * udt - ulaplace - q, u_n)
 
-    if 'nofsdomain' in model.grid.subdomains:
-        pde = [Eq(u_n, stencil, subdomain=model.grid.subdomains['nofsdomain'])]
-        pde += freesurface(model, pde)
-    else:
-        pde = [Eq(u_n, stencil)]
+        if 'nofsdomain' in model.grid.subdomains:
+            pde = [Eq(u_n, stencil, subdomain=model.grid.subdomains['nofsdomain'])]
+            pde += freesurface(model, pde)
+        else:
+            pde = [Eq(u_n, stencil)]
+    elif model.abc_type == "pml":
+        ulaplace = laplacian(u, model.irho)
+        wmr = model.irho * model.m
+        pmlx0 = model.pmlx0
+        pmlx1 = model.pmlx1
+        pmly0 = model.pmly0
+        pmly1 = model.pmly1
+        stencil = solve(wmr * u.dt2 + wmr * (pmlx0+pmlx1+pmly0+pmly1) * udt + wmr * (pmlx0*pmlx1*pmly0*pmly1) * u - ulaplace - wmr * q, u_n)
+
+        if 'nofsdomain' in model.grid.subdomains:
+            pde = [Eq(u_n, stencil, subdomain=model.grid.subdomains['nofsdomain'])]
+            pde += freesurface(model, pde)
+        else:
+            pde = [Eq(u_n, stencil)]
 
     return pde
 
@@ -90,6 +105,7 @@ def SLS_2nd_order(model, p, fw=True, q=None, f0=0.015):
         Full time-space source as a tuple (one value for each component)
     f0 : Peak frequency
     """
+    print("SLS_2nd_order")
     qp, b, damp, m = model.qp, model.irho, model.damp, model.m
     m = m * b
     # Source
@@ -149,6 +165,7 @@ def tti_kernel(model, u1, u2, fw=True, q=None):
     q : TimeFunction or Expr
         Full time-space source as a tuple (one value for each component)
     """
+    print("tti_kernel")
     m, damp, irho = model.m, model.damp, model.irho
     wmr = (irho * m)
     q = q or (0, 0)
@@ -195,6 +212,7 @@ def elastic_kernel(model, v, tau, fw=True, q=None):
     q : TimeFunction or Expr
         Full time-space source as a tuple (one value for each component)
     """
+    print("elastic_kernel")
     if 'nofsdomain' in model.grid.subdomains:
         raise NotImplementedError("Free surface not supported for elastic modelling")
     if not fw:

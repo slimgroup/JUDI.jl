@@ -29,7 +29,7 @@ function devito_model(model::MT, options::JUDIOptions, dm) where {MT<:AbstractMo
     physpar = Dict((n, isa(v, PhysicalParameter) ? pad_array(v.data, pad) : v) for (n, v) in _params(model))
 
     modelPy = rlock_pycall(pm."Model", PyObject, origin(model), spacing(model), size(model), fs=options.free_surface,
-                   nbl=nbl(model), space_order=options.space_order, dt=options.dt_comp, dm=dm;
+                   nbl=nbl(model), abc_type=abc_type(model), space_order=options.space_order, dt=options.dt_comp, dm=dm;
                    physpar...)
 
     return modelPy
@@ -187,7 +187,7 @@ function limit_model_to_receiver_area(srcGeometry::Geometry{T}, recGeometry::Geo
     p = findfirst(x->isa(x, PhysicalParameter), newp)
     o, n = newp[p].o, newp[p].n
 
-    new_model = MT(DiscreteGrid(n, spacing(model), o, nbl(model)), values(newp)...)
+    new_model = MT(DiscreteGrid(n, spacing(model), o, nbl(model), abc_type(model)), values(newp)...)
     isnothing(pert) && (return new_model, nothing)
 
     newpert = reshape(pert, n_orig)[inds...]
