@@ -242,6 +242,7 @@ class Model(object):
         self.shape = tuple(shape)
         self.nbl = int(nbl)
         self.origin = tuple([dtype(o) for o in origin])
+        self.abc_type = abc_type
         mask_abc = True if (qp is not None or mu is not None) else False
         self.fs = fs
         # Origin of the computational domain with boundary to inject/interpolate
@@ -626,12 +627,13 @@ class EmptyModel(object):
     This Model should not be used for propagation.
     """
 
-    def __init__(self, tti, visco, elastic, spacing, fs, space_order, p_params):
+    def __init__(self, tti, visco, elastic, spacing, fs, space_order, p_params, abc_type):
         self.is_tti = tti
         self.is_viscoacoustic = visco
         self.is_elastic = elastic
         self.spacing = spacing
         self.fs = fs
+        self.abc_type = abc_type
         N = 2 * space_order + 1
         if fs:
             fsdomain = FSDomain(N)

@@ -73,14 +73,14 @@ class memoized_func(object):
 
 @memoized_func
 def forward_op(p_params, tti, visco, elas, space_order, fw, spacing, save, t_sub, fs,
-               pt_src, pt_rec, nfreq, dft_sub, ws, wr, full_q, nv_weights, illum):
+               pt_src, pt_rec, nfreq, dft_sub, ws, wr, full_q, nv_weights, illum, abc_type):
     """
     Low level forward operator creation, to be used through `propagator.py`
     Compute forward wavefield u = A(m)^{-1}*f and related quantities (u(xrcv))
     """
     info("Building forward operator")
     # Some small dummy dims
-    model = EmptyModel(tti, visco, elas, spacing, fs, space_order, p_params)
+    model = EmptyModel(tti, visco, elas, spacing, fs, space_order, p_params, abc_type)
     nt = 10
     ndim = len(spacing)
     scords = np.ones((1, ndim)) if pt_src else None
@@ -130,7 +130,7 @@ def forward_op(p_params, tti, visco, elas, space_order, fw, spacing, save, t_sub
 
 @memoized_func
 def born_op(p_params, tti, visco, elas, space_order, fw, spacing, save, pt_src,
-            pt_rec, fs, t_sub, ws, nfreq, dft_sub, ic, nlind, illum):
+            pt_rec, fs, t_sub, ws, nfreq, dft_sub, ic, nlind, illum, abc_type):
     """
     Low level born operator creation, to be used through `interface.py`
     Compute linearized wavefield U = J(m)* δ m
@@ -138,7 +138,7 @@ def born_op(p_params, tti, visco, elas, space_order, fw, spacing, save, pt_src,
     """
     info("Building born operator")
     # Some small dummy dims
-    model = EmptyModel(tti, visco, elas, spacing, fs, space_order, p_params)
+    model = EmptyModel(tti, visco, elas, spacing, fs, space_order, p_params, abc_type)
     nt = 10
     ndim = len(spacing)
     wavelet = np.ones((nt, 1))
@@ -186,13 +186,13 @@ def born_op(p_params, tti, visco, elas, space_order, fw, spacing, save, pt_src,
 
 @memoized_func
 def adjoint_born_op(p_params, tti, visco, elas, space_order, fw, spacing, pt_rec, fs, w,
-                    save, t_sub, nfreq, dft_sub, ic, illum):
+                    save, t_sub, nfreq, dft_sub, ic, illum, abc_type):
     """
     Low level gradient operator creation, to be used through `propagators.py`
     Compute the action of the adjoint Jacobian onto a residual J'* δ d.
     """
     info("Building adjoint born operator")
-    model = EmptyModel(tti, visco, elas, spacing, fs, space_order, p_params)
+    model = EmptyModel(tti, visco, elas, spacing, fs, space_order, p_params, abc_type)
     nt = 10
     ndim = len(spacing)
     residual = np.ones((nt, 1))
