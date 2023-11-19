@@ -189,7 +189,7 @@ class Model(object):
         # Absorbing boundary layer
         if self.nbl != 0:
             # Create dampening field as symbol `damp`
-            self.damp = Function(name="damp", grid=self.grid)
+            self.damp = Function(name="damp", grid=self.grid, space_order=0)
             initialize_damp(self.damp, self.padsizes, abc_type=abc_type, fs=fs)
             self._physical_parameters = ['damp']
         else:
@@ -409,7 +409,7 @@ class Model(object):
             so = max(self._space_order // 2, 2)
             coeffs = fd_w(1, range(-so, so), .5)
             c_fd = sum(np.abs(coeffs[-1][-1])) / 2
-            return np.sqrt(self.dim) / self.dim / c_fd
+            return .9 * np.sqrt(self.dim) / self.dim / c_fd
         a1 = 4  # 2nd order in time
         so = max(self._space_order // 2, 4)
         coeffs = fd_w(2, range(-so, so), 0)[-1][-1]
@@ -550,7 +550,7 @@ class EmptyModel(object):
         self.dimensions = self.grid.dimensions
 
         # Create the function for the physical parameters
-        self.damp = Function(name='damp', grid=self.grid)
+        self.damp = Function(name='damp', grid=self.grid, space_order=0)
         for p in set(p_params) - {'damp'}:
             setattr(self, p, Function(name=p, grid=self.grid, space_order=space_order))
         if 'irho' not in p_params:
