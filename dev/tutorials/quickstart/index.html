@@ -59,13 +59,40 @@ dot1 = dot(q, qad)
 # &lt;F x, y&gt;
 dot2 = dot(dobs, dobs)
 # Compare
-@show dot1, dot2, (dot2 - dot2)/(dot1 + dot2)</code></pre><pre><code class="language-none">(dot1, dot2, (dot2 - dot2) / (dot1 + dot2)) = (469585.62f0, 469585.78f0, 0.
+@show dot1, dot2, (dot2 - dot2)/(dot1 + dot2)</code></pre><pre><code class="language-none">(dot1, dot2, (dot2 - dot2) / (dot1 + dot2)) = (467806.12f0, 467806.28f0, 0.
 0f0)
-(469585.62f0, 469585.78f0, 0.0f0)</code></pre><h1 id="Inversion"><a class="docs-heading-anchor" href="#Inversion">Inversion</a><a id="Inversion-1"></a><a class="docs-heading-anchor-permalink" href="#Inversion" title="Permalink"></a></h1><p>Our main goal is to provide an inversion framework for seismic inversion. To this end, as shown earlier, users can easily define the Jacobian operator and compute an RTM image (i.e FWI gradient) with a simple matrix-vector product. Once again, we provide both the Jacobian and its adjoint and we can compute Born linearized data.</p><pre><code class="language-julia"># Linearized modeling J*dm
+(467806.12f0, 467806.28f0, 0.0f0)</code></pre><h1 id="Inversion"><a class="docs-heading-anchor" href="#Inversion">Inversion</a><a id="Inversion-1"></a><a class="docs-heading-anchor-permalink" href="#Inversion" title="Permalink"></a></h1><p>Our main goal is to provide an inversion framework for seismic inversion. To this end, as shown earlier, users can easily define the Jacobian operator and compute an RTM image (i.e FWI gradient) with a simple matrix-vector product. Once again, we provide both the Jacobian and its adjoint and we can compute Born linearized data.</p><pre><code class="language-julia"># Linearized modeling J*dm
 dD = J*dm
 # Adjoint jacobian, RTM image
-rtm = adjoint(J)*dD</code></pre><pre><code class="language-none">PhysicalParameter{Float32, 2} of size (120, 100) with origin (0.0f0, 0.0f0)
- and spacing (10.0f0, 10.0f0)</code></pre><p>We show the linearized data.</p><pre><code class="language-julia">fig = figure()
+rtm = adjoint(J)*dD</code></pre><pre><code class="language-none">Error: PyError ($(Expr(:escape, :(ccall(#= /home/runner/.julia/packages/PyC
+all/KLzIO/src/pyfncall.jl:43 =# @pysym(:PyObject_Call), PyPtr, (PyPtr, PyPt
+r, PyPtr), o, pyargsptr, kw))))) &lt;class &#39;ValueError&#39;&gt;
+ValueError(&#39;Override `us_u(t_sub, x, y)` is incompatible with overrides `[d
+amp(x, y), m(x, y), rcvu(time, p_rcvu), srcu(time, p_srcu), u(t, x, y), us_
+u(t_sub, x, y)]`&#39;)
+  File &quot;/home/runner/work/JUDI.jl/JUDI.jl/src/pysource/interface.py&quot;, line 
+359, in J_adjoint
+    return J_adjoint_standard(model, src_coords, wavelet, rec_coords, recin
+,
+  File &quot;/home/runner/work/JUDI.jl/JUDI.jl/src/pysource/interface.py&quot;, line 
+478, in J_adjoint_standard
+    rec, u, Iu, _ = ffunc(model, src_coords, rec_coords, wavelet, save=True
+, nlind=nlind,
+  File &quot;/home/runner/work/JUDI.jl/JUDI.jl/src/pysource/propagators.py&quot;, lin
+e 77, in forward
+    summary = op(**kw)
+  File &quot;/home/runner/.local/lib/python3.9/site-packages/devito/operator/ope
+rator.py&quot;, line 761, in __call__
+    return self.apply(**kwargs)
+  File &quot;/home/runner/.local/lib/python3.9/site-packages/devito/operator/ope
+rator.py&quot;, line 827, in apply
+    args = self.arguments(**kwargs)
+  File &quot;/home/runner/.local/lib/python3.9/site-packages/devito/operator/ope
+rator.py&quot;, line 668, in arguments
+    args = self._prepare_arguments(**kwargs)
+  File &quot;/home/runner/.local/lib/python3.9/site-packages/devito/operator/ope
+rator.py&quot;, line 544, in _prepare_arguments
+    raise ValueError(&quot;Override `%s` is incompatible with overrides `%s`&quot; %</code></pre><p>We show the linearized data.</p><pre><code class="language-julia">fig = figure()
 imshow(dD.data[1], vmin=-1, vmax=1, cmap=&quot;PuOr&quot;, extent=[xrec[1], xrec[end], timeD/1000, 0], aspect=&quot;auto&quot;)
 xlabel(&quot;Receiver position (m)&quot;)
 ylabel(&quot;Time (s)&quot;)
@@ -75,18 +102,72 @@ imshow(rtm&#39;, vmin=-1e2, vmax=1e2, cmap=&quot;Greys&quot;, extent=[0, (n[1]-1
 xlabel(&quot;Lateral position(m)&quot;)
 ylabel(&quot;Depth (m)&quot;)
 title(&quot;RTM image&quot;)
-display(fig)</code></pre><p><img src="../figures/modeling_basic_2D_15_1.png" alt/></p><h2 id="Inversion-utility-functions"><a class="docs-heading-anchor" href="#Inversion-utility-functions">Inversion utility functions</a><a id="Inversion-utility-functions-1"></a><a class="docs-heading-anchor-permalink" href="#Inversion-utility-functions" title="Permalink"></a></h2><p>We currently introduced the lineaar operators that allow to write seismic modeling and inversion in a high-level, linear algebra way. These linear operators allow the script to closely follow the mathematics and to be readable and understandable.</p><p>However, these come with overhead. In particular, consider the following compuation on the FWI gradient:</p><pre><code class="language-julia">d_syn = F*q
+display(fig)</code></pre><pre><code class="language-none">Error: UndefVarError: `rtm` not defined</code></pre><h2 id="Inversion-utility-functions"><a class="docs-heading-anchor" href="#Inversion-utility-functions">Inversion utility functions</a><a id="Inversion-utility-functions-1"></a><a class="docs-heading-anchor-permalink" href="#Inversion-utility-functions" title="Permalink"></a></h2><p>We currently introduced the lineaar operators that allow to write seismic modeling and inversion in a high-level, linear algebra way. These linear operators allow the script to closely follow the mathematics and to be readable and understandable.</p><p>However, these come with overhead. In particular, consider the following compuation on the FWI gradient:</p><pre><code class="language-julia">d_syn = F*q
 r = judiJacobian(F, q)&#39; * (d_syn - d_obs)</code></pre><p>In this two lines, the forward modeling is performed twice: once to compute <code>d_syn</code> then once again to compute the Jacobian adjoint. In order to avoid this overhead for practical inversion, we provide utility function that directly comput the gradient and objective function (L2- misfit) of FWI, LSRTM and TWRI with minimum overhead.</p><p>FWI misfit and gradient</p><pre><code class="language-julia"># evaluate FWI objective function
-f, g = fwi_objective(model0, q, dobs; options=opt)</code></pre><pre><code class="language-none">(21233.758f0, PhysicalParameter{Float32, 2} of size (120, 100) with origin 
-(0.0f0, 0.0f0) and spacing (10.0f0, 10.0f0))</code></pre><p>Plot gradient</p><pre><code class="language-julia">fig = figure()
+f, g = fwi_objective(model0, q, dobs; options=opt)</code></pre><pre><code class="language-none">Error: PyError ($(Expr(:escape, :(ccall(#= /home/runner/.julia/packages/PyC
+all/KLzIO/src/pyfncall.jl:43 =# @pysym(:PyObject_Call), PyPtr, (PyPtr, PyPt
+r, PyPtr), o, pyargsptr, kw))))) &lt;class &#39;ValueError&#39;&gt;
+ValueError(&#39;Override `us_u(t_sub, x, y)` is incompatible with overrides `[d
+amp(x, y), m(x, y), rcvu(time, p_rcvu), srcu(time, p_srcu), u(t, x, y), us_
+u(t_sub, x, y)]`&#39;)
+  File &quot;/home/runner/work/JUDI.jl/JUDI.jl/src/pysource/interface.py&quot;, line 
+359, in J_adjoint
+    return J_adjoint_standard(model, src_coords, wavelet, rec_coords, recin
+,
+  File &quot;/home/runner/work/JUDI.jl/JUDI.jl/src/pysource/interface.py&quot;, line 
+478, in J_adjoint_standard
+    rec, u, Iu, _ = ffunc(model, src_coords, rec_coords, wavelet, save=True
+, nlind=nlind,
+  File &quot;/home/runner/work/JUDI.jl/JUDI.jl/src/pysource/propagators.py&quot;, lin
+e 77, in forward
+    summary = op(**kw)
+  File &quot;/home/runner/.local/lib/python3.9/site-packages/devito/operator/ope
+rator.py&quot;, line 761, in __call__
+    return self.apply(**kwargs)
+  File &quot;/home/runner/.local/lib/python3.9/site-packages/devito/operator/ope
+rator.py&quot;, line 827, in apply
+    args = self.arguments(**kwargs)
+  File &quot;/home/runner/.local/lib/python3.9/site-packages/devito/operator/ope
+rator.py&quot;, line 668, in arguments
+    args = self._prepare_arguments(**kwargs)
+  File &quot;/home/runner/.local/lib/python3.9/site-packages/devito/operator/ope
+rator.py&quot;, line 544, in _prepare_arguments
+    raise ValueError(&quot;Override `%s` is incompatible with overrides `%s`&quot; %</code></pre><p>Plot gradient</p><pre><code class="language-julia">fig = figure()
 imshow(g&#39;, vmin=-1e2, vmax=1e2, cmap=&quot;Greys&quot;, extent=[0, (n[1]-1)*d[1], (n[2]-1)*d[2], 0 ], aspect=&quot;auto&quot;)
 xlabel(&quot;Lateral position(m)&quot;)
 ylabel(&quot;Depth (m)&quot;)
 title(&quot;FWI gradient&quot;)
-display(fig)</code></pre><p><img src="../figures/modeling_basic_2D_17_1.png" alt/></p><p>LSRTM misfit and gradient</p><pre><code class="language-julia"># evaluate LSRTM objective function
+display(fig)</code></pre><pre><code class="language-none">Error: UndefVarError: `g` not defined</code></pre><p>LSRTM misfit and gradient</p><pre><code class="language-julia"># evaluate LSRTM objective function
 fj, gj = lsrtm_objective(model0, q, dD, dm; options=opt)
-fjn, gjn = lsrtm_objective(model0, q, dobs, dm; nlind=true, options=opt)</code></pre><pre><code class="language-none">(35867.47f0, PhysicalParameter{Float32, 2} of size (120, 100) with origin (
-0.0f0, 0.0f0) and spacing (10.0f0, 10.0f0))</code></pre><p>Plot gradients</p><pre><code class="language-julia">fig = figure()
+fjn, gjn = lsrtm_objective(model0, q, dobs, dm; nlind=true, options=opt)</code></pre><pre><code class="language-none">Error: PyError ($(Expr(:escape, :(ccall(#= /home/runner/.julia/packages/PyC
+all/KLzIO/src/pyfncall.jl:43 =# @pysym(:PyObject_Call), PyPtr, (PyPtr, PyPt
+r, PyPtr), o, pyargsptr, kw))))) &lt;class &#39;ValueError&#39;&gt;
+ValueError(&#39;Override `us_u(t_sub, x, y)` is incompatible with overrides `[d
+amp(x, y), dm(x, y), m(x, y), rcvul(time, p_rcvul), srcu(time, p_srcu), u(t
+, x, y), ul(t, x, y), us_u(t_sub, x, y)]`&#39;)
+  File &quot;/home/runner/work/JUDI.jl/JUDI.jl/src/pysource/interface.py&quot;, line 
+359, in J_adjoint
+    return J_adjoint_standard(model, src_coords, wavelet, rec_coords, recin
+,
+  File &quot;/home/runner/work/JUDI.jl/JUDI.jl/src/pysource/interface.py&quot;, line 
+478, in J_adjoint_standard
+    rec, u, Iu, _ = ffunc(model, src_coords, rec_coords, wavelet, save=True
+, nlind=nlind,
+  File &quot;/home/runner/work/JUDI.jl/JUDI.jl/src/pysource/propagators.py&quot;, lin
+e 197, in born
+    summary = op(**kw)
+  File &quot;/home/runner/.local/lib/python3.9/site-packages/devito/operator/ope
+rator.py&quot;, line 761, in __call__
+    return self.apply(**kwargs)
+  File &quot;/home/runner/.local/lib/python3.9/site-packages/devito/operator/ope
+rator.py&quot;, line 827, in apply
+    args = self.arguments(**kwargs)
+  File &quot;/home/runner/.local/lib/python3.9/site-packages/devito/operator/ope
+rator.py&quot;, line 668, in arguments
+    args = self._prepare_arguments(**kwargs)
+  File &quot;/home/runner/.local/lib/python3.9/site-packages/devito/operator/ope
+rator.py&quot;, line 544, in _prepare_arguments
+    raise ValueError(&quot;Override `%s` is incompatible with overrides `%s`&quot; %</code></pre><p>Plot gradients</p><pre><code class="language-julia">fig = figure()
 imshow(gj&#39;, vmin=-1, vmax=1, cmap=&quot;Greys&quot;, extent=[0, (n[1]-1)*d[1], (n[2]-1)*d[2], 0 ], aspect=&quot;auto&quot;)
 xlabel(&quot;Lateral position(m)&quot;)
 ylabel(&quot;Depth (m)&quot;)
@@ -98,14 +179,42 @@ imshow(gjn&#39;, vmin=-1, vmax=1, cmap=&quot;Greys&quot;, extent=[0, (n[1]-1)*d[
 xlabel(&quot;Lateral position(m)&quot;)
 ylabel(&quot;Depth (m)&quot;)
 title(&quot;LSRTM gradient with background data substracted&quot;)
-display(fig)</code></pre><p><img src="../figures/modeling_basic_2D_19_1.png" alt/> <img src="../figures/modeling_basic_2D_19_2.png" alt/></p><p>By extension, lsrtm<em>objective is the same as fwi</em>objecive when <code>dm</code> is zero And with computing of the residual. Small noise can be seen in the difference due to floating point roundoff errors with openMP, but running with  OMP<em>NUM</em>THREADS=1 (no parllelism) produces the exact (difference == 0) same result gjn2 == g</p><pre><code class="language-julia">fjn2, gjn2 = lsrtm_objective(model0, q, dobs, 0f0.*dm; nlind=true, options=opt)
-fig = figure()</code></pre><pre><code class="language-none">PyPlot.Figure(PyObject &lt;Figure size 640x480 with 0 Axes&gt;)</code></pre><p>Plot gradient</p><pre><code class="language-julia">imshow(gjn2&#39;, vmin=-1e2, vmax=1e2, cmap=&quot;Greys&quot;, extent=[0, (n[1]-1)*d[1], (n[2]-1)*d[2], 0 ], aspect=&quot;auto&quot;)
+display(fig)</code></pre><pre><code class="language-none">Error: UndefVarError: `gj` not defined</code></pre><p>By extension, lsrtm<em>objective is the same as fwi</em>objecive when <code>dm</code> is zero And with computing of the residual. Small noise can be seen in the difference due to floating point roundoff errors with openMP, but running with  OMP<em>NUM</em>THREADS=1 (no parllelism) produces the exact (difference == 0) same result gjn2 == g</p><pre><code class="language-julia">fjn2, gjn2 = lsrtm_objective(model0, q, dobs, 0f0.*dm; nlind=true, options=opt)
+fig = figure()</code></pre><pre><code class="language-none">Error: PyError ($(Expr(:escape, :(ccall(#= /home/runner/.julia/packages/PyC
+all/KLzIO/src/pyfncall.jl:43 =# @pysym(:PyObject_Call), PyPtr, (PyPtr, PyPt
+r, PyPtr), o, pyargsptr, kw))))) &lt;class &#39;ValueError&#39;&gt;
+ValueError(&#39;Override `us_u(t_sub, x, y)` is incompatible with overrides `[d
+amp(x, y), m(x, y), rcvu(time, p_rcvu), srcu(time, p_srcu), u(t, x, y), us_
+u(t_sub, x, y)]`&#39;)
+  File &quot;/home/runner/work/JUDI.jl/JUDI.jl/src/pysource/interface.py&quot;, line 
+359, in J_adjoint
+    return J_adjoint_standard(model, src_coords, wavelet, rec_coords, recin
+,
+  File &quot;/home/runner/work/JUDI.jl/JUDI.jl/src/pysource/interface.py&quot;, line 
+478, in J_adjoint_standard
+    rec, u, Iu, _ = ffunc(model, src_coords, rec_coords, wavelet, save=True
+, nlind=nlind,
+  File &quot;/home/runner/work/JUDI.jl/JUDI.jl/src/pysource/propagators.py&quot;, lin
+e 169, in born
+    summary = op(**kw)
+  File &quot;/home/runner/.local/lib/python3.9/site-packages/devito/operator/ope
+rator.py&quot;, line 761, in __call__
+    return self.apply(**kwargs)
+  File &quot;/home/runner/.local/lib/python3.9/site-packages/devito/operator/ope
+rator.py&quot;, line 827, in apply
+    args = self.arguments(**kwargs)
+  File &quot;/home/runner/.local/lib/python3.9/site-packages/devito/operator/ope
+rator.py&quot;, line 668, in arguments
+    args = self._prepare_arguments(**kwargs)
+  File &quot;/home/runner/.local/lib/python3.9/site-packages/devito/operator/ope
+rator.py&quot;, line 544, in _prepare_arguments
+    raise ValueError(&quot;Override `%s` is incompatible with overrides `%s`&quot; %</code></pre><p>Plot gradient</p><pre><code class="language-julia">imshow(gjn2&#39;, vmin=-1e2, vmax=1e2, cmap=&quot;Greys&quot;, extent=[0, (n[1]-1)*d[1], (n[2]-1)*d[2], 0 ], aspect=&quot;auto&quot;)
 xlabel(&quot;Lateral position(m)&quot;)
 ylabel(&quot;Depth (m)&quot;)
 title(&quot;LSRTM gradient with zero perturbation&quot;)
-display(fig)</code></pre><p><img src="../figures/modeling_basic_2D_21_1.png" alt/></p><h1 id="TWRI"><a class="docs-heading-anchor" href="#TWRI">TWRI</a><a id="TWRI-1"></a><a class="docs-heading-anchor-permalink" href="#TWRI" title="Permalink"></a></h1><p>Finally, JUDI implements TWRI, an augmented method to tackle cycle skipping. Once again we provide a computationnally efficient wrapper function that returns the objective value and necessary gradients</p><pre><code class="language-julia">f, gm, gy = twri_objective(model0, q, dobs, nothing; options=opt, optionswri=TWRIOptions(params=:all))
+display(fig)</code></pre><pre><code class="language-none">Error: UndefVarError: `gjn2` not defined</code></pre><h1 id="TWRI"><a class="docs-heading-anchor" href="#TWRI">TWRI</a><a id="TWRI-1"></a><a class="docs-heading-anchor-permalink" href="#TWRI" title="Permalink"></a></h1><p>Finally, JUDI implements TWRI, an augmented method to tackle cycle skipping. Once again we provide a computationnally efficient wrapper function that returns the objective value and necessary gradients</p><pre><code class="language-julia">f, gm, gy = twri_objective(model0, q, dobs, nothing; options=opt, optionswri=TWRIOptions(params=:all))
 # With on-the-fly DFT, experimental
-f, gmf = twri_objective(model0, q, dobs, nothing; options=Options(frequencies=[[.009, .011], [.008, .012]]), optionswri=TWRIOptions(params=:m))</code></pre><pre><code class="language-none">(-2292.4673f0, PhysicalParameter{Float32, 2} of size (120, 100) with origin
+f, gmf = twri_objective(model0, q, dobs, nothing; options=Options(frequencies=[[.009, .011], [.008, .012]]), optionswri=TWRIOptions(params=:m))</code></pre><pre><code class="language-none">(-2244.6047f0, PhysicalParameter{Float32, 2} of size (120, 100) with origin
  (0.0f0, 0.0f0) and spacing (10.0f0, 10.0f0))</code></pre><p>Plot gradients</p><pre><code class="language-julia">fig = figure()
 imshow(gm&#39;, vmin=-1, vmax=1, cmap=&quot;Greys&quot;, extent=[0, (n[1]-1)*d[1], (n[2]-1)*d[2], 0 ], aspect=&quot;auto&quot;)
 xlabel(&quot;Lateral position(m)&quot;)
@@ -118,4 +227,4 @@ imshow(gy.data[1], vmin=-1e2, vmax=1e2, cmap=&quot;PuOr&quot;, extent=[xrec[1], 
 xlabel(&quot;Receiver position (m)&quot;)
 ylabel(&quot;Time (s)&quot;)
 title(&quot;TWRI gradient w.r.t y&quot;)
-display(fig)</code></pre><p><img src="../figures/modeling_basic_2D_22_1.png" alt/> <img src="../figures/modeling_basic_2D_22_2.png" alt/></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../imaging_conditions/">« Imaging conditions in JUDI</a><a class="docs-footer-nextpage" href="../../pysource/">Devito backend reference »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Tuesday 19 September 2023 02:30">Tuesday 19 September 2023</span>. Using Julia version 1.9.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+display(fig)</code></pre><p><img src="../figures/modeling_basic_2D_22_1.png" alt/> <img src="../figures/modeling_basic_2D_22_2.png" alt/></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../imaging_conditions/">« Imaging conditions in JUDI</a><a class="docs-footer-nextpage" href="../../pysource/">Devito backend reference »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Sunday 19 November 2023 03:37">Sunday 19 November 2023</span>. Using Julia version 1.9.4.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
