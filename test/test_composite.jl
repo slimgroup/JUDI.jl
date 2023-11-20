@@ -90,7 +90,7 @@ ftol = 1f-6
         # Test the norm
         u_scale = deepcopy(u)
         @test isapprox(norm(u_scale, 2), sqrt(norm(d_obs, 2)^2 + norm(w0, 2)^2))
-        @test isapprox(norm(u_scale, 2), sqrt(dot(u_scale, u_scale)); rtol=1f-6)
+        @test isapprox(norm(u_scale, 2), sqrt(dot(u_scale, u_scale)))
         @test isapprox(norm(u_scale, 1), norm(d_obs, 1) + norm(w0, 1))
         @test isapprox(norm(u_scale, Inf), max(norm(d_obs, Inf), norm(w0, Inf)))
         @test isapprox(norm(u_scale - 1f0, 1), norm(u_scale .- 1f0, 1))

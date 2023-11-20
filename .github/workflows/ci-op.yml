@@ -1,5 +1,9 @@
 name: CI-operators
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 on: 
   # Trigger the workflow on push to master or pull request
   # to be merged in master
@@ -27,7 +31,7 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         op: ["ISO_OP", "ISO_OP_FS", "TTI_OP", "TTI_OP_FS", "BASICS"]
-        version: ['1.8']
+        version: ['1']
         omp: [2]
   
         include:
@@ -47,7 +51,7 @@ jobs:
             omp: 1
           
           - os: ubuntu-latest
-            version: '1.7'
+            version: '1.9'
             op: "VISCO_AC_OP"
             omp: 2
 

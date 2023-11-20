@@ -6,7 +6,7 @@ ArrayOrNot = Union{Array, PyArray, PyObject, Nothing}
 PhysOrNot = Union{PhysicalParameter, Array, Nothing}
 
 # Setup time-domain linear or nonlinear foward and adjoint modeling and interface to devito
-function time_modeling(model_full::Model, srcGeometry::GeomOrNot, srcData::ArrayOrNot,
+function time_modeling(model_full::AbstractModel, srcGeometry::GeomOrNot, srcData::ArrayOrNot,
                        recGeometry::GeomOrNot, recData::ArrayOrNot, dm::PhysOrNot,
                        op::Symbol, options::JUDIOptions, fw::Bool)
     # Load full geometry for out-of-core geometry containers
@@ -23,21 +23,32 @@ function time_modeling(model_full::Model, srcGeometry::GeomOrNot, srcData::Array
 
     # limit model to area with sources/receivers
     if options.limit_m == true
-        model = deepcopy(model_full)
-        model, dm = limit_model_to_receiver_area(srcGeometry, recGeometry, model, options.buffer_size; pert=dm)
+        @juditime "Limit model to geometry" begin
+            model = deepcopy(model_full)
+            model, dm = limit_model_to_receiver_area(srcGeometry, recGeometry, model, options.buffer_size; pert=dm)
+        end
     else
         model = model_full
     end
 
     # Set up Python model structure
-    modelPy = devito_model(model, options, dm)
+    @juditime "Devito Model" begin
+        modelPy = devito_model(model, options, dm)
+    end
 
     # Remove receivers outside the modeling domain (otherwise leads to segmentation faults)
-    recGeometry, recData = remove_out_of_bounds_receivers(recGeometry, recData, model)
+    @juditime "Remove OOB src/rec" begin
+        recGeometry, recData = remove_out_of_bounds_receivers(recGeometry, recData, model)
+    end
 
     # Devito interface
-    argout = devito_interface(modelPy, srcGeometry, srcData, recGeometry, recData, dm, options, illum, fw)
-    argout = filter_none(argout)
+    @juditime "Propagation" begin
+        argout = devito_interface(modelPy, srcGeometry, srcData, recGeometry, recData, dm, options, illum, fw)
+    end
+
+    @juditime "Filter empty output" begin
+        argout = filter_none(argout)
+    end
     argout = post_process(argout, modelPy, Val(op), recGeometry, options)
     argout = save_to_disk(argout, srcGeometry, srcData, options, Val(fw), Val(options.save_data_to_disk))
     return argout
@@ -47,33 +58,35 @@ end
 post_process(t::Tuple, modelPy::PyObject, op::Val, G, o::JUDIOptions) = (post_process(t[1], modelPy, op, G, o), post_process(Base.tail(t), modelPy, Val(:adjoint_born), G, Options(;sum_padding=false))...)
 post_process(t::Tuple{}, ::PyObject, ::Val, ::Any, ::JUDIOptions) = t
 
-post_process(v::AbstractArray, modelPy::PyObject, ::Val{:forward}, G::Geometry, options::JUDIOptions) = judiVector{Float32, Matrix{Float32}}(1, G, [time_resample(v, calculate_dt(modelPy), G)])
-post_process(v::AbstractArray, modelPy::PyObject, ::Val{:forward}, ::Any, options::JUDIOptions) = judiWavefield{Float32}(1, [calculate_dt(modelPy)], [v])
+post_process(v::AbstractArray{T}, modelPy::PyObject, ::Val{:forward}, G::Geometry{T}, options::JUDIOptions) where {T<:Number} = judiVector{T, Matrix{T}}(1, G, [time_resample(v, calculate_dt(modelPy), G)])
+post_process(v::AbstractArray{T}, modelPy::PyObject, ::Val{:forward}, ::Any, options::JUDIOptions) where {T<:Number} = judiWavefield{T}(1, [calculate_dt(modelPy)], [v])
+post_process(v::AbstractArray{T}, modelPy::PyObject, ::Val{:adjoint}, G::Geometry{T}, options::JUDIOptions) where {T<:Number} = judiVector{T, Matrix{T}}(1, G, [time_resample(v, calculate_dt(modelPy), G)])
 
-post_process(v::AbstractArray, modelPy::PyObject, ::Val{:adjoint}, G::Geometry, options::JUDIOptions) = judiVector{Float32, Matrix{Float32}}(1, G, [time_resample(v, calculate_dt(modelPy), G)])
 function post_process(v::AbstractArray{T, N}, modelPy::PyObject, ::Val{:adjoint}, ::Any, options::JUDIOptions) where {T, N}
     if N == modelPy.dim
-        return judiWeights{Float32}(1, [remove_padding(v, modelPy.padsizes; true_adjoint=false)])
+        return judiWeights{T}(1, [remove_padding(v, modelPy.padsizes; true_adjoint=false)])
     else
-        return judiWavefield{Float32}(1, [calculate_dt(modelPy)], [v])
+        return judiWavefield{T}(1, [calculate_dt(modelPy)], [v])
     end
 end
 
-function post_process(v::AbstractArray, modelPy::PyObject, ::Val{:adjoint_born}, G::Geometry, options::JUDIOptions)
+function post_process(v::AbstractArray{T}, modelPy::PyObject, ::Val{:adjoint_born}, G::Geometry{T}, options::JUDIOptions) where {T<:Number}
     grad = remove_padding(v, modelPy.padsizes; true_adjoint=options.sum_padding)
     return PhysicalParameter(grad, modelPy.spacing, modelPy.origin)
 end
 
-post_process(v::AbstractArray, modelPy::PyObject, ::Val{:born}, G::Geometry, options::JUDIOptions) = judiVector{Float32, Matrix{Float32}}(1, G, [time_resample(v, calculate_dt(modelPy), G)])
-
+post_process(v::AbstractArray{T}, modelPy::PyObject, ::Val{:born}, G::Geometry{T}, options::JUDIOptions) where {T<:Number} = judiVector{T, Matrix{T}}(1, G, [time_resample(v, calculate_dt(modelPy), G)])
 
 # Saving to disk utilities
 save_to_disk(shot, args...) = shot
 save_to_disk(t::Tuple, args...) = save_to_disk(t[1], args...), Base.tail(t)...
-save_to_disk(shot::judiVector, ::Any, ::Any, ::Any, ::Any, ::Val{false}) = shot
+save_to_disk(shot::judiVector{T, Matrix{T}}, ::Any, ::Any, ::Any, ::Any, ::Val{false}) where {T<:Number} = shot
 
-function save_to_disk(shot::judiVector, srcGeometry::GeometryIC, srcData::Array, options::JUDIOptions,
-                      ::Val{true}, ::Val{true}) 
-    container = write_shot_record(srcGeometry, srcData, shot.geometry[1], shot.data[1], options)
-    return judiVector(container)
+function save_to_disk(shot::judiVector{T}, srcGeometry::GeometryIC{T}, srcData::Array, options::JUDIOptions,
+                      ::Val{true}, ::Val{true}) where {T<:Number}
+    @juditime "Dump data to segy" begin
+        container = write_shot_record(srcGeometry, srcData, shot.geometry[1], shot.data[1], options)
+        dout = judiVector(container)
+    end
+    return dout
 end

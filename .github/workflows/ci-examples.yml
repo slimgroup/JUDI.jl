@@ -1,5 +1,9 @@
 name: CI-examples
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 on: 
   # Trigger the workflow on push to master or pull request
   # to be merged in master
@@ -25,7 +29,7 @@ jobs:
         uses: actions/checkout@v3
 
       - id: set-matrix
-        run: echo "::set-output name=matrix::$(ls examples/scripts/*.jl examples/machine-learning/*.jl | xargs -n 1 | jq -R -s -c 'split("\n")[:-1]')"
+        run: echo "matrix=$(ls examples/scripts/*.jl examples/machine-learning/*.jl | xargs -n 1 | jq -R -s -c 'split("\n")[:-1]')" >> $GITHUB_OUTPUT
         shell: bash
 
   run-examples:
@@ -37,7 +41,7 @@ jobs:
       DEVITO_ARCH: gcc-9
       DEVITO_LANGUAGE: "openmp"
       DEVITO_LOGGING: "ERROR"
-      OMP_NUM_THREADS: 2
+      OMP_NUM_THREADS: 1
       NITER: 2
 
     strategy:
@@ -65,6 +69,8 @@ jobs:
 
       - name: Set julia python
         run: |
+          python3 -m pip install -U pip
+          python3 -m pip install matplotlib seiscm colorcet
           PYTHON=$(which python3) julia -e 'using Pkg;Pkg.add("PyCall");Pkg.build("PyCall")'
 
       - name: Build JUDI
@@ -77,4 +83,4 @@ jobs:
           julia -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd()))'
 
       - name: Run examples
-        run: julia -p 2 ${{ matrix.example }}
+        run: julia -p 2 -t 1 ${{ matrix.example }}

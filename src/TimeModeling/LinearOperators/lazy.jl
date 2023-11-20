@@ -170,6 +170,16 @@ for (op, s) in zip([:+, :-], (1, -1))
     end
 end
 
+function *(M::Matrix{T}, P::judiProjection{T}) where T
+    @assert size(M, 2) == get_nsrc(P)
+    g = super_shot_geometry(P.geometry)
+    geom = Geometry(g.xloc[1], g.yloc[1], g.zloc[1]; dt=g.dt[1], t=g.t[1], nsrc=size(M, 1))
+    return judiProjection(geom)
+end
+
+*(M::Matrix{T}, P::jAdjoint{judiProjection{T}}) where T = jAdjoint(M*P.op)
+*(M::Matrix{T}, R::judiRHS{T}) where T = judiRHS{T}(size(M, 1), M*R.P, M*R.d)
+
 ############################################################################################################################
 # Comparison
 ==(jA1::jAdjoint, jA2::jAdjoint) = jA1.op  == jA2.op
@@ -194,32 +204,32 @@ get_nt(P::Projection) = P.n[:time]
 get_nt(P::jAdjoint{<:Projection}) = P.op.n[:time]
 
 """
-    reshape(x, P::judiProjection, m::Model; with_batch=false)
+    reshape(x, P::judiProjection, m::AbstractModel; with_batch=false)
 
 reshape the input `x` into an ML friendly format `HWCB` using the projection operator and model to infer dimensions sizes.
 """
-function reshape(x::Vector{T}, P::judiProjection{T}, ::Model; with_batch=false) where T
+function reshape(x::Vector{T}, P::judiProjection{T}, ::AbstractModel; with_batch=false) where T
     out = reshape(x, P.geometry)
     out = with_batch ? reshape(out, size(out, 1), size(out, 2), 1, size(out, 3)) : out
     return out
 end
 
-function reshape(x::Vector{T}, P::judiWavelet{T}, m::Model; with_batch=false) where T
+function reshape(x::Vector{T}, P::judiWavelet{T}, m::AbstractModel; with_batch=false) where T
     out = with_batch ? reshape(x, m.n..., 1,get_nsrc(P)) : reshape(x, m.n..., get_nsrc(P))
     return out
 end
 
-function _as_src(P::judiLRWF{T}, model::Model, q::Array{T}) where T
+function _as_src(P::judiLRWF{T}, model::AbstractModel, q::Array{T}) where T
     qcell = process_input_data(q, model, get_nsrc(P))
     return judiWeights{T}(get_nsrc(P), qcell)
 end
 
-function _as_src(P::judiProjection{T}, ::Model, q::Array{T}) where T
+function _as_src(P::judiProjection{T}, ::AbstractModel, q::Array{T}) where T
     qcell = process_input_data(q, P.geometry)
     return judiVector{T, Matrix{T}}(get_nsrc(P), P.geometry, qcell)
 end
 
-_as_src(::judiNoopOperator, ::Model, q::judiMultiSourceVector) = q
+_as_src(::judiNoopOperator, ::AbstractModel, q::judiMultiSourceVector) = q
 
 
 ############################################################################################################################

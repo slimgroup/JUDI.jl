@@ -61,18 +61,16 @@ function objective_function(x, misfit=mse)
 end
 
 # Bound projection
-proj(x) = reshape(median([vec(mmin) vec(x) vec(mmax)]; dims=2),model0.n)
-
+proj(x) = reshape(median([vec(mmin) vec(x) vec(mmax)]; dims=2), size(x))
 
 # Compare l2 with students t
 ϕmse = x->objective_function(x)
 ϕst = x->objective_function(x, studentst)
 
 # FWI with SPG
-m0 = vec(model0.m)
 options = spg_options(verbose=3, maxIter=fevals, memory=3)
-solmse = spg(ϕmse, m0, proj, options)
-solst = spg(ϕst, m0, proj, options)
+solmse = spg(ϕmse, vec(m0), proj, options)
+solst = spg(ϕst, vec(m0), proj, options)
 
 # Plot result
 figure(figsize=(10, 10))

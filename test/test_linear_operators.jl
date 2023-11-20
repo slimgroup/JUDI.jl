@@ -74,8 +74,8 @@ model = example_model()
         @test Int(size(F_forward)[1]) == nsrc * nt * prod(model.n)
 
         @test adjoint(F_adjoint) == F_forward
-        @test isequal(typeof(F_forward), judiModeling{Float32, :forward})
-        @test isequal(typeof(F_adjoint), judiModeling{Float32, :adjoint})
+        @test isequal(typeof(F_forward), judiModeling{Float32, :forward, JUDI.IsoModel{Float32, 2}})
+        @test isequal(typeof(F_adjoint), judiModeling{Float32, :adjoint, JUDI.IsoModel{Float32, 2}})
 
         # get index
         test_getindex(F_forward, nsrc)
@@ -86,12 +86,14 @@ model = example_model()
         test_getindex(F_adjoint, nsrc)
 
         if VERSION>v"1.2"
-            a = randn(Float32, model.n...)
-            F2 = F_forward(;m=a)
-            @test isapprox(F2.model.m, a)
-            F2 = F_forward(Model(model.n, model.d, model.o, a))
-            @test isapprox(F2.model.m, a)
-            @test F2.model.n == model.n
+            a0 = a = randn(Float32, model.n...)
+            for a in [a0, a0[:]]
+                F2 = F_forward(;m=a)
+                @test isapprox(F2.model.m, a0)
+                F2 = F_forward(Model(model.n, model.d, model.o, a))
+                @test isapprox(F2.model.m, a0)
+                @test F2.model.n == model.n
+            end
         end
     end
 end
@@ -128,12 +130,27 @@ end
         test_getindex(F_adjoint, nsrc)
 
         if VERSION>v"1.2"
-            a = randn(Float32, model.n...)
-            F2 = F_forward(;m=a)
-            @test isapprox(F2.model.m, a)
-            F2 = F_forward(Model(model.n, model.d, model.o, a))
-            @test isapprox(F2.model.m, a)
-            @test F2.model.n == model.n
+            a0 = a = randn(Float32, model.n...)
+            for a in [a0, a0[:]]
+                F2 = F_forward(;m=a)
+                @test isapprox(F2.model.m, a0)
+                F2 = F_forward(Model(model.n, model.d, model.o, a))
+                @test isapprox(F2.model.m, a0)
+                @test F2.model.n == model.n
+            end
+        end
+
+        # SimSources
+        if nsrc == 2
+            M = randn(Float32, 1, nsrc)
+            Fs = M*F_forward
+            @test isequal(size(Fs)[1], time_space_src(1, src_geometry[1].nt, model.n))
+            @test isequal(size(Fs)[2], rec_space(example_rec_geometry(;nrec=2, nsrc=1)))
+            @test get_nsrc(Fs.qInjection) == 1
+            Fs = M*F_adjoint
+            @test isequal(size(Fs)[1], rec_space(example_rec_geometry(;nrec=2, nsrc=1)))
+            @test isequal(size(Fs)[2], time_space_src(1, src_geometry[1].nt, model.n))
+            @test get_nsrc(Fs.rInterpolation) == 1
         end
     end
 end
@@ -167,12 +184,27 @@ end
         test_getindex(F_adjoint, nsrc)
 
         if VERSION>v"1.2"
-            a = randn(Float32, model.n...)
-            F2 = F_forward(;m=a)
-            @test isapprox(F2.model.m, a)
-            F2 = F_forward(Model(model.n, model.d, model.o, a))
-            @test isapprox(F2.model.m, a)
-            @test F2.model.n == model.n
+            a0 = a = randn(Float32, model.n...)
+            for a in [a0, a0[:]]
+                F2 = F_forward(;m=a)
+                @test isapprox(F2.model.m, a0)
+                F2 = F_forward(Model(model.n, model.d, model.o, a))
+                @test isapprox(F2.model.m, a0)
+                @test F2.model.n == model.n
+            end
+        end
+
+        # SimSources
+        if nsrc == 2
+            M = randn(Float32, 1, nsrc)
+            Fs = M*F_adjoint
+            @test isequal(size(Fs)[1], time_space_src(1, rec_geometry[1].nt, model.n))
+            @test isequal(size(Fs)[2], rec_space(rec_geometry[1]))
+            @test get_nsrc(Fs.qInjection) == 1
+            Fs = M*F_forward
+            @test isequal(size(Fs)[1], rec_space(rec_geometry[1]))
+            @test isequal(size(Fs)[2], time_space_src(1, rec_geometry[1].nt, model.n))
+            @test get_nsrc(Fs.rInterpolation) == 1
         end
     end
 end
@@ -210,12 +242,27 @@ end
         test_getindex(F_adjoint, nsrc)
 
         if VERSION>v"1.2"
-            a = randn(Float32, model.n...)
-            F2 = F_forward(;m=a)
-            @test isapprox(F2.model.m, a)
-            F2 = F_forward(Model(model.n, model.d, model.o, a))
-            @test isapprox(F2.model.m, a)
-            @test F2.model.n == model.n
+            a0 = a = randn(Float32, model.n...)
+            for a in [a0, a0[:]]
+                F2 = F_forward(;m=a)
+                @test isapprox(F2.model.m, a0)
+                F2 = F_forward(Model(model.n, model.d, model.o, a))
+                @test isapprox(F2.model.m, a0)
+                @test F2.model.n == model.n
+            end
+        end
+
+        # SimSources
+        if nsrc == 2
+            M = randn(Float32, 1, nsrc)
+            Fs = M*F_forward
+            @test isequal(size(Fs)[1], rec_space(rec_geometry[1]))
+            @test isequal(size(Fs)[2], rec_space(example_rec_geometry(;nrec=2, nsrc=1)))
+            @test get_nsrc(Fs.qInjection) == 1
+            Fs = M*F_adjoint
+            @test isequal(size(Fs)[1], rec_space(example_rec_geometry(;nrec=2, nsrc=1)))
+            @test isequal(size(Fs)[2], rec_space(rec_geometry[1]))
+            @test get_nsrc(Fs.rInterpolation) == 1
         end
     end
 end
@@ -259,6 +306,15 @@ end
         J_sub = J[inds]
         @test isequal(J_sub.model, J.model)
         @test isequal(size(J_sub), size(J))
+
+        # SimSources
+        if nsrc == 2
+            M = randn(Float32, 1, nsrc)
+            Fs = M*J
+            @test isequal(size(Fs)[1], rec_space(rec_geometry[1]))
+            @test isequal(size(Fs)[2], space(model.n))
+            @test Fs.q.nsrc == 1
+        end
     end
 end
 
@@ -344,6 +400,15 @@ end
         Pr_sub = P[inds]
         @test isequal(Pr_sub.geometry, rec_geometry[inds])
         @test get_nsrc(Pr_sub.geometry) == nsrc
+        
+        # SimSources
+        if nsrc == 2
+            M = randn(Float32, 1, nsrc)
+            Fs = M*P
+            @test size(Fs)[2] == time_space_src(get_nsrc(rec_geometry[1]), rec_geometry[1].nt, 3)
+            @test size(Fs)[1] == rec_space(rec_geometry[1])
+            @test get_nsrc(Fs.geometry) == 1
+        end
     end
 end
 

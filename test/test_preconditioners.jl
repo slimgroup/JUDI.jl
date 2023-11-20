@@ -16,30 +16,39 @@ dm = model0.m - model.m
 
 
 @testset "Preconditioners test with $(nlayer) layers and tti $(tti) and freesurface $(fs)" begin
-    @timeit TIMEROUTPUT "Preconditioners tests" begin
-
-        # JUDI precon make sure it runs
+    @timeit TIMEROUTPUT "Data Preconditioners tests" begin
         F = judiFilter(recGeometry, .002, .030)
-        Md = judiDataMute(srcGeometry, recGeometry)
-        Dt = judiTimeDerivative(recGeometry, 1)
-        It = judiTimeIntegration(recGeometry, 1)
-        Ds = judiDepthScaling(model)
+        Mdr = judiDataMute(srcGeometry, recGeometry; mode=:reflection)
+        Mdt = judiDataMute(srcGeometry, recGeometry; mode=:turning)
+        order = .25f0
+        Dt = judiTimeDerivative(recGeometry, order)
+        It = judiTimeIntegration(recGeometry, order)
         Mm = judiTopmute(model.n, 20, 1)
-        Mm2 = judiTopmute(model.n, 20 * ones(model.n[1]), 1)
 
-        # Time differential onlu
+        # Time differential only
         @test inv(It) == Dt
         @test inv(Dt) == It
         dinv = inv(It) * It * dobs
-        @test isapprox(dinv, dobs; rtol=ftol)
+        @test isapprox(dinv, dobs; atol=0f0, rtol=ftol)
         dinv = inv(Dt) * Dt * dobs
-        @test isapprox(dinv, dobs; rtol=ftol)
+        @test isapprox(dinv, dobs; atol=0f0, rtol=ftol)
         dinv = Dt * It * dobs
-        @test isapprox(dinv, dobs; rtol=ftol)
+        @test isapprox(dinv, dobs; atol=0f0, rtol=ftol)
 
+        # conj/transpose
+        for Pc in [F, Mdr, Mdt, Dt, It]
+            @test conj(Pc) == Pc
+            @test transpose(Pc) == Pc
+        end
 
-        # Test in place
-        for Pc in [F, Md, Dt, It]
+        # DataPrecon getindex
+        for Pc in [F, Mdr, Mdt, Dt, It]
+            @test Pc[1] * dobs[1] == (Pc * dobs)[1]
+            @test Pc[1] * dobs.data[1][:] ≈ (Pc * dobs).data[1][:] rtol=ftol
+        end
+
+        # Test in place DataPrecon
+        for Pc in [F, Mdr, Mdt, Dt, It]
             mul!(dobs_out, Pc, dobs)
             @test isapprox(dobs_out, Pc*dobs; rtol=ftol)
             mul!(dobs_out, Pc', dobs)
@@ -60,9 +69,34 @@ dm = model0.m - model.m
         mul!(dm2, adjoint(J*DFT'), dobs)
         @test isapprox(dm1, dm2; rtol=ftol)
 
-        dm1 = Mm * J' * Md * dobs
+        dm1 = Mm * J' * Mdr * dobs
         @test length(dm1) == prod(model0.n)
         @test dm1[1] == 0
+
+        # test out-of-place
+        dobs1 = deepcopy(dobs)
+        for Op in [F, F', Mdr , Mdr', Mdt, Mdt', Dt, Dt', It, It']
+            m = Op*dobs 
+            # Test that dobs wasn't modified
+            @test isapprox(dobs, dobs1, rtol=eps())
+            # Test that it did compute something 
+            @test m != dobs
+        end
+    end
+
+
+    @timeit TIMEROUTPUT "Model Preconditioners tests" begin
+
+        # JUDI precon make sure it runs
+        Ds = judiDepthScaling(model)
+        Mm = judiTopmute(model.n, 20, 1)
+        Mm2 = judiTopmute(model.n, 20 * ones(model.n[1]), 1)
+
+        # conj/transpose
+        for Pc in [Ds, Mm, Mm2]
+            @test conj(Pc) == Pc
+            @test transpose(Pc) == Pc
+        end
 
         w = judiWeights(randn(Float32, model0.n))
         w_out = judiWeights(zeros(Float32, model0.n))
@@ -79,16 +113,6 @@ dm = model0.m - model.m
         @test isapprox(norm(w_out.weights[1][:, 1:19]), 0f0; rtol=ftol)
         mul!(w_out, Mm', w)
         @test isapprox(w_out, Mm'*w; rtol=ftol)
-
-        # test the output of depth scaling and topmute operators, and test if they are out-of-place
-        dobs1 = deepcopy(dobs)
-        for Op in [F, F', Md , Md', Dt, Dt', It, It']
-            m = Op*dobs 
-            # Test that dobs wasn't modified
-            @test isapprox(dobs, dobs1, rtol=eps())
-            # Test that it did compute something 
-            @test m != dobs
-        end
     
         w1 = deepcopy(w)
 
@@ -121,6 +145,7 @@ dm = model0.m - model.m
         model3D = Model(n,d,o,m)
 
         D3 = judiDepthScaling(model3D)
+        @test isa(inv(D3), DepthScaling{Float32, 3, -.5f0})
 
         dmr = randn(Float32, prod(n))
         dm1 = deepcopy(dmr)
@@ -162,13 +187,32 @@ dm = model0.m - model.m
 
         I = judiIllumination(FM; mode="u", recompute=false)
         dloc = FM[1]*q[1]
-        @test norm(I.illums["u"]) != ones(Float32, model.n)
+        @test norm(I.illums["u"]) != norm(ones(Float32, model.n))
         bck = copy(I.illums["u"].data)
         dloc = FM[2]*q[2]
         # No recompute should not have changed
         @test I.illums["u"].data == bck
-
+        # New mode
+        Iv = I("v")
+        @test "v" ∈ keys(Iv.illums)
+        @test "u" ∉ keys(Iv.illums)
+        @test norm(Iv.illums["v"]) == norm(ones(Float32, model.n))
         # Test Product
         @test inv(I)*I*model0.m ≈ model0.m.data[:] rtol=ftol atol=0
+
+        # Test in place ModelPrecon
+        for Pc in [Ds, Mm, Mm2, I]
+            mul!(dm, Pc, model.m)
+            @test isapprox(dm, Pc*model.m; rtol=ftol)
+            mul!(dm, Pc', model.m)
+            @test isapprox(dm, Pc'*model.m; rtol=ftol)
+
+            # Check JUDI-JOLI compat
+            mul!(dm, Pc*J', dobs)
+            dml = Pc*J'*dobs
+            @test isapprox(dm, dml; rtol=ftol)
+            mul!(dm, Pc*J', vec(dobs))
+            @test isapprox(dm, dml; rtol=ftol)
+        end
     end
 end

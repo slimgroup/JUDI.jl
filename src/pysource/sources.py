@@ -95,10 +95,11 @@ class PointSource(SparseTimeFunction):
 
     @classmethod
     def __args_setup__(cls, *args, **kwargs):
-        try:
-            kwargs['nt'] = kwargs['ntime']
-        except KeyError:
-            kwargs['nt'] = kwargs.get('time').shape[0]
+        if 'nt' not in kwargs:
+            try:
+                kwargs['nt'] = kwargs['ntime']
+            except KeyError:
+                kwargs['nt'] = kwargs.get('time').shape[0]
 
         # Either `npoint` or `coordinates` must be provided
         npoint = kwargs.get('npoint')

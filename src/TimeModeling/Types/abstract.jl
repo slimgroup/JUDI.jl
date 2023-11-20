@@ -54,6 +54,7 @@ similar(x::judiMultiSourceVector, nsrc::Integer) = nsrc < x.nsrc ? zero(eltype(E
 similar(x::judiMultiSourceVector, ::Type{ET}) where ET = zero(eltype(ET), x)
 similar(x::judiMultiSourceVector, ::Type{ET}, dims::AbstractUnitRange) where ET = similar(x, ET)
 similar(x::judiMultiSourceVector, ::Type{ET}, nsrc::Integer) where ET = nsrc <= x.nsrc ? zero(eltype(ET), x; nsrc=nsrc) : similar(x, ET)
+similar(x::judiMultiSourceVector, ::Type{ET}, dims::AbstractSize) where ET = similar(x, ET)
 
 jo_convert(::Type{Array{T, N}}, v::judiMultiSourceVector, B::Bool) where {T, N} = jo_convert(T, v, B)
 
@@ -76,11 +77,12 @@ time_sampling(ms::judiMultiSourceVector) = [1 for i=1:ms.nsrc]
 reshape(ms::judiMultiSourceVector, dims::Dims{N}) where N = reshape(vec(ms), dims)
 ############################################################################################################################
 # Linear algebra `*`
+(msv::judiMultiSourceVector{mT})(x::DenseArray{T}) where {mT, T<:Number} = x
 (msv::judiMultiSourceVector{mT})(x::AbstractVector{T}) where {mT, T<:Number} = x
 (msv::judiMultiSourceVector{T})(x::judiMultiSourceVector{T}) where {T<:Number} = x
 (msv::judiMultiSourceVector{mT})(x::AbstractVector{T}) where {mT, T<:Array} = begin y = deepcopy(msv); y.data .= x; return y end
 
-function *(J::Union{Matrix{vDT}, joAbstractLinearOperator}, x::judiMultiSourceVector{vDT}) where vDT
+function *(J::joAbstractLinearOperator, x::judiMultiSourceVector{vDT}) where vDT
     outvec = try J.fop(x) catch; J*vec(x) end
     outdata = try reshape(outvec, size(x.data[1]), x.nsrc) catch; outvec end
     return x(outdata)
@@ -89,6 +91,16 @@ end
 function *(J::joCoreBlock, x::judiMultiSourceVector{vDT}) where vDT
     outvec = vcat([J.fop[i]*x for i=1:J.l]...)
     outdata = try reshape(outvec, size(x.data[1]), J.l*x.nsrc); catch; outvec end
+    return x(outdata)
+end
+
+function *(M::Matrix{vDT}, x::judiMultiSourceVector{vDT}) where vDT
+    if size(M, 2) == x.nsrc
+        return simsource(M, x)
+    end
+    # Not a per source matrix, reverting to standard matvec
+    outvec = M*vec(x)
+    outdata = try reshape(outvec, size(x.data[1]), x.nsrc) catch; outvec end
     return x(outdata)
 end
 
@@ -140,13 +152,23 @@ end
 # vcat
 vcat(a::Array{<:judiMultiSourceVector, 1}) = vcat(a...)
 
-function vcat(ai::Vararg{<:judiMultiSourceVector{T}, N}) where {T, N}
+function vcat(ai::Vararg{T, N}) where {T<:judiMultiSourceVector, N}
     N == 1 && (return ai[1])
     N > 2 && (return vcat(ai[1], vcat(ai[2:end]...)))
     a, b = ai
     res = deepcopy(a)
     push!(res, b)
     return res
+end
+
+# Combine as simsource
+function simsource(M::Matrix{T}, x::judiMultiSourceVector{T}) where T
+    nout = size(M, 1)
+    simmsv = zero(T, x; nsrc=nout)
+    for so = 1:nout
+        simmsv.data[so] = mapreduce((x, y)-> x*y, +, M[so, :], x.data)
+    end
+    return simmsv
 end
 
 ############################################################################################################################

@@ -1,12 +1,30 @@
 import numpy as np
 import warnings
+from sympy import finite_diff_weights as fd_w
 from devito import (Grid, Function, SubDomain, SubDimension, Eq, Inc,
-                    Operator, mmin, initialize_function, switchconfig,
+                    Operator, mmin, mmax, initialize_function, switchconfig,
                     Abs, sqrt, sin)
 from devito.data.allocators import ExternalAllocator
 from devito.tools import as_tuple, memoized_func
 
 __all__ = ['Model']
+
+
+def getmin(f):
+    try:
+        return mmin(f)
+    except ValueError:
+        return np.min(f)
+
+
+def getmax(f):
+    try:
+        return mmax(f)
+    except ValueError:
+        return np.max(f)
+
+
+_thomsen = [('epsilon', 1), ('delta', 1), ('theta', 0), ('phi', 0)]
 
 
 class PhysicalDomain(SubDomain):
@@ -62,7 +80,10 @@ def damp_op(ndim, padsizes, abc_type, fs):
     damp = Function(name="damp", grid=Grid(tuple([11]*ndim)), space_order=0)
     eqs = [Eq(damp, 1.0 if abc_type == "mask" else 0.0)]
     for (nbl, nbr), d in zip(padsizes, damp.dimensions):
+        # 3 Point buffer to avoid weird interaction with abc
+        nbr = nbr - 3
         if not fs or d is not damp.dimensions[-1]:
+            nbl = nbl - 3
             dampcoeff = 1.5 * np.log(1.0 / 0.001) / (nbl)
             # left
             dim_l = SubDimension.left(name='abc_%s_l' % d.name, parent=d,
@@ -139,14 +160,14 @@ class Model(object):
     dt: Float
         User provided computational time-step
     """
-    def __init__(self, origin, spacing, shape, m, space_order=2, nbl=40,
-                 dtype=np.float32, epsilon=None, delta=None, theta=None, phi=None,
-                 rho=None, b=None, qp=None, dm=None, fs=False, **kwargs):
+    def __init__(self, origin, spacing, shape, space_order=8, nbl=40, dtype=np.float32,
+                 m=None, epsilon=None, delta=None, theta=None, phi=None, rho=None,
+                 b=None, qp=None, lam=None, mu=None, dm=None, fs=False, **kwargs):
         # Setup devito grid
         self.shape = tuple(shape)
         self.nbl = int(nbl)
         self.origin = tuple([dtype(o) for o in origin])
-        abc_type = "mask" if qp is not None else "damp"
+        abc_type = "mask" if (qp is not None or mu is not None) else "damp"
         self.fs = fs
         # Origin of the computational domain with boundary to inject/interpolate
         # at the correct index
@@ -168,7 +189,7 @@ class Model(object):
         # Absorbing boundary layer
         if self.nbl != 0:
             # Create dampening field as symbol `damp`
-            self.damp = Function(name="damp", grid=self.grid)
+            self.damp = Function(name="damp", grid=self.grid, space_order=0)
             initialize_damp(self.damp, self.padsizes, abc_type=abc_type, fs=fs)
             self._physical_parameters = ['damp']
         else:
@@ -179,19 +200,16 @@ class Model(object):
         self.scale = 1
         self._space_order = space_order
         # Create square slowness of the wave as symbol `m`
-        self._m = self._gen_phys_param(m, 'm', space_order)
+        if m is not None:
+            self._m = self._gen_phys_param(m, 'm', space_order)
         # density
         self._init_density(rho, b, space_order)
         self._dm = self._gen_phys_param(dm, 'dm', space_order)
 
         # Model type
         self._is_viscoacoustic = qp is not None
+        self._is_elastic = mu is not None
         self._is_tti = any(p is not None for p in [epsilon, delta, theta, phi])
-        # Cannot be tti and visco at the moment
-        if self._is_viscoacoustic and self._is_tti:
-            raise NotImplementedError("Viscosity not supported for TTI")
-        if self._is_viscoacoustic and self.fs:
-            raise NotImplementedError("Freesurface not supported for viscoacoustic")
 
         # Additional parameter fields for Viscoacoustic operators
         if self._is_viscoacoustic:
@@ -205,7 +223,13 @@ class Model(object):
             self.scale = np.sqrt(np.max(epsilon))
             self.delta = self._gen_phys_param(delta, 'delta', space_order)
             self.theta = self._gen_phys_param(theta, 'theta', space_order)
-            self.phi = self._gen_phys_param(phi, 'phi', space_order)
+            if self.grid.dim == 3:
+                self.phi = self._gen_phys_param(phi, 'phi', space_order)
+
+        # Additional parameter fields for elastic
+        if self._is_elastic:
+            self.lam = self._gen_phys_param(lam, 'lam', space_order, is_param=True)
+            self.mu = self._gen_phys_param(mu, 'mu', space_order, is_param=True)
         # User provided dt
         self._dt = kwargs.get('dt')
 
@@ -215,8 +239,13 @@ class Model(object):
         either density or inverse density is setup.
         """
         if rho is not None:
-            self.rho = self._gen_phys_param(rho, 'rho', so)
-            self.irho = 1 / self.rho
+            rm, rM = np.amin(rho), np.amax(rho)
+            if rm/rM > .1:
+                self.irho = self._gen_phys_param(np.reciprocal(rho), 'irho', so)
+                self.rho = 1 / self.irho
+            else:
+                self.rho = self._gen_phys_param(rho, 'rho', so)
+                self.irho = 1 / self.rho
         elif b is not None:
             self.irho = self._gen_phys_param(b, 'irho', so)
         else:
@@ -232,24 +261,31 @@ class Model(object):
         """
         Return all set physical parameters and update to input values if provided
         """
-        known = [getattr(self, i) for i in self.physical_parameters]
-        params = {i.name: kwargs.get(i.name, i) or i for i in known}
+        params = {i: kwargs.get(i, getattr(self, i)) for i in self.physical_parameters
+                  if isinstance(getattr(self, i), Function)}
+
         if not kwargs.get('born', False):
             params.pop('dm', None)
         return params
 
     @property
     def zero_thomsen(self):
-        return {self.epsilon: 1, self.delta: 1, self.theta: 0, self.phi: 0}
+        out = {}
+        for (t, v) in _thomsen:
+            try:
+                out.update({getattr(self, t): v})
+            except AttributeError:
+                pass
+        return out
 
     @switchconfig(log_level='ERROR')
     def _gen_phys_param(self, field, name, space_order, is_param=False,
-                        default_value=0, func=lambda x: x):
+                        default_value=0):
         """
         Create symbolic object an initiliaze its data
         """
         if field is None:
-            return func(default_value)
+            return default_value
         if isinstance(field, np.ndarray) and (name == 'm' or
                                               np.min(field) != np.max(field)):
             if field.shape == self.shape:
@@ -262,7 +298,7 @@ class Model(object):
                                     allocator=ExternalAllocator(field),
                                     initializer=lambda x: None, parameter=is_param)
         else:
-            return func(np.min(field))
+            return np.amin(field)
         self._physical_parameters.append(name)
         return function
 
@@ -344,14 +380,47 @@ class Model(object):
         return self._is_viscoacoustic
 
     @property
+    def is_elastic(self):
+        """
+        Whether the model is TTI or isotopic
+        """
+        return self._is_elastic
+
+    @property
     def _max_vp(self):
         """
         Maximum velocity
         """
-        try:
-            return np.sqrt(1./mmin(self.m))
-        except ValueError:
-            return np.sqrt(1./np.min(self.m))
+        if self.is_elastic:
+            return np.sqrt(getmin(self.irho) * (getmax(self.lam) + 2 * getmax(self.mu)))
+        else:
+            return np.sqrt(1./getmin(self.m))
+
+    @property
+    def _cfl_coeff(self):
+        """
+        Courant number from the physics and spatial discretization order.
+        The CFL coefficients are described in:
+        - https://doi.org/10.1137/0916052 for the elastic case
+        - https://library.seg.org/doi/pdf/10.1190/1.1444605 for the acoustic case
+        """
+        # Elasic coefficient (see e.g )
+        if self.is_elastic:
+            so = max(self._space_order // 2, 2)
+            coeffs = fd_w(1, range(-so, so), .5)
+            c_fd = sum(np.abs(coeffs[-1][-1])) / 2
+            return .9 * np.sqrt(self.dim) / self.dim / c_fd
+        a1 = 4  # 2nd order in time
+        so = max(self._space_order // 2, 4)
+        coeffs = fd_w(2, range(-so, so), 0)[-1][-1]
+        return .9 * np.sqrt(a1/float(self.grid.dim * sum(np.abs(coeffs))))
+
+    @property
+    def _thomsen_scale(self):
+        # Update scale for tti
+        if self.is_tti:
+            return np.sqrt(1 + 2 * getmax(self.epsilon))
+        return 1
 
     @property
     def critical_dt(self):
@@ -362,15 +431,15 @@ class Model(object):
         #
         # The CFL condtion is then given by
         # dt <= coeff * h / (max(velocity))
-        coeff = .9*0.38 if len(self.shape) == 3 else .9*0.42
-        dt = self.dtype(coeff * np.min(self.spacing) / (self.scale*self._max_vp))
+        dt = self._cfl_coeff * np.min(self.spacing) / (self._thomsen_scale*self._max_vp)
+        dt = self.dtype("%.3e" % dt)
         if self.dt:
             if self.dt > dt:
                 warnings.warn("Provided dt=%s is bigger than maximum stable dt %s "
                               % (self.dt, dt))
             else:
                 return self.dtype("%.3e" % self.dt)
-        return self.dtype("%.2e" % dt)
+        return dt
 
     @property
     def dm(self):
@@ -462,19 +531,21 @@ class EmptyModel(object):
     This Model should not be used for propagation.
     """
 
-    def __init__(self, tti, visco, spacing, fs, space_order, p_params):
+    def __init__(self, tti, visco, elastic, spacing, fs, space_order, p_params):
         self.is_tti = tti
         self.is_viscoacoustic = visco
+        self.is_elastic = elastic
         self.spacing = spacing
         self.fs = fs
+        N = 2 * space_order + 1
         if fs:
-            fsdomain = FSDomain(space_order + 1)
-            physdomain = PhysicalDomain(space_order + 1, fs=fs)
+            fsdomain = FSDomain(N)
+            physdomain = PhysicalDomain(N, fs=fs)
             subdomains = (physdomain, fsdomain)
         else:
             subdomains = ()
-        self.grid = Grid(tuple([space_order+1]*len(spacing)),
-                         extent=[s*space_order for s in spacing],
+        self.grid = Grid(tuple([N]*len(spacing)),
+                         extent=[s*(N-1) for s in spacing],
                          subdomains=subdomains)
         self.dimensions = self.grid.dimensions
 
@@ -505,3 +576,13 @@ class EmptyModel(object):
         Spatial dimension of the problem and model domain.
         """
         return self.grid.dim
+
+    @property
+    def zero_thomsen(self):
+        out = {}
+        for (t, v) in _thomsen:
+            try:
+                out.update({getattr(self, t): v})
+            except AttributeError:
+                pass
+        return out

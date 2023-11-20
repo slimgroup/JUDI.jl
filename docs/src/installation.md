@@ -47,11 +47,11 @@ export DEVITO_PLATFORM=nvidiaX
 
 ## Running with Docker
 
-If you do not want to install JUDI, you can run [JUDI] as a [docker image](https://hub.docker.com/repository/docker/mloubout/judi). The first possibility is to run the docker container as a Jupyter notebook. [JUDI] provides two docker images for the latest [JUDI] release for Julia versions `1.6` (LTS) and `1.7` (latest stable version). The images names are `mloubout/judi:JVER-latest` where `JVER` is the Julia version. This docker images contain pre-installed compilers for CPUs (gcc-10) and Nvidia GPUs (nvc) via the nvidia HPC sdk. The environment is automatically set for [Devito] based on the hardware available. 
+If you do not want to install JUDI, you can run [JUDI](https://github.com/slimgroup/JUDI.jl) as a [docker image](https://hub.docker.com/repository/docker/mloubout/judi). The first possibility is to run the docker container as a Jupyter notebook. [JUDI](https://github.com/slimgroup/JUDI.jl) provides two docker images for the latest [JUDI](https://github.com/slimgroup/JUDI.jl) release for Julia versions `1.6` (LTS) and `1.7` (latest stable version). The images names are `mloubout/judi:JVER-latest` where `JVER` is the Julia version. This docker images contain pre-installed compilers for CPUs (gcc-10) and Nvidia GPUs (nvc) via the nvidia HPC sdk. The environment is automatically set for [Devito] based on the hardware available. 
 
 **Note**: If you wish to use your gpu, you will need to install [nvidia-docker](https://docs.nvidia.com/ai-enterprise/deployment-guide/dg-docker.html) and run `docker run --gpus all` in order to make the GPUs available at runtime from within the image.
 
-To run [JUDI] via docker execute the following command in your terminal:
+To run [JUDI](https://github.com/slimgroup/JUDI.jl) via docker execute the following command in your terminal:
 
 ```bash
 docker run -p 8888:8888 mloubout/judi:1.7-latest
@@ -65,9 +65,9 @@ docker run -it mloubout/judi:1.7-latest /bin/bash
 
 Inside the container, all examples are located in the directory `/app/judi/examples/scripts`.
 
-**Previous versions**: As of version `v2.6.7` of JUDI, we also ship version-tagged images as `mloubout/judi:JVER-ver` where `ver` is the version of [JUDI] wanted, for example the current [JUDI] version with Julia 1.7 is `mloubout/judi:1.7-v2.6.7`
+**Previous versions**: As of version `v2.6.7` of JUDI, we also ship version-tagged images as `mloubout/judi:JVER-ver` where `ver` is the version of [JUDI](https://github.com/slimgroup/JUDI.jl) wanted, for example the current [JUDI](https://github.com/slimgroup/JUDI.jl) version with Julia 1.7 is `mloubout/judi:1.7-v2.6.7`
 
-**Development version**: Additionally, we provide two images corresponding to the latest development version of [JUDI] (latest state of the master branch). These images are called `mloubout/judi:JVER-dev` and can be used in a similar way.
+**Development version**: Additionally, we provide two images corresponding to the latest development version of [JUDI](https://github.com/slimgroup/JUDI.jl) (latest state of the master branch). These images are called `mloubout/judi:JVER-dev` and can be used in a similar way.
 
 ## Testing
 

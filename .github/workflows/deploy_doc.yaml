@@ -1,5 +1,9 @@
 name: Publish docs via GitHub Pages
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     branches:
@@ -15,12 +19,7 @@ jobs:
 
     steps:
       - name: Checkout master
-        uses: actions/checkout@v2
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v4
-        with:
-          python-version: 3.9
+        uses: actions/checkout@v3
 
       - uses: julia-actions/setup-julia@latest
       
@@ -29,13 +28,20 @@ jobs:
         with:
           python-version: 3.9
 
+      - name: Set julia python
+        run: |
+          PYTHON=$(which python3) julia -e 'using Pkg;Pkg.add("PyCall");Pkg.build("PyCall")'
+  
+      - name: Build JUDI
+        uses: julia-actions/julia-buildpkg@latest
+
       - name: Install dependencies
         run: julia --project=docs/ -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
 
       - name: Build python doc
         run: |
           pip install --upgrade pip
-          pip install sphinx-markdown-builder sphinx-markdown-parser devito matplotlib
+          pip install sphinx-markdown-builder==0.5.5 sphinx-markdown-parser devito matplotlib
           pip install "sphinx==3.1.0" "MarkupSafe==2.0.1" "jinja2<3.1"
           make clean
           make markdown

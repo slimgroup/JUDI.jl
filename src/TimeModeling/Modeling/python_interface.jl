@@ -16,9 +16,8 @@ end
 
 function wrapcall_data(func, args...;kw...)
     rtype = _outtype(get(kw, :illum, nothing), 1, PyArray)
-    out = pylock() do
-        pycall(func, rtype, args...;kw...)
-    end
+    out = rlock_pycall(func, rtype, args...;kw...)
+
     tup = isa(out, Tuple)
     # The returned array `out` is a Python Row-Major array with dimension (time, rec).
     # Unlike standard array we want to keep this ordering in julia (time first) so we need to
@@ -32,25 +31,19 @@ end
 
 function wrapcall_weights(func, args...;kw...)
     rtype = _outtype(get(kw, :illum, nothing), 1, PyArray)
-    out = pylock() do 
-        pycall(func, rtype, args...;kw...)
-    end
+    out = rlock_pycall(func, rtype, args...;kw...)
     return out
 end
 
 function wrapcall_wf(func, args...;kw...)
     rtype = _outtype(get(kw, :illum, nothing), 1, Array{Float32})
-    out = pylock() do
-        pycall(func, rtype, args...;kw...)
-    end
+    out = rlock_pycall(func, rtype, args...;kw...)
     return out
 end
 
 function wrapcall_grad(func, args...;kw...)
     rtype = _outtype(get(kw, :illum, nothing), 2, PyArray)
-    out = pylock() do 
-        pycall(func, rtype, args...;kw...)
-    end
+    out = rlock_pycall(func, rtype, args...;kw...)
     return out
 end
 
@@ -62,7 +55,7 @@ function devito_interface(modelPy::PyObject, srcGeometry::Geometry, srcData::Arr
     judilog("Pr*$(_op_str(fw))*Ps'*q")
     # Interpolate input data to computational grid
     dtComp = convert(Float32, modelPy."critical_dt")
-    qIn = time_resample(srcData, srcGeometry, dtComp)[1]
+    qIn = time_resample(srcData, srcGeometry, dtComp)
 
     # Set up coordinates with devito dimensions
     src_coords = setup_grid(srcGeometry, modelPy.shape)
@@ -77,7 +70,7 @@ function devito_interface(modelPy::PyObject, srcGeometry::Geometry, srcData::Arr
     judilog("$(_op_str(fw))*Ps'*q")
     # Interpolate input data to computational grid
     dtComp = convert(Float32, modelPy."critical_dt")
-    qIn = time_resample(srcData,srcGeometry,dtComp)[1]
+    qIn = time_resample(srcData, srcGeometry, dtComp)
 
     # Set up coordinates with devito dimensions
     src_coords = setup_grid(srcGeometry, modelPy.shape)
@@ -115,7 +108,7 @@ function devito_interface(modelPy::PyObject, srcGeometry::Geometry, srcData::Arr
     judilog("J($(_op_str(fw)), q)*dm")
     # Interpolate input data to computational grid
     dtComp = convert(Float32, modelPy."critical_dt")
-    qIn = time_resample(srcData,srcGeometry,dtComp)[1]
+    qIn = time_resample(srcData, srcGeometry, dtComp)
 
     # Set up coordinates with devito dimensions
     #origin = get_origin(modelPy)
@@ -133,8 +126,8 @@ function devito_interface(modelPy::PyObject, srcGeometry::Geometry, srcData::Arr
     judilog("J($(_op_str(fw)), q)'*d_lin")
     # Interpolate input data to computational grid
     dtComp = convert(Float32, modelPy."critical_dt")
-    qIn = time_resample(srcData,srcGeometry,dtComp)[1]
-    dIn = time_resample(recData, recGeometry, dtComp)[1]
+    qIn = time_resample(srcData, srcGeometry, dtComp)
+    dIn = time_resample(recData, recGeometry, dtComp)
 
     # Set up coordinates with devito dimensions
     src_coords = setup_grid(srcGeometry, modelPy.shape)
@@ -156,7 +149,7 @@ function devito_interface(modelPy::PyObject, weights::Array, srcData::Array, rec
     weights = pad_array(reshape(weights, modelPy.shape), modelPy.padsizes; mode=:zeros)
     # Interpolate input data to computational grid
     dtComp = convert(Float32, modelPy."critical_dt")
-    qIn = time_resample(srcData, recGeometry, dtComp)[1]
+    qIn = time_resample(srcData, recGeometry, dtComp)
 
     # Set up coordinates with devito dimensions
     rec_coords = setup_grid(recGeometry, modelPy.shape)
@@ -171,8 +164,8 @@ function devito_interface(modelPy::PyObject, recGeometry::Geometry, recData::Arr
     judilog("Pw*$(_op_str(fw))*Pr'*d_obs")
     # Interpolate input data to computational grid
     dtComp = convert(Float32, modelPy."critical_dt")
-    dIn = time_resample(recData, recGeometry, dtComp)[1]
-    qIn = time_resample(srcData, recGeometry, dtComp)[1]
+    dIn = time_resample(recData, recGeometry, dtComp)
+    qIn = time_resample(srcData, recGeometry, dtComp)
 
     # Set up coordinates with devito dimensions
     rec_coords = setup_grid(recGeometry, modelPy.shape)
@@ -189,7 +182,7 @@ function devito_interface(modelPy::PyObject, weights::Array, srcData::Array, rec
     weights = pad_array(reshape(weights, modelPy.shape), modelPy.padsizes; mode=:zeros)
     # Interpolate input data to computational grid
     dtComp = convert(Float32, modelPy."critical_dt")
-    qIn = time_resample(srcData, recGeometry, dtComp)[1]
+    qIn = time_resample(srcData, recGeometry, dtComp)
 
     # Set up coordinates with devito dimensions
     rec_coords = setup_grid(recGeometry, modelPy.shape)
@@ -205,8 +198,8 @@ function devito_interface(modelPy::PyObject, weights::Array, srcData::Array, rec
     weights = pad_array(reshape(weights, modelPy.shape), modelPy.padsizes; mode=:zeros)
     # Interpolate input data to computational grid
     dtComp = convert(Float32, modelPy."critical_dt")
-    qIn = time_resample(srcData, recGeometry, dtComp)[1]
-    dIn = time_resample(recData, recGeometry, dtComp)[1]
+    qIn = time_resample(srcData, recGeometry, dtComp)
+    dIn = time_resample(recData, recGeometry, dtComp)
 
     # Set up coordinates with devito dimensions
     rec_coords = setup_grid(recGeometry, modelPy.shape)

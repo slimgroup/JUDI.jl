@@ -4,22 +4,39 @@
 
 ftol = 1f-6
 
-function test_model(ndim; tti=false)
+function test_model(ndim; tti=false, elas=false, visco=false)
     n = Tuple(121 for i=1:ndim)
     # non zero origin to check 'limit_model_to_receiver_area'
     o = (10, 0, 0)[1:ndim]
     d = Tuple(10. for i=1:ndim)
     m = .5f0 .+ rand(Float32, n...)
-    if !tti
-        model = Model(n, d, o, m; nb=10)
-        @test [keys(model.params)...] == [:m]
-    else
+    if tti
         epsilon = .1f0 * m
-        delta = .1f0 * m
-        theta = .1f0 * m
-        phi = .1f0 * m
+        delta = .05f0 * m
+        theta = .23f0 * m
+        phi = .12f0 * m
         model = Model(n, d, o, m; nb=10, epsilon=epsilon, delta=delta, theta=theta, phi=phi)
-        @test all(k in keys(model.params) for k in [:m, :epsilon, :delta, :theta, :phi])
+        @test all(k in JUDI._mparams(model) for k in [:m, :epsilon, :delta, :theta, :phi])
+        @test isa(model, JUDI.TTIModel)
+
+        delta2 = 1.1f0 * model.epsilon
+        @test sum(delta2 .>= epsilon) == length(delta2)
+        JUDI._clip_delta!(delta2, model.epsilon)
+        @test sum(delta2 .>= epsilon) == 0
+    elseif elas
+        vs = .1f0 * m
+        model = Model(n, d, o, m; nb=10, vs=vs,)
+        @test all(k in JUDI._mparams(model) for k in [:lam, :mu, :b])
+        @test isa(model, JUDI.IsoElModel)
+    elseif visco
+        qp = .1f0 * m
+        model = Model(n, d, o, m; nb=10, qp=qp)
+        @test all(k in JUDI._mparams(model) for k in [:m, :qp, :rho])
+        @test isa(model, JUDI.ViscIsoModel)
+    else
+        model = Model(n, d, o, m; nb=10)
+        @test [JUDI._mparams(model)...] == [:m, :rho]
+        @test isa(model, JUDI.IsoModel)
     end
     return model
 end
@@ -32,13 +49,13 @@ function test_density(ndim)
     m = .5f0 .+ rand(Float32, n...)
     rho = rand(Float32, n) .+ 1f0
     model = Model(n, d, o, m, rho; nb=0)
-    @test :b in keys(model.params)
+    @test :rho in JUDI._mparams(model)
     modelpy = devito_model(model, Options())
-    @test isapprox(modelpy.irho.data, model.b)
+    @test isapprox(modelpy.irho.data, 1 ./ model.rho)
 
     rho[61] = 1000
     model = Model(n, d, o, m, rho; nb=0)
-    @test :rho in keys(model.params)
+    @test :rho in JUDI._mparams(model)
     modelpy = devito_model(model, Options())
     @test isapprox(modelpy.rho.data, model.rho)
 end
@@ -62,11 +79,10 @@ function test_limit_m(ndim, tti)
     model = test_model(ndim; tti=tti)
 
     @test get_dt(model) == calculate_dt(model)
-    @test model[:m] == model.m
     mloc = model.m
     model.m .*= 0f0
     @test norm(model.m) == 0
-    model.m = mloc
+    model.m .= mloc
     @test model.m == mloc
 
     srcGeometry = example_src_geometry()
@@ -135,8 +151,35 @@ function setup_3d()
     end
 end
 
+function test_ftp()
+    ftp_data("ftp://slim.gatech.edu/data/SoftwareRelease/WaveformInversion.jl/2DFWI/overthrust_model_2D.h5")
+    @test isfile("$(JUDI.JUDI_DATA)/overthrust_model_2D.h5")
+    rm("$(JUDI.JUDI_DATA)/overthrust_model_2D.h5")
+    ftp_data("ftp://slim.gatech.edu/data/SoftwareRelease/WaveformInversion.jl/2DFWI", "overthrust_model_2D.h5")
+    @test isfile("$(JUDI.JUDI_DATA)/overthrust_model_2D.h5")
+    rm("$(JUDI.JUDI_DATA)/overthrust_model_2D.h5")
+end
+
+function test_serial()
+    @test !get_serial()
+
+    set_serial()
+    @test get_serial()
+
+    set_parallel()
+    @test !get_serial()
+
+    set_serial(true)
+    @test get_serial()
+
+    set_serial(false)
+    @test !get_serial()
+end
+
 @testset "Test basic utilities" begin
     @timeit TIMEROUTPUT "Basic setup utilities" begin
+        test_ftp()
+        test_serial()
         setup_3d()
         for ndim=[2, 3]
             test_padding(ndim)
@@ -154,27 +197,28 @@ end
 
         # Test model
         for ndim=[2, 3]
-            for tti=[true, false]
-                model =  test_model(ndim; tti=tti)
+            for (tti, elas, visco) in [(false, false, false), (true, false, false), (false, true, false), (false, false, true)]
+                model = test_model(ndim; tti=tti, elas=elas, visco=visco)
 
                 # Default dt
                 modelPy = devito_model(model, Options())
-                @test get_dt(model) == calculate_dt(model)
                 @test isapprox(modelPy.critical_dt, calculate_dt(model))
+                @test get_dt(model) == calculate_dt(model)
                 @test isapprox(calculate_dt(model; dt=.5f0), .5f0)
 
                 # Input dt
                 modelPy = devito_model(model, Options(dt_comp=.5f0))
                 @test modelPy.critical_dt == .5f0
 
-                # Verify nt
+                # Verify nt
                 srcGeometry = example_src_geometry()
                 recGeometry = example_rec_geometry(cut=true)
                 nt1 = get_computational_nt(srcGeometry, recGeometry, model)
                 nt2 = get_computational_nt(srcGeometry, model)
                 nt3 = get_computational_nt(srcGeometry, recGeometry, model; dt=1f0)
                 nt4 = get_computational_nt(srcGeometry, model; dt=1f0)
-                @test all(nt1 .== (trunc(Int64, 1000f0 / calculate_dt(model)) + 1))
+                dtComp = calculate_dt(model)
+                @test all(nt1 .== length(0:dtComp:(dtComp*ceil(1000f0/dtComp))))
                 @test all(nt1 .== nt2)
                 @test all(nt3 .== 1001)
                 @test all(nt4 .== 1001)

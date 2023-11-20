@@ -39,9 +39,6 @@ function setup_model(tti=false, viscoacoustic=false, nlayer=2; n=(301, 151), d=(
     m = (1f0 ./ v).^2
     m0 = (1f0 ./ v0).^2
 
-    # Check that can't build a model with wrong size
-    @test_throws ArgumentError Model(2 .* n, d, o, m)
-
     # Setup model structure
     if tti
         println("TTI Model")
@@ -58,8 +55,8 @@ function setup_model(tti=false, viscoacoustic=false, nlayer=2; n=(301, 151), d=(
     else
         model = Model(n, d, o, m, rho0)
         model0 = Model(n, d, o, m0, rho0)
-        @test all(Model(n, d, o, m0; rho=rho0).b[:] .== 1f0 ./ rho0[:])
-        @test Model(n, d, o, m0; rho=rho0).b == model0.b
+        @test all(Model(n, d, o, m0; rho=rho0).rho[:] .== rho0[:])
+        @test Model(n, d, o, m0; rho=rho0).rho == model0.rho
     end
     dm = model.m - model0.m
     return model, model0, dm
@@ -70,24 +67,25 @@ Sets up a simple 2D acquisition for the wave equation operators tests
 """
 function setup_geom(model; nsrc=1, tn=1500f0, dt=nothing)
     ## Set up receiver geometry
-    nxrec = model.n[1] - 2
-    xrec = collect(range(model.d[1], stop=(model.n[1]-2)*model.d[1], length=nxrec))
+    nxrec = size(model, 1) - 2
+    xrec = collect(range(spacing(model, 1), stop=(size(model, 1)-2)*spacing(model, 1), length=nxrec))
     yrec = collect(range(0f0, stop=0f0, length=nxrec))
     zrec = collect(range(50f0, stop=50f0, length=nxrec))
 
     # receiver sampling and recording time
     T = tn   # receiver recording time [ms]
     dt = isnothing(dt) ? .75f0 : dt    # receiver sampling interval [ms]
+    T = dt * div(T, dt)
 
     # Set up receiver structure
     recGeometry = Geometry(xrec, yrec, zrec; dt=dt, t=T, nsrc=nsrc)
 
     ## Set up source geometry (cell array with source locations for each shot)
-    ex =  (model.n[1] - 1) * model.d[1]
+    ex =  (size(model, 1) - 1) * spacing(model, 1)
     nsrc > 1 ? xsrc = range(.25f0 * ex, stop=.75f0 * ex, length=nsrc) : xsrc = .5f0 * ex
     xsrc = convertToCell(xsrc)
     ysrc = convertToCell(range(0f0, stop=0f0, length=nsrc))
-    zsrc = convertToCell(range(2*model.d[2], stop=2*model.d[2], length=nsrc))
+    zsrc = convertToCell(range(2*spacing(model, 2), stop=2*spacing(model, 2), length=nsrc))
 
     # Set up source structure
     srcGeometry = Geometry(xsrc, ysrc, zsrc; dt=dt, t=T)

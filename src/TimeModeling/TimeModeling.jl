@@ -4,6 +4,10 @@
 # Updated, December 2020, Mathias Louboutin, mlouboutin3@gatech.edu
 
 #############################################################################
+# Basics
+include("LinearOperators/basics.jl")
+
+#############################################################################
 # Containers
 include("Types/ModelStructure.jl")    # model container
 include("Types/GeometryStructure.jl") # source or receiver setup, recording time and sampling
@@ -29,9 +33,9 @@ include("Modeling/losses.jl")
 
 #############################################################################
 # Linear operators
-include("LinearOperators/basics.jl")
 include("LinearOperators/lazy.jl")
 include("LinearOperators/operators.jl")
+include("LinearOperators/callable.jl")
 
 #############################################################################
 # PDE solvers
@@ -48,56 +52,3 @@ include("Preconditioners/base.jl")
 include("Preconditioners/utils.jl")
 include("Preconditioners/DataPreconditioners.jl")
 include("Preconditioners/ModelPreconditioners.jl")
-
-#############################################################################
-if VERSION>v"1.2"
-  function (F::judiPropagator)(m::Model)
-    Fl = deepcopy(F)
-    Fl.model.n = m.n
-    Fl.model.d = m.d
-    Fl.model.o = m.o
-    for (k, v) in m.params
-      Fl.model.params[k] = v
-    end
-    _track_illum(m, Fl.model)
-    Fl
-  end
-
-  function (F::judiPropagator)(;kwargs...)
-    Fl = deepcopy(F)
-    for (k, v) in kwargs
-      k in keys(Fl.model.params) && Fl.model.params[k] .= v
-    end
-    Fl
-  end
-
-  function (F::judiPropagator)(m, q)
-    Fm = F(;m=m)
-    _track_illum(F.model, Fm.model)
-    return Fm*as_src(q)
-  end
-
-  function (F::judiPropagator)(m::AbstractArray)
-    @info "Assuming m to be squared slowness for $(typeof(F))"
-    return F(;m=m)
-  end
-
-  (F::judiPropagator)(m::Model, q) = F(m)*as_src(q)
-  
-  function (J::judiJacobian{D, O, FT})(q::judiMultiSourceVector) where {D, O, FT}
-    newJ = judiJacobian{D, O, FT}(J.m, J.n, J.F, q)
-    _track_illum(J.model, newJ.model)
-    return newJ
-  end
-
-  function (J::judiJacobian{D, O, FT})(x::Array{D, N}) where {D, O, FT, N}
-    if length(x) == prod(J.model.n)
-      return J(;m=m)
-    end
-    new_q = _as_src(J.qInjection.op, J.model, x)
-    newJ = judiJacobian{D, O, FT}(J.m, J.n, J.F, new_q)
-    _track_illum(J.model, newJ.model)
-    return newJ
-  end
-
-end

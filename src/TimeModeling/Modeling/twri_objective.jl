@@ -64,7 +64,7 @@ Example
 =======
     function_value, gradient_m, gradient_y = twri_objective(model, source, dobs; options=Options(), optionswri=TWRIOptions())
 """
-function twri_objective(model_full::Model, source::judiVector, dObs::judiVector, y::Union{judiVector, Nothing},
+function twri_objective(model_full::AbstractModel, source::judiVector, dObs::judiVector, y::Union{judiVector, Nothing},
                         options::JUDIOptions, optionswri::TWRIOptions)
     # Load full geometry for out-of-core geometry containers
     dObs.geometry = Geometry(dObs.geometry)
@@ -82,29 +82,27 @@ function twri_objective(model_full::Model, source::judiVector, dObs::judiVector,
     dtComp = convert(Float32, modelPy."critical_dt")
 
     # Extrapolate input data to computational grid
-    qIn = time_resample(source.data[1], source.geometry, dtComp)[1]
-    dObserved = time_resample(make_input(dObs), dObs.geometry, dtComp)[1]
+    qIn = time_resample(source.data[1], source.geometry, dtComp)
+    dObserved = time_resample(make_input(dObs), dObs.geometry, dtComp)
 
-    isnothing(y) ? Y = nothing : Y = time_resample(make_input(y), y.geometry, dtComp)[1]
+    isnothing(y) ? Y = nothing : Y = time_resample(make_input(y), y.geometry, dtComp)
 
     # Set up coordinates
-    src_coords = setup_grid(source.geometry, model.n)  # shifts source coordinates by origin
-    rec_coords = setup_grid(dObs.geometry, model.n)    # shifts rec coordinates by origin
+    src_coords = setup_grid(source.geometry, size(model))  # shifts source coordinates by origin
+    rec_coords = setup_grid(dObs.geometry, size(model))    # shifts rec coordinates by origin
 
     ~isempty(options.frequencies) ? freqs = options.frequencies : freqs = nothing
     ~isempty(options.frequencies) ? (wfilt, freqs) =  filter_w(qIn, dtComp, freqs) : wfilt = nothing
-    obj, gradm, grady = pylock() do
-         pycall(ac."wri_func", PyObject,
+    obj, gradm, grady = rlock_pycall(ac."wri_func", PyObject,
                 modelPy, src_coords, qIn, rec_coords, dObserved, Y,
                 t_sub=options.subsampling_factor, space_order=options.space_order,
                 grad=optionswri.params, grad_corr=optionswri.grad_corr, eps=optionswri.eps,
                 alpha_op=optionswri.comp_alpha, w_fun=optionswri.weight_fun,
                 freq_list=freqs, wfilt=wfilt, f0=options.f0)
-    end
 
     if (optionswri.params in [:m, :all])
         gradm = remove_padding(gradm, modelPy.padsizes; true_adjoint=options.sum_padding)
-        gradm = PhysicalParameter(gradm, model.d, model.o)
+        gradm = PhysicalParameter(gradm, spacing(model), origin(model))
     end
     if ~isnothing(grady)
         grady = time_resample(grady, dtComp, dObs.geometry)
@@ -141,7 +139,7 @@ Example
 =======
     function_value, gradient = fwi_objective(model, source, dobs)
 """
-function twri_objective(model::Model, source::judiVector, dObs::judiVector, y::Union{judiVector, Nothing};
+function twri_objective(model::AbstractModel, source::judiVector, dObs::judiVector, y::Union{judiVector, Nothing};
                         options=Options(), optionswri=TWRIOptions())
     pool = _worker_pool()
     if isnothing(y)

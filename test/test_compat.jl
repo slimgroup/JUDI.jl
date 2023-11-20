@@ -11,11 +11,16 @@ nrec = length(recGeometry.xloc[1])
 @testset "Backward compatibility" begin
     @timeit TIMEROUTPUT "Backward compatibility" begin
         info =  Info(prod(model.n), nt, nsrc)
-        @test_logs (:warn, "Info is deprecated and will be removed in future versions") Info(prod(model.n), nt, nsrc)
+        @test_logs (:warn, "Info is deprecated and will be removed in future versions") Info(prod(model.G.n), nt, nsrc)
         @test_logs (:warn, "judiModeling(info::Info, ar...; kw...) is deprecated, use judiModeling(ar...; kw...)") judiModeling(info, model)
         @test_logs (:warn, "judiModeling(info::Info, ar...; kw...) is deprecated, use judiModeling(ar...; kw...)") judiModeling(info, model; options=Options())
         @test_logs (:warn, "judiProjection(info::Info, ar...; kw...) is deprecated, use judiProjection(ar...; kw...)") judiProjection(info, recGeometry)
-        @test_logs (:warn, "judiWavefield(info::Info, ar...; kw...) is deprecated, use judiWavefield(ar...; kw...)") judiWavefield(info, dt, nsrc, randn(nt, model.n...))
+        @test_logs (:warn, "judiWavefield(info::Info, ar...; kw...) is deprecated, use judiWavefield(ar...; kw...)") judiWavefield(info, dt, nsrc, randn(nt, model.G.n...))
+        
+        @test_logs (:warn, "Deprecated model.n, use size(model)") model.n
+        @test_logs (:warn, "Deprecated model.d, use spacing(model)") model.d
+        @test_logs (:warn, "Deprecated model.o, use origin(model)") model.o
+        @test_logs (:warn, "Deprecated model.nb, use nbl(model)") model.nb
     
         @test_throws ArgumentError judiRHS(info, recGeometry, randn(Float32, nt, nrec))
         @test_throws ArgumentError judiLRWF(info, nsrc, randn(nt))

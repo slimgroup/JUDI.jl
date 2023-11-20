@@ -1,9 +1,9 @@
 
 export fwi_objective, lsrtm_objective, fwi_objective!, lsrtm_objective!
 
-function multi_src_fg(model_full::Model, source::judiVector, dObs::judiVector, dm, options::JUDIOptions, nlind::Bool, lin::Bool,
+function multi_src_fg(model_full::AbstractModel, source::judiVector, dObs::judiVector, dm, options::JUDIOptions, nlind::Bool, lin::Bool,
                       misfit::Function)
-# Setup time-domain linear or nonlinear foward and adjoint modeling and interface to OPESCI/devito
+    # Setup time-domain linear or nonlinear foward and adjoint modeling and interface to devito
 
     # assert this is for single source LSRTM
     @assert source.nsrc == 1 "Multiple sources are used in a single-source fwi_objective"
@@ -18,42 +18,56 @@ function multi_src_fg(model_full::Model, source::judiVector, dObs::judiVector, d
 
     # Limit model to area with sources/receivers
     if options.limit_m == true
-        model = deepcopy(model_full)
-        model, dm = limit_model_to_receiver_area(source.geometry, dObs.geometry, model, options.buffer_size; pert=dm)
+        @juditime "Limit model to geometry" begin
+            model = deepcopy(model_full)
+            model, dm = limit_model_to_receiver_area(source.geometry, dObs.geometry, model, options.buffer_size; pert=dm)
+        end
     else
         model = model_full
     end
 
     # Set up Python model
-    modelPy = devito_model(model, options, dm)
-    dtComp = convert(Float32, modelPy."critical_dt")
+    @juditime "Devito Model" begin
+        modelPy = devito_model(model, options, dm)
+        dtComp = convert(Float32, modelPy."critical_dt")
+    end
 
     # Extrapolate input data to computational grid
-    qIn = time_resample(make_input(source), source.geometry, dtComp)[1]
-    dObserved = time_resample(make_input(dObs), dObs.geometry, dtComp)[1]
+    qIn = time_resample(make_input(source), source.geometry, dtComp)
+    dObserved = time_resample(make_input(dObs), dObs.geometry, dtComp)
 
     # Set up coordinates
-    src_coords = setup_grid(source.geometry, model.n)  # shifts source coordinates by origin
-    rec_coords = setup_grid(dObs.geometry, model.n)    # shifts rec coordinates by origin
+    @juditime "Sparse coords setup" begin
+        src_coords = setup_grid(source.geometry, size(model))  # shifts source coordinates by origin
+        rec_coords = setup_grid(dObs.geometry, size(model))    # shifts rec coordinates by origin
+    end
 
     mfunc = pyfunction(misfit, Matrix{Float32}, Matrix{Float32})
 
     length(options.frequencies) == 0 ? freqs = nothing : freqs = options.frequencies
     IT = illum ? (PyArray, PyArray) : (PyObject, PyObject)
-    argout = pylock() do
-        pycall(ac."J_adjoint", Tuple{Float32, PyArray, IT...}, modelPy,
-               src_coords, qIn, rec_coords, dObserved, t_sub=options.subsampling_factor,
-               space_order=options.space_order, checkpointing=options.optimal_checkpointing,
-               freq_list=freqs, ic=options.IC, is_residual=false, born_fwd=lin, nlind=nlind,
-               dft_sub=options.dft_subsampling_factor[1], f0=options.f0, return_obj=true, misfit=mfunc, illum=illum)
+    @juditime "Python call to J_adjoint" begin
+        argout = rlock_pycall(ac."J_adjoint", Tuple{Float32, PyArray, IT...}, modelPy,
+                src_coords, qIn, rec_coords, dObserved, t_sub=options.subsampling_factor,
+                space_order=options.space_order, checkpointing=options.optimal_checkpointing,
+                freq_list=freqs, ic=options.IC, is_residual=false, born_fwd=lin, nlind=nlind,
+                dft_sub=options.dft_subsampling_factor[1], f0=options.f0, return_obj=true, misfit=mfunc, illum=illum)
     end
 
-    argout = filter_none(argout)
-    grad = PhysicalParameter(remove_padding(argout[2], modelPy.padsizes; true_adjoint=options.sum_padding),  model.d, model.o)
+    @juditime "Filter empty output" begin
+        argout = filter_none(argout)
+    end
+
+    @juditime "Remove padding from gradient" begin
+        grad = PhysicalParameter(remove_padding(argout[2], modelPy.padsizes; true_adjoint=options.sum_padding),  spacing(model), origin(model))
+    end
+
     fval = Ref{Float32}(argout[1])
     if illum
-        illumu = PhysicalParameter(remove_padding(argout[3], modelPy.padsizes; true_adjoint=false), model.d, model.o)
-        illumv = PhysicalParameter(remove_padding(argout[4], modelPy.padsizes; true_adjoint=false), model.d, model.o)
+        @juditime "Process illumination" begin
+            illumu = PhysicalParameter(remove_padding(argout[3], modelPy.padsizes; true_adjoint=false), spacing(model), origin(model))
+            illumv = PhysicalParameter(remove_padding(argout[4], modelPy.padsizes; true_adjoint=false), spacing(model), origin(model))
+        end
         return fval, grad, illumu, illumv
     end
     return fval, grad
@@ -61,8 +75,8 @@ end
 
 
 ####### Defaults
-multi_src_fg(model_full::Model, source::judiVector, dObs::judiVector, dm, options::JUDIOptions, nlind::Bool, lin::Bool) =
-    multi_src_fg(model_full::Model, source::judiVector, dObs::judiVector, dm, options::JUDIOptions, nlind::Bool, lin::Bool, mse)
+multi_src_fg(model_full::AbstractModel, source::judiVector, dObs::judiVector, dm, options::JUDIOptions, nlind::Bool, lin::Bool) =
+    multi_src_fg(model_full::AbstractModel, source::judiVector, dObs::judiVector, dm, options::JUDIOptions, nlind::Bool, lin::Bool, mse)
 
 
 # Find number of experiments
@@ -73,7 +87,7 @@ Get number of experiments given a JUDI type. By default we have only one experim
 a Vector of judiType such as [model, model] to compute gradient for different cases at once.
 """
 get_nexp(x) = 1
-for T in [judiVector, Model, judiWeights, judiWavefield, PhysicalParameter, Vector{Float32}]
+for T in [judiVector, AbstractModel, judiWeights, judiWavefield, PhysicalParameter, Vector{Float32}]
     @eval get_nexp(v::Vector{<:$T}) = length(v)
     @eval get_nexp(v::Tuple{N, <:$T}) where N = length(v)
 end   
@@ -86,7 +100,7 @@ Filter input `x`` for experiment number `i`. Returns `x` is a constant not depen
 """
 get_exp(x, i) = x
 get_exp(x::Tuple{}, i::Any) = x[i]
-for T in [judiVector, Model, judiWeights, judiWavefield, Array{Float32}, PhysicalParameter]
+for T in [judiVector, AbstractModel, judiWeights, judiWavefield, Array{Float32}, PhysicalParameter]
     @eval get_exp(v::Vector{<:$T}, i) = v[i]
     @eval get_exp(v::NTuple{N, <:$T}, i) where N = v[i]
 end
