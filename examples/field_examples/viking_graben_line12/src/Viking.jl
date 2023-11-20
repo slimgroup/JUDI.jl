@@ -1,6 +1,6 @@
 module Viking
 
 using HDF5
-include("utlis.jl")
+include("utils.jl")
 
 end
