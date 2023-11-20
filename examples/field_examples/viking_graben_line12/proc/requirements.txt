@@ -1,0 +1,9 @@
+numpy
+pandas
+scons
+nbformat
+kaleido
+seaborn
+scipy
+matplotlib
+git+https://github.com/kerim371/wiggle.git

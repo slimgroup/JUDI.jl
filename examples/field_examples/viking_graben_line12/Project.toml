@@ -1,0 +1,24 @@
+name = "Viking"
+authors = ["Kerim Khemraev", "Mathias Louboutin"]
+version = "0.0.1"
+
+[deps]
+DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
+Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
+DrWatson = "634d3b9d-ee7a-5ddf-bec9-22491ea816e1"
+HDF5 = "f67ccb44-e63f-5c2f-98bd-6dc0ccc4ba2f"
+ImageFiltering = "6a3955dd-da59-5b1f-98d4-e7296123deb5"
+Interpolations = "a98d9a8b-a2ab-59e6-89dd-64a1c18fca59"
+JUDI = "f3b833dc-6b2e-5b9c-b940-873ed6319979"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+NLopt = "76087f3c-5699-56af-9a33-bf431cd00edd"
+Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+SegyIO = "157a0f19-4d44-4de5-a0d0-07e2f0ac4dfa"
+SetIntersectionProjection = "335f7d24-6316-57dd-9c3a-df470f2b739e"
+SlimOptim = "e4c7bc62-5b23-4522-a1b9-71c2be45f1df"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+
+[compat]
+DrWatson = "2.5.0"
+julia = "1"

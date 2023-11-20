@@ -44,3 +44,8 @@ We gladly welcome and encorage contributions from the community to improve our s
 - Open [issues](https://github.com/slimgroup/JUDI.jl/issues) for bugs
 - Start [discussions](https://github.com/slimgroup/JUDI.jl/discussions) to interat with the developper and ask any questions
 - Open [PR](https://github.com/slimgroup/JUDI.jl/pulls) for bug fixes and improvements
+
+
+## Field examples
+
+An example of using JUDI to invert field data is provided for the [Viking Graben Line 12](https://github.com/slimgroup/JUDI.jl/examples/field_examples/viking_graben_line12) which includes data preprocessing steps using Madagascar. 
