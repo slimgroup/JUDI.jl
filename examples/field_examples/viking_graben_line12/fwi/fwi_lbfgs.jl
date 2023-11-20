@@ -1,6 +1,7 @@
 using DrWatson
 @quickactivate "Viking"
 
+using Viking
 using Statistics, Random, LinearAlgebra, Interpolations, DelimitedFiles, Distributed
 using JUDI, SlimOptim, NLopt, HDF5, SegyIO, Plots, ImageFiltering
 using SetIntersectionProjection
@@ -207,4 +208,4 @@ opt = Opt(:LD_LBFGS, prod(size(model0)))
 min_objective!(opt, nlopt_obj_fun!)
 lower_bounds!(opt, mmin); upper_bounds!(opt, mmax)
 maxeval!(opt, niterations)
-(minf, minx, ret) = optimize(opt, copy(model0.m))
+(minf, minx, ret) = optimize(opt, copy(model0.m.data[:]))

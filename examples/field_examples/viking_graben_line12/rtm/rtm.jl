@@ -1,6 +1,7 @@
 using DrWatson
 @quickactivate "Viking"
 
+using Viking
 using Statistics, Random, LinearAlgebra, Interpolations, DelimitedFiles, Distributed
 using JUDI, NLopt, HDF5, SegyIO, Plots
 

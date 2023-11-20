@@ -1,3 +1,6 @@
+export save_data, save_fhistory, rho_from_slowness
+
+
 function save_data(x,z,data; pltfile,title,colormap,clim=nothing,h5file,h5openflag,h5varname)
   @info "save_data: $h5file"
   n = (length(x),length(z))
@@ -25,10 +28,6 @@ function save_data(x,z,data; pltfile,title,colormap,clim=nothing,h5file,h5openfl
       "n", collect(n), 
       "d", collect(d.*1000f0))
   close(fid)
-end
-
-function save_data_as_segy(x,z,data)
-
 end
 
 function save_fhistory(fhistory; h5file,h5openflag,h5varname)
