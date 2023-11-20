@@ -1,7 +1,8 @@
+using DrWatson
+@quickactivate "Viking"
+
 using Statistics, Random, LinearAlgebra, Interpolations, DelimitedFiles, Distributed
 using JUDI, NLopt, HDF5, SegyIO, Plots
-
-include("$(@__DIR__)/../utils.jl")
 
 ############# INITIAL DATA #############
 modeling_type = "bulk"  # slowness, bulk

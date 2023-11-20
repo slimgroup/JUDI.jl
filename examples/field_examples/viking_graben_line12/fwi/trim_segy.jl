@@ -1,5 +1,5 @@
-# using Pkg
-# Pkg.add("SegyIO")
+using DrWatson
+@quickactivate "Viking"
 
 using SegyIO
 
