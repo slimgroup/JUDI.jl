@@ -35,7 +35,7 @@ jobs:
   run-examples:
     runs-on: ubuntu-latest
     needs: list-examples
-    name: ${{ matrix.example }} on Julia ${{ matrix.version }}
+    name: ${{ matrix.example }}
 
     env:
       DEVITO_ARCH: gcc-9
@@ -48,15 +48,8 @@ jobs:
       fail-fast: false
       matrix:
         example: ${{ fromJson(needs.list-examples.outputs.matrix) }}
-        version: ['1.8']
-
-        include:
-         - example: "examples/scripts/modeling_basic_2D.jl"
-           version: '1.6'
-
-         - example: "examples/scripts/modeling_basic_2D.jl"
-           version: '1.7'
-
+        version: ['1']
+  
     steps:
       - name: Checkout JUDI
         uses: actions/checkout@v3

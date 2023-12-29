@@ -12,9 +12,19 @@ if ~isfile("$(JUDI.JUDI_DATA)/marmousi_model.h5")
 end
 n, d, o, m0 = read(h5open("$(JUDI.JUDI_DATA)/marmousi_model.h5", "r"), "n", "d", "o", "m0")
 
+# Smaller model for CI
+if get(ENV, "NITER", "10") == "2"
+    fact = 4
+    m0 = m0[1:fact:end, 1:fact:end]
+    n = size(m0)
+    d = d .* fact
+else
+    fact = 1
+end
+
 # Set up model structure
 model0 = Model(n, d, o, m0)
-grad_mem = 40 # Based on n and CFL condition
+grad_mem = 40 / (fact^3) # Based on n and CFL condition
 
 # Coarsen for CI
 if get(ENV, "CI", nothing) == "true"
@@ -54,7 +64,7 @@ C = joEye(prod(model0.n); DDT=Float32, RDT=Float32)
 # If available use curvelet instead for better result
 
 # Setup linearized bregman
-batchsize = 5 * parse(Int, get(ENV, "NITER", "$(q.nsrc ÷ 5)"))
+batchsize = 5 * parse(Int, get(ENV, "NITER", "10"))
 niter = parse(Int, get(ENV, "NITER", "10"))
 g_scale = 0
 
@@ -65,7 +75,7 @@ function obj(x)
 
     residual = Ml[inds]*J[inds]*Mr*dm - Ml[inds]*d_lin[inds]
     # grad
-    G = reshape(Mr'J[inds]'*Ml[inds]'*residual, model0.n)
+    G = reshape(Mr'*J[inds]'*Ml[inds]'*residual, model0.n)
     g_scale == 0 && (global g_scale = .05f0/maximum(G))
     G .*= g_scale
     return .5f0*norm(residual)^2, G[:]

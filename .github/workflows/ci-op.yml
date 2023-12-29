@@ -41,18 +41,18 @@ jobs:
             omp: 1
 
           - os: macos-latest
-            version: '1.7'
+            version: '1.8'
             op: "ISO_OP"
             omp: 1
 
           - os: macos-latest
-            version: '1.8'
-            op: "ISO_OP"
-            omp: 1
-          
-          - os: ubuntu-latest
             version: '1.9'
             op: "ISO_OP"
+            omp: 1
+
+          - os: ubuntu-latest
+            version: '1.9'
+            op: "VISCO_AC_OP"
             omp: 2
 
           - os: ubuntu-latest

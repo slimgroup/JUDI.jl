@@ -144,6 +144,8 @@ dotview(m::PhysicalParameter, i) = Base.dotview(m.data, i)
 getindex(A::PhysicalParameter{T, N}, i::Int) where {T<:Real, N} = A.data[i]
 getindex(A::PhysicalParameter{T, N}, ::Colon) where {T<:Real, N} = A.data[:]
 
+elsize(A::PhysicalParameter)  = elsize(A.data)
+
 get_step(r::StepRange) = r.step
 get_step(r) = 1
 
