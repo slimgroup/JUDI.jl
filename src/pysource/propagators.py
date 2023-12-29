@@ -95,9 +95,11 @@ def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8, fw=
     """
     # Setting adjoint wavefieldgradient
     v = wavefield(model, space_order, fw=not fw)
-    try:
+    if as_tuple(u)[0].indices[0].is_Conditional:
         t_sub = as_tuple(u)[0].indices[0]._factor
-    except AttributeError:
+        if isinstance(t_sub, Constant):
+            t_sub = t_sub.data
+    else:
         t_sub = 1
 
     # Setup gradient wrt m

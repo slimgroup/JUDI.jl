@@ -192,11 +192,19 @@ function combine(op, A::PhysicalParameter{T, N}, B::PhysicalParameter{T, N}) whe
     mn = max.(ea, eb)
     ia = [s:e for (s, e) in zip(sa, ea)]
     ib = [s:e for (s, e) in zip(sb, eb)]
-    out = zeros(T, mn)
-    out[ia...] .= A.data
-    broadcast!(op, view(out, ib...),  view(out, ib...), B.data)
-    return PhysicalParameter(mn, A.d, o, out)
+    if isnothing(op)
+        @assert A.n == mn
+        A.data[ib...] .= B.data
+        return nothing
+    else
+        out = zeros(T, mn)
+        out[ia...] .= A.data
+        broadcast!(op, view(out, ib...),  view(out, ib...), B.data)
+        return PhysicalParameter(mn, A.d, o, out)
+    end
 end
+
+combine!(A::PhysicalParameter{T, N}, B::PhysicalParameter{T, N}) where {T<:Real, N} = combine(nothing, A, B)
 
 for op in [:+, :-, :*, :/]
     @eval function $(op)(A::PhysicalParameter{T, N}, B::PhysicalParameter{T, N}) where {T<:Real, N}
