@@ -37,7 +37,7 @@ q = judiVector(src_geometry, wavelet)
 ###################################################################################################
 # Infer subsampling based on free memory
 mem = Sys.free_memory()/(1024^3)
-t_sub = max(1, ceil(Int, nworkers()*grad_mem/mem))
+t_sub = max(1, ceil(Int, .5*nworkers()*grad_mem/mem))
 
 # Setup operators
 opt = Options(subsampling_factor=t_sub, isic=true)  # ~40 GB of memory per source without subsampling
