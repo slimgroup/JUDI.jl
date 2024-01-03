@@ -69,7 +69,10 @@ function matvec(D::TopMute{T, N}, x::Array{T, N}) where {T, N}
     taper = D.taperwidth < 2 ? 1 : _taper(Val(:reflection), D.taperwidth)
     for i in CartesianIndices(D.wb)
         out[i, 1:D.wb[i]-D.taperwidth] .= 0
-        out[i, D.wb[i]-D.taperwidth+1:D.wb[i]] .*= taper
+        s = max(D.wb[i]-D.taperwidth+1, 1)
+        ni = length(s:D.wb[i])
+        tap = D.taperwidth < 2 ? 1 : taper[end-ni+1:end]
+        out[i, s:D.wb[i]] .*= tap
     end
     out
 end
@@ -182,7 +185,7 @@ end
 function set_val(I::judiIllumination{T, M, K, R}, mode, v) where {T, M, K, R}
     key = mode ∈ [:forward, :born] ? "u" : "v"
     if key in keys(I.illums)
-        I.illums[key] .= v
+        combine!(I.illums[key], v)
     end
 end
 

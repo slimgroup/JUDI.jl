@@ -136,7 +136,7 @@ def wavefield_subsampled(model, u, nt, t_sub, space_order=8):
     for wf in as_tuple(u):
         usave = TimeFunction(name='us_%s' % wf.name, grid=model.grid, time_order=2,
                              space_order=space_order, time_dim=time_subsampled,
-                             save=nsave)
+                             save=int(nsave))
         wf_s.append(usave)
     return wf_s
 

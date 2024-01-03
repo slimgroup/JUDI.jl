@@ -12,15 +12,19 @@ if ~isfile("$(JUDI.JUDI_DATA)/marmousi_model.h5")
 end
 n, d, o, m0 = read(h5open("$(JUDI.JUDI_DATA)/marmousi_model.h5", "r"), "n", "d", "o", "m0")
 
+# Smaller model for CI
+if get(ENV, "NITER", "10") == "2"
+    fact = 4
+    m0 = m0[1:fact:end, 1:fact:end]
+    n = size(m0)
+    d = d .* fact
+else
+    fact = 1
+end
+
 # Set up model structure
 model0 = Model(n, d, o, m0)
-grad_mem = 40 # Based on n and CFL condition
-
-# Coarsen for CI
-if get(ENV, "CI", nothing) == "true"
-    model0 = Model(ceil.(Int, n ./ 2), d .* 2, o, m0[1:2:end, 1:2:end])
-    grad_mem = 5
-end
+grad_mem = 40 / (fact^3) # Based on n and CFL condition
 
 # Load data
 if ~isfile("$(JUDI.JUDI_DATA)/marmousi_2D.segy")
@@ -37,7 +41,7 @@ q = judiVector(src_geometry, wavelet)
 ###################################################################################################
 # Infer subsampling based on free memory
 mem = Sys.free_memory()/(1024^3)
-t_sub = max(1, ceil(Int, nworkers()*grad_mem/mem))
+t_sub = max(1, ceil(Int, .5*nworkers()*grad_mem/mem))
 
 # Setup operators
 opt = Options(subsampling_factor=t_sub, isic=true)  # ~40 GB of memory per source without subsampling
@@ -53,7 +57,7 @@ Ml = judiDataMute(q.geometry, d_lin.geometry)
 #' set up number of iterations
 niter = parse(Int, get(ENV, "NITER", "10"))
 # Default to 64, 5 for CI only with NITER=1
-nsrc = 5 * parse(Int, get(ENV, "NITER", "$(q.nsrc ÷ 5)"))
+nsrc = 5 * parse(Int, get(ENV, "NITER", "10"))
 indsrc = randperm(q.nsrc)[1:nsrc]
 lsqr_sol = zeros(Float32, prod(model0.n))
 

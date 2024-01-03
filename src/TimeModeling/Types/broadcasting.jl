@@ -27,7 +27,7 @@ end
 
 # Broadcasted custom type
 check_compat() = true
-get_src(ms::judiMultiSourceVector, j) = ms.data[j]
+get_src(ms::judiMultiSourceVector, j) = make_input(ms[j])
 get_src(v::Vector{<:Array}, j) = v[j]
 get_src(v::Array{T, N}, j) where {T<:Number, N} = v
 get_src(n::Number, j) = n

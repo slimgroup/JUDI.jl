@@ -144,6 +144,8 @@ dotview(m::PhysicalParameter, i) = Base.dotview(m.data, i)
 getindex(A::PhysicalParameter{T, N}, i::Int) where {T<:Real, N} = A.data[i]
 getindex(A::PhysicalParameter{T, N}, ::Colon) where {T<:Real, N} = A.data[:]
 
+elsize(A::PhysicalParameter)  = elsize(A.data)
+
 get_step(r::StepRange) = r.step
 get_step(r) = 1
 
@@ -192,11 +194,19 @@ function combine(op, A::PhysicalParameter{T, N}, B::PhysicalParameter{T, N}) whe
     mn = max.(ea, eb)
     ia = [s:e for (s, e) in zip(sa, ea)]
     ib = [s:e for (s, e) in zip(sb, eb)]
-    out = zeros(T, mn)
-    out[ia...] .= A.data
-    broadcast!(op, view(out, ib...),  view(out, ib...), B.data)
-    return PhysicalParameter(mn, A.d, o, out)
+    if isnothing(op)
+        @assert A.n == mn
+        A.data[ib...] .= B.data
+        return nothing
+    else
+        out = zeros(T, mn)
+        out[ia...] .= A.data
+        broadcast!(op, view(out, ib...),  view(out, ib...), B.data)
+        return PhysicalParameter(mn, A.d, o, out)
+    end
 end
+
+combine!(A::PhysicalParameter{T, N}, B::PhysicalParameter{T, N}) where {T<:Real, N} = combine(nothing, A, B)
 
 for op in [:+, :-, :*, :/]
     @eval function $(op)(A::PhysicalParameter{T, N}, B::PhysicalParameter{T, N}) where {T<:Real, N}

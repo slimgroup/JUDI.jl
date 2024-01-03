@@ -24,7 +24,7 @@ import Base.depwarn
 import Base.*, Base./, Base.+, Base.-, Base.==, Base.\
 import Base.copy!, Base.copy, Base.copyto!, Base.deepcopy, Base.summary
 import Base.sum, Base.ndims, Base.reshape, Base.fill!, Base.axes, Base.dotview
-import Base.eltype, Base.length, Base.size, Base.iterate, Base.show, Base.display, Base.showarg
+import Base.eltype, Base.length, Base.size, Base.iterate, Base.show, Base.display, Base.showarg, Base.elsize
 import Base.maximum, Base.minimum, Base.push!
 import Base.Broadcast.ArrayStyle, Base.Broadcast.extrude
 import Base.Broadcast.broadcasted, Base.BroadcastStyle, Base.Broadcast.DefaultArrayStyle, Base.Broadcast, Base.broadcast!

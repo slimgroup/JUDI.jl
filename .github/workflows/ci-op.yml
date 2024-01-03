@@ -37,27 +37,27 @@ jobs:
         include:
           - os: macos-latest
             version: '1.6'
-            op: "BASICS"
-            omp: 1
-
-          - os: macos-latest
-            version: '1.7'
-            op: "BASICS"
+            op: "ISO_OP"
             omp: 1
 
           - os: macos-latest
             version: '1.8'
-            op: "BASICS"
+            op: "ISO_OP"
             omp: 1
-          
+
+          - os: macos-latest
+            version: '1.9'
+            op: "ISO_OP"
+            omp: 1
+
           - os: ubuntu-latest
             version: '1.9'
             op: "VISCO_AC_OP"
             omp: 2
 
           - os: ubuntu-latest
-            version: '1.6'
-            op: "BASICS"
+            version: '1.10'
+            op: "ISO_OP"
             omp: 2
 
     steps:

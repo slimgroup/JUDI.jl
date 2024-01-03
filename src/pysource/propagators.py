@@ -97,6 +97,8 @@ def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8, fw=
     v = wavefield(model, space_order, fw=not fw)
     try:
         t_sub = as_tuple(u)[0].indices[0]._factor
+        if isinstance(t_sub, Constant):
+            t_sub = t_sub.data
     except AttributeError:
         t_sub = 1
 
