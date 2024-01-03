@@ -146,7 +146,7 @@ end
 copyto!(jv::judiVector, jv2::judiVector) = copy!(jv, jv2)
 make_input(jv::judiVector{T, Matrix{T}}) where T = jv.data[1]
 make_input(jv::judiVector{T, Vector{T}}) where T = reshape(jv.data[1], :, 1)
-make_input(jv::judiVector{T, SeisCon}) where T = convert(Matrix{T}, jv.data[1][1].data)
+make_input(jv::judiVector{T, SeisCon}) where T = get_data(jv).data[1]
 
 check_compat(ms::Vararg{judiVector, N}) where N = all(y -> compareGeometry(y.geometry, first(ms).geometry), ms)
 
@@ -341,9 +341,9 @@ function get_data(x::judiVector{T, SeisCon}; rel_origin=(0, 0, 0), project=nothi
     shots = Vector{Matrix{Float32}}(undef, x.nsrc)
     rec_geometry = Geometry(x.geometry; rel_origin=rel_origin, project=project)
     for j=1:x.nsrc
-        shots[j] = convert(Matrix{Float32}, x.data[j][1].data)
+        shots[j] = data_matrix(x, j)
     end
-    return judiVector(rec_geometry, shots)
+    return judiVector{T, Array{Float32, 2}}(x.nsrc, rec_geometry, shots)
 end
 
 
@@ -353,10 +353,21 @@ function get_data(x::judiVector{T, Array{Float32, 2}}; rel_origin=(0, 0, 0), pro
     end
     # Shift and project geometry
     geom = Geometry(x.geometry; rel_origin=rel_origin, project=project)
-    return judiVector(geom, x.data)
+    return judiVector{T, Array{Float32, 2}}(x.nsrc, geom, x.data)
 end
 
 convert_to_array(x::judiVector) = vcat(vec.(x.data)...)
+
+function data_matrix(x::judiVector{T, SeisCon}, i::Integer) where T
+    data = convert(Matrix{Float32}, x.data[i][1].data)
+    # Check if needs to extra padding or croping
+    if x.geometry.nt[i] > size(data, 1)
+        data = vcat(zeros(Float32, x.geometry.nt[i] - size(data, 1), size(data, 2)), data)
+    elseif x.geometry.nt[i] < size(data, 1)
+        data = data[1:x.geometry.nt[i], :]
+    end
+    return data
+end
 
 
 ##### Rebuild bad vector

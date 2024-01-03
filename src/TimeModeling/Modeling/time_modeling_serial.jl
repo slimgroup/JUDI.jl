@@ -9,6 +9,9 @@ PhysOrNot = Union{PhysicalParameter, Array, Nothing}
 function time_modeling(model_full::AbstractModel, srcGeometry::GeomOrNot, srcData::ArrayOrNot,
                        recGeometry::GeomOrNot, recData::ArrayOrNot, dm::PhysOrNot,
                        op::Symbol, options::JUDIOptions, fw::Bool)
+    GC.gc(true)
+    devito.clear_cache()
+
     # Load full geometry for out-of-core geometry containers
     recGeometry = Geometry(recGeometry)
     srcGeometry = Geometry(srcGeometry)

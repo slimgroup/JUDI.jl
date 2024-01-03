@@ -207,12 +207,15 @@ function timings_from_segy(data, dt=nothing, t::T=nothing) where T
     nsrc = get_nsrc(data)
     dtCell = _get_p(dt, data, nsrc, "dt", Float32, 1f3)
 
-    try
+    if !isnothing(t)
         tCell = T <: Number ? fill(Float32(t), nsrc) : convert(Vector{Float32}, t)
         ntCell = floor.(Integer, tCell ./ dtCell) .+ 1
         return dtCell, ntCell, tCell
-    catch e
+    else
         ntCell = _get_p(nothing, data, nsrc, "ns", Int, 1)
+        # In some cases the recording doesn't start at zero, need tp check for nsorig in the fileheader
+        ntFile = [data[i].fileheader.bfh.nsOrig for i=1:nsrc]
+        ntCell = max.(ntCell, ntFile)
         tCell = Float32.((ntCell .- 1) .* dtCell)
         return dtCell, ntCell, tCell
     end
@@ -444,9 +447,17 @@ pushfield!(a, b) = nothing
 # Data may be any of: Array, Array of Array, SeisBlock, SeisCon
 check_geom(geom::Geometry, data::Array{T}) where T = all([check_geom(geom[s], data[s]) for s=1:get_nsrc(geom)])
 check_geom(geom::Geometry, data::Array{T}) where {T<:Number} = _check_geom(geom.nt[1],  size(data, 1)) && _check_geom(geom.nrec[1],  size(data, 2))
-check_geom(geom::Geometry, data::SeisBlock) = _check_geom(geom.nt[1], data.fileheader.bfh.ns)
-check_geom(geom::Geometry, data::SeisCon) = _check_geom(geom.nt[1], data.ns)
+check_geom(geom::Geometry, data::SeisBlock) = _check_geom(geom.nt[1], (data.fileheader.bfh.ns, data.fileheader.bfh.nsOrig))
+
+function check_geom(geom::Geometry, data::SeisCon)
+    for s = 1:get_nsrc(geom)
+        fh = read_fileheader(data.blocks[s].file)
+        _check_geom(geom.nt[s], (fh.bfh.ns, fh.bfh.nsOrig))
+    end
+end
+
 _check_geom(nt::Integer, ns::Integer) = nt == ns || _geom_missmatch(nt, ns)
+_check_geom(nt::Integer, ns::Tuple{Integer, Integer}) = nt == ns[1] || nt == ns[2] ||  _geom_missmatch(nt, ns[1])
 
 check_time(dt::Number, t::Number, segy::Bool=false) = (t/dt == div(t, dt, RoundNearest)) || throw(GeometryException("Recording time t=$(t) not divisible by sampling rate dt=$(dt)"))
 check_time(::Nothing, ::Nothing, segy::Bool=false) = segy || throw(GeometryException("Recording time `t` and sampling rate `dt` must be provided"))
