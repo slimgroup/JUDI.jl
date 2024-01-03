@@ -316,8 +316,9 @@ function Geometry(data::Array{SegyIO.SeisCon,1}; key="source", segy_depth_key=""
 end
 
 # Load geometry from out-of-core Geometry container
-function Geometry(geometry::GeometryOOC)
+function Geometry(geometry::GeometryOOC; rel_origin=(0, 0, 0), project=nothing)
     nsrc = length(geometry.container)
+    ox, oy, oz = rel_origin
 
     # read either source or receiver geometry
     if geometry.key=="source"
@@ -337,16 +338,25 @@ function Geometry(geometry::GeometryOOC)
     t = Array{Float32}(undef, nsrc)
 
     for j=1:nsrc
-
         header = read_con_headers(geometry.container[j], params, 1)
         if geometry.key=="source"
-            xloc[j] = convert(gt, get_header(header, params[1])[1])
-            yloc[j] = convert(gt, get_header(header, params[2])[1])
-            zloc[j] = abs.(convert(gt,get_header(header, params[3])[1]))
+            xloc[j] = get_header(header, params[1])[1] .- ox
+            if project == "2d"
+                xloc[j] = sqrt.(xloc[j].^2 .+ (get_header(header, params[2])[1] .- oy).^2)
+                yloc[j] = 0 .* xloc[j]
+            else
+                yloc[j] = get_header(header, params[2])[1] .- oy
+            end
+            zloc[j] = abs.(get_header(header, params[3]))[1] .- oz
         else
-            xloc[j] = convert(gt, get_header(header, params[1]))
-            yloc[j] = convert(gt, get_header(header, params[2]))
-            zloc[j] = abs.(convert(gt, get_header(header, params[3])))
+            xloc[j] = get_header(header, params[1]) .- ox
+            if project == "2d"
+                xloc[j] .= sqrt.(xloc[j].^2 .+ (get_header(header, params[2]) .- oy).^2)
+                yloc[j] = 0 .* xloc[j]
+            else
+                yloc[j] = get_header(header, params[2]) .- oy
+            end
+            zloc[j] = abs.(get_header(header, params[3])) .- oz
         end
         dt[j] = geometry.dt[j]
         nt[j] = geometry.nt[j]

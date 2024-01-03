@@ -204,11 +204,14 @@ function mergewith!(::PopZero, d1::OrderedDict{K, V}, d2::OrderedDict{K, V}) whe
     k1 = keys(d1)
     k2 = keys(d2)
     mergekeys = intersect(k1, k2)
-    isempty(mergekeys) && throw(ArgumentError(no_sim_msg))
-    for k ∈ mergekeys
+    if isempty(mergekeys)
+	@show k1, k2
+        throw(ArgumentError(no_sim_msg))
+    end
+    for k in mergekeys
         d1[k] .+= d2[k]
     end
-    Base.filter!(p->p.first ∈ mergekeys, d1)
+    Base.filter!(p->p.first in mergekeys, d1)
     return d1
 end
 
@@ -334,17 +337,25 @@ end
 
 ####################################################################################################
 # Load OOC
-function get_data(x::judiVector{T, SeisCon}) where T
-    shots = Array{Array{Float32, 2}, 1}(undef, x.nsrc)
-    rec_geometry = Geometry(x.geometry)
+function get_data(x::judiVector{T, SeisCon}; rel_origin=(0, 0, 0), project=nothing) where T
+    shots = Vector{Matrix{Float32}}(undef, x.nsrc)
+    rec_geometry = Geometry(x.geometry; rel_origin=rel_origin, project=project)
     for j=1:x.nsrc
-        shots[j] = convert(Array{Float32, 2}, x.data[j][1].data)
+        shots[j] = convert(Matrix{Float32}, x.data[j][1].data)
     end
     return judiVector(rec_geometry, shots)
 end
 
 
-get_data(x::judiVector{T, Array{Float32, 2}}) where T = x
+function get_data(x::judiVector{T, Array{Float32, 2}}; rel_origin=(0, 0, 0), project=nothing) where T
+    if rel_origin == (0, 0, 0) && isnothing(project)
+        return x
+    end
+    # Shift and project geometry
+    geom = Geometry(x.geometry; rel_origin=rel_origin, project=project)
+    return judiVector(geom, x.data)
+end
+
 convert_to_array(x::judiVector) = vcat(vec.(x.data)...)
 
 
