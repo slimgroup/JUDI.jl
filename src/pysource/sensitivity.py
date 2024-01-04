@@ -1,12 +1,16 @@
 import numpy as np
 from sympy import cos, sin
 
-from devito import Eq
+from devito import Eq, Function
 from devito.tools import as_tuple
 
 from fields import frequencies
 from fields_exprs import sub_time, freesurface
 from FD_utils import divs, grads
+
+
+default_grad = lambda model: Function(name="gradm", grid=model.grid) 
+_perturbation = {"as": default_grad, "fwi": default_grad, "isic": default_grad}
 
 
 def func_name(freq=None, ic="as"):
@@ -19,7 +23,7 @@ def func_name(freq=None, ic="as"):
         return "%s_%s" % (ic, "freq")
 
 
-def grad_expr(gradm, u, v, model, w=None, freq=None, dft_sub=None, ic="as"):
+def grad_expr(u, v, model, w=None, freq=None, dft_sub=None, ic="as"):
     """
     Gradient update stencil
 
@@ -40,6 +44,7 @@ def grad_expr(gradm, u, v, model, w=None, freq=None, dft_sub=None, ic="as"):
     isic: Bool
         Whether or not to use inverse scattering imaging condition (not supported yet)
     """
+    gradm = _perturbation[ic](model)
     ic_func = ic_dict[func_name(freq=freq, ic=ic)]
     expr = ic_func(as_tuple(u), as_tuple(v), model, freq=freq, factor=dft_sub, w=w)
     if model.fs and ic in ["fwi", "isic"]:
@@ -48,7 +53,7 @@ def grad_expr(gradm, u, v, model, w=None, freq=None, dft_sub=None, ic="as"):
         eq_g += freesurface(model, eq_g)
     else:
         eq_g = [Eq(gradm, gradm - expr)]
-    return eq_g
+    return eq_g, gradm
 
 
 def crosscorr_time(u, v, model, **kwargs):

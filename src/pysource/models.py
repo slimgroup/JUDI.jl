@@ -572,6 +572,9 @@ class Model(object):
         sp_map.update({self.grid.time_dim.spacing: self.critical_dt})
         return sp_map
 
+    def perturbation(self):
+        return Function(name="gradm", grid=self.grid)
+
 
 class EmptyModel(object):
     """

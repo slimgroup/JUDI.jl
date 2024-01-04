@@ -119,7 +119,7 @@ function judiVector(geometry::Geometry, data::SegyIO.SeisCon)
     for j=1:nsrc
         dataCell[j] = split(data,j)
     end
-    return judiVector{Float32, SegyIO.SeisCon}(nsrc, geometry,dataCell)
+    return judiVector{Float32, SegyIO.SeisCon}(nsrc, geometry, dataCell)
 end
 
 judiVector(data::SegyIO.SeisBlock; segy_depth_key="RecGroupElevation") = judiVector(Geometry(data; key="receiver", segy_depth_key=segy_depth_key), data)
@@ -334,19 +334,25 @@ end
 
 ####################################################################################################
 # Load OOC
-function get_data(x::judiVector{T, SeisCon}) where T
+function get_data(x::judiVector{T, SeisCon}; rel_origin=(0, 0, 0), project=nothing) where T
     shots = Array{Array{Float32, 2}, 1}(undef, x.nsrc)
-    rec_geometry = Geometry(x.geometry)
+    rec_geometry = Geometry(x.geometry; rel_origin=rel_origin, project=project)
     for j=1:x.nsrc
         shots[j] = convert(Array{Float32, 2}, x.data[j][1].data)
     end
     return judiVector(rec_geometry, shots)
 end
 
+function get_data(x::judiVector{T, Array{Float32, 2}}; rel_origin=(0, 0, 0), project=nothing) where T
+    if rel_origin == (0, 0, 0) && isnothing(project)
+        return x
+    end
+    # Shift and project geometry
+    geom = Geometry(x.geometry; rel_origin=rel_origin, project=project)
+    return judiVector(geom, shots)
+end
 
-get_data(x::judiVector{T, Array{Float32, 2}}) where T = x
 convert_to_array(x::judiVector) = vcat(vec.(x.data)...)
-
 
 ##### Rebuild bad vector
 """

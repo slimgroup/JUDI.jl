@@ -103,7 +103,7 @@ def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8, fw=
         t_sub = 1
 
     # Setup gradient wrt m
-    gradm = Function(name="gradm", grid=model.grid)
+    gradm = model.perturbation()
 
     # Setup source and receiver
     src, _ = src_rec(model, v, src_coords=rcv_coords, wavelet=residual)
@@ -227,7 +227,7 @@ def forward_grad(model, src_coords, rcv_coords, wavelet, v, space_order=8,
     _, rcv = src_rec(model, u, src_coords, rcv_coords, wavelet, nt)
 
     # Setup gradient wrt m
-    gradm = Function(name="gradm", grid=model.grid)
+    gradm = model.perturbation()
     g_expr = grad_expr(gradm, v, u, model, w=w, ic=ic, freq=freq)
 
     # Create operator and run

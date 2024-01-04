@@ -49,7 +49,7 @@ class memoized_func(object):
         value = self.func(*args, **kw)
         self.cache[key] = value
         return value
-x
+
     def __get__(self, obj, objtype):
         """Support instance methods."""
         return partial(self.__call__, obj)
