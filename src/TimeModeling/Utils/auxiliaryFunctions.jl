@@ -26,7 +26,7 @@ function devito_model(model::MT, options::JUDIOptions, dm) where {MT<:AbstractMo
     pad = pad_sizes(model, options)
     # Set up Python model structure
     dm = pad_array(dm, pad)
-    physpar = Dict((n, pad_array(v.data, pad)) for (n, v) in _params(model))
+    physpar = Dict((n, pad_array(v, pad)) for (n, v) in _params(model))
 
     modelPy = rlock_pycall(pm."Model", PyObject, origin(model), spacing(model), size(model), fs=options.free_surface,
                    nbl=nbl(model), space_order=options.space_order, dt=options.dt_comp, dm=dm;
@@ -101,7 +101,7 @@ Parameters
 * `true_adjoint`: Unpadding mode, defaults to False. Will sum the padding to the edge point with `true_adjoint=true`
  and should only be used this way for adjoint testing purpose.
 """
-function remove_padding(gradient::AbstractArray{DT}, nb::NTuple{ND, Tuple{Int64, Int64}}; true_adjoint::Bool=false) where {ND, DT}
+function remove_padding(gradient::AbstractArray{DT, ND}, nb::NTuple{ND, Tuple{Int64, Int64}}; true_adjoint::Bool=false) where {ND, DT}
     N = size(gradient)
     if true_adjoint
         for (dim, (nbl, nbr)) in enumerate(nb)

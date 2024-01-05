@@ -170,7 +170,7 @@ class Model(object):
     def __init__(self, origin, spacing, shape, space_order=8, nbl=40, dtype=np.float32,
                  m=None, epsilon=None, delta=None, theta=None, phi=None, rho=None,
                  b=None, qp=None, lam=None, mu=None, dm=None, fs=False, 
-                 physics=None, **kwargs):
+                 physics=None, param="m", **kwargs):
         # Setup devito grid
         self.shape = tuple(shape)
         self.nbl = int(nbl)
@@ -236,6 +236,7 @@ class Model(object):
             self.theta = self._gen_phys_param(theta, 'theta', space_order)
             if self.grid.dim == 3:
                 self.phi = self._gen_phys_param(phi, 'phi', space_order)
+            self._physics = 'tti'
 
         # Additional parameter fields for elastic
         if self._is_elastic:
@@ -245,7 +246,8 @@ class Model(object):
     
         self._physics = physics or 'acoustic'
         # User provided dt
-        self._dt = kwargs.get('dt')
+        self._dt = kwargs.pop('dt')
+        self._param = param
         
         # Initialize potential extra physical parameters
         for k, v in kwargs.items():
@@ -306,6 +308,8 @@ class Model(object):
         """
         if field is None:
             return default_value
+        
+        so_shape = tuple(2*space_order + s for s in self.grid.shape)
         if isinstance(field, np.ndarray) and (name == 'm' or
                                               np.min(field) != np.max(field)):
             if field.shape == self.shape:
@@ -316,13 +320,12 @@ class Model(object):
                 if field.ndim != self.grid.dim:
                     shape = field.shape
                     nextra = field.ndim - self.grid.dim
-                    gshape = tuple(s+2*space_order for s in self.grid.shape)
-                    if shape[:self.grid.dim] == gshape:
+                    if shape[:self.grid.dim] == so_shape:
                         extra = [def_dim('e%s' % i, s)
                                  for (i, s) in zip(range(nextra), shape[self.grid.dim:])]
                         dims = (*self.grid.dimensions, *extra)
                         shape = (*self.grid.shape, *shape[self.grid.dim:])
-                    elif shape[nextra:] == gshape:
+                    elif shape[nextra:] == so_shape:
                         extra = [def_dim('e%s' % i, s)
                                  for (i, s) in zip(range(nextra), shape[:nextra])]
                         dims = (*extra, *self.grid.dimensions)
@@ -337,6 +340,7 @@ class Model(object):
                                         initializer=lambda x: None, parameter=is_param)
                 else:
                     # We take advantage of the external allocator
+                    assert field.shape == so_shape
                     function = Function(name=name, grid=self.grid,
                                         space_order=space_order,
                                         allocator=ExternalAllocator(field),
@@ -573,7 +577,11 @@ class Model(object):
         return sp_map
 
     def perturbation(self):
-        return Function(name="gradm", grid=self.grid)
+        p = getattr(self, self._param)
+        dims = p.dimensions
+        shape = p.shape
+        return Function(name="gradm", grid=self.grid,
+                        dimensions=dims, shape=shape)
 
 
 class EmptyModel(object):
@@ -602,17 +610,17 @@ class EmptyModel(object):
         for (d, p) in p_params:
             if p == 'damp':
                 dims = d
-    
-        self.grid = Grid(tuple([space_order+1]*len(spacing)),
-                         extent=[s*space_order for s in spacing],
+
+        self.grid = Grid(tuple([N]*len(spacing)),
+                         extent=[s*(N-1) for s in spacing],
                          subdomains=subdomains, dimensions=dims)
         self.dimensions = self.grid.dimensions
 
         # Create the function for the physical parameters
-        self.damp = Function(name='damp', grid=self.grid)
+        self.damp = Function(name='damp', grid=self.grid, space_order=0)
         for (d, p) in set(p_params) - {(dims, 'damp')}:
             if d is not dims:
-                shape = [getattr(di, '_default_value', space_order+1) for di in d]
+                shape = [getattr(di, '_default_value', N) for di in d]
                 setattr(self, p, Function(name=p, grid=self.grid, space_order=space_order,
                                           dimensions=d, shape=shape))
             else:

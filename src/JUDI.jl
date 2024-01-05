@@ -57,13 +57,10 @@ export devito, set_devito_config
 const pm = PyNULL()
 const ac = PyNULL()
 const pyut = PyNULL()
-<<<<<<< HEAD
 const devito = PyNULL()
+const kern = PyNULL()
 
 set_devito_config(key::String, val::String) = set!(devito."configuration", key, val)
-=======
-const kern = PyNULL()
->>>>>>> e635fc0 (allow for custom kernels via 'physics')
 
 # Create a lock for pycall FOR THREAD/TASK SAFETY
 # See discussion at

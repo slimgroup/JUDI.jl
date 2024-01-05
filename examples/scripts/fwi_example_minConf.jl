@@ -31,7 +31,7 @@ wavelet = ricker_wavelet(src_geometry.t[1],src_geometry.dt[1],0.008f0)  # 8 Hz w
 q = judiVector(src_geometry,wavelet)
 
 ############################### FWI ###########################################
-
+M = judiTopmute(model0; taperwidth=0)
 
 # Optimization parameters
 fevals = parse(Int, get(ENV, "NITER", "10"))
@@ -39,24 +39,30 @@ batchsize = 8
 
 # Objective function for minConf library
 count = 0
-function objective_function(x)
-    model0.m .= reshape(x,model0.n);
+
+function objective_function(x, model0, d_obs, q, M, batchsize)
+    model0.m .= reshape(x, model0.n);
 
     # fwi function value and gradient
     i = randperm(d_obs.nsrc)[1:batchsize]
     fval, grad = fwi_objective(model0, q[i], d_obs[i])
+    grad = M * grad
     grad = .125f0*grad/maximum(abs.(grad))  # scale for line search
 
     global count; count+= 1
+
     return fval, grad
 end
 
+phi(x) = objective_function(x, model0, d_obs, q, M, batchsize)
+
 # Bound projection
-proj(x) = reshape(median([vec(mmin) vec(x) vec(mmax)]; dims=2),model0.n)
+proj(x::AbstractArray{T, N}) where {T, N} = reshape(median([vec(mmin) vec(x) vec(mmax)]; dims=2), model0.n)
 
 # FWI with SPG
-options = spg_options(verbose=3, maxIter=fevals, memory=3)
-sol = spg(objective_function, model0.m, proj, options)
+m0 = model0.m
+options = spg_options(verbose=3, maxIter=fevals, memory=5)
+sol = spg(phi, m0, proj, options)
 
 # Plot result
 imshow(reshape(sqrt.(1f0 ./ sol.x), model0.n)', extent=[0, 10, 3, 0])

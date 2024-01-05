@@ -48,7 +48,7 @@ function f!(x,grad)
     # Reset gradient in water column to zero
     gradient = reshape(gradient, model0.n)
     gradient[:, 1:21] .= 0f0
-    grad[1:end] = vec(gradient)
+    grad[1:end] .= vec(gradient)
 
     global count; count += 1
     println(count, "    ", fval, "    ", norm(grad))

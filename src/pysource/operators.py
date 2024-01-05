@@ -71,7 +71,6 @@ def forward_op(p_params, physics, space_order, fw, spacing, save, t_sub, fs,
     # Create operator and run
     subs = model.spacing_map
     pname = "forward" if fw else "adjoint"
-    from IPython import embed; embed()
     op = Operator(pde + wrec + nv_t + dft + g_expr + eq_save + nv_s + Ieq,
                   subs=subs, name=pname+name(model),
                   opt=opt_op(model))
@@ -161,8 +160,8 @@ def adjoint_born_op(p_params, physics, space_order, fw, spacing, pt_rec, fs, w,
     r_expr = geom_expr(model, v, src_coords=rcords, wavelet=residual, fw=not fw)
 
     # Setup gradient wrt m
-    g_expr, gradm = grad_expr(u, v, model, w=w, freq=freq_list,
-                              dft_sub=dft_sub, ic=ic)
+    g_expr = grad_expr(u, v, model, w=w, freq=freq_list,
+                       dft_sub=dft_sub, ic=ic)
 
     # Illumination
     Ieq = illumexpr(v, illum)
