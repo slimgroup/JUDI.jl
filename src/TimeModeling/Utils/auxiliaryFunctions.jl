@@ -242,6 +242,7 @@ function remove_out_of_bounds_receivers(recGeometry::Geometry{T}, recData::Matri
     if typeof(recGeometry.xloc[1]) <: Array
         idx_xrec = findall(x -> xmax >= x >= xmin, recGeometry.xloc[1])
         recGeometry.xloc[1] = recGeometry.xloc[1][idx_xrec]
+        length(recGeometry.yloc[1]) > 1 && (recGeometry.yloc[1] = recGeometry.yloc[1][idx_xrec])
         recGeometry.zloc[1] = recGeometry.zloc[1][idx_xrec]
         recData = recData[:, idx_xrec]
     end
@@ -250,6 +251,7 @@ function remove_out_of_bounds_receivers(recGeometry::Geometry{T}, recData::Matri
     if length(size(model)) == 3 && typeof(recGeometry.yloc[1]) <: Array
         ymin, ymax = origin(model, 2), origin(model, 2) + (size(model, 2) - 1)*spacing(model, 2)
         idx_yrec = findall(x -> ymax >= x >= ymin, recGeometry.yloc[1])
+        recGeometry.xloc[1] = recGeometry.xloc[1][idx_yrec]
         recGeometry.yloc[1] = recGeometry.yloc[1][idx_yrec]
         recGeometry.zloc[1] = recGeometry.zloc[1][idx_yrec]
         recData = recData[:, idx_yrec]

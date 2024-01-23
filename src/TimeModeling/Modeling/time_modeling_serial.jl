@@ -36,11 +36,6 @@ function time_modeling(model_full::AbstractModel, srcGeometry::GeomOrNot, srcDat
         modelPy = devito_model(model, options, dm)
     end
 
-    # Remove receivers outside the modeling domain (otherwise leads to segmentation faults)
-    @juditime "Remove OOB src/rec" begin
-        recGeometry, recData = remove_out_of_bounds_receivers(recGeometry, recData, model)
-    end
-
     # Devito interface
     @juditime "Propagation" begin
         argout = devito_interface(modelPy, srcGeometry, srcData, recGeometry, recData, dm, options, illum, fw)
