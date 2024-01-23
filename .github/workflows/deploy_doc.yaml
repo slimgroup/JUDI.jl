@@ -41,8 +41,8 @@ jobs:
       - name: Build python doc
         run: |
           pip install --upgrade pip
-          pip install sphinx-markdown-builder==0.5.5 sphinx-markdown-parser devito matplotlib
-          pip install "sphinx==3.1.0" "MarkupSafe==2.0.1" "jinja2<3.1" "sphinxcontrib-devhelp==1.0.5"
+          pip install sphinx sphinx-markdown-builder sphinx-markdown-parser devito matplotlib
+          # pip install "sphinx==3.1.0" "MarkupSafe==2.0.1" "jinja2<3.1" "sphinxcontrib-devhelp==1.0.5"
           make clean
           make markdown
           mv _build/markdown/pysource.md ../../docs/src/pysource.md
