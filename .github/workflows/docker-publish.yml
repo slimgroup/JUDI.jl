@@ -18,7 +18,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: ['1.6', '1.7', '1.8']
+        version: ['1.6', '1.7', '1.8', '1.9', '1.10']
 
     steps:
       - name: Check event name
@@ -69,7 +69,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: ['1.6', '1.7', '1.8']
+        version: ['1.6', '1.7', '1.8', '1.9', '1.10']
   
     steps:
         - name: Run simple test
