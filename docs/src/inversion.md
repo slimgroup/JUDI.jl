@@ -86,7 +86,7 @@ end
 # FWI with SPG
 ProjBound(x) = median([mmin x mmax], dims=2)	# Bound projection
 options = spg_options(verbose=3, maxIter=fevals, memory=3)
-x, fsave, funEvals= minConf_SPG(objective_function, vec(m0), ProjBound, options)
+res = spg(objective_function, vec(m0), ProjBound, options)
 ```
 
 This example script can be run in parallel and requires roughly 220 MB of memory per source location. Execute the following code to generate figures of the initial model and the result, as well as the function values:

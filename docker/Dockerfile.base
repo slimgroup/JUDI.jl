@@ -1,4 +1,9 @@
-FROM python:3.8
+ARG JVER=1.7
+
+FROM julia:${JVER}-bullseye
+
+# Make julia use preinstalled cuda
+ENV JULIA_CUDA_USE_BINARYBUILDER false
 
 ENV DEBIAN_FRONTEND noninteractive 
 
@@ -33,14 +38,6 @@ ENV CUDA_HOME $HPCSDK_HOME/cuda
 ENV CUDA_ROOT $HPCSDK_HOME/cuda/bin
 ENV PATH $HPCSDK_HOME/compilers/bin:$HPCSDK_HOME/cuda/bin:$HPCSDK_HOME/comm_libs/mpi/bin:${PATH}
 ENV LD_LIBRARY_PATH $HPCSDK_HOME/cuda/lib:$HPCSDK_HOME/cuda/lib64:$HPCSDK_HOME/compilers/lib:$HPCSDK_HOME/math_libs/lib64:$HPCSDK_HOME/comm_libs/mpi/lib:$HPCSDK_CUPTI/lib64:${LD_LIBRARY_PATH}
-
-# Make julia use preinstalled cuda
-ENV JULIA_CUDA_USE_BINARYBUILDER false
-
-# Install Julia
-ARG JVER=1.7
-ADD ./docker/get_julia.sh get_julia.sh
-RUN chmod +x get_julia.sh && ./get_julia.sh $JVER && rm get_julia.sh
 
 # Install requirements
 RUN pip3 install -r https://raw.githubusercontent.com/microsoft/AzureClusterlessHPC.jl/main/pyrequirements.txt
