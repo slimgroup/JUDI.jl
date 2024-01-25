@@ -1,7 +1,6 @@
 import numpy as np
-from sympy import cos, sin, sign
 
-from devito import Inc, Eq, ConditionalDimension
+from devito import Inc, Eq, ConditionalDimension, cos, sin, sign
 from devito.tools import as_tuple
 from devito.symbolics import retrieve_functions, INT
 

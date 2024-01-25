@@ -214,12 +214,17 @@ function timings_from_segy(data, dt=nothing, t::T=nothing) where T
     else
         ntCell = _get_p(nothing, data, nsrc, "ns", Int, 1)
         # In some cases the recording doesn't start at zero, need tp check for nsorig in the fileheader
-        ntFile = [data[i].fileheader.bfh.nsOrig for i=1:nsrc]
+        ntFile = [segy_nsfile(data.blocks[i]) for i=1:nsrc]
         ntCell = max.(ntCell, ntFile)
         tCell = Float32.((ntCell .- 1) .* dtCell)
         return dtCell, ntCell, tCell
     end
 end
+
+
+segy_nsfile(b::SeisBlock) = b.fileheader.bfh.nsOrig
+segy_nsfile(b::BlockScan) = read_fileheader(b.file).bfh.nsOrig
+
 
 # Set up source geometry object from in-core data container
 function Geometry(data::SegyIO.SeisBlock; key="source", segy_depth_key="", dt=nothing, t=nothing)
@@ -344,20 +349,20 @@ function Geometry(geometry::GeometryOOC; rel_origin=(0, 0, 0), project=nothing)
         header = read_con_headers(geometry.container[j], params, 1)
         if geometry.key=="source"
             xloc[j] = get_header(header, params[1])[1] .- ox
+            yloc[j] = get_header(header, params[2])[1] .- oy
             if project == "2d"
-                xloc[j] = sqrt.(xloc[j].^2 .+ (get_header(header, params[2])[1] .- oy).^2)
+                angle = atan.(yloc[j], xloc[j])
+                xloc[j] = sqrt.(xloc[j].^2 .+ yloc[j].^2) .* cos.(angle)
                 yloc[j] = 0 .* xloc[j]
-            else
-                yloc[j] = get_header(header, params[2])[1] .- oy
             end
             zloc[j] = abs.(get_header(header, params[3]))[1] .- oz
         else
             xloc[j] = get_header(header, params[1]) .- ox
+            yloc[j] = get_header(header, params[2]) .- oy
             if project == "2d"
-                xloc[j] .= sqrt.(xloc[j].^2 .+ (get_header(header, params[2]) .- oy).^2)
+                angle = atan.(yloc[j], xloc[j])
+                xloc[j] .= sqrt.(xloc[j].^2 .+ yloc[j].^2) .* cos.(angle)
                 yloc[j] = 0 .* xloc[j]
-            else
-                yloc[j] = get_header(header, params[2]) .- oy
             end
             zloc[j] = abs.(get_header(header, params[3])) .- oz
         end
