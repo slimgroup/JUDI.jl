@@ -348,21 +348,25 @@ function Geometry(geometry::GeometryOOC; rel_origin=(0, 0, 0), project=nothing)
     for j=1:nsrc
         header = read_con_headers(geometry.container[j], params, 1)
         if geometry.key=="source"
-            xloc[j] = get_header(header, params[1])[1] .- ox
-            yloc[j] = get_header(header, params[2])[1] .- oy
             if project == "2d"
-                angle = atan.(yloc[j], xloc[j])
-                xloc[j] = sqrt.(xloc[j].^2 .+ yloc[j].^2) .* cos.(angle)
-                yloc[j] = 0 .* xloc[j]
+                xtmp = get_header(header, params[1])[1] .- ox
+                ytmp = get_header(header, params[2])[1] .- oy
+                xloc[j] = sqrt.(xtmp.^2 .+ ytmp.^2) .* sign.(xtmp)
+                yloc[j] = 0 .* xtmp
+            else
+                xloc[j] = get_header(header, params[1])[1] .- ox
+                yloc[j] = get_header(header, params[2])[1] .- oy
             end
             zloc[j] = abs.(get_header(header, params[3]))[1] .- oz
         else
-            xloc[j] = get_header(header, params[1]) .- ox
-            yloc[j] = get_header(header, params[2]) .- oy
             if project == "2d"
-                angle = atan.(yloc[j], xloc[j])
-                xloc[j] .= sqrt.(xloc[j].^2 .+ yloc[j].^2) .* cos.(angle)
-                yloc[j] = 0 .* xloc[j]
+                xtmp = get_header(header, params[1]) .- ox
+                ytmp = get_header(header, params[2]) .- oy
+                xloc[j] = sqrt.(xtmp.^2 .+ ytmp.^2) .* sign.(xtmp)
+                yloc[j] = 0 .* xtmp
+            else
+                xloc[j] = get_header(header, params[1]) .- ox
+                yloc[j] = get_header(header, params[2]) .- oy
             end
             zloc[j] = abs.(get_header(header, params[3])) .- oz
         end
@@ -457,7 +461,8 @@ check_geom(geom::Geometry, data::SeisBlock) = _check_geom(geom.nt[1], (data.file
 function check_geom(geom::Geometry, data::SeisCon)
     for s = 1:get_nsrc(geom)
         fh = read_fileheader(data.blocks[s].file)
-        _check_geom(geom.nt[s], (fh.bfh.ns, fh.bfh.nsOrig))
+        geom.nt[s] <= fh.bfh.ns || _geom_missmatch(nt, ns)
+        geom.nt[s] <= fh.bfh.nsOrig || _geom_missmatch(nt, ns)
     end
 end
 
@@ -466,6 +471,7 @@ _check_geom(nt::Integer, ns::Tuple{Integer, Integer}) = nt == ns[1] || nt == ns[
 
 check_time(dt::Number, t::Number, segy::Bool=false) = (t/dt == div(t, dt, RoundNearest)) || throw(GeometryException("Recording time t=$(t) not divisible by sampling rate dt=$(dt)"))
 check_time(::Nothing, ::Nothing, segy::Bool=false) = segy || throw(GeometryException("Recording time `t` and sampling rate `dt` must be provided"))
+check_time(::Nothing, ::Number, segy::Bool=false) = segy || throw(GeometryException("Recording time `t` and sampling rate `dt` must be provided"))
 check_time(dt::AbstractVector, t::AbstractVector, segy::Bool=false) = check_time.(dt, t)
 _geom_missmatch(nt::Integer, ns::Integer) = throw(judiMultiSourceException("Geometry's number of samples doesn't match the data: $(nt), $(ns)"))
 

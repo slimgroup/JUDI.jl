@@ -1,5 +1,5 @@
 export DataMute, FrequencyFilter, judiTimeDerivative, judiTimeIntegration, TimeDifferential
-export judiFilter, filter_data, judiDataMute, muteshot
+export judiFilter, filter_data, judiDataMute, muteshot, judiTimeGain
 
 ############################################ Data mute ###############################################
 """
@@ -281,5 +281,62 @@ function matvec(D::TimeDifferential{T, K}, x::Array{T}) where {T, K}
     ω[ω.==0] .= 1f0
     ω .= abs.(ω).^K
     out = real.(ifft(ω .* fft(xr, 1), 1))
+    return reshape(out, size(x))
+end
+
+
+
+"""
+    struct TimeGain
+        recGeom
+
+Apply gain `t^K` to the data along the time axis for each trace. This is used in practice to correct for
+3D amplitude decay when running 2D inversion
+
+Constructor
+============
+
+    judiTimeGain(recGeom, pow)
+    judiTimeGain(judiVector, pow)
+"""
+struct TimeGain{T, K} <: DataPreconditioner{T, T}
+    m::Integer
+    recGeom::Geometry
+    TimeGain{T, K}(recGeom::Geometry) where {T, K} = new{T, K}(n_samples(recGeom), recGeom)
+end
+
+TimeGain(g::Geometry{T}, pow::Number) where T = TimeGain{T, pow}(g)
+
+judiTimeGain(v::judiVector{T, AT}, pow::Number) where {T, AT} = TimeGain(v.geometry, pow)
+judiTimeGain(g::Geometry{T}, pow::Number) where {T} = TimeGain(g, pow)
+
+# Real diagonal operator
+conj(D::TimeGain{T, K}) where {T, K} = D
+adjoint(D::TimeGain{T, K}) where {T, K} = D
+transpose(D::TimeGain{T, K}) where {T, K} = D
+inv(D::TimeGain{T, K}) where {T, K} = TimeGain{T, -K}(D.recGeom)
+
+# diagonal in fourier domain so self-adjoint
+matvec_T(D::TimeGain{T, K}, x) where {T, K} = matvec(D, x)
+
+# getindex for source subsampling
+getindex(P::TimeGain{T, K}, i) where {T, K} = TimeGain{T, K}(P.recGeom[i])
+
+function matvec(D::TimeGain{T, K}, x::judiVector{T, AT}) where {T, AT, K}
+    out = similar(x)
+    for s=1:out.nsrc
+        # make time^K
+        timek = (0:D.recGeom.dt[s]:D.recGeom.t[s]).^K
+        out.data[s] .= timek .* x.data[s]
+    end
+    return out
+end
+
+function matvec(D::TimeGain{T, K}, x::Array{T}) where {T, K}
+    xr = reshape(x, D.recGeom)
+    # make time^K
+    timek = (0:D.recGeom.dt[s]:D.recGeom.t[s]).^K
+    out.data[s] .= timek .* x.data[s]
+    out = timek .* xr
     return reshape(out, size(x))
 end
