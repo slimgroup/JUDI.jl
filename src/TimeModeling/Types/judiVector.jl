@@ -348,7 +348,7 @@ end
 
 convert_to_array(x::judiVector) = vcat(vec.(x.data)...)
 
-data_matrix(x::judiVector{T, SeisCon}, i::Integer) where T = convert(Matrix{Float32}, x.data[i][1].data)
+data_matrix(x::judiVector{T, SeisCon}, i::Integer) where T = convert(Matrix{Float32}, x.data[i][1].data)[1:nt(x.geometry, i), :]
 data_matrix(x::judiVector{T, Matrix{T}}, i::Integer) where T = x.data[i]
 
 ##### Rebuild bad vector

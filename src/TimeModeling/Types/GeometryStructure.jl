@@ -4,7 +4,7 @@
 #
 
 export Geometry, compareGeometry, GeometryIC, GeometryOOC, get_nsrc, n_samples, super_shot_geometry
-export reciprocal_geom
+export reciprocal_geom, t, dt, nt, t0
 
 abstract type Geometry{T} end
 
@@ -83,6 +83,8 @@ dt(g::Geometry) = step.(g.taxis)
 dt(g::Geometry, srcnum::Integer) = step(g.taxis[srcnum])
 t(g::Geometry) = last.(g.taxis)
 t(g::Geometry, srcnum::Integer) = last(g.taxis[srcnum])
+t0(g::Geometry) = first.(g.taxis)
+t0(g::Geometry, srcnum::Integer) = first(g.taxis[srcnum])
 
 rec_space(G::Geometry) = AbstractSize((:src, :time, :rec), (get_nsrc(G), nt(G), G.nrec))
 ################################################ Constructors ####################################################################
@@ -190,7 +192,7 @@ function Geometry(xloc::Array{Array{T, 1},1}, yloc::CoordT, zloc::Array{Array{T,
     dt = as_src_list(dt, nsrc)
     t = as_src_list(t, nsrc)
     t0 = as_src_list(t0, nsrc)
-    tranges = [StepRangeLen(T(t0i), T(dti), floor.(Int, ti / dti) .+ 1) for (t0, dti, ti) in zip(t0, dt, t)]
+    tranges = [StepRangeLen(T(t0i), T(dti), floor.(Int, ti / dti) .+ 1) for (t0i, dti, ti) in zip(t0, dt, t)]
     return GeometryIC{T}(xloc, yloc, zloc, tranges)
 end
 
@@ -203,7 +205,7 @@ function Geometry(xloc::Array{T, 1}, yloc::CoordT, zloc::Array{T, 1}; dt=nothing
     dt = as_src_list(dt, nsrc)
     t = as_src_list(t, nsrc)
     t0 = as_src_list(t0, nsrc)
-    tranges = [StepRangeLen(T(t0i), T(dti), floor.(Int, ti / dti) .+ 1) for (t0, dti, ti) in zip(t0, dt, t)]
+    tranges = [StepRangeLen(T(t0i), T(dti), floor.(Int, ti / dti) .+ 1) for (t0i, dti, ti) in zip(t0, dt, t)]
     return GeometryIC{T}(xlocCell, ylocCell, zlocCell, tranges)
 end
 

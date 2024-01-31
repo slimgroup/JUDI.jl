@@ -36,6 +36,16 @@ function multi_src_fg(model_full::AbstractModel, source::judiVector, dObs::judiV
     # Extrapolate input data to computational grid
     qIn = time_resample(make_input(source), source.geometry, dtComp)
     dObserved = time_resample(make_input(dObs), dObs.geometry, dtComp)
+    if size(dObserved, 1) != size(qIn, 1)
+        dsize = size(qIn, 1) - size(dObserved, 1)
+        dt0 = t0(dObs.geometry, 1) - t0(source.geometry, 1)
+        @assert dt0 != 0 && sign(dsize) == sign(dt0)
+        if dt0 > 0
+            dObserved = vcat(zeros(Float32, dsize, size(dObserved, 2)), dObserved)
+        else
+            qIn = vcat(zeros(Float32, -dsize,  size(qIn, 2)), qIn)
+        end
+    end
 
     # Set up coordinates
     @juditime "Sparse coords setup" begin
