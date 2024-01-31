@@ -1,5 +1,3 @@
-import Base: depwarn
-
 export Info
 # Compatibility with `info`
 

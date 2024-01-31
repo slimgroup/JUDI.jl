@@ -121,16 +121,21 @@ def freesurface(model, eq):
             zfs = model.grid.subdomains['fsdomain'].dimensions[-1]
             z = zfs.parent
 
-            funcs = retrieve_functions(rhs.evaluate)
-            mapper = {}
-            for f in funcs:
-                zind = f.indices[-1]
-                if (zind - z).as_coeff_Mul()[0] < 0:
-                    s = sign((zind - z.symbolic_min).subs({z: zfs, z.spacing: 1}))
-                    mapper.update({f: s * f.subs({zind: INT(abs(zind))})})
-            fs_eq.append(Eq(lhs, sign(lhs.indices[-1]-z.symbolic_min) * rhs.subs(mapper),
-                            subdomain=model.grid.subdomains['fsdomain']))
-
+            if lhs.is_TimeFunction:
+                so = lhs.space_order
+                z0= S.Zero
+                zfs = CustomDimension(name="zfs", symbolic_min=1, symbolic_max=so,
+                                      symbolic_size=so)
+                fs_eq.extend([Eq(lhs.subs({z: z0 - zfs}), -lhs.subs({z: z0 + zfs})),
+                              Eq(lhs.subs({z: z.symbolic_min + z0}), 0)])
+    #         mapper = {}
+    #         for f in funcs:
+    #             zind = f.indices[-1]
+    #             if (zind - z).as_coeff_Mul()[0] < 0:
+    #                 s = sign((zind - z.symbolic_min).subs({z: zfs, z.spacing: 1}))
+    #                 mapper.update({f: s * f.subs({zind: INT(abs(zind))})})
+    #         fs_eq.append(Eq(lhs, sign(lhs.indices[-1]-z.symbolic_min) * rhs.subs(mapper),
+    #                         subdomain=model.grid.subdomains['fsdomain']))
     return fs_eq
 
 

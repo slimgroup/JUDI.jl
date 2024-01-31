@@ -58,11 +58,11 @@ def acoustic_kernel(model, u, fw=True, q=None):
     damp = model.damp
     stencil = solve(wmr * u.dt2 + damp * udt - ulaplace - q, u_n)
 
-    if 'nofsdomain' in model.grid.subdomains:
-        pde = [Eq(u_n, stencil, subdomain=model.grid.subdomains['nofsdomain'])]
-        pde += freesurface(model, pde)
-    else:
-        pde = [Eq(u_n, stencil)]
+    # if 'nofsdomain' in model.grid.subdomains:
+    #     pde = [Eq(u_n, stencil, subdomain=model.grid.subdomains['nofsdomain'])]
+    #     pde += freesurface(model, pde)
+    # else:
+    pde = [Eq(u_n, stencil)]
 
     return pde
 

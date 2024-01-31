@@ -104,7 +104,7 @@ function judiVector(geometry::Geometry, data::SegyIO.SeisBlock)
     dataCell = Vector{Array{Float32, 2}}(undef, nsrc)
     for j=1:nsrc
         traces = findall(src .== unique(src)[j])
-        dataCell[j] = convert(Array{Float32, 2}, data.data[:,traces])
+        dataCell[j] = convert(Array{Float32, 2}, data.data[1:nt(geometry, j), traces])
     end
     return judiVector{Float32, Array{Float32, 2}}(nsrc, geometry, dataCell)
 end
@@ -129,7 +129,7 @@ judiVector(geometry::Geometry, data::Vector{SegyIO.SeisCon}) =  judiVector{Float
 
 ############################################################
 ## overloaded multi_source functions
-time_sampling(jv::judiVector) = jv.geometry.dt
+time_sampling(jv::judiVector) = dt(jv.geometry)
 
 ############################################################
 # JOLI conversion
@@ -165,7 +165,7 @@ function pad_zeros(zpad::OrderedDict, m::T, d::judiVector{T, AT}) where {T, AT}
     @assert d.nsrc == 1
     dloc = as_ordered_dict(d; v=m)
     sort!(merge!(.+, dloc, zpad))
-    return from_ordered_dict(dloc, d.geometry.dt[1], d.geometry.nt[1], d.geometry.t[1])
+    return from_ordered_dict(dloc, dt(d.geometry, 1), nt(d.geometry, 1), t(d.geometry, 1))
 end
 
 function simsource(M::Vector{T}, x::judiVector{T, AT}; reduction=+, minimal::Bool=false) where {T, AT}
@@ -173,14 +173,14 @@ function simsource(M::Vector{T}, x::judiVector{T, AT}; reduction=+, minimal::Boo
     # Without reduction, add zero trace for all missing coords
     if isnothing(reduction)
         sgeom = as_coord_set(x.geometry)
-        zpad = OrderedDict(zip(sgeom, [zeros(Float32, x.geometry.nt[1]) for s=1:length(sgeom)]))
+        zpad = OrderedDict(zip(sgeom, [zeros(Float32, nt(x.geometry, 1)) for s=1:length(sgeom)]))
         dOut = vcat([pad_zeros(zpad, M[s], x[s]) for s=1:x.nsrc]...)
     # With reduction. COuld reuse the previous but cheaper to compute the sum directly
     else
         reduction = minimal ? PopZero() : reduction
         sdict = mergewith!(reduction, map((d, m)->as_ordered_dict(d; v=m), x, M)...)
         sort!(sdict)
-        dOut = from_ordered_dict(sdict, x.geometry.dt[1], x.geometry.nt[1], x.geometry.t[1])
+        dOut = from_ordered_dict(sdict, dt(x.geometry, 1), nt(x.geometry, 1), t(x.geometry, 1))
     end
     return dOut
 end
@@ -290,7 +290,7 @@ function judiVector_to_SeisBlock(d::judiVector{avDT, AT}, q::judiVector{avDT, QT
         set_header!(blocks[j], "SourceY", Int.(round.(q.geometry.yloc[j][1]*1f3)))
         set_header!(blocks[j], source_depth_key, Int.(round.(q.geometry.zloc[j][1]*1f3)))
 
-        set_header!(blocks[j], "dt", Int(d.geometry.dt[j]*1f3))
+        set_header!(blocks[j], "dt", Int(dt(d.geometry, j)*1f3))
         set_header!(blocks[j], "FieldRecord",j)
         set_header!(blocks[j], "TraceNumWithinLine", traceNumbers)
         set_header!(blocks[j], "TraceNumWithinFile", traceNumbers)
@@ -337,7 +337,7 @@ end
 
 ####################################################################################################
 # Load OOC
-function get_data(x::judiVector{T, SeisCon}; rel_origin=(0, 0, 0), project=nothing) where T
+function get_data(x::judiVector{T, AT}; rel_origin=(0, 0, 0), project=nothing) where {T, AT}
     shots = Vector{Matrix{Float32}}(undef, x.nsrc)
     rec_geometry = Geometry(x.geometry; rel_origin=rel_origin, project=project)
     for j=1:x.nsrc
@@ -346,29 +346,10 @@ function get_data(x::judiVector{T, SeisCon}; rel_origin=(0, 0, 0), project=nothi
     return judiVector{T, Array{Float32, 2}}(x.nsrc, rec_geometry, shots)
 end
 
-
-function get_data(x::judiVector{T, Array{Float32, 2}}; rel_origin=(0, 0, 0), project=nothing) where T
-    if rel_origin == (0, 0, 0) && isnothing(project)
-        return x
-    end
-    # Shift and project geometry
-    geom = Geometry(x.geometry; rel_origin=rel_origin, project=project)
-    return judiVector{T, Array{Float32, 2}}(x.nsrc, geom, x.data)
-end
-
 convert_to_array(x::judiVector) = vcat(vec.(x.data)...)
 
-function data_matrix(x::judiVector{T, SeisCon}, i::Integer) where T
-    data = convert(Matrix{Float32}, x.data[i][1].data)
-    # Check if needs to extra padding or croping
-    if x.geometry.nt[i] > size(data, 1)
-        data = vcat(zeros(Float32, x.geometry.nt[i] - size(data, 1), size(data, 2)), data)
-    elseif x.geometry.nt[i] < size(data, 1)
-        data = data[1:x.geometry.nt[i], :]
-    end
-    return data
-end
-
+data_matrix(x::judiVector{T, SeisCon}, i::Integer) where T = convert(Matrix{Float32}, x.data[i][1].data)
+data_matrix(x::judiVector{T, Matrix{T}}, i::Integer) where T = x.data[i]
 
 ##### Rebuild bad vector
 """

@@ -94,7 +94,7 @@ function muteshot!(shot::AbstractMatrix{T}, rGeom::Geometry, srcGeom::Geometry; 
     # Loop over traces
     @inbounds for t=1:nrec
         r = radius(rGeom, sGeom, t) 
-        tt = 1f3 * (r / vp + t0) / rGeom.dt[1]
+        tt = 1f3 * (r / vp + t0) / dt(rGeom, 1)
         i = min(max(1, floor(Int, tt)), nt)
         if _tapew(i, taperwidth, nt, Val(mode))
             _mutew!(view(shot, :, t), taper, i, nt, Val(mode))
@@ -148,7 +148,7 @@ function matvec(D::FrequencyFilter{T, fm, FM}, x::Vector{T}) where {T, fm, FM}
     dr = reshape(x, D.recGeom)
     for j=1:get_nsrc(D.recGeom)
         dri = view(dr, :, :, j)
-        filter!(dri, dri, D.recGeom[j].dt[1]; fmin=fm, fmax=FM)
+        filter!(dri, dri, dt(D.recGeom, j); fmin=fm, fmax=FM)
     end
     return reshape(vcat(dr...), size(x))
 end
@@ -156,7 +156,7 @@ end
 function matvec(::FrequencyFilter{T, fm, FM}, Din::judiVector{T, AT}) where {T, fm, FM, AT}
     Dout = deepcopy(Din)	
     for j=1:Dout.nsrc
-        filter!(Dout.data[j], Din.data[j], Din.geometry[j].dt[1]; fmin=fm, fmax=FM)
+        filter!(Dout.data[j], Din.data[j], dt(Din.geometry, j); fmin=fm, fmax=FM)
     end
     return Dout	
 end
@@ -182,6 +182,7 @@ function tracefilt!(x, y, ypad, filter)
     x .= filtfilt(filter, ypad)[n:end]
     nothing
 end
+
 
 function filter!(dout::AbstractArray{T, N}, din::AbstractArray{T, N}, dt::T; fmin=T(0.01), fmax=T(100)) where {T, N}
     if fmin == 0
@@ -266,7 +267,7 @@ function matvec(D::TimeDifferential{T, K}, x::judiVector{T, AT}) where {T, AT, K
     out = similar(x)
     for s=1:out.nsrc
         # make omega^K
-        ω = 2 .* pi .* fftfreq(D.recGeom.nt[s], 1/D.recGeom.dt[s])
+        ω = 2 .* pi .* fftfreq(nt(D.recGeom, s), 1/dt(D.recGeom, s))
         ω[ω.==0] .= 1f0
         ω .= abs.(ω).^K
         out.data[s] .= real.(ifft(ω .* fft(x.data[s], 1), 1))
@@ -277,7 +278,7 @@ end
 function matvec(D::TimeDifferential{T, K}, x::Array{T}) where {T, K}
     xr = reshape(x, D.recGeom)
     # make omega^K
-    ω = 2 .* pi .* fftfreq(D.recGeom.nt[1], 1/D.recGeom.dt[1])
+    ω = 2 .* pi .* fftfreq(nt(D.recGeom, 1), 1/dt(D.recGeom, 1))
     ω[ω.==0] .= 1f0
     ω .= abs.(ω).^K
     out = real.(ifft(ω .* fft(xr, 1), 1))
@@ -320,13 +321,13 @@ inv(D::TimeGain{T, K}) where {T, K} = TimeGain{T, -K}(D.recGeom)
 matvec_T(D::TimeGain{T, K}, x) where {T, K} = matvec(D, x)
 
 # getindex for source subsampling
-getindex(P::TimeGain{T, K}, i) where {T, K} = TimeGain{T, K}(P.recGeom[i])
+getindex(D::TimeGain{T, K}, i) where {T, K} = TimeGain{T, K}(D.recGeom[i])
 
 function matvec(D::TimeGain{T, K}, x::judiVector{T, AT}) where {T, AT, K}
     out = similar(x)
     for s=1:out.nsrc
         # make time^K
-        timek = (0:D.recGeom.dt[s]:D.recGeom.t[s]).^K
+        timek = (D.recGeom.taxis[s]).^K
         out.data[s] .= timek .* x.data[s]
     end
     return out
@@ -335,7 +336,7 @@ end
 function matvec(D::TimeGain{T, K}, x::Array{T}) where {T, K}
     xr = reshape(x, D.recGeom)
     # make time^K
-    timek = (0:D.recGeom.dt[s]:D.recGeom.t[s]).^K
+    timek = (D.recGeom.taxis[1]).^K
     out.data[s] .= timek .* x.data[s]
     out = timek .* xr
     return reshape(out, size(x))

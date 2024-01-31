@@ -47,20 +47,19 @@ function time_modeling(model_full::AbstractModel, srcGeometry::GeomOrNot, srcDat
     @juditime "Filter empty output" begin
         argout = filter_none(argout)
     end
-    argout = post_process(argout, modelPy, Val(op), recGeometry, options)
+    argout = post_process(argout, modelPy, Val(op), recGeometry, srcGeometry, options)
     argout = save_to_disk(argout, srcGeometry, srcData, options, Val(fw), Val(options.save_data_to_disk))
     return argout
 end
 
+# Backward compat for external packages
+post_process(t::Tuple, modelPy::PyObject, op::Val, Gr, o::JUDIOptions) = post_process(t, modelPy, op, Gr, nothing, o)
+
 # Post processing of output of devito based on parameters
-post_process(t::Tuple, modelPy::PyObject, op::Val, G, o::JUDIOptions) = (post_process(t[1], modelPy, op, G, o), post_process(Base.tail(t), modelPy, Val(:adjoint_born), G, Options(;sum_padding=false))...)
-post_process(t::Tuple{}, ::PyObject, ::Val, ::Any, ::JUDIOptions) = t
+post_process(t::Tuple, modelPy::PyObject, op::Val, Gr, Gs, o::JUDIOptions) = (post_process(t[1], modelPy, op, Gr, Gs, o), post_process(Base.tail(t), modelPy, Val(:adjoint_born), Gr, Gs, Options(;sum_padding=false))...)
+post_process(t::Tuple{}, ::PyObject, ::Val, ::Any, ::Any, ::JUDIOptions) = t
 
-post_process(v::AbstractArray{T}, modelPy::PyObject, ::Val{:forward}, G::Geometry{T}, options::JUDIOptions) where {T<:Number} = judiVector{T, Matrix{T}}(1, G, [time_resample(v, calculate_dt(modelPy), G)])
-post_process(v::AbstractArray{T}, modelPy::PyObject, ::Val{:forward}, ::Any, options::JUDIOptions) where {T<:Number} = judiWavefield{T}(1, [calculate_dt(modelPy)], [v])
-post_process(v::AbstractArray{T}, modelPy::PyObject, ::Val{:adjoint}, G::Geometry{T}, options::JUDIOptions) where {T<:Number} = judiVector{T, Matrix{T}}(1, G, [time_resample(v, calculate_dt(modelPy), G)])
-
-function post_process(v::AbstractArray{T, N}, modelPy::PyObject, ::Val{:adjoint}, ::Any, options::JUDIOptions) where {T, N}
+function post_process(v::AbstractArray{T, N}, modelPy::PyObject, ::Val{:adjoint}, ::Any, ::Any, options::JUDIOptions) where {T, N}
     if N == modelPy.dim
         return judiWeights{T}(1, [remove_padding(v, modelPy.padsizes; true_adjoint=false)])
     else
@@ -68,12 +67,19 @@ function post_process(v::AbstractArray{T, N}, modelPy::PyObject, ::Val{:adjoint}
     end
 end
 
-function post_process(v::AbstractArray{T}, modelPy::PyObject, ::Val{:adjoint_born}, G::Geometry{T}, options::JUDIOptions) where {T<:Number}
+post_process(v::AbstractArray{T}, modelPy::PyObject, ::Val{:forward}, ::Any, ::Any, options::JUDIOptions) where {T<:Number} = judiWavefield{T}(1, [calculate_dt(modelPy)], [v])
+
+function post_process(v::AbstractArray{T}, modelPy::PyObject, ::Val{:adjoint_born}, Gr::Geometry{T}, ::Any, options::JUDIOptions) where {T<:Number}
     grad = remove_padding(v, modelPy.padsizes; true_adjoint=options.sum_padding)
     return PhysicalParameter(grad, modelPy.spacing, modelPy.origin)
 end
 
-post_process(v::AbstractArray{T}, modelPy::PyObject, ::Val{:born}, G::Geometry{T}, options::JUDIOptions) where {T<:Number} = judiVector{T, Matrix{T}}(1, G, [time_resample(v, calculate_dt(modelPy), G)])
+post_process(v::AbstractArray{T}, modelPy::PyObject, ::Val{:forward}, G::Geometry{T}, Gs, options::JUDIOptions) where {T<:Number} = post_process_src(v, calculate_dt(modelPy), G, Gs)
+post_process(v::AbstractArray{T}, modelPy::PyObject, ::Val{:adjoint}, G::Geometry{T}, Gs, options::JUDIOptions) where {T<:Number} = post_process_src(v, calculate_dt(modelPy), G, Gs)
+post_process(v::AbstractArray{T}, modelPy::PyObject, ::Val{:born}, G::Geometry{T}, Gs, options::JUDIOptions) where {T<:Number} = post_process_src(v, calculate_dt(modelPy), G, Gs)
+
+post_process_src(v::AbstractArray{T}, dt::T, Gr::Geometry, Gs::Geometry) where {T<:Number} = judiVector{T, Matrix{T}}(1, Gr, [time_resample(v, dt, Gs, Gr)])
+post_process_src(v::AbstractArray{T}, dt::T, Gr::Geometry, ::Any) where {T<:Number} = judiVector{T, Matrix{T}}(1, Gr, [time_resample(v, dt, Gr)])
 
 # Saving to disk utilities
 save_to_disk(shot, args...) = shot
