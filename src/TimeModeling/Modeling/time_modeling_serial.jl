@@ -8,7 +8,7 @@ PhysOrNot = Union{PhysicalParameter, Array, Nothing}
 # Setup time-domain linear or nonlinear foward and adjoint modeling and interface to devito
 function time_modeling(model_full::AbstractModel, srcGeometry::GeomOrNot, srcData::ArrayOrNot,
                        recGeometry::GeomOrNot, recData::ArrayOrNot, dm::PhysOrNot,
-                       op::Symbol, options::JUDIOptions, fw::Bool)
+                       op::Symbol, options::JUDIOptions, fw::Bool, illum::Bool)
     GC.gc(true)
     devito.clear_cache()
 
@@ -20,9 +20,6 @@ function time_modeling(model_full::AbstractModel, srcGeometry::GeomOrNot, srcDat
     if (op==:born && norm(dm) == 0)
         return judiVector(recGeometry, zeros(Float32, recGeometry.nt[1], length(recGeometry.xloc[1])))
     end
-
-    # Compute illumination ?
-    illum = compute_illum(model_full, op)
 
     # limit model to area with sources/receivers
     if options.limit_m == true

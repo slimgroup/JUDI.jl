@@ -4,9 +4,9 @@
 Base propagation interfaces that calls the devito `mode` propagator (forward/adjoint/..)
 with `q` as a source. The return type is infered from `F`.
 """
-function propagate(F::judiPropagator{T, O}, q::AbstractArray{T}) where {T, O}
+function propagate(F::judiPropagator{T, O}, q::AbstractArray{T}, illum::Bool) where {T, O}
     srcGeometry, srcData, recGeometry, recData, dm = make_input(F, q)
-    return time_modeling(F.model, srcGeometry, srcData, recGeometry, recData, dm, O, F.options, _prop_fw(F))
+    return time_modeling(F.model, srcGeometry, srcData, recGeometry, recData, dm, O, F.options, _prop_fw(F), illum)
 end
 
 propagate(t::Tuple{judiPropagator, AbstractArray}) = propagate(t[1], t[2])
@@ -80,7 +80,8 @@ function multi_src_propagate(F::judiPropagator{T, O}, q::AbstractArray{T}) where
     # Number of sources and init result
     nsrc = get_nsrc(F, q)
     pool = _worker_pool()
-    arg_func = i -> (F[i], src_i(F, q, i))
+    illum = compute_illum(F.model, O)
+    arg_func = i -> (F[i], src_i(F, q, i), illum)
     # Distribute source
     res = run_and_reduce(propagate, pool, nsrc, arg_func)
     res = update_illum(res, F)
@@ -101,8 +102,9 @@ function multi_src_fg!(G, model, q, dobs, dm; options=Options(), kw...)
     # Number of sources and init result
     nsrc = try q.nsrc catch; dobs.nsrc end
     pool = _worker_pool()
+    illum = compute_illum(model, :adjoint_born)
     # Distribute source
-    arg_func = i -> (model, q[i], dobs[i], dm, options[i], values(kw)...)
+    arg_func = i -> (model, q[i], dobs[i], dm, options[i], values(kw)..., illum)
     # Distribute source
     res = run_and_reduce(multi_src_fg, pool, nsrc, arg_func)
     f, g = update_illum(res, model, :adjoint_born)

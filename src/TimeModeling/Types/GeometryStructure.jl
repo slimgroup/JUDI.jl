@@ -242,6 +242,7 @@ function timings_from_segy(data, dt=nothing, t=nothing, t0=nothing)
     return [range(t0[j], step=dtCell[j], stop=tCell[j]) for j=1:nsrc]
 end
 
+segy_t0(b::Vector{SeisCon}, i) = segy_t0(b[i], 1)
 segy_t0(b::SeisBlock, i) = segy_t0(b)
 segy_t0(b::SeisCon, i) = segy_t0(b.blocks[i])
 segy_t0(b::SeisBlock) = segy_t0(b.fileheader.bfh)
@@ -556,7 +557,7 @@ Merge all the sub-geometries `1:get_nsrc(Geometry)` into a single supershot geom
 """
 function super_shot_geometry(G::Geometry{T}) where T
     as_set = coords_from_set(as_coord_set(G))
-    return GeometryIC{T}(as_set..., [G.t[1]])
+    return GeometryIC{T}(as_set..., [G.taxis[1]])
 end
 
 
