@@ -175,6 +175,14 @@ conj(I::FrequencyFilter{T}) where T = I
 adjoint(I::FrequencyFilter{T}) where T = I
 transpose(I::FrequencyFilter{T}) where T = I
 
+function tracefilt!(x, y, ypad, filter)
+    n = length(y)
+    ypad[1:n-1] .= view(y, n:-1:2)
+    ypad[n:end] .= y
+    x .= filtfilt(filter, ypad)[n:end]
+    nothing
+end
+
 function filter!(dout::AbstractArray{T, N}, din::AbstractArray{T, N}, dt::T; fmin=T(0.01), fmax=T(100)) where {T, N}
     if fmin == 0
         responsetype = Lowpass(fmax; fs=1e3/dt)
@@ -183,9 +191,9 @@ function filter!(dout::AbstractArray{T, N}, din::AbstractArray{T, N}, dt::T; fmi
     else
         responsetype = Bandpass(fmin, fmax; fs=1e3/dt)
     end
-    designmethod = Butterworth(5)
-    tracefilt!(x, y) = filt!(x, digitalfilter(responsetype, designmethod), y)
-    map(i-> tracefilt!(selectdim(dout, N, i), selectdim(din, N, i)), 1:size(dout, 2))
+    filter = digitalfilter(responsetype, Butterworth(5))
+    ytmp = zeros(T, size(din, 1)*2-1)
+    map(i-> tracefilt!(selectdim(dout, N, i), selectdim(din, N, i), ytmp, filter), 1:size(dout, 2))
 end
 
 filter_data(Din::judiVector; fmin=0, fmax=Inf) = judiFilter(Din.geometry, fmin, fmax)*Din
