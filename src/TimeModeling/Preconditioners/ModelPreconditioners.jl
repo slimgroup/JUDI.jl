@@ -185,6 +185,8 @@ end
 function set_val(I::judiIllumination{T, M, K, R}, mode, v) where {T, M, K, R}
     key = mode ∈ [:forward, :born] ? "u" : "v"
     if key in keys(I.illums)
+        # For safety when propagation doesn't reach all the model
+        v[v .== 0] .= 1f0
         combine!(I.illums[key], v)
     end
 end

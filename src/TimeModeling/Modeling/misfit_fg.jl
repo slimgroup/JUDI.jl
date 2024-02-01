@@ -1,8 +1,8 @@
 
 export fwi_objective, lsrtm_objective, fwi_objective!, lsrtm_objective!
 
-function multi_src_fg(model_full::AbstractModel, source::judiVector, dObs::judiVector, dm, options::JUDIOptions, nlind::Bool, lin::Bool,
-                      misfit::Function)
+function multi_src_fg(model_full::AbstractModel, source::judiVector, dObs::judiVector, dm, options::JUDIOptions,
+                      nlind::Bool, lin::Bool, misfit::Function, illum::Bool)
     # Setup time-domain linear or nonlinear foward and adjoint modeling and interface to devito
     GC.gc(true)
     devito.clear_cache()
@@ -13,9 +13,6 @@ function multi_src_fg(model_full::AbstractModel, source::judiVector, dObs::judiV
     # Load full geometry for out-of-core geometry containers
     dObs.geometry = Geometry(dObs.geometry)
     source.geometry = Geometry(source.geometry)
-
-    # Compute illumination ?
-    illum = compute_illum(model_full, :adjoint_born)
 
     # Limit model to area with sources/receivers
     if options.limit_m == true
