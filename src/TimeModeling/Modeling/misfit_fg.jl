@@ -31,7 +31,7 @@ function multi_src_fg(model_full::AbstractModel, source::judiVector, dObs::judiV
     end
 
     # Extrapolate input data to computational grid
-    qIn = time_resample(make_input(source), source.geometry, dtComp)
+    qIn = time_resample(make_input(source), source.geometry, dtComp)r
     dObserved = time_resample(make_input(dObs), dObs.geometry, dtComp)
     qIn, dObserved = _maybe_pad_t0(qIn, source.geometry, dObserved, dObs.geometry)
 
