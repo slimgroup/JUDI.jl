@@ -85,8 +85,13 @@ end
 
 ####### Defaults
 multi_src_fg(model_full::AbstractModel, source::judiVector, dObs::judiVector, dm, options::JUDIOptions, nlind::Bool, lin::Bool) =
-    multi_src_fg(model_full::AbstractModel, source::judiVector, dObs::judiVector, dm, options::JUDIOptions, nlind::Bool, lin::Bool, mse)
+    multi_src_fg(model_full::AbstractModel, source::judiVector, dObs::judiVector, dm, options::JUDIOptions, nlind::Bool, lin::Bool, mse, false)
 
+multi_src_fg(model_full::AbstractModel, source::judiVector, dObs::judiVector, dm, options::JUDIOptions, nlind::Bool, lin::Bool, illum::Bool) =
+    multi_src_fg(model_full::AbstractModel, source::judiVector, dObs::judiVector, dm, options::JUDIOptions, nlind::Bool, lin::Bool, mse, illum)
+
+multi_src_fg(model_full::AbstractModel, source::judiVector, dObs::judiVector, dm, options::JUDIOptions, nlind::Bool, lin::Bool, phi::Function) =
+    multi_src_fg(model_full::AbstractModel, source::judiVector, dObs::judiVector, dm, options::JUDIOptions, nlind::Bool, lin::Bool, phi, false)
 
 # Find number of experiments
 """

@@ -29,6 +29,7 @@ datapath = joinpath(dirname(pathof(JUDI)))*"/../data/"
         @test isa(geometry.nt, Vector{Int})
         @test isa(geometry.dt, Vector{Float32})
         @test isa(geometry.t, Vector{Float32})
+        @test isa(geometry.t0, Vector{Float32})
         @test isa(geometry.taxis, Vector{<:StepRangeLen{Float32}})
 
         # Constructor if coordinates are not passed as a cell arrays
@@ -41,10 +42,10 @@ datapath = joinpath(dirname(pathof(JUDI)))*"/../data/"
         @test isa(geometry.xloc, Vector{Array{Float32,1}})
         @test isa(geometry.yloc, Vector{Array{Float32,1}})
         @test isa(geometry.zloc, Vector{Array{Float32,1}})
-        @test isa(nt(geometry), Vector{Int})
-        @test isa(dt(geometry), Vector{Float32})
-        @test isa(t(geometry), Vector{Float32})
-        @test isa(t0(geometry), Vector{Float32})
+        @test isa(geometry.nt, Vector{Int})
+        @test isa(geometry.dt, Vector{Float32})
+        @test isa(geometry.t, Vector{Float32})
+        @test isa(geometry.t0, Vector{Float32})
         @test isa(geometry.taxis, Vector{<:StepRangeLen{Float32}})
     
         # Set up source geometry object from in-core data container

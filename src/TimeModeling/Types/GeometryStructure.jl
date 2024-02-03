@@ -4,7 +4,7 @@
 #
 
 export Geometry, compareGeometry, GeometryIC, GeometryOOC, get_nsrc, n_samples, super_shot_geometry
-export reciprocal_geom, t, dt, nt, t0
+export reciprocal_geom
 
 abstract type Geometry{T} end
 
@@ -23,8 +23,8 @@ mutable struct GeometryIC{T} <: Geometry{T}
     zloc::CoordT{T}
     taxis::Vector{<:StepRangeLen{T}}
     # Legacy
-    function GeometryIC{T}(xloc::CoordT{T}, yloc::CoordT{T}, zloc::CoordT{T}, dt::Vector{T}, nt::Vector{Integer}, ::Vector{T}) where T
-        tranges = [StepRangeLen(T(0), T(dti), T(nti)) for (dti, nti) in zip(dt, nt)]
+    function GeometryIC{T}(xloc::CoordT{T}, yloc::CoordT{T}, zloc::CoordT{T}, dt::Vector{T}, nt::Vector{<:Integer}, ::Vector{T}) where T
+        tranges = [StepRangeLen(T(0), T(dti), nti) for (dti, nti) in zip(dt, nt)]
         new(xloc, yloc, zloc, tranges)
     end
     # Default constructor
@@ -38,13 +38,13 @@ function getproperty(G::Geometry, s::Symbol)
         return length.(G.xloc)
     end
     # Legacy dt/nt/t
-    if s in [:dt, :t, :nt]
-        depwarn("Deprecated geometry.$s use $s(geometry) instead", s, force=true)
+    if s in [:dt, :t, :nt, :t0]
         return eval(s)(G)
     end
     
     return getfield(G, s)
 end
+
 
 # Out-of-core geometry structure, contains look-up table instead of coordinates
 mutable struct GeometryOOC{T} <: Geometry{T}
@@ -55,7 +55,7 @@ mutable struct GeometryOOC{T} <: Geometry{T}
     segy_depth_key::String
     # Legacy
     function GeometryOOC{T}(container::Vector{SegyIO.SeisCon}, dt::Vector{T}, nt::Vector{<:Integer}, ::Vector{T}, nrec::Vector{<:Integer}, key::String, segy_depth_key::String) where T
-        tranges = [StepRangeLen(T(0), T(dti), T(nti)) for (dti, nti) in zip(dt, nt)]
+        tranges = [StepRangeLen(T(0), T(dti), nti) for (dti, nti) in zip(dt, nt)]
         return new{T}(container, tranges, nrec, key, segy_depth_key)
     end
     # Default constructor
@@ -180,7 +180,8 @@ function Geometry(xloc, yloc, zloc; dt=nothing, t=nothing, nsrc=nothing, t0=0)
     return Geometry(tof32(xloc), tof32(yloc), tof32(zloc); dt=dt, t=t, nsrc=nsrc, t0=t0)
 end
 
-Geometry(xloc::CoordT, yloc::CoordT, zloc::CoordT, dt::Array{T,1}, nt::Array{Integer,1}, t::Array{T,1}) where {T<:Real} = GeometryIC{T}(xloc,yloc,zloc,dt,nt,t)
+Geometry(xloc::CoordT, yloc::CoordT, zloc::CoordT, dt::Vector{T}, nt::Vector{<:Integer}, t::Vector{T}) where {T<:Real} = GeometryIC{T}(xloc,yloc,zloc,dt,nt, t)
+Geometry(xloc::CoordT, yloc::CoordT, zloc::CoordT, dt::Vector{T}, nt::Vector{T}, t::Vector{T}) where {T<:Real} = GeometryIC{T}(xloc,yloc,zloc,dt,convert(Vector{Int64}, nt), t)
 
 # For easy 2D setup
 Geometry(xloc, zloc; kw...) = Geometry(xloc, 0 .* xloc, zloc; kw...)
@@ -498,15 +499,15 @@ check_geom(geom::Geometry, data::Array{T}) where T = all([check_geom(geom[s], da
 check_geom(geom::Geometry, data::Array{T}) where {T<:Number} = _check_geom(nt(geom, 1),  size(data, 1)) && _check_geom(geom.nrec[1],  size(data, 2))
 
 function check_geom(geom::Geometry, data::SeisBlock)
-    nt(geom, 1) <= data.fileheader.bfh.ns || _geom_missmatch(nt(geom, 1), data.fileheader.bfh.ns)
-    nt(geom, 1) <= data.fileheader.bfh.nsOrig || _geom_missmatch(nt(geom, 1), data.fileheader.bfh.nsOrig)
+    nt_segy = max(data.fileheader.bfh.ns, data.fileheader.bfh.nsOrig)
+    nt(geom, 1) <= nt_segy || _geom_missmatch(nt(geom, 1), nt_segy)
 end
 
 function check_geom(geom::Geometry, data::SeisCon)
     for s = 1:get_nsrc(geom)
         fh = read_fileheader(data.blocks[s].file)
-        nt(geom, s) <= fh.bfh.ns || _geom_missmatch(nt(geom, s), fh.bfh.ns)
-        nt(geom, s) <= fh.bfh.nsOrig || _geom_missmatch(nt(geom, s), fh.bfh.nsOrig)
+        nt_segy = max(fh.bfh.ns, fh.bfh.nsOrig)
+        nt(geom, s) <= nt_segy || _geom_missmatch(nt(geom, s), nt_segy)
     end
 end
 

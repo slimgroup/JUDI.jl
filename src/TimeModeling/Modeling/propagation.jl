@@ -9,7 +9,9 @@ function propagate(F::judiPropagator{T, O}, q::AbstractArray{T}, illum::Bool) wh
     return time_modeling(F.model, srcGeometry, srcData, recGeometry, recData, dm, O, F.options, _prop_fw(F), illum)
 end
 
-propagate(t::Tuple{judiPropagator, AbstractArray}) = propagate(t[1], t[2])
+propagate(t::Tuple{judiPropagator, AbstractArray}) = propagate(t[1], t[2], compute_illum(t[1].model, t[1].mode))
+propagate(F::judiPropagator{T, O}, q::AbstractArray{T}) where {T, O} = propagate(F, q, compute_illum(F.model, O))
+
 
 """
     run_and_reduce(func, pool, nsrc, arg_func)

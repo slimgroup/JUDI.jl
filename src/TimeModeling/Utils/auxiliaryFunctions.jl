@@ -751,7 +751,7 @@ function transducer(q::judiVector{T, AT}, d::Tuple, r::Number, theta) where {T<:
     yloc = Vector{Vector{T}}(undef, nsrc)
     zloc = Vector{Vector{T}}(undef, nsrc)
     data = Vector{Matrix{T}}(undef, nsrc)
-    t = q.geometry.taxis[1]
+    t = q.geometry.taxis[1:1]
 
     for i=1:nsrc
         # Build the rotated array of dipole
@@ -767,7 +767,7 @@ function transducer(q::judiVector{T, AT}, d::Tuple, r::Number, theta) where {T<:
         data[i][:, 1:nsrc_loc] .= q.data[i]/nsrc_loc
         data[i][:, nsrc_loc+1:end] .= -q.data[i]/nsrc_loc
     end
-    return judiVector(Geometry(xloc, yloc, zloc, t), data)
+    return judiVector(GeometryIC{Float32}(xloc, yloc, zloc, t), data)
 end
 
 ########################################### Misc defaults

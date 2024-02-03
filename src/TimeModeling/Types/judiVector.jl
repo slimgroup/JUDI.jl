@@ -24,8 +24,9 @@ end
 
 """
     judiVector
+        nsrc::Integer
         geometry::Geometry
-        data
+        data::Vector
 
 Abstract vector for seismic data. This vector-like structure contains the geometry and data for either\\
 receiver data (shot records) or source data (wavelets).
@@ -156,8 +157,8 @@ function as_ordered_dict(x::judiVector{T, AT}; v=1) where {T, AT}
     return jdict
 end
 
-function from_ordered_dict(d::OrderedDict{NTuple{N, T}}, dt::T, nt::Integer, t::T) where {N, T}
-    Gnew = GeometryIC{T}(coords_from_keys(d.keys)..., [dt], [nt], [t])
+function from_ordered_dict(d::OrderedDict{NTuple{N, T}}, t::AbstractRange{T}) where {N, T}
+    Gnew = GeometryIC{T}(coords_from_keys(d.keys)..., [t])
     return judiVector{T, Matrix{T}}(1, Gnew, [hcat(d.vals...)])
 end
 
@@ -165,7 +166,7 @@ function pad_zeros(zpad::OrderedDict, m::T, d::judiVector{T, AT}) where {T, AT}
     @assert d.nsrc == 1
     dloc = as_ordered_dict(d; v=m)
     sort!(merge!(.+, dloc, zpad))
-    return from_ordered_dict(dloc, dt(d.geometry, 1), nt(d.geometry, 1), t(d.geometry, 1))
+    return from_ordered_dict(dloc, d.geometry.taxis[1])
 end
 
 function simsource(M::Vector{T}, x::judiVector{T, AT}; reduction=+, minimal::Bool=false) where {T, AT}
@@ -180,7 +181,7 @@ function simsource(M::Vector{T}, x::judiVector{T, AT}; reduction=+, minimal::Boo
         reduction = minimal ? PopZero() : reduction
         sdict = mergewith!(reduction, map((d, m)->as_ordered_dict(d; v=m), x, M)...)
         sort!(sdict)
-        dOut = from_ordered_dict(sdict, dt(x.geometry, 1), nt(x.geometry, 1), t(x.geometry, 1))
+        dOut = from_ordered_dict(sdict, x.geometry.taxis[1])
     end
     return dOut
 end
