@@ -105,7 +105,7 @@ function judiVector(geometry::Geometry, data::SegyIO.SeisBlock)
     dataCell = Vector{Array{Float32, 2}}(undef, nsrc)
     for j=1:nsrc
         traces = findall(src .== unique(src)[j])
-        dataCell[j] = convert(Array{Float32, 2}, data.data[1:nt(geometry, j), traces])
+        dataCell[j] = convert(Array{Float32, 2}, data.data[1:get_nt(geometry, j), traces])
     end
     return judiVector{Float32, Array{Float32, 2}}(nsrc, geometry, dataCell)
 end
@@ -130,7 +130,7 @@ judiVector(geometry::Geometry, data::Vector{SegyIO.SeisCon}) =  judiVector{Float
 
 ############################################################
 ## overloaded multi_source functions
-time_sampling(jv::judiVector) = dt(jv.geometry)
+time_sampling(jv::judiVector) = get_dt(jv.geometry)
 
 ############################################################
 # JOLI conversion
@@ -174,7 +174,7 @@ function simsource(M::Vector{T}, x::judiVector{T, AT}; reduction=+, minimal::Boo
     # Without reduction, add zero trace for all missing coords
     if isnothing(reduction)
         sgeom = as_coord_set(x.geometry)
-        zpad = OrderedDict(zip(sgeom, [zeros(Float32, nt(x.geometry, 1)) for s=1:length(sgeom)]))
+        zpad = OrderedDict(zip(sgeom, [zeros(Float32, get_nt(x.geometry, 1)) for s=1:length(sgeom)]))
         dOut = vcat([pad_zeros(zpad, M[s], x[s]) for s=1:x.nsrc]...)
     # With reduction. COuld reuse the previous but cheaper to compute the sum directly
     else
@@ -291,7 +291,7 @@ function judiVector_to_SeisBlock(d::judiVector{avDT, AT}, q::judiVector{avDT, QT
         set_header!(blocks[j], "SourceY", Int.(round.(q.geometry.yloc[j][1]*1f3)))
         set_header!(blocks[j], source_depth_key, Int.(round.(q.geometry.zloc[j][1]*1f3)))
 
-        set_header!(blocks[j], "dt", Int(dt(d.geometry, j)*1f3))
+        set_header!(blocks[j], "dt", Int(get_dt(d.geometry, j)*1f3))
         set_header!(blocks[j], "FieldRecord",j)
         set_header!(blocks[j], "TraceNumWithinLine", traceNumbers)
         set_header!(blocks[j], "TraceNumWithinFile", traceNumbers)
@@ -349,7 +349,7 @@ end
 
 convert_to_array(x::judiVector) = vcat(vec.(x.data)...)
 
-data_matrix(x::judiVector{T, SeisCon}, i::Integer) where T = convert(Matrix{Float32}, x.data[i][1].data)[1:nt(x.geometry, i), :]
+data_matrix(x::judiVector{T, SeisCon}, i::Integer) where T = convert(Matrix{Float32}, x.data[i][1].data)[1:get_nt(x.geometry, i), :]
 data_matrix(x::judiVector{T, Matrix{T}}, i::Integer) where T = x.data[i]
 
 ##### Rebuild bad vector

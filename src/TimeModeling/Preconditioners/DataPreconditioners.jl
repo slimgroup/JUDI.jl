@@ -94,7 +94,7 @@ function muteshot!(shot::AbstractMatrix{T}, rGeom::Geometry, srcGeom::Geometry; 
     # Loop over traces
     @inbounds for t=1:nrec
         r = radius(rGeom, sGeom, t) 
-        tt = 1f3 * (r / vp + t0) / dt(rGeom, 1)
+        tt = 1f3 * (r / vp + t0) / get_dt(rGeom, 1)
         i = min(max(1, floor(Int, tt)), nt)
         if _tapew(i, taperwidth, nt, Val(mode))
             _mutew!(view(shot, :, t), taper, i, nt, Val(mode))
@@ -148,7 +148,7 @@ function matvec(D::FrequencyFilter{T, fm, FM}, x::Vector{T}) where {T, fm, FM}
     dr = reshape(x, D.recGeom)
     for j=1:get_nsrc(D.recGeom)
         dri = view(dr, :, :, j)
-        filter!(dri, dri, dt(D.recGeom, j); fmin=fm, fmax=FM)
+        filter!(dri, dri, get_dt(D.recGeom, j); fmin=fm, fmax=FM)
     end
     return reshape(vcat(dr...), size(x))
 end
@@ -156,7 +156,7 @@ end
 function matvec(::FrequencyFilter{T, fm, FM}, Din::judiVector{T, AT}) where {T, fm, FM, AT}
     Dout = deepcopy(Din)	
     for j=1:Dout.nsrc
-        filter!(Dout.data[j], Din.data[j], dt(Din.geometry, j); fmin=fm, fmax=FM)
+        filter!(Dout.data[j], Din.data[j], get_dt(Din.geometry, j); fmin=fm, fmax=FM)
     end
     return Dout	
 end
@@ -267,7 +267,7 @@ function matvec(D::TimeDifferential{T, K}, x::judiVector{T, AT}) where {T, AT, K
     out = similar(x)
     for s=1:out.nsrc
         # make omega^K
-        ω = 2 .* pi .* fftfreq(nt(D.recGeom, s), 1/dt(D.recGeom, s))
+        ω = 2 .* pi .* fftfreq(get_nt(D.recGeom, s), 1/get_dt(D.recGeom, s))
         ω[ω.==0] .= 1f0
         ω .= abs.(ω).^K
         out.data[s] .= real.(ifft(ω .* fft(x.data[s], 1), 1))
@@ -278,7 +278,7 @@ end
 function matvec(D::TimeDifferential{T, K}, x::Array{T}) where {T, K}
     xr = reshape(x, D.recGeom)
     # make omega^K
-    ω = 2 .* pi .* fftfreq(nt(D.recGeom, 1), 1/dt(D.recGeom, 1))
+    ω = 2 .* pi .* fftfreq(get_nt(D.recGeom, 1), 1/get_dt(D.recGeom, 1))
     ω[ω.==0] .= 1f0
     ω .= abs.(ω).^K
     out = real.(ifft(ω .* fft(xr, 1), 1))

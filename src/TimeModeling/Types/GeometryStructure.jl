@@ -4,7 +4,7 @@
 #
 
 export Geometry, compareGeometry, GeometryIC, GeometryOOC, get_nsrc, n_samples, super_shot_geometry
-export reciprocal_geom
+export reciprocal_geom, get_nt, get_dt, get_t, get_t0
 
 abstract type Geometry{T} end
 
@@ -39,7 +39,7 @@ function getproperty(G::Geometry, s::Symbol)
     end
     # Legacy dt/nt/t
     if s in [:dt, :t, :nt, :t0]
-        return eval(s)(G)
+        return eval(Symbol("get_$(s)"))(G)
     end
     
     return getfield(G, s)
@@ -73,20 +73,20 @@ get_nsrc(S::SeisCon) = length(S)
 get_nsrc(S::Vector{SeisCon}) = length(S)
 get_nsrc(S::SeisBlock) = length(unique(get_header(S, "FieldRecord")))
 
-n_samples(g::GeometryOOC, nsrc::Integer) = sum([g.nrec[j]*nt(g, j) for j=1:nsrc])
-n_samples(g::GeometryIC, nsrc::Integer) = sum([length(g.xloc[j])*nt(g, j) for j=1:nsrc])
+n_samples(g::GeometryOOC, nsrc::Integer) = sum([g.nrec[j]*get_nt(g, j) for j=1:nsrc])
+n_samples(g::GeometryIC, nsrc::Integer) = sum([length(g.xloc[j])*get_nt(g, j) for j=1:nsrc])
 n_samples(g::Geometry) = n_samples(g, get_nsrc(g))
 
-nt(g::Geometry) = length.(g.taxis)
-nt(g::Geometry, srcnum::Integer) = length(g.taxis[srcnum])
-dt(g::Geometry) = step.(g.taxis)
-dt(g::Geometry, srcnum::Integer) = step(g.taxis[srcnum])
-t(g::Geometry) = last.(g.taxis)
-t(g::Geometry, srcnum::Integer) = last(g.taxis[srcnum])
-t0(g::Geometry) = first.(g.taxis)
-t0(g::Geometry, srcnum::Integer) = first(g.taxis[srcnum])
+get_nt(g::Geometry) = length.(g.taxis)
+get_nt(g::Geometry, srcnum::Integer) = length(g.taxis[srcnum])
+get_dt(g::Geometry) = step.(g.taxis)
+get_dt(g::Geometry, srcnum::Integer) = step(g.taxis[srcnum])
+get_t(g::Geometry) = last.(g.taxis)
+get_t(g::Geometry, srcnum::Integer) = last(g.taxis[srcnum])
+get_t0(g::Geometry) = first.(g.taxis)
+get_t0(g::Geometry, srcnum::Integer) = first(g.taxis[srcnum])
 
-rec_space(G::Geometry) = AbstractSize((:src, :time, :rec), (get_nsrc(G), nt(G), G.nrec))
+rec_space(G::Geometry) = AbstractSize((:src, :time, :rec), (get_nsrc(G), get_nt(G), G.nrec))
 ################################################ Constructors ####################################################################
 
 """
@@ -496,18 +496,18 @@ pushfield!(a, b) = nothing
 # Gets called by judiVector constructor to be sure that geometry is consistent with the data.
 # Data may be any of: Array, Array of Array, SeisBlock, SeisCon
 check_geom(geom::Geometry, data::Array{T}) where T = all([check_geom(geom[s], data[s]) for s=1:get_nsrc(geom)])
-check_geom(geom::Geometry, data::Array{T}) where {T<:Number} = _check_geom(nt(geom, 1),  size(data, 1)) && _check_geom(geom.nrec[1],  size(data, 2))
+check_geom(geom::Geometry, data::Array{T}) where {T<:Number} = _check_geom(get_nt(geom, 1),  size(data, 1)) && _check_geom(geom.nrec[1],  size(data, 2))
 
 function check_geom(geom::Geometry, data::SeisBlock)
     nt_segy = max(data.fileheader.bfh.ns, data.fileheader.bfh.nsOrig)
-    nt(geom, 1) <= nt_segy || _geom_missmatch(nt(geom, 1), nt_segy)
+    get_nt(geom, 1) <= nt_segy || _geom_missmatch(get_nt(geom, 1), nt_segy)
 end
 
 function check_geom(geom::Geometry, data::SeisCon)
     for s = 1:get_nsrc(geom)
         fh = read_fileheader(data.blocks[s].file)
         nt_segy = max(fh.bfh.ns, fh.bfh.nsOrig)
-        nt(geom, s) <= nt_segy || _geom_missmatch(nt(geom, s), nt_segy)
+        get_nt(geom, s) <= nt_segy || _geom_missmatch(get_nt(geom, s), nt_segy)
     end
 end
 

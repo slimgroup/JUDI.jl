@@ -128,6 +128,7 @@ function devito_interface(modelPy::PyObject, srcGeometry::Geometry, srcData::Arr
     dtComp = convert(Float32, modelPy."critical_dt")
     qIn = time_resample(srcData, srcGeometry, dtComp)
     dIn = time_resample(recData, recGeometry, dtComp)
+    qIn, dIn = _maybe_pad_t0(qIn, srcGeometry, dIn, recGeometry)
 
     # Set up coordinates with devito dimensions
     src_coords = setup_grid(srcGeometry, modelPy.shape)
@@ -200,6 +201,7 @@ function devito_interface(modelPy::PyObject, weights::Array, srcData::Array, rec
     dtComp = convert(Float32, modelPy."critical_dt")
     qIn = time_resample(srcData, recGeometry, dtComp)
     dIn = time_resample(recData, recGeometry, dtComp)
+    qIn, dIn = _maybe_pad_t0(qIn, recGeometry, dIn, recGeometry)
 
     # Set up coordinates with devito dimensions
     rec_coords = setup_grid(recGeometry, modelPy.shape)

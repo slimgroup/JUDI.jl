@@ -185,23 +185,26 @@ function __init__()
         global _devices = parse.(Int, get(ENV, "CUDA_VISIBLE_DEVICES", "-1"))
     end
 
+    # Optional dependencies
     @static if !isdefined(Base, :get_extension)
 
         # JLD2 compat for loading older version of JUDI types
-        @requires JLD2="033835bb-8acc-5ee8-8aae-3f567f8a3b3d" begin
-            include("../ext/Jld2JUDIExt.jl")
+        @require JLD2="033835bb-8acc-5ee8-8aae-3f567f8a3b3d" begin
+            include("../ext/JLD2JUDIExt.jl")
+            using  JLD2JUDIExt
         end
 
         # Additional Zygote compat if in use
         @require Zygote="e88e6eb3-aa80-5325-afca-941959d7151f" begin
             include("../ext/ZygoteJUDIExt.jl")
+            using ZygoteJUDIExt
         end
 
         # Additional Flux compat if in use
         @require Flux="587475ba-b771-5e3f-ad9e-33799f191a9c" begin
             include("../ext/FluxJUDIExt.jl")
+            using FluxJUDIExt
         end
-
     end
 
     # BLAS num threads for dense LA such as sinc interpolation

@@ -373,8 +373,8 @@ function get_computational_nt(srcGeometry::Geometry{T}, recGeometry::Geometry{T}
     nt = Vector{Int64}(undef, nsrc)
     dtComp = calculate_dt(model; dt=dt)
     for j=1:nsrc
-        ntRec = length(0:dtComp:(dtComp*ceil(t(recGeometry, j)/dtComp)))
-        ntSrc = length(0:dtComp:(dtComp*ceil(t(srcGeometry, j)/dtComp)))
+        ntRec = length(0:dtComp:(dtComp*ceil(get_t(recGeometry, j)/dtComp)))
+        ntSrc = length(0:dtComp:(dtComp*ceil(get_t(srcGeometry, j)/dtComp)))
         nt[j] = max(ntRec, ntSrc)
     end
     return nt
@@ -395,7 +395,7 @@ function get_computational_nt(Geometry::Geometry{T}, model::AbstractModel; dt=no
     nt = Array{Integer}(undef, nsrc)
     dtComp = calculate_dt(model; dt=dt)
     for j=1:nsrc
-        nt[j] = length(0:dtComp:(dtComp*ceil(t(Geometry, j)/dtComp)))
+        nt[j] = length(0:dtComp:(dtComp*ceil(get_t(Geometry, j)/dtComp)))
     end
     return nt
 end
@@ -578,9 +578,9 @@ function generate_distribution(x::judiVector{T, Matrix{T}}; src_no=1) where {T<:
 	# from spectrum of the input data
 
 	# sampling information
-	nt = nt(x.geometry, src_no)
-	dt = dt(x.geometry, src_no)
-	t = t(x.geometry, src_no)
+	nt = get_nt(x.geometry, src_no)
+	dt = get_dt(x.geometry, src_no)
+	t = get_t(x.geometry, src_no)
 
 	# frequencies
 	fs = 1/dt	# sampling rate
@@ -637,7 +637,7 @@ Parameters:
 function process_input_data(input::DenseArray{T}, geometry::Geometry{T}) where {T<:Real}
     # Input data is pure Julia array: assume fixed no.
     # of receivers and reshape into data cube nt x nrec x nsrc
-    nt = nt(geometry, 1)
+    nt = get_nt(geometry, 1)
     nrec = geometry.nrec[1]
     nsrc = length(geometry.xloc)
     data = reshape(input, nt, nrec, nsrc)
@@ -690,7 +690,7 @@ end
 Reshapes input vector into a 3D `nt x nrec x nsrc` Array.
 """
 function reshape(x::AbstractArray{T}, geometry::Geometry{T}) where {T<:Real}
-    nt = nt(geometry, 1)
+    nt = get_nt(geometry, 1)
     nrec = geometry.nrec[1]
     nsrc = Int(length(x) / nt / nrec)
     return reshape(x, nt, nrec, nsrc)
@@ -806,3 +806,21 @@ function filter_none(args::Tuple)
 end
 
 filter_none(x) = x
+
+
+"""
+    _maybe_pad_t0(q, qGeom, data, dataGeom)
+"""
+function _maybe_pad_t0(qIn::Matrix{T}, qGeom::Geometry, dObserved::Matrix{T}, dataGeom::Geometry) where T<:Number
+    if size(dObserved, 1) != size(qIn, 1)
+        dsize = size(qIn, 1) - size(dObserved, 1)
+        dt0 = get_t0(dataGeom, 1) - get_t0(qGeom, 1)
+        @assert dt0 != 0 && sign(dsize) == sign(dt0)
+        if dt0 > 0
+            dObserved = vcat(zeros(T, dsize, size(dObserved, 2)), dObserved)
+        else
+            qIn = vcat(zeros(T, -dsize,  size(qIn, 2)), qIn)
+        end
+    end
+    return qIn, dObserved
+end
