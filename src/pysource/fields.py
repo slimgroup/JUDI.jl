@@ -6,6 +6,11 @@ from devito import (TimeFunction, ConditionalDimension, Function,
 from devito.data.allocators import ExternalAllocator
 from devito.tools import as_tuple
 
+try:
+    from devitopro import *
+except ImportError:
+    pass
+
 
 def wavefield(model, space_order, save=False, nt=None, fw=True, name='', t_sub=1):
     """

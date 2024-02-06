@@ -73,7 +73,7 @@ get_nsrc(S::SeisCon) = length(S)
 get_nsrc(S::Vector{SeisCon}) = length(S)
 get_nsrc(S::SeisBlock) = length(unique(get_header(S, "FieldRecord")))
 
-n_samples(g::GeometryOOC, nsrc::Integer) = sum([g.nrec[j]*get_nt(g, j) for j=1:nsrc])
+n_samples(g::GeometryOOC, nsrc::Integer) = sum(g.nrec .* get_nt(g))
 n_samples(g::GeometryIC, nsrc::Integer) = sum([length(g.xloc[j])*get_nt(g, j) for j=1:nsrc])
 n_samples(g::Geometry) = n_samples(g, get_nsrc(g))
 

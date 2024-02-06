@@ -28,6 +28,7 @@ end
         # Load file with old judiVector type and julia <1.7 StepRangeLen
         @load "$(datapath)backward_comp.jld" dat
 
+        @show dat.geometry
         @test typeof(dat) == judiVector{Float32, Matrix{Float32}}
         @test typeof(dat.geometry) == GeometryIC{Float32}
         @test typeof(dat.geometry.xloc) == Vector{Vector{Float32}}

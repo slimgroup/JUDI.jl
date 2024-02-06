@@ -1,12 +1,11 @@
 module JLD2JUDIExt
 
-isdefined(Base, :get_extension) ? (using JUDI) : (using ..JUDI)
-using JLD2
+using JUDI
+isdefined(Base, :get_extension) ? (using JLD2) : (using ..JLD2)
 
-function JLD2.rconvert(::Type{Geometry}, x::JLD2.ReconstructedMutable{N, FN, NT}) where {N, FN, NT}
-    args = [JUDI.tof32(getproperty(x, f)) for f in FN]
-    return Geometry(args...)
-end
+JLD2.rconvert(::Type{Geometry}, x::JLD2.ReconstructedMutable{N, FN, NT}) where {N, FN, NT} = Geometry([JUDI.tof32(getproperty(x, f)) for f in FN]...)
+JUDI.Geometry(x::JLD2.ReconstructedMutable{N, FN, NT}) where {N, FN, NT} = Geometry([JUDI.tof32(getproperty(x, f)) for f in FN]...)
+
 
 function JUDI.tof32(x::JLD2.ReconstructedStatic{N, FN, NT}) where {N, FN, NT}
     # Drop "typed" signature

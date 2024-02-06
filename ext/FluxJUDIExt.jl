@@ -1,9 +1,8 @@
 module FluxJUDIExt
 
-isdefined(Base, :get_extension) ? (using JUDI) : (using ..JUDI)
-using Flux
+import JUDI: LazyPropagation, judiVector, eval_prop
+isdefined(Base, :get_extension) ? (using Flux) : (using ..Flux)
 
-Flux.Zygote.unbroadcast(x::AbstractArray, x̄::LazyPropagation) = Zygote.unbroadcast(x, eval_prop(x̄))
 Flux.cpu(x::LazyPropagation) = Flux.cpu(eval_prop(x))
 Flux.gpu(x::LazyPropagation) = Flux.gpu(eval_prop(x))
 Flux.CUDA.cu(F::LazyPropagation) = Flux.CUDA.cu(eval_prop(F))

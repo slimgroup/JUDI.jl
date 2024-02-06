@@ -1,7 +1,7 @@
 module ZygoteJUDIExt
 
-isdefined(Base, :get_extension) ? (using JUDI) : (using ..JUDI)
-using Zygote
+import JUDI: LazyPropagation, judiVector, eval_prop
+isdefined(Base, :get_extension) ? (using Zygote) : (using ..Zygote)
 
 Zygote.unbroadcast(x::AbstractArray, x̄::LazyPropagation) = Zygote.unbroadcast(x, eval_prop(x̄))
 

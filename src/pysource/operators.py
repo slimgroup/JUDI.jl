@@ -13,6 +13,11 @@ from fields_exprs import (otf_dft, extended_rec, illumexpr,
 from sensitivity import grad_expr, lin_src
 from utils import opt_op
 
+try:
+    from devitopro import *
+except ImportError:
+    pass
+
 
 def name(model):
     if model.is_tti:

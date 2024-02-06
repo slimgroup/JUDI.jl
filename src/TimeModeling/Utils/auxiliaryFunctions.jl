@@ -810,6 +810,8 @@ filter_none(x) = x
 
 """
     _maybe_pad_t0(q, qGeom, data, dataGeom)
+
+Pad zeros for data with non-zero t0, usually from a segy file so that time axis and array size match for the source and data.
 """
 function _maybe_pad_t0(qIn::Matrix{T}, qGeom::Geometry, dObserved::Matrix{T}, dataGeom::Geometry) where T<:Number
     if size(dObserved, 1) != size(qIn, 1)
@@ -824,3 +826,6 @@ function _maybe_pad_t0(qIn::Matrix{T}, qGeom::Geometry, dObserved::Matrix{T}, da
     end
     return qIn, dObserved
 end
+
+_maybe_pad_t0(qIn::judiVector{T, AT}, dObserved::judiVector{T, AT}) where{T<:Number, AT} =
+    _maybe_pad_t0(qIn.data, qIn.geometry, dObserved.data, dObserved.geometry)
