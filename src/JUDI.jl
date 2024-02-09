@@ -65,6 +65,7 @@ const pyut = PyNULL()
 const devito = PyNULL()
 
 set_devito_config(key::String, val::String) = set!(devito."configuration", key, val)
+set_devito_config(key::String, val::Bool) = set!(devito."configuration", key, val)
 
 # Create a lock for pycall FOR THREAD/TASK SAFETY
 # See discussion at
@@ -177,6 +178,9 @@ function __init__()
     copy!(devito, pyimport("devito"))
     # Initialize lock at session start
     PYLOCK[] = ReentrantLock()
+
+    # Prevent autopadding to use external allocator
+    set_devito_config("autopadding", false)
 
     # Make sure there is no conflict for the cuda init thread with CUDA.jl
     if get(ENV, "DEVITO_PLATFORM", "") == "nvidiaX"

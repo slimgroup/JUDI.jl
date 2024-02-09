@@ -2,15 +2,13 @@
 
 # Install devito
 pip install --upgrade pip
-pip install --user git+https://github.com/devitocodes/devito.git@v3.2.0
-pip install --user -r docker/devito_requirements.txt
+pip install -U --user "devito[tests,extras]"
 
 # Set devito enviroment variables
 export DEVITO_ARCH="gcc"
-export DEVITO_OPENMP="0"
+export DEVITO_LANGUAGE="openmp"
 
 # Point PyCall to correct Python version
-export PYTHON=$(which python)
-julia -e 'Pkg.build("PyCall")'
+PYTHON=$(which python) julia -e 'using Pkg; Pkg.build("PyCall")'
 
 

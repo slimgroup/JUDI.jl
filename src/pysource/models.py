@@ -8,7 +8,7 @@ from devito.data.allocators import ExternalAllocator
 from devito.tools import as_tuple, memoized_func
 
 try:
-    from devitopro import *
+    from devitopro import *  # noqa
 except ImportError:
     pass
 

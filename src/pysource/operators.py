@@ -14,7 +14,7 @@ from sensitivity import grad_expr, lin_src
 from utils import opt_op
 
 try:
-    from devitopro import *
+    from devitopro import *  # noqa
 except ImportError:
     pass
 

@@ -2,7 +2,7 @@ import numpy as np
 
 from devito import Inc, Eq, ConditionalDimension, cos, sin, sign
 from devito.tools import as_tuple
-from devito.symbolics import retrieve_functions, INT
+from devito.symbolics import retrieve_functions, INT, retrieve_derivatives
 
 from fields import (wavefield_subsampled, lr_src_fields, fourier_modes, norm_holder,
                     illumination)
@@ -101,7 +101,7 @@ def extended_rec(model, wavelet, v):
     return [Inc(ws, model.grid.time_dim.spacing * wf * wt)]
 
 
-def freesurface(model, eq):
+def freesurface(model, eq, mfuncs=None):
     """
     Generate the stencil that mirrors the field as a free surface modeling for
     the acoustic wave equation
@@ -112,30 +112,33 @@ def freesurface(model, eq):
         Physical model
     eq: Eq or List of Eq
         Equation to apply mirror to
+    mfuncs: List of Functions
+        List of functions to mirror (default=None). Mirrors all functions if not provided
     """
     fs_eq = []
+    fsdomain = model.grid.subdomains['fsdomain']
     for eq_i in eq:
         for p in eq_i._flatten:
-            lhs, rhs = p.evaluate.args
             # Add modulo replacements to to rhs
+            lhs, rhs = p.lhs, p.rhs
             zfs = model.grid.subdomains['fsdomain'].dimensions[-1]
             z = zfs.parent
 
-            if lhs.is_TimeFunction:
-                so = lhs.space_order
-                z0= S.Zero
-                zfs = CustomDimension(name="zfs", symbolic_min=1, symbolic_max=so,
-                                      symbolic_size=so)
-                fs_eq.extend([Eq(lhs.subs({z: z0 - zfs}), -lhs.subs({z: z0 + zfs})),
-                              Eq(lhs.subs({z: z.symbolic_min + z0}), 0)])
-    #         mapper = {}
-    #         for f in funcs:
-    #             zind = f.indices[-1]
-    #             if (zind - z).as_coeff_Mul()[0] < 0:
-    #                 s = sign((zind - z.symbolic_min).subs({z: zfs, z.spacing: 1}))
-    #                 mapper.update({f: s * f.subs({zind: INT(abs(zind))})})
-    #         fs_eq.append(Eq(lhs, sign(lhs.indices[-1]-z.symbolic_min) * rhs.subs(mapper),
-    #                         subdomain=model.grid.subdomains['fsdomain']))
+            Dz = {d: d.evaluate for d in retrieve_derivatives(rhs) if z in d.dims}
+
+            funcs = {f for f in retrieve_functions(Dz.values()) if f.indices[-1] is not z}
+            if mfuncs:
+                funcs = {f for f in funcs if f.function in mfuncs}
+
+            mapper = {}
+            for f in funcs:
+                zind = f.indices[-1]
+                if (zind - z).as_coeff_Mul()[0] < 0:
+                    s = sign(zind._subs(z.spacing, 1))
+                    mapper.update({f: s * f._subs(zind, INT(abs(zind)))})
+            dzmapper = {d: v.subs(mapper) for d, v in Dz.items()}
+            fs_eq.append(Eq(lhs, rhs.subs(dzmapper), subdomain=fsdomain))
+            fs_eq.append(Eq(lhs._subs(z, 0), 0, subdomain=fsdomain))
     return fs_eq
 
 
