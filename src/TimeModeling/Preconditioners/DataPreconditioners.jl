@@ -337,7 +337,6 @@ function matvec(D::TimeGain{T, K}, x::Array{T}) where {T, K}
     xr = reshape(x, D.recGeom)
     # make time^K
     timek = (D.recGeom.taxis[1]).^K
-    out.data[s] .= timek .* x.data[s]
     out = timek .* xr
     return reshape(out, size(x))
 end

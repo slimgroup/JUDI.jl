@@ -20,6 +20,7 @@ dm = model0.m - model.m
         F = judiFilter(recGeometry, .002, .030)
         Mdr = judiDataMute(srcGeometry, recGeometry; mode=:reflection)
         Mdt = judiDataMute(srcGeometry, recGeometry; mode=:turning)
+        Mdg = judiTimeGain(recGeometry, 2f0)
         order = .25f0
         Dt = judiTimeDerivative(recGeometry, order)
         It = judiTimeIntegration(recGeometry, order)
@@ -35,20 +36,23 @@ dm = model0.m - model.m
         dinv = Dt * It * dobs
         @test isapprox(dinv, dobs; atol=0f0, rtol=ftol)
 
+        # Time gain inverse is just 1/pow
+        @test inv(Mdg) == judiTimeGain(recGeometry, -2f0)
+
         # conj/transpose
-        for Pc in [F, Mdr, Mdt, Dt, It]
+        for Pc in [F, Mdr, Mdt, Mdg, Dt, It]
             @test conj(Pc) == Pc
             @test transpose(Pc) == Pc
         end
 
         # DataPrecon getindex
-        for Pc in [F, Mdr, Mdt, Dt, It]
+        for Pc in [F, Mdr, Mdt, Mdg, Dt, It]
             @test Pc[1] * dobs[1] == (Pc * dobs)[1]
             @test Pc[1] * dobs.data[1][:] ≈ (Pc * dobs).data[1][:] rtol=ftol
         end
 
         # Test in place DataPrecon
-        for Pc in [F, Mdr, Mdt, Dt, It]
+        for Pc in [F, Mdr, Mdt, Mdg, Dt, It]
             mul!(dobs_out, Pc, dobs)
             @test isapprox(dobs_out, Pc*dobs; rtol=ftol)
             mul!(dobs_out, Pc', dobs)
@@ -75,7 +79,7 @@ dm = model0.m - model.m
 
         # test out-of-place
         dobs1 = deepcopy(dobs)
-        for Op in [F, F', Mdr , Mdr', Mdt, Mdt', Dt, Dt', It, It']
+        for Op in [F, F', Mdr , Mdr', Mdt, Mdt', Mdg, Mdg', Dt, Dt', It, It']
             m = Op*dobs 
             # Test that dobs wasn't modified
             @test isapprox(dobs, dobs1, rtol=eps())
