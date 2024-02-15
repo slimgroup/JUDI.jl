@@ -178,6 +178,9 @@ function __init__()
     copy!(devito, pyimport("devito"))
     # Initialize lock at session start
     PYLOCK[] = ReentrantLock()
+    
+    # Prevent autopadding to use external allocator
+    set_devito_config("autopadding", false)
 
     # Prevent autopadding to use external allocator
     set_devito_config("autopadding", false)
