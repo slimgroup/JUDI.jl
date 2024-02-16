@@ -41,7 +41,8 @@ def grad_expr(gradm, u, v, model, w=None, freq=None, dft_sub=None, ic="as"):
         Whether or not to use inverse scattering imaging condition (not supported yet)
     """
     ic_func = ic_dict[func_name(freq=freq, ic=ic)]
-    expr = ic_func(as_tuple(u), as_tuple(v), model, freq=freq, factor=dft_sub, w=w)
+    u, v = as_tuple(u), as_tuple(v)
+    expr = ic_func(u, v, model, freq=freq, factor=dft_sub, w=w)
     if model.fs and ic in ["fwi", "isic"]:
         # Only need `fs` processing for isic for the spatial derivatives.
         eq_g = [Eq(gradm, gradm - expr, subdomain=model.grid.subdomains['nofsdomain'])]

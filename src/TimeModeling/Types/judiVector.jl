@@ -123,9 +123,9 @@ function judiVector(geometry::Geometry, data::SegyIO.SeisCon)
     return judiVector{Float32, SegyIO.SeisCon}(nsrc, geometry,dataCell)
 end
 
-judiVector(data::SegyIO.SeisBlock; segy_depth_key="RecGroupElevation", t=nothing) = judiVector(Geometry(data; key="receiver", segy_depth_key=segy_depth_key, t=t), data)
-judiVector(data::SegyIO.SeisCon; segy_depth_key="RecGroupElevation", t=nothing)= judiVector(Geometry(data; key="receiver", segy_depth_key=segy_depth_key, t=t), data)
-judiVector(data::Vector{SegyIO.SeisCon}; segy_depth_key="RecGroupElevation", t=nothing) = judiVector(Geometry(data; key="receiver", segy_depth_key=segy_depth_key, t=t), data)
+judiVector(data::SegyIO.SeisBlock; kw...) = judiVector(Geometry(data; key="receiver", kw...), data)
+judiVector(data::SegyIO.SeisCon; kw...)= judiVector(Geometry(data; key="receiver", kw...), data)
+judiVector(data::Vector{SegyIO.SeisCon}; kw...) = judiVector(Geometry(data; key="receiver", kw...), data)
 judiVector(geometry::Geometry, data::Vector{SegyIO.SeisCon}) =  judiVector{Float32, SegyIO.SeisCon}(length(data), geometry, data)
 
 ############################################################

@@ -76,6 +76,7 @@ def extented_src(model, weight, wavelet, q=0):
         return q
     ws, wt = lr_src_fields(model, weight, wavelet)
     if model.is_tti:
+        q = (0, 0) if q == 0 else q
         return (q[0] + ws * wt, q[1] + ws * wt)
     return q + ws * wt
 

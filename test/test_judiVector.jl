@@ -105,6 +105,26 @@ ftol = 1e-6
         @test isequal(rec_geometry, d_cont.geometry)
         @test isequal(size(d_cont), dsize)
 
+
+        ########## Test t0 #######
+        d_contt0 = judiVector(container; segy_depth_key="RecGroupElevation", t0=50f0)
+
+        @test all(get_t0(d_contt0.geometry) .== 50f0)
+        @test all(get_t(d_contt0.geometry) .== (get_t(d_cont.geometry) .+ 50f0))
+        @test all(get_nt(d_contt0.geometry) .== get_nt(d_cont.geometry))
+
+        # Time resampling adds back the t0 for consistent modeling
+        data0 = get_data(d_contt0[1]).data[1]
+        newdt = div(get_dt(d_contt0.geometry, 1), 2)
+        dinterp = time_resample(data0, Geometry(d_contt0.geometry[1]), newdt)
+        @test size(dinterp, 1) == 2*size(data0, 1) - 1
+
+        if nsrc == 2
+            @test_throws JUDI.judiMultiSourceException  JUDI._maybe_pad_t0(d_cont, d_contt0)
+        end
+        _, dinterpt0 = JUDI._maybe_pad_t0(d_cont[1], d_contt0[1])
+        @test size(dinterpt0, 1) == size(data0, 1) + div(50f0, get_dt(d_contt0.geometry, 1))
+
     #################################################### test operations ###################################################
 
         # conj, transpose, adjoint

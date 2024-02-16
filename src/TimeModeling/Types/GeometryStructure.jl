@@ -182,6 +182,8 @@ end
 
 Geometry(xloc::CoordT, yloc::CoordT, zloc::CoordT, dt::Vector{T}, nt::Vector{<:Integer}, t::Vector{T}) where {T<:Real} = GeometryIC{T}(xloc,yloc,zloc,dt,nt, t)
 Geometry(xloc::CoordT, yloc::CoordT, zloc::CoordT, dt::Vector{T}, nt::Vector{T}, t::Vector{T}) where {T<:Real} = GeometryIC{T}(xloc,yloc,zloc,dt,convert(Vector{Int64}, nt), t)
+Geometry(xloc::CoordT, yloc::CoordT, zloc::CoordT, t::StepRangeLen{T}) where {T<:Real} = GeometryIC{T}(xloc,yloc,zloc,[t])
+Geometry(xloc::CoordT, yloc::CoordT, zloc::CoordT, t::Vector{<:StepRangeLen{T}}) where {T<:Real} = GeometryIC{T}(xloc,yloc,zloc,t)
 
 # For easy 2D setup
 Geometry(xloc, zloc; kw...) = Geometry(xloc, 0 .* xloc, zloc; kw...)
@@ -236,7 +238,7 @@ function timings_from_segy(data, dt=nothing, t=nothing, t0=nothing)
 
     if isnothing(t)
         ntCell = _get_p(nothing, data, nsrc, "ns", Int, 1)
-        tCell = Float32.((ntCell .- 1) .* dtCell)
+        tCell = Float32.((ntCell .- 1) .* dtCell .+ t0)
     else
         tCell = as_src_list(t, nsrc)
     end

@@ -164,9 +164,9 @@ def tti_kernel(model, u1, u2, fw=True, q=None):
 
     if 'nofsdomain' in model.grid.subdomains:
         # Water at free surface, no anisotrpy
-        acout_ttip = [Eq(u1_n, stencilp.subs(model.zero_thomsen))]
-        acout_ttir = [Eq(u2_n, stencilr.subs(model.zero_thomsen))]
-        pdea = freesurface(model, (acout_ttip, acout_ttir), (u1, u2))
+        acout_ttip = Eq(u1_n, stencilp.subs(model.zero_thomsen))
+        acout_ttir = Eq(u2_n, stencilr.subs(model.zero_thomsen))
+        pdea = freesurface(model, [acout_ttip, acout_ttir], (u1, u2))
         # Standard PDE in subsurface
         first_stencil = Eq(u1_n, stencilp, subdomain=model.grid.subdomains['nofsdomain'])
         second_stencil = Eq(u2_n, stencilr, subdomain=model.grid.subdomains['nofsdomain'])

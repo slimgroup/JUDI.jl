@@ -29,6 +29,7 @@ const dmType{T} = Union{Vector{T}, PhysicalParameter{T}}
 #############################################################################
 # Utils
 include("Utils/auxiliaryFunctions.jl")
+include("Utils/time_utilities.jl")
 include("Modeling/losses.jl")
 
 #############################################################################

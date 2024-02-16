@@ -1,7 +1,7 @@
 from kernels import wave_kernel
 from geom_utils import src_rec, geom_expr
 from fields import (fourier_modes, wavefield, lr_src_fields, illumination,
-                    wavefield_subsampled, norm_holder, frequencies)
+                    wavefield_subsampled, norm_holder, frequencies, memory_field)
 from fields_exprs import extented_src
 from sensitivity import grad_expr
 from utils import weight_fun, opt_op, fields_kwargs, nfreq, base_kwargs
@@ -67,6 +67,11 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     kw.update(fields)
     kw.update(model.physical_params())
 
+    # SLS field
+    if model.is_viscoacoustic:
+        r = memory_field(u)
+        kw.update({r.name: r})
+
     # Output
     rout = wr or rcv
     uout = dft_modes or (u_save if t_sub > 1 else u)
@@ -125,6 +130,11 @@ def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8, fw=
     kw.update(fields_kwargs(src, u, v, gradm, f0q, f, I))
     kw.update(model.physical_params())
 
+    # SLS field
+    if model.is_viscoacoustic:
+        r = memory_field(v)
+        kw.update({r.name: r})
+
     if return_op:
         return op, gradm, kw
 
@@ -165,6 +175,7 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
                                dft_sub=dft_sub, ws=ws, t_sub=t_sub, f0=f0, illum=illum)
 
         kw.update(fields_kwargs(rnl, I))
+
         if return_op:
             return op, u, outrec, kw
 
@@ -192,6 +203,11 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     # Update kwargs
     kw.update(fields_kwargs(u, ul, snl, rnl, rcvl, u_save, dft_m, fr, ws, wt, f0q, I))
     kw.update(model.physical_params(born=True))
+
+    # SLS field
+    if model.is_viscoacoustic:
+        r, rl = memory_field(u), memory_field(ul)
+        kw.update({r.name: r, rl.name: rl})
 
     if return_op:
         return op, u, outrec, kw

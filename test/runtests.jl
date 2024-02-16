@@ -26,10 +26,10 @@ include("seismic_utils.jl")
 
 parsed_args = parse_commandline()
 const nlayer = parsed_args["nlayer"]
-const tti = parsed_args["tti"]
-const fs = parsed_args["fs"]
+const tti = parsed_args["tti"] || contains(GROUP, "TTI")
+const fs = parsed_args["fs"] || contains(GROUP, "FS")
 const nw = parsed_args["parallel"]
-const viscoacoustic = parsed_args["viscoacoustic"]
+const viscoacoustic = parsed_args["viscoacoustic"] || contains(GROUP, "VISCO")
 
 
 # Utility macro to run block of code with a single omp threa
@@ -114,7 +114,6 @@ end
 # Isotropic Acoustic tests with a free surface
 if GROUP == "ISO_OP_FS" || GROUP == "All"
     println("JUDI iso-acoustic operators with free surface tests")
-    push!(Base.ARGS, "--fs")
     for t=devito
         timeit_include(t)
         try Base.GC.gc(); catch; gc() end
@@ -125,7 +124,6 @@ end
 if GROUP == "TTI_OP" || GROUP == "All"
     println("JUDI TTI operators tests")
     # TTI tests
-    push!(Base.ARGS, "--tti")
     for t=devito
         timeit_include(t)
         try Base.GC.gc(); catch; gc() end
@@ -135,8 +133,6 @@ end
 # Anisotropic Acoustic tests with free surface
 if GROUP == "TTI_OP_FS" || GROUP == "All"
     println("JUDI TTI operators with free surface tests")
-    push!(Base.ARGS, "--tti")
-    push!(Base.ARGS, "--fs")
     for t=devito
         timeit_include(t)
         try Base.GC.gc(); catch; gc() end
@@ -147,7 +143,6 @@ end
 if GROUP == "VISCO_AC_OP" || GROUP == "All"
     println("JUDI Viscoacoustic operators tests")
     # Viscoacoustic tests
-    push!(Base.ARGS, "--viscoacoustic")
     for t=devito
         timeit_include(t)
         try Base.GC.gc(); catch; gc() end

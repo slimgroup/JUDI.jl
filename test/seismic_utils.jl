@@ -42,9 +42,9 @@ function setup_model(tti=false, viscoacoustic=false, nlayer=2; n=(301, 151), d=(
     # Setup model structure
     if tti
         println("TTI Model")
-        epsilon = smooth((v0[:, :] .- 1.5f0)/12f0, 3)
-        delta =  smooth((v0[:, :] .- 1.5f0)/14f0, 3)
-        theta =  smooth((v0[:, :] .- 1.5f0)/4, 3) .* rand([0, 1]) # makes sure VTI is tested
+        epsilon = smooth((v0[:, :] .- 1.5f0)/12f0, 5)
+        delta =  smooth((v0[:, :] .- 1.5f0)/14f0, 5)
+        theta =  smooth((v0[:, :] .- 1.5f0)/4, 5) .* rand([0, 1]) # makes sure VTI is tested
         model0 = Model(n, d, o, m0; epsilon=epsilon, delta=delta, theta=theta)
         model = Model(n, d, o, m; epsilon=epsilon, delta=delta, theta=theta)
     elseif viscoacoustic

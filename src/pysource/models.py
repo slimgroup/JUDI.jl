@@ -3,7 +3,7 @@ import warnings
 from sympy import finite_diff_weights as fd_w
 from devito import (Grid, Function, SubDomain, SubDimension, Eq, Inc,
                     Operator, mmin, mmax, initialize_function, switchconfig,
-                    Abs, sqrt, sin)
+                    Abs, sqrt, sin, Constant)
 from devito.data.allocators import ExternalAllocator
 from devito.tools import as_tuple, memoized_func
 
@@ -17,16 +17,20 @@ __all__ = ['Model']
 
 
 def getmin(f):
-    try:
+    if isinstance(f, Function):
         return mmin(f)
-    except ValueError:
+    elif isinstance(f, Constant):
+        return f.data
+    else:
         return np.min(f)
 
 
 def getmax(f):
-    try:
+    if isinstance(f, Function):
         return mmax(f)
-    except ValueError:
+    elif isinstance(f, Constant):
+        return f.data
+    else:
         return np.max(f)
 
 
@@ -267,8 +271,9 @@ class Model(object):
         """
         Return all set physical parameters and update to input values if provided
         """
-        params = {i: kwargs.get(i, getattr(self, i)) for i in self.physical_parameters
-                  if isinstance(getattr(self, i), Function)}
+        params = {i: kwargs.get(i, getattr(self, i)) for i in self._physical_parameters
+                  if isinstance(getattr(self, i), Function) or
+                  isinstance(getattr(self, i), Constant)}
 
         if not kwargs.get('born', False):
             params.pop('dm', None)
@@ -292,8 +297,7 @@ class Model(object):
         """
         if field is None:
             return default_value
-        if isinstance(field, np.ndarray) and (name == 'm' or
-                                              np.min(field) != np.max(field)):
+        if isinstance(field, np.ndarray):
             if field.shape == self.shape:
                 function = Function(name=name, grid=self.grid, space_order=space_order,
                                     parameter=is_param)
@@ -304,7 +308,7 @@ class Model(object):
                                     allocator=ExternalAllocator(field),
                                     initializer=lambda x: None, parameter=is_param)
         else:
-            return np.amin(field)
+            function = Constant(name=name, value=np.amin(field))
         self._physical_parameters.append(name)
         return function
 
@@ -313,7 +317,13 @@ class Model(object):
         """
         List of physical parameteres
         """
-        return as_tuple(self._physical_parameters)
+        params = []
+        for p in self._physical_parameters:
+            if getattr(self, p).is_Constant:
+                params.append('%s_const' % p)
+            else:
+                params.append(p)
+        return as_tuple(params)
 
     @property
     def dim(self):
@@ -558,8 +568,13 @@ class EmptyModel(object):
         # Create the function for the physical parameters
         self.damp = Function(name='damp', grid=self.grid, space_order=0)
         for p in set(p_params) - {'damp'}:
-            setattr(self, p, Function(name=p, grid=self.grid, space_order=space_order))
-        if 'irho' not in p_params:
+            if p.endswith('_const'):
+                name = p.split('_')[0]
+                setattr(self, name, Constant(name=name, value=1))
+            else:
+                setattr(self, p, Function(name=p, grid=self.grid,
+                                          space_order=space_order))
+        if 'irho' not in p_params and 'irho_const' not in p_params:
             self.irho = 1 if 'rho' not in p_params else 1 / self.rho
 
     @property

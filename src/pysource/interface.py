@@ -553,11 +553,14 @@ def J_adjoint_checkpointing(model, src_coords, wavelet, rec_coords, recin, space
 
     nt = wavelet.shape[0]
     rec = Receiver(name='rec', grid=model.grid, ntime=nt, coordinates=rec_coords)
-    kwg['srcv'] = rec
+    kwg['srcv1' if model.is_tti else 'srcv'] = rec
+
     # Wavefields to checkpoint
     cpwf = [uu for uu in as_tuple(u)]
     if model.is_viscoacoustic:
-        cpwf += [memory_field(u)]
+        r = memory_field(u)
+        cpwf.append(r)
+        kwu.update({r.name: r})
     cp = DevitoCheckpoint(cpwf)
 
     # Wrapped ops

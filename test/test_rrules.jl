@@ -10,7 +10,7 @@ Flux.Random.seed!(2022)
 nsrc = 1
 dt = 1f0
 
-model, model0, dm = setup_model(tti, viscoacoustic, 4)
+model, model0, dm = setup_model(tti, viscoacoustic, 2)
 m, m0 = model.m.data, model0.m.data
 q, srcGeometry, recGeometry, f0 = setup_geom(model; nsrc=nsrc, dt=dt)
 

@@ -154,6 +154,77 @@ datapath = joinpath(dirname(pathof(JUDI)))*"/../data/"
             @test sgeom.dt[1] == 4f0
             @test sgeom.t[1] == 1000f0
         end
+    end
 
+    @timeit TIMEROUTPUT "Geometry t0/t" begin
+        # Test resample with different t0 and t
+        # Same size but shited
+        data1, data2 = rand(Float32, 10, 1), rand(Float32, 10, 1)
+        taxis1 = 1f0:10f0
+        taxis2 = 2f0:11f0
+        g1 = Geometry([0f0], [0f0], [0f0], taxis1)
+        g2 = Geometry([0f0], [0f0], [0f0], [taxis2])
+        d1r, d2r = JUDI._maybe_pad_t0(data1, g1, data2, g2)
+        @test d1r[end] == 0
+        @test d2r[1] == 0
+        @test size(d1r) == size(d2r) == (12, 1)
+
+        # Same t0 different t
+        data1, data2 = rand(Float32, 11, 1), rand(Float32, 12, 1)
+        taxis1 = 0f0:10f0
+        taxis2 = 0f0:11f0
+        g1 = Geometry([0f0], [0f0], [0f0], taxis1)
+        g2 = Geometry([0f0], [0f0], [0f0], [taxis2])
+        d1r, d2r = JUDI._maybe_pad_t0(data1, g1, data2, g2)
+        @test d1r[end] == 0
+        @test size(d1r) == size(d2r) == (12, 1)
+
+        # Different t0 same t
+        data1, data2 = rand(Float32, 11, 1), rand(Float32, 12, 1)
+        taxis1 = 1f0:11f0
+        taxis2 = 0f0:11f0
+        g1 = Geometry([0f0], [0f0], [0f0], taxis1)
+        g2 = Geometry([0f0], [0f0], [0f0], [taxis2])
+        d1r, d2r = JUDI._maybe_pad_t0(data1, g1, data2, g2)
+        @test d1r[1] == 0
+        @test size(d1r) == size(d2r) == (12, 1)
+
+        # Different t0 and t
+        data1, data2 = rand(Float32, 10, 1), rand(Float32, 12, 1)
+        taxis1 = 1f0:10f0
+        taxis2 = 0f0:11f0
+        g1 = Geometry([0f0], [0f0], [0f0], taxis1)
+        g2 = Geometry([0f0], [0f0], [0f0], [taxis2])
+        d1r, d2r = JUDI._maybe_pad_t0(data1, g1, data2, g2)
+        @test d1r[end] == 0
+        @test d1r[1] == 0
+        @test size(d1r) == size(d2r) == (12, 1)
+
+        # Different t0 and t not contained in one
+        data1, data2 = rand(Float32, 10, 1), rand(Float32, 12, 1)
+        taxis1 = -1f0:8f0
+        taxis2 = 0f0:11f0
+        g1 = Geometry([0f0], [0f0], [0f0], taxis1)
+        g2 = Geometry([0f0], [0f0], [0f0], [taxis2])
+        d1r, d2r = JUDI._maybe_pad_t0(data1, g1, data2, g2)
+        @test all(d1r[11:13] .== 0)
+        @test d2r[1] == 0
+        @test size(d1r) == size(d2r) == (13, 1)
+
+        # Segy handling
+        block = SeisBlock(randn(Float32, 10, 1))
+        set_header!(block, "nsOrig", 12)
+        set_header!(block, "ns", 10)
+        set_header!(block, "dt", 1000)
+        set_header!(block, "dtOrig", 1000)
+        segy_write("test.segy", block)
+        block = segy_read("test.segy")
+        g = Geometry(block)
+
+        @test g.nt[1] == 10
+        @test g.dt[1] == 1f0
+        @test g.t0[1] == 2f0
+        @test g.t[1] == 11
+        rm("test.segy")
     end
 end

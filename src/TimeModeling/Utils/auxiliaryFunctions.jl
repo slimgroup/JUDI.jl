@@ -7,7 +7,7 @@
 
 export ricker_wavelet, get_computational_nt, calculate_dt, setup_grid, setup_3D_grid
 export convertToCell, limit_model_to_receiver_area, remove_out_of_bounds_receivers, extend_gradient
-export time_resample, remove_padding, subsample, process_input_data
+export remove_padding, subsample, process_input_data
 export generate_distribution, select_frequencies
 export devito_model, pad_sizes, pad_array
 export transducer, as_vec
@@ -491,80 +491,6 @@ function setup_3D_grid(xrec::Vector{Any}, yrec::Vector{Any}, zrec::Vector{Any})
 end
 
 """
-    time_resample(data, geometry_in, dt_new)
-
-Resample the input data with sinc interpolation from the current time sampling (geometrty_in) to the
-new time sampling `dt_new`.
-
-Parameters
-* `data`: Data to be reampled. If data is a matrix, resamples each column.
-* `geometry_in`: Geometry on which `data` is defined.
-* `dt_new`: New time sampling rate to interpolate onto.
-"""
-function time_resample(data::AbstractArray{T, N}, G_in::Geometry, dt_new::Real) where {T<:Real, N}
-    tend = step(G_in.taxis[1])*(size(data, 1) - 1) + first(G_in.taxis[1])
-    new_t = first(G_in.taxis[1]):dt_new:tend
-    return time_resample(data, G_in.taxis[1], new_t)
-end
-
-"""
-    time_resample(data, dt_in, dt_new)
-
-Resample the input data with sinc interpolation from the current time sampling dt_in to the 
-new time sampling `dt_new`.
-
-Parameters
-* `data`: Data to be reampled. If data is a matrix, resamples each column.
-* `dt_in`: Time sampling of input
-* `dt_new`: New time sampling rate to interpolate onto.
-"""
-function time_resample(data::AbstractArray{T, N}, t_in::StepRangeLen, t_new::StepRangeLen) where {T<:Real, N}
-    dt_in, dt_new = step(t_in), step(t_new)
-    if dt_new==dt_in
-        return data
-    elseif (dt_new % dt_in) == 0
-        rate = Int64(div(dt_new, dt_in))
-        return _time_resample(data, rate)
-    else
-        @juditime "Data time sinc-interpolation" begin
-            dataInterp = Float32.(SincInterpolation(data, t_in, t_new))
-        end
-        return dataInterp
-    end
-end
-
-time_resample(data::AbstractArray{T, N}, dt_in::Number, dt_new::Number, t::Number) where {T<:Real, N} =
-    time_resample(data, 0:dt_in:(dt_in*ceil(t/dt_in)), 0:dt_new:(dt_new*ceil(t/dt_new)))
-
-
-"""
-    time_resample(data, dt_in, geometry_in)
-
-Resample the input data with sinc interpolation from the current time sampling (dt_in) to the
-new time sampling `geometry_out`.
-
-Parameters
-* `data`: Data to be reampled. If data is a matrix, resamples each column.
-* `geometry_out`: Geometry on which `data` is to be interpolated.
-* `dt_in`: Time sampling rate of the `data.`
-"""
-function time_resample(data::AbstractArray{T, N}, dt_in::Real, G_out::Geometry{T}) where {T<:Real, N}
-    currt = range(0f0, step=dt_in, length=size(data, 1))
-    return time_resample(data, currt, G_out.taxis[1])
-end
-
-function time_resample(data::AbstractArray{T, N}, dt_in::Real, G_in::Geometry{T}, G_out::Geometry{T}) where {T<:Real, N}
-    currt = range(first(G_in.taxis[1]), step=dt_in, length=size(data, 1))
-    return time_resample(data, currt, G_out.taxis[1])
-end
-
-_time_resample(data::Matrix{T}, rate::Integer) where T = data[1:rate:end, :]
-_time_resample(data::PermutedDimsArray{T, 2, (2, 1), (2, 1), Matrix{T}}, rate::Integer) where {T<:Real} = data.parent[:, 1:rate:end]'
-
-SincInterpolation(Y::Matrix{T}, S::StepRangeLen{T}, Up::StepRangeLen{T}) where T<:Real = sinc.( (Up .- S') ./ (S[2] - S[1]) ) * Y
-SincInterpolation(Y::PermutedDimsArray{T, 2, (2, 1), (2, 1), Matrix{T}}, S::StepRangeLen{T}, Up::StepRangeLen{T}) where T<:Real = (Y.parent * sinc.( (Up' .- S) ./ (S[2] - S[1]) ))'
-
-"""
     generate_distribution(x; src_no=1)
 
 Generates a probability distribution for the discrete input judiVector `x`.
@@ -806,26 +732,3 @@ function filter_none(args::Tuple)
 end
 
 filter_none(x) = x
-
-
-"""
-    _maybe_pad_t0(q, qGeom, data, dataGeom)
-
-Pad zeros for data with non-zero t0, usually from a segy file so that time axis and array size match for the source and data.
-"""
-function _maybe_pad_t0(qIn::Matrix{T}, qGeom::Geometry, dObserved::Matrix{T}, dataGeom::Geometry) where T<:Number
-    if size(dObserved, 1) != size(qIn, 1)
-        dsize = size(qIn, 1) - size(dObserved, 1)
-        dt0 = get_t0(dataGeom, 1) - get_t0(qGeom, 1)
-        @assert dt0 != 0 && sign(dsize) == sign(dt0)
-        if dt0 > 0
-            dObserved = vcat(zeros(T, dsize, size(dObserved, 2)), dObserved)
-        else
-            qIn = vcat(zeros(T, -dsize,  size(qIn, 2)), qIn)
-        end
-    end
-    return qIn, dObserved
-end
-
-_maybe_pad_t0(qIn::judiVector{T, AT}, dObserved::judiVector{T, AT}) where{T<:Number, AT} =
-    _maybe_pad_t0(qIn.data, qIn.geometry, dObserved.data, dObserved.geometry)

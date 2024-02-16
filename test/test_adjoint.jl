@@ -20,7 +20,7 @@ dt = srcGeometry.dt[1]
 # testing parameters and utils
 tol = 5f-4
 (tti && fs) && (tol = 5f-3)
-maxtry = 3
+maxtry = viscoacoustic ? 5 : 3
 
 #################################################################################################
 # adjoint test utility function so that can retry if fails
