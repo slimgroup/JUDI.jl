@@ -9,7 +9,7 @@ from devito.tools import as_tuple
 try:
     import devitopro as dvp  # noqa
 except ImportError:
-    import devito as dvp
+    import devito as dvp  # noqa
 
 
 def wavefield(model, space_order, save=False, nt=None, fw=True, name='', t_sub=1):
@@ -139,9 +139,9 @@ def wavefield_subsampled(model, u, nt, t_sub, space_order=8):
         return None
     wf_s = []
     for wf in as_tuple(u):
-        usave = dvp.TimeFunction(name='us_%s' % wf.name, grid=model.grid, time_order=2,
-                                 space_order=space_order, time_dim=time_subsampled,
-                                 save=nsave)
+        usave = TimeFunction(name='us_%s' % wf.name, grid=model.grid, time_order=2,
+                             space_order=space_order, time_dim=time_subsampled,
+                             save=nsave)
         wf_s.append(usave)
     return wf_s
 

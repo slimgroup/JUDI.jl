@@ -39,7 +39,7 @@ def laplacian(v, irho):
     else:
         if isinstance(irho, Differentiable):
             so = irho.space_order // 2
-            Lap = sum([getattr(irho._subs(d, d + d.spacing/2) *
+            Lap = sum([getattr(irho *
                                getattr(v, 'd%s' % d.name)(x0=d + d.spacing/2,
                                                           fd_order=so),
                                'd%s' % d.name)(x0=d - d.spacing/2, fd_order=so)

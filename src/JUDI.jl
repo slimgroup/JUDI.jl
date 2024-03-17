@@ -182,9 +182,6 @@ function __init__()
     # Prevent autopadding to use external allocator
     set_devito_config("autopadding", false)
 
-    # Prevent autopadding to use external allocator
-    set_devito_config("autopadding", false)
-
     # Make sure there is no conflict for the cuda init thread with CUDA.jl
     if get(ENV, "DEVITO_PLATFORM", "") == "nvidiaX"
         @info "Initializing openacc/openmp offloading"

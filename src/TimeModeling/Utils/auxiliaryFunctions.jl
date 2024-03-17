@@ -11,6 +11,7 @@ export remove_padding, subsample, process_input_data
 export generate_distribution, select_frequencies
 export devito_model, pad_sizes, pad_array
 export transducer, as_vec
+export Gardner
 
 """
     devito_model(model, options;dm=nothing)
@@ -732,3 +733,13 @@ function filter_none(args::Tuple)
 end
 
 filter_none(x) = x
+
+
+function Gardner(vp::Array{T, N}; vwater=1.51) where {T<:Real, N}
+    rho = (T(0.31) .* (T(1e3) .* vp).^(T(0.25)))
+    # Make sure "water" is at 1
+    rho[vp .< vwater] .= 1
+    return rho
+end
+
+Gardner(vp::PhysicalParameter{T}; vwater=1.51) where T<:Real = PhysicalParameter(Gardner(vp.data; vwater=vwater), vp.n, vp.d, vp.o)

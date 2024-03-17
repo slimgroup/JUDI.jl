@@ -33,4 +33,18 @@ function find_water_bottom(m::AbstractArray{avDT, N};eps = 1e-4) where {avDT, N}
     return idx
 end
 
+function find_water_bottom(m::AbstractArray{avDT, N}, wbval::Number; inv=true) where {avDT, N}
+    #return the indices of the water bottom of a seismic image
+    n = size(m)
+    idx = zeros(Integer, n[1:end-1])
+    wbfunc(x) = inv ? x < wbval : x > wbval
+
+    for i in CartesianIndices(idx)
+        idx[i] = findfirst(wbfunc, m[i, :])
+    end
+    return idx
+end
+
+
+find_water_bottom(m::PhysicalParameter, wbval::Number; inv=true) = find_water_bottom(m.data, wbval; inv=inv)
 find_water_bottom(m::PhysicalParameter;eps=1e-4) = find_water_bottom(m.data; eps=eps)

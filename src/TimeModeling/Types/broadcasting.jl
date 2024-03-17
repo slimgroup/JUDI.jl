@@ -40,7 +40,7 @@ end
 
 function materialize(bc::MultiSource)
     m1, m2 = materialize(bc.m1), materialize(bc.m2)
-    ms = similar(isa(m1, judiMultiSourceVector) ? m1 : m2)
+    ms = deepcopy(isa(m1, judiMultiSourceVector) ? m1 : m2)
     check_compat(m1, m2)
     for i=1:ms.nsrc
         ms.data[i] .= materialize(broadcasted(bc.op, get_src(m1, i), get_src(m2, i)))

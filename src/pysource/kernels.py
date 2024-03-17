@@ -1,5 +1,7 @@
-from devito import Eq, solve, diag, div, grad
 from sympy import sqrt
+
+from devito import Eq, solve, diag, div, grad
+from devito.symbolics import retrieve_functions
 
 from fields import memory_field
 from fields_exprs import freesurface
@@ -59,8 +61,9 @@ def acoustic_kernel(model, u, fw=True, q=None):
     stencil = solve(wmr * u.dt2 + damp * udt - ulaplace - q, u_n)
 
     if 'nofsdomain' in model.grid.subdomains:
+        qfuncs = retrieve_functions(q)
         pde = [Eq(u_n, stencil, subdomain=model.grid.subdomains['nofsdomain'])]
-        pde += freesurface(model, pde, (u,))
+        pde += freesurface(model, pde, (u, *qfuncs))
     else:
         pde = [Eq(u_n, stencil)]
 
@@ -163,10 +166,11 @@ def tti_kernel(model, u1, u2, fw=True, q=None):
     stencilr = solve(wmr * u2.dt2 + damp * udt2 - H1 - q[1], u2_n)
 
     if 'nofsdomain' in model.grid.subdomains:
+        qfuncs = retrieve_functions(q)
         # Water at free surface, no anisotrpy
-        acout_ttip = Eq(u1_n, stencilp.subs(model.zero_thomsen))
-        acout_ttir = Eq(u2_n, stencilr.subs(model.zero_thomsen))
-        pdea = freesurface(model, [acout_ttip, acout_ttir], (u1, u2))
+        acout_ttip = [Eq(u1_n, stencilp.subs(model.zero_thomsen))]
+        acout_ttir = [Eq(u2_n, stencilr.subs(model.zero_thomsen))]
+        pdea = freesurface(model, (acout_ttip, acout_ttir), (u1, u2, *qfuncs))
         # Standard PDE in subsurface
         first_stencil = Eq(u1_n, stencilp, subdomain=model.grid.subdomains['nofsdomain'])
         second_stencil = Eq(u2_n, stencilr, subdomain=model.grid.subdomains['nofsdomain'])

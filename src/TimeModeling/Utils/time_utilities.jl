@@ -32,10 +32,13 @@ Parameters
 function time_resample(data::AbstractArray{T, N}, t_in::StepRangeLen, t_new::StepRangeLen) where {T<:Real, N}
     dt_in, dt_new = step(t_in), step(t_new)
     if dt_new==dt_in
-        return data
+        idx1 = Int64(div((first(t_new) - first(t_in)), dt_new) + 1)
+        return data[idx1:end, :]
     elseif (dt_new % dt_in) == 0
         rate = Int64(div(dt_new, dt_in))
-        return _time_resample(data, rate)
+        dataInterp = _time_resample(data, rate)
+        idx1 = Int64(div((first(t_new) - first(t_in)), dt_new) + 1)
+        return dataInterp[idx1:end, :]
     else
         @juditime "Data time sinc-interpolation" begin
             dataInterp = Float32.(SincInterpolation(data, t_in, t_new))

@@ -46,7 +46,7 @@ def grad_expr(gradm, u, v, model, w=None, freq=None, dft_sub=None, ic="as"):
     if model.fs and ic in ["fwi", "isic"]:
         # Only need `fs` processing for isic for the spatial derivatives.
         eq_g = [Eq(gradm, gradm - expr, subdomain=model.grid.subdomains['nofsdomain'])]
-        eq_g += freesurface(model, eq_g, (*u, *v))
+        eq_g += freesurface(model, eq_g, (*as_tuple(u), *as_tuple(v)))
     else:
         eq_g = [Eq(gradm, gradm - expr)]
     return eq_g
@@ -224,7 +224,8 @@ def inner_grad(u, v):
     v: TimeFunction or Function
         Second wavefield
     """
-    return sum([a*b for a, b in zip(grads(u, so_fact=2), grads(v, so_fact=2))])
+    return sum([a*b for a, b in zip(grads(u, so_fact=2, side=0),
+                                    grads(v, so_fact=2, side=0))])
 
 
 fwi_src = lambda *ar, **kw: isic_src(*ar, icsign=-1, **kw)
