@@ -210,8 +210,6 @@ function __init__()
         end
     end
 
-    # BLAS num threads for dense LA such as sinc interpolation
-    BLAS.set_num_threads(Threads.nthreads())
 end
 
 end

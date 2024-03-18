@@ -3,7 +3,6 @@ export fwi_objective, lsrtm_objective, fwi_objective!, lsrtm_objective!
 
 function multi_src_fg(model_full::AbstractModel, source::judiVector, dObs::judiVector, dm, options::JUDIOptions,
                       nlind::Bool, lin::Bool, misfit::Function, illum::Bool)
-    # Setup time-domain linear or nonlinear foward and adjoint modeling and interface to devito
     GC.gc(true)
     devito.clear_cache()
     # assert this is for single source LSRTM

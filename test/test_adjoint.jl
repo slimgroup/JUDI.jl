@@ -3,7 +3,7 @@
 # Date: May 2020
 #
 
-using Distributed
+nw = 2
 
 # # Set parallel if specified
 if nw > 1 && nworkers() < nw
@@ -60,9 +60,9 @@ test_adjoint(adj::Bool, last::Bool) = (adj || last) ? (@test adj) : (@test_skip 
 # Modeling operators
 @testset "Adjoint test with $(nlayer) layers and tti $(tti) and viscoacoustic $(viscoacoustic) and freesurface $(fs)" begin
     @timeit TIMEROUTPUT "Adjoint" begin
-        opt = Options(sum_padding=true, dt_comp=dt, free_surface=parsed_args["fs"], f0=f0)
+        opt = Options(sum_padding=true, dt_comp=dt, free_surface=fs, f0=f0)
         F = judiModeling(model0, srcGeometry, recGeometry; options=opt)
-
+        @show q.nsrc
         # Nonlinear modeling
         y = F*q
 
@@ -84,7 +84,7 @@ end
 # Extended source modeling
 @testset "Extended source adjoint test with $(nlayer) layers and tti $(tti) and viscoacoustic $(viscoacoustic) and freesurface $(fs)" begin
     @timeit TIMEROUTPUT "Extended source adjoint" begin
-        opt = Options(sum_padding=true, dt_comp=dt, free_surface=parsed_args["fs"], f0=f0)
+        opt = Options(sum_padding=true, dt_comp=dt, free_surface=fs, f0=f0)
         F = judiModeling(model0, srcGeometry, recGeometry; options=opt)
         Pr = judiProjection(recGeometry)
         Fw = judiModeling(model0; options=opt)

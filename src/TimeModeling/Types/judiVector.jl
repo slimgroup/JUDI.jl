@@ -266,32 +266,38 @@ end
 function judiVector_to_SeisBlock(d::judiVector{avDT, AT}, q::judiVector{avDT, QT};
                                  source_depth_key="SourceSurfaceElevation",
                                  receiver_depth_key="RecGroupElevation") where {avDT, AT, QT}
+    return judiVector_to_SeisBlock(Geometry(d.geometry), Geometry(q.geometry), d.data, q.data;
+                                   source_depth_key=source_depth_key,
+                                   receiver_depth_key=receiver_depth_key)
+end
 
-    d.geometry = Geometry(d.geometry)
-    q.geometry = Geometry(q.geometry)
+function judiVector_to_SeisBlock(Gr::GeometryIC, Gs::GeometryIC, Dr::Vector{<:VecOrMat}, Ds::Vector{<:VecOrMat};
+                                 source_depth_key="SourceSurfaceElevation",
+                                 receiver_depth_key="RecGroupElevation")
 
-    blocks = Array{Any}(undef, d.nsrc)
+    nsrc = get_nsrc(Gr)
+    blocks = Array{Any}(undef, nsrc)
     count = 0
-    for j=1:d.nsrc
+    for j=1:nsrc
 
         # create SeisBlock
-        blocks[j] = SeisBlock(d.data[j])
-        numTraces = size(d.data[j],2)
+        blocks[j] = SeisBlock(Dr[j])
+        numTraces = size(Dr[j],2)
         traceNumbers = convert(Array{Integer,1},count+1:count+numTraces)
 
         # set headers
-        set_header!(blocks[j], "GroupX", Int.(round.(d.geometry.xloc[j]*1f3)))
-        if length(d.geometry.yloc[j]) == 1
-            set_header!(blocks[j], "GroupY", Int(round(d.geometry.yloc[j][1]*1f3)))
+        set_header!(blocks[j], "GroupX", Int.(round.(Gr.xloc[j]*1f3)))
+        if length(Gr.yloc[j]) == 1
+            set_header!(blocks[j], "GroupY", Int(round(Gr.yloc[j][1]*1f3)))
         else
-            set_header!(blocks[j], "GroupY", convert(Array{Integer,1},round.(d.geometry.yloc[j]*1f3)))
+            set_header!(blocks[j], "GroupY", convert(Array{Integer,1},round.(Gr.yloc[j]*1f3)))
         end
-        set_header!(blocks[j], receiver_depth_key, Int.(round.(d.geometry.zloc[j]*1f3)))
-        set_header!(blocks[j], "SourceX", Int.(round.(q.geometry.xloc[j][1]*1f3)))
-        set_header!(blocks[j], "SourceY", Int.(round.(q.geometry.yloc[j][1]*1f3)))
-        set_header!(blocks[j], source_depth_key, Int.(round.(q.geometry.zloc[j][1]*1f3)))
+        set_header!(blocks[j], receiver_depth_key, Int.(round.(Gr.zloc[j]*1f3)))
+        set_header!(blocks[j], "SourceX", Int.(round.(Gs.xloc[j][1]*1f3)))
+        set_header!(blocks[j], "SourceY", Int.(round.(Gs.yloc[j][1]*1f3)))
+        set_header!(blocks[j], source_depth_key, Int.(round.(Gs.zloc[j][1]*1f3)))
 
-        set_header!(blocks[j], "dt", Int(get_dt(d.geometry, j)*1f3))
+        set_header!(blocks[j], "dt", Int(get_dt(Gr, j)*1f3))
         set_header!(blocks[j], "FieldRecord",j)
         set_header!(blocks[j], "TraceNumWithinLine", traceNumbers)
         set_header!(blocks[j], "TraceNumWithinFile", traceNumbers)
@@ -303,7 +309,7 @@ function judiVector_to_SeisBlock(d::judiVector{avDT, AT}, q::judiVector{avDT, QT
 
     # merge into single block
     fullblock = blocks[1]
-    for j=2:d.nsrc
+    for j=2:nsrc
         fullblock = merge(fullblock,blocks[j])
         blocks[j] = []
     end
@@ -312,26 +318,23 @@ end
 
 
 function src_to_SeisBlock(q::judiVector{avDT, QT};
-                                 source_depth_key="SourceSurfaceElevation",
-                                 receiver_depth_key="RecGroupElevation") where {avDT, QT}
+                          source_depth_key="SourceSurfaceElevation",
+                          receiver_depth_key="RecGroupElevation") where {avDT, QT}
 
-    return judiVector_to_SeisBlock(q, q;
+    return judiVector_to_SeisBlock(Geometry(q.geometry), Geometry(q.geometry), q.data, q.data;
         source_depth_key=source_depth_key,
         receiver_depth_key=receiver_depth_key)
 end
 
 
 function write_shot_record(srcGeometry::GeometryIC, srcData, recGeometry::GeometryIC, recData, options)
-    q = judiVector(srcGeometry, srcData)
-    d = judiVector(recGeometry, recData)
     pos = [srcGeometry.xloc[1][1], srcGeometry.yloc[1][1],  srcGeometry.zloc[1][1]]
     pos = join(["_"*string(trunc(p; digits=2)) for p in pos])
     file = join([string(options.file_name), pos,".segy"])
-    block_out = judiVector_to_SeisBlock(d, q)
+    block_out = judiVector_to_SeisBlock(recGeometry, srcGeometry, recData, srcData)
     segy_write(join([options.file_path,"/",file]), block_out)
     container = scan_file(join([options.file_path,"/",file]),
-                          ["GroupX", "GroupY", "dt", "SourceSurfaceElevation", "RecGroupElevation"];
-                          chunksize=256)
+                          ["GroupX", "GroupY", "dt", "SourceSurfaceElevation", "RecGroupElevation"])
     return container
 end
 

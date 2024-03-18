@@ -86,7 +86,7 @@ save_to_disk(shot::judiVector{T, Matrix{T}}, ::Any, ::Any, ::Any, ::Any, ::Val{f
 function save_to_disk(shot::judiVector{T}, srcGeometry::GeometryIC{T}, srcData::Array, options::JUDIOptions,
                       ::Val{true}, ::Val{true}) where {T<:Number}
     @juditime "Dump data to segy" begin
-        container = write_shot_record(srcGeometry, srcData, shot.geometry[1], shot.data[1], options)
+        container = write_shot_record(srcGeometry, [srcData], shot.geometry, shot.data, options)
         dout = judiVector(container)
     end
     return dout

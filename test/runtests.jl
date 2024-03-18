@@ -7,7 +7,7 @@
 # Updated July 2020
 
 using JUDI
-using ArgParse, Test, Printf, Aqua
+using Test, Printf, Aqua
 using SegyIO, LinearAlgebra, Distributed, JOLI
 using TimerOutputs: TimerOutputs, @timeit
 
@@ -25,13 +25,10 @@ const GROUP = get(ENV, "GROUP", "JUDI")
 # JUDI seismic utils
 include("seismic_utils.jl")
 
-parsed_args = parse_commandline()
-const nlayer = parsed_args["nlayer"]
-const tti = parsed_args["tti"] || contains(GROUP, "TTI")
-const fs = parsed_args["fs"] || contains(GROUP, "FS")
-const nw = (GROUP == "BASICS" || GROUP == "ISO_OP") ? 2 : 0
-const viscoacoustic = parsed_args["viscoacoustic"] || contains(GROUP, "VISCO")
-
+const nlayer = 2
+const tti = contains(GROUP, "TTI")
+const fs = contains(GROUP, "FS")
+const viscoacoustic = contains(GROUP, "VISCO")
 
 # Utility macro to run block of code with a single omp threa
 macro single_threaded(expr)
@@ -57,10 +54,10 @@ base = ["test_geometry.jl",
         "test_physicalparam.jl",
         "test_compat.jl"]
 
-devito = ["test_linearity.jl",
+devito = ["test_all_options.jl",
+          "test_linearity.jl",
           "test_preconditioners.jl",
           "test_adjoint.jl",
-          "test_all_options.jl",
           "test_jacobian.jl",
           "test_gradients.jl",
           "test_multi_exp.jl",
@@ -72,7 +69,6 @@ issues = ["test_issues.jl"]
 
 # custom
 if endswith(GROUP, ".jl")
-    # VERSION >= v"1.7" && push!(Base.ARGS, "-p 2")
     timeit_include(GROUP)
 end
 

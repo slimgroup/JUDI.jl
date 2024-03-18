@@ -39,7 +39,6 @@ ZygoteJUDIExt = "Zygote"
 
 [extras]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
-ArgParse = "c7e460c6-2fb9-53a9-8c5b-16f535851c63"
 Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
 JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
@@ -47,7 +46,7 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
 
 [targets]
-test = ["Aqua", "ArgParse", "JLD2", "Printf", "Test", "TimerOutputs", "Flux"]
+test = ["Aqua", "JLD2", "Printf", "Test", "TimerOutputs", "Flux"]
 
 [weakdeps]
 Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"

@@ -6,17 +6,18 @@
 # Mathias Louboutin, mlouboutin3@gatech.edu
 # Updated July 2020
 
+nw = 2
+
 # Set parallel if specified
 if nw > 1 && nworkers() < nw
    addprocs(nw-nworkers() + 1; exeflags=["--code-coverage=user", "--inline=no", "--check-bounds=yes"])
 end
 
-@everywhere using JOLI
-@everywhere using JUDI, LinearAlgebra, Test, Distributed
+@everywhere using JOLI, JUDI, LinearAlgebra, Test, Distributed
 
 ### Model
 model, model0, dm = setup_model(tti, viscoacoustic, nlayer; n=(101, 101), d=(10., 10.))
-q, srcGeometry, recGeometry, f0 = setup_geom(model; nsrc=2, tn=500f0)
+q, srcGeometry, recGeometry, f0 = setup_geom(model; nsrc=nw, tn=500f0)
 dt = srcGeometry.dt[1]
 
 # Modeling operators

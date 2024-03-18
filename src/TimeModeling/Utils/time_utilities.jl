@@ -76,9 +76,7 @@ end
 _time_resample(data::Matrix{T}, rate::Integer) where T = data[1:rate:end, :]
 _time_resample(data::PermutedDimsArray{T, 2, (2, 1), (2, 1), Matrix{T}}, rate::Integer) where {T<:Real} = data.parent[:, 1:rate:end]'
 
-SincInterpolation(Y::Matrix{T}, S::StepRangeLen{T}, Up::StepRangeLen{T}) where T<:Real = sinc.( (Up .- S') ./ (S[2] - S[1]) ) * Y
-SincInterpolation(Y::PermutedDimsArray{T, 2, (2, 1), (2, 1), Matrix{T}}, S::StepRangeLen{T}, Up::StepRangeLen{T}) where T<:Real = (Y.parent * sinc.( (Up' .- S) ./ (S[2] - S[1]) ))'
-
+SincInterpolation(Y::AbstractMatrix{T}, S::StepRangeLen{T}, Up::StepRangeLen{T}) where T<:Real = sinc.( (Up .- S') ./ (S[2] - S[1]) ) * Y
 
 """
     _maybe_pad_t0(q, qGeom, data, dataGeom)
