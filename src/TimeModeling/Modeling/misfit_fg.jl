@@ -48,7 +48,7 @@ function multi_src_fg(model_full::AbstractModel, source::judiVector, dObs::judiV
     @juditime "Python call to J_adjoint" begin
         argout = rlock_pycall(ac."J_adjoint", Tuple{Float32, PyArray, IT...}, modelPy,
                 src_coords, qIn, rec_coords, dObserved, t_sub=options.subsampling_factor,
-                space_order=options.space_order, checkpointing=options.optimal_checkpointing,
+                checkpointing=options.optimal_checkpointing,
                 freq_list=freqs, ic=options.IC, is_residual=false, born_fwd=lin, nlind=nlind,
                 dft_sub=options.dft_subsampling_factor[1], f0=options.f0, return_obj=true,
                 misfit=mfunc, illum=illum)
@@ -124,6 +124,9 @@ Dtypes = Union{<:judiVector, NTuple{N, <:judiVector} where N, Vector{<:judiVecto
 MTypes = Union{<:AbstractModel, NTuple{N, <:AbstractModel} where N, Vector{<:AbstractModel}}
 dmTypes = Union{dmType, NTuple{N, dmType} where N, Vector{dmType}}
 
+################################################################################################
+####################### User Interface #########################################################
+################################################################################################
 
 """
     fwi_objective(model, source, dobs; options=Options())

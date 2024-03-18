@@ -427,7 +427,7 @@ class Model(object):
             c_fd = sum(np.abs(coeffs[-1][-1])) / 2
             return .9 * np.sqrt(self.dim) / self.dim / c_fd
         a1 = 4  # 2nd order in time
-        so = max(self._space_order // 2, 4)
+        so = max(self._space_order, 4)
         coeffs = fd_w(2, range(-so, so), 0)[-1][-1]
         return .9 * np.sqrt(a1/float(self.grid.dim * sum(np.abs(coeffs))))
 

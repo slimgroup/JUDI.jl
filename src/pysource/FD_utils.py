@@ -9,8 +9,7 @@ def laplacian(v, irho):
     """
     irho = irho or 1
     if isinstance(irho, Differentiable):
-        so = irho.space_order // 2
-        Lap = div(irho * grad(v, shift=.5, order=so), shift=-.5, order=so)
+        Lap = div(irho * grad(v, shift=.5), shift=-.5)
     else:
         Lap = irho * v.laplace
 
@@ -93,16 +92,12 @@ def sa_tti(u, v, model):
     model: Model
         Model structure
     """
-    # Space order
-    so = u.space_order // 2
     # Matrix of Thomsen params
     A, B, C = thomsen_mat(model)
     # Rotation Matrix
     R = R_mat(model)
 
-    PI = R.T * (A * R * grad(u, shift=.5, order=so) +
-                B * R * grad(v, shift=.5, order=so))
-    MI = R.T * (B * R * grad(u, shift=.5, order=so) +
-                C * R * grad(v, shift=.5, order=so))
+    PI = R.T * (A * R * grad(u, shift=.5) + B * R * grad(v, shift=.5))
+    MI = R.T * (B * R * grad(u, shift=.5) + C * R * grad(v, shift=.5))
 
-    return div(PI, shift=-.5, order=so), div(MI, shift=-.5, order=so)
+    return div(PI, shift=-.5), div(MI, shift=-.5)

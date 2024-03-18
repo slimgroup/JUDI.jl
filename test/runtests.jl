@@ -17,7 +17,8 @@ const TIMEROUTPUT = TimerOutputs.TimerOutput()
 timeit_include(path::AbstractString) = @timeit TIMEROUTPUT path include(path)
 
 # Utilities
-const success_log = Dict(true => "SUCCESS", false => "FAILED")
+const success_log = Dict(true => "\e[32m SUCCESS \e[0m", false => "\e[31m FAILED \e[0m")
+
 # Test set
 const GROUP = get(ENV, "GROUP", "JUDI")
 
@@ -28,7 +29,7 @@ parsed_args = parse_commandline()
 const nlayer = parsed_args["nlayer"]
 const tti = parsed_args["tti"] || contains(GROUP, "TTI")
 const fs = parsed_args["fs"] || contains(GROUP, "FS")
-const nw = parsed_args["parallel"]
+const nw = (GROUP == "BASICS" || GROUP == "ISO_OP") ? 2 : 0
 const viscoacoustic = parsed_args["viscoacoustic"] || contains(GROUP, "VISCO")
 
 
@@ -93,7 +94,6 @@ end
 # Generic mdeling tests
 if GROUP == "BASICS" || GROUP == "All"
     println("JUDI generic modelling tests")
-    VERSION >= v"1.7" && push!(Base.ARGS, "-p 2")
     for t=extras
         timeit_include(t)
         @everywhere try Base.GC.gc(); catch; gc() end
@@ -104,7 +104,6 @@ end
 if GROUP == "ISO_OP" || GROUP == "All"
     println("JUDI iso-acoustic operators tests (parallel)")
     # Basic test of LA/CG/LSQR needs
-    VERSION >= v"1.7" && push!(Base.ARGS, "-p 2")
     for t=devito
         timeit_include(t)
         @everywhere try Base.GC.gc(); catch; gc() end

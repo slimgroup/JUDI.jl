@@ -118,16 +118,21 @@ def freesurface(model, eq, mfuncs=None):
     """
     fs_eq = []
     fsdomain = model.grid.subdomains['fsdomain']
+    zfs = model.grid.subdomains['fsdomain'].dimensions[-1]
+    z = zfs.parent
+
     for eq_i in eq:
         for p in eq_i._flatten:
             # Add modulo replacements to to rhs
             lhs, rhs = p.lhs, p.rhs
-            zfs = model.grid.subdomains['fsdomain'].dimensions[-1]
-            z = zfs.parent
 
-            Dz = {d: d.evaluate for d in retrieve_derivatives(rhs) if z in d.dims}
+            Dz = {d for d in retrieve_derivatives(rhs) if z in d.dims}
+            # Remove inner duplicate
+            Dz = Dz - {d for D in Dz for d in retrieve_derivatives(D.expr) if z in d.dims}
+            Dz = {d: d._eval_at(lhs).evaluate for d in Dz}
 
-            funcs = {f for f in retrieve_functions(Dz.values()) if f.indices[-1] is not z}
+            funcs = {f for f in retrieve_functions(Dz.values())}
+
             if mfuncs:
                 funcs = {f for f in funcs if f.function in mfuncs}
 
@@ -137,9 +142,11 @@ def freesurface(model, eq, mfuncs=None):
                 if (zind - z).as_coeff_Mul()[0] < 0:
                     s = sign(zind._subs(z.spacing, 1))
                     mapper.update({f: s * f._subs(zind, INT(abs(zind)))})
+
             dzmapper = {d: v.subs(mapper) for d, v in Dz.items()}
-            fs_eq.append(Eq(lhs, rhs.subs(dzmapper), subdomain=fsdomain))
-            fs_eq.append(Eq(lhs._subs(z, 0), 0, subdomain=fsdomain))
+            fs_eq.append(p.func(lhs, rhs.subs(dzmapper), subdomain=fsdomain))
+            fs_eq.append(p.func(lhs._subs(z, 0), 0, subdomain=fsdomain))
+
     return fs_eq
 
 

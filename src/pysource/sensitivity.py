@@ -1,11 +1,12 @@
 import numpy as np
 from sympy import cos, sin
 
-from devito import Eq, div, grad
+from devito import Eq, grad
 from devito.tools import as_tuple
 
 from fields import frequencies
 from fields_exprs import sub_time, freesurface
+from FD_utils import laplacian
 
 
 def func_name(freq=None, ic="as"):
@@ -205,9 +206,7 @@ def isic_src(model, u, **kwargs):
     ics = kwargs.get('icsign', 1)
     dus = []
     for uu in u:
-        so = uu.space_order // 2
-        du_aux = div(dm * irho * grad(uu, shift=.5, order=so), shift=-.5, order=so)
-        dus.append(dm * irho * uu.dt2 * m - ics * du_aux)
+        dus.append(dm * irho * uu.dt2 * m - ics * laplacian(uu, dm * irho))
     if model.is_tti:
         return (-dus[0], -dus[1])
     return -dus[0]
@@ -215,18 +214,16 @@ def isic_src(model, u, **kwargs):
 
 def inner_grad(u, v):
     """
-    Inner product of the gradient of two Function.
+    Inner product of the gradient of two fields
 
     Parameters
     ----------
-    u: TimeFunction or Function
-        First wavefield
-    v: TimeFunction or Function
-        Second wavefield
+    u: TimeFunction
+        First field
+    v: TimeFunction
+        Second field
     """
-    so = u.space_order // 2
-    return sum([a*b for a, b in zip(grad(u, order=so),
-                                    grad(v, order=so))])
+    return (grad(u, shift=.5).transpose(inner=False) * grad(v, shift=.5))[0]
 
 
 fwi_src = lambda *ar, **kw: isic_src(*ar, icsign=-1, **kw)
