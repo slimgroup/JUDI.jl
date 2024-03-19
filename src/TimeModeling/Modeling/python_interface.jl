@@ -23,7 +23,7 @@ function wrapcall_data(func, args...;kw...)
     # Unlike standard array we want to keep this ordering in julia (time first) so we need to
     # make a wrapper around the pointer, to flip the dimension the re-permute the dimensions.
     shot = tup ? out[1] : out
-    shot = PermutedDimsArray(unsafe_wrap(Array, shot.data, reverse(size(shot))), length(size(shot)):-1:1)
+    shot = permutedims(unsafe_wrap(Array, shot.data, reverse(size(shot))), length(size(shot)):-1:1)
     # Check what to return
     out = tup ? (shot, out[2]) : shot
     return out
@@ -56,6 +56,7 @@ function devito_interface(modelPy::PyObject, srcGeometry::Geometry, srcData::Arr
     # Interpolate input data to computational grid
     dtComp = convert(Float32, modelPy."critical_dt")
     qIn = time_resample(srcData, srcGeometry, dtComp)
+    qIn = _maybe_pad_t0(qIn, srcGeometry, recGeometry)
 
     # Set up coordinates with devito dimensions
     src_coords = setup_grid(srcGeometry, modelPy.shape)
@@ -109,6 +110,7 @@ function devito_interface(modelPy::PyObject, srcGeometry::Geometry, srcData::Arr
     # Interpolate input data to computational grid
     dtComp = convert(Float32, modelPy."critical_dt")
     qIn = time_resample(srcData, srcGeometry, dtComp)
+    qIn = _maybe_pad_t0(qIn, srcGeometry, recGeometry)
 
     # Set up coordinates with devito dimensions
     #origin = get_origin(modelPy)
@@ -167,6 +169,7 @@ function devito_interface(modelPy::PyObject, recGeometry::Geometry, recData::Arr
     dtComp = convert(Float32, modelPy."critical_dt")
     dIn = time_resample(recData, recGeometry, dtComp)
     qIn = time_resample(srcData, recGeometry, dtComp)
+    qIn, dIn = _maybe_pad_t0(qIn, recGeometry, dIn, recGeometry)
 
     # Set up coordinates with devito dimensions
     rec_coords = setup_grid(recGeometry, modelPy.shape)

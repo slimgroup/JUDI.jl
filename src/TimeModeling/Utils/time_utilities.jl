@@ -139,3 +139,6 @@ end
 
 _maybe_pad_t0(qIn::judiVector{T, AT}, dObserved::judiVector{T, AT}) where{T<:Number, AT} =
     _maybe_pad_t0(get_data(qIn), get_data(dObserved))
+
+_maybe_pad_t0(qIn::Matrix{T}, qGeom::Geometry, dataGeom::Geometry) where T<:Number =
+    _maybe_pad_t0(qIn, qGeom, zeros(T, dataGeom.nt[1], 1), dataGeom)[1]

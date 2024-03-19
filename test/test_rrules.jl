@@ -48,7 +48,7 @@ function loss(misfit, d_obs, q0, m0, F)
     return ϕ, g[q0], g[m0]
 end
 
-xsrc_index, zsrc_index = rand(1:model.n[1], nsrc), rand(1:model.n[2], nsrc)
+xsrc_index, zsrc_index = rand(30:model.n[1]-30, nsrc), rand(30:model.n[2]-30, nsrc)
 w = GenSimSourceMulti(xsrc_index, zsrc_index, nsrc, model.n);
 # Put the point source at the same location for easy comparison
 q.geometry.xloc[1] .= xsrc_index[1]
