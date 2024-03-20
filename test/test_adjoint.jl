@@ -113,3 +113,5 @@ end
         println("Adjoint test after $(ntry) tries, F: $(success_log[adj_F]), J: $(success_log[adj_J])")
     end
 end
+
+rmprocs(workers())

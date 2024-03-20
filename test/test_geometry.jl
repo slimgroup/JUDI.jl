@@ -167,7 +167,7 @@ datapath = joinpath(dirname(pathof(JUDI)))*"/../data/"
         d1r, d2r = JUDI._maybe_pad_t0(data1, g1, data2, g2)
         @test d1r[end] == 0
         @test d2r[1] == 0
-        @test size(d1r) == size(d2r) == (12, 1)
+        @test size(d1r) == size(d2r) == (11, 1)
 
         # Same t0 different t
         data1, data2 = rand(Float32, 11, 1), rand(Float32, 12, 1)

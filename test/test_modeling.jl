@@ -131,3 +131,5 @@ if VERSION >= v"1.7"
 		end
 	end
 end
+
+rmprocs(workers())

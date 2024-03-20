@@ -85,7 +85,13 @@ function twri_objective(model_full::AbstractModel, source::judiVector, dObs::jud
     qIn = time_resample(source.data[1], source.geometry, dtComp)
     dObserved = time_resample(make_input(dObs), dObs.geometry, dtComp)
 
-    isnothing(y) ? Y = nothing : Y = time_resample(make_input(y), y.geometry, dtComp)
+    if isnothing(y)
+        Y = nothing
+    else
+        Y = time_resample(make_input(y), y.geometry, dtComp)
+        _, Y = _maybe_pad_t0(qIn, source.geometry, Y, y.geometry, dtComp)
+    end
+    qIn, dObserved = _maybe_pad_t0(qIn, source.geometry, dObserved, dObs.geometry, dtComp)
 
     # Set up coordinates
     src_coords = setup_grid(source.geometry, size(model))  # shifts source coordinates by origin

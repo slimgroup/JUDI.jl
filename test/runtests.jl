@@ -63,6 +63,7 @@ devito = ["test_all_options.jl",
           "test_multi_exp.jl",
           "test_rrules.jl"]
 
+
 extras = ["test_modeling.jl", "test_basics.jl", "test_linear_algebra.jl"]
 
 issues = ["test_issues.jl"]

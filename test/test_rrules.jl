@@ -51,8 +51,8 @@ end
 xsrc_index, zsrc_index = rand(30:model.n[1]-30, nsrc), rand(30:model.n[2]-30, nsrc)
 w = GenSimSourceMulti(xsrc_index, zsrc_index, nsrc, model.n);
 # Put the point source at the same location for easy comparison
-q.geometry.xloc[1] .= xsrc_index[1]
-q.geometry.zloc[1] .= zsrc_index[1]
+q.geometry.xloc[1] .= (xsrc_index[1] - 1) * model.d[1]
+q.geometry.zloc[1] .= (zsrc_index[1] - 1) * model.d[2]
 
 sinput = zip(["Point", "Extended"], [Ps, Pw], (q, w))
 #####################################################################################

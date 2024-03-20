@@ -56,7 +56,7 @@ function devito_interface(modelPy::PyObject, srcGeometry::Geometry, srcData::Arr
     # Interpolate input data to computational grid
     dtComp = convert(Float32, modelPy."critical_dt")
     qIn = time_resample(srcData, srcGeometry, dtComp)
-    qIn = _maybe_pad_t0(qIn, srcGeometry, recGeometry)
+    qIn = _maybe_pad_t0(qIn, srcGeometry, recGeometry, dtComp)
 
     # Set up coordinates with devito dimensions
     src_coords = setup_grid(srcGeometry, modelPy.shape)
@@ -110,7 +110,7 @@ function devito_interface(modelPy::PyObject, srcGeometry::Geometry, srcData::Arr
     # Interpolate input data to computational grid
     dtComp = convert(Float32, modelPy."critical_dt")
     qIn = time_resample(srcData, srcGeometry, dtComp)
-    qIn = _maybe_pad_t0(qIn, srcGeometry, recGeometry)
+    qIn = _maybe_pad_t0(qIn, srcGeometry, recGeometry, dtComp)
 
     # Set up coordinates with devito dimensions
     #origin = get_origin(modelPy)
@@ -130,7 +130,7 @@ function devito_interface(modelPy::PyObject, srcGeometry::Geometry, srcData::Arr
     dtComp = convert(Float32, modelPy."critical_dt")
     qIn = time_resample(srcData, srcGeometry, dtComp)
     dIn = time_resample(recData, recGeometry, dtComp)
-    qIn, dIn = _maybe_pad_t0(qIn, srcGeometry, dIn, recGeometry)
+    qIn, dIn = _maybe_pad_t0(qIn, srcGeometry, dIn, recGeometry, dtComp)
 
     # Set up coordinates with devito dimensions
     src_coords = setup_grid(srcGeometry, modelPy.shape)
@@ -169,7 +169,7 @@ function devito_interface(modelPy::PyObject, recGeometry::Geometry, recData::Arr
     dtComp = convert(Float32, modelPy."critical_dt")
     dIn = time_resample(recData, recGeometry, dtComp)
     qIn = time_resample(srcData, recGeometry, dtComp)
-    qIn, dIn = _maybe_pad_t0(qIn, recGeometry, dIn, recGeometry)
+    qIn, dIn = _maybe_pad_t0(qIn, recGeometry, dIn, recGeometry, dtComp)
 
     # Set up coordinates with devito dimensions
     rec_coords = setup_grid(recGeometry, modelPy.shape)
@@ -204,7 +204,7 @@ function devito_interface(modelPy::PyObject, weights::Array, srcData::Array, rec
     dtComp = convert(Float32, modelPy."critical_dt")
     qIn = time_resample(srcData, recGeometry, dtComp)
     dIn = time_resample(recData, recGeometry, dtComp)
-    qIn, dIn = _maybe_pad_t0(qIn, recGeometry, dIn, recGeometry)
+    qIn, dIn = _maybe_pad_t0(qIn, recGeometry, dIn, recGeometry, dtComp)
 
     # Set up coordinates with devito dimensions
     rec_coords = setup_grid(recGeometry, modelPy.shape)
