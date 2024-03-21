@@ -22,7 +22,6 @@ jobs:
       DEVITO_ARCH: gcc-11
       DEVITO_LANGUAGE: "openmp"
       DEVITO_LOGGING: "INFO"
-      DEVITO_SAFE_MATH: "1"
       OMP_NUM_THREADS: ${{ matrix.omp }}
       GROUP: ${{ matrix.op }}
 

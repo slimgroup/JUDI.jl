@@ -119,6 +119,7 @@ end
 # Anisotropic Acoustic tests
 if GROUP == "TTI_OP" || GROUP == "All"
     println("JUDI TTI operators tests")
+    set_devito_config("safe-math", true)
     # TTI tests
     for t=devito
         timeit_include(t)
@@ -129,6 +130,7 @@ end
 # Anisotropic Acoustic tests with free surface
 if GROUP == "TTI_OP_FS" || GROUP == "All"
     println("JUDI TTI operators with free surface tests")
+    set_devito_config("safe-math", true)
     for t=devito
         timeit_include(t)
         try Base.GC.gc(); catch; gc() end
