@@ -16,6 +16,7 @@ include("Types/OptionsStructure.jl")
 #############################################################################
 # Abstract vectors
 include("Types/abstract.jl")
+include("Types/lazy_msv.jl")
 include("Types/broadcasting.jl")
 include("Types/judiWavefield.jl") # dense RHS (wavefield)
 include("Types/judiWeights.jl")    # Extended source weight vector
@@ -53,3 +54,21 @@ include("Preconditioners/base.jl")
 include("Preconditioners/utils.jl")
 include("Preconditioners/DataPreconditioners.jl")
 include("Preconditioners/ModelPreconditioners.jl")
+
+
+#############################################################################
+# Extra that need all imports
+
+############################################################################################################################
+# Enforce right precedence. Mainly we always want (rightfully)
+# - First data operation on the right
+# - Then propagation
+# - Then right preconditioning
+# I.e Ml * P * M * q must do Ml * (P * (M * q))
+# It''s easier to just hard code the few cases that can happen
+
+for T in [judiMultiSourceVector, dmType]
+    @eval *(Ml::Preconditioner, P::judiPropagator, Mr::Preconditioner, v::$(T)) = Ml * (P * (Mr * v))
+    @eval *(P::judiPropagator, Mr::Preconditioner, v::$(T)) = P * (Mr * v)
+    @eval *(Ml::Preconditioner, P::judiPropagator, v::$(T)) = Ml * (P * v)
+end

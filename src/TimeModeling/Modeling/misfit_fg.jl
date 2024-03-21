@@ -1,7 +1,13 @@
 
 export fwi_objective, lsrtm_objective, fwi_objective!, lsrtm_objective!
 
-function multi_src_fg(model_full::AbstractModel, source::judiVector, dObs::judiVector, dm, options::JUDIOptions,
+# Type of accepted input
+Dtypes = Union{<:judiVector, NTuple{N, <:judiVector} where N, Vector{<:judiVector}, <:LazyMul}
+MTypes = Union{<:AbstractModel, NTuple{N, <:AbstractModel} where N, Vector{<:AbstractModel}}
+dmTypes = Union{dmType, NTuple{N, dmType} where N, Vector{dmType}}
+
+
+function multi_src_fg(model_full::AbstractModel, source::Dtypes, dObs::Dtypes, dm, options::JUDIOptions,
                       nlind::Bool, lin::Bool, misfit::Function, illum::Bool)
     GC.gc(true)
     devito.clear_cache()
@@ -10,14 +16,14 @@ function multi_src_fg(model_full::AbstractModel, source::judiVector, dObs::judiV
     @assert dObs.nsrc == 1 "Multiple-source data is used in a single-source fwi_objective"    
 
     # Load full geometry for out-of-core geometry containers
-    dObs.geometry = Geometry(dObs.geometry)
-    source.geometry = Geometry(source.geometry)
+    d_geometry = Geometry(dObs.geometry)
+    s_geometry = Geometry(source.geometry)
 
     # Limit model to area with sources/receivers
     if options.limit_m == true
         @juditime "Limit model to geometry" begin
             model = deepcopy(model_full)
-            model, dm = limit_model_to_receiver_area(source.geometry, dObs.geometry, model, options.buffer_size; pert=dm)
+            model, dm = limit_model_to_receiver_area(s_geometry, d_geometry, model, options.buffer_size; pert=dm)
         end
     else
         model = model_full
@@ -30,14 +36,14 @@ function multi_src_fg(model_full::AbstractModel, source::judiVector, dObs::judiV
     end
 
     # Extrapolate input data to computational grid
-    qIn = time_resample(make_input(source), source.geometry, dtComp)
-    dObserved = time_resample(make_input(dObs), dObs.geometry, dtComp)
-    qIn, dObserved = _maybe_pad_t0(qIn, source.geometry, dObserved, dObs.geometry, dtComp)
+    qIn = time_resample(make_input(source), s_geometry, dtComp)
+    dObserved = time_resample(make_input(dObs), d_geometry, dtComp)
+    qIn, dObserved = _maybe_pad_t0(qIn, s_geometry, dObserved, d_geometry, dtComp)
 
     # Set up coordinates
     @juditime "Sparse coords setup" begin
-        src_coords = setup_grid(source.geometry, size(model))  # shifts source coordinates by origin
-        rec_coords = setup_grid(dObs.geometry, size(model))    # shifts rec coordinates by origin
+        src_coords = setup_grid(s_geometry, size(model))  # shifts source coordinates by origin
+        rec_coords = setup_grid(d_geometry, size(model))    # shifts rec coordinates by origin
     end
 
     mfunc = pyfunction(misfit, Matrix{Float32}, Matrix{Float32})
@@ -74,14 +80,14 @@ end
 
 
 ####### Defaults
-multi_src_fg(model_full::AbstractModel, source::judiVector, dObs::judiVector, dm, options::JUDIOptions, nlind::Bool, lin::Bool) =
-    multi_src_fg(model_full::AbstractModel, source::judiVector, dObs::judiVector, dm, options::JUDIOptions, nlind::Bool, lin::Bool, mse, false)
+multi_src_fg(model_full::AbstractModel, source::Dtypes, dObs::Dtypes, dm, options::JUDIOptions, nlind::Bool, lin::Bool) =
+    multi_src_fg(model_full::AbstractModel, source::Dtypes, dObs::Dtypes, dm, options::JUDIOptions, nlind::Bool, lin::Bool, mse, false)
 
-multi_src_fg(model_full::AbstractModel, source::judiVector, dObs::judiVector, dm, options::JUDIOptions, nlind::Bool, lin::Bool, illum::Bool) =
-    multi_src_fg(model_full::AbstractModel, source::judiVector, dObs::judiVector, dm, options::JUDIOptions, nlind::Bool, lin::Bool, mse, illum)
+multi_src_fg(model_full::AbstractModel, source::Dtypes, dObs::Dtypes, dm, options::JUDIOptions, nlind::Bool, lin::Bool, illum::Bool) =
+    multi_src_fg(model_full::AbstractModel, source::Dtypes, dObs::Dtypes, dm, options::JUDIOptions, nlind::Bool, lin::Bool, mse, illum)
 
-multi_src_fg(model_full::AbstractModel, source::judiVector, dObs::judiVector, dm, options::JUDIOptions, nlind::Bool, lin::Bool, phi::Function) =
-    multi_src_fg(model_full::AbstractModel, source::judiVector, dObs::judiVector, dm, options::JUDIOptions, nlind::Bool, lin::Bool, phi, false)
+multi_src_fg(model_full::AbstractModel, source::Dtypes, dObs::Dtypes, dm, options::JUDIOptions, nlind::Bool, lin::Bool, phi::Function) =
+    multi_src_fg(model_full::AbstractModel, source::Dtypes, dObs::Dtypes, dm, options::JUDIOptions, nlind::Bool, lin::Bool, phi, false)
 
 # Find number of experiments
 """
@@ -116,12 +122,6 @@ function check_args(args...)
     check || throw(ArgumentError("Incompatible number of experiements"))
     return nexp
 end
-
-
-# Type of accepted input
-Dtypes = Union{<:judiVector, NTuple{N, <:judiVector} where N, Vector{<:judiVector}}
-MTypes = Union{<:AbstractModel, NTuple{N, <:AbstractModel} where N, Vector{<:AbstractModel}}
-dmTypes = Union{dmType, NTuple{N, dmType} where N, Vector{dmType}}
 
 ################################################################################################
 ####################### User Interface #########################################################

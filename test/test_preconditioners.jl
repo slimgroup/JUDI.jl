@@ -21,10 +21,10 @@ dm = model0.m - model.m
         Mdr = judiDataMute(srcGeometry, recGeometry; mode=:reflection)
         Mdt = judiDataMute(srcGeometry, recGeometry; mode=:turning)
         Mdg = judiTimeGain(recGeometry, 2f0)
+        Mm = judiTopmute(model.n, 10, 1)
         order = .25f0
         Dt = judiTimeDerivative(recGeometry, order)
         It = judiTimeIntegration(recGeometry, order)
-        Mm = judiTopmute(model.n, 20, 1)
 
         # Time differential only
         @test inv(It) == Dt
@@ -217,6 +217,72 @@ dm = model0.m - model.m
             @test isapprox(dm, dml; rtol=ftol)
             mul!(dm, Pc*J', vec(dobs))
             @test isapprox(dm, dml; rtol=ftol)
+        end
+    end
+
+    @timeit TIMEROUTPUT "OOC Data Preconditioners tests" begin
+        datapath = joinpath(dirname(pathof(JUDI)))*"/../data/"
+        # OOC judiVector
+        container = segy_scan(datapath, "unit_test_shot_records_2",
+                              ["GroupX", "GroupY", "RecGroupElevation", "SourceSurfaceElevation", "dt"])
+        d_cont = judiVector(container; segy_depth_key="RecGroupElevation")
+        src_geometry = Geometry(container; key = "source", segy_depth_key = "SourceDepth")
+        wavelet = ricker_wavelet(src_geometry.t[1], src_geometry.dt[1], 0.005)
+        q_cont = judiVector(src_geometry, wavelet)
+
+        # Make sure we test OOC
+        @test typeof(d_cont) == judiVector{Float32, SeisCon}
+        @test isequal(d_cont.nsrc, 2)
+        @test isequal(typeof(d_cont.data), Array{SegyIO.SeisCon, 1})
+        @test isequal(typeof(d_cont.geometry), GeometryOOC{Float32})
+        
+        # Make OOC preconditioner
+        Mdt = judiDataMute(src_geometry, d_cont.geometry)
+        Mdg = judiTimeGain(d_cont.geometry, 2f0)
+
+        # Test OOC DataPrecon
+        for Pc in [Mdt, Mdg]
+            # mul
+            m = Pc * d_cont
+            @test isa(m, JUDI.LazyMul{Float32})
+            @test m.nsrc == d_cont.nsrc
+            @test m.P == Pc
+            @test m.msv == d_cont
+
+            ma = Pc' * d_cont
+            @test isa(ma, JUDI.LazyMul{Float32})
+            @test isa(ma[1], JUDI.LazyMul{Float32})
+            @test ma.nsrc == d_cont.nsrc
+            @test ma.P == Pc'
+            @test ma.msv == d_cont
+
+            # getindex
+            m1 = m[1]
+            @test isa(m1, JUDI.LazyMul{Float32})
+            @test m1.nsrc == 1
+            @test m1.msv == d_cont[1]
+            @test get_data(m1) == get_data(Pc[1] * d_cont[1])
+
+            # data
+            @test isa(m.data, JUDI.LazyData{Float32})
+            @test_throws MethodError m.data[1] = 1
+
+            @test m.data[1] ≈ (Pc[1] * get_data(d_cont[1])).data
+            @test get_data(m.data) ≈ Pc * get_data(d_cont)
+
+            # Propagation
+            Fooc = judiModeling(model, src_geometry, d_cont.geometry)
+
+            d_syn = Fooc' * Pc' * d_cont
+            d_synic = Fooc' * Pc' * get_data(d_cont)
+
+            @test isapprox(d_syn, d_synic; rtol=1f-5)
+
+            f, g = fwi_objective(model0, Pc*d_cont, q_cont)
+            f2, g2 = fwi_objective(model0, get_data(Pc*d_cont), get_data(q_cont))
+            @test isapprox(f, f2)
+            @test isapprox(g, g2)
+
         end
     end
 end
