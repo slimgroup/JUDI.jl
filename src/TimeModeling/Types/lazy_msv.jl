@@ -73,6 +73,8 @@ struct LazyMul{D} <: judiMultiSourceVector{D}
 end
 
 getindex(la::LazyMul{D}, i::RangeOrVec) where D = LazyMul{D}(length(i), la.P[i], la.msv[i])
+length(lm::LazyMul) = length(lm.msv)
+zero(::Type{T}, lm::LazyMul; nsrc::Integer=lm.nsrc) where T = zero(T, lm.msv; nsrc=nsrc)
 
 function make_input(lm::LazyMul{D}) where D
     @assert lm.nsrc == 1
@@ -80,6 +82,8 @@ function make_input(lm::LazyMul{D}) where D
 end
 
 get_data(lm::LazyMul{D}) where D = lm.P * get_data(lm.msv)
+materialize(lm::LazyMul{D}) where D = get_data(lm)
+deepcopy(lm::LazyMul{D}) where D = deepcopy(lm.msv)
 
 function getproperty(lm::LazyMul{D}, s::Symbol) where D
     if s == :data

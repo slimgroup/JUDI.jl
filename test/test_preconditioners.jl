@@ -51,6 +51,24 @@ dm = model0.m - model.m
             @test Pc[1] * dobs.data[1][:] ≈ (Pc * dobs).data[1][:] rtol=ftol
         end
 
+        # Time resample
+        newt = 0f0:5f0:recGeometry.t[1]
+        for Pc in [F, Mdr, Mdt, Mdg, Dt, It]
+            @test_throws AssertionError time_resample(Pc, newt)
+            @test time_resample(Pc[1], newt).recGeom.taxis[1] == newt
+        end
+        multiP = time_resample((F[1], Mdr[1]), newt)
+        @test isa(multiP, JUDI.MultiPreconditioner)
+        @test isa(multiP.precs[1], JUDI.FrequencyFilter)
+        @test isa(multiP.precs[2], JUDI.DataMute)
+        @test all(Pi.recGeom.taxis[1] == newt for Pi in multiP.precs)
+    
+        multiP = time_resample([F[1], Mdr[1]], newt)
+        @test isa(multiP, JUDI.MultiPreconditioner)
+        @test isa(multiP.precs[1], JUDI.FrequencyFilter)
+        @test isa(multiP.precs[2], JUDI.DataMute)
+        @test all(Pi.recGeom.taxis[1] == newt for Pi in multiP.precs)
+
         # Test in place DataPrecon
         for Pc in [F, Mdr, Mdt, Mdg, Dt, It]
             mul!(dobs_out, Pc, dobs)
@@ -202,7 +220,7 @@ dm = model0.m - model.m
         @test "u" ∉ keys(Iv.illums)
         @test norm(Iv.illums["v"]) == norm(ones(Float32, model.n))
         # Test Product
-        @test inv(I)*I*model0.m ≈ model0.m.data[:] rtol=ftol atol=0
+        @test inv(I)*I*model0.m ≈ model0.m rtol=ftol atol=0
 
         # Test in place ModelPrecon
         for Pc in [Ds, Mm, Mm2, I]
@@ -237,8 +255,8 @@ dm = model0.m - model.m
         @test isequal(typeof(d_cont.geometry), GeometryOOC{Float32})
         
         # Make OOC preconditioner
-        Mdt = judiDataMute(src_geometry, d_cont.geometry)
-        Mdg = judiTimeGain(d_cont.geometry, 2f0)
+        Mdt = judiDataMute(q_cont, d_cont)
+        Mdg = judiTimeGain(d_cont, 2f0)
 
         # Test OOC DataPrecon
         for Pc in [Mdt, Mdg]

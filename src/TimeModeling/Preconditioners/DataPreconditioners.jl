@@ -1,6 +1,10 @@
 export DataMute, FrequencyFilter, judiTimeDerivative, judiTimeIntegration, TimeDifferential
 export judiFilter, filter_data, judiDataMute, muteshot, judiTimeGain
 
+
+time_resample(t::Tuple{Vararg{<:DataPreconditioner}}, newt) = prod(time_resample(ti, newt) for ti in t)
+time_resample(t::Vector{<:DataPreconditioner}, newt) = prod(time_resample(ti, newt) for ti in t)
+
 ############################################ Data mute ###############################################
 """
     struct DataMute{T, mode} <: DataPreconditioner{T, T}
@@ -51,7 +55,7 @@ function judiDataMute(srcGeom::Geometry, recGeom::Geometry; vp=1500, t0=.1, mode
     nsrc = get_nsrc(srcGeom)
     get_nsrc(recGeom) == nsrc || throw(ArgumentError("Incompatible geometries with $(nsrc) and $(get_nsrc(recGeom)) number of sources"))
     VP = Vector{Float32}(undef, nsrc); VP .= vp
-    T0 = Vector{Float32}(undef, nsrc); T0 .=t0
+    T0 = Vector{Float32}(undef, nsrc); T0 .= t0
     TW = Vector{Int64}(undef, nsrc); TW .= taperwidth
     m = n_samples(recGeom)
     return DataMute{Float32, mode}(m, srcGeom, recGeom, VP, T0, TW)
@@ -60,8 +64,8 @@ end
 judiDataMute(q::judiVector, d::judiVector; kw...) = judiDataMute(q.geometry, d.geometry; kw...)
 
 # Implementation
-matvec_T(D::DataMute{T, mode} , x::AbstractVector{T}) where {T, mode} = matvec(D, x)  # Basically a mask so symmetric and self adjoint
-matvec(D::DataMute{T, mode} , x::AbstractVector{T}) where {T, mode} = muteshot(x, D.srcGeom, D.recGeom; vp=D.vp, t0=D.t0, mode=mode, taperwidth=D.taperwidth)
+matvec_T(D::DataMute{T, mode} , x::AbstractVecOrMat{T}) where {T, mode} = matvec(D, x)  # Basically a mask so symmetric and self adjoint
+matvec(D::DataMute{T, mode} , x::AbstractVecOrMat{T}) where {T, mode} = muteshot(x, D.srcGeom, D.recGeom; vp=D.vp, t0=D.t0, mode=mode, taperwidth=D.taperwidth)
 
 # Real diagonal operator
 conj(I::DataMute{T, mode}) where {T, mode} = I
@@ -74,6 +78,16 @@ function getindex(P::DataMute{T, mode}, i) where {T, mode}
     m = n_samples(geomi)
     inds = isa(i, Integer) ? (i:i) : i
     DataMute{T, mode}(m, P.srcGeom[inds], geomi, P.vp[inds], P.t0[inds], P.taperwidth[inds])
+end
+
+function time_resample(d::DataMute{T, mode}, taxis::AbstractRange)  where {T, mode}
+    @assert get_nsrc(d.recGeom) == 1
+    new_rgeom = deepcopy(d.recGeom)
+    new_sgeom = deepcopy(d.srcGeom)
+    new_rgeom.taxis[1] = taxis
+    new_sgeom.taxis[1] = taxis
+    taperwidth = trunc.(Int64, d.taperwidth .* (d.recGeom.dt ./ taxis.step))
+    return DataMute{T, mode}(d.m, new_sgeom, new_rgeom, d.vp, d.t0, taperwidth)
 end
 
 function _mutetrace!(t::AbstractVector{T}, taper::AbstractVector{T}, i::Integer, taperwidth::Integer, ::Val{:reflection}) where T
@@ -104,14 +118,14 @@ function muteshot!(shot::AbstractMatrix{T}, rGeom::Geometry, srcGeom::Geometry; 
     end
 end
 
-function muteshot(shot::Vector{T}, srcGeom::Geometry, recGeom::Geometry;
+function muteshot(shot::VecOrMat{T}, srcGeom::Geometry, recGeom::Geometry;
                    vp=1500, t0=.1, mode=:reflection, taperwidth=floor(Int, 2/t0)) where {T<:Number}
         sr = reshape(shot, recGeom)
         for s=1:get_nsrc(recGeom)
             sri = view(sr, :, :, s)
             muteshot!(sri, recGeom[s], srcGeom[s]; vp=vp[s], t0=t0[s], mode=mode, taperwidth=taperwidth[s])
         end
-        return vec(vcat(sr...))
+        return reshape(sr, size(shot))
 end
 
 function muteshot(shot::judiVector, srcGeom::Geometry; vp=1500, t0=.1, mode=:reflection, taperwidth=20)
@@ -144,7 +158,7 @@ judiFilter(geometry::Geometry, fmin::T, fmax::T) where T = judiFilter(geometry, 
 judiFilter(geometry::Geometry, fmin::Float32, fmax::Float32) = FrequencyFilter{Float32, fmin, fmax}(n_samples(geometry), geometry)
 judiFilter(v::judiVector, fmin, fmax) = judiFilter(v.geometry, fmin, fmax)
 
-function matvec(D::FrequencyFilter{T, fm, FM}, x::Vector{T}) where {T, fm, FM}
+function matvec(D::FrequencyFilter{T, fm, FM}, x::VecOrMat{T}) where {T, fm, FM}
     dr = reshape(x, D.recGeom)
     for j=1:get_nsrc(D.recGeom)
         dri = view(dr, :, :, j)
@@ -165,6 +179,13 @@ end
 function getindex(P::FrequencyFilter{T, fm, FM}, i) where {T, fm, FM}
     geomi = P.recGeom[i]
     return FrequencyFilter{T, fm, FM}(n_samples(geomi), geomi)
+end
+
+function time_resample(d::FrequencyFilter{T, fm, fM}, taxis::AbstractRange)  where {T, fm, fM}
+    @assert get_nsrc(d.recGeom) == 1
+    new_geom = deepcopy(d.recGeom)
+    new_geom.taxis[1] = taxis
+    return FrequencyFilter{T, fm, fM}(d.m, new_geom)
 end
 
 # filtering is self-adjoint (diagonal in fourier domain)
@@ -263,6 +284,14 @@ function getindex(P::TimeDifferential{T, K}, i) where {T, K}
     TimeDifferential{T, K}(m, geomi)
 end
 
+function time_resample(d::TimeDifferential{T, K}, taxis::AbstractRange)  where {T, K}
+    @assert get_nsrc(d.recGeom) == 1
+    new_geom = deepcopy(d.recGeom)
+    new_geom.taxis[1] = taxis
+    return TimeDifferential{T, K}(d.m, new_geom)
+end
+
+
 function matvec(D::TimeDifferential{T, K}, x::judiVector{T, AT}) where {T, AT, K}
     out = similar(x)
     for s=1:out.nsrc
@@ -277,11 +306,12 @@ end
 
 function matvec(D::TimeDifferential{T, K}, x::Array{T}) where {T, K}
     xr = reshape(x, D.recGeom)
+    out = similar(xr)
     # make omega^K
     ω = 2 .* pi .* fftfreq(get_nt(D.recGeom, 1), 1/get_dt(D.recGeom, 1))
     ω[ω.==0] .= 1f0
     ω .= abs.(ω).^K
-    out = real.(ifft(ω .* fft(xr, 1), 1))
+    out .= real.(ifft(ω .* fft(xr, 1), 1))
     return reshape(out, size(x))
 end
 
@@ -322,6 +352,14 @@ matvec_T(D::TimeGain{T, K}, x) where {T, K} = matvec(D, x)
 
 # getindex for source subsampling
 getindex(D::TimeGain{T, K}, i) where {T, K} = TimeGain{T, K}(D.recGeom[i])
+
+
+function time_resample(d::TimeGain{T, K}, taxis::AbstractRange) where {T, K}
+    @assert get_nsrc(d.recGeom) == 1
+    new_geom = deepcopy(d.recGeom)
+    new_geom.taxis[1] = taxis
+    return TimeGain{T, K}(new_geom)
+end
 
 function matvec(D::TimeGain{T, K}, x::judiVector{T, AT}) where {T, AT, K}
     out = similar(x)

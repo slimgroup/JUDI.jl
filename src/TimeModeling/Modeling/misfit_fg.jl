@@ -7,8 +7,9 @@ MTypes = Union{<:AbstractModel, NTuple{N, <:AbstractModel} where N, Vector{<:Abs
 dmTypes = Union{dmType, NTuple{N, dmType} where N, Vector{dmType}}
 
 
-function multi_src_fg(model_full::AbstractModel, source::Dtypes, dObs::Dtypes, dm, options::JUDIOptions,
-                      nlind::Bool, lin::Bool, misfit::Function, illum::Bool)
+function multi_src_fg(model_full::AbstractModel, source::Dtypes, dObs::Dtypes, dm, options::JUDIOptions;
+                      nlind::Bool=false, lin::Bool=false, misfit::Function=mse, illum::Bool=false,
+                      data_precon=nothing, model_precon=LinearAlgebra.I)
     GC.gc(true)
     devito.clear_cache()
     # assert this is for single source LSRTM
@@ -18,6 +19,9 @@ function multi_src_fg(model_full::AbstractModel, source::Dtypes, dObs::Dtypes, d
     # Load full geometry for out-of-core geometry containers
     d_geometry = Geometry(dObs.geometry)
     s_geometry = Geometry(source.geometry)
+    
+    # If model preconditioner is provided, apply it
+    dm = isnothing(dm) ? dm : model_precon * dm
 
     # Limit model to area with sources/receivers
     if options.limit_m == true
@@ -46,7 +50,17 @@ function multi_src_fg(model_full::AbstractModel, source::Dtypes, dObs::Dtypes, d
         rec_coords = setup_grid(d_geometry, size(model))    # shifts rec coordinates by origin
     end
 
-    mfunc = pyfunction(misfit, Matrix{Float32}, Matrix{Float32})
+    # Setup misfit function
+    if !isnothing(data_precon)
+        # resample
+        new_t = StepRangeLen(0f0, Float32(dtComp), Int64(size(dObserved, 1)))
+        Pcomp  = time_resample(data_precon, new_t)
+        runtime_misfit = (x, y) -> misfit(Pcomp*x, Pcomp*y)
+    else
+        runtime_misfit = misfit
+    end
+
+    mfunc = pyfunction(runtime_misfit, Matrix{Float32}, Matrix{Float32})
 
     length(options.frequencies) == 0 ? freqs = nothing : freqs = options.frequencies
     IT = illum ? (PyArray, PyArray) : (PyObject, PyObject)
@@ -77,17 +91,6 @@ function multi_src_fg(model_full::AbstractModel, source::Dtypes, dObs::Dtypes, d
     end
     return fval, grad
 end
-
-
-####### Defaults
-multi_src_fg(model_full::AbstractModel, source::Dtypes, dObs::Dtypes, dm, options::JUDIOptions, nlind::Bool, lin::Bool) =
-    multi_src_fg(model_full::AbstractModel, source::Dtypes, dObs::Dtypes, dm, options::JUDIOptions, nlind::Bool, lin::Bool, mse, false)
-
-multi_src_fg(model_full::AbstractModel, source::Dtypes, dObs::Dtypes, dm, options::JUDIOptions, nlind::Bool, lin::Bool, illum::Bool) =
-    multi_src_fg(model_full::AbstractModel, source::Dtypes, dObs::Dtypes, dm, options::JUDIOptions, nlind::Bool, lin::Bool, mse, illum)
-
-multi_src_fg(model_full::AbstractModel, source::Dtypes, dObs::Dtypes, dm, options::JUDIOptions, nlind::Bool, lin::Bool, phi::Function) =
-    multi_src_fg(model_full::AbstractModel, source::Dtypes, dObs::Dtypes, dm, options::JUDIOptions, nlind::Bool, lin::Bool, phi, false)
 
 # Find number of experiments
 """

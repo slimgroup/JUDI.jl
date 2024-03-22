@@ -24,6 +24,8 @@ dobs = F*q
 dobs0 = F0*q
 dm1 = 2f0*circshift(dm, 10)
 
+ftol = (tti | fs | viscoacoustic) ? 1f-1 : 1f-2
+
 ###################################################################################################
 
 @testset "FWI gradient test with $(nlayer) layers and tti $(tti) and viscoacoustic $(viscoacoustic) and freesurface $(fs)" begin
@@ -34,6 +36,44 @@ dm1 = 2f0*circshift(dm, 10)
 	@test Jm0 ≈ Jm01
 
 	grad_test(x-> .5f0*norm(F(;m=x)*q - dobs)^2, model0.m , dm, grad)
+
+end
+
+###################################################################################################
+@testset "FWI preconditionners test with $(nlayer) layers and tti $(tti) and viscoacoustic $(viscoacoustic) and freesurface $(fs)" begin
+	Ml = judiDataMute(q.geometry, dobs.geometry; t0=.2)
+	Ml2 = judiTimeDerivative(dobs.geometry, 1)
+
+
+	Jm0, grad = fwi_objective(model0, q, dobs; options=opt, data_precon=Ml)
+	ghand = J'*Ml*(F0*q - dobs)
+	@test isapprox(norm(grad - ghand)/norm(grad+ghand), 0f0; rtol=0, atol=ftol)
+
+	Jm0, grad = fwi_objective(model0, q, dobs; options=opt, data_precon=[Ml, Ml2])
+	ghand = J'*Ml*Ml2*(F0*q - dobs)
+	@test isapprox(norm(grad - ghand)/norm(grad+ghand), 0f0; rtol=0, atol=ftol)
+
+	Jm0, grad = fwi_objective(model0, q, dobs; options=opt, data_precon=Ml*Ml2)
+	@test isapprox(norm(grad - ghand)/norm(grad+ghand), 0f0; rtol=0, atol=ftol)
+end
+
+
+@testset "LSRTM preconditionners test with $(nlayer) layers and tti $(tti) and viscoacoustic $(viscoacoustic) and freesurface $(fs)" begin
+	Mr = judiTopmute(model0; taperwidth=10)
+	Ml = judiDataMute(q.geometry, dobs.geometry)
+	Ml2 = judiTimeDerivative(dobs.geometry, 1)
+	Mr2 = judiIllumination(J)
+
+	Jm0, grad = lsrtm_objective(model0, q, dobs, dm; options=opt, data_precon=Ml, model_precon=Mr)
+	ghand = J'*Ml*(J*Mr*dm - dobs)
+	@test isapprox(norm(grad - ghand)/norm(grad+ghand), 0f0; rtol=0, atol=ftol)
+
+	Jm0, grad = lsrtm_objective(model0, q, dobs, dm; options=opt, data_precon=[Ml, Ml2], model_precon=[Mr, Mr2])
+	ghand = J'*Ml*Ml2*(J*Mr2*Mr*dm - dobs)
+	@test isapprox(norm(grad - ghand)/norm(grad+ghand), 0f0; rtol=0, atol=ftol)
+
+	Jm0, grad = lsrtm_objective(model0, q, dobs, dm; options=opt, data_precon=Ml*Ml2, model_precon=Mr*Mr2)
+	@test isapprox(norm(grad - ghand)/norm(grad+ghand), 0f0; rtol=0, atol=ftol)
 
 end
 

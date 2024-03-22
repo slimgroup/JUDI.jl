@@ -1,6 +1,6 @@
 # Seismic Preconditioners
 
-JUDI provides a selected number of preconditioners known to be beneficial to FWI and RTM. We welcome additional preconditionners from the community. Additionnaly, any JOLI operator can be used as a preconditiner in conbination with JUDI operator thanks to the fundamental interface between JUDI and JOLI.
+JUDI provides a selected number of preconditioners known to be beneficial to FWI and RTM. We welcome additional preconditioners from the community. Additionnaly, any JOLI operator can be used as a preconditiner in conbination with JUDI operator thanks to the fundamental interface between JUDI and JOLI.
 
 ```@contents
 Pages = ["preconditioners.md"]
@@ -74,7 +74,7 @@ m_mute = I'*vec(m)
 
 ## Data preconditioners
 
-These preconditioners are design to act on the shot records (data). These preconditioners are indexable by source number so that working with a subset of shot is trivial to implement.
+These preconditioners are design to act on the shot records (data). These preconditioners are indexable by source number so that working with a subset of shot is trivial to implement. Additionally, all [DataPreconditionner](@ref) are compatible with out-of-core JUDI objects such as `judiVector{SeisCon}` so that the preconditioner is only applied to single shot data at propagation time.
 
 
 ### Data topmute
@@ -101,3 +101,33 @@ A `TimeDifferential{K}` is a linear operator that implements a time derivative (
 ```@docs
 TimeDifferential
 ```
+
+## Inversion wrappers
+
+For large scale and practical cases, the inversions wrappers [fwi_objective](@ref) and [lsrtm_objective](@ref) are used to minimize the number of PDE solves. Those wrapper support the use of preconditioner as well for better results.
+
+**Usage:**
+
+For fwi, you can use the `data_precon` keyword argument to be applied to the residual (the preconditioner is applied to both the field and synthetic data to ensure better misfit):
+
+```julia
+fwi_objective(model, q, dobs; data_precon=precon)
+```
+
+where `precon` can be:
+
+- A single [DataPreconditionner](@ref)
+- A list/tuple of [DataPreconditionner](@ref)
+- A product of [DataPreconditionner](@ref)
+
+Similarly, for LSRTM, you can use the `model_precon` keyword argument to be applied to the perturbation `dm` and the `data_precon` keyword argument to be applied to the residual:
+
+```julia
+lsrtm_objective(model, q, dobs, dm; model_precon=dPrec, data_precon=dmPrec)
+```
+
+where `dPrec` and `dmPrec` can be:
+
+- A single preconditioner ([DataPreconditionner](@ref) for `data_precon` and [ModelPreconditionner](@ref) for `model_precon`)
+- A list/tuple of preconditioners ([DataPreconditionner](@ref) for `data_precon` and ModelPreconditionner](@ref) for `model_precon`)
+- A product of preconditioners ([DataPreconditionner](@ref) for `data_precon` and ModelPreconditionner](@ref) for `model_precon`)

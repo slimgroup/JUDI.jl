@@ -39,14 +39,6 @@ include("LinearOperators/lazy.jl")
 include("LinearOperators/operators.jl")
 include("LinearOperators/callable.jl")
 
-#############################################################################
-# PDE solvers
-include("Modeling/distributed.jl") # Modeling functions utilities
-include("Modeling/python_interface.jl")  # forward/adjoint linear/nonlinear modeling
-include("Modeling/time_modeling_serial.jl")  # forward/adjoint linear/nonlinear modeling
-include("Modeling/misfit_fg.jl")  # FWI/LSRTM objective function value and gradient
-include("Modeling/twri_objective.jl")  # TWRI objective function value and gradient
-include("Modeling/propagation.jl")
 
 #############################################################################
 # Preconditioners
@@ -55,6 +47,14 @@ include("Preconditioners/utils.jl")
 include("Preconditioners/DataPreconditioners.jl")
 include("Preconditioners/ModelPreconditioners.jl")
 
+#############################################################################
+# PDE solvers
+include("Modeling/distributed.jl") # Modeling functions utilities
+include("Modeling/python_interface.jl")  # forward/adjoint linear/nonlinear modeling
+include("Modeling/time_modeling_serial.jl")  # forward/adjoint linear/nonlinear modeling
+include("Modeling/misfit_fg.jl")  # FWI/LSRTM objective function value and gradient
+include("Modeling/twri_objective.jl")  # TWRI objective function value and gradient
+include("Modeling/propagation.jl")
 
 #############################################################################
 # Extra that need all imports
