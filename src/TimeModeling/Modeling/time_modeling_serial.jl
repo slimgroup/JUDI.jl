@@ -5,10 +5,11 @@ GeomOrNot = Union{Geometry, Array, Nothing}
 ArrayOrNot = Union{Array, PyArray, PyObject, Nothing}
 PhysOrNot = Union{PhysicalParameter, Array, Nothing}
 
+
 # Setup time-domain linear or nonlinear foward and adjoint modeling and interface to devito
-function time_modeling(model_full::AbstractModel, srcGeometry::GeomOrNot, srcData::ArrayOrNot,
-                       recGeometry::GeomOrNot, recData::ArrayOrNot, dm::PhysOrNot,
-                       op::Symbol, options::JUDIOptions, fw::Bool, illum::Bool)
+function _time_modeling(model_full::AbstractModel, srcGeometry::GeomOrNot, srcData::ArrayOrNot,
+                        recGeometry::GeomOrNot, recData::ArrayOrNot, dm::PhysOrNot,
+                        op::Symbol, options::JUDIOptions, fw::Bool, illum::Bool)
     GC.gc(true)
     devito.clear_cache()
 
@@ -91,3 +92,5 @@ function save_to_disk(shot::judiVector{T}, srcGeometry::GeometryIC{T}, srcData::
     end
     return dout
 end
+
+time_modeling = retry(_time_modeling)

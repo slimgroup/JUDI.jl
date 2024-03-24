@@ -6,8 +6,7 @@ Dtypes = Union{<:judiVector, NTuple{N, <:judiVector} where N, Vector{<:judiVecto
 MTypes = Union{<:AbstractModel, NTuple{N, <:AbstractModel} where N, Vector{<:AbstractModel}}
 dmTypes = Union{dmType, NTuple{N, dmType} where N, Vector{dmType}}
 
-
-function multi_src_fg(model_full::AbstractModel, source::Dtypes, dObs::Dtypes, dm, options::JUDIOptions;
+function _multi_src_fg(model_full::AbstractModel, source::Dtypes, dObs::Dtypes, dm, options::JUDIOptions;
                       nlind::Bool=false, lin::Bool=false, misfit::Function=mse, illum::Bool=false,
                       data_precon=nothing, model_precon=LinearAlgebra.I)
     GC.gc(true)
@@ -91,6 +90,9 @@ function multi_src_fg(model_full::AbstractModel, source::Dtypes, dObs::Dtypes, d
     end
     return fval, grad
 end
+
+multi_src_fg = retry(_multi_src_fg)
+
 
 # Find number of experiments
 """

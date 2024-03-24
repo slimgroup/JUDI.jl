@@ -53,18 +53,7 @@ end
 
 subsample(opt::TWRIOptions, srcnum::Int) = getindex(opt, srcnum)
 
-"""
-    twri_objective(model, source, dobs; options=Options(), optionswri=TWRIOptions())
-
-Evaluate the time domain Wavefield reconstruction inversion objective function. Returns a tuple with function value and
-gradient(s) w.r.t to m and/or y. `model` is a `Model` structure with the current velocity model and `source` and `dobs` are the wavelets and 
-observed data of type `judiVector`.
-
-Example
-=======
-    function_value, gradient_m, gradient_y = twri_objective(model, source, dobs; options=Options(), optionswri=TWRIOptions())
-"""
-function twri_objective(model_full::AbstractModel, source::judiVector, dObs::judiVector, y::Union{judiVector, Nothing},
+function _twri_objective(model_full::AbstractModel, source::judiVector, dObs::judiVector, y::Union{judiVector, Nothing},
                         options::JUDIOptions, optionswri::TWRIOptions)
     # Load full geometry for out-of-core geometry containers
     dObs.geometry = Geometry(dObs.geometry)
@@ -133,6 +122,7 @@ filter_out(obj, m, ::Nothing) = obj, m
 filter_out(obj, ::Nothing, y) = obj, y
 filter_out(obj, m, y) = obj, m, y
 
+twri = retry(_twri_objective)
 
 # Parallel
 """
@@ -152,7 +142,7 @@ function twri_objective(model::AbstractModel, source::judiVector, dObs::judiVect
     else
         arg_func = j -> (model, source[j], dObs[j], y[j], options[j], optionswri[j])
     end
-    results = run_and_reduce(twri_objective, pool, source.nsrc, arg_func)
+    results = run_and_reduce(twri, pool, source.nsrc, arg_func)
     # Collect and reduce gradients
     out = as_vec(results, Val(options.return_array))
     return out
