@@ -129,5 +129,5 @@ lsrtm_objective(model, q, dobs, dm; model_precon=dPrec, data_precon=dmPrec)
 where `dPrec` and `dmPrec` can be:
 
 - A single preconditioner ([DataPreconditionner](@ref) for `data_precon` and [ModelPreconditionner](@ref) for `model_precon`)
-- A list/tuple of preconditioners ([DataPreconditionner](@ref) for `data_precon` and ModelPreconditionner](@ref) for `model_precon`)
-- A product of preconditioners ([DataPreconditionner](@ref) for `data_precon` and ModelPreconditionner](@ref) for `model_precon`)
+- A list/tuple of preconditioners ([DataPreconditionner](@ref) for `data_precon` and [ModelPreconditionner](@ref) for `model_precon`)
+- A product of preconditioners ([DataPreconditionner](@ref) for `data_precon` and [ModelPreconditionner](@ref) for `model_precon`)
