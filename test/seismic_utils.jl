@@ -49,7 +49,7 @@ function setup_model(tti=false, viscoacoustic=false, nlayer=2; n=(301, 151), d=(
         model = Model(n, d, o, m; epsilon=epsilon, delta=delta, theta=theta)
     elseif viscoacoustic
         println("Viscoacoustic Model")
-        qp0 = 3.516f0 .* ((v .* 1000f0).^2.2f0) .* 10f0^(-6f0)
+        qp0 = 3.516f0 .* ((v0 .* 1000f0).^2.2f0) .* 10f0^(-6f0)
         model = Model(n,d,o,m,rho0,qp0)
         model0 = Model(n,d,o,m0,rho0,qp0)
     else
@@ -96,32 +96,6 @@ function setup_geom(model; nsrc=1, tn=1500f0, dt=nothing)
     q = judiVector(srcGeometry, wavelet)
 
     return q, srcGeometry, recGeometry, f0
-end
-
-
-### Process command line args
-function parse_commandline()
-    s = ArgParseSettings()
-    @add_arg_table! s begin
-        "--tti"
-            help = "TTI, default False"
-            action = :store_true
-        "--viscoacoustic"
-            help = "Viscoacoustic, default False"
-            action = :store_true
-        "--fs"
-            help = "Free surface, default False"
-            action = :store_true
-        "--nlayer", "-n"
-            help = "Number of layers"
-            arg_type = Int
-            default = 2
-        "--parallel", "-p"
-            help = "Number of workers"
-            arg_type = Int
-            default = 1
-    end
-    return parse_args(s)
 end
 
 

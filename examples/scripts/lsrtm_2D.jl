@@ -65,7 +65,10 @@ lsqr_sol = zeros(Float32, prod(model0.n))
 dinv = d_lin[indsrc]
 Jinv = J[indsrc]
 
-lsqr!(lsqr_sol, Ml[indsrc]*Jinv*Mr, Ml[indsrc]*dinv; maxiter=niter)
+Jp = Ml[indsrc]*Jinv*Mr
+dinvp = Ml[indsrc]*dinv
+
+lsqr!(lsqr_sol, Jp, dinvp; maxiter=niter)
 
 # Save final velocity model, function value and history
 h5open("lsrtm_marmousi_lsqr_result.h5", "w") do file

@@ -7,7 +7,7 @@
 # Updated July 2020
 
 using JUDI
-using ArgParse, Test, Printf, Aqua
+using Test, Printf, Aqua
 using SegyIO, LinearAlgebra, Distributed, JOLI
 using TimerOutputs: TimerOutputs, @timeit
 
@@ -17,20 +17,18 @@ const TIMEROUTPUT = TimerOutputs.TimerOutput()
 timeit_include(path::AbstractString) = @timeit TIMEROUTPUT path include(path)
 
 # Utilities
-const success_log = Dict(true => "SUCCESS", false => "FAILED")
+const success_log = Dict(true => "\e[32m SUCCESS \e[0m", false => "\e[31m FAILED \e[0m")
+
 # Test set
 const GROUP = get(ENV, "GROUP", "JUDI")
 
 # JUDI seismic utils
 include("seismic_utils.jl")
 
-parsed_args = parse_commandline()
-const nlayer = parsed_args["nlayer"]
-const tti = parsed_args["tti"]
-const fs = parsed_args["fs"]
-const nw = parsed_args["parallel"]
-const viscoacoustic = parsed_args["viscoacoustic"]
-
+const nlayer = 2
+const tti = contains(GROUP, "TTI")
+const fs = contains(GROUP, "FS")
+const viscoacoustic = contains(GROUP, "VISCO")
 
 # Utility macro to run block of code with a single omp threa
 macro single_threaded(expr)
@@ -56,14 +54,15 @@ base = ["test_geometry.jl",
         "test_physicalparam.jl",
         "test_compat.jl"]
 
-devito = ["test_linearity.jl",
+devito = ["test_all_options.jl",
+          "test_linearity.jl",
           "test_preconditioners.jl",
           "test_adjoint.jl",
-          "test_all_options.jl",
           "test_jacobian.jl",
           "test_gradients.jl",
           "test_multi_exp.jl",
           "test_rrules.jl"]
+
 
 extras = ["test_modeling.jl", "test_basics.jl", "test_linear_algebra.jl"]
 
@@ -71,7 +70,6 @@ issues = ["test_issues.jl"]
 
 # custom
 if endswith(GROUP, ".jl")
-    # VERSION >= v"1.7" && push!(Base.ARGS, "-p 2")
     timeit_include(GROUP)
 end
 
@@ -93,7 +91,6 @@ end
 # Generic mdeling tests
 if GROUP == "BASICS" || GROUP == "All"
     println("JUDI generic modelling tests")
-    VERSION >= v"1.7" && push!(Base.ARGS, "-p 2")
     for t=extras
         timeit_include(t)
         @everywhere try Base.GC.gc(); catch; gc() end
@@ -104,7 +101,6 @@ end
 if GROUP == "ISO_OP" || GROUP == "All"
     println("JUDI iso-acoustic operators tests (parallel)")
     # Basic test of LA/CG/LSQR needs
-    VERSION >= v"1.7" && push!(Base.ARGS, "-p 2")
     for t=devito
         timeit_include(t)
         @everywhere try Base.GC.gc(); catch; gc() end
@@ -114,7 +110,6 @@ end
 # Isotropic Acoustic tests with a free surface
 if GROUP == "ISO_OP_FS" || GROUP == "All"
     println("JUDI iso-acoustic operators with free surface tests")
-    push!(Base.ARGS, "--fs")
     for t=devito
         timeit_include(t)
         try Base.GC.gc(); catch; gc() end
@@ -124,8 +119,8 @@ end
 # Anisotropic Acoustic tests
 if GROUP == "TTI_OP" || GROUP == "All"
     println("JUDI TTI operators tests")
+    set_devito_config("safe-math", true)
     # TTI tests
-    push!(Base.ARGS, "--tti")
     for t=devito
         timeit_include(t)
         try Base.GC.gc(); catch; gc() end
@@ -135,8 +130,7 @@ end
 # Anisotropic Acoustic tests with free surface
 if GROUP == "TTI_OP_FS" || GROUP == "All"
     println("JUDI TTI operators with free surface tests")
-    push!(Base.ARGS, "--tti")
-    push!(Base.ARGS, "--fs")
+    set_devito_config("safe-math", true)
     for t=devito
         timeit_include(t)
         try Base.GC.gc(); catch; gc() end
@@ -147,7 +141,6 @@ end
 if GROUP == "VISCO_AC_OP" || GROUP == "All"
     println("JUDI Viscoacoustic operators tests")
     # Viscoacoustic tests
-    push!(Base.ARGS, "--viscoacoustic")
     for t=devito
         timeit_include(t)
         try Base.GC.gc(); catch; gc() end

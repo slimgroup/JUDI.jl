@@ -19,9 +19,9 @@ jobs:
     name: ${{ matrix.op }} on Julia ${{ matrix.version }} - ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     env:
-      DEVITO_ARCH: gcc-9
+      DEVITO_ARCH: gcc-11
       DEVITO_LANGUAGE: "openmp"
-      DEVITO_LOGGING: "ERROR"
+      DEVITO_LOGGING: "INFO"
       OMP_NUM_THREADS: ${{ matrix.omp }}
       GROUP: ${{ matrix.op }}
 
@@ -62,14 +62,10 @@ jobs:
 
     steps:
       - name: Checkout JUDI
-        uses: actions/checkout@v3
-
-      - name: Install GCC 9
-        if : runner.os == 'macOS'
-        run : brew install gcc@9
+        uses: actions/checkout@v4
 
       - name: Cache julia install
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         env:
           cache-name: cache-julia-pkgs
         with:

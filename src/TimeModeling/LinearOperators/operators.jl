@@ -75,6 +75,7 @@ end
 
 ############################################################################################################################
 # Base and JOLI compat
+_get_property(::judiPropagator{T, O}, ::Val{:mode}) where {T, O} = O
 _get_property(J::judiPropagator, ::Val{:fop}) = x -> J*x
 _get_property(J::judiPropagator, ::Val{:fop_T}) = x -> J'*x
 _get_property(J::judiPropagator, ::Val{:name}) = "$(typeof(J))"

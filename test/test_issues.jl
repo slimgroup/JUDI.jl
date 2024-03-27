@@ -28,6 +28,7 @@ end
         # Load file with old judiVector type and julia <1.7 StepRangeLen
         @load "$(datapath)backward_comp.jld" dat
 
+        @show dat.geometry
         @test typeof(dat) == judiVector{Float32, Matrix{Float32}}
         @test typeof(dat.geometry) == GeometryIC{Float32}
         @test typeof(dat.geometry.xloc) == Vector{Vector{Float32}}
@@ -85,7 +86,7 @@ end
         F0 = judiModeling(model0, srcGeometry, recGeometry; options=opt)
     
         # fwi wrapper
-        g_ap = JUDI.multi_src_fg(model0, q , dobs, nothing, opt, false, false, mse)[2]
+        g_ap = JUDI.multi_src_fg(model0, q , dobs, nothing, opt)[2]
         @test g_ap.n == (model.n .- (22, 0))
         @test g_ap.o[1] == model.d[1]*11
     
@@ -95,7 +96,7 @@ end
         @test norm(g1.data[end-10:end, :]) == 0
 
         # lsrtm wrapper
-        g_ap = JUDI.multi_src_fg(model0, q , dobs, dm, opt, false, true, mse)[2]
+        g_ap = JUDI.multi_src_fg(model0, q , dobs, dm, opt, lin=true)[2]
         @test g_ap.n == (model.n .- (22, 0))
         @test g_ap.o[1] == model.d[1]*11
 

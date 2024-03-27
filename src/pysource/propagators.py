@@ -1,7 +1,7 @@
 from kernels import wave_kernel
 from geom_utils import src_rec, geom_expr
 from fields import (fourier_modes, wavefield, lr_src_fields, illumination,
-                    wavefield_subsampled, norm_holder, frequencies)
+                    wavefield_subsampled, norm_holder, frequencies, memory_field)
 from fields_exprs import extented_src
 from sensitivity import grad_expr
 from utils import weight_fun, opt_op, fields_kwargs, nfreq, base_kwargs
@@ -12,7 +12,7 @@ from devito.tools import as_tuple
 
 
 # Forward propagation
-def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
+def forward(model, src_coords, rcv_coords, wavelet, save=False,
             qwf=None, return_op=False, freq_list=None, dft_sub=None,
             norm_wf=False, w_fun=None, ws=None, wr=None, t_sub=1, f0=0.015,
             illum=False, fw=True, **kwargs):
@@ -20,6 +20,8 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     Low level propagator, to be used through `interface.py`
     Compute forward wavefield u = A(m)^{-1}*f and related quantities (u(xrcv))
     """
+    # Space order
+    space_order = model.space_order
     # Number of time steps
     nt = as_tuple(qwf)[0].shape[0] if wavelet is None else wavelet.shape[0]
 
@@ -67,6 +69,11 @@ def forward(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     kw.update(fields)
     kw.update(model.physical_params())
 
+    # SLS field
+    if model.is_viscoacoustic:
+        r = memory_field(u)
+        kw.update({r.name: r})
+
     # Output
     rout = wr or rcv
     uout = dft_modes or (u_save if t_sub > 1 else u)
@@ -87,12 +94,14 @@ def adjoint(*args, **kwargs):
     return forward(*args, fw=fw, **kwargs)
 
 
-def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8, fw=True,
+def gradient(model, residual, rcv_coords, u, return_op=False, fw=True,
              w=None, freq=None, dft_sub=None, ic="as", f0=0.015, save=True, illum=False):
     """
     Low level propagator, to be used through `interface.py`
     Compute the action of the adjoint Jacobian onto a residual J'* δ d.
     """
+    # Space order
+    space_order = model.space_order
     # Setting adjoint wavefieldgradient
     v = wavefield(model, space_order, fw=not fw)
     try:
@@ -125,6 +134,11 @@ def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8, fw=
     kw.update(fields_kwargs(src, u, v, gradm, f0q, f, I))
     kw.update(model.physical_params())
 
+    # SLS field
+    if model.is_viscoacoustic:
+        r = memory_field(v)
+        kw.update({r.name: r})
+
     if return_op:
         return op, gradm, kw
 
@@ -134,7 +148,7 @@ def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8, fw=
     return gradm, I, summary
 
 
-def born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
+def born(model, src_coords, rcv_coords, wavelet, save=False,
          qwf=None, return_op=False, ic="as", freq_list=None, dft_sub=None,
          ws=None, t_sub=1, nlind=False, f0=0.015, illum=False, fw=True):
     """
@@ -142,6 +156,8 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     Compute linearized wavefield U = J(m)* δ m
     and related quantities.
     """
+    # Space order
+    space_order = model.space_order
     nt = wavelet.shape[0]
 
     # Wavefields
@@ -165,6 +181,7 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
                                dft_sub=dft_sub, ws=ws, t_sub=t_sub, f0=f0, illum=illum)
 
         kw.update(fields_kwargs(rnl, I))
+
         if return_op:
             return op, u, outrec, kw
 
@@ -193,6 +210,11 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
     kw.update(fields_kwargs(u, ul, snl, rnl, rcvl, u_save, dft_m, fr, ws, wt, f0q, I))
     kw.update(model.physical_params(born=True))
 
+    # SLS field
+    if model.is_viscoacoustic:
+        r, rl = memory_field(u), memory_field(ul)
+        kw.update({r.name: r, rl.name: rl})
+
     if return_op:
         return op, u, outrec, kw
 
@@ -203,12 +225,14 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
 
 
 # Forward propagation
-def forward_grad(model, src_coords, rcv_coords, wavelet, v, space_order=8,
+def forward_grad(model, src_coords, rcv_coords, wavelet, v,
                  q=None, ws=None, ic="as", w=None, freq=None, f0=0.015, **kwargs):
     """
     Low level propagator, to be used through `interface.py`
     Compute forward wavefield u = A(m)^{-1}*f and related quantities (u(xrcv))
     """
+    # Space order
+    space_order = model.space_order
     # Number of time steps
     nt = as_tuple(q)[0].shape[0] if wavelet is None else wavelet.shape[0]
 

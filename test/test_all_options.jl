@@ -8,7 +8,7 @@ dt = srcGeometry.dt[1]
 
 @testset "Gradient options test with $(nlayer) layers and tti $(tti) and freesurface $(fs)" begin
         ##################################ISIC########################################################
-        println("Testing isic")
+        printstyled("Testing isic \n"; color = :blue)
         @timeit TIMEROUTPUT "ISIC" begin
                 opt = Options(sum_padding=true, free_surface=fs, IC="isic", f0=f0)
                 F = judiModeling(model0, srcGeometry, recGeometry; options=opt)
@@ -30,7 +30,7 @@ dt = srcGeometry.dt[1]
                 @test !isnan(norm(x_hat1))
         end
         ##################################ISIC########################################################
-        println("Testing fwi")
+        printstyled("Testing fwi \n"; color = :blue)
         @timeit TIMEROUTPUT "fwi" begin
                 opt = Options(sum_padding=true, free_surface=fs, IC="fwi", f0=f0)
                 F = judiModeling(model0, srcGeometry, recGeometry; options=opt)
@@ -52,7 +52,7 @@ dt = srcGeometry.dt[1]
                 @test !isnan(norm(x_hat1))
         end
         ##################################checkpointing###############################################
-        println("Testing checkpointing")
+        printstyled("Testing checkpointing \n"; color = :blue)
         @timeit TIMEROUTPUT "Checkpointing" begin
                 opt = Options(sum_padding=true, free_surface=fs, optimal_checkpointing=true, f0=f0)
                 F = judiModeling(model0, srcGeometry, recGeometry; options=opt)
@@ -73,7 +73,7 @@ dt = srcGeometry.dt[1]
         end
 
         ##################################DFT#########################################################
-        println("Testing DFT")
+        printstyled("Testing DFT \n"; color = :blue)
         @timeit TIMEROUTPUT "DFT" begin
                 opt = Options(sum_padding=true, free_surface=fs, frequencies=[2.5, 4.5], f0=f0)
                 F = judiModeling(model0, srcGeometry, recGeometry; options=opt)
@@ -93,7 +93,7 @@ dt = srcGeometry.dt[1]
         end
 
         ################################## DFT time subsampled#########################################
-        println("Testing subsampled in time DFT")
+        printstyled("Testing subsampled in time DFT \n"; color = :blue)
         @timeit TIMEROUTPUT "Subsampled DFT" begin
                 opt = Options(sum_padding=true, free_surface=fs, frequencies=[2.5, 4.5], dft_subsampling_factor=4, f0=f0)
                 F = judiModeling(model0, srcGeometry, recGeometry; options=opt)
@@ -113,7 +113,7 @@ dt = srcGeometry.dt[1]
         end
 
         ##################################subsampling#################################################
-        println("Testing subsampling")
+        printstyled("Testing subsampling \n"; color = :blue)
         @timeit TIMEROUTPUT "Subsampling" begin
                 opt = Options(sum_padding=true, free_surface=fs, subsampling_factor=4, f0=f0)
                 F = judiModeling(model0, srcGeometry, recGeometry; options=opt)
@@ -132,7 +132,7 @@ dt = srcGeometry.dt[1]
                 @test !isnan(norm(x_hat4))
         end
         ##################################ISIC + DFT #########################################################
-        println("Testing isic+dft")
+        printstyled("Testing isic+dft \n"; color = :blue)
         @timeit TIMEROUTPUT "ISIC+DFT" begin
                 opt = Options(sum_padding=true, free_surface=fs, IC="isic", frequencies=[2.5, 4.5], f0=f0)
                 F = judiModeling(model0, srcGeometry, recGeometry; options=opt)
@@ -152,7 +152,7 @@ dt = srcGeometry.dt[1]
         end
 
         ##################################fwi + DFT #########################################################
-        println("Testing fwi+dft")
+        printstyled("Testing fwi+dft \n"; color = :blue)
         @timeit TIMEROUTPUT "FWI+DFT" begin
                 opt = Options(sum_padding=true, free_surface=fs, IC="fwi", frequencies=[2.5, 4.5], f0=f0)
                 F = judiModeling(model0, srcGeometry, recGeometry; options=opt)

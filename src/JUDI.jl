@@ -9,6 +9,12 @@ module JUDI
 export JUDIPATH, set_verbosity, ftp_data, get_serial, set_serial, set_parallel
 JUDIPATH = dirname(pathof(JUDI))
 
+
+# Only needed if extension not available (julia < 1.9)
+if !isdefined(Base, :get_extension)
+    using Requires
+end
+
 # Dependencies
 using LinearAlgebra, Random
 using Distributed
@@ -16,7 +22,6 @@ using DSP, FFTW, Dierckx
 using PyCall
 using JOLI, SegyIO
 using ChainRulesCore
-using Requires
 using OrderedCollections
 
 # Import Base functions to dispatch on JUDI types
@@ -60,6 +65,7 @@ const pyut = PyNULL()
 const devito = PyNULL()
 
 set_devito_config(key::String, val::String) = set!(devito."configuration", key, val)
+set_devito_config(key::String, val::Bool) = set!(devito."configuration", key, val)
 
 # Create a lock for pycall FOR THREAD/TASK SAFETY
 # See discussion at
@@ -172,6 +178,9 @@ function __init__()
     copy!(devito, pyimport("devito"))
     # Initialize lock at session start
     PYLOCK[] = ReentrantLock()
+    
+    # Prevent autopadding to use external allocator
+    set_devito_config("autopadding", false)
 
     # Make sure there is no conflict for the cuda init thread with CUDA.jl
     if get(ENV, "DEVITO_PLATFORM", "") == "nvidiaX"
@@ -180,27 +189,27 @@ function __init__()
         global _devices = parse.(Int, get(ENV, "CUDA_VISIBLE_DEVICES", "-1"))
     end
 
-    # Additional Zygote compat if in use
-    @require Zygote="e88e6eb3-aa80-5325-afca-941959d7151f" begin
-        Zygote.unbroadcast(x::AbstractArray, x̄::LazyPropagation) = Zygote.unbroadcast(x, eval_prop(x̄))
-        function Zygote.accum(x::judiVector{T, AT}, y::DenseArray) where {T, AT}
-            newd = [Zygote.accum(x.data[i], y[:, :, i, 1]) for i=1:x.nsrc]
-            return judiVector{T, AT}(x.nsrc, x.geometry, newd)
+    # Optional dependencies
+    @static if !isdefined(Base, :get_extension)
+        # JLD2 compat for loading older version of JUDI types
+        @require JLD2="033835bb-8acc-5ee8-8aae-3f567f8a3819" begin
+            @info "JLD2 compat enabled"
+            include("../ext/JLD2JUDIExt.jl")
+        end
+
+        # Additional Zygote compat if in use
+        @require Zygote="e88e6eb3-aa80-5325-afca-941959d7151f" begin
+            @info "Zygote compat enabled"
+            include("../ext/ZygoteJUDIExt.jl")
+        end
+
+        # Additional Flux compat if in use
+        @require Flux="587475ba-b771-5e3f-ad9e-33799f191a9c" begin
+            @info "Flux compat enabled"
+            include("../ext/FluxJUDIExt.jl")
         end
     end
 
-     # Additional Flux compat if in use
-    @require Flux="587475ba-b771-5e3f-ad9e-33799f191a9c" begin
-        Flux.Zygote.unbroadcast(x::AbstractArray, x̄::LazyPropagation) = Zygote.unbroadcast(x, eval_prop(x̄))
-        Flux.cpu(x::LazyPropagation) = Flux.cpu(eval_prop(x))
-        Flux.gpu(x::LazyPropagation) = Flux.gpu(eval_prop(x))
-        Flux.CUDA.cu(F::LazyPropagation) = Flux.CUDA.cu(eval_prop(F))
-	Flux.CUDA.cu(x::Vector{Matrix{T}}) where T = [Flux.CUDA.cu(x[i]) for i=1:length(x)]
-	Flux.CUDA.cu(x::judiVector{T, Matrix{T}}) where T = judiVector{T, Flux.CUDA.CuMatrix{T}}(x.nsrc, x.geometry, Flux.CUDA.cu(x.data))
-    end
-
-    # BLAS num threads for dense LA such as sinc interpolation
-    BLAS.set_num_threads(Threads.nthreads())
 end
 
 end

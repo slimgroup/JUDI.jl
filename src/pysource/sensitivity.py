@@ -1,12 +1,12 @@
 import numpy as np
 from sympy import cos, sin
 
-from devito import Eq
+from devito import Eq, grad
 from devito.tools import as_tuple
 
 from fields import frequencies
 from fields_exprs import sub_time, freesurface
-from FD_utils import divs, grads
+from FD_utils import laplacian
 
 
 def func_name(freq=None, ic="as"):
@@ -41,11 +41,12 @@ def grad_expr(gradm, u, v, model, w=None, freq=None, dft_sub=None, ic="as"):
         Whether or not to use inverse scattering imaging condition (not supported yet)
     """
     ic_func = ic_dict[func_name(freq=freq, ic=ic)]
-    expr = ic_func(as_tuple(u), as_tuple(v), model, freq=freq, factor=dft_sub, w=w)
+    u, v = as_tuple(u), as_tuple(v)
+    expr = ic_func(u, v, model, freq=freq, factor=dft_sub, w=w)
     if model.fs and ic in ["fwi", "isic"]:
         # Only need `fs` processing for isic for the spatial derivatives.
         eq_g = [Eq(gradm, gradm - expr, subdomain=model.grid.subdomains['nofsdomain'])]
-        eq_g += freesurface(model, eq_g)
+        eq_g += freesurface(model, eq_g, (*as_tuple(u), *as_tuple(v)))
     else:
         eq_g = [Eq(gradm, gradm - expr)]
     return eq_g
@@ -205,8 +206,7 @@ def isic_src(model, u, **kwargs):
     ics = kwargs.get('icsign', 1)
     dus = []
     for uu in u:
-        du_aux = divs(dm * irho * grads(uu, so_fact=2), so_fact=2)
-        dus.append(dm * irho * uu.dt2 * m - ics * du_aux)
+        dus.append(dm * irho * uu.dt2 * m - ics * laplacian(uu, dm * irho))
     if model.is_tti:
         return (-dus[0], -dus[1])
     return -dus[0]
@@ -214,16 +214,16 @@ def isic_src(model, u, **kwargs):
 
 def inner_grad(u, v):
     """
-    Inner product of the gradient of two Function.
+    Inner product of the gradient of two fields
 
     Parameters
     ----------
-    u: TimeFunction or Function
-        First wavefield
-    v: TimeFunction or Function
-        Second wavefield
+    u: TimeFunction
+        First field
+    v: TimeFunction
+        Second field
     """
-    return sum([a*b for a, b in zip(grads(u, so_fact=2), grads(v, so_fact=2))])
+    return grad(u, shift=.5).dot(grad(v, shift=.5))
 
 
 fwi_src = lambda *ar, **kw: isic_src(*ar, icsign=-1, **kw)

@@ -1,5 +1,6 @@
+from sympy import sqrt, S
+
 from devito import Eq, solve, diag, div, grad
-from sympy import sqrt
 
 from fields import memory_field
 from fields_exprs import freesurface
@@ -50,7 +51,7 @@ def acoustic_kernel(model, u, fw=True, q=None):
     """
     u_n = u.forward if fw else u.backward
     udt = u.dt if fw else u.dt.T
-    q = q or 0
+    q = q or S.Zero
 
     # Set up PDE expression and rearrange
     ulaplace = laplacian(u, model.irho)
@@ -60,7 +61,7 @@ def acoustic_kernel(model, u, fw=True, q=None):
 
     if 'nofsdomain' in model.grid.subdomains:
         pde = [Eq(u_n, stencil, subdomain=model.grid.subdomains['nofsdomain'])]
-        pde += freesurface(model, pde)
+        pde += freesurface(model, pde, (u,))
     else:
         pde = [Eq(u_n, stencil)]
 
@@ -93,7 +94,7 @@ def SLS_2nd_order(model, p, fw=True, q=None, f0=0.015):
     qp, b, damp, m = model.qp, model.irho, model.damp, model.m
     m = m * b
     # Source
-    q = q or 0
+    q = q or S.Zero
 
     # The stress relaxation parameter
     t_s = (sqrt(1.+1./qp**2)-1./qp)/f0
@@ -151,7 +152,7 @@ def tti_kernel(model, u1, u2, fw=True, q=None):
     """
     m, damp, irho = model.m, model.damp, model.irho
     wmr = (irho * m)
-    q = q or (0, 0)
+    q = q or (S.Zero, S.Zero)
 
     # Tilt and azymuth setup
     u1_n, u2_n = (u1.forward, u2.forward) if fw else (u1.backward, u2.backward)
@@ -164,9 +165,9 @@ def tti_kernel(model, u1, u2, fw=True, q=None):
 
     if 'nofsdomain' in model.grid.subdomains:
         # Water at free surface, no anisotrpy
-        acout_ttip = [Eq(u1_n, stencilp.subs(model.zero_thomsen))]
-        acout_ttir = [Eq(u2_n, stencilr.subs(model.zero_thomsen))]
-        pdea = freesurface(model, acout_ttip) + freesurface(model, acout_ttir)
+        acout_ttip = Eq(u1_n, stencilp.subs(model.zero_thomsen))
+        acout_ttir = Eq(u2_n, stencilr.subs(model.zero_thomsen))
+        pdea = freesurface(model, (acout_ttip, acout_ttir), (u1, u2))
         # Standard PDE in subsurface
         first_stencil = Eq(u1_n, stencilp, subdomain=model.grid.subdomains['nofsdomain'])
         second_stencil = Eq(u2_n, stencilr, subdomain=model.grid.subdomains['nofsdomain'])

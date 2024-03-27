@@ -1,26 +1,32 @@
 
 export fwi_objective, lsrtm_objective, fwi_objective!, lsrtm_objective!
 
-function multi_src_fg(model_full::AbstractModel, source::judiVector, dObs::judiVector, dm, options::JUDIOptions, nlind::Bool, lin::Bool,
-                      misfit::Function)
-    # Setup time-domain linear or nonlinear foward and adjoint modeling and interface to devito
+# Type of accepted input
+Dtypes = Union{<:judiVector, NTuple{N, <:judiVector} where N, Vector{<:judiVector}, <:LazyMul}
+MTypes = Union{<:AbstractModel, NTuple{N, <:AbstractModel} where N, Vector{<:AbstractModel}}
+dmTypes = Union{dmType, NTuple{N, dmType} where N, Vector{dmType}}
 
+function _multi_src_fg(model_full::AbstractModel, source::Dtypes, dObs::Dtypes, dm, options::JUDIOptions;
+                      nlind::Bool=false, lin::Bool=false, misfit::Function=mse, illum::Bool=false,
+                      data_precon=nothing, model_precon=LinearAlgebra.I)
+    GC.gc(true)
+    devito.clear_cache()
     # assert this is for single source LSRTM
     @assert source.nsrc == 1 "Multiple sources are used in a single-source fwi_objective"
     @assert dObs.nsrc == 1 "Multiple-source data is used in a single-source fwi_objective"    
 
     # Load full geometry for out-of-core geometry containers
-    dObs.geometry = Geometry(dObs.geometry)
-    source.geometry = Geometry(source.geometry)
-
-    # Compute illumination ?
-    illum = compute_illum(model_full, :adjoint_born)
+    d_geometry = Geometry(dObs.geometry)
+    s_geometry = Geometry(source.geometry)
+    
+    # If model preconditioner is provided, apply it
+    dm = isnothing(dm) ? dm : model_precon * dm
 
     # Limit model to area with sources/receivers
     if options.limit_m == true
         @juditime "Limit model to geometry" begin
             model = deepcopy(model_full)
-            model, dm = limit_model_to_receiver_area(source.geometry, dObs.geometry, model, options.buffer_size; pert=dm)
+            model, dm = limit_model_to_receiver_area(s_geometry, d_geometry, model, options.buffer_size; pert=dm)
         end
     else
         model = model_full
@@ -33,25 +39,37 @@ function multi_src_fg(model_full::AbstractModel, source::judiVector, dObs::judiV
     end
 
     # Extrapolate input data to computational grid
-    qIn = time_resample(make_input(source), source.geometry, dtComp)
-    dObserved = time_resample(make_input(dObs), dObs.geometry, dtComp)
+    qIn = time_resample(make_input(source), s_geometry, dtComp)
+    dObserved = time_resample(make_input(dObs), d_geometry, dtComp)
+    qIn, dObserved = _maybe_pad_t0(qIn, s_geometry, dObserved, d_geometry, dtComp)
 
     # Set up coordinates
     @juditime "Sparse coords setup" begin
-        src_coords = setup_grid(source.geometry, size(model))  # shifts source coordinates by origin
-        rec_coords = setup_grid(dObs.geometry, size(model))    # shifts rec coordinates by origin
+        src_coords = setup_grid(s_geometry, size(model))  # shifts source coordinates by origin
+        rec_coords = setup_grid(d_geometry, size(model))    # shifts rec coordinates by origin
     end
 
-    mfunc = pyfunction(misfit, Matrix{Float32}, Matrix{Float32})
+    # Setup misfit function
+    if !isnothing(data_precon)
+        # resample
+        new_t = StepRangeLen(0f0, Float32(dtComp), Int64(size(dObserved, 1)))
+        Pcomp  = time_resample(data_precon, new_t)
+        runtime_misfit = (x, y) -> misfit(Pcomp*x, Pcomp*y)
+    else
+        runtime_misfit = misfit
+    end
+
+    mfunc = pyfunction(runtime_misfit, Matrix{Float32}, Matrix{Float32})
 
     length(options.frequencies) == 0 ? freqs = nothing : freqs = options.frequencies
     IT = illum ? (PyArray, PyArray) : (PyObject, PyObject)
     @juditime "Python call to J_adjoint" begin
         argout = rlock_pycall(ac."J_adjoint", Tuple{Float32, PyArray, IT...}, modelPy,
                 src_coords, qIn, rec_coords, dObserved, t_sub=options.subsampling_factor,
-                space_order=options.space_order, checkpointing=options.optimal_checkpointing,
+                checkpointing=options.optimal_checkpointing,
                 freq_list=freqs, ic=options.IC, is_residual=false, born_fwd=lin, nlind=nlind,
-                dft_sub=options.dft_subsampling_factor[1], f0=options.f0, return_obj=true, misfit=mfunc, illum=illum)
+                dft_sub=options.dft_subsampling_factor[1], f0=options.f0, return_obj=true,
+                misfit=mfunc, illum=illum)
     end
 
     @juditime "Filter empty output" begin
@@ -59,7 +77,7 @@ function multi_src_fg(model_full::AbstractModel, source::judiVector, dObs::judiV
     end
 
     @juditime "Remove padding from gradient" begin
-        grad = PhysicalParameter(remove_padding(argout[2], modelPy.padsizes; true_adjoint=options.sum_padding),  spacing(model), origin(model))
+        grad = PhysicalParameter(remove_padding(argout[2], modelPy.padsizes; true_adjoint=options.sum_padding), spacing(model), origin(model))
     end
 
     fval = Ref{Float32}(argout[1])
@@ -73,10 +91,7 @@ function multi_src_fg(model_full::AbstractModel, source::judiVector, dObs::judiV
     return fval, grad
 end
 
-
-####### Defaults
-multi_src_fg(model_full::AbstractModel, source::judiVector, dObs::judiVector, dm, options::JUDIOptions, nlind::Bool, lin::Bool) =
-    multi_src_fg(model_full::AbstractModel, source::judiVector, dObs::judiVector, dm, options::JUDIOptions, nlind::Bool, lin::Bool, mse)
+multi_src_fg = retry(_multi_src_fg)
 
 
 # Find number of experiments
@@ -113,12 +128,9 @@ function check_args(args...)
     return nexp
 end
 
-
-# Type of accepted input
-Dtypes = Union{<:judiVector, NTuple{N, <:judiVector} where N, Vector{<:judiVector}}
-MTypes = Union{<:AbstractModel, NTuple{N, <:AbstractModel} where N, Vector{<:AbstractModel}}
-dmTypes = Union{dmType, NTuple{N, dmType} where N, Vector{dmType}}
-
+################################################################################################
+####################### User Interface #########################################################
+################################################################################################
 
 """
     fwi_objective(model, source, dobs; options=Options())

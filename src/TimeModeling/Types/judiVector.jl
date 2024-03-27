@@ -24,8 +24,9 @@ end
 
 """
     judiVector
+        nsrc::Integer
         geometry::Geometry
-        data
+        data::Vector
 
 Abstract vector for seismic data. This vector-like structure contains the geometry and data for either\\
 receiver data (shot records) or source data (wavelets).
@@ -38,14 +39,14 @@ can also be a single (non-cell) array, in which case the data is the same for al
 
     judiVector(geometry, data)
 
-Construct vector for observed data from `SegyIO.SeisBlock`. `segy_depth_key` is the `SegyIO` keyword \\
+Construct vector for observed data from `SeisBlock`. `segy_depth_key` is the `SegyIO` keyword \\
 that contains the receiver depth coordinate:
 
-    judiVector(SegyIO.SeisBlock; segy_depth_key="RecGroupElevation")
+    judiVector(SeisBlock; segy_depth_key="RecGroupElevation")
 
-Construct vector for observed data from out-of-core data container of type `SegyIO.SeisCon`:
+Construct vector for observed data from out-of-core data container of type `SeisCon`:
 
-    judiVector(SegyIO.SeisCon; segy_depth_key="RecGroupElevation")
+    judiVector(SeisCon; segy_depth_key="RecGroupElevation")
 
 Examples
 ========
@@ -59,13 +60,13 @@ wavelets or a single wavelet as an array):
 
     q = judiVector(src_geometry, wavelet)
 
-(3) Construct data vector from `SegyIO.SeisBlock` object:
+(3) Construct data vector from `SeisBlock` object:
 
     using SegyIO
     seis_block = segy_read("test_file.segy")
     dobs = judiVector(seis_block; segy_depth_key="RecGroupElevation")
 
-(4) Construct out-of-core data vector from `SegyIO.SeisCon` object (for large SEG-Y files):
+(4) Construct out-of-core data vector from `SeisCon` object (for large SEG-Y files):
 
     using SegyIO
     seis_container = segy_scan("/path/to/data/directory","filenames",["GroupX","GroupY","RecGroupElevation","SourceDepth","dt"])
@@ -95,7 +96,7 @@ function judiVector(geometry::Geometry, data::Vector{Array{T, N}}) where {T, N}
 end
 
 # contructor for in-core data container and given geometry
-function judiVector(geometry::Geometry, data::SegyIO.SeisBlock)
+function judiVector(geometry::Geometry, data::SeisBlock)
     check_geom(geometry, data)
     # length of data vector
     src = get_header(data,"FieldRecord")
@@ -104,38 +105,43 @@ function judiVector(geometry::Geometry, data::SegyIO.SeisBlock)
     dataCell = Vector{Array{Float32, 2}}(undef, nsrc)
     for j=1:nsrc
         traces = findall(src .== unique(src)[j])
-        dataCell[j] = convert(Array{Float32, 2}, data.data[:,traces])
+        dataCell[j] = convert(Array{Float32, 2}, data.data[1:get_nt(geometry, j), traces])
     end
     return judiVector{Float32, Array{Float32, 2}}(nsrc, geometry, dataCell)
 end
 
 # contructor for single out-of-core data container and given geometry
-function judiVector(geometry::Geometry, data::SegyIO.SeisCon)
+function judiVector(geometry::Geometry, data::SeisCon)
     check_geom(geometry, data)
     # length of data vector
     nsrc = length(data)
     # fill data vector with pointers to data location
-    dataCell = Vector{SegyIO.SeisCon}(undef, nsrc)
+    dataCell = Vector{SeisCon}(undef, nsrc)
     for j=1:nsrc
         dataCell[j] = split(data,j)
     end
-    return judiVector{Float32, SegyIO.SeisCon}(nsrc, geometry,dataCell)
+    return judiVector{Float32, SeisCon}(nsrc, geometry,dataCell)
 end
 
-judiVector(data::SegyIO.SeisBlock; segy_depth_key="RecGroupElevation") = judiVector(Geometry(data; key="receiver", segy_depth_key=segy_depth_key), data)
-judiVector(data::SegyIO.SeisCon; segy_depth_key="RecGroupElevation")= judiVector(Geometry(data; key="receiver", segy_depth_key=segy_depth_key), data)
-judiVector(data::Vector{SegyIO.SeisCon}; segy_depth_key="RecGroupElevation") = judiVector(Geometry(data; key="receiver", segy_depth_key=segy_depth_key), data)
-judiVector(geometry::Geometry, data::Vector{SegyIO.SeisCon}) =  judiVector{Float32, SegyIO.SeisCon}(length(data), geometry, data)
+judiVector(data::SeisBlock; kw...) = judiVector(Geometry(data; key="receiver", kw...), data)
+judiVector(data::SeisCon; kw...)= judiVector(Geometry(data; key="receiver", kw...), data)
+judiVector(data::Vector{SeisCon}; kw...) = judiVector(Geometry(data; key="receiver", kw...), data)
+judiVector(geometry::Geometry, data::Vector{SeisCon}) =  judiVector{Float32, SeisCon}(length(data), geometry, data)
 
 ############################################################
 ## overloaded multi_source functions
-time_sampling(jv::judiVector) = jv.geometry.dt
+time_sampling(jv::judiVector) = get_dt(jv.geometry)
 
 ############################################################
 # JOLI conversion
 jo_convert(::Type{T}, jv::judiVector{T, Array{T, N}}, ::Bool) where {T<:AbstractFloat, N} = jv
 jo_convert(::Type{T}, jv::judiVector{vT, Array{vT, N}}, B::Bool) where {T<:AbstractFloat, vT, N} = judiVector{T, Array{T, N}}(jv.nsrc, jv.geometry, jo_convert.(T, jv.data, B))
-zero(::Type{T}, v::judiVector{vT, AT}; nsrc::Integer=v.nsrc) where {T, vT, AT} = judiVector{T, AT}(nsrc, deepcopy(v.geometry[1:nsrc]), T(0) .* v.data[1:nsrc])
+
+function zero(::Type{T}, v::judiVector{vT, AT}; nsrc::Integer=v.nsrc) where {T, vT, AT}
+    zgeom = deepcopy(v.geometry[1:nsrc])
+    zdata = [zeros(T, get_nt(v.geometry, i), v.geometry.nrec[i]) for i=1:nsrc]
+    return judiVector{T, Matrix{T}}(nsrc, zgeom, zdata)
+end
 
 function copy!(jv::judiVector, jv2::judiVector)
     jv.geometry = deepcopy(jv2.geometry)
@@ -146,7 +152,7 @@ end
 copyto!(jv::judiVector, jv2::judiVector) = copy!(jv, jv2)
 make_input(jv::judiVector{T, Matrix{T}}) where T = jv.data[1]
 make_input(jv::judiVector{T, Vector{T}}) where T = reshape(jv.data[1], :, 1)
-make_input(jv::judiVector{T, SeisCon}) where T = convert(Matrix{T}, jv.data[1][1].data)
+make_input(jv::judiVector{T, SeisCon}) where T = get_data(jv).data[1]
 
 check_compat(ms::Vararg{judiVector, N}) where N = all(y -> compareGeometry(y.geometry, first(ms).geometry), ms)
 
@@ -156,8 +162,8 @@ function as_ordered_dict(x::judiVector{T, AT}; v=1) where {T, AT}
     return jdict
 end
 
-function from_ordered_dict(d::OrderedDict{NTuple{N, T}}, dt::T, nt::Integer, t::T) where {N, T}
-    Gnew = GeometryIC{T}(coords_from_keys(d.keys)..., [dt], [nt], [t])
+function from_ordered_dict(d::OrderedDict{NTuple{N, T}}, t::AbstractRange{T}) where {N, T}
+    Gnew = GeometryIC{T}(coords_from_keys(d.keys)..., [t])
     return judiVector{T, Matrix{T}}(1, Gnew, [hcat(d.vals...)])
 end
 
@@ -165,7 +171,7 @@ function pad_zeros(zpad::OrderedDict, m::T, d::judiVector{T, AT}) where {T, AT}
     @assert d.nsrc == 1
     dloc = as_ordered_dict(d; v=m)
     sort!(merge!(.+, dloc, zpad))
-    return from_ordered_dict(dloc, d.geometry.dt[1], d.geometry.nt[1], d.geometry.t[1])
+    return from_ordered_dict(dloc, d.geometry.taxis[1])
 end
 
 function simsource(M::Vector{T}, x::judiVector{T, AT}; reduction=+, minimal::Bool=false) where {T, AT}
@@ -173,14 +179,14 @@ function simsource(M::Vector{T}, x::judiVector{T, AT}; reduction=+, minimal::Boo
     # Without reduction, add zero trace for all missing coords
     if isnothing(reduction)
         sgeom = as_coord_set(x.geometry)
-        zpad = OrderedDict(zip(sgeom, [zeros(Float32, x.geometry.nt[1]) for s=1:length(sgeom)]))
+        zpad = OrderedDict(zip(sgeom, [zeros(Float32, get_nt(x.geometry, 1)) for s=1:length(sgeom)]))
         dOut = vcat([pad_zeros(zpad, M[s], x[s]) for s=1:x.nsrc]...)
     # With reduction. COuld reuse the previous but cheaper to compute the sum directly
     else
         reduction = minimal ? PopZero() : reduction
         sdict = mergewith!(reduction, map((d, m)->as_ordered_dict(d; v=m), x, M)...)
         sort!(sdict)
-        dOut = from_ordered_dict(sdict, x.geometry.dt[1], x.geometry.nt[1], x.geometry.t[1])
+        dOut = from_ordered_dict(sdict, x.geometry.taxis[1])
     end
     return dOut
 end
@@ -204,22 +210,28 @@ function mergewith!(::PopZero, d1::OrderedDict{K, V}, d2::OrderedDict{K, V}) whe
     k1 = keys(d1)
     k2 = keys(d2)
     mergekeys = intersect(k1, k2)
-    isempty(mergekeys) && throw(ArgumentError(no_sim_msg))
-    for k ∈ mergekeys
+    if isempty(mergekeys)
+	@show k1, k2
+        throw(ArgumentError(no_sim_msg))
+    end
+    for k in mergekeys
         d1[k] .+= d2[k]
     end
-    Base.filter!(p->p.first ∈ mergekeys, d1)
+    Base.filter!(p->p.first in mergekeys, d1)
     return d1
 end
 
 ##########################################################
 # Overload needed base function for SegyIO objects
 
-vec(x::SegyIO.SeisCon) = vec(x[1].data)
-dot(x::SegyIO.SeisCon, y::SegyIO.SeisCon) = dot(x[1].data, y[1].data)
-norm(x::SegyIO.SeisCon, p::Real=2) = norm(x[1].data, p)
+vec(x::SeisCon) = vec(x[1].data)
+dot(x::SeisCon, y::SeisCon) = dot(x[1].data, y[1].data)
+norm(x::SeisCon, p::Real=2) = norm(x[1].data, p)
 abs(x::SegyIO.IBMFloat32) = abs(Float32(x))
 *(::Number, ::SeisCon) = throw(judiMultiSourceException("Cannot multiply out of core SeisCon byt scalar"))
+
+length(jv::judiVector{T, SeisCon}) where T = n_samples(jv.geometry)
+
 
 # push!
 function push!(a::judiVector{T, mT}, b::judiVector{T, mT}) where {T, mT}
@@ -262,32 +274,38 @@ end
 function judiVector_to_SeisBlock(d::judiVector{avDT, AT}, q::judiVector{avDT, QT};
                                  source_depth_key="SourceSurfaceElevation",
                                  receiver_depth_key="RecGroupElevation") where {avDT, AT, QT}
+    return judiVector_to_SeisBlock(Geometry(d.geometry), Geometry(q.geometry), d.data, q.data;
+                                   source_depth_key=source_depth_key,
+                                   receiver_depth_key=receiver_depth_key)
+end
 
-    d.geometry = Geometry(d.geometry)
-    q.geometry = Geometry(q.geometry)
+function judiVector_to_SeisBlock(Gr::GeometryIC, Gs::GeometryIC, Dr::Vector{<:VecOrMat}, Ds::Vector{<:VecOrMat};
+                                 source_depth_key="SourceSurfaceElevation",
+                                 receiver_depth_key="RecGroupElevation")
 
-    blocks = Array{Any}(undef, d.nsrc)
+    nsrc = get_nsrc(Gr)
+    blocks = Array{Any}(undef, nsrc)
     count = 0
-    for j=1:d.nsrc
+    for j=1:nsrc
 
         # create SeisBlock
-        blocks[j] = SeisBlock(d.data[j])
-        numTraces = size(d.data[j],2)
+        blocks[j] = SeisBlock(Dr[j])
+        numTraces = size(Dr[j],2)
         traceNumbers = convert(Array{Integer,1},count+1:count+numTraces)
 
         # set headers
-        set_header!(blocks[j], "GroupX", Int.(round.(d.geometry.xloc[j]*1f3)))
-        if length(d.geometry.yloc[j]) == 1
-            set_header!(blocks[j], "GroupY", Int(round(d.geometry.yloc[j][1]*1f3)))
+        set_header!(blocks[j], "GroupX", Int.(round.(Gr.xloc[j]*1f3)))
+        if length(Gr.yloc[j]) == 1
+            set_header!(blocks[j], "GroupY", Int(round(Gr.yloc[j][1]*1f3)))
         else
-            set_header!(blocks[j], "GroupY", convert(Array{Integer,1},round.(d.geometry.yloc[j]*1f3)))
+            set_header!(blocks[j], "GroupY", convert(Array{Integer,1},round.(Gr.yloc[j]*1f3)))
         end
-        set_header!(blocks[j], receiver_depth_key, Int.(round.(d.geometry.zloc[j]*1f3)))
-        set_header!(blocks[j], "SourceX", Int.(round.(q.geometry.xloc[j][1]*1f3)))
-        set_header!(blocks[j], "SourceY", Int.(round.(q.geometry.yloc[j][1]*1f3)))
-        set_header!(blocks[j], source_depth_key, Int.(round.(q.geometry.zloc[j][1]*1f3)))
+        set_header!(blocks[j], receiver_depth_key, Int.(round.(Gr.zloc[j]*1f3)))
+        set_header!(blocks[j], "SourceX", Int.(round.(Gs.xloc[j][1]*1f3)))
+        set_header!(blocks[j], "SourceY", Int.(round.(Gs.yloc[j][1]*1f3)))
+        set_header!(blocks[j], source_depth_key, Int.(round.(Gs.zloc[j][1]*1f3)))
 
-        set_header!(blocks[j], "dt", Int(d.geometry.dt[j]*1f3))
+        set_header!(blocks[j], "dt", Int(get_dt(Gr, j)*1f3))
         set_header!(blocks[j], "FieldRecord",j)
         set_header!(blocks[j], "TraceNumWithinLine", traceNumbers)
         set_header!(blocks[j], "TraceNumWithinFile", traceNumbers)
@@ -299,7 +317,7 @@ function judiVector_to_SeisBlock(d::judiVector{avDT, AT}, q::judiVector{avDT, QT
 
     # merge into single block
     fullblock = blocks[1]
-    for j=2:d.nsrc
+    for j=2:nsrc
         fullblock = merge(fullblock,blocks[j])
         blocks[j] = []
     end
@@ -308,45 +326,42 @@ end
 
 
 function src_to_SeisBlock(q::judiVector{avDT, QT};
-                                 source_depth_key="SourceSurfaceElevation",
-                                 receiver_depth_key="RecGroupElevation") where {avDT, QT}
+                          source_depth_key="SourceSurfaceElevation",
+                          receiver_depth_key="RecGroupElevation") where {avDT, QT}
 
-    return judiVector_to_SeisBlock(q, q;
+    return judiVector_to_SeisBlock(Geometry(q.geometry), Geometry(q.geometry), q.data, q.data;
         source_depth_key=source_depth_key,
         receiver_depth_key=receiver_depth_key)
 end
 
 
 function write_shot_record(srcGeometry::GeometryIC, srcData, recGeometry::GeometryIC, recData, options)
-    q = judiVector(srcGeometry, srcData)
-    d = judiVector(recGeometry, recData)
     pos = [srcGeometry.xloc[1][1], srcGeometry.yloc[1][1],  srcGeometry.zloc[1][1]]
     pos = join(["_"*string(trunc(p; digits=2)) for p in pos])
     file = join([string(options.file_name), pos,".segy"])
-    block_out = judiVector_to_SeisBlock(d, q)
+    block_out = judiVector_to_SeisBlock(recGeometry, srcGeometry, recData, srcData)
     segy_write(join([options.file_path,"/",file]), block_out)
     container = scan_file(join([options.file_path,"/",file]),
-                          ["GroupX", "GroupY", "dt", "SourceSurfaceElevation", "RecGroupElevation"];
-                          chunksize=256)
+                          ["GroupX", "GroupY", "dt", "SourceSurfaceElevation", "RecGroupElevation"])
     return container
 end
 
 
 ####################################################################################################
 # Load OOC
-function get_data(x::judiVector{T, SeisCon}) where T
-    shots = Array{Array{Float32, 2}, 1}(undef, x.nsrc)
-    rec_geometry = Geometry(x.geometry)
+function get_data(x::judiVector{T, AT}; rel_origin=(0, 0, 0), project=nothing) where {T, AT}
+    shots = Vector{Matrix{Float32}}(undef, x.nsrc)
+    rec_geometry = Geometry(x.geometry; rel_origin=rel_origin, project=project)
     for j=1:x.nsrc
-        shots[j] = convert(Array{Float32, 2}, x.data[j][1].data)
+        shots[j] = data_matrix(x, j)
     end
-    return judiVector(rec_geometry, shots)
+    return judiVector{T, Array{Float32, 2}}(x.nsrc, rec_geometry, shots)
 end
 
-
-get_data(x::judiVector{T, Array{Float32, 2}}) where T = x
 convert_to_array(x::judiVector) = vcat(vec.(x.data)...)
 
+data_matrix(x::judiVector{T, SeisCon}, i::Integer) where T = convert(Matrix{Float32}, x.data[i][1].data)[1:get_nt(x.geometry, i), :]
+data_matrix(x::judiVector{T, Matrix{T}}, i::Integer) where T = x.data[i]
 
 ##### Rebuild bad vector
 """

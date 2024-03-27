@@ -7,10 +7,11 @@
 
 export ricker_wavelet, get_computational_nt, calculate_dt, setup_grid, setup_3D_grid
 export convertToCell, limit_model_to_receiver_area, remove_out_of_bounds_receivers, extend_gradient
-export time_resample, remove_padding, subsample, process_input_data
+export remove_padding, subsample, process_input_data
 export generate_distribution, select_frequencies
 export devito_model, pad_sizes, pad_array
 export transducer, as_vec
+export Gardner
 
 """
     devito_model(model, options;dm=nothing)
@@ -373,8 +374,8 @@ function get_computational_nt(srcGeometry::Geometry{T}, recGeometry::Geometry{T}
     nt = Vector{Int64}(undef, nsrc)
     dtComp = calculate_dt(model; dt=dt)
     for j=1:nsrc
-        ntRec = length(0:dtComp:(dtComp*ceil(recGeometry.t[j]/dtComp)))
-        ntSrc = length(0:dtComp:(dtComp*ceil(srcGeometry.t[j]/dtComp)))
+        ntRec = length(0:dtComp:(dtComp*ceil(get_t(recGeometry, j)/dtComp)))
+        ntSrc = length(0:dtComp:(dtComp*ceil(get_t(srcGeometry, j)/dtComp)))
         nt[j] = max(ntRec, ntSrc)
     end
     return nt
@@ -395,7 +396,7 @@ function get_computational_nt(Geometry::Geometry{T}, model::AbstractModel; dt=no
     nt = Array{Integer}(undef, nsrc)
     dtComp = calculate_dt(model; dt=dt)
     for j=1:nsrc
-        nt[j] = length(0:dtComp:(dtComp*ceil(Geometry.t[j]/dtComp)))
+        nt[j] = length(0:dtComp:(dtComp*ceil(get_t(Geometry, j)/dtComp)))
     end
     return nt
 end
@@ -491,70 +492,6 @@ function setup_3D_grid(xrec::Vector{Any}, yrec::Vector{Any}, zrec::Vector{Any})
 end
 
 """
-    time_resample(data, geometry_in, dt_new)
-
-Resample the input data with sinc interpolation from the current time sampling (geometrty_in) to the
-new time sampling `dt_new`.
-
-Parameters
-* `data`: Data to be reampled. If data is a matrix, resamples each column.
-* `geometry_in`: Geometry on which `data` is defined.
-* `dt_new`: New time sampling rate to interpolate onto.
-"""
-time_resample(data::AbstractArray{T, N}, G_in::Geometry, dt_new::Real) where {T<:Real, N} = time_resample(data, G_in.dt[1], dt_new, G_in.t[1])
-
-"""
-    time_resample(data, dt_in, dt_new)
-
-Resample the input data with sinc interpolation from the current time sampling dt_in to the 
-new time sampling `dt_new`.
-
-Parameters
-* `data`: Data to be reampled. If data is a matrix, resamples each column.
-* `dt_in`: Time sampling of input
-* `dt_new`: New time sampling rate to interpolate onto.
-"""
-function time_resample(data::AbstractArray{T, N}, dt_in::T, dt_new::T, t::T) where {T<:Real, N}
-
-    if dt_new==dt_in
-        return data
-    elseif (dt_new % dt_in) == 0
-        rate = Int64(div(dt_new, dt_in))
-        return _time_resample(data, rate)
-    else
-        @juditime "Data time sinc-interpolation" begin
-            nt = size(data, 1)
-            timeAxis = StepRangeLen(0f0, T(dt_in), nt)
-            timeInterp = 0:dt_new:(dt_new*ceil(t/dt_new))
-            dataInterp = Float32.(SincInterpolation(data, timeAxis, timeInterp))
-        end
-        return dataInterp
-    end
-end
-
-time_resample(data::AbstractArray{T, N}, dt_in::Number, dt_new::Number, t::Number) where {T<:Real, N} = time_resample(data, T(dt_in), T(dt_new), T(t))
-
-
-"""
-    time_resample(data, dt_in, geometry_in)
-
-Resample the input data with sinc interpolation from the current time sampling (dt_in) to the
-new time sampling `geometry_out`.
-
-Parameters
-* `data`: Data to be reampled. If data is a matrix, resamples each column.
-* `geometry_out`: Geometry on which `data` is to be interpolated.
-* `dt_in`: Time sampling rate of the `data.`
-"""
-time_resample(data::AbstractArray{T, N}, dt_in::Real, G_out::Geometry{T}) where {T<:Real, N} = time_resample(data, dt_in, G_out.dt[1], G_out.t[1])
-
-_time_resample(data::Matrix{T}, rate::Integer) where T = data[1:rate:end, :]
-_time_resample(data::PermutedDimsArray{T, 2, (2, 1), (2, 1), Matrix{T}}, rate::Integer) where {T<:Real} = data.parent[:, 1:rate:end]'
-
-SincInterpolation(Y::Matrix{T}, S::StepRangeLen{T}, Up::StepRangeLen{T}) where T<:Real = sinc.( (Up .- S') ./ (S[2] - S[1]) ) * Y
-SincInterpolation(Y::PermutedDimsArray{T, 2, (2, 1), (2, 1), Matrix{T}}, S::StepRangeLen{T}, Up::StepRangeLen{T}) where T<:Real = (Y.parent * sinc.( (Up' .- S) ./ (S[2] - S[1]) ))'
-
-"""
     generate_distribution(x; src_no=1)
 
 Generates a probability distribution for the discrete input judiVector `x`.
@@ -568,9 +505,9 @@ function generate_distribution(x::judiVector{T, Matrix{T}}; src_no=1) where {T<:
 	# from spectrum of the input data
 
 	# sampling information
-	nt = x.geometry.nt[src_no]
-	dt = x.geometry.dt[src_no]
-	t = x.geometry.t[src_no]
+	nt = get_nt(x.geometry, src_no)
+	dt = get_dt(x.geometry, src_no)
+	t = get_t(x.geometry, src_no)
 
 	# frequencies
 	fs = 1/dt	# sampling rate
@@ -627,7 +564,7 @@ Parameters:
 function process_input_data(input::DenseArray{T}, geometry::Geometry{T}) where {T<:Real}
     # Input data is pure Julia array: assume fixed no.
     # of receivers and reshape into data cube nt x nrec x nsrc
-    nt = Int(geometry.nt[1])
+    nt = get_nt(geometry, 1)
     nrec = geometry.nrec[1]
     nsrc = length(geometry.xloc)
     data = reshape(input, nt, nrec, nsrc)
@@ -680,7 +617,7 @@ end
 Reshapes input vector into a 3D `nt x nrec x nsrc` Array.
 """
 function reshape(x::AbstractArray{T}, geometry::Geometry{T}) where {T<:Real}
-    nt = geometry.nt[1]
+    nt = get_nt(geometry, 1)
     nrec = geometry.nrec[1]
     nsrc = Int(length(x) / nt / nrec)
     return reshape(x, nt, nrec, nsrc)
@@ -741,8 +678,7 @@ function transducer(q::judiVector{T, AT}, d::Tuple, r::Number, theta) where {T<:
     yloc = Vector{Vector{T}}(undef, nsrc)
     zloc = Vector{Vector{T}}(undef, nsrc)
     data = Vector{Matrix{T}}(undef, nsrc)
-    t = q.geometry.t[1]
-    dt = q.geometry.dt[1]
+    t = q.geometry.taxis[1:1]
 
     for i=1:nsrc
         # Build the rotated array of dipole
@@ -758,16 +694,16 @@ function transducer(q::judiVector{T, AT}, d::Tuple, r::Number, theta) where {T<:
         data[i][:, 1:nsrc_loc] .= q.data[i]/nsrc_loc
         data[i][:, nsrc_loc+1:end] .= -q.data[i]/nsrc_loc
     end
-    return judiVector(Geometry(xloc, yloc, zloc; t=t, dt=dt), data)
+    return judiVector(GeometryIC{Float32}(xloc, yloc, zloc, t), data)
 end
 
 ########################################### Misc defaults
 # Vectorization of single variable (not defined in Julia)
-vec(x::Float64) = x;
-vec(x::Float32) = x;
-vec(x::Int64) = x;
-vec(x::Int32) = x;
-vec(::Nothing) = nothing
+Base.vec(x::Float64) = x;
+Base.vec(x::Float32) = x;
+Base.vec(x::Int64) = x;
+Base.vec(x::Int32) = x;
+Base.vec(::Nothing) = nothing
 
 """
     as_vec(x, ::Val{Bool})
@@ -779,6 +715,9 @@ as_vec(x::Ref, ::Val) = x[]
 as_vec(x::PhysicalParameter, ::Val{true}) = vec(x.data)
 as_vec(x::judiMultiSourceVector, ::Val{true}) = vec(x)
 
+as_src_list(x::Number, nsrc::Integer) = fill(x, nsrc)
+as_src_list(x::Vector{<:Number}, nsrc::Integer) = x
+as_src_list(::Nothing, nsrc::Integer) = fill(0, nsrc)
 
 ######### backward compat
 extend_gradient(model_full, model, array) = array
@@ -794,3 +733,13 @@ function filter_none(args::Tuple)
 end
 
 filter_none(x) = x
+
+
+function Gardner(vp::Array{T, N}; vwater=1.51) where {T<:Real, N}
+    rho = (T(0.31) .* (T(1e3) .* vp).^(T(0.25)))
+    # Make sure "water" is at 1
+    rho[vp .< vwater] .= 1
+    return rho
+end
+
+Gardner(vp::PhysicalParameter{T}; vwater=1.51) where T<:Real = PhysicalParameter(Gardner(vp.data; vwater=vwater), vp.n, vp.d, vp.o)

@@ -10,7 +10,7 @@ Flux.Random.seed!(2022)
 nsrc = 1
 dt = 1f0
 
-model, model0, dm = setup_model(tti, viscoacoustic, 4)
+model, model0, dm = setup_model(tti, viscoacoustic, 2)
 m, m0 = model.m.data, model0.m.data
 q, srcGeometry, recGeometry, f0 = setup_geom(model; nsrc=nsrc, dt=dt)
 
@@ -48,8 +48,11 @@ function loss(misfit, d_obs, q0, m0, F)
     return ϕ, g[q0], g[m0]
 end
 
-xsrc_index, zsrc_index = rand(1:model.n[1], nsrc), rand(1:model.n[2], nsrc)
+xsrc_index, zsrc_index = rand(30:model.n[1]-30, nsrc), rand(30:model.n[2]-30, nsrc)
 w = GenSimSourceMulti(xsrc_index, zsrc_index, nsrc, model.n);
+# Put the point source at the same location for easy comparison
+q.geometry.xloc[1] .= (xsrc_index[1] - 1) * model.d[1]
+q.geometry.zloc[1] .= (zsrc_index[1] - 1) * model.d[2]
 
 sinput = zip(["Point", "Extended"], [Ps, Pw], (q, w))
 #####################################################################################
@@ -61,7 +64,7 @@ ftol = sqrt(eps(1f0))
     A_inv0 = judiModeling(model0; options=opt)
     @testset "AD correctness check source type: $(stype)" for (stype, Pq, q) in sinput
         @timeit TIMEROUTPUT "$(stype) source AD, array=$(ra)" begin
-            printstyled("$(stype) source AD test ra: $(ra) \n", color=:red)
+            printstyled("$(stype) source AD test ra: $(ra) \n", color=:blue)
             # Linear operators
             q0 = perturb(q)
             # Operators
@@ -118,18 +121,18 @@ end
             # Data and source perturbation
             d, dq = F*q, q-q0
 
-            misf = ra ? [misfit_objective_2p] : [misfit_objective_1p, misfit_objective_2p]
+            misf = ra ? [(2, misfit_objective_2p)] : [(1, misfit_objective_1p), (2, misfit_objective_2p)]
             m00 = ra ? m0 : model0.m
             #####################################################################################
-            for (mi, misfit) in enumerate(misf)
-                printstyled("$(stype) source gradient test for $(mi) input operator\n"; color = :red)
+            for (mi, misfit) in misf
+                printstyled("$(stype) source gradient test for $(mi)-input operator\n"; color = :blue)
                 f0, gq, gm = loss(misfit, d, q0, m00, F)
                 # Gradient test for extended modeling: source
-                print("\nGradient test source $(stype) source, array=$(ra)\n")
+                printstyled("\nGradient test source $(stype) source, array=$(ra)\n"; color = :blue)
                 grad_test(x-> misfit(d, x, m00, F), q0, dq, gq)
     
                 # Gradient test for extended modeling: model
-                print("\nGradient test model $(stype) source, array=$(ra)\n")
+                printstyled("\nGradient test model $(stype) source, array=$(ra)\n"; color = :blue)
                 grad_test(x-> misfit(d, q0, x, F), m00, dm, gm)
             end
         end
@@ -139,19 +142,20 @@ end
 
 @testset "AD Gradient test Jacobian w.r.t q with $(nlayer) layers, tti $(tti), viscoacoustic $(viscoacoustic), freesurface $(fs)" begin
     @timeit TIMEROUTPUT "Jacobian gradient w.r.t source" begin
-        J = judiJacobian(judiModeling(model0, srcGeometry, recGeometry; options=Options(sum_padding=true)), q)
+        opt = Options(sum_padding=true, free_surface=fs)
+        J = judiJacobian(judiModeling(model0, srcGeometry, recGeometry; options=opt), q)
         q0 = judiVector(q.geometry, ricker_wavelet(srcGeometry.t[1], srcGeometry.dt[1], 0.0125f0))
         dq = q0 - q
         δd = J*dm
         rtm = J'*δd
         # derivative of J w.r.t to `q`
-        printstyled("Gradient J(q) w.r.t q\n"; color = :red)
+        printstyled("Gradient J(q) w.r.t q\n"; color = :blue)
         f0q, gm, gq = loss(misfit_objective_1p, δd, dm, q0, J)
         @test isa(gm, JUDI.LazyPropagation)
         @test isa(JUDI.eval_prop(gm), PhysicalParameter)
         grad_test(x-> misfit_objective_1p(δd, dm, x, J), q0, dq, gq)
 
-        printstyled("Gradient J'(q) w.r.t q\n"; color = :red)
+        printstyled("Gradient J'(q) w.r.t q\n"; color = :blue)
         f0qt, gd, gqt = loss(misfit_objective_1p, rtm, δd, q0, adjoint(J))
         @test isa(gd, JUDI.LazyPropagation)
         @test isa(JUDI.eval_prop(gd), judiVector)

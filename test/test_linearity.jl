@@ -138,7 +138,7 @@ end
 
 
 ####################### Extended source operators ##########################################
-if parsed_args["tti"]
+if tti
     ftol = 5f-4
 end
 

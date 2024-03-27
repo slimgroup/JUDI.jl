@@ -5,8 +5,15 @@ struct DevitoException <: Exception
     msg::String
 end
 
-pk = pyimport("pkg_resources")
 python = PyCall.pyprogramname
+
+try
+    pk = pyimport("pkg_resources")
+catch e
+    Cmd([python, "-m", "pip", "install", "--user", "setuptools"])
+    run(cmd)
+    pk = pyimport("pkg_resources")
+end
 
 ################## Devito ##################
 # pip command

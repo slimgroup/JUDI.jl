@@ -57,24 +57,6 @@ struct judiRHS{D} <: judiMultiSourceVector{D}
     d::judiVector
 end
 
-"""
-    LazyAdd
-        nsrc
-        A
-        B
-        sign
-
-Lazy addition of two RHS (currently only judiVector). The addition isn't evaluated to avoid
-large memory allocation but instead evaluates the addition (with sign `sign`) `A + sign * B`
-for a single source at propagation time.
-"""
-struct LazyAdd{D} <: judiMultiSourceVector{D}
-    nsrc::Integer
-    A
-    B
-    sign
-end
-
 
 ############################################################################################################################
 # Constructors
@@ -140,7 +122,6 @@ getindex(P::judiWavelet{D}, i) where D = judiWavelet{D}(P.m[i], P.n[i], P.wavele
 getindex(P::judiWavelet{D}, i::Integer) where D = judiWavelet{D}(P.m[i], P.n[i], P.wavelet[i:i], P.dt[i:i])
 getindex(rhs::judiRHS{D}, i::Integer) where D = judiRHS{D}(length(i), rhs.P[i], rhs.d[i])
 getindex(rhs::judiRHS{D}, i::RangeOrVec) where D = judiRHS{D}(length(i), rhs.P[i], rhs.d[i])
-getindex(la::LazyAdd{D}, i::RangeOrVec) where D = LazyAdd{D}(length(i), la.A[i], la.B[i], la.sign)
 
 # Backward compatible subsample
 subsample(P::judiNoopOperator{D}, i) where D = getindex(P, i)
@@ -235,22 +216,3 @@ _as_src(::judiNoopOperator, ::AbstractModel, q::judiMultiSourceVector) = q
 ############################################################################################################################
 ###### Evaluate lazy operation
 eval(rhs::judiRHS) = rhs.d
-
-function eval(ls::LazyAdd{D}) where D
-    aloc = eval(ls.A)
-    bloc = eval(ls.B)
-    ga = aloc.geometry
-    gb = bloc.geometry
-    @assert (ga.nt == gb.nt && ga.dt == gb.dt && ga.t == gb.t)
-    xloc = [vcat(ga.xloc[1], gb.xloc[1])]
-    yloc = [vcat(ga.yloc[1], gb.yloc[1])]
-    zloc = [vcat(ga.zloc[1], gb.zloc[1])]
-    geom = GeometryIC{D}(xloc, yloc, zloc, ga.dt, ga.nt, ga.t)
-    data = hcat(aloc.data[1], ls.sign*bloc.data[1])
-    judiVector{D, Matrix{D}}(1, geom, [data])
-end
-
-function make_src(ls::LazyAdd{D}) where D
-    q = eval(ls)
-    return q.geometry[1], q.data[1]
-end
