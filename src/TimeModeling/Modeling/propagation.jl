@@ -102,7 +102,7 @@ This is the main multi-source wrapper function for `fwi_objective` and `lsrtm_ob
 Computes the misifit and gradient (LSRTM if `lin` else FWI) for the given `q` source and `dobs` and
 perturbation `dm`.
 """
-function multi_src_fg!(G, model, q, dobs, dm; options=Options(), kw...)
+function multi_src_fg!(G, model, q, dobs, dm; options=Options(), ms_func=multi_src_fg, kw...)
     # Number of sources and init result
     nsrc = try q.nsrc catch; dobs.nsrc end
     pool = _worker_pool()
@@ -111,7 +111,7 @@ function multi_src_fg!(G, model, q, dobs, dm; options=Options(), kw...)
     arg_func = i -> (model, q[i], dobs[i], dm, options[i])
     kw_func = i -> Dict(:illum=> illum, Dict(k => kw_i(v, i) for (k, v) in kw)...)
     # Distribute source
-    res = run_and_reduce(multi_src_fg, pool, nsrc, arg_func; kw=kw_func)
+    res = run_and_reduce(ms_func, pool, nsrc, arg_func; kw=kw_func)
     f, g = update_illum(res, model, :adjoint_born)
     f, g = as_vec(res, Val(options.return_array))
     G .+= g

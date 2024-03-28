@@ -92,8 +92,8 @@ res = spg(objective_function, vec(m0), ProjBound, options)
 This example script can be run in parallel and requires roughly 220 MB of memory per source location. Execute the following code to generate figures of the initial model and the result, as well as the function values:
 
 ```julia
-figure(); imshow(sqrt.(1./adjoint(m0))); title("Initial model")
-figure(); imshow(sqrt.(1./adjoint(reshape(x, model0.n)))); title("FWI")
+figure(); imshow(sqrt.(1. /adjoint(m0))); title("Initial model")
+figure(); imshow(sqrt.(1. /adjoint(reshape(x, model0.n)))); title("FWI")
 figure(); plot(fvals); title("Function value")
 ```
 
