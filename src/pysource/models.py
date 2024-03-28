@@ -7,10 +7,12 @@ from devito import (Grid, Function, SubDomain, SubDimension, Eq, Inc,
 from devito.data.allocators import ExternalAllocator
 from devito.tools import as_tuple, memoized_func
 
+float32 = lambda m, M: np.float32
+
 try:
     from devitopro import *  # noqa
 except ImportError:
-    pass
+    Float16 = float32
 
 
 __all__ = ['Model']
@@ -229,12 +231,16 @@ class Model(object):
         if self._is_tti:
             epsilon = 1 if epsilon is None else 1 + 2 * epsilon
             delta = 1 if delta is None else 1 + 2 * delta
-            self.epsilon = self._gen_phys_param(epsilon, 'epsilon', space_order)
+            self.epsilon = self._gen_phys_param(epsilon, 'epsilon', space_order,
+                                                dtype=Float16)
             self.scale = np.sqrt(np.max(epsilon))
-            self.delta = self._gen_phys_param(delta, 'delta', space_order)
-            self.theta = self._gen_phys_param(theta, 'theta', space_order)
+            self.delta = self._gen_phys_param(delta, 'delta', space_order,
+                                              dtype=Float16)
+            self.theta = self._gen_phys_param(theta, 'theta', space_order,
+                                              dtype=Float16)
             if self.grid.dim == 3:
-                self.phi = self._gen_phys_param(phi, 'phi', space_order)
+                self.phi = self._gen_phys_param(phi, 'phi', space_order,
+                                                dtype=Float16)
 
         # Additional parameter fields for elastic
         if self._is_elastic:
@@ -291,13 +297,14 @@ class Model(object):
 
     @switchconfig(log_level='ERROR')
     def _gen_phys_param(self, field, name, space_order, is_param=False,
-                        default_value=0):
+                        default_value=0, dtype=float32):
         """
         Create symbolic object an initiliaze its data
         """
         if field is None:
             return default_value
         if isinstance(field, np.ndarray):
+            dtype = dtype(np.amin(field), np.amax(field))
             if field.shape == self.shape:
                 function = Function(name=name, grid=self.grid, space_order=space_order,
                                     parameter=is_param)

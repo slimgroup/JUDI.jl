@@ -8,8 +8,10 @@ from devito.tools import as_tuple
 
 try:
     import devitopro as dvp  # noqa
+    _coeffs = 'lsqr_drp'
 except ImportError:
     import devito as dvp  # noqa
+    _coeffs = 'taylor'
 
 
 def wavefield(model, space_order, save=False, nt=None, fw=True, name='', t_sub=1):
@@ -36,19 +38,24 @@ def wavefield(model, space_order, save=False, nt=None, fw=True, name='', t_sub=1
     save = False if t_sub > 1 else save
     if model.is_tti:
         u = TimeFunction(name="%s1" % name, grid=model.grid, time_order=2,
-                         space_order=space_order, save=None if not save else nt)
+                         space_order=space_order, save=None if not save else nt,
+                         coefficients=_coeffs)
         v = TimeFunction(name="%s2" % name, grid=model.grid, time_order=2,
-                         space_order=space_order, save=None if not save else nt)
+                         space_order=space_order, save=None if not save else nt,
+                         coefficients=_coeffs)
         return (u, v)
     elif model.is_elastic:
         v = VectorTimeFunction(name="v", grid=model.grid, time_order=1,
-                               space_order=space_order, save=None)
+                               space_order=space_order, save=None,
+                               coefficients=_coeffs)
         tau = TensorTimeFunction(name="tau", grid=model.grid, time_order=1,
-                                 space_order=space_order, save=None)
+                                 space_order=space_order, save=None,
+                                 coefficients=_coeffs)
         return (v, tau)
     else:
         return TimeFunction(name=name, grid=model.grid, time_order=2,
-                            space_order=space_order, save=None if not save else nt)
+                            space_order=space_order, save=None if not save else nt,
+                            coefficients=_coeffs)
 
 
 def forward_wavefield(model, space_order, save=True, nt=10, dft=False, t_sub=1, fw=True):
@@ -139,9 +146,9 @@ def wavefield_subsampled(model, u, nt, t_sub, space_order=8):
         return None
     wf_s = []
     for wf in as_tuple(u):
-        usave = TimeFunction(name='us_%s' % wf.name, grid=model.grid, time_order=2,
-                             space_order=space_order, time_dim=time_subsampled,
-                             save=nsave)
+        usave = dvp.TimeFunction(name='us_%s' % wf.name, grid=model.grid, time_order=2,
+                                 space_order=space_order, time_dim=time_subsampled,
+                                 save=nsave, coefficients=_coeffs)
         wf_s.append(usave)
     return wf_s
 

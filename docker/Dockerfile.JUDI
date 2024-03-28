@@ -1,6 +1,9 @@
 ARG JVER=1.7
 FROM mloubout/julia-base:$JVER
 
+# Update devito to latest
+RUN pip3 install --user --upgrade devito[extras,tests]
+
 # Update julia packages
 RUN julia -e 'using Pkg;Pkg.update()'
 
