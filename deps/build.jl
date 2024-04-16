@@ -7,12 +7,12 @@ end
 
 python = PyCall.pyprogramname
 
-try
-    pk = pyimport("pkg_resources")
+pk = try
+    pyimport("pkg_resources")
 catch e
     Cmd([python, "-m", "pip", "install", "--user", "setuptools"])
     run(cmd)
-    pk = pyimport("pkg_resources")
+    pyimport("pkg_resources")
 end
 
 ################## Devito ##################
