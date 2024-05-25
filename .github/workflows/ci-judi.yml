@@ -19,7 +19,6 @@ jobs:
     name: JUDI base on Julia ${{ matrix.version }} - ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     env:
-      DEVITO_ARCH: gcc-12
       DEVITO_LANGUAGE: "openmp"
       OMP_NUM_THREADS: 4
       GROUP: "JUDI"
@@ -54,6 +53,16 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: 3.9
+
+      - name: setup devito config
+        run: 
+          if [ "${{matrix.os}}" = "macos-latest" ]; then
+              echo "DEVITO_ARCH=clang" >> $GITHUB_ENV
+              echo "DEVITO_PLATFORM=m1" >> $GITHUB_ENV
+          else
+              echo "DEVITO_ARCH=gcc-12" >> $GITHUB_ENV
+              echo "DEVITO_PLATFORM=cpu64" >> $GITHUB_ENV        
+          fi
 
       - name: Set julia python
         run: |
