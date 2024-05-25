@@ -86,6 +86,9 @@ jobs:
       - name: setup devito config
         run: |
           if [ "${{matrix.os}}" = "macos-latest" ]; then
+              brew install llvm libomp
+              echo "/opt/homebrew/bin:/opt/homebrew/opt/llvm/bin" >> GITHUB_PATH
+              echo "LD_LIBRARY_PATH=/opt/homebrew/opt/llvm/lib" >> GITHUB_ENV
               echo "DEVITO_ARCH=clang" >> $GITHUB_ENV
               echo "DEVITO_PLATFORM=m1" >> $GITHUB_ENV
           else
