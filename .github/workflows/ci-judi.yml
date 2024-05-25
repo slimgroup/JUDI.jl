@@ -19,7 +19,7 @@ jobs:
     name: JUDI base on Julia ${{ matrix.version }} - ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     env:
-      DEVITO_ARCH: gcc
+      DEVITO_ARCH: gcc-12
       DEVITO_LANGUAGE: "openmp"
       OMP_NUM_THREADS: 4
       GROUP: "JUDI"

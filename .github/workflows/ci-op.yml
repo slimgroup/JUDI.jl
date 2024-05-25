@@ -19,8 +19,9 @@ jobs:
     name: ${{ matrix.op }} on Julia ${{ matrix.version }} - ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     env:
-      DEVITO_ARCH: gcc-11
+      DEVITO_ARCH: gcc-12
       DEVITO_LANGUAGE: "openmp"
+      DEVITO_PLATFORM: "cpu64"
       DEVITO_LOGGING: "INFO"
       OMP_NUM_THREADS: ${{ matrix.omp }}
       GROUP: ${{ matrix.op }}
