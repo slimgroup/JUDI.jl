@@ -19,7 +19,7 @@ jobs:
     name: JUDI base on Julia ${{ matrix.version }} - ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     env:
-      DEVITO_ARCH: gcc-9
+      DEVITO_ARCH: gcc
       DEVITO_LANGUAGE: "openmp"
       OMP_NUM_THREADS: 4
       GROUP: "JUDI"
@@ -49,10 +49,6 @@ jobs:
         with:
           version: ${{ matrix.version }}
           arch: x64
-
-      - name: Instal gcc
-        if: runner.os == 'macOS'
-        run: brew install gcc@9
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v4
