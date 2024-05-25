@@ -7,13 +7,9 @@ end
 
 python = PyCall.pyprogramname
 
-try
-    pk = pyimport("pkg_resources")
-catch e
-    Cmd([python, "-m", "pip", "install", "--user", "setuptools"])
-    run(cmd)
-    pk = pyimport("pkg_resources")
-end
+cmd = Cmd([python, "-m", "pip", "install", "--user", "setuptools==58.2.0"])
+run(cmd)
+pk = pyimport("pkg_resources")
 
 ################## Devito ##################
 # pip command
