@@ -55,7 +55,7 @@ jobs:
           python-version: 3.9
 
       - name: setup devito config
-        run: 
+        run: |
           if [ "${{matrix.os}}" = "macos-latest" ]; then
               echo "DEVITO_ARCH=clang" >> $GITHUB_ENV
               echo "DEVITO_PLATFORM=m1" >> $GITHUB_ENV
