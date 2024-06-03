@@ -63,7 +63,7 @@ jobs:
       - name: Set julia python
         run: |
           python3 -m pip install -U pip
-          python3 -m pip install matplotlib seiscm colorcet
+          python3 -m pip install "matplotlib<3.9" seiscm colorcet
           echo "PYTHON=$(which python3)" >> $GITHUB_ENV
           julia -e 'using Pkg;Pkg.add(["PyCall", "PyPlot", "SlimPlotting"])'
 

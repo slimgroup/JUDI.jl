@@ -102,7 +102,7 @@ def extended_rec(model, wavelet, v):
     return [Inc(ws, model.grid.time_dim.spacing * wf * wt)]
 
 
-def freesurface(model, eq, mfuncs=None):
+def freesurface(model, eq, mfuncs=None, fd_only=False):
     """
     Generate the stencil that mirrors the field as a free surface modeling for
     the acoustic wave equation
@@ -145,7 +145,8 @@ def freesurface(model, eq, mfuncs=None):
 
             dzmapper = {d: v.subs(mapper) for d, v in Dz.items()}
             fs_eq.append(p.func(lhs, rhs.subs(dzmapper), subdomain=fsdomain))
-            fs_eq.append(p.func(lhs._subs(z, 0), 0, subdomain=fsdomain))
+            if not fd_only:
+                fs_eq.append(p.func(lhs._subs(z, 0), 0, subdomain=fsdomain))
 
     return fs_eq
 

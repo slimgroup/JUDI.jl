@@ -19,6 +19,7 @@ jobs:
     name: ${{ matrix.op }} on Julia ${{ matrix.version }} - ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     env:
+      DEVITO_ARCH: gcc-11
       DEVITO_LANGUAGE: "openmp"
       DEVITO_LOGGING: "INFO"
       OMP_NUM_THREADS: ${{ matrix.omp }}
@@ -34,17 +35,17 @@ jobs:
         omp: [2]
   
         include:
-          - os: macos-latest
+          - os: macos-13
             version: '1.6'
             op: "ISO_OP"
             omp: 1
 
-          - os: macos-latest
+          - os: macos-13
             version: '1.8'
             op: "ISO_OP"
             omp: 1
 
-          - os: macos-latest
+          - os: macos-13
             version: '1.9'
             op: "ISO_OP"
             omp: 1
@@ -63,15 +64,6 @@ jobs:
       - name: Checkout JUDI
         uses: actions/checkout@v4
 
-      - name: Cache julia install
-        uses: actions/cache@v4
-        env:
-          cache-name: cache-julia-pkgs
-        with:
-          # julia is installed in ~/.julia
-          path: ~/.julia
-          key: ${{ matrix.os }}-${{ matrix.version }}-${{ env.cache-name }}
-
       - name: Setup julia
         uses: julia-actions/setup-julia@v1
         with:
@@ -82,19 +74,6 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: 3.9
-
-      - name: setup devito config
-        run: |
-          if [ "${{matrix.os}}" = "macos-latest" ]; then
-              brew install llvm libomp
-              echo "/opt/homebrew/bin:/opt/homebrew/opt/llvm/bin" >> GITHUB_PATH
-              echo "LD_LIBRARY_PATH=/opt/homebrew/opt/llvm/lib" >> GITHUB_ENV
-              echo "DEVITO_ARCH=clang" >> $GITHUB_ENV
-              echo "DEVITO_PLATFORM=m1" >> $GITHUB_ENV
-          else
-              echo "DEVITO_ARCH=gcc-12" >> $GITHUB_ENV
-              echo "DEVITO_PLATFORM=cpu64" >> $GITHUB_ENV        
-          fi
 
       - name: Set julia python
         run: |
