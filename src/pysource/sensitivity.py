@@ -46,7 +46,7 @@ def grad_expr(gradm, u, v, model, w=None, freq=None, dft_sub=None, ic="as"):
     if model.fs and ic in ["fwi", "isic"]:
         # Only need `fs` processing for isic for the spatial derivatives.
         eq_g = [Eq(gradm, gradm - expr, subdomain=model.grid.subdomains['nofsdomain'])]
-        eq_g += freesurface(model, eq_g, (*as_tuple(u), *as_tuple(v)))
+        eq_g += freesurface(model, eq_g, (*as_tuple(u), *as_tuple(v)), fd_only=True)
     else:
         eq_g = [Eq(gradm, gradm - expr)]
     return eq_g

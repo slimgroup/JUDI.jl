@@ -198,9 +198,9 @@ transpose(I::FrequencyFilter{T}) where T = I
 
 function tracefilt!(x, y, ypad, filter)
     n = length(y)
-    ypad[1:n-1] .= view(y, n:-1:2)
-    ypad[n:end] .= y
-    x .= filtfilt(filter, ypad)[n:end]
+    ypad[1:n] .= y
+    ypad[n:end] .= view(y, n:-1:1)
+    x .= filtfilt(filter, ypad)[1:n]
     nothing
 end
 
