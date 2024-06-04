@@ -121,6 +121,15 @@ function _maybe_pad_t0(qIn::Matrix{T}, qGeom::Geometry, dObserved::Matrix{T}, da
         pql = Int(div(get_t0(qGeom, 1) - ts, dt))
         pqr = Int(div(te - get_t(qGeom, 1), dt))
         qIn = vcat(zeros(T, pql, size(qIn, 2)), qIn, zeros(T, pqr, size(qIn, 2)))
+
+        # Pad in case of mismatch
+        leftover = size(qIn, 1) - size(dObserved, 1)
+        if leftover > 0
+            dObserved = vcat(dObserved, zeros(T, leftover, size(dObserved, 2)))
+        elseif leftover < 0
+            qIn = vcat(qIn, zeros(T, -leftover, size(qIn, 2)))
+        end
+        
     else
         throw(judiMultiSourceException("""
             Data and source have different
