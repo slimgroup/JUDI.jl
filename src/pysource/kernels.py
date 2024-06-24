@@ -60,10 +60,10 @@ def acoustic_kernel(model, u, fw=True, q=None):
     stencil = solve(wmr * u.dt2 + damp * udt - ulaplace - q, u_n)
 
     if 'nofsdomain' in model.grid.subdomains:
-        pde = [Eq(u_n, stencil, subdomain=model.grid.subdomains['nofsdomain'])]
+        pde = [Eq(u_n, stencil, subdomain=model.physical)]
         pde += freesurface(model, pde, (u,))
     else:
-        pde = [Eq(u_n, stencil)]
+        pde = [Eq(u_n, stencil, subdomain=model.physical)]
 
     return pde
 
@@ -169,12 +169,12 @@ def tti_kernel(model, u1, u2, fw=True, q=None):
         acout_ttir = Eq(u2_n, stencilr.subs(model.zero_thomsen))
         pdea = freesurface(model, (acout_ttip, acout_ttir), (u1, u2))
         # Standard PDE in subsurface
-        first_stencil = Eq(u1_n, stencilp, subdomain=model.grid.subdomains['nofsdomain'])
-        second_stencil = Eq(u2_n, stencilr, subdomain=model.grid.subdomains['nofsdomain'])
+        first_stencil = Eq(u1_n, stencilp, subdomain=model.physical)
+        second_stencil = Eq(u2_n, stencilr, subdomain=model.physical)
     else:
         pdea = []
-        first_stencil = Eq(u1_n, stencilp)
-        second_stencil = Eq(u2_n, stencilr)
+        first_stencil = Eq(u1_n, stencilp, subdomain=model.physical)
+        second_stencil = Eq(u2_n, stencilr, subdomain=model.physical)
 
     return [first_stencil, second_stencil] + pdea
 
@@ -219,7 +219,9 @@ def elastic_kernel(model, v, tau, fw=True, q=None):
 
     eq_tau = tau.dt - lam * diag(div(v.forward)) - mu * e
 
-    u_v = Eq(v.forward, model.damp * solve(eq_v, v.forward))
-    u_t = Eq(tau.forward, model.damp * solve(eq_tau, tau.forward))
+    u_v = Eq(v.forward, model.damp * solve(eq_v, v.forward),
+             subdomain=model.physical)
+    u_t = Eq(tau.forward, model.damp * solve(eq_tau, tau.forward),
+             subdomain=model.physical)
 
     return [u_v, u_t]

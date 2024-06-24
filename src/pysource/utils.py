@@ -2,11 +2,19 @@ try:
     from collections.abc import Iterable
 except ImportError:
     from collections import Iterable
+
+import os
 import numpy as np
 from sympy import sqrt
 
 from devito import configuration
+from devito.arch import Device
 from devito.tools import as_tuple
+
+try:
+    import devitopro as dvp
+except ImportError:
+    dvp = None
 
 
 # Weighting
@@ -86,7 +94,7 @@ def opt_op(model):
     model: Model
         Model structure to know if we are in a TTI model
     """
-    if configuration['platform'].name in ['nvidiaX', 'amdgpuX']:
+    if isinstance(configuration['platform'], Device):
         opts = {'openmp': True if configuration['language'] == 'openmp' else None,
                 'mpi': configuration['mpi']}
         mode = 'advanced'
@@ -138,3 +146,16 @@ def base_kwargs(dt):
         return {'dt': dt, 'deviceid': DEVICE["id"]}
     else:
         return {'dt': dt}
+
+
+def cleanup_wf(u):
+    """
+    Delete serialized snapshots
+    """
+    for ui in u:
+        try:
+            serialized = ui._parent._fnames
+            basedir = '/'.join(str(serialized[0]).split('/')[:-1])
+            os.system('rm -rf %s' % basedir)
+        except AttributeError:
+            continue

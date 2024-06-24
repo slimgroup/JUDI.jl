@@ -1,12 +1,17 @@
 import numpy as np
 from sympy import cos, sin
 
-from devito import Eq, grad
+from devito import Eq, grad, Function
 from devito.tools import as_tuple
 
 from fields import frequencies
 from fields_exprs import sub_time, freesurface
 from FD_utils import laplacian
+
+try:
+    import devitopro as dvp
+except ImportError:
+    dvp = None
 
 
 def func_name(freq=None, ic="as"):
@@ -45,10 +50,10 @@ def grad_expr(gradm, u, v, model, w=None, freq=None, dft_sub=None, ic="as"):
     expr = ic_func(u, v, model, freq=freq, factor=dft_sub, w=w)
     if model.fs and ic in ["fwi", "isic"]:
         # Only need `fs` processing for isic for the spatial derivatives.
-        eq_g = [Eq(gradm, gradm - expr, subdomain=model.grid.subdomains['nofsdomain'])]
-        eq_g += freesurface(model, eq_g, (*as_tuple(u), *as_tuple(v)), fd_only=True)
+        eq_g = [Eq(gradm, gradm - expr, subdomain=model.physical)]
+        # eq_g += freesurface(model, eq_g, (*u, *v), fd_only=True)
     else:
-        eq_g = [Eq(gradm, gradm - expr)]
+        eq_g = [Eq(gradm, gradm - expr, subdomain=model.physical)]
     return eq_g
 
 
@@ -223,7 +228,7 @@ def inner_grad(u, v):
     v: TimeFunction
         Second field
     """
-    return grad(u, shift=.5).dot(grad(v, shift=.5))
+    return grad(u).dot(grad(v))
 
 
 fwi_src = lambda *ar, **kw: isic_src(*ar, icsign=-1, **kw)

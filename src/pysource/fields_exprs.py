@@ -31,7 +31,7 @@ def save_subsampled(model, u, nt, t_sub, space_order=8):
         return []
     eq_save = []
     for (wfs, wf) in zip(wf_s, as_tuple(u)):
-        eq_save.append(Eq(wfs, wf))
+        eq_save.append(Eq(wfs, wf, subdomain=model.physical))
     return eq_save
 
 
@@ -117,7 +117,7 @@ def freesurface(model, eq, mfuncs=None, fd_only=False):
         List of functions to mirror (default=None). Mirrors all functions if not provided
     """
     fs_eq = []
-    fsdomain = model.grid.subdomains['fsdomain']
+    fsdomain = model.fsdomain
     zfs = model.grid.subdomains['fsdomain'].dimensions[-1]
     z = zfs.parent
 

@@ -4,7 +4,7 @@ from fields import (fourier_modes, wavefield, lr_src_fields, illumination,
                     wavefield_subsampled, norm_holder, frequencies, memory_field)
 from fields_exprs import extented_src
 from sensitivity import grad_expr
-from utils import weight_fun, opt_op, fields_kwargs, nfreq, base_kwargs
+from utils import weight_fun, opt_op, fields_kwargs, nfreq, base_kwargs, cleanup_wf
 from operators import forward_op, born_op, adjoint_born_op
 
 from devito import Operator, Function, Constant
@@ -68,6 +68,7 @@ def forward(model, src_coords, rcv_coords, wavelet, save=False,
                            wr, wrt, nv2, nvt2, f0q, I)
     kw.update(fields)
     kw.update(model.physical_params())
+    kw.update(model.abox(src, rcv, fw=fw))
 
     # SLS field
     if model.is_viscoacoustic:
@@ -133,6 +134,7 @@ def gradient(model, residual, rcv_coords, u, return_op=False, fw=True,
 
     kw.update(fields_kwargs(src, u, v, gradm, f0q, f, I))
     kw.update(model.physical_params())
+    kw.update(model.abox(src, None, fw=not fw))
 
     # SLS field
     if model.is_viscoacoustic:
@@ -143,6 +145,8 @@ def gradient(model, residual, rcv_coords, u, return_op=False, fw=True,
         return op, gradm, kw
 
     summary = op(**kw)
+
+    cleanup_wf(u)
 
     # Output
     return gradm, I, summary
@@ -181,6 +185,7 @@ def born(model, src_coords, rcv_coords, wavelet, save=False,
                                dft_sub=dft_sub, ws=ws, t_sub=t_sub, f0=f0, illum=illum)
 
         kw.update(fields_kwargs(rnl, I))
+        kw.update(model.abox(snl, rnl, fw=True))
 
         if return_op:
             return op, u, outrec, kw
@@ -209,6 +214,7 @@ def born(model, src_coords, rcv_coords, wavelet, save=False,
     # Update kwargs
     kw.update(fields_kwargs(u, ul, snl, rnl, rcvl, u_save, dft_m, fr, ws, wt, f0q, I))
     kw.update(model.physical_params(born=True))
+    kw.update(model.abox(snl, rnl, fw=True))
 
     # SLS field
     if model.is_viscoacoustic:
@@ -244,7 +250,7 @@ def forward_grad(model, src_coords, rcv_coords, wavelet, v,
     q = extented_src(model, ws, wavelet, q=q)
 
     # Set up PDE expression and rearrange
-    pde = wave_kernel(model, u, q=q, f0=f0)
+    pde = wave_kernel(model, u, q=q, f0=f0, )
 
     # Setup source and receiver
     rexpr = geom_expr(model, u, src_coords=src_coords, nt=nt,

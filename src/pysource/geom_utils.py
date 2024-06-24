@@ -56,6 +56,7 @@ def geom_expr(model, u, src_coords=None, rec_coords=None, wavelet=None, fw=True,
     dt = model.grid.time_dim.spacing
     geom_expr = []
     src, rcv = src_rec(model, u, src_coords, rec_coords, wavelet, nt)
+    model.__init_abox__(src, rcv, fw=fw)
     if src is not None:
         # Elastic inject into diagonal of stress
         if model.is_elastic:

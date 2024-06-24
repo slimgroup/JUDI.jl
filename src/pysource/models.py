@@ -1,5 +1,7 @@
 import numpy as np
 import warnings
+from functools import cached_property
+
 from sympy import finite_diff_weights as fd_w
 from devito import (Grid, Function, SubDomain, SubDimension, Eq, Inc,
                     Operator, mmin, mmax, initialize_function, switchconfig,
@@ -9,8 +11,33 @@ from devito.tools import as_tuple, memoized_func
 
 try:
     from devitopro import *  # noqa
+    from devitopro.subdomains import ABox
+    AboxBase = ABox
 except ImportError:
-    pass
+    ABox = None
+    AboxBase = object
+
+
+class ABoxSlowness(AboxBase):
+
+    def _1d_cmax(self, vp, eps):
+        cmaxs = []
+
+        if eps is not None:
+            assert vp.shape_allocated == eps.shape_allocated
+
+        for (di, d) in enumerate(vp.grid.dimensions):
+            rdim = tuple(i for (i, dl) in enumerate(vp.grid.dimensions) if dl is not d)
+
+            # Max over other dimensions, 1D array with the max in each plane
+            vpi = vp.data.min(axis=rdim)**(-.5)
+            # THomsen correction
+            if eps is not None:
+                epsi = eps.data.max(axis=rdim)
+                vpi._local[:] *= np.sqrt(1. + 2.*epsi._local[:])
+            cmaxs.append(vpi)
+
+        return cmaxs
 
 
 __all__ = ['Model']
@@ -169,16 +196,20 @@ class Model(object):
         Asymuth angle in radian.
     dt: Float
         User provided computational time-step
+    abox: Float
+        Whether to use the exapanding box, defaults to true
     """
     def __init__(self, origin, spacing, shape, space_order=8, nbl=40, dtype=np.float32,
                  m=None, epsilon=None, delta=None, theta=None, phi=None, rho=None,
-                 b=None, qp=None, lam=None, mu=None, dm=None, fs=False, **kwargs):
+                 b=None, qp=None, lam=None, mu=None, dm=None, fs=False, abox=True,
+                 **kwargs):
         # Setup devito grid
         self.shape = tuple(shape)
         self.nbl = int(nbl)
         self.origin = tuple([dtype(o) for o in origin])
         abc_type = "mask" if (qp is not None or mu is not None) else "damp"
         self.fs = fs
+        self._abox = abox
         # Origin of the computational domain with boundary to inject/interpolate
         # at the correct index
         origin_pml = [dtype(o - s*nbl) for o, s in zip(origin, spacing)]
@@ -277,6 +308,7 @@ class Model(object):
 
         if not kwargs.get('born', False):
             params.pop('dm', None)
+
         return params
 
     @property
@@ -288,6 +320,20 @@ class Model(object):
             except AttributeError:
                 pass
         return out
+
+    @property
+    def physical(self):
+        if self.fs:
+            return self.grid.subdomains['nofsdomain']
+        else:
+            return None
+
+    @property
+    def fsdomain(self):
+        if self.fs:
+            return self.grid.subdomains['fsdomain']
+        else:
+            return None
 
     @switchconfig(log_level='ERROR')
     def _gen_phys_param(self, field, name, space_order, is_param=False,
@@ -422,12 +468,12 @@ class Model(object):
         """
         # Elasic coefficient (see e.g )
         if self.is_elastic:
-            so = max(self._space_order // 2, 2)
+            so = max(self.space_order // 2, 2)
             coeffs = fd_w(1, range(-so, so), .5)
             c_fd = sum(np.abs(coeffs[-1][-1])) / 2
             return .9 * np.sqrt(self.dim) / self.dim / c_fd
         a1 = 4  # 2nd order in time
-        so = max(self._space_order // 2, 4)
+        so = max(self.space_order // 2, 4)
         coeffs = fd_w(2, range(-so, so), 0)[-1][-1]
         return .9 * np.sqrt(a1/float(self.grid.dim * sum(np.abs(coeffs))))
 
@@ -539,8 +585,21 @@ class Model(object):
         sp_map.update({self.grid.time_dim.spacing: self.critical_dt})
         return sp_map
 
+    def abox(self, src, rec, fw=True):
+        if ABox is None:
+            return {}
+        if not fw:
+            src, rec = rec, src
+        eps = getattr(self, 'epsilon', None)
+        abox = ABoxSlowness(src, rec, self.m, self.space_order, eps=eps)
+        if self.fs:
+            abox_phys = abox.intersection(self.physical)
+            return {abox_phys.name: abox_phys}
+        else:
+            return {'abox': abox}
 
-class EmptyModel(object):
+
+class EmptyModel():
     """
     An pseudo Model structure that does not contain any physical field
     but only the necessary information to create an operator.
@@ -553,6 +612,7 @@ class EmptyModel(object):
         self.is_elastic = elastic
         self.spacing = spacing
         self.fs = fs
+        self.space_order = space_order
         N = 2 * space_order + 1
         if fs:
             fsdomain = FSDomain(N)
@@ -607,3 +667,25 @@ class EmptyModel(object):
             except AttributeError:
                 pass
         return out
+
+    def __init_abox__(self, src, rec, fw=True):
+        if ABox is None:
+            return
+        eps = getattr(self, 'epsilon', None)
+        if not fw:
+            src, rec = rec, src
+        self._abox = ABoxSlowness(src, rec, self.m, self.space_order, eps=eps)
+
+    @cached_property
+    def physical(self):
+        phys = self.grid.subdomains['nofsdomain'] if self.fs else None
+        if ABox is None:
+            return phys
+        elif phys is not None:
+            return self._abox.intersection(phys)
+        else:
+            return self._abox
+
+    @cached_property
+    def fsdomain(self):
+        return self.grid.subdomains['fsdomain']
