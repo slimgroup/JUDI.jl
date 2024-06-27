@@ -104,8 +104,23 @@ ylabel(&quot;Depth (m)&quot;)
 title(&quot;LSRTM gradient with zero perturbation&quot;)
 display(fig)</code></pre><pre><code class="language-none">Error: UndefVarError: `imshow` not defined</code></pre><h1 id="TWRI"><a class="docs-heading-anchor" href="#TWRI">TWRI</a><a id="TWRI-1"></a><a class="docs-heading-anchor-permalink" href="#TWRI" title="Permalink"></a></h1><p>Finally, JUDI implements TWRI, an augmented method to tackle cycle skipping. Once again we provide a computationnally efficient wrapper function that returns the objective value and necessary gradients</p><pre><code class="language-julia">f, gm, gy = twri_objective(model0, q, dobs, nothing; options=opt, optionswri=TWRIOptions(params=:all))
 # With on-the-fly DFT, experimental
-f, gmf = twri_objective(model0, q, dobs, nothing; options=Options(frequencies=[[.009, .011], [.008, .012]]), optionswri=TWRIOptions(params=:m))</code></pre><pre><code class="language-none">(-2250.0947f0, PhysicalParameter{Float32, 2} of size (120, 100) with origin
- (0.0f0, 0.0f0) and spacing (10.0f0, 10.0f0))</code></pre><p>Plot gradients</p><pre><code class="language-julia">fig = figure()
+f, gmf = twri_objective(model0, q, dobs, nothing; options=Options(frequencies=[[.009, .011], [.008, .012]]), optionswri=TWRIOptions(params=:m))</code></pre><pre><code class="language-none">Error: MethodError: no method matching time_resample(::Matrix{Float64}, ::F
+loat32, ::GeometryIC{Float32})
+
+Closest candidates are:
+  time_resample(::AbstractArray{T, N}, ::Number, !Matched::Number, !Matched
+::Number) where {T&lt;:Real, N}
+   @ JUDI ~/work/JUDI.jl/JUDI.jl/src/TimeModeling/Utils/time_utilities.jl:4
+9
+  time_resample(::AbstractArray{T, N}, ::Real, !Matched::Geometry{T}) where
+ {T&lt;:Real, N}
+   @ JUDI ~/work/JUDI.jl/JUDI.jl/src/TimeModeling/Utils/time_utilities.jl:6
+4
+  time_resample(::AbstractArray{T, N}, ::Real, !Matched::Geometry{T}, !Matc
+hed::Geometry{T}) where {T&lt;:Real, N}
+   @ JUDI ~/work/JUDI.jl/JUDI.jl/src/TimeModeling/Utils/time_utilities.jl:6
+9
+  ...</code></pre><p>Plot gradients</p><pre><code class="language-julia">fig = figure()
 imshow(gm&#39;, vmin=-1, vmax=1, cmap=&quot;Greys&quot;, extent=[0, (n[1]-1)*d[1], (n[2]-1)*d[2], 0 ], aspect=&quot;auto&quot;)
 xlabel(&quot;Lateral position(m)&quot;)
 ylabel(&quot;Depth (m)&quot;)
@@ -117,4 +132,4 @@ imshow(gy.data[1], vmin=-1e2, vmax=1e2, cmap=&quot;PuOr&quot;, extent=[xrec[1], 
 xlabel(&quot;Receiver position (m)&quot;)
 ylabel(&quot;Time (s)&quot;)
 title(&quot;TWRI gradient w.r.t y&quot;)
-display(fig)</code></pre><pre><code class="language-none">Error: UndefVarError: `figure` not defined</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../imaging_conditions/">« Imaging conditions in JUDI</a><a class="docs-footer-nextpage" href="../../pysource/">Devito backend reference »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Monday 3 June 2024 16:40">Monday 3 June 2024</span>. Using Julia version 1.10.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+display(fig)</code></pre><pre><code class="language-none">Error: UndefVarError: `figure` not defined</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../imaging_conditions/">« Imaging conditions in JUDI</a><a class="docs-footer-nextpage" href="../../pysource/">Devito backend reference »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Thursday 27 June 2024 20:21">Thursday 27 June 2024</span>. Using Julia version 1.10.4.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
