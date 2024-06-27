@@ -31,7 +31,7 @@ def save_subsampled(model, u, nt, t_sub, space_order=8):
         return []
     eq_save = []
     for (wfs, wf) in zip(wf_s, as_tuple(u)):
-        eq_save.append(Eq(wfs, wf, subdomain=model.physical))
+        eq_save.append(Eq(wfs, wf))
     return eq_save
 
 
@@ -268,4 +268,6 @@ def illumexpr(u, illum):
         return []
     u0 = as_tuple(u)
     I = illumination(u, illum)
-    return [Inc(I, sum(u0)*sum(u0))]
+    expr = sum([ui**2 for ui in u0])
+    return [Inc(I, u0[0].grid.time_dim.spacing * expr)]
+

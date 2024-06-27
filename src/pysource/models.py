@@ -582,7 +582,7 @@ class Model(object):
         Map between spacing symbols and their values for each `SpaceDimension`.
         """
         sp_map = self.grid.spacing_map
-        sp_map.update({self.grid.time_dim.spacing: self.critical_dt})
+        #sp_map.update({self.grid.time_dim.spacing: self.critical_dt})
         return sp_map
 
     def abox(self, src, rec, fw=True):
@@ -591,12 +591,15 @@ class Model(object):
         if not fw:
             src, rec = rec, src
         eps = getattr(self, 'epsilon', None)
-        abox = ABoxSlowness(src, rec, self.m, self.space_order, eps=eps)
+        abox = ABoxSlowness(src, rec, self.m, self.space_order)
         if self.fs:
             abox_phys = abox.intersection(self.physical)
             return {abox_phys.name: abox_phys}
         else:
             return {'abox': abox}
+ 
+    def __init_abox__(self, src, rec, fw=True):
+        return
 
 
 class EmptyModel():
@@ -674,7 +677,7 @@ class EmptyModel():
         eps = getattr(self, 'epsilon', None)
         if not fw:
             src, rec = rec, src
-        self._abox = ABoxSlowness(src, rec, self.m, self.space_order, eps=eps)
+        self._abox = ABoxSlowness(src, rec, self.m, self.space_order)
 
     @cached_property
     def physical(self):

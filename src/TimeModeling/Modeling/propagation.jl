@@ -44,7 +44,9 @@ function run_and_reduce(func, ::Nothing, nsrc, arg_func::Function; kw=nothing)
             kw_loc = isnothing(kw) ? Dict() : kw(i)
             next = func(arg_func(i)...; kw_loc...)
         end
-        single_reduce!(out, next)
+	@juditime "Reducting $(func) for src $(i)" begin
+            single_reduce!(out, next)
+	end
     end
     out
 end

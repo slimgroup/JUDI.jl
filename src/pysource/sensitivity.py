@@ -50,7 +50,7 @@ def grad_expr(gradm, u, v, model, w=None, freq=None, dft_sub=None, ic="as"):
     expr = ic_func(u, v, model, freq=freq, factor=dft_sub, w=w)
     if model.fs and ic in ["fwi", "isic"]:
         # Only need `fs` processing for isic for the spatial derivatives.
-        eq_g = [Eq(gradm, gradm - expr, subdomain=model.physical)]
+        eq_g = [Eq(gradm, gradm - expr)] #, subdomain=model.physical)]
         # eq_g += freesurface(model, eq_g, (*u, *v), fd_only=True)
     else:
         eq_g = [Eq(gradm, gradm - expr, subdomain=model.physical)]
