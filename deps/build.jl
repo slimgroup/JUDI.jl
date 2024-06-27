@@ -21,8 +21,8 @@ cmd = Cmd([python, "-m", "pip", "install", "-U", "--user", "devito[extras,tests]
 
 try
     dv_ver = split(pk.get_distribution("devito").version, "+")[1]
-    if cmp(dv_ver, "4.4") < 0
-        @info "Devito  version too low, updating to >=4.4"
+    if cmp(dv_ver, "4.8.7") < 0
+        @info "Devito  version too low, updating to >=4.8.7"
         run(cmd)
     end
 catch e
