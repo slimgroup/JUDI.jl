@@ -270,4 +270,3 @@ def illumexpr(u, illum):
     I = illumination(u, illum)
     expr = sum([ui**2 for ui in u0])
     return [Inc(I, u0[0].grid.time_dim.spacing * expr)]
-
