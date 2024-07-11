@@ -44,9 +44,9 @@ function run_and_reduce(func, ::Nothing, nsrc, arg_func::Function; kw=nothing)
             kw_loc = isnothing(kw) ? Dict() : kw(i)
             next = func(arg_func(i)...; kw_loc...)
         end
-	@juditime "Reducting $(func) for src $(i)" begin
+        @juditime "Reducting $(func) for src $(i)" begin
             single_reduce!(out, next)
-	end
+        end
     end
     out
 end
@@ -114,7 +114,7 @@ function multi_src_fg!(G, model, q, dobs, dm; options=Options(), ms_func=multi_s
     kw_func = i -> Dict(:illum=> illum, Dict(k => kw_i(v, i) for (k, v) in kw)...)
     # Distribute source
     res = run_and_reduce(ms_func, pool, nsrc, arg_func; kw=kw_func)
-    f, g = update_illum(res, model, :adjoint_born)
+    res = update_illum(res, model, :adjoint_born)
     f, g = as_vec(res, Val(options.return_array))
     G .+= g
     return f

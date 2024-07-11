@@ -3,13 +3,15 @@ import numpy as np
 from devito import (TimeFunction, ConditionalDimension, Function,
                     DefaultDimension, Dimension, VectorTimeFunction,
                     TensorTimeFunction)
-from devito.data.allocators import ExternalAllocator
+from devito.builtins import initialize_function
 from devito.tools import as_tuple
 
 try:
     import devitopro as dvp  # noqa
 except ImportError:
     import devito as dvp  # noqa
+
+from utils import compression_mode
 
 
 def wavefield(model, space_order, save=False, nt=None, fw=True, name='', t_sub=1):
@@ -141,7 +143,7 @@ def wavefield_subsampled(model, u, nt, t_sub, space_order=8):
     for wf in as_tuple(u):
         usave = dvp.TimeFunction(name='us_%s' % wf.name, grid=model.grid, time_order=2,
                                  space_order=space_order, time_dim=time_subsampled,
-                                 save=nsave)
+                                 save=nsave, compression=compression_mode())
         wf_s.append(usave)
     return wf_s
 
@@ -174,9 +176,8 @@ def lr_src_fields(model, weight, wavelet, empty_w=False, rec=False):
     if empty_w:
         source_weight = Function(name='%s_weight' % wn, grid=model.grid, space_order=0)
     else:
-        source_weight = Function(name='%s_weight' % wn, grid=model.grid, space_order=0,
-                                 allocator=ExternalAllocator(weight),
-                                 initializer=lambda x: None)
+        source_weight = Function(name='%s_weight' % wn, grid=model.grid, space_order=0)
+        initialize_function(source_weight, weight, 0)
     return source_weight, wavelett
 
 

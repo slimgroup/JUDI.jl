@@ -9,10 +9,12 @@
 #' This example is converted to a markdown file for the documentation.
 
 #' # Import JUDI, Linear algebra utilities and Plotting
-using JUDI, PyPlot, LinearAlgebra
+using JUDI, PyPlot, LinearAlgebra, SlimPlotting
 
 #+ echo = false; results = "hidden"
 close("all")
+imcmap = "cet_CET_L1"
+dcmap = "PuOr"
 
 #' # Create a JUDI model structure
 #' In JUDI, a `Model` structure contains the grid information (origin, spacing, number of gridpoints)
@@ -91,7 +93,7 @@ q = judiVector(srcGeometry, wavelet)
 #' condition for the propagation.
 
 # Setup options
-opt = Options(subsampling_factor=2, space_order=32)
+opt = Options(subsampling_factor=2, space_order=16, free_surface=false)
 
 #' Linear Operators
 #' The core idea behind JUDI is to abstract seismic inverse problems in term of linear algebra. In its simplest form, seismic inversion can be formulated as
@@ -119,10 +121,7 @@ dobs = Pr*F*adjoint(Ps)*q
 
 #' Plot the shot record
 fig = figure()
-imshow(dobs.data[1], vmin=-1, vmax=1, cmap="PuOr", extent=[xrec[1], xrec[end], timeD/1000, 0], aspect="auto")
-xlabel("Receiver position (m)")
-ylabel("Time (s)")
-title("Synthetic data")
+plot_sdata(dobs[1]; new_fig=false, name="Synthetic data", cmap=dcmap)
 display(fig)
 
 #' Because we have abstracted the linear algebra, we can solve the adjoint wave-equation as well 
@@ -152,19 +151,13 @@ rtm = adjoint(J)*dD
 
 #' We show the linearized data.
 fig = figure()
-imshow(dD.data[1], vmin=-1, vmax=1, cmap="PuOr", extent=[xrec[1], xrec[end], timeD/1000, 0], aspect="auto")
-xlabel("Receiver position (m)")
-ylabel("Time (s)")
-title("Linearized data")
+plot_sdata(dobs[1]; new_fig=false, name="Linearized data", cmap=dcmap)
 display(fig)
 
 
 #' And the RTM image
 fig = figure()
-imshow(rtm', vmin=-1e2, vmax=1e2, cmap="Greys", extent=[0, (n[1]-1)*d[1], (n[2]-1)*d[2], 0 ], aspect="auto")
-xlabel("Lateral position(m)")
-ylabel("Depth (m)")
-title("RTM image")
+plot_simage(rtm'; new_fig=false, name="RTM image", cmap=imcmap)
 display(fig)
 
 #' ## Inversion utility functions
@@ -185,10 +178,7 @@ f, g = fwi_objective(model0, q, dobs; options=opt)
 
 #' Plot gradient
 fig = figure()
-imshow(g', vmin=-1e2, vmax=1e2, cmap="Greys", extent=[0, (n[1]-1)*d[1], (n[2]-1)*d[2], 0 ], aspect="auto")
-xlabel("Lateral position(m)")
-ylabel("Depth (m)")
-title("FWI gradient")
+plot_simage(g'; new_fig=false, name="FWI gradient", cmap=imcmap)
 display(fig)
 
 
@@ -199,17 +189,11 @@ fjn, gjn = lsrtm_objective(model0, q, dobs, dm; nlind=true, options=opt)
 
 #' Plot gradients
 fig = figure()
-imshow(gj', vmin=-1, vmax=1, cmap="Greys", extent=[0, (n[1]-1)*d[1], (n[2]-1)*d[2], 0 ], aspect="auto")
-xlabel("Lateral position(m)")
-ylabel("Depth (m)")
-title("LSRTM gradient")
+plot_simage(gj'; new_fig=false, name="LSRTM gradient", cmap=imcmap, cbar=true)
 display(fig)
 
 fig = figure()
-imshow(gjn', vmin=-1, vmax=1, cmap="Greys", extent=[0, (n[1]-1)*d[1], (n[2]-1)*d[2], 0 ], aspect="auto")
-xlabel("Lateral position(m)")
-ylabel("Depth (m)")
-title("LSRTM gradient with background data substracted")
+plot_simage(gjn'; new_fig=false, name="LSRTM gradient with background data substracted", cmap=imcmap, cbar=true)
 display(fig)
 
 #' By extension, lsrtm_objective is the same as fwi_objecive when `dm` is zero
@@ -218,13 +202,10 @@ display(fig)
 #' OMP_NUM_THREADS=1 (no parllelism) produces the exact (difference == 0) same result
 #' gjn2 == g
 fjn2, gjn2 = lsrtm_objective(model0, q, dobs, 0f0.*dm; nlind=true, options=opt)
-fig = figure()
 
 #' Plot gradient
-imshow(gjn2', vmin=-1e2, vmax=1e2, cmap="Greys", extent=[0, (n[1]-1)*d[1], (n[2]-1)*d[2], 0 ], aspect="auto")
-xlabel("Lateral position(m)")
-ylabel("Depth (m)")
-title("LSRTM gradient with zero perturbation")
+fig = figure()
+plot_simage(gjn2'; new_fig=false, name="LSRTM gradient with zero perturbation", cmap=imcmap)
 display(fig)
 
 
@@ -236,15 +217,9 @@ f, gmf = twri_objective(model0, q, dobs, nothing; options=Options(frequencies=[[
 
 #' Plot gradients
 fig = figure()
-imshow(gm', vmin=-1, vmax=1, cmap="Greys", extent=[0, (n[1]-1)*d[1], (n[2]-1)*d[2], 0 ], aspect="auto")
-xlabel("Lateral position(m)")
-ylabel("Depth (m)")
-title("TWRI gradient w.r.t m")
+plot_simage(gm'; new_fig=false, name="TWRI gradient w.r.t m", cmap=imcmap)
 display(fig)
 
 fig = figure()
-imshow(gy.data[1], vmin=-1e2, vmax=1e2, cmap="PuOr", extent=[xrec[1], xrec[end], timeD/1000, 0], aspect="auto")
-xlabel("Receiver position (m)")
-ylabel("Time (s)")
-title("TWRI gradient w.r.t y")
+plot_sdata(gy[1]; new_fig=false, name="TWRI gradient w.r.t y", cmap=dcmap)
 display(fig)

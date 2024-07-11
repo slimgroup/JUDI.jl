@@ -5,7 +5,7 @@ from devito import Eq, grad
 from devito.tools import as_tuple
 
 from fields import frequencies
-from fields_exprs import sub_time, freesurface
+from fields_exprs import sub_time
 from FD_utils import laplacian
 
 try:
@@ -48,12 +48,7 @@ def grad_expr(gradm, u, v, model, w=None, freq=None, dft_sub=None, ic="as"):
     ic_func = ic_dict[func_name(freq=freq, ic=ic)]
     u, v = as_tuple(u), as_tuple(v)
     expr = ic_func(u, v, model, freq=freq, factor=dft_sub, w=w)
-    if model.fs and ic in ["fwi", "isic"]:
-        # Only need `fs` processing for isic for the spatial derivatives.
-        eq_g = [Eq(gradm, gradm - expr, subdomain=model.physical)]
-        eq_g += freesurface(model, eq_g, (*u, *v), fd_only=True)
-    else:
-        eq_g = [Eq(gradm, gradm - expr, subdomain=model.physical)]
+    eq_g = [Eq(gradm, gradm - expr, subdomain=model.physical)]
     return eq_g
 
 

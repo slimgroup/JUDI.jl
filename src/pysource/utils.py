@@ -8,7 +8,7 @@ import numpy as np
 from sympy import sqrt
 
 from devito import configuration
-from devito.arch import Device
+from devito.arch import Device, NvidiaCompiler, CudaCompiler
 from devito.tools import as_tuple
 
 try:
@@ -159,3 +159,13 @@ def cleanup_wf(u):
             os.system('rm -rf %s' % basedir)
         except AttributeError:
             continue
+
+
+def compression_mode():
+    """
+    Check compiler used to see if can use bitcomp
+    """
+    if configuration['compiler'] in [NvidiaCompiler, CudaCompiler]:
+        return 'bitcomp'
+    else:
+        return 'noop'

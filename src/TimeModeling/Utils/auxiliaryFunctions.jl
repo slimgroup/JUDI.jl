@@ -26,8 +26,7 @@ Parameters
 function devito_model(model::MT, options::JUDIOptions, dm) where {MT<:AbstractModel}
     pad = pad_sizes(model, options)
     # Set up Python model structure
-    dm = pad_array(dm, pad)
-    physpar = Dict((n, isa(v, PhysicalParameter) ? pad_array(v.data, pad) : v) for (n, v) in _params(model))
+    physpar = Dict((n, isa(v, PhysicalParameter) ? v.data : v) for (n, v) in _params(model))
 
     modelPy = rlock_pycall(pm."Model", PyObject, origin(model), spacing(model), size(model), fs=options.free_surface,
                    nbl=nbl(model), space_order=options.space_order, dt=options.dt_comp, dm=dm;

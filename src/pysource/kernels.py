@@ -59,13 +59,13 @@ def acoustic_kernel(model, u, fw=True, q=None):
     damp = model.damp
     stencil = solve(wmr * u.dt2 + damp * udt - ulaplace - q, u_n)
 
-    if 'nofsdomain' in model.grid.subdomains:
-        pde = [Eq(u_n, stencil, subdomain=model.physical)]
-        pde += freesurface(model, pde, (u,))
+    pde = [Eq(u_n, stencil, subdomain=model.physical)]
+    if model.fs:
+        fseq = freesurface(model, u_n)
     else:
-        pde = [Eq(u_n, stencil, subdomain=model.physical)]
+        fseq = []
 
-    return pde
+    return pde, fseq
 
 
 def SLS_2nd_order(model, p, fw=True, q=None, f0=0.015):
@@ -130,7 +130,7 @@ def SLS_2nd_order(model, p, fw=True, q=None, f0=0.015):
 
         u_p = Eq(p.backward, solve(pde_p, p.backward))
 
-        return [u_r, u_p]
+        return [u_r, u_p], []
 
 
 def tti_kernel(model, u1, u2, fw=True, q=None):
@@ -163,20 +163,15 @@ def tti_kernel(model, u1, u2, fw=True, q=None):
     stencilp = solve(wmr * u1.dt2 + damp * udt1 - H0 - q[0], u1_n)
     stencilr = solve(wmr * u2.dt2 + damp * udt2 - H1 - q[1], u2_n)
 
-    if 'nofsdomain' in model.grid.subdomains:
-        # Water at free surface, no anisotrpy
-        acout_ttip = Eq(u1_n, stencilp.subs(model.zero_thomsen))
-        acout_ttir = Eq(u2_n, stencilr.subs(model.zero_thomsen))
-        pdea = freesurface(model, (acout_ttip, acout_ttir), (u1, u2))
-        # Standard PDE in subsurface
-        first_stencil = Eq(u1_n, stencilp, subdomain=model.physical)
-        second_stencil = Eq(u2_n, stencilr, subdomain=model.physical)
-    else:
-        pdea = []
-        first_stencil = Eq(u1_n, stencilp, subdomain=model.physical)
-        second_stencil = Eq(u2_n, stencilr, subdomain=model.physical)
+    first_stencil = Eq(u1_n, stencilp, subdomain=model.physical)
+    second_stencil = Eq(u2_n, stencilr, subdomain=model.physical)
 
-    return [first_stencil, second_stencil] + pdea
+    if model.fs:
+        fseq = freesurface(model, (u1_n, u2_n))
+    else:
+        fseq = []
+
+    return [first_stencil, second_stencil], fseq
 
 
 def elastic_kernel(model, v, tau, fw=True, q=None):
@@ -224,4 +219,9 @@ def elastic_kernel(model, v, tau, fw=True, q=None):
     u_t = Eq(tau.forward, model.damp * solve(eq_tau, tau.forward),
              subdomain=model.physical)
 
-    return [u_v, u_t]
+    if model.fs:
+        fseq = freesurface(model, tau.forward.diagonal())
+    else:
+        fseq = []
+
+    return [u_v, u_t], fseq

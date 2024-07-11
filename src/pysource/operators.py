@@ -112,7 +112,7 @@ def forward_op(p_params, tti, visco, elas, space_order, fw, spacing, save, t_sub
     wrec = extended_rec(model, wavelet if wr else None, u)
 
     # Set up PDE expression and rearrange
-    pde = wave_kernel(model, u, q=q, f0=Constant('f0'), fw=fw)
+    pde, extra = wave_kernel(model, u, q=q, f0=Constant('f0'), fw=fw)
 
     # On-the-fly Fourier
     dft = otf_dft(u, freq_list, model.grid.time_dim.spacing, factor=dft_sub)
@@ -126,7 +126,7 @@ def forward_op(p_params, tti, visco, elas, space_order, fw, spacing, save, t_sub
     # Create operator and run
     subs = model.spacing_map
     pname = "forward" if fw else "adjoint"
-    op = Operator(pde + wrec + nv_t + dft + g_expr + eq_save + nv_s + Ieq,
+    op = Operator(pde + wrec + nv_t + dft + g_expr + extra + eq_save + nv_s + Ieq,
                   subs=subs, name=pname+name(model),
                   opt=opt_op(model))
     op.cfunction
@@ -169,11 +169,11 @@ def born_op(p_params, tti, visco, elas, space_order, fw, spacing, save, pt_src,
     q = extented_src(model, wsrc, wavelet)
 
     # Set up PDE expression and rearrange
-    pde = wave_kernel(model, u, q=q, f0=f0, fw=fw)
+    pde, extra = wave_kernel(model, u, q=q, f0=f0, fw=fw)
     if getattr(model, 'dm', 0) == 0:
-        pdel = []
+        pdel, extral = [], []
     else:
-        pdel = wave_kernel(model, ul, q=lin_src(model, u, ic=ic), f0=f0, fw=fw)
+        pdel, extral = wave_kernel(model, ul, q=lin_src(model, u, ic=ic), f0=f0, fw=fw)
 
     # On-the-fly Fourier
     dft = otf_dft(u, freq_list, model.critical_dt, factor=dft_sub)
@@ -183,7 +183,7 @@ def born_op(p_params, tti, visco, elas, space_order, fw, spacing, save, pt_src,
 
     # Create operator and run
     subs = model.spacing_map
-    op = Operator(pde + g_expr + g_exprl + pdel + dft + eq_save + Ieq,
+    op = Operator(pde + g_expr + extra + g_exprl + pdel + extral + dft + eq_save + Ieq,
                   subs=subs, name="born"+name(model),
                   opt=opt_op(model))
     op.cfunction
@@ -214,7 +214,7 @@ def adjoint_born_op(p_params, tti, visco, elas, space_order, fw, spacing, pt_rec
     r_expr = geom_expr(model, v, src_coords=rcords, wavelet=residual, fw=not fw)
 
     # Set up PDE expression and rearrange
-    pde = wave_kernel(model, v, fw=False, f0=Constant('f0'))
+    pde, extra = wave_kernel(model, v, fw=False, f0=Constant('f0'))
 
     # Setup gradient wrt m
     gradm = Function(name="gradm", grid=model.grid)
@@ -226,7 +226,8 @@ def adjoint_born_op(p_params, tti, visco, elas, space_order, fw, spacing, pt_rec
 
     # Create operator and run
     subs = model.spacing_map
-    op = Operator(pde + r_expr + g_expr + Ieq, subs=subs, name="gradient"+name(model),
+    op = Operator(pde + r_expr + extra + g_expr + Ieq, subs=subs,
+                  name="gradient"+name(model),
                   opt=opt_op(model))
     try:
         op.cfunction

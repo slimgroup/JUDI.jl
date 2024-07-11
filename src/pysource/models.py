@@ -3,10 +3,9 @@ import warnings
 from functools import cached_property
 
 from sympy import finite_diff_weights as fd_w
-from devito import (Grid, Function, SubDomain, SubDimension, Eq, Inc,
-                    Operator, mmin, mmax, initialize_function, switchconfig,
-                    Abs, sqrt, sin, Constant)
-from devito.data.allocators import ExternalAllocator
+from devito import (Grid, Function, SubDimension, Eq, Inc, switchconfig,
+                    Operator, mmin, mmax, initialize_function,
+                    Abs, sqrt, sin, Constant, CustomDimension)
 from devito.tools import as_tuple, memoized_func
 
 try:
@@ -62,40 +61,6 @@ def getmax(f):
 
 
 _thomsen = [('epsilon', 1), ('delta', 1), ('theta', 0), ('phi', 0)]
-
-
-class PhysicalDomain(SubDomain):
-
-    name = 'nofsdomain'
-
-    def __init__(self, so, fs=False):
-        super(PhysicalDomain, self).__init__()
-        self.so = so
-        self.fs = fs
-
-    def define(self, dimensions):
-        map_d = {d: d for d in dimensions}
-        if self.fs:
-            map_d[dimensions[-1]] = ('middle', self.so, 0)
-        return map_d
-
-
-class FSDomain(SubDomain):
-
-    name = 'fsdomain'
-
-    def __init__(self, so):
-        super(FSDomain, self).__init__()
-        self.size = so
-
-    def define(self, dimensions):
-        """
-        Definition of the top part of the domain for wrapped indices FS
-        """
-        z = dimensions[-1]
-        map_d = {d: d for d in dimensions}
-        map_d.update({z: ('left', self.size)})
-        return map_d
 
 
 @memoized_func
@@ -215,17 +180,12 @@ class Model(object):
         origin_pml = [dtype(o - s*nbl) for o, s in zip(origin, spacing)]
         shape_pml = np.array(shape) + 2 * self.nbl
         if fs:
-            fsdomain = FSDomain(space_order + 1)
-            physdomain = PhysicalDomain(space_order + 1, fs=fs)
-            subdomains = (physdomain, fsdomain)
             origin_pml[-1] = origin[-1]
             shape_pml[-1] -= self.nbl
-        else:
-            subdomains = ()
         # Physical extent is calculated per cell, so shape - 1
         extent = tuple(np.array(spacing) * (shape_pml - 1))
         self.grid = Grid(extent=extent, shape=shape_pml, origin=tuple(origin_pml),
-                         dtype=dtype, subdomains=subdomains)
+                         dtype=dtype)
 
         # Absorbing boundary layer
         if self.nbl != 0:
@@ -321,20 +281,6 @@ class Model(object):
                 pass
         return out
 
-    @property
-    def physical(self):
-        if self.fs:
-            return self.grid.subdomains['nofsdomain']
-        else:
-            return None
-
-    @property
-    def fsdomain(self):
-        if self.fs:
-            return self.grid.subdomains['fsdomain']
-        else:
-            return None
-
     @switchconfig(log_level='ERROR')
     def _gen_phys_param(self, field, name, space_order, is_param=False,
                         default_value=0):
@@ -351,8 +297,8 @@ class Model(object):
             else:
                 # We take advantage of the external allocator
                 function = Function(name=name, grid=self.grid, space_order=space_order,
-                                    allocator=ExternalAllocator(field),
-                                    initializer=lambda x: None, parameter=is_param)
+                                    parameter=is_param)
+                function.data[:] = field
         else:
             function = Constant(name=name, value=np.amin(field))
         self._physical_parameters.append(name)
@@ -591,14 +537,24 @@ class Model(object):
             src, rec = rec, src
         eps = getattr(self, 'epsilon', None)
         abox = ABoxSlowness(src, rec, self.m, self.space_order, eps=eps)
-        if self.fs:
-            abox_phys = abox.intersection(self.physical)
-            return {abox_phys.name: abox_phys}
-        else:
-            return {'abox': abox}
+        return {'abox': abox}
 
     def __init_abox__(self, src, rec, fw=True):
         return
+
+    @cached_property
+    def physical(self):
+        if ABox is None:
+            return phys
+        else:
+            return self._abox
+
+    @cached_property
+    def fs_dim(self):
+        so = self.space_order // 2
+        return CustomDimension(name="zfs", symbolic_min=1,
+                               symbolic_max=so,
+                               symbolic_size=so)
 
 
 class EmptyModel():
@@ -616,15 +572,9 @@ class EmptyModel():
         self.fs = fs
         self.space_order = space_order
         N = 2 * space_order + 1
-        if fs:
-            fsdomain = FSDomain(N)
-            physdomain = PhysicalDomain(N, fs=fs)
-            subdomains = (physdomain, fsdomain)
-        else:
-            subdomains = ()
+
         self.grid = Grid(tuple([N]*len(spacing)),
-                         extent=[s*(N-1) for s in spacing],
-                         subdomains=subdomains)
+                         extent=[s*(N-1) for s in spacing])
         self.dimensions = self.grid.dimensions
 
         # Create the function for the physical parameters
@@ -680,14 +630,14 @@ class EmptyModel():
 
     @cached_property
     def physical(self):
-        phys = self.grid.subdomains['nofsdomain'] if self.fs else None
         if ABox is None:
             return phys
-        elif phys is not None:
-            return self._abox.intersection(phys)
         else:
             return self._abox
 
     @cached_property
-    def fsdomain(self):
-        return self.grid.subdomains['fsdomain']
+    def fs_dim(self):
+        so = self.space_order // 2
+        return CustomDimension(name="zfs", symbolic_min=1,
+                               symbolic_max=so,
+                               symbolic_size=so)
