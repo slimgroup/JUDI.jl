@@ -1,6 +1,10 @@
 from sympy import rot_axis2, rot_axis3
+from devito import TensorFunction, Differentiable, div, grad, cos, sin
 
-from devito import TensorFunction, Differentiable, div, grad
+
+trig_mapper = {cos.__sympy_class__: cos, sin.__sympy_class__: sin}
+r2 = lambda x: rot_axis2(x).applyfunc(lambda i: trig_mapper.get(i.func, i.func)(*i.args))
+r3 = lambda x: rot_axis3(x).applyfunc(lambda i: trig_mapper.get(i.func, i.func)(*i.args))
 
 
 def laplacian(v, irho):
@@ -27,22 +31,19 @@ def R_mat(model):
     """
     # Rotation matrix
     try:
-        Rt = rot_axis2(model.theta)
+        Rt = r2(model.theta)
     except AttributeError:
-        Rt = rot_axis2(0)
+        Rt = r2(0)
     if model.dim == 3:
         try:
-            Rt *= rot_axis3(model.phi)
+            Rt *= r3(model.phi)
         except AttributeError:
-            Rt *= rot_axis3(0)
+            Rt *= r3(0)
     else:
         Rt = Rt[[0, 2], [0, 2]]
-    R = TensorFunction(name="R", grid=model.grid, components=Rt, symmetric=False)
-    try:
-        R.name == "R"
-        return R
-    except AttributeError:
-        return Rt
+    # Rebuild sin/cos
+
+    return TensorFunction(name="R", grid=model.grid, components=Rt, symmetric=False)
 
 
 def thomsen_mat(model):

@@ -118,7 +118,6 @@ def SLS_2nd_order(model, p, fw=True, q=None, f0=0.015):
             b * r.forward - q + (1 - damp) * p.dt
         u_p = Eq(p.forward, solve(pde_p, p.forward))
 
-        return [u_r, u_p]
     else:
         # Attenuation Memory variable
         pde_r = r.dt.T + b * p + (1 / t_s) * r
@@ -130,7 +129,7 @@ def SLS_2nd_order(model, p, fw=True, q=None, f0=0.015):
 
         u_p = Eq(p.backward, solve(pde_p, p.backward))
 
-        return [u_r, u_p], []
+    return [u_r, u_p], []
 
 
 def tti_kernel(model, u1, u2, fw=True, q=None):

@@ -58,8 +58,9 @@ Adapted from `DistributedOperations.jl` (MIT license). Striped from custom types
 with different reduction functions.
 """
 function reduce!(futures::Vector{_TFuture})
+    isnothing(_worker_pool()) && return reduce_all_workers!(futures)
     # Number of parallel workers
-    nwork = length(_worker_pool())
+    nwork = length(workers())
     nf = length(futures)
     # Reduction batch. We want to avoid finished task to hang waiting for the
     # binary tree reduction to reach their index holding memory.

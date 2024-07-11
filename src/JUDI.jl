@@ -9,7 +9,6 @@ module JUDI
 export JUDIPATH, set_verbosity, ftp_data, get_serial, set_serial, set_parallel
 JUDIPATH = dirname(pathof(JUDI))
 
-
 # Only needed if extension not available (julia < 1.9)
 if !isdefined(Base, :get_extension)
     using Requires
@@ -102,7 +101,7 @@ function _worker_pool()
         return nothing
     end
     p = default_worker_pool()
-    pool = length(p) < 2 ? nothing : p
+    pool = length(workers()) < 2 ? nothing : p
     return pool
 end
 

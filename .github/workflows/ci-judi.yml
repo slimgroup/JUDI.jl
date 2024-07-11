@@ -48,6 +48,7 @@ jobs:
 
       - name: Set julia python
         run: |
+          echo "PYTHON=$(which python3)" >> $GITHUB_ENV
           PYTHON=$(which python3) julia -e 'using Pkg;Pkg.add("PyCall");Pkg.build("PyCall")'
 
       - name: Build JUDI
