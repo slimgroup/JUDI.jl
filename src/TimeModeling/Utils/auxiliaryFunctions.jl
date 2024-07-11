@@ -9,7 +9,7 @@ export ricker_wavelet, get_computational_nt, calculate_dt, setup_grid, setup_3D_
 export convertToCell, limit_model_to_receiver_area, remove_out_of_bounds_receivers, extend_gradient
 export remove_padding, subsample, process_input_data
 export generate_distribution, select_frequencies
-export devito_model, pad_sizes, pad_array
+export devito_model, pad_array
 export transducer, as_vec
 export Gardner
 
@@ -24,7 +24,6 @@ Parameters
 * `dm`: Squared slowness perturbation (optional), Array or PhysicalParameter.
 """
 function devito_model(model::MT, options::JUDIOptions, dm) where {MT<:AbstractModel}
-    pad = pad_sizes(model, options)
     # Set up Python model structure
     physpar = Dict((n, isa(v, PhysicalParameter) ? v.data : v) for (n, v) in _params(model))
 
@@ -38,31 +37,6 @@ end
 devito_model(model::AbstractModel, options::JUDIOptions, dm::PhysicalParameter) = devito_model(model, options, reshape(dm.data, size(model)))
 devito_model(model::AbstractModel, options::JUDIOptions, dm::Vector{T}) where T = devito_model(model, options, reshape(dm, size(model)))
 devito_model(model::AbstractModel, options::JUDIOptions) = devito_model(model, options, nothing)
-
-"""
-    pad_sizes(model, options; so=nothing)
-
-Computes ABC padding sizes according to the model's numbr of abc points and spatial order
-
-Parameters
-* `model`: JUDI or Python side Model.
-* `options`: JUDI Options structure.
-* `so`: Space order (optional) defaults to options.space_order.
-"""
-function pad_sizes(model::PyObject, options; so=nothing)
-    isnothing(so) && (so = options.space_order)
-    N = model.grid.dim
-    return tuple([(nbl + so, nbr + so) for (nbl, nbr)=model.padsizes]...)
-end
-
-function pad_sizes(model::AbstractModel{T, N}, options; so=nothing) where {T, N}
-    isnothing(so) && (so = options.space_order)
-    padsizes = [(nbl(model) + so, nbl(model) + so) for i=1:N]
-    if options.free_surface
-        padsizes[end] = (so, nbl(model) + so)
-    end
-    return tuple(padsizes...)
-end
 
 """
     pad_array(m, nb; mode=:border)

@@ -104,8 +104,6 @@ remove_out_of_bounds_receivers
 ```@docs
 devito_model
 setup_grid
-pad_sizes
-pad_array
 remove_padding
 convertToCell
 process_input_data

@@ -8,7 +8,8 @@ import numpy as np
 from sympy import sqrt
 
 from devito import configuration
-from devito.arch import Device, NvidiaCompiler, CudaCompiler
+from devito.arch import Device
+from devito.arch.compiler import NvidiaCompiler, CudaCompiler
 from devito.tools import as_tuple
 
 try:
@@ -152,7 +153,7 @@ def cleanup_wf(u):
     """
     Delete serialized snapshots
     """
-    for ui in u:
+    for ui in as_tuple(u):
         try:
             serialized = ui._parent._fnames
             basedir = '/'.join(str(serialized[0]).split('/')[:-1])

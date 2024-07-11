@@ -70,20 +70,21 @@ def damp_op(ndim, padsizes, abc_type, fs):
 
     Parameters
     ----------
-    padsize : List of tuple
+    ndim : int
+        Number of dimensions in the model.
+    padsizes : List of tuple
         Number of points in the damping layer for each dimension and side.
-    spacing :
-        Grid spacing coefficient.
-    mask : bool, optional
+    abc_type : mask or damp
         whether the dampening is a mask or layer.
         mask => 1 inside the domain and decreases in the layer
-        not mask => 0 inside the domain and increase in the layer
+        damp => 0 inside the domain and increase in the layer
+    fs: bool
+        Whether the model is with free surface or not
     """
     damp = Function(name="damp", grid=Grid(tuple([11]*ndim)), space_order=0)
     eqs = [Eq(damp, 1.0 if abc_type == "mask" else 0.0)]
     for (nbl, nbr), d in zip(padsizes, damp.dimensions):
         # 3 Point buffer to avoid weird interaction with abc
-        nbr = nbr - 3
         if not fs or d is not damp.dimensions[-1]:
             nbl = nbl - 3
             dampcoeff = 1.5 * np.log(1.0 / 0.001) / (nbl)
@@ -95,6 +96,7 @@ def damp_op(ndim, padsizes, abc_type, fs):
             val = -val if abc_type == "mask" else val
             eqs += [Inc(damp.subs({d: dim_l}), val/d.spacing)]
         # right
+        nbr = nbr - 3
         dampcoeff = 1.5 * np.log(1.0 / 0.001) / (nbr)
         dim_r = SubDimension.right(name='abc_%s_r' % d.name, parent=d,
                                    thickness=nbr)
@@ -205,6 +207,7 @@ class Model(object):
             self._m = self._gen_phys_param(m, 'm', space_order)
         # density
         self._init_density(rho, b, space_order)
+        # Perturbation for linearized modeling
         self._dm = self._gen_phys_param(dm, 'dm', space_order)
 
         # Model type
@@ -545,7 +548,7 @@ class Model(object):
     @cached_property
     def physical(self):
         if ABox is None:
-            return phys
+            return None
         else:
             return self._abox
 
@@ -631,7 +634,7 @@ class EmptyModel():
     @cached_property
     def physical(self):
         if ABox is None:
-            return phys
+            return None
         else:
             return self._abox
 

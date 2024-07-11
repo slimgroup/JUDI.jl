@@ -17,6 +17,16 @@ Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Requires = "ae029012-a4dd-5104-9daa-d747884805df"
 SegyIO = "157a0f19-4d44-4de5-a0d0-07e2f0ac4dfa"
 
+[weakdeps]
+Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
+JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
+Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
+
+[extensions]
+FluxJUDIExt = "Flux"
+JLD2JUDIExt = "JLD2"
+ZygoteJUDIExt = "Zygote"
+
 [compat]
 Aqua = "0.5"
 ChainRulesCore = "1"
@@ -32,11 +42,6 @@ SegyIO = "0.7.7 - 0.8.5"
 TimerOutputs = "0.5"
 julia = "1.6"
 
-[extensions]
-FluxJUDIExt = "Flux"
-JLD2JUDIExt = "JLD2"
-ZygoteJUDIExt = "Zygote"
-
 [extras]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
@@ -47,8 +52,3 @@ TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
 
 [targets]
 test = ["Aqua", "JLD2", "Printf", "Test", "TimerOutputs", "Flux"]
-
-[weakdeps]
-Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
-JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
-Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
