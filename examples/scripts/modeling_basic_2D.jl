@@ -9,7 +9,7 @@
 #' This example is converted to a markdown file for the documentation.
 
 #' # Import JUDI, Linear algebra utilities and Plotting
-using JUDI, LinearAlgebra, SlimPlotting, SegyIO, SlimOptim
+using JUDI, LinearAlgebra, SlimPlotting
 
 #+ echo = false; results = "hidden"
 close("all")

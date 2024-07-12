@@ -250,7 +250,7 @@ def forward_grad(model, src_coords, rcv_coords, wavelet, v,
     q = extented_src(model, ws, wavelet, q=q)
 
     # Set up PDE expression and rearrange
-    pde, extra = wave_kernel(model, u, q=q, f0=f0, )
+    pde, extra = wave_kernel(model, u, q=q, f0=f0)
 
     # Setup source and receiver
     rexpr = geom_expr(model, u, src_coords=src_coords, nt=nt,

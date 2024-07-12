@@ -3,6 +3,7 @@ from devito import TensorFunction, Differentiable, div, grad, cos, sin
 
 
 trig_mapper = {cos.__sympy_class__: cos, sin.__sympy_class__: sin}
+
 r2 = lambda x: rot_axis2(x).applyfunc(lambda i: trig_mapper.get(i.func, i.func)(*i.args))
 r3 = lambda x: rot_axis3(x).applyfunc(lambda i: trig_mapper.get(i.func, i.func)(*i.args))
 

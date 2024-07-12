@@ -132,21 +132,11 @@ def fields_kwargs(*args):
     return kw
 
 
-DEVICE = {"id": -1}  # noqa
-
-
-def set_device_ids(devid):
-    DEVICE["id"] = devid
-
-
 def base_kwargs(dt):
     """
     Most basic keyword arguments needed by the operator.
     """
-    if configuration['platform'].name == 'nvidiaX':
-        return {'dt': dt, 'deviceid': DEVICE["id"]}
-    else:
-        return {'dt': dt}
+    return {'dt': dt}
 
 
 def cleanup_wf(u):

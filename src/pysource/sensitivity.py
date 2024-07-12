@@ -223,7 +223,7 @@ def inner_grad(u, v):
     v: TimeFunction
         Second field
     """
-    return grad(u).dot(grad(v))
+    return grad(u, shift=.5).dot(grad(v, shift=.5))
 
 
 fwi_src = lambda *ar, **kw: isic_src(*ar, icsign=-1, **kw)

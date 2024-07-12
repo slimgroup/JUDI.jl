@@ -60,7 +60,7 @@ with different reduction functions.
 function reduce!(futures::Vector{_TFuture})
     isnothing(_worker_pool()) && return reduce_all_workers!(futures)
     # Number of parallel workers
-    nwork = length(workers())
+    nwork = nworkers(_worker_pool())
     nf = length(futures)
     # Reduction batch. We want to avoid finished task to hang waiting for the
     # binary tree reduction to reach their index holding memory.

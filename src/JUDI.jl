@@ -101,9 +101,11 @@ function _worker_pool()
         return nothing
     end
     p = default_worker_pool()
-    pool = length(workers()) < 2 ? nothing : p
+    pool = nworkers(p) < 2 ? nothing : p
     return pool
 end
+
+nworkers(::Any) = length(workers())
 
 _TFuture = Future
 _verbose = false

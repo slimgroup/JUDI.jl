@@ -5,12 +5,6 @@ struct DevitoException <: Exception
     msg::String
 end
 
-if PyCall.pyversion >=  VersionNumber("3.12.0")
-    install = ["install", "--user"]
-else
-    install = ["install"]
-end
-
 pk = try
     pyimport("pkg_resources")
 catch e

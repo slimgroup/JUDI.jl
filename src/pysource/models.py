@@ -4,8 +4,9 @@ from functools import cached_property
 
 from sympy import finite_diff_weights as fd_w
 from devito import (Grid, Function, SubDimension, Eq, Inc, switchconfig,
-                    Operator, mmin, mmax, initialize_function,
+                    Operator, mmin, mmax, initialize_function, MPI,
                     Abs, sqrt, sin, Constant, CustomDimension)
+
 from devito.tools import as_tuple, memoized_func
 
 try:
@@ -34,7 +35,18 @@ class ABoxSlowness(AboxBase):
             if eps is not None:
                 epsi = eps.data.max(axis=rdim)
                 vpi._local[:] *= np.sqrt(1. + 2.*epsi._local[:])
-            cmaxs.append(vpi)
+            # Gather on all ranks if distributed.
+            # Since we have a small-ish 1D vector we avoid the index gymnastic
+            # and create the full 1d vector on al ranks with the local values
+            # at the local indices and simply gather with Max
+            if vp.grid.distributor.is_parallel:
+                out = np.zeros(vp.grid.shape[di], dtype=vpi.dtype)
+                tmp = np.zeros(vp.grid.shape[di], dtype=vpi.dtype)
+                tmp[vp.local_indices[di]] = vpi._local
+                vp.grid.distributor.comm.Allreduce(tmp, out, op=MPI.MAX)
+                cmaxs.append(out)
+            else:
+                cmaxs.append(vpi)
 
         return cmaxs
 
