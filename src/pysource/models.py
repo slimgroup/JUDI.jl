@@ -180,7 +180,7 @@ class Model(object):
     """
     def __init__(self, origin, spacing, shape, space_order=8, nbl=40, dtype=np.float32,
                  m=None, epsilon=None, delta=None, theta=None, phi=None, rho=None,
-                 b=None, qp=None, lam=None, mu=None, dm=None, fs=False, abox=True,
+                 b=None, qp=None, lam=None, mu=None, dm=None, fs=False,
                  **kwargs):
         # Setup devito grid
         self.shape = tuple(shape)
@@ -188,7 +188,7 @@ class Model(object):
         self.origin = tuple([dtype(o) for o in origin])
         abc_type = "mask" if (qp is not None or mu is not None) else "damp"
         self.fs = fs
-        self._abox = abox
+        self._abox = None
         # Origin of the computational domain with boundary to inject/interpolate
         # at the correct index
         origin_pml = [dtype(o - s*nbl) for o, s in zip(origin, spacing)]
@@ -546,7 +546,7 @@ class Model(object):
         return sp_map
 
     def abox(self, src, rec, fw=True):
-        if ABox is None:
+        if ABox is None or (src is None and rec is None):
             return {}
         if not fw:
             src, rec = rec, src
@@ -637,6 +637,9 @@ class EmptyModel():
 
     def __init_abox__(self, src, rec, fw=True):
         if ABox is None:
+            return
+        if src is None and rec is None:
+            self._abox = None
             return
         eps = getattr(self, 'epsilon', None)
         if not fw:

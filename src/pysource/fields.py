@@ -2,7 +2,7 @@ import numpy as np
 
 from devito import (TimeFunction, ConditionalDimension, Function,
                     DefaultDimension, Dimension, VectorTimeFunction,
-                    TensorTimeFunction)
+                    TensorTimeFunction, Buffer)
 from devito.builtins import initialize_function
 from devito.tools import as_tuple
 
@@ -14,7 +14,8 @@ except ImportError:
 from utils import compression_mode
 
 
-def wavefield(model, space_order, save=False, nt=None, fw=True, name='', t_sub=1):
+def wavefield(model, space_order, save=False, nt=None, fw=True, name='', t_sub=1,
+              tfull=False):
     """
     Create the wavefield for the wave equation
 
@@ -33,24 +34,28 @@ def wavefield(model, space_order, save=False, nt=None, fw=True, name='', t_sub=1
         Forward or backward (for naming)
     name: string
         Custom name attached to default (u+name)
+    tfull: Bool
+        Whether need full buffer for e.g. second time derivative
     """
     name = "u"+name if fw else "v"+name
     save = False if t_sub > 1 else save
+    nsave = Buffer(3 if tfull else 2) if not save else nt
+
     if model.is_tti:
         u = TimeFunction(name="%s1" % name, grid=model.grid, time_order=2,
-                         space_order=space_order, save=None if not save else nt)
+                         space_order=space_order, save=nsave)
         v = TimeFunction(name="%s2" % name, grid=model.grid, time_order=2,
-                         space_order=space_order, save=None if not save else nt)
+                         space_order=space_order, save=nsave)
         return (u, v)
     elif model.is_elastic:
         v = VectorTimeFunction(name="v", grid=model.grid, time_order=1,
-                               space_order=space_order, save=None)
+                               space_order=space_order, save=Buffer(1))
         tau = TensorTimeFunction(name="tau", grid=model.grid, time_order=1,
-                                 space_order=space_order, save=None)
+                                 space_order=space_order, save=Buffer(1))
         return (v, tau)
     else:
         return TimeFunction(name=name, grid=model.grid, time_order=2,
-                            space_order=space_order, save=None if not save else nt)
+                            space_order=space_order, save=nsave)
 
 
 def forward_wavefield(model, space_order, save=True, nt=10, dft=False, t_sub=1, fw=True):
@@ -112,7 +117,7 @@ def memory_field(p):
         Forward wavefield
     """
     return TimeFunction(name='r%s' % p.name, grid=p.grid, time_order=2,
-                        space_order=p.space_order, save=None)
+                        space_order=p.space_order, save=Buffer(2))
 
 
 def wavefield_subsampled(model, u, nt, t_sub, space_order=8):
@@ -171,7 +176,8 @@ def lr_src_fields(model, weight, wavelet, empty_w=False, rec=False):
     time = model.grid.time_dim
     nt = wavelet.shape[0]
     wn = 'rec' if rec else 'src'
-    wavelett = Function(name='wf_%s' % wn, dimensions=(time,), shape=(nt,))
+    wavelett = TimeFunction(name='wf_%s' % wn, dimensions=(time,), time_dim=time,
+                            shape=(nt,), save=nt, grid=model.grid)
     wavelett.data[:] = np.array(wavelet)[:, 0]
     if empty_w:
         source_weight = Function(name='%s_weight' % wn, grid=model.grid, space_order=0)

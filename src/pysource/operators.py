@@ -154,7 +154,7 @@ def born_op(p_params, tti, visco, elas, space_order, fw, spacing, save, pt_src,
     f0 = Constant('f0')
 
     # Setting wavefield
-    u = wavefield(model, space_order, save=save, nt=nt, t_sub=t_sub, fw=fw)
+    u = wavefield(model, space_order, save=save, nt=nt, t_sub=t_sub, fw=fw, tfull=True)
     ul = wavefield(model, space_order, name="l", fw=fw)
 
     # Setup source and receiver
@@ -206,7 +206,7 @@ def adjoint_born_op(p_params, tti, visco, elas, space_order, fw, spacing, pt_rec
     freq_list = np.ones((nfreq,)) if nfreq > 0 else None
 
     # Setting adjoint wavefieldgradient
-    v = wavefield(model, space_order, fw=not fw)
+    v = wavefield(model, space_order, fw=not fw, tfull=True)
     u = forward_wavefield(model, space_order, save=save, nt=nt,
                           dft=nfreq > 0, t_sub=t_sub, fw=fw)
 

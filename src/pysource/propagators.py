@@ -104,7 +104,7 @@ def gradient(model, residual, rcv_coords, u, return_op=False, fw=True,
     # Space order
     space_order = model.space_order
     # Setting adjoint wavefieldgradient
-    v = wavefield(model, space_order, fw=not fw)
+    v = wavefield(model, space_order, fw=not fw, tfull=True)
     try:
         t_sub = as_tuple(u)[0].indices[0]._factor
         if isinstance(t_sub, Constant):
@@ -165,7 +165,7 @@ def born(model, src_coords, rcv_coords, wavelet, save=False,
     nt = wavelet.shape[0]
 
     # Wavefields
-    u = wavefield(model, space_order, save=save, nt=nt, t_sub=t_sub, fw=fw)
+    u = wavefield(model, space_order, save=save, nt=nt, t_sub=t_sub, fw=fw, tfull=True)
     ul = wavefield(model, space_order, name="l", fw=fw)
 
     # Illumination

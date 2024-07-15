@@ -143,7 +143,7 @@ def tti_kernel(model, u1, u2, fw=True, q=None):
     u1 : TimeFunction
         First component (pseudo-P) of the wavefield
     u2 : TimeFunction
-        First component (pseudo-P) of the wavefield
+        Second component (pseudo-S) of the wavefield
     fw: Bool
         Whether forward or backward in time propagation
     q : TimeFunction or Expr
@@ -190,8 +190,6 @@ def elastic_kernel(model, v, tau, fw=True, q=None):
     q : TimeFunction or Expr
         Full time-space source as a tuple (one value for each component)
     """
-    if 'nofsdomain' in model.grid.subdomains:
-        raise NotImplementedError("Free surface not supported for elastic modelling")
     if not fw:
         raise NotImplementedError("Only forward modeling for the elastic equation")
 
