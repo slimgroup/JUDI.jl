@@ -21,8 +21,6 @@ the pool is empty, a standard loop and accumulation is ran. If the pool is a jul
 any custom Distributed pool, the loop is distributed via `remotecall` followed by are binary tree remote reduction.
 """
 function run_and_reduce(func, pool, nsrc, arg_func::Function; kw=nothing)
-    # Allocate devices
-    _set_devices!()
     # Run distributed loop
     res = Vector{_TFuture}(undef, nsrc)
     for i = 1:nsrc
@@ -44,21 +42,11 @@ function run_and_reduce(func, ::Nothing, nsrc, arg_func::Function; kw=nothing)
             kw_loc = isnothing(kw) ? Dict() : kw(i)
             next = func(arg_func(i)...; kw_loc...)
         end
-        single_reduce!(out, next)
-    end
-    out
-end
-
-function _set_devices!()
-    ndevices = length(_devices)
-    if ndevices < 2
-        return
-    end
-    asyncmap(enumerate(workers())) do (pi, p)
-        remotecall_wait(p) do
-            pyut.set_device_ids(_devices[pi % ndevices + 1])
+        @juditime "Reducting $(func) for src $(i)" begin
+            single_reduce!(out, next)
         end
     end
+    out
 end
 
 _prop_fw(::judiPropagator{T, O}) where {T, O} = true 
@@ -112,7 +100,7 @@ function multi_src_fg!(G, model, q, dobs, dm; options=Options(), ms_func=multi_s
     kw_func = i -> Dict(:illum=> illum, Dict(k => kw_i(v, i) for (k, v) in kw)...)
     # Distribute source
     res = run_and_reduce(ms_func, pool, nsrc, arg_func; kw=kw_func)
-    f, g = update_illum(res, model, :adjoint_born)
+    res = update_illum(res, model, :adjoint_born)
     f, g = as_vec(res, Val(options.return_array))
     G .+= g
     return f

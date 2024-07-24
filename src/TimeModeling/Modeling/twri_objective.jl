@@ -71,7 +71,7 @@ function _twri_objective(model_full::AbstractModel, source::judiVector, dObs::ju
     dtComp = convert(Float32, modelPy."critical_dt")
 
     # Extrapolate input data to computational grid
-    qIn = time_resample(source.data[1], source.geometry, dtComp)
+    qIn = time_resample(make_input(source), source.geometry, dtComp)
     dObserved = time_resample(make_input(dObs), dObs.geometry, dtComp)
 
     if isnothing(y)

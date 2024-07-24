@@ -5,24 +5,22 @@ struct DevitoException <: Exception
     msg::String
 end
 
-python = PyCall.pyprogramname
-
-try
-    pk = pyimport("pkg_resources")
+pk = try
+    pyimport("pkg_resources")
 catch e
-    Cmd([python, "-m", "pip", "install", "--user", "setuptools"])
-    run(cmd)
-    pk = pyimport("pkg_resources")
+    run(PyCall.python_cmd(`-m pip install --user setuptools`))
+    pyimport("pkg_resources")
 end
 
 ################## Devito ##################
 # pip command
-cmd = Cmd([python, "-m", "pip", "install", "-U", "--user", "devito[extras,tests]>=4.4"])
+dvver = "4.8.10"
+cmd = PyCall.python_cmd(`-m pip install --user devito\[extras,tests\]\>\=$(dvver)`)
 
 try
-    dv_ver = split(pk.get_distribution("devito").version, "+")[1]
-    if cmp(dv_ver, "4.8.7") < 0
-        @info "Devito  version too low, updating to >=4.8.7"
+    dv_ver = VersionNumber(split(pk.get_distribution("devito").version, "+")[1])
+    if dv_ver < VersionNumber(dvver)
+        @info "Devito  version too low, updating to >=$(dvver)"
         run(cmd)
     end
 catch e
@@ -30,12 +28,9 @@ catch e
     run(cmd)
 end
 
-
 ################## Matplotlib ##################
-# pip command
-cmd = Cmd([python, "-m", "pip", "install", "--user", "matplotlib"])
 try
     mpl = pyimport("matplotlib")
 catch e
-    run(cmd)
+    run(PyCall.python_cmd(`-m pip install --user matplotlib`))
 end

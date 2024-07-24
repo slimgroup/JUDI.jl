@@ -1,16 +1,54 @@
 import numpy as np
 import warnings
+from functools import cached_property
+
 from sympy import finite_diff_weights as fd_w
-from devito import (Grid, Function, SubDomain, SubDimension, Eq, Inc,
-                    Operator, mmin, mmax, initialize_function, switchconfig,
-                    Abs, sqrt, sin, Constant)
-from devito.data.allocators import ExternalAllocator
+from devito import (Grid, Function, SubDimension, Eq, Inc, switchconfig,
+                    Operator, mmin, mmax, initialize_function, MPI,
+                    Abs, sqrt, sin, Constant, CustomDimension)
+
 from devito.tools import as_tuple, memoized_func
 
 try:
     from devitopro import *  # noqa
+    from devitopro.subdomains import ABox
+    AboxBase = ABox
 except ImportError:
-    pass
+    ABox = None
+    AboxBase = object
+
+
+class ABoxSlowness(AboxBase):
+
+    def _1d_cmax(self, vp, eps):
+        cmaxs = []
+
+        if eps is not None:
+            assert vp.shape_allocated == eps.shape_allocated
+
+        for (di, d) in enumerate(vp.grid.dimensions):
+            rdim = tuple(i for (i, dl) in enumerate(vp.grid.dimensions) if dl is not d)
+
+            # Max over other dimensions, 1D array with the max in each plane
+            vpi = vp.data.min(axis=rdim)**(-.5)
+            # THomsen correction
+            if eps is not None:
+                epsi = eps.data.max(axis=rdim)
+                vpi._local[:] *= np.sqrt(1. + 2.*epsi._local[:])
+            # Gather on all ranks if distributed.
+            # Since we have a small-ish 1D vector we avoid the index gymnastic
+            # and create the full 1d vector on al ranks with the local values
+            # at the local indices and simply gather with Max
+            if vp.grid.distributor.is_parallel:
+                out = np.zeros(vp.grid.shape[di], dtype=vpi.dtype)
+                tmp = np.zeros(vp.grid.shape[di], dtype=vpi.dtype)
+                tmp[vp.local_indices[di]] = vpi._local
+                vp.grid.distributor.comm.Allreduce(tmp, out, op=MPI.MAX)
+                cmaxs.append(out)
+            else:
+                cmaxs.append(vpi)
+
+        return cmaxs
 
 
 __all__ = ['Model']
@@ -37,40 +75,6 @@ def getmax(f):
 _thomsen = [('epsilon', 1), ('delta', 1), ('theta', 0), ('phi', 0)]
 
 
-class PhysicalDomain(SubDomain):
-
-    name = 'nofsdomain'
-
-    def __init__(self, so, fs=False):
-        super(PhysicalDomain, self).__init__()
-        self.so = so
-        self.fs = fs
-
-    def define(self, dimensions):
-        map_d = {d: d for d in dimensions}
-        if self.fs:
-            map_d[dimensions[-1]] = ('middle', self.so, 0)
-        return map_d
-
-
-class FSDomain(SubDomain):
-
-    name = 'fsdomain'
-
-    def __init__(self, so):
-        super(FSDomain, self).__init__()
-        self.size = so
-
-    def define(self, dimensions):
-        """
-        Definition of the top part of the domain for wrapped indices FS
-        """
-        z = dimensions[-1]
-        map_d = {d: d for d in dimensions}
-        map_d.update({z: ('left', self.size)})
-        return map_d
-
-
 @memoized_func
 def damp_op(ndim, padsizes, abc_type, fs):
     """
@@ -78,20 +82,21 @@ def damp_op(ndim, padsizes, abc_type, fs):
 
     Parameters
     ----------
-    padsize : List of tuple
+    ndim : int
+        Number of dimensions in the model.
+    padsizes : List of tuple
         Number of points in the damping layer for each dimension and side.
-    spacing :
-        Grid spacing coefficient.
-    mask : bool, optional
+    abc_type : mask or damp
         whether the dampening is a mask or layer.
         mask => 1 inside the domain and decreases in the layer
-        not mask => 0 inside the domain and increase in the layer
+        damp => 0 inside the domain and increase in the layer
+    fs: bool
+        Whether the model is with free surface or not
     """
     damp = Function(name="damp", grid=Grid(tuple([11]*ndim)), space_order=0)
     eqs = [Eq(damp, 1.0 if abc_type == "mask" else 0.0)]
     for (nbl, nbr), d in zip(padsizes, damp.dimensions):
         # 3 Point buffer to avoid weird interaction with abc
-        nbr = nbr - 3
         if not fs or d is not damp.dimensions[-1]:
             nbl = nbl - 3
             dampcoeff = 1.5 * np.log(1.0 / 0.001) / (nbl)
@@ -103,6 +108,7 @@ def damp_op(ndim, padsizes, abc_type, fs):
             val = -val if abc_type == "mask" else val
             eqs += [Inc(damp.subs({d: dim_l}), val/d.spacing)]
         # right
+        nbr = nbr - 3
         dampcoeff = 1.5 * np.log(1.0 / 0.001) / (nbr)
         dim_r = SubDimension.right(name='abc_%s_r' % d.name, parent=d,
                                    thickness=nbr)
@@ -169,32 +175,31 @@ class Model(object):
         Asymuth angle in radian.
     dt: Float
         User provided computational time-step
+    abox: Float
+        Whether to use the exapanding box, defaults to true
     """
     def __init__(self, origin, spacing, shape, space_order=8, nbl=40, dtype=np.float32,
                  m=None, epsilon=None, delta=None, theta=None, phi=None, rho=None,
-                 b=None, qp=None, lam=None, mu=None, dm=None, fs=False, **kwargs):
+                 b=None, qp=None, lam=None, mu=None, dm=None, fs=False,
+                 **kwargs):
         # Setup devito grid
         self.shape = tuple(shape)
         self.nbl = int(nbl)
         self.origin = tuple([dtype(o) for o in origin])
         abc_type = "mask" if (qp is not None or mu is not None) else "damp"
         self.fs = fs
+        self._abox = None
         # Origin of the computational domain with boundary to inject/interpolate
         # at the correct index
         origin_pml = [dtype(o - s*nbl) for o, s in zip(origin, spacing)]
         shape_pml = np.array(shape) + 2 * self.nbl
         if fs:
-            fsdomain = FSDomain(space_order + 1)
-            physdomain = PhysicalDomain(space_order + 1, fs=fs)
-            subdomains = (physdomain, fsdomain)
             origin_pml[-1] = origin[-1]
             shape_pml[-1] -= self.nbl
-        else:
-            subdomains = ()
         # Physical extent is calculated per cell, so shape - 1
         extent = tuple(np.array(spacing) * (shape_pml - 1))
         self.grid = Grid(extent=extent, shape=shape_pml, origin=tuple(origin_pml),
-                         dtype=dtype, subdomains=subdomains)
+                         dtype=dtype)
 
         # Absorbing boundary layer
         if self.nbl != 0:
@@ -214,6 +219,7 @@ class Model(object):
             self._m = self._gen_phys_param(m, 'm', space_order)
         # density
         self._init_density(rho, b, space_order)
+        # Perturbation for linearized modeling
         self._dm = self._gen_phys_param(dm, 'dm', space_order)
 
         # Model type
@@ -277,6 +283,7 @@ class Model(object):
 
         if not kwargs.get('born', False):
             params.pop('dm', None)
+
         return params
 
     @property
@@ -305,8 +312,8 @@ class Model(object):
             else:
                 # We take advantage of the external allocator
                 function = Function(name=name, grid=self.grid, space_order=space_order,
-                                    allocator=ExternalAllocator(field),
-                                    initializer=lambda x: None, parameter=is_param)
+                                    parameter=is_param)
+                function.data[:] = field
         else:
             function = Constant(name=name, value=np.amin(field))
         self._physical_parameters.append(name)
@@ -422,12 +429,12 @@ class Model(object):
         """
         # Elasic coefficient (see e.g )
         if self.is_elastic:
-            so = max(self._space_order // 2, 2)
+            so = max(self.space_order // 2, 2)
             coeffs = fd_w(1, range(-so, so), .5)
             c_fd = sum(np.abs(coeffs[-1][-1])) / 2
             return .9 * np.sqrt(self.dim) / self.dim / c_fd
         a1 = 4  # 2nd order in time
-        so = max(self._space_order // 2, 4)
+        so = max(self.space_order // 2, 4)
         coeffs = fd_w(2, range(-so, so), 0)[-1][-1]
         return .9 * np.sqrt(a1/float(self.grid.dim * sum(np.abs(coeffs))))
 
@@ -536,11 +543,36 @@ class Model(object):
         Map between spacing symbols and their values for each `SpaceDimension`.
         """
         sp_map = self.grid.spacing_map
-        sp_map.update({self.grid.time_dim.spacing: self.critical_dt})
         return sp_map
 
+    def abox(self, src, rec, fw=True):
+        if ABox is None or (src is None and rec is None):
+            return {}
+        if not fw:
+            src, rec = rec, src
+        eps = getattr(self, 'epsilon', None)
+        abox = ABoxSlowness(src, rec, self.m, self.space_order, eps=eps)
+        return {'abox': abox}
 
-class EmptyModel(object):
+    def __init_abox__(self, src, rec, fw=True):
+        return
+
+    @cached_property
+    def physical(self):
+        if ABox is None:
+            return None
+        else:
+            return self._abox
+
+    @cached_property
+    def fs_dim(self):
+        so = self.space_order // 2
+        return CustomDimension(name="zfs", symbolic_min=1,
+                               symbolic_max=so,
+                               symbolic_size=so)
+
+
+class EmptyModel():
     """
     An pseudo Model structure that does not contain any physical field
     but only the necessary information to create an operator.
@@ -553,16 +585,11 @@ class EmptyModel(object):
         self.is_elastic = elastic
         self.spacing = spacing
         self.fs = fs
+        self.space_order = space_order
         N = 2 * space_order + 1
-        if fs:
-            fsdomain = FSDomain(N)
-            physdomain = PhysicalDomain(N, fs=fs)
-            subdomains = (physdomain, fsdomain)
-        else:
-            subdomains = ()
+
         self.grid = Grid(tuple([N]*len(spacing)),
-                         extent=[s*(N-1) for s in spacing],
-                         subdomains=subdomains)
+                         extent=[s*(N-1) for s in spacing])
         self.dimensions = self.grid.dimensions
 
         # Create the function for the physical parameters
@@ -607,3 +634,28 @@ class EmptyModel(object):
             except AttributeError:
                 pass
         return out
+
+    def __init_abox__(self, src, rec, fw=True):
+        if ABox is None:
+            return
+        if src is None and rec is None:
+            self._abox = None
+            return
+        eps = getattr(self, 'epsilon', None)
+        if not fw:
+            src, rec = rec, src
+        self._abox = ABoxSlowness(src, rec, self.m, self.space_order, eps=eps)
+
+    @cached_property
+    def physical(self):
+        if ABox is None:
+            return None
+        else:
+            return self._abox
+
+    @cached_property
+    def fs_dim(self):
+        so = self.space_order // 2
+        return CustomDimension(name="zfs", symbolic_min=1,
+                               symbolic_max=so,
+                               symbolic_size=so)

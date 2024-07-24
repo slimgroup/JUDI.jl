@@ -466,6 +466,7 @@ def J_adjoint_standard(model, src_coords, wavelet, rec_coords, recin,
 
     if return_obj:
         return f, g.data, getattr(Iu, "data", None), getattr(Iv, "data", None)
+
     return g.data, getattr(Iu, "data", None), getattr(Iv, "data", None)
 
 
@@ -618,6 +619,7 @@ def wri_func(model, src_coords, wavelet, rec_coords, recin, yin,
             grady = c2 * recin - rcv.data[:]
             if norm_y != 0:
                 grady -= np.abs(eps) * ydat / norm_y
+            grady = grady.astype(model.dtype)
 
         # Correcting for reduced gradient
         if not grad_corr:

@@ -4,7 +4,7 @@
 #
 
 using Statistics, Random, LinearAlgebra
-using JUDI, SlimOptim, HDF5, SegyIO, PyPlot
+using JUDI, HDF5, SegyIO, SlimOptim, SlimPlotting
 
 # Load starting model
 n,d,o,m0 = read(h5open("$(JUDI.JUDI_DATA)/overthrust_model.h5","r"), "n", "d", "o", "m0")
@@ -66,4 +66,6 @@ for j=1:niterations
     model0.m .= proj(model0.m .+ step .* p)
 end
 
-figure(); imshow(sqrt.(1f0./adjoint(model0.m))); title("FWI with SGD")
+figure()
+plot_velocity(model0.m'.^(-.5))
+title("FWI with SGD")

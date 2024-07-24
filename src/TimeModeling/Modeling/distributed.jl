@@ -21,12 +21,6 @@ end
     x
 end
 
-"""
-    safe_gc()
-
-Generic GC, compatible with different julia versions of it.
-"""
-safe_gc() = try Base.GC.gc(); catch; gc() end
 
 """
     local_reduce!(future, other)
@@ -64,9 +58,28 @@ Adapted from `DistributedOperations.jl` (MIT license). Striped from custom types
 with different reduction functions.
 """
 function reduce!(futures::Vector{_TFuture})
+    isnothing(_worker_pool()) && return reduce_all_workers!(futures)
+    # Number of parallel workers
+    nwork = nworkers(_worker_pool())
+    nf = length(futures)
+    # Reduction batch. We want to avoid finished task to hang waiting for the
+    # binary tree reduction to reach their index holding memory.
+    bsize = min(nwork, nf)
+    # First batch
+    res = reduce_all_workers!(futures[1:bsize])
+    # Loop until all reduced
+    for i = bsize+1:bsize:nf
+        last = min(nf, i + bsize - 1)
+        single_reduce!(res, reduce_all_workers!(futures[i:last]))
+    end
+    return res
+end
+
+
+function reduce_all_workers!(futures::Vector{_TFuture})
     # Get length a next power of two for binary reduction
     M = length(futures)
-    L = round(Int,log2(prevpow(2,M)))
+    L = round(Int, log2(prevpow(2,M)))
     m = 2^L
     # remainder
     R = M - m

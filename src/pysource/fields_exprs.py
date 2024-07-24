@@ -1,8 +1,7 @@
 import numpy as np
 
-from devito import Inc, Eq, ConditionalDimension, cos, sin, sign
+from devito import Inc, Eq, ConditionalDimension, cos, sin
 from devito.tools import as_tuple
-from devito.symbolics import retrieve_functions, INT, retrieve_derivatives
 
 from fields import (wavefield_subsampled, lr_src_fields, fourier_modes, norm_holder,
                     illumination)
@@ -31,7 +30,7 @@ def save_subsampled(model, u, nt, t_sub, space_order=8):
         return []
     eq_save = []
     for (wfs, wf) in zip(wf_s, as_tuple(u)):
-        eq_save.append(Eq(wfs, wf))
+        eq_save.append(Eq(wfs, wf, subdomain=model.physical))
     return eq_save
 
 
@@ -102,7 +101,7 @@ def extended_rec(model, wavelet, v):
     return [Inc(ws, model.grid.time_dim.spacing * wf * wt)]
 
 
-def freesurface(model, eq, mfuncs=None, fd_only=False):
+def freesurface(model, fields):
     """
     Generate the stencil that mirrors the field as a free surface modeling for
     the acoustic wave equation
@@ -113,42 +112,20 @@ def freesurface(model, eq, mfuncs=None, fd_only=False):
         Physical model
     eq: Eq or List of Eq
         Equation to apply mirror to
-    mfuncs: List of Functions
-        List of functions to mirror (default=None). Mirrors all functions if not provided
     """
-    fs_eq = []
-    fsdomain = model.grid.subdomains['fsdomain']
-    zfs = model.grid.subdomains['fsdomain'].dimensions[-1]
-    z = zfs.parent
+    eqs = []
 
-    for eq_i in eq:
-        for p in eq_i._flatten:
-            # Add modulo replacements to to rhs
-            lhs, rhs = p.lhs, p.rhs
+    z = model.grid.dimensions[-1]
+    zfs = model.fs_dim
 
-            Dz = {d for d in retrieve_derivatives(rhs) if z in d.dims}
-            # Remove inner duplicate
-            Dz = Dz - {d for D in Dz for d in retrieve_derivatives(D.expr) if z in d.dims}
-            Dz = {d: d._eval_at(lhs).evaluate for d in Dz}
+    for u in as_tuple(fields):
+        if u == 0:
+            continue
 
-            funcs = {f for f in retrieve_functions(Dz.values())}
+        eqs.extend([Eq(u._subs(z, - zfs), - u._subs(z, zfs)),
+                    Eq(u._subs(z, 0), 0)])
 
-            if mfuncs:
-                funcs = {f for f in funcs if f.function in mfuncs}
-
-            mapper = {}
-            for f in funcs:
-                zind = f.indices[-1]
-                if (zind - z).as_coeff_Mul()[0] < 0:
-                    s = sign(zind._subs(z.spacing, 1))
-                    mapper.update({f: s * f._subs(zind, INT(abs(zind)))})
-
-            dzmapper = {d: v.subs(mapper) for d, v in Dz.items()}
-            fs_eq.append(p.func(lhs, rhs.subs(dzmapper), subdomain=fsdomain))
-            if not fd_only:
-                fs_eq.append(p.func(lhs._subs(z, 0), 0, subdomain=fsdomain))
-
-    return fs_eq
+    return eqs
 
 
 def otf_dft(u, freq, dt, factor=None):
@@ -268,4 +245,5 @@ def illumexpr(u, illum):
         return []
     u0 = as_tuple(u)
     I = illumination(u, illum)
-    return [Inc(I, sum(u0)*sum(u0))]
+    expr = sum([ui**2 for ui in u0])
+    return [Inc(I, u0[0].grid.time_dim.spacing * expr)]

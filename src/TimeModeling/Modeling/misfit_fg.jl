@@ -11,6 +11,7 @@ function _multi_src_fg(model_full::AbstractModel, source::Dtypes, dObs::Dtypes, 
                       data_precon=nothing, model_precon=LinearAlgebra.I)
     GC.gc(true)
     devito.clear_cache()
+
     # assert this is for single source LSRTM
     @assert source.nsrc == 1 "Multiple sources are used in a single-source fwi_objective"
     @assert dObs.nsrc == 1 "Multiple-source data is used in a single-source fwi_objective"    
@@ -63,6 +64,7 @@ function _multi_src_fg(model_full::AbstractModel, source::Dtypes, dObs::Dtypes, 
 
     length(options.frequencies) == 0 ? freqs = nothing : freqs = options.frequencies
     IT = illum ? (PyArray, PyArray) : (PyObject, PyObject)
+
     @juditime "Python call to J_adjoint" begin
         argout = rlock_pycall(ac."J_adjoint", Tuple{Float32, PyArray, IT...}, modelPy,
                 src_coords, qIn, rec_coords, dObserved, t_sub=options.subsampling_factor,

@@ -9,7 +9,6 @@ module JUDI
 export JUDIPATH, set_verbosity, ftp_data, get_serial, set_serial, set_parallel
 JUDIPATH = dirname(pathof(JUDI))
 
-
 # Only needed if extension not available (julia < 1.9)
 if !isdefined(Base, :get_extension)
     using Requires
@@ -102,9 +101,11 @@ function _worker_pool()
         return nothing
     end
     p = default_worker_pool()
-    pool = length(p) < 2 ? nothing : p
+    pool = nworkers(p) < 2 ? nothing : p
     return pool
 end
+
+nworkers(::Any) = length(workers())
 
 _TFuture = Future
 _verbose = false
@@ -178,9 +179,6 @@ function __init__()
     copy!(devito, pyimport("devito"))
     # Initialize lock at session start
     PYLOCK[] = ReentrantLock()
-    
-    # Prevent autopadding to use external allocator
-    set_devito_config("autopadding", false)
 
     # Make sure there is no conflict for the cuda init thread with CUDA.jl
     if get(ENV, "DEVITO_PLATFORM", "") == "nvidiaX"
