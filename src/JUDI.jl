@@ -206,6 +206,12 @@ function __init__()
             @info "Flux compat enabled"
             include("../ext/FluxJUDIExt.jl")
         end
+
+        # Additional Flux compat if in use
+        @require CUDA="052768ef-5323-5732-b1bb-66c8b64840ba" begin
+            @info "CUDA compat enabled"
+            include("../ext/CUDAJUDIExt.jl")
+        end
     end
 
 end
