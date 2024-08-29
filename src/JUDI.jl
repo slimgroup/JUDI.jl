@@ -57,99 +57,25 @@ import PyCall.NpyArray
 import ChainRulesCore: rrule
 
 # Set python paths
-export devito, set_devito_config
+export devito
+
 const pm = PyNULL()
 const ac = PyNULL()
 const pyut = PyNULL()
 const devito = PyNULL()
 
-set_devito_config(key::String, val::String) = set!(devito."configuration", key, val)
-set_devito_config(key::String, val::Bool) = set!(devito."configuration", key, val)
-
-# Create a lock for pycall FOR THREAD/TASK SAFETY
-# See discussion at
-# https://github.com/JuliaPy/PyCall.jl/issues/882
-
-const PYLOCK = Ref{ReentrantLock}()
-
-# acquire the lock before any code calls Python
-pylock(f::Function) = Base.lock(PYLOCK[]) do
-    prev_gc = GC.enable(false)
-    try 
-        return f()
-    finally
-        GC.enable(prev_gc) # recover previous state
-    end
-end
-
-function rlock_pycall(meth, ::Type{T}, args...; kw...) where T
-    out::T = pylock() do
-        pycall(meth, T, args...; kw...)
-    end
-    return out
-end
-
 # Constants
-_serial = false
-get_serial() = _serial
-set_serial(x::Bool) = begin global _serial = x; end
-set_serial() = begin global _serial = true; end
-set_parallel() = begin global _serial = false; end
-
-function _worker_pool()
-    if _serial
-        return nothing
-    end
-    p = default_worker_pool()
-    pool = nworkers(p) < 2 ? nothing : p
-    return pool
-end
-
 nworkers(::Any) = length(workers())
 
 _TFuture = Future
 _verbose = false
 _devices = []
 
-# Utility for data loading
-JUDI_DATA = joinpath(JUDIPATH, "../data")
-ftp_data(ftp::String, name::String) = Base.Downloads().download("$(ftp)/$(name)", "$(JUDI.JUDI_DATA)/$(name)")
-ftp_data(ftp::String) = Base.Downloads().download(ftp, "$(JUDI.JUDI_DATA)/$(split(ftp, "/")[end])")
-
 # Some usefull types
 const RangeOrVec = Union{AbstractRange, Vector}
 
-set_verbosity(x::Bool) = begin global _verbose = x; end
-judilog(msg) = _verbose ? printstyled("JUDI: $(msg) \n", color=:magenta) : nothing
-
-function human_readable_time(t::Float64, decimals=2)
-    units = ["ns", "μs", "ms", "s", "min", "hour"]
-    scales = [1e-9, 1e-6, 1e-3, 1, 60, 3600]
-    if t < 1e-9
-        tr = round(t/1e-9; sigdigits=decimals)
-        return "$(tr) ns"
-    end
-
-    for i=2:6
-        if t < scales[i]
-            tr = round(t/scales[i-1]; sigdigits=decimals)
-            return "$(tr) $(units[i-1])"
-        end
-    end
-    tr1 = div(t, 3600)
-    tr2 = round(Int, rem(t, 3600))
-    return "$(tr1) h $(tr2) min"
-end 
-
-
-macro juditime(msg, ex)
-    return quote
-       local t
-       t = @elapsed $(esc(ex))
-       tr = human_readable_time(t)
-       judilog($(esc(msg))*": $(tr)")
-    end
-end
+# Utils
+include("utilities.jl")
 
 # JUDI time modeling
 include("TimeModeling/TimeModeling.jl")
@@ -169,6 +95,7 @@ include("compat.jl")
 
 # Automatic Differentiation
 include("rrules.jl")
+
 
 # Initialize
 function __init__()
