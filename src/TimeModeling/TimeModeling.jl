@@ -9,6 +9,8 @@ include("LinearOperators/basics.jl")
 
 #############################################################################
 # Containers
+const Pdtypes = Union{Float32, Float16}
+
 include("Types/ModelStructure.jl")    # model container
 include("Types/GeometryStructure.jl") # source or receiver setup, recording time and sampling
 include("Types/OptionsStructure.jl")

@@ -4,6 +4,12 @@ from devito.tools import as_tuple
 
 from sources import *
 
+try:
+    from recipes.utils import mirror_source
+except ImportError:
+    def mirror_source(src):
+        return src
+
 
 def src_rec(model, u, src_coords=None, rec_coords=None, wavelet=None, nt=None):
     nt = nt or wavelet.shape[0]
@@ -14,12 +20,12 @@ def src_rec(model, u, src_coords=None, rec_coords=None, wavelet=None, nt=None):
             src = wavelet
         else:
             src = PointSource(name="src%s" % namef, grid=model.grid, ntime=nt,
-                              coordinates=src_coords)
+                              coordinates=src_coords, interpolation='sinc', r=3)
             src.data[:] = wavelet.view(np.ndarray) if wavelet is not None else 0.
     rcv = None
     if rec_coords is not None:
         rcv = Receiver(name="rcv%s" % namef, grid=model.grid, ntime=nt,
-                       coordinates=rec_coords)
+                       coordinates=rec_coords, interpolation='sinc', r=3)
     return src, rcv
 
 
@@ -67,7 +73,11 @@ def geom_expr(model, u, src_coords=None, rec_coords=None, wavelet=None, fw=True,
         else:
             # Acoustic inject into pressure
             u_n = as_tuple(u)[0].forward if fw else as_tuple(u)[0].backward
-            geom_expr += src.inject(field=u_n, expr=src*dt**2/m)
+            src_eq = src.inject(field=u_n, expr=src*dt**2/m)
+            if model.fs:
+                # Free surface
+                src_eq = mirror_source(model, src_eq)
+            geom_expr += src_eq
     # Setup adjoint wavefield sampling at source locations
     if rcv is not None:
         if model.is_elastic:
