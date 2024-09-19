@@ -174,7 +174,7 @@ adjoint(L::LazyScal) = LazyScal(L.s, adjoint(L.P))
 *(F::judiPropagator{T, O}, q::judiMultiSourceVector{T}) where {T<:Number, O} = multi_src_propagate(F, q)
 *(F::judiPropagator{T, O}, q::AbstractVector{T}) where {T<:Number, O} = multi_src_propagate(F, q)
 *(F::judiPropagator{T, O}, q::DenseArray{T}) where {T<:Number, O} = multi_src_propagate(F, q)
-*(F::judiAbstractJacobian{T, O, FT}, q::dmType{T}) where {T<:Number, O, FT} = multi_src_propagate(F, q)
+*(F::judiAbstractJacobian{T, O, FT}, q::dmType{Tq}) where {T<:Number, Tq<:Pdtypes, O, FT} = multi_src_propagate(F, q)
 
 mul!(out::SourceType{T}, F::judiPropagator{T, O}, q::SourceType{T}) where {T<:Number, O} = begin y = F*q; copyto!(out, y) end
 mul!(out::SourceType{T}, F::judiAbstractJacobian{T, :born, FT}, q::Vector{T}) where {T<:Number, FT} = begin y = F*q[:]; copyto!(out, y) end
@@ -208,7 +208,7 @@ make_input(F::judiDataModeling, rhs::judiRHS) = (make_src(rhs)..., F.rInterpolat
 make_input(F::judiDataSourceModeling, q::SourceType{T}) where {T} = (make_src(q, F.qInjection)..., F.rInterpolation.data[1], nothing, nothing)
 make_input(F::judiDataSourceModeling, q::Matrix{T}) where {T} = (F.qInjection.data[1], q, F.rInterpolation.data[1], nothing, nothing)
 
-function make_input(J::judiJacobian{D, :born, FT}, q::dmType{D}) where {D<:Number, FT}
+function make_input(J::judiJacobian{D, :born, FT}, q::dmType{Dq}) where {D<:Number, Dq<:Pdtypes, FT}
     srcGeom, srcData = make_src(J.q, J.F.qInjection)
     return srcGeom, srcData, J.F.rInterpolation.data[1], nothing, reshape(q, size(J.model))
 end 

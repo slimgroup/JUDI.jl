@@ -154,3 +154,10 @@ function imcond(isic::Bool, IC::String)
     end
     return lowercase(IC)
 end
+
+function Base.show(io::IO, options::JUDIOptions)
+    println(io, "JUDI Options : \n")
+    for f in fieldnames(JUDIOptions)
+        println(io, @sprintf("%-25s : %10s", f, getfield(options, f)))
+    end
+end

@@ -6,6 +6,15 @@ from fields import memory_field
 from fields_exprs import freesurface
 from FD_utils import laplacian, sa_tti
 
+try:
+    from recipes import recipes_registry
+    from recipes.utils import vs_mask_derivs
+except ImportError:
+    recipes_registry = {}
+
+    def vs_mask_derivs(eq, tau, vs):
+        return eq
+
 
 def wave_kernel(model, u, fw=True, q=None, f0=0.015):
     """
@@ -190,18 +199,24 @@ def elastic_kernel(model, v, tau, fw=True, q=None):
     q : TimeFunction or Expr
         Full time-space source as a tuple (one value for each component)
     """
-    if not fw:
-        raise NotImplementedError("Only forward modeling for the elastic equation")
-
     # Lame parameters
-    lam, b = model.lam, model.irho
+    lam, b, damp = model.lam, model.irho, model.damp
     try:
         mu = model.mu
     except AttributeError:
         mu = 0
 
+    # Time derivative and update
+    vnext = v.forward if fw else v.backward
+    taunext = tau.forward if fw else tau.backward
+
+    vdt = v.dt if fw else -v.dtl
+    tau_dt = tau.dt if fw else -tau.dtl
+
     # Particle velocity
-    eq_v = v.dt - b * div(tau)
+    eq_v = vdt - b * div(tau) + damp * vnext
+    eq_v = vs_mask_derivs(eq_v, tau, model.mu)
+
     # Stress
     try:
         e = (grad(v.forward) + grad(v.forward).transpose(inner=False))
@@ -209,16 +224,17 @@ def elastic_kernel(model, v, tau, fw=True, q=None):
         # Older devito version
         e = (grad(v.forward) + grad(v.forward).T)
 
-    eq_tau = tau.dt - lam * diag(div(v.forward)) - mu * e
+    eq_tau = tau_dt - lam * diag(div(v.forward)) - mu * e + damp * taunext
 
-    u_v = Eq(v.forward, model.damp * solve(eq_v, v.forward),
-             subdomain=model.physical)
-    u_t = Eq(tau.forward, model.damp * solve(eq_tau, tau.forward),
-             subdomain=model.physical)
+    u_v = [Eq(vnext, solve(eq_v, vnext), subdomain=model.physical)]
+    if model.fs:
+        u_v.extend(freesurface(model, vnext[-1], r_coeff=1))
+
+    u_t = Eq(taunext, solve(eq_tau, taunext), subdomain=model.physical)
 
     if model.fs:
-        fseq = freesurface(model, tau.forward.diagonal())
+        fseq = freesurface(model, taunext.diagonal())
     else:
         fseq = []
 
-    return [u_v, u_t], fseq
+    return [*u_v, u_t], fseq

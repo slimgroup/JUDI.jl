@@ -4,51 +4,61 @@ from functools import cached_property
 
 from sympy import finite_diff_weights as fd_w
 from devito import (Grid, Function, SubDimension, Eq, Inc, switchconfig,
-                    Operator, mmin, mmax, initialize_function, MPI,
+                    Operator, mmin, mmax, initialize_function,
                     Abs, sqrt, sin, Constant, CustomDimension)
 
 from devito.tools import as_tuple, memoized_func
 
 try:
     from devitopro import *  # noqa
-    from devitopro.subdomains import ABox
+    from devitopro.subdomains.abox import ABox, ABoxFunction
+    from devitopro.data import Float16
     AboxBase = ABox
 except ImportError:
     ABox = None
     AboxBase = object
+    ABoxFunction = object
+    Float16 = lambda *ar, **kw: np.float32
 
 
-class ABoxSlowness(AboxBase):
+class SlownessABoxFunction(ABoxFunction):
 
-    def _1d_cmax(self, vp, eps):
-        cmaxs = []
+    _physical_params = ('m',)
 
+    def vp_max(self, rdim, **kwargs):
+        vp = kwargs.get('vp', self.vp)
+        eps = kwargs.get('eps', self.eps)
+
+        vpi = vp.data.min(axis=rdim)**(-.5)
+        # Thomsen correction
         if eps is not None:
-            assert vp.shape_allocated == eps.shape_allocated
+            epsi = eps.data.max(axis=rdim)
+            vpi._local[:] *= np.sqrt(1. + 2.*epsi._local[:])
 
-        for (di, d) in enumerate(vp.grid.dimensions):
-            rdim = tuple(i for (i, dl) in enumerate(vp.grid.dimensions) if dl is not d)
+        return vpi
 
-            # Max over other dimensions, 1D array with the max in each plane
-            vpi = vp.data.min(axis=rdim)**(-.5)
-            # THomsen correction
-            if eps is not None:
-                epsi = eps.data.max(axis=rdim)
-                vpi._local[:] *= np.sqrt(1. + 2.*epsi._local[:])
-            # Gather on all ranks if distributed.
-            # Since we have a small-ish 1D vector we avoid the index gymnastic
-            # and create the full 1d vector on al ranks with the local values
-            # at the local indices and simply gather with Max
-            if vp.grid.distributor.is_parallel:
-                out = np.zeros(vp.grid.shape[di], dtype=vpi.dtype)
-                tmp = np.zeros(vp.grid.shape[di], dtype=vpi.dtype)
-                tmp[vp.local_indices[di]] = vpi._local
-                vp.grid.distributor.comm.Allreduce(tmp, out, op=MPI.MAX)
-                cmaxs.append(out)
-            else:
-                cmaxs.append(vpi)
 
-        return cmaxs
+class LameABoxFunction(ABoxFunction):
+
+    _physical_params = ('mu', 'lam', 'b')
+
+    def vp_max(self, rdim, **kwargs):
+        lam = kwargs.get('lam', self.lam)
+        mu = kwargs.get('mu', self.mu)
+        b = kwargs.get('b', self.b)
+
+        return np.sqrt(((lam.data + 2 * mu.data) * b.data).max(axis=rdim))
+
+
+class JUDIAbox(AboxBase):
+
+    def __init__(self, *args, subdomains=None, name=None, **params):
+        if 'mu' in params:
+            self._afunc = LameABoxFunction
+        else:
+            self._afunc = SlownessABoxFunction
+
+        super().__init__(*args, subdomains=subdomains, name=name, **params)
 
 
 __all__ = ['Model']
@@ -189,6 +199,8 @@ class Model(object):
         abc_type = "mask" if (qp is not None or mu is not None) else "damp"
         self.fs = fs
         self._abox = None
+        # Topology in case. Always decompose only in x or y
+        topo = tuple(['*']*(len(shape)-1) + [1])
         # Origin of the computational domain with boundary to inject/interpolate
         # at the correct index
         origin_pml = [dtype(o - s*nbl) for o, s in zip(origin, spacing)]
@@ -199,7 +211,7 @@ class Model(object):
         # Physical extent is calculated per cell, so shape - 1
         extent = tuple(np.array(spacing) * (shape_pml - 1))
         self.grid = Grid(extent=extent, shape=shape_pml, origin=tuple(origin_pml),
-                         dtype=dtype)
+                         dtype=dtype, topology=topo)
 
         # Absorbing boundary layer
         if self.nbl != 0:
@@ -245,7 +257,8 @@ class Model(object):
         # Additional parameter fields for elastic
         if self._is_elastic:
             self.lam = self._gen_phys_param(lam, 'lam', space_order, is_param=True)
-            self.mu = self._gen_phys_param(mu, 'mu', space_order, is_param=True)
+            self.mu = self._gen_phys_param(mu, 'mu', space_order, is_param=True,
+                                           avg_mode='harmonic')
         # User provided dt
         self._dt = kwargs.get('dt')
 
@@ -298,22 +311,26 @@ class Model(object):
 
     @switchconfig(log_level='ERROR')
     def _gen_phys_param(self, field, name, space_order, is_param=False,
-                        default_value=0):
+                        default_value=0, avg_mode='arithmetic'):
         """
         Create symbolic object an initiliaze its data
         """
         if field is None:
             return default_value
         if isinstance(field, np.ndarray):
-            if field.shape == self.shape:
-                function = Function(name=name, grid=self.grid, space_order=space_order,
-                                    parameter=is_param)
-                initialize_function(function, field, self.padsizes)
+            if field.dtype == np.float16:
+                _min = np.amin(field)
+                _max = np.amax(field)
+                if _max == _min:
+                    _max = .125 if _min == 0 else _min * 1.125
+                dtype = Float16(_min, _max)
             else:
-                # We take advantage of the external allocator
-                function = Function(name=name, grid=self.grid, space_order=space_order,
-                                    parameter=is_param)
-                function.data[:] = field
+                dtype = self.grid.dtype
+
+            function = Function(name=name, grid=self.grid, space_order=space_order,
+                                parameter=is_param, avg_mode=avg_mode, dtype=dtype)
+            pad = self.padsizes if field.shape == self.shape else 0
+            initialize_function(function, field, pad)
         else:
             function = Constant(name=name, value=np.amin(field))
         self._physical_parameters.append(name)
@@ -326,10 +343,18 @@ class Model(object):
         """
         params = []
         for p in self._physical_parameters:
-            if getattr(self, p).is_Constant:
-                params.append('%s_const' % p)
+            param = getattr(self, p)
+            # Get dtype
+            comp = getattr(param, '_compression', param.dtype)
+            if isinstance(comp, Float16):
+                dtype = comp
             else:
-                params.append(p)
+                dtype = param.dtype
+            # Add to list
+            if param.is_Constant:
+                params.append(('%s_const' % p, dtype))
+            else:
+                params.append((p, dtype))
         return as_tuple(params)
 
     @property
@@ -550,9 +575,8 @@ class Model(object):
             return {}
         if not fw:
             src, rec = rec, src
-        eps = getattr(self, 'epsilon', None)
-        abox = ABoxSlowness(src, rec, self.m, self.space_order, eps=eps)
-        return {'abox': abox}
+        abox = JUDIAbox(self.space_order, src=src, rcv=rec, **self.physical_params())
+        return {'abox': abox._abox_func}
 
     def __init_abox__(self, src, rec, fw=True):
         return
@@ -572,7 +596,7 @@ class Model(object):
                                symbolic_size=so)
 
 
-class EmptyModel():
+class EmptyModel(Model):
     """
     An pseudo Model structure that does not contain any physical field
     but only the necessary information to create an operator.
@@ -580,36 +604,38 @@ class EmptyModel():
     """
 
     def __init__(self, tti, visco, elastic, spacing, fs, space_order, p_params):
-        self.is_tti = tti
-        self.is_viscoacoustic = visco
-        self.is_elastic = elastic
-        self.spacing = spacing
+        self._is_tti = tti
+        self._is_viscoacoustic = visco
+        self._is_elastic = elastic
+        self._spacing = spacing
         self.fs = fs
-        self.space_order = space_order
+        self._space_order = space_order
         N = 2 * space_order + 1
 
         self.grid = Grid(tuple([N]*len(spacing)),
                          extent=[s*(N-1) for s in spacing])
         self.dimensions = self.grid.dimensions
 
+        # Make params a dict
+        p_params = {k: v for k, v in p_params if k != 'damp'}
         # Create the function for the physical parameters
         self.damp = Function(name='damp', grid=self.grid, space_order=0)
-        for p in set(p_params) - {'damp'}:
+        _physical_parameters = ['damp']
+        for p, dt in p_params.items():
             if p.endswith('_const'):
                 name = p.split('_')[0]
-                setattr(self, name, Constant(name=name, value=1))
+                setattr(self, name, Constant(name=name, value=1, dtype=dt))
             else:
-                setattr(self, p, Function(name=p, grid=self.grid,
-                                          space_order=space_order))
+                pn = '_%s' % p if p in ['m', 'dm'] else p
+                avgmode = 'harmonic' if p == 'mu' else 'arithmetic'
+                setattr(self, pn, Function(name=p, grid=self.grid, is_param=True,
+                                           space_order=space_order, dtype=dt,
+                                           avg_mode=avgmode))
+                _physical_parameters.append(p)
         if 'irho' not in p_params and 'irho_const' not in p_params:
             self.irho = 1 if 'rho' not in p_params else 1 / self.rho
 
-    @property
-    def spacing_map(self):
-        """
-        Map between spacing symbols and their values for each `SpaceDimension`.
-        """
-        return self.grid.spacing_map
+        self._physical_parameters = _physical_parameters
 
     @property
     def critical_dt(self):
@@ -617,13 +643,6 @@ class EmptyModel():
         User provided dt
         """
         return self.grid.time_dim.spacing
-
-    @property
-    def dim(self):
-        """
-        Spatial dimension of the problem and model domain.
-        """
-        return self.grid.dim
 
     @property
     def zero_thomsen(self):
@@ -641,21 +660,11 @@ class EmptyModel():
         if src is None and rec is None:
             self._abox = None
             return
-        eps = getattr(self, 'epsilon', None)
+
         if not fw:
             src, rec = rec, src
-        self._abox = ABoxSlowness(src, rec, self.m, self.space_order, eps=eps)
-
-    @cached_property
-    def physical(self):
-        if ABox is None:
-            return None
-        else:
-            return self._abox
-
-    @cached_property
-    def fs_dim(self):
-        so = self.space_order // 2
-        return CustomDimension(name="zfs", symbolic_min=1,
-                               symbolic_max=so,
-                               symbolic_size=so)
+        try:
+            self._abox = JUDIAbox(self.space_order, src=src, rcv=rec,
+                                  **self.physical_params())
+        except AttributeError:
+            return

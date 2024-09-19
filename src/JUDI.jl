@@ -15,7 +15,7 @@ if !isdefined(Base, :get_extension)
 end
 
 # Dependencies
-using LinearAlgebra, Random
+using LinearAlgebra, Random, Printf
 using Distributed
 using DSP, FFTW, Dierckx
 using PyCall
