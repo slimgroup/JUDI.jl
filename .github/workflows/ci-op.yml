@@ -19,7 +19,7 @@ jobs:
     name: ${{ matrix.op }} on Julia ${{ matrix.version }} - ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     env:
-      DEVITO_ARCH: gcc-11
+      DEVITO_ARCH: ${{ matrix.cc }}
       DEVITO_LANGUAGE: "openmp"
       DEVITO_LOGGING: "INFO"
       OMP_NUM_THREADS: ${{ matrix.omp }}
@@ -33,32 +33,38 @@ jobs:
         op: ["ISO_OP", "ISO_OP_FS", "TTI_OP", "TTI_OP_FS", "BASICS"]
         version: ['1']
         omp: [2]
+        cc: ['gcc-11']
   
         include:
           - os: macos-13
             version: '1.6'
             op: "ISO_OP"
             omp: 1
+            cc: gcc-13
 
           - os: macos-13
             version: '1.8'
             op: "ISO_OP"
             omp: 1
+            cc: gcc-13
 
           - os: macos-13
             version: '1.9'
             op: "ISO_OP"
             omp: 1
+            cc: gcc-13
 
           - os: ubuntu-latest
             version: '1.9'
             op: "VISCO_AC_OP"
             omp: 2
+            cc: gcc-11
 
           - os: ubuntu-latest
             version: '1.10'
             op: "ISO_OP"
             omp: 2
+            cc: gcc-11
 
     steps:
       - name: Checkout JUDI
@@ -78,6 +84,7 @@ jobs:
       - name: Set julia python
         run: |
           echo "PYTHON=$(which python3)" >> $GITHUB_ENV
+          python3 -m pip install devito[tests,extras]@git+https://github.com/devitocodes/devito.git
           PYTHON=$(which python3) julia -e 'using Pkg;Pkg.add("PyCall");Pkg.build("PyCall")'
 
       - name: Build JUDI

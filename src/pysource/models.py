@@ -9,56 +9,18 @@ from devito import (Grid, Function, SubDimension, Eq, Inc, switchconfig,
 
 from devito.tools import as_tuple, memoized_func
 
-try:
-    from devitopro import *  # noqa
-    from devitopro.subdomains.abox import ABox, ABoxFunction
-    from devitopro.data import Float16
-    AboxBase = ABox
-except ImportError:
-    ABox = None
-    AboxBase = object
-    ABoxFunction = object
-    Float16 = lambda *ar, **kw: np.float32
+# try:
+#    from devitopro import *  # noqa
+#    from devitopro.subdomains.abox import ABox, ABoxFunction
+#    from devitopro.data import Float16
+#    AboxBase = ABox
+# except ImportError:
+ABox = None
+AboxBase = object
+ABoxFunction = object
+Float16 = lambda *ar, **kw: np.float32
 
-
-class SlownessABoxFunction(ABoxFunction):
-
-    _physical_params = ('m',)
-
-    def vp_max(self, rdim, **kwargs):
-        vp = kwargs.get('vp', self.vp)
-        eps = kwargs.get('eps', self.eps)
-
-        vpi = vp.data.min(axis=rdim)**(-.5)
-        # Thomsen correction
-        if eps is not None:
-            epsi = eps.data.max(axis=rdim)
-            vpi._local[:] *= np.sqrt(1. + 2.*epsi._local[:])
-
-        return vpi
-
-
-class LameABoxFunction(ABoxFunction):
-
-    _physical_params = ('mu', 'lam', 'b')
-
-    def vp_max(self, rdim, **kwargs):
-        lam = kwargs.get('lam', self.lam)
-        mu = kwargs.get('mu', self.mu)
-        b = kwargs.get('b', self.b)
-
-        return np.sqrt(((lam.data + 2 * mu.data) * b.data).max(axis=rdim))
-
-
-class JUDIAbox(AboxBase):
-
-    def __init__(self, *args, subdomains=None, name=None, **params):
-        if 'mu' in params:
-            self._afunc = LameABoxFunction
-        else:
-            self._afunc = SlownessABoxFunction
-
-        super().__init__(*args, subdomains=subdomains, name=name, **params)
+_dtypes = {'params': 'f32'}
 
 
 __all__ = ['Model']
@@ -196,7 +158,7 @@ class Model(object):
         self.shape = tuple(shape)
         self.nbl = int(nbl)
         self.origin = tuple([dtype(o) for o in origin])
-        abc_type = "mask" if (qp is not None or mu is not None) else "damp"
+        abc_type = "mask" if qp is not None else "damp"
         self.fs = fs
         self._abox = None
         # Topology in case. Always decompose only in x or y
@@ -226,13 +188,17 @@ class Model(object):
         # Seismic fields and properties
         self.scale = 1
         self._space_order = space_order
+
         # Create square slowness of the wave as symbol `m`
         if m is not None:
-            self._m = self._gen_phys_param(m, 'm', space_order)
+            vp_vals = m**(-.5)
+            self.m = self._gen_phys_param(m, 'm', space_order)
+
         # density
         self._init_density(rho, b, space_order)
+
         # Perturbation for linearized modeling
-        self._dm = self._gen_phys_param(dm, 'dm', space_order)
+        self.dm = self._gen_phys_param(dm, 'dm', space_order)
 
         # Model type
         self._is_viscoacoustic = qp is not None
@@ -257,10 +223,18 @@ class Model(object):
         # Additional parameter fields for elastic
         if self._is_elastic:
             self.lam = self._gen_phys_param(lam, 'lam', space_order, is_param=True)
+            mu[np.where(mu == 0)] = 1e-12
             self.mu = self._gen_phys_param(mu, 'mu', space_order, is_param=True,
                                            avg_mode='harmonic')
+            b = b if b is not None else 1 / rho
+            vp_vals = ((lam + 2 * mu) * b)**(.5)
+
         # User provided dt
         self._dt = kwargs.get('dt')
+
+        # Need vp for Abox
+        if ABox is not None:
+            self._vp = self._gen_phys_param(vp_vals, '_vp', space_order)
 
     def _init_density(self, rho, b, so):
         """
@@ -297,6 +271,9 @@ class Model(object):
         if not kwargs.get('born', False):
             params.pop('dm', None)
 
+        # Remove "build" _x params
+        params.pop('_vp', None)
+
         return params
 
     @property
@@ -313,12 +290,12 @@ class Model(object):
     def _gen_phys_param(self, field, name, space_order, is_param=False,
                         default_value=0, avg_mode='arithmetic'):
         """
-        Create symbolic object an initiliaze its data
+        Create symbolic object an initialize its data
         """
         if field is None:
             return default_value
         if isinstance(field, np.ndarray):
-            if field.dtype == np.float16:
+            if _dtypes['params'] == 'f16' or field.dtype == np.float16:
                 _min = np.amin(field)
                 _max = np.amax(field)
                 if _max == _min:
@@ -329,7 +306,7 @@ class Model(object):
 
             function = Function(name=name, grid=self.grid, space_order=space_order,
                                 parameter=is_param, avg_mode=avg_mode, dtype=dtype)
-            pad = self.padsizes if field.shape == self.shape else 0
+            pad = 0 if field.shape == function.shape else self.padsizes
             initialize_function(function, field, pad)
         else:
             function = Constant(name=name, value=np.amin(field))
@@ -346,9 +323,12 @@ class Model(object):
             param = getattr(self, p)
             # Get dtype
             comp = getattr(param, '_compression', param.dtype)
-            if isinstance(comp, Float16):
-                dtype = comp
-            else:
+            try:
+                if isinstance(comp, Float16):
+                    dtype = comp
+                else:
+                    dtype = param.dtype
+            except TypeError:
                 dtype = param.dtype
             # Add to list
             if param.is_Constant:
@@ -457,7 +437,7 @@ class Model(object):
             so = max(self.space_order // 2, 2)
             coeffs = fd_w(1, range(-so, so), .5)
             c_fd = sum(np.abs(coeffs[-1][-1])) / 2
-            return .9 * np.sqrt(self.dim) / self.dim / c_fd
+            return .95 * np.sqrt(self.dim) / self.dim / c_fd
         a1 = 4  # 2nd order in time
         so = max(self.space_order // 2, 4)
         coeffs = fd_w(2, range(-so, so), 0)[-1][-1]
@@ -490,71 +470,6 @@ class Model(object):
         return dt
 
     @property
-    def dm(self):
-        """
-        Model perturbation for linearized modeling
-        """
-        return self._dm
-
-    @dm.setter
-    def dm(self, dm):
-        """
-        Set a new model perturbation.
-
-        Parameters
-        ----------
-        dm : float or array
-            New model perturbation
-        """
-        # Update the square slowness according to new value
-        if isinstance(dm, np.ndarray):
-            if not isinstance(self._dm, Function):
-                self._dm = self._gen_phys_param(dm, 'dm', self.space_order)
-            elif dm.shape == self.shape:
-                initialize_function(self._dm, dm, self.padsizes)
-            elif dm.shape == self.dm.shape:
-                self.dm.data[:] = dm[:]
-            else:
-                raise ValueError("Incorrect input size %s for model of size" % dm.shape +
-                                 " %s without or %s with padding" % (self.shape,
-                                                                     self.dm.shape))
-        else:
-            try:
-                self._dm.data = dm
-            except AttributeError:
-                self._dm = dm
-
-    @property
-    def m(self):
-        """
-        Function holding the squared slowness in s^2/km^2.
-        """
-        return self._m
-
-    @m.setter
-    def m(self, m):
-        """
-        Set a new squared slowness model.
-
-        Parameters
-        ----------
-        m : float or array
-            New squared slowness in s^2/km^2.
-        """
-        # Update the square slowness according to new value
-        if isinstance(m, np.ndarray):
-            if m.shape == self.m.shape:
-                self.m.data[:] = m[:]
-            elif m.shape == self.shape:
-                initialize_function(self._m, m, self.padsizes)
-            else:
-                raise ValueError("Incorrect input size %s for model of size" % m.shape +
-                                 " %s without or %s with padding" % (self.shape,
-                                                                     self.m.shape))
-        else:
-            self._m.data = m
-
-    @property
     def vp(self):
         """
         Symbolic representation of the velocity
@@ -575,8 +490,9 @@ class Model(object):
             return {}
         if not fw:
             src, rec = rec, src
-        abox = JUDIAbox(self.space_order, src=src, rcv=rec, **self.physical_params())
-        return {'abox': abox._abox_func}
+        eps = getattr(self, 'epsilon', None)
+        abox = ABox(src, rec, self._vp, self.space_order, eps=eps)
+        return {'abox': abox}
 
     def __init_abox__(self, src, rec, fw=True):
         return
@@ -622,15 +538,16 @@ class EmptyModel(Model):
         self.damp = Function(name='damp', grid=self.grid, space_order=0)
         _physical_parameters = ['damp']
         for p, dt in p_params.items():
+            if _dtypes['params'] == 'f16':
+                dt = np.float16
             if p.endswith('_const'):
                 name = p.split('_')[0]
                 setattr(self, name, Constant(name=name, value=1, dtype=dt))
             else:
-                pn = '_%s' % p if p in ['m', 'dm'] else p
                 avgmode = 'harmonic' if p == 'mu' else 'arithmetic'
-                setattr(self, pn, Function(name=p, grid=self.grid, is_param=True,
-                                           space_order=space_order, dtype=dt,
-                                           avg_mode=avgmode))
+                setattr(self, p, Function(name=p, grid=self.grid, is_param=True,
+                                          space_order=space_order, dtype=dt,
+                                          avg_mode=avgmode))
                 _physical_parameters.append(p)
         if 'irho' not in p_params and 'irho_const' not in p_params:
             self.irho = 1 if 'rho' not in p_params else 1 / self.rho
@@ -663,8 +580,5 @@ class EmptyModel(Model):
 
         if not fw:
             src, rec = rec, src
-        try:
-            self._abox = JUDIAbox(self.space_order, src=src, rcv=rec,
-                                  **self.physical_params())
-        except AttributeError:
-            return
+        eps = getattr(self, 'epsilon', None)
+        self._abox = ABox(src, rec, self._vp, self.space_order, eps=eps)

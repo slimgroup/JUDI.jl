@@ -29,7 +29,7 @@ nxrec = 120
 nyrec = 100
 xrec = range(50f0, stop=1150f0, length=nxrec)
 yrec = 0f0
-zrec = range(0f0, stop=0f0, length=nxrec)
+zrec = range(10f0, stop=10f0, length=nxrec)
 
 # receiver sampling and recording time
 timeR = 1500f0   # receiver recording time [ms]
@@ -41,7 +41,7 @@ recGeometry = Geometry(xrec, yrec, zrec; dt=dtR, t=timeR, nsrc=nsrc)
 # Set up source geometry (cell array with source locations for each shot)
 xsrc = 600f0
 ysrc = 0f0
-zsrc = 0f0
+zsrc = 10f0
 
 # source sampling and number of time steps
 timeS = 1500f0   # source length in [ms]
@@ -57,7 +57,7 @@ wavelet = ricker_wavelet(timeS, dtS, f0)
 ###################################################################################################
 
 # Setup operators
-F = judiModeling(model, srcGeometry, recGeometry)
+F = judiModeling(model, srcGeometry, recGeometry; options=Options(space_order=8, free_surface=true))
 q = judiVector(srcGeometry, wavelet)
 
 # Nonlinear modeling
