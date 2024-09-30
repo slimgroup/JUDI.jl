@@ -99,8 +99,8 @@ def forward_op(p_params, tti, visco, elas, space_order, fw, spacing, save, t_sub
     u = wavefield(model, space_order, save=save, nt=nt, t_sub=t_sub, fw=fw)
 
     # Setup source and receiver
-    g_expr = geom_expr(model, u, src_coords=scords, nt=nt,
-                       rec_coords=rcords, wavelet=wavelet, fw=fw)
+    gexpr = geom_expr(model, u, src_coords=scords, nt=nt,
+                      rec_coords=rcords, wavelet=wavelet, fw=fw)
 
     # Expression for saving wavefield if time subsampling is used
     eq_save = save_subsampled(model, u, nt, t_sub, space_order=space_order)
@@ -126,7 +126,7 @@ def forward_op(p_params, tti, visco, elas, space_order, fw, spacing, save, t_sub
     # Create operator and run
     subs = model.spacing_map
     pname = "forward" if fw else "adjoint"
-    op = Operator(pde + wrec + nv_t + dft + g_expr + extra + eq_save + nv_s + Ieq,
+    op = Operator(pde + wrec + nv_t + dft + gexpr + extra + eq_save + nv_s + Ieq,
                   subs=subs, name=pname+name(model),
                   opt=opt_op(model))
     op.cfunction
@@ -158,9 +158,9 @@ def born_op(p_params, tti, visco, elas, space_order, fw, spacing, save, pt_src,
     ul = wavefield(model, space_order, name="l", fw=fw)
 
     # Setup source and receiver
-    g_expr = geom_expr(model, u, rec_coords=rcords if nlind else None,
-                       src_coords=scords, wavelet=wavelet, fw=fw)
-    g_exprl = geom_expr(model, ul, rec_coords=rcords, nt=nt, fw=fw)
+    gexpr = geom_expr(model, u, rec_coords=rcords if nlind else None,
+                      src_coords=scords, wavelet=wavelet, fw=fw)
+    gexprl = geom_expr(model, ul, rec_coords=rcords, nt=nt, fw=fw)
 
     # Expression for saving wavefield if time subsampling is used
     eq_save = save_subsampled(model, u, nt, t_sub, space_order=space_order)
@@ -183,7 +183,7 @@ def born_op(p_params, tti, visco, elas, space_order, fw, spacing, save, pt_src,
 
     # Create operator and run
     subs = model.spacing_map
-    op = Operator(pde + g_expr + extra + g_exprl + pdel + extral + dft + eq_save + Ieq,
+    op = Operator(pde + gexpr + extra + gexprl + pdel + extral + dft + eq_save + Ieq,
                   subs=subs, name="born"+name(model),
                   opt=opt_op(model))
     op.cfunction
@@ -211,7 +211,7 @@ def adjoint_born_op(p_params, tti, visco, elas, space_order, fw, spacing, pt_rec
                           dft=nfreq > 0, t_sub=t_sub, fw=fw)
 
     # Setup source and receiver
-    r_expr = geom_expr(model, v, src_coords=rcords, wavelet=residual, fw=not fw)
+    gexpr = geom_expr(model, v, src_coords=rcords, wavelet=residual, fw=not fw)
 
     # Set up PDE expression and rearrange
     pde, extra = wave_kernel(model, v, fw=False, f0=Constant('f0'))
@@ -226,7 +226,7 @@ def adjoint_born_op(p_params, tti, visco, elas, space_order, fw, spacing, pt_rec
 
     # Create operator and run
     subs = model.spacing_map
-    op = Operator(pde + r_expr + extra + g_expr + Ieq, subs=subs,
+    op = Operator(pde + gexpr + extra + g_expr + Ieq, subs=subs,
                   name="gradient"+name(model),
                   opt=opt_op(model))
     try:
