@@ -88,7 +88,7 @@ def geom_expr(model, u, src_coords=None, rec_coords=None, wavelet=None, fw=True,
     # Setup adjoint wavefield sampling at source locations
     if rcv is not None:
         if model.is_elastic:
-            geom_expr = u[1].trace() / model.grid.dim
+            rec_expr = u[1].trace() / model.grid.dim
         else:
             rec_expr = u[0] if model.is_tti else u
         geom_expr += rcv.interpolate(expr=rec_expr)

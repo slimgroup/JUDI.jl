@@ -9,16 +9,13 @@ from devito import (Grid, Function, SubDimension, Eq, Inc, switchconfig,
 
 from devito.tools import as_tuple, memoized_func
 
-# try:
-#    from devitopro import *  # noqa
-#    from devitopro.subdomains.abox import ABox, ABoxFunction
-#    from devitopro.data import Float16
-#    AboxBase = ABox
-# except ImportError:
-ABox = None
-AboxBase = object
-ABoxFunction = object
-Float16 = lambda *ar, **kw: np.float32
+try:
+    from devitopro import *  # noqa
+    from devitopro.subdomains.abox import ABox
+    from devitopro.data import Float16
+except ImportError:
+    ABox = None
+    Float16 = lambda *ar, **kw: np.float32
 
 _dtypes = {'params': 'f32'}
 
@@ -223,10 +220,16 @@ class Model(object):
         # Additional parameter fields for elastic
         if self._is_elastic:
             self.lam = self._gen_phys_param(lam, 'lam', space_order, is_param=True)
-            mu[np.where(mu == 0)] = 1e-12
+            try:
+                mu[np.where(mu == 0)] = 1e-12
+            except TypeError:
+                mu = 1e-12 if mu == 0 else mu
             self.mu = self._gen_phys_param(mu, 'mu', space_order, is_param=True,
                                            avg_mode='harmonic')
-            b = b if b is not None else 1 / rho
+            try:
+                b = b if b is not None else 1 / rho
+            except TypeError:
+                b = 1
             vp_vals = ((lam + 2 * mu) * b)**(.5)
 
         # User provided dt
@@ -437,7 +440,7 @@ class Model(object):
             so = max(self.space_order // 2, 2)
             coeffs = fd_w(1, range(-so, so), .5)
             c_fd = sum(np.abs(coeffs[-1][-1])) / 2
-            return .95 * np.sqrt(self.dim) / self.dim / c_fd
+            return .9 * np.sqrt(self.dim) / self.dim / c_fd
         a1 = 4  # 2nd order in time
         so = max(self.space_order // 2, 4)
         coeffs = fd_w(2, range(-so, so), 0)[-1][-1]
@@ -491,7 +494,9 @@ class Model(object):
         if not fw:
             src, rec = rec, src
         eps = getattr(self, 'epsilon', None)
-        abox = ABox(src, rec, self._vp, self.space_order, eps=eps)
+        abox = ABox(src, rec, self._vp, self.space_order, eps=eps)._abox_func
+        abox.data[:] = abox._compute(src=src, rcv=rec, vp=self._vp, eps=eps,
+                                     dt=self.critical_dt)
         return {'abox': abox}
 
     def __init_abox__(self, src, rec, fw=True):

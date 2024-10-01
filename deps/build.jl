@@ -8,14 +8,14 @@ end
 pk = try
     pyimport("pkg_resources")
 catch e
-    run(PyCall.python_cmd(`-m pip install --user setuptools`))
+    run(PyCall.python_cmd(`-m pip install -U --user --no-cache-dir setuptools`))
     pyimport("pkg_resources")
 end
 
 ################## Devito ##################
 # pip command
 dvver = "4.8.10"
-cmd = PyCall.python_cmd(`-m pip install --user devito\[extras,tests\]\>\=$(dvver)`)
+cmd = PyCall.python_cmd(`-m pip install --user --no-cache-dir devito\[extras,tests\]\>\=$(dvver)`)
 
 try
     dv_ver = VersionNumber(split(pk.get_distribution("devito").version, "+")[1])
@@ -32,5 +32,5 @@ end
 try
     mpl = pyimport("matplotlib")
 catch e
-    run(PyCall.python_cmd(`-m pip install --user matplotlib`))
+    run(PyCall.python_cmd(`-m pip install --user --no-cache-dir matplotlib`))
 end
