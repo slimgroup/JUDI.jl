@@ -19,7 +19,7 @@ jobs:
     name: JUDI base on Julia ${{ matrix.version }} - ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     env:
-      DEVITO_ARCH: gcc-12
+      DEVITO_ARCH: ${{ matrix.cc }}
       DEVITO_LANGUAGE: "openmp"
       OMP_NUM_THREADS: 4
       GROUP: "JUDI"
@@ -29,7 +29,15 @@ jobs:
 
       matrix:
         version: ['1.6', '1.7', '1.8', '1.9', '1.10']
-        os: [ubuntu-latest, macos-13]
+        os: [ubuntu-latest]
+        arch: ['x64']
+        cc: ['gcc-12']
+
+        include:
+          - os: macos-15
+            version: '1'
+            arch: ARM64
+            cc: clang
 
     steps:
       - name: Checkout JUDI
@@ -39,17 +47,30 @@ jobs:
         uses: julia-actions/setup-julia@v1
         with:
           version: ${{ matrix.version }}
-          arch: x64
+          arch: ${{ matrix.arch }}
+
+      - name: Setup clang for osx
+        if: runner.os == 'macOS'
+        run: |
+          brew install libomp
+          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+          echo "PATH=$(brew --prefix llvm@18)/bin:$PATH" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=$(brew --prefix llvm@18)/lib:$(xcrun --sdk macosx --show-sdk-path)/usr/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> $GITHUB_ENV
+          echo "LIBRARY_PATH=$(brew --prefix llvm@18)/lib:$(xcrun --sdk macosx --show-sdk-path)/usr/lib:$LIBRARY_PATH" >> $GITHUB_ENV
+          echo "LDFLAGS=-L/$(xcrun --sdk macosx --show-sdk-path)/usr/lib" >> $GITHUB_ENV
 
       - name: Set up Python 3.9
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: 3.9
 
       - name: Set julia python
         run: |
           echo "PYTHON=$(which python3)" >> $GITHUB_ENV
-          PYTHON=$(which python3) julia -e 'using Pkg;Pkg.add("PyCall");Pkg.build("PyCall")'
+          echo "PYCALL_JL_RUNTIME_PYTHON=$(which python3)" >> $GITHUB_ENV
+          python3 -m pip install devito[tests,extras]@git+https://github.com/devitocodes/devito.git
+          PYCALL_JL_RUNTIME_PYTHON=$(which python3) PYTHON=$(which python3) julia -e 'using Pkg;Pkg.add("PyCall");Pkg.build("PyCall")'
 
       - name: Build JUDI
         uses: julia-actions/julia-buildpkg@latest
