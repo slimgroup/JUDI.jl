@@ -99,41 +99,29 @@ All arguments are optional keyword arguments with the following default values:
             dt_comp=nothing, f0=0.015f0)
 
 """
-Options(;space_order=8,
-		 free_surface=false,
-         limit_m=false,
-		 buffer_size=1e3,
-		 save_data_to_disk=false,
-		 file_path="",
-		 file_name="shot",
-         sum_padding=false,
-		 optimal_checkpointing=false,
-		 num_checkpoints=nothing,
-		 checkpoints_maxmem=nothing,
-		 frequencies=[],
-		 isic=false,
-		 subsampling_factor=1,
-		 dft_subsampling_factor=1,
-         return_array=false,
-         dt_comp=nothing,
-         f0=0.015f0,
-         IC="as") =
-		 JUDIOptions(space_order,
-		 		 free_surface,
-		         limit_m,
-				 buffer_size,
-				 save_data_to_disk,
-				 file_path,
-				 file_name,
-				 sum_padding,
-				 optimal_checkpointing,
-				 frequencies,
-				 imcond(isic, IC),
-				 subsampling_factor,
-				 dft_subsampling_factor,
-                 return_array,
-                 dt_comp,
-                 f0)
+function Options(;space_order=8, free_surface=false,
+                  limit_m=false, buffer_size=1e3,
+		          save_data_to_disk=false, file_path="", file_name="shot",
+                  sum_padding=false,
+		          optimal_checkpointing=false,
+		          frequencies=[],
+		          subsampling_factor=1,
+		          dft_subsampling_factor=1,
+                  return_array=false,
+                  dt_comp=nothing,
+                  f0=0.015f0,
+                  IC="as",
+                  kw...)
+    
+    ic = imcond(get(kw, :isic, false), IC)
+    if optimal_checkpointing && get(ENV, "DEVITO_DECOUPLER", 0) != 0
+        @warn "Optimal checkpointing is not supported with the Decoupler, disabling"
+        optimal_checkpointing = false
+    end
+    return JUDIOptions(space_order, free_surface, limit_m, buffer_size, save_data_to_disk,
+                file_path, file_name, sum_padding, optimal_checkpointing, frequencies,
+                ic, subsampling_factor, dft_subsampling_factor, return_array, dt_comp, f0)
+end
 
 JUDIOptions(;kw...) = Options(kw...)
 
@@ -165,4 +153,11 @@ function imcond(isic::Bool, IC::String)
         return "isic"
     end
     return lowercase(IC)
+end
+
+function Base.show(io::IO, options::JUDIOptions)
+    println(io, "JUDI Options : \n")
+    for f in fieldnames(JUDIOptions)
+        println(io, @sprintf("%-25s : %10s", f, getfield(options, f)))
+    end
 end

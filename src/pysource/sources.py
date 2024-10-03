@@ -93,6 +93,8 @@ class PointSource(SparseTimeFunction):
     initialised `data` array need to be provided.
     """
 
+    __rkwargs__ = list(SparseTimeFunction.__rkwargs__)
+
     @classmethod
     def __args_setup__(cls, *args, **kwargs):
         if 'nt' not in kwargs:
@@ -102,10 +104,11 @@ class PointSource(SparseTimeFunction):
                 kwargs['nt'] = kwargs.get('time').shape[0]
 
         # Either `npoint` or `coordinates` must be provided
-        npoint = kwargs.get('npoint')
+        npoint = kwargs.get('npoint', kwargs.get('npoint_global'))
         if npoint is None:
             coordinates = kwargs.get('coordinates', kwargs.get('coordinates_data'))
             if coordinates is None:
+                print(kwargs)
                 raise TypeError("Need either `npoint` or `coordinates`")
             kwargs['npoint'] = coordinates.shape[0]
 

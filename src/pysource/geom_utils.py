@@ -4,6 +4,12 @@ from devito.tools import as_tuple
 
 from sources import *
 
+try:
+    from recipes.utils import mirror_source
+except ImportError:
+    def mirror_source(model, src):
+        return src
+
 
 def src_rec(model, u, src_coords=None, rec_coords=None, wavelet=None, nt=None):
     nt = nt or wavelet.shape[0]
@@ -56,24 +62,35 @@ def geom_expr(model, u, src_coords=None, rec_coords=None, wavelet=None, fw=True,
     if not model.is_elastic:
         m = model.m * irho
     dt = model.grid.time_dim.spacing
-    geom_expr = []
     src, rcv = src_rec(model, u, src_coords, rec_coords, wavelet, nt)
     model.__init_abox__(src, rcv, fw=fw)
+
+    geom_expr = []
+    # Source
     if src is not None:
         # Elastic inject into diagonal of stress
         if model.is_elastic:
-            for ud in as_tuple(u)[1].diagonal():
-                geom_expr += src.inject(field=ud.forward, expr=src*dt/irho)
+            c = 1 / model.grid.dim
+            src_eq = src.inject(field=as_tuple(u)[1].forward.diagonal(),
+                                expr=c*src*dt/irho)
+            if model.fs:
+                # Free surface
+                src_eq = mirror_source(model, src_eq)
         else:
             # Acoustic inject into pressure
             u_n = as_tuple(u)[0].forward if fw else as_tuple(u)[0].backward
-            geom_expr += src.inject(field=u_n, expr=src*dt**2/m)
+            src_eq = src.inject(field=u_n, expr=src*dt**2/m)
+            if model.fs:
+                # Free surface
+                src_eq = mirror_source(model, src_eq)
+
+        geom_expr += [src_eq]
     # Setup adjoint wavefield sampling at source locations
     if rcv is not None:
         if model.is_elastic:
-            rec_expr = u[1].trace()
+            rec_expr = u[1].trace() / model.grid.dim
         else:
             rec_expr = u[0] if model.is_tti else u
-        adj_rcv = rcv.interpolate(expr=rec_expr)
-        geom_expr += adj_rcv
+        geom_expr += rcv.interpolate(expr=rec_expr)
+
     return geom_expr

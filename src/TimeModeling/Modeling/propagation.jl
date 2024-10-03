@@ -4,7 +4,7 @@
 Base propagation interfaces that calls the devito `mode` propagator (forward/adjoint/..)
 with `q` as a source. The return type is infered from `F`.
 """
-function propagate(F::judiPropagator{T, O}, q::AbstractArray{T}, illum::Bool) where {T, O}
+function propagate(F::judiPropagator{T, O}, q::AbstractArray{Tq}, illum::Bool) where {T, Tq, O}
     srcGeometry, srcData, recGeometry, recData, dm = make_input(F, q)
     return time_modeling(F.model, srcGeometry, srcData, recGeometry, recData, dm, O, F.options, _prop_fw(F), illum)
 end
@@ -54,7 +54,7 @@ _prop_fw(::judiPropagator{T, :adjoint}) where T = false
 _prop_fw(J::judiJacobian) = _prop_fw(J.F)
 
 
-src_i(::judiAbstractJacobian{T, :born, FT}, q::dmType{T}, ::Integer) where {T<:Number, FT} = q
+src_i(::judiAbstractJacobian{T, :born, FT}, q::dmType{Tq}, ::Integer) where {T<:Number, Tq<:Pdtypes, FT} = q
 src_i(::judiPropagator{T, O}, q::judiMultiSourceVector{T}, i::Integer) where {T, O} = q[i]
 src_i(::judiPropagator{T, O}, q::Vector{<:Array{T}}, i::Integer) where {T, O} = q[i]
 
@@ -68,7 +68,7 @@ get_nsrc(J::judiAbstractJacobian, ::dmType{T}) where T<:Number = J.q.nsrc
 Propagates the source `q` with the `F` propagator. The return type is infered from `F` and the 
 propagation kernel is defined by `O` (forward, adjoint, born or adjoint_born).
 """
-function multi_src_propagate(F::judiPropagator{T, O}, q::AbstractArray{T}) where {T<:Number, O}
+function multi_src_propagate(F::judiPropagator{T, O}, q::AbstractArray{Tq}) where {T<:Number, Tq<:Pdtypes, O}
     q = process_input_data(F, q)
     # Number of sources and init result
     nsrc = get_nsrc(F, q)

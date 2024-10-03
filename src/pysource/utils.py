@@ -156,7 +156,7 @@ def compression_mode():
     """
     Check compiler used to see if can use bitcomp
     """
-    if configuration['compiler'] in [NvidiaCompiler, CudaCompiler]:
+    if isinstance(configuration['compiler'], (NvidiaCompiler, CudaCompiler)):
         return 'bitcomp'
     else:
         return 'noop'

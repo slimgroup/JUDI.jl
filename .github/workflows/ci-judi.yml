@@ -19,7 +19,7 @@ jobs:
     name: JUDI base on Julia ${{ matrix.version }} - ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     env:
-      DEVITO_ARCH: gcc-11
+      DEVITO_ARCH: ${{ matrix.cc }}
       DEVITO_LANGUAGE: "openmp"
       OMP_NUM_THREADS: 4
       GROUP: "JUDI"
@@ -28,28 +28,44 @@ jobs:
       fail-fast: false
 
       matrix:
-        version: ['1.6', '1.7', '1.8', '1.9', '1.10']
-        os: [ubuntu-latest, macos-13]
+        version: ['lts', '1.7', '1.8', '1.9', '1.10']
+        os: [ubuntu-latest]
+        arch: ['x64']
+        cc: ['gcc-12']
+
+        include:
+          - os: macos-15
+            version: '1'
+            arch: ARM64
+            cc: clang
 
     steps:
       - name: Checkout JUDI
         uses: actions/checkout@v4
 
       - name: Setup julia
-        uses: julia-actions/setup-julia@v1
+        uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.version }}
-          arch: x64
+          arch: ${{ matrix.arch }}
+
+      - name: Setup clang for osx
+        if: runner.os == 'macOS'
+        run: |
+          brew install llvm libomp
+          echo "/opt/homebrew/bin:/opt/homebrew/opt/llvm/bin" >> $GITHUB_PATH
 
       - name: Set up Python 3.9
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: 3.9
 
       - name: Set julia python
         run: |
           echo "PYTHON=$(which python3)" >> $GITHUB_ENV
-          PYTHON=$(which python3) julia -e 'using Pkg;Pkg.add("PyCall");Pkg.build("PyCall")'
+          echo "PYCALL_JL_RUNTIME_PYTHON=$(which python3)" >> $GITHUB_ENV
+          python3 -m pip install devito[tests,extras]@git+https://github.com/devitocodes/devito.git
+          PYCALL_JL_RUNTIME_PYTHON=$(which python3) PYTHON=$(which python3) julia -e 'using Pkg;Pkg.add("PyCall");Pkg.build("PyCall")'
 
       - name: Build JUDI
         uses: julia-actions/julia-buildpkg@latest
@@ -60,6 +76,7 @@ jobs:
           annotate: true
 
       - uses: julia-actions/julia-processcoverage@v1
+
       - uses: codecov/codecov-action@v4
         with:
           file: lcov.info
