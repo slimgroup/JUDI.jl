@@ -41,8 +41,24 @@ srcGeometry = Geometry(xsrc, ysrc, zsrc; dt=dtD, t=timeD)</code></pre><pre><code
 f0 = 0.01f0     # kHz
 wavelet = ricker_wavelet(timeD, dtD, f0)
 q = judiVector(srcGeometry, wavelet)</code></pre><pre><code class="language-none">judiVector{Float32, Matrix{Float32}} with 2 sources</code></pre><h1 id="Modeling"><a class="docs-heading-anchor" href="#Modeling">Modeling</a><a id="Modeling-1"></a><a class="docs-heading-anchor-permalink" href="#Modeling" title="Permalink"></a></h1><p>With our survey and subsurface model setup, we can now model and image seismic data. We first define a few options. In this tutorial we will choose to compute gradients/images subsampling the forward wavefield every two time steps <code>subsampling_factor=2</code> and we fix the computational time step to be <code>1ms</code> wiuth <code>dt_comp=1.0</code> know to satisfy the CFL condition for this simple example. In practice, when <code>dt_comp</code> isn&#39;t provided, JUDI will compute the CFL condition for the propagation.</p><pre><code class="language-julia"># Setup options
-opt = Options(subsampling_factor=2, space_order=16, free_surface=false)</code></pre><pre><code class="language-none">JUDIOptions(16, false, false, 1000.0f0, false, &quot;&quot;, &quot;shot&quot;, false, false, An
-y[], &quot;as&quot;, 2, 1, false, nothing, 0.015f0)</code></pre><p>Linear Operators The core idea behind JUDI is to abstract seismic inverse problems in term of linear algebra. In its simplest form, seismic inversion can be formulated as</p><p class="math-container">\[\underset{\mathbf{m}}{\text{argmin}} \ \ \phi(\mathbf{m}) = \frac{1}{2} ||\mathbf{P}_r \mathbf{F}(\mathbf{m}) \mathbf{P}_s^{\top} \mathbf{q} - \mathbf{d} ||_2^2 \\
+opt = Options(subsampling_factor=2, space_order=16, free_surface=false)</code></pre><pre><code class="language-none">JUDI Options : 
+
+space_order               :         16
+free_surface              :      false
+limit_m                   :      false
+buffer_size               :     1000.0
+save_data_to_disk         :      false
+file_path                 :           
+file_name                 :       shot
+sum_padding               :      false
+optimal_checkpointing     :      false
+frequencies               :      Any[]
+IC                        :         as
+subsampling_factor        :          2
+dft_subsampling_factor    :          1
+return_array              :      false
+dt_comp                   :    nothing
+f0                        :      0.015</code></pre><p>Linear Operators The core idea behind JUDI is to abstract seismic inverse problems in term of linear algebra. In its simplest form, seismic inversion can be formulated as</p><p class="math-container">\[\underset{\mathbf{m}}{\text{argmin}} \ \ \phi(\mathbf{m}) = \frac{1}{2} ||\mathbf{P}_r \mathbf{F}(\mathbf{m}) \mathbf{P}_s^{\top} \mathbf{q} - \mathbf{d} ||_2^2 \\
 \text{   } \\
 \nabla_{\mathbf{m}} \phi(\mathbf{m}) = \mathbf{J}(\mathbf{m}, \mathbf{q})^{\top} (\mathbf{P}_r \mathbf{F}(\mathbf{m}) \mathbf{P}_s^{\top} \mathbf{q} - \mathbf{d})\]</p><p>where <span>$\mathbf{P}_r$</span> is the receiver projection (measurment operator) and <span>$\mathbf{P}_s^{\top}$</span> is the source injection operator (adjoint of measurment at the source location). Therefore, we bastracted these operation to be able to define these operators</p><pre><code class="language-julia"># Setup operators
 Pr = judiProjection(recGeometry)
@@ -94,4 +110,4 @@ display(fig)
 
 fig = figure()
 plot_sdata(gy[1]; new_fig=false, name=&quot;TWRI gradient w.r.t y&quot;, cmap=dcmap)
-display(fig)</code></pre><pre><code class="language-none">Error: UndefVarError: `figure` not defined</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../imaging_conditions/">« Imaging conditions in JUDI</a><a class="docs-footer-nextpage" href="../../pysource/">Devito backend reference »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Thursday 3 October 2024 14:50">Thursday 3 October 2024</span>. Using Julia version 1.10.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+display(fig)</code></pre><pre><code class="language-none">Error: UndefVarError: `figure` not defined</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../imaging_conditions/">« Imaging conditions in JUDI</a><a class="docs-footer-nextpage" href="../../pysource/">Devito backend reference »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Thursday 3 October 2024 16:32">Thursday 3 October 2024</span>. Using Julia version 1.10.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
