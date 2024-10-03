@@ -3,8 +3,10 @@ codecov:
   notify:
     wait_for_ci: yes
 
-ignore:
-  - "src/Optimization"
+comment:
+  layout: " diff, flags, files"
+  behavior: default
+  require_changes: false
 
 coverage:
   precision: 2
@@ -21,3 +23,12 @@ coverage:
     patch:
       default:
         enabled: off
+
+ignore:
+  - "**/*.ipynb"
+  - docs
+  - deps
+  - data
+  - docker
+  - .github
+  - .git
