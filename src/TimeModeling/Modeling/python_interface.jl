@@ -35,9 +35,10 @@ function wrapcall_weights(func, args...;kw...)
     return out
 end
 
-function wrapcall_wf(func, args...;kw...)
-    rtype = _outtype(get(kw, :illum, nothing), 1, Array{Float32})
-    out = rlock_pycall(func, rtype, args...;kw...)
+function wrapcall_wf(func, modelPy, args...;kw...)
+    ndim = modelPy.dim + 1 # Add time dimension
+    rtype = _outtype(get(kw, :illum, nothing), 1, Array{Float32, ndim})
+    out = rlock_pycall(func, rtype, modelPy, args...;kw...)
     return out
 end
 
