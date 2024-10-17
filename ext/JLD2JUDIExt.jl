@@ -10,7 +10,7 @@ JUDI.Geometry(x::JLD2.ReconstructedMutable{N, FN, NT}) where {N, FN, NT} = Geome
 function JUDI.tof32(x::JLD2.ReconstructedStatic{N, FN, NT}) where {N, FN, NT}
     # Drop "typed" signature
     reconstructT = Symbol(split(string(N), "{")[1])
-    return JUDI.tof32(eval(reconstructT)([getproperty(x, f) for f in FN]...))
+    return JUDI.tof32(getproperty(@__MODULE__, reconstructT)([getproperty(x, f) for f in FN]...))
 end
 
 end
