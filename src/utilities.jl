@@ -59,8 +59,8 @@ end
 
 
 # Devito configuration
-set_devito_config(key::String, val::String) = devito[].configuration[key] = val
-set_devito_config(key::String, val::Bool) = devito[].configuration[key] = val
+set_devito_config(key::String, val::String) = begin devito.configuration[key] = val end
+set_devito_config(key::String, val::Bool) =  begin devito.configuration[key] = val end
 
 set_devito_config(kw...) = begin
     for (k, v) in kw

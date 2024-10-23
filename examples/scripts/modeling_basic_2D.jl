@@ -137,7 +137,7 @@ dot1 = dot(q, qad)
 # <F x, y>
 dot2 = dot(dobs, dobs)
 # Compare
-@show dot1, dot2, (dot2 - dot2)/(dot1 + dot2)
+@show dot1, dot2, (dot1 - dot2)/(dot1 + dot2)
 
 #' # Inversion
 #' Our main goal is to provide an inversion framework for seismic inversion. To this end, as shown earlier,
@@ -151,14 +151,24 @@ rtm = adjoint(J)*dD
 
 #' We show the linearized data.
 fig = figure()
-plot_sdata(dobs[2]; new_fig=false, name="Linearized data", cmap=dcmap)
+plot_sdata(dD[2]; new_fig=false, name="Linearized data", cmap=dcmap)
 display(fig)
-
 
 #' And the RTM image
 fig = figure()
 plot_simage(rtm'; new_fig=false, name="RTM image", cmap=imcmap)
 display(fig)
+
+#' We can easily now again test the adjointness of our operator with the standard dot test. Because we
+#' intend to conserve our linear algebra abstraction, `judiVector` implements all the necessary linear 
+#' algebra functions such as dot product or norm to be used directly.
+# <x, J'y>
+dot3 = dot(dm, rtm)
+# <J x, y>
+dot4 = dot(dD, dD)
+# Compare
+@show dot3, dot4, (dot3 - dot4)/(dot3 + dot4)
+
 
 #' ## Inversion utility functions
 #' We currently introduced the lineaar operators that allow to write seismic modeling and inversion in a high-level, linear algebra way. These linear operators allow the script to closely follow the mathematics and to be readable and understandable.

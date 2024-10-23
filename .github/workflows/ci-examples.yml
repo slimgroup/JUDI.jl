@@ -42,6 +42,7 @@ jobs:
       DEVITO_LANGUAGE: "openmp"
       DEVITO_LOGGING: "ERROR"
       OMP_NUM_THREADS: 1
+      JULIA_NUM_THREADS: 1
       NITER: 2
 
     strategy:
@@ -60,21 +61,23 @@ jobs:
           version: ${{ matrix.version }}
           arch: x64
 
+      - uses: julia-actions/cache@v2
+
       - name: Set julia python
         run: |
           python3 -m pip install -U pip
           python3 -m pip install "matplotlib<3.9" seiscm colorcet
           echo "JULIA_PYTHONCALL_EXE=$(which python3)" >> $GITHUB_ENV
           echo "JULIA_CONDAPKG_BACKEND=\"Null\"" >> $GITHUB_ENV
-          python3 -m pip install devito[tests,extras]@git+https://github.com/devitocodes/devito.git
-          JULIA_PYTHONCALL_EXE=$(which python3) JULIA_CONDAPKG_BACKEND="Null" julia -e 'using Pkg;Pkg.add(["PythonCall", "PyPlot", "SlimPlotting"]);Pkg.build("PythonCall")'
+          echo "PYTHON=$(which python3)" >> $GITHUB_ENV
+          echo "PYCALL_JL_RUNTIME_PYTHON=$(which python3)" >> $GITHUB_ENV
 
       - name: Build JUDI
         uses: julia-actions/julia-buildpkg@latest
 
       - name: Install packages
         run: |
-          julia -e 'using Pkg;Pkg.add(["NLopt", "Flux", "JOLI", "Zygote", "IterativeSolvers", "SlimOptim", "HDF5", "SegyIO", "SetIntersectionProjection"])'
+          julia -e 'using Pkg;Pkg.add(["SlimPlotting", "PyPlot", "NLopt", "Flux", "JOLI", "Zygote", "IterativeSolvers", "SlimOptim", "HDF5", "SegyIO", "SetIntersectionProjection"])'
           julia -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd()))'
 
       - name: Run examples

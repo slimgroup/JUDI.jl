@@ -8,7 +8,7 @@ from checkpoint import CheckpointOperator, DevitoCheckpoint
 from propagators import forward, born, gradient, forward_grad
 from sensitivity import Loss
 from sources import Receiver
-from utils import weight_fun, compute_optalpha
+from utils import weight_fun, compute_optalpha, npdot
 from fields import memory_field, src_wavefield
 from fields_exprs import wf_as_src
 
@@ -584,7 +584,7 @@ def wri_func(model, src_coords, wavelet, rec_coords, recin, yin,
     if yin is None or grad_corr:
         y, u0, _, _ = forward(model, src_coords, rec_coords, wavelet, save=grad_corr,
                               ws=ws, f0=f0)
-        ydat = recin[:] - y.data[:]
+        ydat = recin - y.data[:]
     else:
         ydat = yin
 
@@ -596,8 +596,7 @@ def wri_func(model, src_coords, wavelet, rec_coords, recin, yin,
     c2 = np.log(np.prod(model.shape))
     # <PTy, d-F(m)*f> = <PTy, d>-<adjoint(F(m))*PTy, f>
     ndt = np.sqrt(model.critical_dt)
-    PTy_dot_r = ndt**2 * (np.dot(ydat.reshape(-1), recin.reshape(-1)) -
-                          np.dot(srca.data.reshape(-1), wavelet.reshape(-1)))
+    PTy_dot_r = ndt**2 * (npdot(ydat, recin) - npdot(srca.data, wavelet))
     norm_y = ndt * np.linalg.norm(ydat)
 
     # alpha

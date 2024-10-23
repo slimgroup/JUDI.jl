@@ -160,3 +160,11 @@ def compression_mode():
         return 'bitcomp'
     else:
         return 'noop'
+
+
+def npdot(a, b):
+    """
+    Inner product of n-dimensional ndarrays through numpy einsum
+    """
+    inds = 'ijklm'[:len(a.shape)]
+    return np.einsum('%s,%s->' % (inds, inds), a, b)
