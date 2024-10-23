@@ -10,6 +10,7 @@ function _multi_src_fg(model_full::AbstractModel, source::Dtypes, dObs::Dtypes, 
                       nlind::Bool=false, lin::Bool=false, misfit::Function=mse, illum::Bool=false,
                       data_precon=nothing, model_precon=LinearAlgebra.I)
     GC.gc(true)
+    PythonCall.GC.gc()
     devito.clear_cache()
 
     # assert this is for single source LSRTM
@@ -36,7 +37,7 @@ function _multi_src_fg(model_full::AbstractModel, source::Dtypes, dObs::Dtypes, 
     # Set up Python model
     @juditime "Devito Model" begin
         modelPy = devito_model(model, options, dm)
-        dtComp = convert(Float32, modelPy."critical_dt")
+        dtComp = pyconvert(Float32, modelPy.critical_dt)
     end
 
     # Extrapolate input data to computational grid
@@ -60,22 +61,19 @@ function _multi_src_fg(model_full::AbstractModel, source::Dtypes, dObs::Dtypes, 
         runtime_misfit = misfit
     end
 
-    mfunc = pyfunction(runtime_misfit, Matrix{Float32}, Matrix{Float32})
+    mfunc = pyjl(runtime_misfit)
 
     length(options.frequencies) == 0 ? freqs = nothing : freqs = options.frequencies
-    IT = illum ? (PyArray, PyArray) : (PyObject, PyObject)
+
+    # Make dObserved/Y numpy to avoid indexing issues
+    dIn = Py(dObserved).to_numpy()
 
     @juditime "Python call to J_adjoint" begin
-        argout = rlock_pycall(ac."J_adjoint", Tuple{Float32, PyArray, IT...}, modelPy,
-                src_coords, qIn, rec_coords, dObserved, t_sub=options.subsampling_factor,
-                checkpointing=options.optimal_checkpointing,
-                freq_list=freqs, ic=options.IC, is_residual=false, born_fwd=lin, nlind=nlind,
-                dft_sub=options.dft_subsampling_factor[1], f0=options.f0, return_obj=true,
-                misfit=mfunc, illum=illum)
-    end
-
-    @juditime "Filter empty output" begin
-        argout = filter_none(argout)
+        argout = wrapcall_data(ac.J_adjoint, modelPy, src_coords, qIn, rec_coords, dObserved, t_sub=options.subsampling_factor,
+                                checkpointing=options.optimal_checkpointing,
+                                freq_list=freqs, ic=options.IC, is_residual=false, born_fwd=lin, nlind=nlind,
+                                dft_sub=options.dft_subsampling_factor[1], f0=options.f0, return_obj=true,
+                                misfit=mfunc, illum=illum)
     end
 
     @juditime "Remove padding from gradient" begin

@@ -188,7 +188,7 @@ class Model(object):
 
         # Create square slowness of the wave as symbol `m`
         if m is not None:
-            vp_vals = m**(-.5)
+            vp_vals = np.pow(m, -.5)
             self.m = self._gen_phys_param(m, 'm', space_order)
 
         # density

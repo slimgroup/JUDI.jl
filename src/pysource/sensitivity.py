@@ -257,7 +257,7 @@ def Loss(dsyn, dobs, dt, is_residual=False, misfit=None):
     """
     if misfit is not None:
         if isinstance(dsyn, tuple):
-            f, r = misfit(dsyn[0].data._local, dobs[:] - dsyn[1].data._local[:])
+            f, r = misfit(dsyn[0].data._local, dobs - dsyn[1].data._local[:])
             dsyn[0].data._local[:] = r[:]
             return dt * f, dsyn[0].data._local
         else:
@@ -268,12 +268,12 @@ def Loss(dsyn, dobs, dt, is_residual=False, misfit=None):
     if not is_residual:
         if isinstance(dsyn, tuple):
             # input is observed data
-            dsyn[0].data._local[:] -= dobs[:] - dsyn[1].data._local[:]
+            dsyn[0].data._local[:] -= dobs - dsyn[1].data._local[:]
             phi = .5 * dt * np.linalg.norm(dsyn[0].data._local)**2
             return phi, dsyn[0].data._local
         else:
-            dsyn.data._local[:] -= dobs[:]   # input is observed data
+            dsyn.data._local[:] -= dobs   # input is observed data
     else:
-        dsyn.data._local[:] = dobs[:]
+        dsyn.data._local[:] = dobs
 
     return .5 * dt * np.linalg.norm(dsyn.data._local)**2, dsyn.data._local

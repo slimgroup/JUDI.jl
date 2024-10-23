@@ -58,32 +58,9 @@ function _worker_pool()
 end
 
 
-# Create a lock for pycall FOR THREAD/TASK SAFETY
-# See discussion at
-# https://github.com/JuliaPy/PyCall.jl/issues/882
-
-const PYLOCK = Ref{ReentrantLock}()
-
-# acquire the lock before any code calls Python
-pylock(f::Function) = Base.lock(PYLOCK[]) do
-    prev_gc = GC.enable(false)
-    try 
-        return f()
-    finally
-        GC.enable(prev_gc) # recover previous state
-    end
-end
-
-function rlock_pycall(meth, ::Type{T}, args...; kw...) where T
-    out::T = pylock() do
-        pycall(meth, T, args...; kw...)
-    end
-    return out
-end
-
 # Devito configuration
-set_devito_config(key::String, val::String) = set!(devito."configuration", key, val)
-set_devito_config(key::String, val::Bool) = set!(devito."configuration", key, val)
+set_devito_config(key::String, val::String) = devito[].configuration[key] = val
+set_devito_config(key::String, val::Bool) = devito[].configuration[key] = val
 
 set_devito_config(kw...) = begin
     for (k, v) in kw

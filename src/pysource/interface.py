@@ -615,7 +615,7 @@ def wri_func(model, src_coords, wavelet, rec_coords, recin, yin,
                                      freq=freq_list, q=Q, v=v, f0=f0)
 
         # Compute gradient wrt y
-        if grad_corr or grad in ["all", "y"]:
+        if grad_corr or str(grad) in ["all", "y"]:
             grady = c2 * recin - rcv.data[:]
             if norm_y != 0:
                 grady -= np.abs(eps) * ydat / norm_y

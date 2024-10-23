@@ -42,7 +42,7 @@ m0 = (1f0 ./ v0).^2
 dm = vec(m0 - m)
 
 # Setup model structure
-nsrc = 2	# number of sources
+nsrc = 3	# number of sources
 model = Model(n, d, o, m)
 model0 = Model(n, d, o, m0)
 
@@ -121,7 +121,7 @@ dobs = Pr*F*adjoint(Ps)*q
 
 #' Plot the shot record
 fig = figure()
-plot_sdata(dobs[1]; new_fig=false, name="Synthetic data", cmap=dcmap)
+plot_sdata(dobs[2]; new_fig=false, name="Synthetic data", cmap=dcmap)
 display(fig)
 
 #' Because we have abstracted the linear algebra, we can solve the adjoint wave-equation as well 
@@ -151,7 +151,7 @@ rtm = adjoint(J)*dD
 
 #' We show the linearized data.
 fig = figure()
-plot_sdata(dobs[1]; new_fig=false, name="Linearized data", cmap=dcmap)
+plot_sdata(dobs[2]; new_fig=false, name="Linearized data", cmap=dcmap)
 display(fig)
 
 
@@ -213,7 +213,8 @@ display(fig)
 #' Finally, JUDI implements TWRI, an augmented method to tackle cycle skipping. Once again we provide a computationnally efficient wrapper function that returns the objective value and necessary gradients
 f, gm, gy = twri_objective(model0, q, dobs, nothing; options=opt, optionswri=TWRIOptions(params=:all))
 # With on-the-fly DFT, experimental
-f, gmf = twri_objective(model0, q, dobs, nothing; options=Options(frequencies=[[.009, .011], [.008, .012]]), optionswri=TWRIOptions(params=:m))
+freqs = [[.009, .011], [.008, .012], [0.007, 0.0010]]
+f, gmf = twri_objective(model0, q, dobs, nothing; options=Options(frequencies=freqs), optionswri=TWRIOptions(params=:m))
 
 #' Plot gradients
 fig = figure()
@@ -221,5 +222,7 @@ plot_simage(gm'; new_fig=false, name="TWRI gradient w.r.t m", cmap=imcmap)
 display(fig)
 
 fig = figure()
-plot_sdata(gy[1]; new_fig=false, name="TWRI gradient w.r.t y", cmap=dcmap)
+plot_sdata(gy[2]; new_fig=false, name="TWRI gradient w.r.t y", cmap=dcmap)
 display(fig)
+
+println("All done")
