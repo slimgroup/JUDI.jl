@@ -66,7 +66,6 @@ function devito_interface(modelPy::Py, srcGeometry::Nothing, srcData::Array, rec
     rec_coords = setup_grid(recGeometry, modelPy.shape)
 
     # Devito call
-    srcData = Py(srcData).to_numpy()
     return wrapcall_data(ac.forward_wf_src, modelPy, srcData, rec_coords, fw=fw, f0=options.f0, illum=illum)
 end
 
@@ -77,7 +76,6 @@ function devito_interface(modelPy::Py, srcGeometry::Nothing, srcData::Array, rec
     dtComp = pyconvert(Float32, modelPy.critical_dt)
 
     # Devito call
-    srcData = Py(srcData).to_numpy()
     return wrapcall_data(ac.forward_wf_src_norec, modelPy, srcData, fw=fw, illum=illum)
 end
 
@@ -115,9 +113,6 @@ function devito_interface(modelPy::Py, srcGeometry::Geometry, srcData::Array, re
     rec_coords = setup_grid(recGeometry, modelPy.shape)
     length(options.frequencies) == 0 ? freqs = nothing : freqs = options.frequencies
 
-    # Make dIn numpy to avoid indexing issues
-    dIn = Py(dIn).to_numpy()
-
     return wrapcall_data(ac.J_adjoint, modelPy,
                   src_coords, qIn, rec_coords, dIn, fw=fw, t_sub=options.subsampling_factor,
                   checkpointing=options.optimal_checkpointing,
@@ -131,16 +126,16 @@ end
 function devito_interface(modelPy::Py, weights::Array, srcData::Array, recGeometry::Geometry, recData::Nothing,
                           dm::Nothing, options::JUDIOptions, illum::Bool, fw::Bool)
     judilog("Pr*$(_op_str(fw))*Pw'*w")
-    weights = pad_array(reshape(weights, modelPy.shape), modelPy.padsizes; mode=:zeros)
+    shape = pyconvert(Tuple, modelPy.shape)
+    weights = pad_array(reshape(weights, shape), modelPy.padsizes; mode=:zeros)
     # Interpolate input data to computational grid
     dtComp = pyconvert(Float32, modelPy.critical_dt)
     qIn = time_resample(srcData, recGeometry, dtComp)
 
     # Set up coordinates with devito dimensions
-    rec_coords = setup_grid(recGeometry, modelPy.shape)
+    rec_coords = setup_grid(recGeometry, shape)
 
     # Devito call
-    weights = Py(weights).to_numpy()
     return wrapcall_data(ac.forward_rec_w, modelPy, weights, qIn, rec_coords,
                          fw=fw, f0=options.f0, illum=illum)
 end
@@ -166,13 +161,14 @@ end
 function devito_interface(modelPy::Py, weights::Array, srcData::Array, recGeometry::Geometry, recData::Nothing,
                           dm::Union{PhysicalParameter, Array}, options::JUDIOptions, illum::Bool, fw::Bool)
     judilog("Jw($(_op_str(fw)), q)*dm")
-    weights = pad_array(reshape(weights, modelPy.shape), modelPy.padsizes; mode=:zeros)
+    shape = pyconvert(Tuple, modelPy.shape)
+    weights = pad_array(reshape(weights, shape), modelPy.padsizes; mode=:zeros)
     # Interpolate input data to computational grid
     dtComp = pyconvert(Float32, modelPy.critical_dt)
     qIn = time_resample(srcData, recGeometry, dtComp)
 
     # Set up coordinates with devito dimensions
-    rec_coords = setup_grid(recGeometry, modelPy.shape)
+    rec_coords = setup_grid(recGeometry, shape)
 
     # Devito call
     return wrapcall_data(ac.born_rec_w, modelPy, weights, qIn, rec_coords,
@@ -182,7 +178,8 @@ end
 # Adjoint Jacobian of extended source modeling: dm = J'*d_lin
 function devito_interface(modelPy::Py, weights::Array, srcData::Array, recGeometry::Geometry, recData::Array, dm::Nothing, options::JUDIOptions, illum::Bool, fw::Bool)
     judilog("Jw($(_op_str(fw)), q)'*d_lin")
-    weights = pad_array(reshape(weights, modelPy.shape), modelPy.padsizes; mode=:zeros)
+    shape = pyconvert(Tuple, modelPy.shape)
+    weights = pad_array(reshape(weights, shape), modelPy.padsizes; mode=:zeros)
     # Interpolate input data to computational grid
     dtComp = pyconvert(Float32, modelPy.critical_dt)
     qIn = time_resample(srcData, recGeometry, dtComp)
@@ -190,11 +187,8 @@ function devito_interface(modelPy::Py, weights::Array, srcData::Array, recGeomet
     qIn, dIn = _maybe_pad_t0(qIn, recGeometry, dIn, recGeometry, dtComp)
 
     # Set up coordinates with devito dimensions
-    rec_coords = setup_grid(recGeometry, modelPy.shape)
+    rec_coords = setup_grid(recGeometry, shape)
     length(options.frequencies) == 0 ? freqs = nothing : freqs = options.frequencies
-
-    # Make dIn numpy to avoid indexing issues
-    dIn = Py(dIn).to_numpy()
 
     return wrapcall_data(ac.J_adjoint, modelPy,
                   nothing, qIn, rec_coords, dIn, fw=fw, t_sub=options.subsampling_factor,

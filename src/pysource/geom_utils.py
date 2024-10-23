@@ -27,7 +27,8 @@ def src_rec(model, u, src_coords=None, rec_coords=None, wavelet=None, nt=None):
     return src, rcv
 
 
-def geom_expr(model, u, src_coords=None, rec_coords=None, wavelet=None, fw=True, nt=None):
+def geom_expr(model, u, src_coords=None, rec_coords=None,
+              wavelet=None, fw=True, nt=None):
     """
     Generates the source injection and receiver interpolation.
     This function is fully abstracted and does not care whether this is a

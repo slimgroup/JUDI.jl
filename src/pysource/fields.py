@@ -100,7 +100,7 @@ def src_wavefield(model, u, fw=True):
         Forward or backward (for naming)
     """
     name = "uqwf" if fw else "vqwf"
-    init = u.data if isinstance(u, TimeFunction) else u
+    init = u.data if isinstance(u, TimeFunction) else u.to_numpy(copy=False)
     wf_src = TimeFunction(name=name, grid=model.grid, time_order=2,
                           space_order=0, save=u.shape[0], initializer=init)
     return wf_src
@@ -179,11 +179,12 @@ def lr_src_fields(model, weight, wavelet, empty_w=False, rec=False):
     wavelett = TimeFunction(name='wf_%s' % wn, dimensions=(time,), time_dim=time,
                             shape=(nt,), save=nt, grid=model.grid)
     wavelett.data[:] = np.array(wavelet)[:, 0]
-    if empty_w:
-        source_weight = Function(name='%s_weight' % wn, grid=model.grid, space_order=0)
+    if isinstance(weight, Function):
+        source_weight = weight
     else:
         source_weight = Function(name='%s_weight' % wn, grid=model.grid, space_order=0)
-        initialize_function(source_weight, weight, 0)
+        if not empty_w:
+            initialize_function(source_weight, weight.to_numpy(copy=False), 0)
     return source_weight, wavelett
 
 

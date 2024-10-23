@@ -25,7 +25,8 @@ Parameters
 """
 function devito_model(model::MT, options::JUDIOptions, dm) where {MT<:AbstractModel}
     # Set up Python model structure
-    physpar = Dict((n, isa(v, PhysicalParameter) ? Py(v.data).to_numpy() : v) for (n, v) in _params(model))
+    physpar = Dict((n, isa(v, PhysicalParameter) ? v.data : v) for (n, v) in _params(model))
+    dm = isnothing(dm) ? nothing : (isa(dm, PhysicalParameter) ? dm.data : dm)
 
     modelPy = pm.Model(origin(model), spacing(model), size(model), fs=options.free_surface,
                          nbl=nbl(model), space_order=options.space_order, dt=options.dt_comp, dm=dm;
@@ -52,16 +53,17 @@ function pad_array(m::Array{DT}, nb::NTuple{N, Tuple{Int64, Int64}}; mode::Symbo
     n = size(m)
     new_size = Tuple([n[i] + sum(nb[i]) for i=1:length(nb)])
     Ei = []
-    for i=1:length(nb)
+    for i=length(nb):-1:1
         left, right = nb[i]
         push!(Ei, joExtend(n[i], mode;pad_upper=right, pad_lower=left, RDT=DT, DDT=DT))
     end
-    padded = joKron(Ei...) * PermutedDimsArray(m, length(n):-1:1)[:]
-    return PyReverseDims(reshape(padded, reverse(new_size)))
+    padded = joKron(Ei...) * m[:]
+    return reshape(padded, new_size)
 end
 
 pad_array(::Nothing, ::NTuple{N, Tuple{Int64, Int64}}; s::Symbol=:border) where N = nothing
 pad_array(m::Number, ::NTuple{N, Tuple{Int64, Int64}}; s::Symbol=:border) where N = m
+pad_array(m::Array{DT}, nb::Py; mode::Symbol=:border) where DT = pad_array(m, pyconvert(Tuple, nb), mode=mode)
 
 """
     remove_padding(m, nb; true_adjoint=False)
@@ -86,7 +88,7 @@ function remove_padding(gradient::AbstractArray{DT}, nb::NTuple{ND, Tuple{Int64,
     return out
 end
 
-remove_padding(g::PyArray, nb::Py; true_adjoint::Bool=false) = remove_padding(g, pyconvert(Tuple, nb), true_adjoint=true)
+remove_padding(g::PyArray, nb::Py; true_adjoint::Bool=false) = remove_padding(g, pyconvert(Tuple, nb), true_adjoint=true_adjoint)
 
 """
     limit_model_to_receiver_area(srcGeometry, recGeometry, model, buffer; pert=nothing)
@@ -389,12 +391,6 @@ setup_grid(geometry::GeometryIC{T}, ::NTuple{3, <:Integer}) where {T<:Real} = hc
 setup_grid(geometry::GeometryIC{T}, ::NTuple{2, <:Integer}) where {T<:Real} = hcat(geometry.xloc[1], geometry.zloc[1])
 setup_grid(geometry::GeometryIC{T}, ::NTuple{1, <:Integer}) where {T<:Real} = geometry.xloc[1]
 setup_grid(geometry::GeometryIC{T}, t::Py) where T<:Real = setup_grid(geometry, pyconvert(Tuple, t))
-
-"""
-    setup_3D_grid(x, y, z)
-
-"""
-    setup_3D_grid(x, y, z)
 
 """
     setup_3D_grid(x, y, z)

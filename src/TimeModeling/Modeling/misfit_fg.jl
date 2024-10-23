@@ -65,9 +65,6 @@ function _multi_src_fg(model_full::AbstractModel, source::Dtypes, dObs::Dtypes, 
 
     length(options.frequencies) == 0 ? freqs = nothing : freqs = options.frequencies
 
-    # Make dObserved/Y numpy to avoid indexing issues
-    dIn = Py(dObserved).to_numpy()
-
     @juditime "Python call to J_adjoint" begin
         argout = wrapcall_data(ac.J_adjoint, modelPy, src_coords, qIn, rec_coords, dObserved, t_sub=options.subsampling_factor,
                                 checkpointing=options.optimal_checkpointing,

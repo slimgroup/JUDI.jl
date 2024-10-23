@@ -94,13 +94,6 @@ function _twri_objective(model_full::AbstractModel, source::judiVector, dObs::ju
     ~isempty(options.frequencies) ? freqs = options.frequencies : freqs = nothing
     ~isempty(options.frequencies) ? (wfilt, freqs) =  filter_w(qIn, dtComp, freqs) : wfilt = nothing
 
-    # Make dObserved/Y numpy to avoid indexing issues
-    dObserved = Py(dObserved).to_numpy()
-    qIn = Py(qIn).to_numpy()
-    if !isnothing(Y)
-        Y = Py(Y).to_numpy()
-    end
-
     argout = wrapcall_data(ac.wri_func, modelPy,
                            src_coords, qIn, rec_coords, dObserved, Y, t_sub=options.subsampling_factor,
                            grad=optionswri.params, grad_corr=optionswri.grad_corr, eps=optionswri.eps,

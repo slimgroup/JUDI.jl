@@ -76,8 +76,10 @@ function time_resample(data::AbstractArray{T, N}, dt_in::Real, G_in::Geometry{T}
     return dout
 end
 
+_time_resample(data::PyArray{T, 2}, rate::Integer) where T = data[1:rate:end, :]
 _time_resample(data::Matrix{T}, rate::Integer) where T = data[1:rate:end, :]
 _time_resample(data::PermutedDimsArray{T, 2, (2, 1), (2, 1), Matrix{T}}, rate::Integer) where {T<:Real} = data.parent[:, 1:rate:end]'
+_time_resample(data::PermutedDimsArray{T, 2, (2, 1), (2, 1), PyArray{T, 2}}, rate::Integer) where {T<:Real} = data.parent[:, 1:rate:end]'
 
 SincInterpolation(Y::AbstractMatrix{T}, S::StepRangeLen{T}, Up::StepRangeLen{T}) where T<:Real = sinc.( (Up .- S') ./ (S[2] - S[1]) ) * Y
 

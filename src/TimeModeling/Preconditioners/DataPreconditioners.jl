@@ -118,7 +118,7 @@ function muteshot!(shot::AbstractMatrix{T}, rGeom::Geometry, srcGeom::Geometry; 
     end
 end
 
-function muteshot(shot::VecOrMat{T}, srcGeom::Geometry, recGeom::Geometry;
+function muteshot(shot::AbstractVecOrMat{T}, srcGeom::Geometry, recGeom::Geometry;
                    vp=1500, t0=.1, mode=:reflection, taperwidth=floor(Int, 2/t0)) where {T<:Number}
         sr = reshape(shot, recGeom)
         for s=1:get_nsrc(recGeom)
@@ -158,7 +158,7 @@ judiFilter(geometry::Geometry, fmin::T, fmax::T) where T = judiFilter(geometry, 
 judiFilter(geometry::Geometry, fmin::Float32, fmax::Float32) = FrequencyFilter{Float32, fmin, fmax}(n_samples(geometry), geometry)
 judiFilter(v::judiVector, fmin, fmax) = judiFilter(v.geometry, fmin, fmax)
 
-function matvec(D::FrequencyFilter{T, fm, FM}, x::VecOrMat{T}) where {T, fm, FM}
+function matvec(D::FrequencyFilter{T, fm, FM}, x::AbstractVecOrMat{T}) where {T, fm, FM}
     dr = reshape(x, D.recGeom)
     for j=1:get_nsrc(D.recGeom)
         dri = view(dr, :, :, j)
@@ -227,7 +227,7 @@ filter_data(Din::judiVector, ::Any; fmin=0, fmax=Inf) = filter_data(Din; fmin=fm
 Performs a causal filtering [fmin, fmax] on the input data bases on its sampling rate `dt`. 
 Automatically perfroms a lowpass if fmin=0 (default)
 """
-function filter_data(Din::Matrix{T}, dt_in; fmin=0, fmax=Inf) where T
+function filter_data(Din::AbstractMatrix{T}, dt_in; fmin=0, fmax=Inf) where T
     out = similar(Din)
     filter!(out, Din, dt_in; fmin=T(fmin), fmax=T(fmax))
     return out
@@ -304,7 +304,7 @@ function matvec(D::TimeDifferential{T, K}, x::judiVector{T, AT}) where {T, AT, K
     return out
 end
 
-function matvec(D::TimeDifferential{T, K}, x::Array{T}) where {T, K}
+function matvec(D::TimeDifferential{T, K}, x::AbstractArray{T}) where {T, K}
     xr = reshape(x, D.recGeom)
     out = similar(xr)
     # make omega^K
@@ -371,7 +371,7 @@ function matvec(D::TimeGain{T, K}, x::judiVector{T, AT}) where {T, AT, K}
     return out
 end
 
-function matvec(D::TimeGain{T, K}, x::Array{T}) where {T, K}
+function matvec(D::TimeGain{T, K}, x::AbstractArray{T}) where {T, K}
     xr = reshape(x, D.recGeom)
     # make time^K
     timek = (D.recGeom.taxis[1]).^K
