@@ -41,6 +41,13 @@ def getmax(f):
         return np.max(f)
 
 
+def to_numpy(f):
+    try:
+        return f.to_numpy(copy=False)
+    except AttributeError:
+        return f
+
+
 _thomsen = [('epsilon', 1), ('delta', 1), ('theta', 0), ('phi', 0)]
 
 
@@ -188,7 +195,7 @@ class Model(object):
 
         # Create square slowness of the wave as symbol `m`
         if m is not None:
-            vp_vals = m**(-.5)
+            vp_vals = np.pow(m, -.5)
             self.m = self._gen_phys_param(m, 'm', space_order)
 
         # density
@@ -208,8 +215,8 @@ class Model(object):
 
         # Additional parameter fields for TTI operators
         if self._is_tti:
-            epsilon = 1 if epsilon is None else 1 + 2 * epsilon
-            delta = 1 if delta is None else 1 + 2 * delta
+            epsilon = 1 if epsilon is None else 1 + 2 * to_numpy(epsilon)
+            delta = 1 if delta is None else 1 + 2 * to_numpy(delta)
             self.epsilon = self._gen_phys_param(epsilon, 'epsilon', space_order)
             self.scale = np.sqrt(np.max(epsilon))
             self.delta = self._gen_phys_param(delta, 'delta', space_order)
@@ -221,8 +228,9 @@ class Model(object):
         if self._is_elastic:
             self.lam = self._gen_phys_param(lam, 'lam', space_order, is_param=True)
             try:
+                mu = to_numpy(mu)
                 mu[np.where(mu == 0)] = 1e-12
-            except TypeError:
+            except (ValueError, TypeError):
                 mu = 1e-12 if mu == 0 else mu
             self.mu = self._gen_phys_param(mu, 'mu', space_order, is_param=True,
                                            avg_mode='harmonic')
@@ -230,7 +238,7 @@ class Model(object):
                 b = b if b is not None else 1 / rho
             except TypeError:
                 b = 1
-            vp_vals = ((lam + 2 * mu) * b)**(.5)
+            vp_vals = ((to_numpy(lam) + 2 * mu) * b)**(.5)
 
         # User provided dt
         self._dt = kwargs.get('dt')
@@ -297,8 +305,9 @@ class Model(object):
         """
         if field is None:
             return default_value
-        if isinstance(field, np.ndarray):
-            if _dtypes['params'] == 'f16' or field.dtype == np.float16:
+        if hasattr(field, '__array_interface__') and field.shape:
+            dtype = np.dtype(field.__array_interface__['typestr']).type
+            if _dtypes['params'] == 'f16' or dtype == np.float16:
                 _min = np.amin(field)
                 _max = np.amax(field)
                 if _max == _min:
@@ -310,7 +319,7 @@ class Model(object):
             function = Function(name=name, grid=self.grid, space_order=space_order,
                                 parameter=is_param, avg_mode=avg_mode, dtype=dtype)
             pad = 0 if field.shape == function.shape else self.padsizes
-            initialize_function(function, field, pad)
+            initialize_function(function, to_numpy(field), pad)
         else:
             function = Constant(name=name, value=np.amin(field))
         self._physical_parameters.append(name)
@@ -497,7 +506,7 @@ class Model(object):
         abox = ABox(src, rec, self._vp, self.space_order, eps=eps)._abox_func
         abox.data[:] = abox._compute(src=src, rcv=rec, vp=self._vp, eps=eps,
                                      dt=self.critical_dt)
-        return {'abox': abox}
+        return {'srcbox': abox}
 
     def __init_abox__(self, src, rec, fw=True):
         return
@@ -586,4 +595,4 @@ class EmptyModel(Model):
         if not fw:
             src, rec = rec, src
         eps = getattr(self, 'epsilon', None)
-        self._abox = ABox(src, rec, self._vp, self.space_order, eps=eps)
+        self._abox = ABox(src, rec, self._vp, self.space_order, eps=eps, name='srcbox')

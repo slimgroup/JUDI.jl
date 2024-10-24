@@ -215,4 +215,4 @@ _as_src(::judiNoopOperator, ::AbstractModel, q::judiMultiSourceVector) = q
 
 ############################################################################################################################
 ###### Evaluate lazy operation
-eval(rhs::judiRHS) = rhs.d
+eval_lazy(rhs::judiRHS) = rhs.d

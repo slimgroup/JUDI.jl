@@ -28,6 +28,7 @@ getproperty(J::Preconditioner, s::Symbol) = _get_property(J, Val{s}())
 *(J::Preconditioner, ms::judiMultiSourceVector) = matvec(J, ms)
 *(J::Preconditioner, ms::PhysicalParameter) = matvec(J, ms)
 *(J::Preconditioner, v::VecOrMat{T}) where T = matvec(J, v)
+*(J::Preconditioner, v::PyArray{T}) where T = matvec(J, v)
 
 mul!(out::judiMultiSourceVector, J::Preconditioner, ms::judiMultiSourceVector) = copyto!(out, matvec(J, ms))
 mul!(out::PhysicalParameter, J::Preconditioner, ms::PhysicalParameter) = copyto!(out, matvec(J, ms))

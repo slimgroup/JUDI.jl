@@ -1,5 +1,3 @@
-import numpy as np
-
 from devito.tools import as_tuple
 
 from sources import *
@@ -21,7 +19,7 @@ def src_rec(model, u, src_coords=None, rec_coords=None, wavelet=None, nt=None):
         else:
             src = PointSource(name="src%s" % namef, grid=model.grid, ntime=nt,
                               coordinates=src_coords)
-            src.data[:] = wavelet.view(np.ndarray) if wavelet is not None else 0.
+            src.data[:] = wavelet if wavelet is not None else 0.
     rcv = None
     if rec_coords is not None:
         rcv = Receiver(name="rcv%s" % namef, grid=model.grid, ntime=nt,
@@ -29,7 +27,8 @@ def src_rec(model, u, src_coords=None, rec_coords=None, wavelet=None, nt=None):
     return src, rcv
 
 
-def geom_expr(model, u, src_coords=None, rec_coords=None, wavelet=None, fw=True, nt=None):
+def geom_expr(model, u, src_coords=None, rec_coords=None,
+              wavelet=None, fw=True, nt=None):
     """
     Generates the source injection and receiver interpolation.
     This function is fully abstracted and does not care whether this is a

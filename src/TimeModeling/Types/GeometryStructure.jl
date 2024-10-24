@@ -39,9 +39,9 @@ function getproperty(G::Geometry, s::Symbol)
     end
     # Legacy dt/nt/t
     if s in [:dt, :t, :nt, :t0]
-        return eval(Symbol("get_$(s)"))(G)
+        return getproperty(@__MODULE__, Symbol("get_$(s)"))(G)
     end
-    
+
     return getfield(G, s)
 end
 

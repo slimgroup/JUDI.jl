@@ -34,9 +34,9 @@ end
 getindex(la::LazyAdd{D}, i::RangeOrVec) where D = LazyAdd{D}(length(i), la.A[i], la.B[i], la.sign)
 
 
-function eval(ls::LazyAdd{D}) where D
-    aloc = eval(ls.A)
-    bloc = eval(ls.B)
+function eval_lazy(ls::LazyAdd{D}) where D
+    aloc = eval_lazy(ls.A)
+    bloc = eval_lazy(ls.B)
     ga = aloc.geometry
     gb = bloc.geometry
     @assert (ga.nt == gb.nt && ga.dt == gb.dt && ga.t == gb.t)
@@ -49,7 +49,7 @@ function eval(ls::LazyAdd{D}) where D
 end
 
 function make_src(ls::LazyAdd{D}) where D
-    q = eval(ls)
+    q = eval_lazy(ls)
     return q.geometry[1], q.data[1]
 end
 

@@ -18,7 +18,7 @@ end
 using LinearAlgebra, Random, Printf
 using Distributed
 using DSP, FFTW, Dierckx
-using PyCall
+using PythonCall
 using JOLI, SegyIO
 using ChainRulesCore
 using OrderedCollections
@@ -50,19 +50,17 @@ import JOLI: jo_convert
 # FFTW
 import FFTW: fft, ifft
 
-# Import pycall array to python for easy plotting
-import PyCall.NpyArray
-
 # Import AD rrule
 import ChainRulesCore: rrule
 
 # Set python paths
 export devito
 
-const pm = PyNULL()
-const ac = PyNULL()
-const pyut = PyNULL()
-const devito = PyNULL()
+const pm = PythonCall.pynew()
+const ac = PythonCall.pynew()
+const pyut = PythonCall.pynew()
+const devito = PythonCall.pynew()
+const np = PythonCall.pynew()
 
 # Constants
 nworkers(::Any) = length(workers())
@@ -99,13 +97,12 @@ include("rrules.jl")
 
 # Initialize
 function __init__()
-    pushfirst!(PyVector(pyimport("sys")."path"), joinpath(JUDIPATH, "pysource"))
-    copy!(pm, pyimport("models"))
-    copy!(ac, pyimport("interface"))
-    copy!(pyut, pyimport("utils"))
-    copy!(devito, pyimport("devito"))
-    # Initialize lock at session start
-    PYLOCK[] = ReentrantLock()
+    pyimport("sys").path.append(joinpath(JUDIPATH, "pysource"))
+    PythonCall.pycopy!(pm, pyimport("models"))
+    PythonCall.pycopy!(ac, pyimport("interface"))
+    PythonCall.pycopy!(pyut, pyimport("utils"))
+    PythonCall.pycopy!(devito, pyimport("devito"))
+    PythonCall.pycopy!(np, pyimport("numpy"))
 
     # Make sure there is no conflict for the cuda init thread with CUDA.jl
     if get(ENV, "DEVITO_PLATFORM", "") == "nvidiaX"
