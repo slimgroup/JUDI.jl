@@ -58,18 +58,6 @@ jobs:
           brew install llvm libomp
           echo "/opt/homebrew/opt/llvm/bin" >> $GITHUB_PATH
 
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: 3.9
-
-      - name: Set julia python
-        run: |
-          echo "PYTHON=$(which python3)" >> $GITHUB_ENV
-          echo "PYCALL_JL_RUNTIME_PYTHON=$(which python3)" >> $GITHUB_ENV
-          echo "JULIA_PYTHONCALL_EXE=$(which python3)" >> $GITHUB_ENV
-          echo "JULIA_CONDAPKG_BACKEND=\"Null\"" >> $GITHUB_ENV
-
       - name: Build JUDI
         uses: julia-actions/julia-buildpkg@latest
 

@@ -14,6 +14,9 @@ catch e
     pyimport("pkg_resources")
 end
 
+################## JOLI ##################
+run(Cmd(`$(pyexe) -m pip install -U --user --no-cache-dir PyWavelets`))
+
 ################## Devito ##################
 # pip command
 dvver = "4.8.10"
@@ -26,7 +29,7 @@ try
         run(cmd)
     end
 catch e
-    @info "Devito  not installed, installing with PyCall python"
+    @info "Devito  not installed, installing with PythonCall python"
     run(cmd)
 end
 
