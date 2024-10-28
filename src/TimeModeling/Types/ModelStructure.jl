@@ -270,9 +270,6 @@ for op in [:+, :-, :*, :/, :\]
     end
 end
 
-# For ploting
-NpyArray(p::PhysicalParameter{T, N}, revdims::Bool) where {T<:Real, N} = NpyArray(p.data, revdims)
-
 ###################################################################################################
 const ModelParam{N} = Union{<:Pdtypes, PhysicalParameter{<:Pdtypes, N}}
 

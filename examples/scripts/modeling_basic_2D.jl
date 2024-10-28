@@ -42,7 +42,7 @@ m0 = (1f0 ./ v0).^2
 dm = vec(m0 - m)
 
 # Setup model structure
-nsrc = 2	# number of sources
+nsrc = 3	# number of sources
 model = Model(n, d, o, m)
 model0 = Model(n, d, o, m0)
 
@@ -121,7 +121,7 @@ dobs = Pr*F*adjoint(Ps)*q
 
 #' Plot the shot record
 fig = figure()
-plot_sdata(dobs[1]; new_fig=false, name="Synthetic data", cmap=dcmap)
+plot_sdata(dobs[2]; new_fig=false, name="Synthetic data", cmap=dcmap)
 display(fig)
 
 #' Because we have abstracted the linear algebra, we can solve the adjoint wave-equation as well 
@@ -137,7 +137,7 @@ dot1 = dot(q, qad)
 # <F x, y>
 dot2 = dot(dobs, dobs)
 # Compare
-@show dot1, dot2, (dot2 - dot2)/(dot1 + dot2)
+@show dot1, dot2, (dot1 - dot2)/(dot1 + dot2)
 
 #' # Inversion
 #' Our main goal is to provide an inversion framework for seismic inversion. To this end, as shown earlier,
@@ -151,14 +151,24 @@ rtm = adjoint(J)*dD
 
 #' We show the linearized data.
 fig = figure()
-plot_sdata(dobs[1]; new_fig=false, name="Linearized data", cmap=dcmap)
+plot_sdata(dD[2]; new_fig=false, name="Linearized data", cmap=dcmap)
 display(fig)
-
 
 #' And the RTM image
 fig = figure()
 plot_simage(rtm'; new_fig=false, name="RTM image", cmap=imcmap)
 display(fig)
+
+#' We can easily now again test the adjointness of our operator with the standard dot test. Because we
+#' intend to conserve our linear algebra abstraction, `judiVector` implements all the necessary linear 
+#' algebra functions such as dot product or norm to be used directly.
+# <x, J'y>
+dot3 = dot(dm, rtm)
+# <J x, y>
+dot4 = dot(dD, dD)
+# Compare
+@show dot3, dot4, (dot3 - dot4)/(dot3 + dot4)
+
 
 #' ## Inversion utility functions
 #' We currently introduced the lineaar operators that allow to write seismic modeling and inversion in a high-level, linear algebra way. These linear operators allow the script to closely follow the mathematics and to be readable and understandable.
@@ -213,7 +223,8 @@ display(fig)
 #' Finally, JUDI implements TWRI, an augmented method to tackle cycle skipping. Once again we provide a computationnally efficient wrapper function that returns the objective value and necessary gradients
 f, gm, gy = twri_objective(model0, q, dobs, nothing; options=opt, optionswri=TWRIOptions(params=:all))
 # With on-the-fly DFT, experimental
-f, gmf = twri_objective(model0, q, dobs, nothing; options=Options(frequencies=[[.009, .011], [.008, .012]]), optionswri=TWRIOptions(params=:m))
+freqs = [[.009, .011], [.008, .012], [0.007, 0.0010]]
+f, gmf = twri_objective(model0, q, dobs, nothing; options=Options(frequencies=freqs), optionswri=TWRIOptions(params=:m))
 
 #' Plot gradients
 fig = figure()
@@ -221,5 +232,7 @@ plot_simage(gm'; new_fig=false, name="TWRI gradient w.r.t m", cmap=imcmap)
 display(fig)
 
 fig = figure()
-plot_sdata(gy[1]; new_fig=false, name="TWRI gradient w.r.t y", cmap=dcmap)
+plot_sdata(gy[2]; new_fig=false, name="TWRI gradient w.r.t y", cmap=dcmap)
 display(fig)
+
+println("All done")

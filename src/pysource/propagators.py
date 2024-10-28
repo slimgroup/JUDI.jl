@@ -214,7 +214,7 @@ def born(model, src_coords, rcv_coords, wavelet, save=False,
     # Update kwargs
     kw.update(fields_kwargs(u, ul, snl, rnl, rcvl, u_save, dft_m, fr, ws, wt, f0q, I))
     kw.update(model.physical_params(born=True))
-    kw.update(model.abox(snl, rnl, fw=True))
+    kw.update(model.abox(snl, rcvl, fw=True))
 
     # SLS field
     if model.is_viscoacoustic:

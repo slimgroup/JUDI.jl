@@ -3,7 +3,7 @@
 
 model, model0, dm = setup_model(tti, viscoacoustic, nlayer)
 wb = find_water_bottom(model.m .- maximum(model.m))
-q, srcGeometry, recGeometry = setup_geom(model; nsrc=2)
+q, srcGeometry, recGeometry = setup_geom(model; nsrc=2, tn=1750f0)
 
 ftol = 1f-5
 
@@ -203,7 +203,7 @@ dm = model0.m - model.m
 
         # Illumination
         I = judiIllumination(FM; mode="v")
-        dloc = FM*q
+        dloc = FM[1]*q[1]
         # forward only, nothing done
         @test I.illums["v"].data == ones(Float32, model.n)
 
@@ -219,6 +219,8 @@ dm = model0.m - model.m
         @test "v" ∈ keys(Iv.illums)
         @test "u" ∉ keys(Iv.illums)
         @test norm(Iv.illums["v"]) == norm(ones(Float32, model.n))
+        @test I.illums["u"].data == bck
+
         # Test Product
         @test inv(I)*I*model0.m ≈ model0.m rtol=ftol atol=0
 

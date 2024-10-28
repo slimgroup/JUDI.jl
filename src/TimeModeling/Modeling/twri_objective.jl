@@ -55,6 +55,11 @@ subsample(opt::TWRIOptions, srcnum::Int) = getindex(opt, srcnum)
 
 function _twri_objective(model_full::AbstractModel, source::judiVector, dObs::judiVector, y::Union{judiVector, Nothing},
                         options::JUDIOptions, optionswri::TWRIOptions)
+
+    GC.gc(true)
+    PythonCall.GC.gc()
+    devito.clear_cache()
+
     # Load full geometry for out-of-core geometry containers
     dObs.geometry = Geometry(dObs.geometry)
     source.geometry = Geometry(source.geometry)
@@ -68,7 +73,7 @@ function _twri_objective(model_full::AbstractModel, source::judiVector, dObs::ju
 
     # Set up Python model structure 
     modelPy = devito_model(model, options)
-    dtComp = convert(Float32, modelPy."critical_dt")
+    dtComp = pyconvert(Float32, modelPy.critical_dt)
 
     # Extrapolate input data to computational grid
     qIn = time_resample(make_input(source), source.geometry, dtComp)
@@ -88,22 +93,29 @@ function _twri_objective(model_full::AbstractModel, source::judiVector, dObs::ju
 
     ~isempty(options.frequencies) ? freqs = options.frequencies : freqs = nothing
     ~isempty(options.frequencies) ? (wfilt, freqs) =  filter_w(qIn, dtComp, freqs) : wfilt = nothing
-    obj, gradm, grady = rlock_pycall(ac."wri_func", PyObject,
-                modelPy, src_coords, qIn, rec_coords, dObserved, Y, t_sub=options.subsampling_factor,
-                grad=optionswri.params, grad_corr=optionswri.grad_corr, eps=optionswri.eps,
-                alpha_op=optionswri.comp_alpha, w_fun=optionswri.weight_fun,
-                freq_list=freqs, wfilt=wfilt, f0=options.f0)
+
+    argout = wrapcall_data(ac.wri_func, modelPy,
+                           src_coords, qIn, rec_coords, dObserved, Y, t_sub=options.subsampling_factor,
+                           grad=optionswri.params, grad_corr=optionswri.grad_corr, eps=optionswri.eps,
+                           alpha_op=optionswri.comp_alpha, w_fun=optionswri.weight_fun,
+                           freq_list=freqs, wfilt=wfilt, f0=options.f0)
 
     if (optionswri.params in [:m, :all])
-        gradm = remove_padding(gradm, modelPy.padsizes; true_adjoint=options.sum_padding)
+        gradm = remove_padding(argout[2], modelPy.padsizes; true_adjoint=options.sum_padding)
         gradm = PhysicalParameter(gradm, spacing(model), origin(model))
-    end
-    if ~isnothing(grady)
-        grady = time_resample(grady, dtComp, dObs.geometry)
-        grady = judiVector(dObs.geometry, grady)
+    else
+        gradm = nothing
     end
 
-    return filter_out(Ref{Float32}(obj), gradm, grady)
+    if (optionswri.params in [:y, :all])
+        ind = optionswri.params == :all ? 3 : 2
+        grady = time_resample(argout[ind], dtComp, dObs.geometry)
+        grady = judiVector(dObs.geometry, grady)
+    else
+        grady = nothing
+    end
+
+    return filter_out(Ref{Float32}(argout[1]), gradm, grady)
 end
 
 

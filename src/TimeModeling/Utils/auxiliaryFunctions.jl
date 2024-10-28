@@ -26,10 +26,11 @@ Parameters
 function devito_model(model::MT, options::JUDIOptions, dm) where {MT<:AbstractModel}
     # Set up Python model structure
     physpar = Dict((n, isa(v, PhysicalParameter) ? v.data : v) for (n, v) in _params(model))
+    dm = isnothing(dm) ? nothing : (isa(dm, PhysicalParameter) ? dm.data : dm)
 
-    modelPy = rlock_pycall(pm."Model", PyObject, origin(model), spacing(model), size(model), fs=options.free_surface,
-                   nbl=nbl(model), space_order=options.space_order, dt=options.dt_comp, dm=dm;
-                   physpar...)
+    modelPy = pm.Model(origin(model), spacing(model), size(model), fs=options.free_surface,
+                         nbl=nbl(model), space_order=options.space_order, dt=options.dt_comp, dm=dm;
+                         physpar...)
 
     return modelPy
 end
@@ -52,16 +53,17 @@ function pad_array(m::Array{DT}, nb::NTuple{N, Tuple{Int64, Int64}}; mode::Symbo
     n = size(m)
     new_size = Tuple([n[i] + sum(nb[i]) for i=1:length(nb)])
     Ei = []
-    for i=1:length(nb)
+    for i=length(nb):-1:1
         left, right = nb[i]
         push!(Ei, joExtend(n[i], mode;pad_upper=right, pad_lower=left, RDT=DT, DDT=DT))
     end
-    padded = joKron(Ei...) * PermutedDimsArray(m, length(n):-1:1)[:]
-    return PyReverseDims(reshape(padded, reverse(new_size)))
+    padded = joKron(Ei...) * m[:]
+    return reshape(padded, new_size)
 end
 
 pad_array(::Nothing, ::NTuple{N, Tuple{Int64, Int64}}; s::Symbol=:border) where N = nothing
 pad_array(m::Number, ::NTuple{N, Tuple{Int64, Int64}}; s::Symbol=:border) where N = m
+pad_array(m::Array{DT}, nb::Py; mode::Symbol=:border) where DT = pad_array(m, pyconvert(Tuple, nb), mode=mode)
 
 """
     remove_padding(m, nb; true_adjoint=False)
@@ -85,6 +87,8 @@ function remove_padding(gradient::AbstractArray{DT}, nb::NTuple{ND, Tuple{Int64,
     out = gradient[[nbl+1:nn-nbr for ((nbl, nbr), nn) in zip(nb, N)]...]
     return out
 end
+
+remove_padding(g::PyArray, nb::Py; true_adjoint::Bool=false) = remove_padding(g, pyconvert(Tuple, nb), true_adjoint=true_adjoint)
 
 """
     limit_model_to_receiver_area(srcGeometry, recGeometry, model, buffer; pert=nothing)
@@ -298,8 +302,8 @@ function calculate_dt(model::Union{ViscIsoModel{T, N}, IsoModel{T, N}}; dt=nothi
     end
     m = minimum(model.m)
 
-    modelPy = rlock_pycall(pm."Model", PyObject, origin=origin(model), spacing=spacing(model), shape=ntuple(_ -> 11, N),
-               m=m, nbl=0)
+    modelPy = pm.Model(origin=origin(model), spacing=spacing(model), shape=ntuple(_ -> 11, N),
+                         m=m, nbl=0)
 
     return calculate_dt(modelPy)
 end
@@ -311,8 +315,8 @@ function calculate_dt(model::IsoElModel{T, N}; dt=nothing) where {T<:Real, N}
     lam = maximum(model.lam)
     mu = maximum(model.mu)
 
-    modelPy = rlock_pycall(pm."Model", PyObject, origin=origin(model), spacing=spacing(model), shape=ntuple(_ -> 11, N),
-               lam=lam, mu=mu, nbl=0)
+    modelPy = pm.Model(origin=origin(model), spacing=spacing(model), shape=ntuple(_ -> 11, N),
+                         lam=lam, mu=mu, nbl=0)
 
     return calculate_dt(modelPy)
 end
@@ -324,13 +328,13 @@ function calculate_dt(model::TTIModel{T, N}; dt=nothing) where {T<:Real, N}
     m = minimum(model.m)
 
     epsilon = maximum(model.epsilon)
-    modelPy = rlock_pycall(pm."Model", PyObject, origin=origin(model), spacing=spacing(model), shape=ntuple(_ -> 11, N),
-               m=m, epsilon=epsilon, nbl=0)
+    modelPy = pm.Model(origin=origin(model), spacing=spacing(model), shape=ntuple(_ -> 11, N),
+                         m=m, epsilon=epsilon, nbl=0)
 
     return calculate_dt(modelPy)
 end
 
-calculate_dt(modelPy::PyObject) = convert(Float32, modelPy."critical_dt")
+calculate_dt(modelPy::Py) = pyconvert(Float32, modelPy."critical_dt")
 
 """
     get_computational_nt(srcGeometry, recGeoemtry, model; dt=nothing)
@@ -386,6 +390,7 @@ Parameters:
 setup_grid(geometry::GeometryIC{T}, ::NTuple{3, <:Integer}) where {T<:Real} = hcat(geometry.xloc[1], geometry.yloc[1], geometry.zloc[1])
 setup_grid(geometry::GeometryIC{T}, ::NTuple{2, <:Integer}) where {T<:Real} = hcat(geometry.xloc[1], geometry.zloc[1])
 setup_grid(geometry::GeometryIC{T}, ::NTuple{1, <:Integer}) where {T<:Real} = geometry.xloc[1]
+setup_grid(geometry::GeometryIC{T}, t::Py) where T<:Real = setup_grid(geometry, pyconvert(Tuple, t))
 
 """
     setup_3D_grid(x, y, z)
@@ -694,19 +699,6 @@ as_src_list(::Nothing, nsrc::Integer) = fill(0, nsrc)
 
 ######### backward compat
 extend_gradient(model_full, model, array) = array
-
-### Filter out PyObject none and nothing
-pynone(::AbstractArray) = false
-pynone(m) = (m == PyObject(nothing) || isnothing(m))
-
-function filter_none(args::Tuple)
-    out = filter(m-> ~pynone(m), args)
-    out = length(out) == 1 ? out[1] : out
-    return out
-end
-
-filter_none(x) = x
-
 
 function Gardner(vp::Array{T, N}; vwater=1.51) where {T<:Real, N}
     rho = (T(0.31) .* (T(1e3) .* vp).^(T(0.25)))

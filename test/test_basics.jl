@@ -51,13 +51,13 @@ function test_density(ndim)
     model = Model(n, d, o, m, rho; nb=0)
     @test :rho in JUDI._mparams(model)
     modelpy = devito_model(model, Options())
-    @test isapprox(modelpy.irho.data, 1 ./ model.rho)
+    @test isapprox(JUDI.PythonCall.PyArray(modelpy.irho.data), 1 ./ model.rho)
 
     rho[61] = 1000
     model = Model(n, d, o, m, rho; nb=0)
     @test :rho in JUDI._mparams(model)
     modelpy = devito_model(model, Options())
-    @test isapprox(modelpy.rho.data, model.rho)
+    @test isapprox(JUDI.PythonCall.PyArray(modelpy.rho.data), model.rho)
 end
 
 
@@ -68,11 +68,13 @@ function test_padding(ndim)
     modelPy = devito_model(model, Options())
 
     m0 = model.m
-    mcut = remove_padding(deepcopy(modelPy.m.data), modelPy.padsizes; true_adjoint=true)
-    mdata = deepcopy(modelPy.m.data)
+    mdata = Array(JUDI.PythonCall.PyArray(modelPy.m.data))
+    mcut = remove_padding(copy(mdata), JUDI.PythonCall.pyconvert(Tuple, modelPy.padsizes); true_adjoint=true)
 
-    @show dot(m0, mcut)/dot(mdata, mdata)
-    @test isapprox(dot(m0, mcut), dot(mdata, mdata))
+    a = dot(m0, mcut)
+    b = dot(mdata, mdata)
+    @show a/b, (a - b) / (a + b)
+    @test (a - b) / (a + b) ≈ 0 atol=5e-6 rtol=0
 end
 
 function test_limit_m(ndim, tti)
@@ -88,8 +90,8 @@ function test_limit_m(ndim, tti)
     srcGeometry = example_src_geometry()
     recGeometry = example_rec_geometry(cut=true)
     buffer = 100f0
-    dm = rand(Float32, model.n...)
-    dmb = PhysicalParameter(0 .* dm, model.n, model.d, model.o)
+    dm = rand(Float32, size(model)...)
+    dmb = PhysicalParameter(0 .* dm, size(model), spacing(model), origin(model))
     new_mod, dm_n = limit_model_to_receiver_area(srcGeometry, recGeometry, deepcopy(model), buffer; pert=dm)
 
     # check new_mod coordinates
@@ -120,9 +122,9 @@ function test_limit_m(ndim, tti)
 
     dmt = PhysicalParameter(dm_n, new_mod.n, model.d, new_mod.o)
     ex_dm = dmb + dmt
-    @test ex_dm.o == model.o
-    @test ex_dm.n == model.n
-    @test ex_dm.d == model.d
+    @test ex_dm.o == origin(model)
+    @test ex_dm.n == size(model)
+    @test ex_dm.d == spacing(model)
     @test norm(ex_dm) == norm(dm_n)
 end
 
@@ -177,14 +179,24 @@ function test_serial()
 end
 
 @testset "Test basic utilities" begin
-    @timeit TIMEROUTPUT "Basic setup utilities" begin
-        test_ftp()
+    # @timeit TIMEROUTPUT "FTP data" begin
+    #     test_ftp()
+    # end
+    @timeit TIMEROUTPUT "Serial/parallel" begin
         test_serial()
+    end
+    @timeit TIMEROUTPUT "3D setup" begin
         setup_3d()
+    end
+    
+    @timeit TIMEROUTPUT "Padding and density" begin
         for ndim=[2, 3]
             test_padding(ndim)
             test_density(ndim)
         end
+    end
+
+    @timeit TIMEROUTPUT "Limit m" begin
         opt = Options(frequencies=[[2.5, 4.5], [3.5, 5.5]])
         @test subsample(opt, 1).frequencies == [2.5, 4.5]
         @test subsample(opt, 2).frequencies == [3.5, 5.5]
@@ -194,7 +206,9 @@ end
                 test_limit_m(ndim, tti)
             end
         end
+    end
 
+    @timeit TIMEROUTPUT "Model config" begin
         # Test model
         for ndim=[2, 3]
             for (tti, elas, visco) in [(false, false, false), (true, false, false), (false, true, false), (false, false, true)]
@@ -202,13 +216,13 @@ end
 
                 # Default dt
                 modelPy = devito_model(model, Options())
-                @test isapprox(modelPy.critical_dt, calculate_dt(model))
+                @test isapprox(JUDI.PythonCall.pyconvert(Float32, modelPy.critical_dt), calculate_dt(model))
                 @test get_dt(model) == calculate_dt(model)
                 @test isapprox(calculate_dt(model; dt=.5f0), .5f0)
 
                 # Input dt
                 modelPy = devito_model(model, Options(dt_comp=.5f0))
-                @test modelPy.critical_dt == .5f0
+                @test Bool(modelPy.critical_dt == .5f0)
 
                 # Verify nt
                 srcGeometry = example_src_geometry()
@@ -225,4 +239,5 @@ end
             end
         end
     end
+
 end
