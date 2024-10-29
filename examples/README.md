@@ -15,7 +15,7 @@ Pkg.add("JLD")
 Pkg.add("JLD2")
 
 # Plotting
-Pkg.add("PyPlot")
+Pkg.add("PythonPlot")
 Pkg.add("SlimPlotting")
 
 # Optimization

@@ -7,7 +7,7 @@
 R = Float32
 
 ### Module loading
-using LinearAlgebra, JLD2, PyPlot, Dates, Distributed
+using LinearAlgebra, JLD2, PythonPlot, Dates, Distributed
 using Optim, LineSearches
 using JUDI
 

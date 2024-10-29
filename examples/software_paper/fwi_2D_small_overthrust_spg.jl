@@ -4,7 +4,7 @@
 #
 
 using Statistics, Random, LinearAlgebra
-using JUDI, SlimOptim, HDF5, SegyIO, PyPlot
+using JUDI, SlimOptim, HDF5, SegyIO, PythonPlot
 
 # Load starting model
 n,d,o,m0 = read(h5open("$(JUDI.JUDI_DATA)/small_overthrust_model.h5","r"), "n", "d", "o", "m0")

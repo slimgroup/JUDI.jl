@@ -51,7 +51,7 @@ RUN for pkg in "SegyIO" "JOLI" "JUDI" "SlimOptim" "InvertibleNetworks"; do \
 		julia -e "using Pkg;Pkg.develop(\"$pkg\");using $pkg"; \
 	done
 RUN for pkg in "LineSearches" "Optim" "DSP" "Dierckx" "NLopt" "FFTW" "SetIntersectionProjection" "IterativeSolvers" "JLD" \
-               "Flux" "Zygote" "JLD2" "HDF5" "PyPlot" "PyCall" "Distributed" "Images" "SlimPlotting"; do \
+               "Flux" "Zygote" "JLD2" "HDF5" "PythonPlot" "PyCall" "Distributed" "Images" "SlimPlotting"; do \
 		julia -e "using Pkg;Pkg.add(\"$pkg\"); using $pkg"; \
 	done
 

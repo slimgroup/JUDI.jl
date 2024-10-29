@@ -3,7 +3,7 @@
 # Date: June 2022
 
 using Statistics, Random, LinearAlgebra, JOLI, Distributed
-using JUDI, SegyIO, HDF5, PyPlot, IterativeSolvers
+using JUDI, SegyIO, HDF5, PythonPlot, IterativeSolvers
 
 
 # Load migration velocity model

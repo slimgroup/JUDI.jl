@@ -3,7 +3,7 @@
 # Date: September 2022
 #
 
-using Statistics, Random, LinearAlgebra, PyPlot, Distributed
+using Statistics, Random, LinearAlgebra, PythonPlot, Distributed
 using JUDI, SlimOptim, HDF5, SegyIO
 @everywhere using JUDI.FFTW, Zygote
 

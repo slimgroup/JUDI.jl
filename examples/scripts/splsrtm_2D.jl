@@ -3,7 +3,7 @@
 # Date: April 2022
 
 using Statistics, Random, LinearAlgebra, JOLI
-using JUDI, SegyIO, HDF5, PyPlot, SlimOptim
+using JUDI, SegyIO, HDF5, PythonPlot, SlimOptim
 
 
 # Load migration velocity model

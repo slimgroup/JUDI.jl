@@ -9,10 +9,10 @@
 #' This example is converted to a markdown file for the documentation.
 
 #' # Import JUDI, Linear algebra utilities and Plotting
-using JUDI, LinearAlgebra, SlimPlotting
+using JUDI, LinearAlgebra, PythonPlot, SlimPlotting
 
 #+ echo = false; results = "hidden"
-close("all")
+plotclose("all")
 imcmap = "cet_CET_L1"
 dcmap = "PuOr"
 
