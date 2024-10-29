@@ -77,7 +77,7 @@ jobs:
 
       - name: Install packages
         run: |
-          julia -e 'using Pkg;Pkg.add(["SlimPlotting", "PyPlot", "NLopt", "Flux", "JOLI", "Zygote", "IterativeSolvers", "SlimOptim", "HDF5", "SegyIO", "SetIntersectionProjection"])'
+          julia -e 'using Pkg;Pkg.add(["SlimPlotting", "PythonPlot", "NLopt", "Flux", "JOLI", "Zygote", "IterativeSolvers", "SlimOptim", "HDF5", "SegyIO", "SetIntersectionProjection"])'
           julia -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd()))'
 
       - name: Run examples

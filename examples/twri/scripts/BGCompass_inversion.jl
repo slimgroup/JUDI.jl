@@ -5,7 +5,7 @@
 ################################################################################
 
 ### Module loading
-using LinearAlgebra, JLD2, PyPlot, Dates, Distributed, Images
+using LinearAlgebra, JLD2, PythonPlot, Dates, Distributed, Images
 using Optim, LineSearches
 using JUDI, SlimOptim
 

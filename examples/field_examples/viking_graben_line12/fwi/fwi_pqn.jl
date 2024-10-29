@@ -209,7 +209,7 @@ for k in 1:nworkers()
     @spawnat workers()[k] ENV["GOMP_CPU_AFFINITY"] = "$(place1)-$(place2)";
 end
 
-@everywhere using Distributed, JUDI.TimeModeling, SlimOptim, LinearAlgebra, PyPlot, SetIntersectionProjection, SegyIO
+@everywhere using Distributed, JUDI.TimeModeling, SlimOptim, LinearAlgebra, PythonPlot, SetIntersectionProjection, SegyIO
 
 function objective(m, d_obs, wb_mask)
 

@@ -7,7 +7,7 @@ from models import Model
 from propagators import *
 from interface import *
 
-import matplotlib.pyplot as plt
+import matplotlib.PythonPlot as plt
 
 parser = ArgumentParser(description="Adjoint test args")
 

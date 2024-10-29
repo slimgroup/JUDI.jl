@@ -113,7 +113,7 @@ d_obs = F*q
 We can plot a 2D shot record by accessing the `.data` field of the `judiVector`, which contains the data in the original (non-vectorized) dimensions:
 
 ```julia
-using PyPlot
+using PythonPlot
 imshow(d_obs.data[1], vmin=-5, vmax=5, cmap="seismic", aspect="auto")
 ```
 
@@ -230,7 +230,7 @@ d_obs = Pr*A_inv*Ps'*q
 The 3D shot records are still saved as 2D arrays of dimensions `time x (nxrec*nyrec)`:
 
 ```julia
-using PyPlot
+using PythonPlot
 imshow(d_obs.data[1], vmin=-.4, vmax=.4, cmap="seismic", aspect="auto")
 ```
 
@@ -495,7 +495,7 @@ u = A_inv*Ps'*q
 This return an abstract data vector called `judiWavefield`. Similar to `judiVectors`, we can access the data for each source number `i` via `u.data[i]`. The data is a 3D array of size `(nt, nx, nz)` for 2D and a 4D array of size `(nt, nx, ny, nz)` for 3D. We can plot the wavefield of the 600th time step with:
 
 ```julia
-using PyPlot
+using PythonPlot
 imshow(u.data[1][600, :, :]', vmin=-5, vmax=5, cmap="seismic", aspect="auto")
 ```
 

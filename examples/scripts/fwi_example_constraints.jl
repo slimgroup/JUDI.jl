@@ -6,7 +6,7 @@
 # Date: January 2022
 
 using Statistics, Random, LinearAlgebra
-using JUDI, SlimOptim, HDF5, SegyIO, PyPlot
+using JUDI, SlimOptim, HDF5, SegyIO, PythonPlot
 using SetIntersectionProjection
 
 # Load starting model

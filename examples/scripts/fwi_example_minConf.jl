@@ -3,7 +3,7 @@
 # Date: December 2017
 #
 
-using Statistics, Random, LinearAlgebra, PyPlot
+using Statistics, Random, LinearAlgebra, PythonPlot
 using JUDI, SlimOptim, HDF5, SegyIO
 
 # Load starting model

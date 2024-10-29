@@ -3,7 +3,7 @@
 # Date: September 2022
 #
 
-using Statistics, Random, LinearAlgebra, PyPlot, SlimPlotting
+using Statistics, Random, LinearAlgebra, PythonPlot, SlimPlotting
 using JUDI, SlimOptim, HDF5, SegyIO
 
 # Load starting model

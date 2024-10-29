@@ -9,10 +9,10 @@
 #' This example is converted to a markdown file for the documentation.
 
 #' # Import JUDI, Linear algebra utilities and Plotting
-using JUDI, LinearAlgebra, PyPlot
+using JUDI, LinearAlgebra, PythonPlot
 
 #+ echo = false; results = "hidden"
-close("all")
+plotclose("all")
 
 #' # Create a JUDI model structure
 #' In JUDI, a `Model` structure contains the grid information (origin, spacing, number of gridpoints)

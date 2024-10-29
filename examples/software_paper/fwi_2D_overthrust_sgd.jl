@@ -4,7 +4,7 @@
 #
 
 using Statistics, Random, LinearAlgebra
-using JUDI, SlimOptim, HDF5, SegyIO, PyPlot
+using JUDI, SlimOptim, HDF5, SegyIO, PythonPlot
 
 # Load starting model
 if ~isfile("$(JUDI.JUDI_DATA)/overthrust_model_2D.h5")

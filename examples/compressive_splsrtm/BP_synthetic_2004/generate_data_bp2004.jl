@@ -9,7 +9,7 @@
 # Set up path where data will be saved
 data_path = "/path/to/data/"
 
-using JUDI, SegyIO, JLD, PyPlot
+using JUDI, SegyIO, JLD, PythonPlot
 
 # Load velocity
 if !isfile("bp_synthetic_2004_true_velocity.jld")

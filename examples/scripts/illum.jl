@@ -3,7 +3,7 @@
 # Author: Mathias Louboutin, mlouboutin3@gatech.edu
 # February 2022
 
-using JUDI, HDF5, SlimPlotting, PyPlot, LinearAlgebra, Downloads, SlimPlotting, Distributed
+using JUDI, HDF5, SlimPlotting, PythonPlot, LinearAlgebra, Downloads, SlimPlotting, Distributed
 
 # Load model
 data_path = dirname(pathof(JUDI))*"/../data/"
