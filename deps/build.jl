@@ -5,7 +5,15 @@ struct DevitoException <: Exception
     msg::String
 end
 
-pyexe = PythonCall.python_executable_path()
+if PythonCall.C.CondaPkg.backend() == :Null
+    pyexe = PythonCall.python_executable_path()
+else
+    @info "Using $(PythonCall.C.CondaPkg.backend()) as the CondaPkg backend"
+    pyexe = PythonCall.C.CondaPkg.withenv() do
+        condapy = PythonCall.C.CondaPkg.which("python")
+        return condapy
+    end
+end
 
 pk = try
     pyimport("pkg_resources")

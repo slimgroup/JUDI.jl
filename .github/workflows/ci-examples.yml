@@ -68,7 +68,7 @@ jobs:
           python3 -m pip install -U pip
           python3 -m pip install "matplotlib<3.9" seiscm colorcet
           echo "JULIA_PYTHONCALL_EXE=$(which python3)" >> $GITHUB_ENV
-          echo "JULIA_CONDAPKG_BACKEND=\"Null\"" >> $GITHUB_ENV
+          echo "JULIA_CONDAPKG_BACKEND=Null" >> $GITHUB_ENV
           echo "PYTHON=$(which python3)" >> $GITHUB_ENV
           echo "PYCALL_JL_RUNTIME_PYTHON=$(which python3)" >> $GITHUB_ENV
 
