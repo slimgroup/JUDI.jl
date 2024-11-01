@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Automatic differentiation with JUDI · JUDI documentation</title><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.11.1/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit">JUDI documentation</span></div><form class="docs-search" action="../../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><a class="tocitem" href="../../about/">About</a></li><li><a class="tocitem" href="../../installation/">Installation</a></li><li><a class="tocitem" href="../../basics/">Getting Started</a></li><li><span class="tocitem">JUDI API</span><ul><li><a class="tocitem" href="../../abstract_vectors/">Abstract vectors</a></li><li><a class="tocitem" href="../../data_structures/">Data Structures</a></li><li><a class="tocitem" href="../../linear_operators/">Linear Operators</a></li><li><a class="tocitem" href="../../preconditioners/">Preconditioners</a></li><li><a class="tocitem" href="../../io/">Input/Output</a></li><li><a class="tocitem" href="../../helper/">Helper Functions</a></li></ul></li><li><a class="tocitem" href="../../inversion/">Inversion</a></li><li><span class="tocitem">Tutorials</span><ul><li><a class="tocitem" href="../01_intro/">Introduction to JUDI</a></li><li><a class="tocitem" href="../02_fwi_example_NLopt/">FWI with Quasi-Newton methods from the NLopt library</a></li><li><a class="tocitem" href="../03_constrained_fwi/">FWI Example</a></li><li><a class="tocitem" href="../04_judi_leading_edge_tutorial/">Full-Waveform Inversion - Part 3: optimization</a></li><li><a class="tocitem" href="../05_custom_misfit/">FWI with user provided misfit function</a></li><li class="is-active"><a class="tocitem" href>Automatic differentiation with JUDI</a><ul class="internal"><li><a class="tocitem" href="#Introduction-to-chain-rules"><span>Introduction to chain rules</span></a></li><li class="toplevel"><a class="tocitem" href="#Automatic-differentiation-for-JUDI"><span>Automatic differentiation for JUDI</span></a></li></ul></li><li><a class="tocitem" href="../07_preconditionners/">Seismic preconditionners</a></li><li><a class="tocitem" href="../imaging_conditions/">Imaging conditions in JUDI</a></li><li><a class="tocitem" href="../quickstart/">Modeling and inversion with JUDI</a></li></ul></li><li><a class="tocitem" href="../../pysource/">Devito backend reference</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Tutorials</a></li><li class="is-active"><a href>Automatic differentiation with JUDI</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Automatic differentiation with JUDI</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/slimgroup/JUDI.jl/blob/master/docs/src/tutorials/06_automatic_differentiation.md" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="Automatic-differentiation-with-JUDI"><a class="docs-heading-anchor" href="#Automatic-differentiation-with-JUDI">Automatic differentiation with JUDI</a><a id="Automatic-differentiation-with-JUDI-1"></a><a class="docs-heading-anchor-permalink" href="#Automatic-differentiation-with-JUDI" title="Permalink"></a></h1><p>In this tutorial, we will look at the automatic differentiation in julia, and in particular how <a href="https://github.com/JuliaDiff/ChainRules.jl">ChainRules.jl</a> supports addition of your own differentiation rules into Julia&#39;s <a href="https://juliadiff.org">Automatic Differentiation</a> system. This allows for seamless integration between your code, including its handcoded derivatives, and Julia&#39;s native AD systems, e.g. those used by <a href="https://fluxml.ai/Flux.jl/stable/">Flux</a> Julia&#39;s machine learning platform. We use <a href="https://github.com/JuliaDiff/ChainRules.jl">ChainRules.jl</a> to automatically differentiate codes that involve complex operations implemented by <a href="https://github.com/slimgroup/JUDI.jl">JUDI.jl</a> (this example) and <a href="https://github.com/slimgroup/JOLI.jl">JOLI.jl</a>.</p><h2 id="Introduction-to-chain-rules"><a class="docs-heading-anchor" href="#Introduction-to-chain-rules">Introduction to chain rules</a><a id="Introduction-to-chain-rules-1"></a><a class="docs-heading-anchor-permalink" href="#Introduction-to-chain-rules" title="Permalink"></a></h2><p>We first provide a brief introduction to automatic differentiation and to <code>rrule</code>, the <a href="https://github.com/JuliaDiff/ChainRules.jl">ChainRules.jl</a> interface used to define custom AD rules. With this rules defined, we show how we can use generic AD frameworks (Zygote/Flux in this tutorial) to compute gradients of complicated expression swaping in our own rule for part of the expression.</p><pre><code class="language-julia">using Flux, ChainRulesCore, LinearAlgebra, JOLI</code></pre><h3 id="Simple-example"><a class="docs-heading-anchor" href="#Simple-example">Simple example</a><a id="Simple-example-1"></a><a class="docs-heading-anchor-permalink" href="#Simple-example" title="Permalink"></a></h3><p>Let&#39;s consider a simple example with a basic differentiable function <span>$x -&gt; cos(x) + 1$</span></p><pre><code class="language-julia">mycos(x) = cos(x) + 1</code></pre><pre><code class="language-none">mycos (generic function with 1 method)</code></pre><p>Now we know that the derivative of this function is <span>$x -&gt; -sin(x)$</span> from standard functional analysis.e can therefore define through chainrules a new rule for our function <code>f</code></p><pre><code class="language-julia">function ChainRulesCore.rrule(::typeof(mycos), x)
+    println(&quot;Using custom AD rule for mycos&quot;)
+    y = mycos(x)
+    pullback(Δy) = (NoTangent(), -sin(x)*Δy)
+    return y, pullback
+end</code></pre><p>We now have the rule to compute the directional derivative of our function <code>mycos</code> . Let&#39;s check the gradient</p><pre><code class="language-julia">x0 = randn()
+# Standard AD of cos
+g1 = gradient(x-&gt;norm(cos(x)+1)^2, x0);
+# Our definition
+g2 = gradient(x-&gt;norm(mycos(x))^2, x0);
+# Analytical gradient
+g3 = -2*sin(x0)*(mycos(x0));
+println(&quot;True gradient: $(g3) \nStandard AD  : $(g1[1]) \nCustom AD    : $(g2[1])&quot;)</code></pre><pre><code class="language-none">Using custom AD rule for mycos
+True gradient: -1.1650215811256202 
+Standard AD  : -1.1650215811256202 
+Custom AD    : -1.1650215811256202</code></pre><p>And we see that we get the correct gradient. Now this is an extremely simple case, now let&#39;s look at a more complicated case where we define the AD rule for matrix-free operators defined in JOLI.</p><h3 id="JOLI"><a class="docs-heading-anchor" href="#JOLI">JOLI</a><a id="JOLI-1"></a><a class="docs-heading-anchor-permalink" href="#JOLI" title="Permalink"></a></h3><p>We look at how we define automatic differentiation rules involding matrix-free linear operator. We consider operations of the form <code>A*x</code> where <code>A</code> is a JOLI matrix-free linear operator and we differentiate with respect to the input <code>x</code></p><p>In JOLI, the base type of our linear operator is <code>joAbstractLinearOperator</code>. If we define the rule for this abstract type, all linear operator should follow. Now in this case the acual operation to be differentiated is the multiplication <code>*</code> with two inputs (<code>A, x</code>). Because we consider <code>A</code> to be fixed,its derivative will be defined as <code>NoTangent</code> that is <code>ChainRules</code>&#39;s way to state there is no derivative for this input.</p><p>&lt;div class=&quot;alert alert-block alert-info&quot;&gt;      &lt;b&gt;NOTE&lt;/b&gt;     These rules are implemented inside JOLI and are merely implemented here as an illustration. JOLI operators are usable with FLux/Zygote by default and with any Julia ML framework implemented AD through ChainRules.jl &lt;/div&gt;</p><pre><code class="language-julia">using JOLI</code></pre><pre><code class="language-julia">function ChainRulesCore.rrule(::typeof(*), A::T, x) where {T&lt;:joAbstractLinearOperator}
+    y = A*x
+    pullback(Δy) = (NoTangent(), NoTangent(), A&#39;*Δy)
+    return y, pullback
+end</code></pre><p>With this rule defined we can now use a JOLI operator. Let&#39;s solve a simple data fitting problem with a restricted Fourier measuerment</p><pre><code class="language-julia">using Random
+N = 128
+# Fourier transform as a linear operator
+F = joDFT(N)
+# Restriction
+R = joRomberg(N; DDT=Complex{Float64}, RDT=Complex{Float64})
+# Combine the operators
+A = R*F;</code></pre><pre><code class="language-julia"># Make data
+x = randn(128)
+b = A*x;</code></pre><p>Let&#39;s create a loss function</p><pre><code class="language-julia">loss(x) = .5f0*norm(A*x - b)^2 + .5f0*norm(x, 2)^2</code></pre><pre><code class="language-none">loss (generic function with 1 method)</code></pre><p>We can now easily obtain the gradient at any given <code>x</code> since the only undefined part would have been the JOLI operator that now has its own differentiation rule</p><pre><code class="language-julia">x0 = randn(128)
+g_ad = gradient(loss, x0)</code></pre><pre><code class="language-none">([3.202332642059349, 3.3474396077773836, 1.7192577704407273, 1.091738893925904, 2.99497941149576, 0.033555000810577607, 2.1856165385946493, -1.9623327339375567, 1.6305386659659917, 0.49094575011054564  …  1.498782430471393, 3.979368223594536, 2.37224960018878, -1.7065306486883383, 0.2043370108057428, -1.1826425144324078, 1.76641366139114, -3.0095898127121723, 3.064337151574949, 5.76008767012525],)</code></pre><p>Once again, we can compare to the know analytical gradient</p><pre><code class="language-julia">g_hand = A&#39;*(A*x0 - b) + x0;
+err = norm(g_hand - g_ad[1])</code></pre><pre><code class="language-none">6.845562607034591e-15</code></pre><p>And we get the exact gradient without the AD system needing to know what <code>A</code> computes but using the prededined rule for <code>A*x</code></p><h3 id="Optimization"><a class="docs-heading-anchor" href="#Optimization">Optimization</a><a id="Optimization-1"></a><a class="docs-heading-anchor-permalink" href="#Optimization" title="Permalink"></a></h3><p>Let&#39;s now slve the problem above with standard gradient descent</p><pre><code class="language-julia">using Optim</code></pre><pre><code class="language-julia">δloss!(g, x) = begin g.=gradient(loss, x)[1]; return loss(x) end;</code></pre><pre><code class="language-julia">summary = optimize(loss, δloss!, randn(N), ConjugateGradient(),
+                   Optim.Options(g_tol = 1e-12, iterations = 200, store_trace = true, show_trace = true, show_every=1))</code></pre><pre><code class="language-none">Iter     Function value   Gradient norm 
+     0     2.078016e+02     7.110069e+00
+ * time: 0.008176088333129883
+     1     2.996845e+01     3.191891e-15
+ * time: 0.32667112350463867
+
+
+
+
+
+ * Status: success
+
+ * Candidate solution
+    Final objective value:     2.996845e+01
+
+ * Found with
+    Algorithm:     Conjugate Gradient
+
+ * Convergence measures
+    |x - x&#39;|               = 3.56e+00 ≰ 0.0e+00
+    |x - x&#39;|/|x&#39;|          = 2.52e+00 ≰ 0.0e+00
+    |f(x) - f(x&#39;)|         = 1.78e+02 ≰ 0.0e+00
+    |f(x) - f(x&#39;)|/|f(x&#39;)| = 5.93e+00 ≰ 0.0e+00
+    |g(x)|                 = 3.19e-15 ≤ 1.0e-12
+
+ * Work counters
+    Seconds run:   0  (vs limit Inf)
+    Iterations:    1
+    f(x) calls:    3
+    ∇f(x) calls:   2</code></pre><pre><code class="language-julia">using PythonPlot
+plot(x, label=&quot;true&quot;)
+plot(summary.minimizer, label=&quot;Recovered&quot;)
+legend()</code></pre><p><img src="../06_automatic_differentiation_files/06_automatic_differentiation_28_0.png" alt="png"/></p><pre><code class="language-none">PyObject &lt;matplotlib.legend.Legend object at 0x293c82910&gt;</code></pre><h1 id="Automatic-differentiation-for-JUDI"><a class="docs-heading-anchor" href="#Automatic-differentiation-for-JUDI">Automatic differentiation for JUDI</a><a id="Automatic-differentiation-for-JUDI-1"></a><a class="docs-heading-anchor-permalink" href="#Automatic-differentiation-for-JUDI" title="Permalink"></a></h1><p>With this introductory example, we have seen how to define simple derivative reverse rules. However, seismic inversion tend to rely and much more complicated operator such as the discrete wave-equation and its non-linear dependence to the velocity. While implementing a pure native-julia propagator using simple artithmetic operations easy to differentiate would be possible, this would limit the control user have on crtitical pieces such as the imaging condition and the memory management for the forward wavefield.  Consequently, most seismic inversion framework a very carefully implemented but do not necessarly allow for plug-and-play with external framework. This incompatibility makes the integration of modern machine learning algorithms extremely complciated, if feasible at all, with these legacy software.</p><p>In JUDI, we made design choice from the beginning of high level abstractions and separation of concern that allow easy extension. In the following, we will demonstrate how JUDI can be integrated with machine learning algorithm trivially thanks to the definition of the core rules for adjoint state problem. More specifically, JUDI implements the rule for the following derivatives:</p><ul><li><p class="math-container">\[\frac{d \mathbf{F} * \mathbf{q}}{d \mathbf{q}}\]</p>where <span>$\mathbf{F} = \mathbf{P}_r \mathbf{A}^{s} \mathbf{P}_s^T$</span> is a forward (<span>$s=-1$</span>) or adjoint (<span>$s=-*$</span>) propagator. JUDI supports numerous cases including full wavefield modelling (<span>$\mathbf{P}_s=\mathbf{P}_r=\mathcal{I}$</span>, stanrad point source and point receivers, and extendend source modeling. </li><li><p class="math-container">\[\frac{d \mathbf{F} * \mathbf{q}}{d \mathbf{m}}\]</p>where <span>$\mathbf{F}$</span> is a forward (<span>$s=-1$</span>) or adjoint (<span>$s=-*$</span>) propagator. This effectively allow for FWI with any chosen misfit function <span>$\rho_{\mathbf{m}}(\mathbf{F} * \mathbf{q}, \mathbf{q})$</span></li><li><p class="math-container">\[\frac{d \mathbf{J} * \mathbf{dm}}{d \mathbf{dm}}\]</p>where <span>$\mathbf{J}$</span> is the standard FWI/RTM jacobian of the forward operator <span>$\mathbf{F}$</span></li><li><p class="math-container">\[\frac{d \mathbf{J}(\mathbf{q}) * \mathbf{dm}}{d \mathbf{q}}\]</p>where once again <span>$\mathbf{J}$</span> is the standard FWI/RTM jacobian of the forward operator and <span>$\mathbf{q}$</span> is the source of the forward modeling operator</li></ul><p>With all these derivatives predefine, we can easily let the implementation of the propagators and Jacobian handle high performance kernels (via <a href="https://github.com/devitocodes/devito">Devito</a>), advanced imaging condition and efficient memory mamangement. From these rules, the AD framework will only call the propagation kernels implemented in JUDI and integrate it as part of the chain of differentiation. </p><p>We now illustrate these capabilities on a few trivial example that show the flexibiluty of our inversion framework.</p><pre><code class="language-julia">using JUDI, Flux</code></pre><pre><code class="language-julia">using SlimPlotting
+# Set up model structure
+n = (120, 100)   # (x,y,z) or (x,z)
+d = (10., 10.)
+o = (0., 0.)
+
+# Velocity [km/s]
+v = ones(Float32,n) .+ 0.4f0
+v0 = ones(Float32,n) .+ 0.4f0
+v[:, Int(round(end/2)):end] .= 4f0
+
+# Slowness squared [s^2/km^2]
+m = (1f0 ./ v).^2
+m0 = (1f0 ./ v0).^2
+dm = vec(m - m0);# Lets get some simple default parameter</code></pre><pre><code class="language-julia">plot_velocity(v&#39;, d; cbar=true)</code></pre><p><img src="../06_automatic_differentiation_files/06_automatic_differentiation_32_0.png" alt="png"/></p><pre><code class="language-julia"># Setup model structure
+nsrc = 1	# number of sources
+model0 = Model(n, d, o, m0)
+
+# Set up receiver geometry
+nxrec = 120
+xrec = range(50f0, stop=1150f0, length=nxrec)
+yrec = 0f0
+zrec = range(50f0, stop=50f0, length=nxrec)
+
+# receiver sampling and recording time
+time = 1000f0   # receiver recording time [ms]
+dt = 1f0    # receiver sampling interval [ms]
+
+# Set up receiver structure
+recGeometry = Geometry(xrec, yrec, zrec; dt=dt, t=time, nsrc=nsrc)
+
+## Set up source geometry (cell array with source locations for each shot)
+xsrc = convertToCell([600f0])
+ysrc = convertToCell([0f0])
+zsrc = convertToCell([20f0])
+
+# Set up source structure
+srcGeometry = Geometry(xsrc, ysrc, zsrc; dt=dt, t=time)</code></pre><pre><code class="language-none">GeometryIC{Float32} wiht 1 sources</code></pre><pre><code class="language-julia">
+# setup wavelet
+f0 = 0.01f0     # MHz
+wavelet = ricker_wavelet(time, dt, f0)
+q = judiVector(srcGeometry, wavelet)</code></pre><pre><code class="language-none">judiVector{Float32, Matrix{Float32}} with 1 sources</code></pre><h3 id="Return-type"><a class="docs-heading-anchor" href="#Return-type">Return type</a><a id="Return-type-1"></a><a class="docs-heading-anchor-permalink" href="#Return-type" title="Permalink"></a></h3><p>Whule JUDI defines its own dimensional types, it is recommended to drop the metadata and return pure array/tensors for ML. This can be done with a simple option passed to the propagators</p><pre><code class="language-julia">opt = Options(return_array=true)</code></pre><pre><code class="language-none">JUDIOptions(8, false, false, 1000.0f0, false, &quot;&quot;, &quot;shot&quot;, false, false, Any[], &quot;as&quot;, 1, 1, true, nothing, 0.015f0)</code></pre><pre><code class="language-julia">F0 = judiModeling(model0, srcGeometry, recGeometry; options=opt)
+num_samples = recGeometry.nt[1] * nxrec # Number of value</code></pre><pre><code class="language-none">120120</code></pre><pre><code class="language-julia">##################################################################################
+# Fully connected neural network with linearized modeling operator
+n_in = 100
+n_out = 10
+
+W1 = randn(Float32, prod(model0.n), n_in)
+b1 = randn(Float32, prod(model0.n))
+
+W2 = judiJacobian(F0, q)
+b2 = randn(Float32, num_samples)
+
+W3 = randn(Float32, n_out, num_samples)
+b3 = randn(Float32, n_out);
+</code></pre><pre><code class="language-none">[33m[1m┌ [22m[39m[33m[1mWarning: [22m[39mDeprecated model.n, use size(model)
+[33m[1m│ [22m[39m  caller = ip:0x0
+[33m[1m└ [22m[39m[90m@ Core :-1[39m</code></pre><pre><code class="language-julia">function network(x)
+    x = W1*x .+ b1
+    x = vec(W2*x) .+ b2
+    x = W3*x .+ b3
+    return x
+end</code></pre><pre><code class="language-none">network (generic function with 1 method)</code></pre><pre><code class="language-julia"># Inputs and target
+x = zeros(Float32, n_in)
+y = randn(Float32, n_out);</code></pre><pre><code class="language-julia"># Evaluate MSE loss
+loss(x, y) = Flux.mse(network(x), y)
+</code></pre><pre><code class="language-none">loss (generic function with 2 methods)</code></pre><pre><code class="language-julia"># Compute gradient w.r.t. x and y
+Δx, Δy = gradient(loss, x, y)
+</code></pre><pre><code class="language-none">Building born operator
+Operator `born` ran in 0.04 s
+Building forward operator
+Operator `forward` ran in 0.03 s
+Building adjoint born operator
+Operator `gradient` ran in 0.03 s
+Operator `forward` ran in 0.26 s
+Operator `gradient` ran in 0.03 s
+
+
+
+
+
+(Float32[537865.2, -881569.94, 479238.75, 193671.75, 785871.56, 170005.88, -387432.75, -84344.25, -662277.6, 475783.38  …  910177.75, 988473.4, 249698.53, -737089.44, 211155.11, -397048.3, 421428.7, 94724.03, -94981.22, -508586.4], Float32[102.665306, 173.1151, -374.61276, -112.29274, -36.785393, 124.619865, -138.68846, -12.379652, 76.64807, -25.363287])</code></pre><p>And we can see that the underlying JUDI propagators were called propetly.</p><pre><code class="language-julia"># Compute gradient for x, y and weights (except for W2)
+p = Flux.params(x, y, W1, b1, b2, W3, b3)
+gs = gradient(() -&gt; loss(x, y), p)</code></pre><pre><code class="language-none">Operator `born` ran in 0.28 s
+Operator `forward` ran in 0.26 s
+Operator `gradient` ran in 0.03 s
+Operator `forward` ran in 0.04 s
+Operator `gradient` ran in 0.22 s
+
+
+
+
+
+Grads(...)</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../05_custom_misfit/">« FWI with user provided misfit function</a><a class="docs-footer-nextpage" href="../07_preconditionners/">Seismic preconditionners »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Friday 1 November 2024 19:22">Friday 1 November 2024</span>. Using Julia version 1.11.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
