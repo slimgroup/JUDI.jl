@@ -8,11 +8,7 @@ end
 if PythonCall.C.CondaPkg.backend() == :Null
     pyexe = PythonCall.python_executable_path()
 else
-    @info "Using $(PythonCall.C.CondaPkg.backend()) as the CondaPkg backend"
-    pyexe = PythonCall.C.CondaPkg.withenv() do
-        condapy = PythonCall.C.CondaPkg.which("python")
-        return condapy
-    end
+    exit()
 end
 
 pk = try

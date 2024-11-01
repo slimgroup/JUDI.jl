@@ -1,0 +1,7 @@
+[deps]
+python = ">3.8"
+matplotlib = ""
+
+[pip.deps]
+devito = ">=4.8.11"
+pyrevolve = "==2.2.4"
