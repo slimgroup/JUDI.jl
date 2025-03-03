@@ -4,7 +4,7 @@
 #
 
 using Statistics, Random, LinearAlgebra, PythonPlot
-using JUDI, SlimOptim, HDF5, SegyIO
+using JUDI, SlimOptim, HDF5, SegyIO, SlimPlotting
 
 # Load starting model
 n,d,o,m0 = read(h5open("$(JUDI.JUDI_DATA)/overthrust_model.h5","r"), "n", "d", "o", "m0")
@@ -27,11 +27,11 @@ d_obs = judiVector(block)
 
 # Set up wavelet
 src_geometry = Geometry(block; key="source")
-wavelet = ricker_wavelet(src_geometry.t[1],src_geometry.dt[1],0.008f0)  # 8 Hz wavelet
+wavelet = ricker_wavelet(src_geometry.t[1], src_geometry.dt[1], 0.008f0)  # 8 Hz wavelet
 q = judiVector(src_geometry,wavelet)
 
 ############################### FWI ###########################################
-
+F0 = judiModeling(deepcopy(model0), src_geometry, d_obs.geometry)
 
 # Optimization parameters
 fevals = parse(Int, get(ENV, "NITER", "10"))
@@ -56,9 +56,29 @@ proj(x) = reshape(median([vec(mmin) vec(x) vec(mmax)]; dims=2),model0.n)
 
 # FWI with SPG
 options = spg_options(verbose=3, maxIter=fevals, memory=3)
-sol = spg(objective_function, model0.m, proj, options)
+solf32 = spg(objective_function, v0.^(-2), proj, options)
+vf32 = sqrt.(1f0 ./ solf32.x)
+
+
+JUDI.pm._dtypes["params"] = "f16"
+JUDI.pm._dtypes["fields"] = "f16"
+solf16 = spg(objective_function, v0.^(-2), proj, options)
+vf16 = sqrt.(1f0 ./ solf16.x)
 
 # Plot result
-imshow(reshape(sqrt.(1f0 ./ sol.x), model0.n)', extent=[0, 10, 3, 0])
-xlabel("Lateral position [km]")
-ylabel("Depth [km]")
+
+figure(figsize=(10,6))
+subplot(121)
+plot_velocity(vf32', model0.d; name="Float32", new_fig=false)
+subplot(122)
+plot_velocity(vf16', model0.d; name="Float16", new_fig=false)
+tight_layout()
+
+
+figure()
+plot(solf32.ϕ_trace; label="Float32")
+plot(solf16.ϕ_trace; label="Float16")
+xlabel("Iteration")
+ylabel("Objective function value")
+legend()
+tight_layout()

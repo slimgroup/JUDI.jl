@@ -6,7 +6,6 @@ from sympy import finite_diff_weights as fd_w
 from devito import (Grid, Function, SubDimension, Eq, Inc, switchconfig,
                     Operator, mmin, mmax, initialize_function,
                     Abs, sqrt, sin, Constant, CustomDimension)
-
 from devito.tools import as_tuple, memoized_func
 
 try:
@@ -17,7 +16,7 @@ except ImportError:
     ABox = None
     Float16 = lambda *ar, **kw: np.float32
 
-_dtypes = {'params': 'f32'}
+_dtypes = {'params': 'f32', 'fields': 'f32'}
 
 
 __all__ = ['Model']
@@ -41,18 +40,33 @@ def getmax(f):
         return np.max(f)
 
 
-def to_numpy(f):
+def to_numpy(f, dtype=None):
     try:
         return f.to_numpy(copy=False)
     except AttributeError:
         return f
 
 
+def process_dtype(field=None, fmin=None, fmax=None):
+    if field is None:
+        dtype = np.float32
+    else:
+        dtype = np.dtype(field.__array_interface__['typestr']).type
+    if _dtypes['params'] == 'f16':
+        _min = fmin if fmin is not None else np.amin(field)
+        _max = fmax if fmax is not None else np.amax(field)
+        if _max == _min:
+            _max = .125 if _min == 0 else _min * 1.125
+        dtype = Float16(_min, _max)
+
+    return dtype
+
+
 _thomsen = [('epsilon', 1), ('delta', 1), ('theta', 0), ('phi', 0)]
 
 
 @memoized_func
-def damp_op(ndim, padsizes, abc_type, fs):
+def damp_op(ndim, padsizes, abc_type, fs, dtype):
     """
     Create damping field initialization operator.
 
@@ -69,7 +83,8 @@ def damp_op(ndim, padsizes, abc_type, fs):
     fs: bool
         Whether the model is with free surface or not
     """
-    damp = Function(name="damp", grid=Grid(tuple([11]*ndim)), space_order=0)
+    damp = Function(name="damp", grid=Grid(tuple([11]*ndim)), space_order=0,
+                    dtype=dtype)
     eqs = [Eq(damp, 1.0 if abc_type == "mask" else 0.0)]
     for (nbl, nbr), d in zip(padsizes, damp.dimensions):
         # 3 Point buffer to avoid weird interaction with abc
@@ -97,7 +112,7 @@ def damp_op(ndim, padsizes, abc_type, fs):
 
 
 @switchconfig(log_level='ERROR')
-def initialize_damp(damp, padsizes, abc_type="damp", fs=False):
+def initialize_damp(grid, padsizes, abc_type="damp", fs=False):
     """
     Initialise damping field with an absorbing boundary layer.
     Includes basic constant Q setup (not interfaced yet) and assumes that
@@ -116,8 +131,13 @@ def initialize_damp(damp, padsizes, abc_type="damp", fs=False):
         mask => 1 inside the domain and decreases in the layer
         not mask => 0 inside the domain and increase in the layer
     """
-    op = damp_op(damp.grid.dim, padsizes, abc_type, fs)
+    dtype = process_dtype(fmin=0, fmax=.04)
+    damp = Function(name="damp", grid=grid, space_order=0,
+                    dtype=dtype)
+    op = damp_op(damp.grid.dim, padsizes, abc_type, fs, dtype)
     op(damp=damp)
+
+    return damp
 
 
 class Model(object):
@@ -182,8 +202,8 @@ class Model(object):
         # Absorbing boundary layer
         if self.nbl != 0:
             # Create dampening field as symbol `damp`
-            self.damp = Function(name="damp", grid=self.grid, space_order=0)
-            initialize_damp(self.damp, self.padsizes, abc_type=abc_type, fs=fs)
+            self.damp = initialize_damp(self.grid, self.padsizes,
+                                        abc_type=abc_type, fs=fs)
             self._physical_parameters = ['damp']
         else:
             self.damp = 1
@@ -306,16 +326,7 @@ class Model(object):
         if field is None:
             return default_value
         if hasattr(field, '__array_interface__') and field.shape:
-            dtype = np.dtype(field.__array_interface__['typestr']).type
-            if _dtypes['params'] == 'f16' or dtype == np.float16:
-                _min = np.amin(field)
-                _max = np.amax(field)
-                if _max == _min:
-                    _max = .125 if _min == 0 else _min * 1.125
-                dtype = Float16(_min, _max)
-            else:
-                dtype = self.grid.dtype
-
+            dtype = process_dtype(field)
             function = Function(name=name, grid=self.grid, space_order=space_order,
                                 parameter=is_param, avg_mode=avg_mode, dtype=dtype)
             pad = 0 if field.shape == function.shape else self.padsizes
@@ -549,11 +560,10 @@ class EmptyModel(Model):
         # Make params a dict
         p_params = {k: v for k, v in p_params if k != 'damp'}
         # Create the function for the physical parameters
-        self.damp = Function(name='damp', grid=self.grid, space_order=0)
+        self.damp = Function(name='damp', grid=self.grid, space_order=0,
+                             dtype=process_dtype(fmin=0, fmax=.04))
         _physical_parameters = ['damp']
         for p, dt in p_params.items():
-            if _dtypes['params'] == 'f16':
-                dt = np.float16
             if p.endswith('_const'):
                 name = p.split('_')[0]
                 setattr(self, name, Constant(name=name, value=1, dtype=dt))

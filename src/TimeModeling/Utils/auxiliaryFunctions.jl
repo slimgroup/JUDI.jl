@@ -29,8 +29,8 @@ function devito_model(model::MT, options::JUDIOptions, dm) where {MT<:AbstractMo
     dm = isnothing(dm) ? nothing : (isa(dm, PhysicalParameter) ? dm.data : dm)
 
     modelPy = pm.Model(origin(model), spacing(model), size(model), fs=options.free_surface,
-                         nbl=nbl(model), space_order=options.space_order, dt=options.dt_comp, dm=dm;
-                         physpar...)
+                       nbl=nbl(model), space_order=options.space_order, dt=options.dt_comp, dm=dm;
+                       physpar...)
 
     return modelPy
 end

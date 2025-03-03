@@ -1,3 +1,5 @@
+import numpy as np
+
 from kernels import wave_kernel
 from geom_utils import src_rec, geom_expr
 from fields import (fourier_modes, wavefield, lr_src_fields, illumination,
@@ -86,6 +88,7 @@ def forward(model, src_coords, rcv_coords, wavelet, save=False,
 
     if norm_wf:
         return rout, uout, nv2.data[0], I, summary
+
     return rout, uout, I, summary
 
 

@@ -12,6 +12,14 @@ except ImportError:
     import devito as dvp  # noqa
 
 from utils import compression_mode
+from models import _dtypes
+
+
+def fdtype():
+    """
+    Return the field data type
+    """
+    return {'f32': np.float32, 'f16': np.float16}[_dtypes['fields']]
 
 
 def wavefield(model, space_order, save=False, nt=None, fw=True, name='', t_sub=1,
@@ -43,19 +51,23 @@ def wavefield(model, space_order, save=False, nt=None, fw=True, name='', t_sub=1
 
     if model.is_tti:
         u = TimeFunction(name="%s1" % name, grid=model.grid, time_order=2,
-                         space_order=space_order, save=nsave)
+                         space_order=space_order, save=nsave,
+                         dtype=fdtype())
         v = TimeFunction(name="%s2" % name, grid=model.grid, time_order=2,
-                         space_order=space_order, save=nsave)
+                         space_order=space_order, save=nsave, dtype=fdtype())
         return (u, v)
     elif model.is_elastic:
         v = VectorTimeFunction(name="v", grid=model.grid, time_order=1,
-                               space_order=space_order, save=Buffer(1))
+                               space_order=space_order, save=Buffer(1),
+                               dtype=fdtype())
         tau = TensorTimeFunction(name="tau", grid=model.grid, time_order=1,
-                                 space_order=space_order, save=Buffer(1))
+                                 space_order=space_order, save=Buffer(1),
+                                 dtype=fdtype())
         return (v, tau)
     else:
         return TimeFunction(name=name, grid=model.grid, time_order=2,
-                            space_order=space_order, save=nsave)
+                            space_order=space_order, save=nsave,
+                            dtype=fdtype())
 
 
 def forward_wavefield(model, space_order, save=True, nt=10, dft=False, t_sub=1, fw=True):
@@ -148,7 +160,8 @@ def wavefield_subsampled(model, u, nt, t_sub, space_order=8):
     for wf in as_tuple(u):
         usave = dvp.TimeFunction(name='us_%s' % wf.name, grid=model.grid, time_order=2,
                                  space_order=space_order, time_dim=time_subsampled,
-                                 save=nsave, compression=compression_mode())
+                                 save=nsave, compression=compression_mode(),
+                                 dtype=fdtype())
         wf_s.append(usave)
     return wf_s
 

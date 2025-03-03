@@ -102,6 +102,7 @@ def opt_op(model):
     else:
         opts = {'openmp': True, 'par-collapse-ncores': 2, 'mpi': configuration['mpi']}
         mode = 'advanced'
+    opts.update({'scalar-min-type': np.float32})
     return (mode, opts)
 
 
