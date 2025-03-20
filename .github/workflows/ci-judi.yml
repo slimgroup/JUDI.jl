@@ -29,7 +29,7 @@ jobs:
       fail-fast: false
 
       matrix:
-        version: ['lts', '1.7', '1.8', '1.9', '1.10']
+        version: ['lts', '1.8', '1.9', '1.10', '1.11']
         os: [ubuntu-latest]
         arch: ['x64']
         cc: ['gcc-12']
@@ -44,6 +44,10 @@ jobs:
       - name: Checkout JUDI
         uses: actions/checkout@v4
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+  
       - name: Setup julia
         uses: julia-actions/setup-julia@v2
         with:
@@ -57,6 +61,12 @@ jobs:
         run: |
           brew install llvm libomp
           echo "/opt/homebrew/opt/llvm/bin" >> $GITHUB_PATH
+
+          # Avoid libomp issues with conda by using plain python
+          echo "PYTHON=$(which python3)" >> $GITHUB_ENV
+          echo "PYCALL_JL_RUNTIME_PYTHON=$(which python3)" >> $GITHUB_ENV
+          echo "JULIA_CONDAPKG_BACKEND=Null" >> $GITHUB_ENV
+          echo "JULIA_PYTHONCALL_EXE=$(which python3)" >> $GITHUB_ENV
 
       - name: Build JUDI
         uses: julia-actions/julia-buildpkg@latest

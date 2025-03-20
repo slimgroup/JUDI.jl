@@ -1,6 +1,6 @@
 import numpy as np
 
-from devito import Inc, Eq, ConditionalDimension, cos, sin
+from devito import Inc, Eq, ConditionalDimension, exp
 from devito.tools import as_tuple
 
 from fields import (wavefield_subsampled, lr_src_fields, fourier_modes, norm_holder,
@@ -157,16 +157,15 @@ def otf_dft(u, freq, dt, factor=None):
     omega_t = 2*np.pi*f*tsave*factor*dt
     # DFT
     dft = []
-    for ((ufr, ufi), wf) in zip(dft_modes, as_tuple(u)):
-        dft += [Inc(ufr, factor * cos(omega_t) * wf)]
-        dft += [Inc(ufi, -factor * sin(omega_t) * wf)]
+    for (uf, wf) in zip(dft_modes, as_tuple(u)):
+        dft.append(Inc(uf, factor * exp(-1j * omega_t) * wf))
     return dft
 
 
 def idft(v, freq=None):
     """
     Symbolic inverse dft of v
-dft_modes
+
     Parameters
     ----------
     v: TimeFunction or Tuple
@@ -177,14 +176,12 @@ dft_modes
     # Subsampled dft time axis
     idft = []
     for vv in v:
-        ufr, ufi = vv
         # Frequencies
-        time = ufr.grid.time_dim
+        time = vv.grid.time_dim
         dt = time.spacing
         omega_t = lambda f: 2*np.pi*f*time*dt
         w = 1/time.symbolic_max
-        idftloc = sum([w*(ufr.subs({ufr.indices[0]: i})*cos(omega_t(f)) -
-                          ufi.subs({ufi.indices[0]: i})*sin(omega_t(f)))
+        idftloc = sum([w*(vv._subs(vv.indices[0], i)*exp(1j*omega_t(f)))
                        for i, f in enumerate(freq)])
         idft.append(idftloc)
     return tuple(idft)

@@ -38,7 +38,7 @@ class memoized_func(object):
 
     Adapted from: ::
 
-        https://github.com/devitocodes/devito/blob/master/devito/tools/memoization.py
+        https://github.com/devitocodes/devito/blob/main/devito/tools/memoization.py
 
 
     This version is made task safe to prevent access conflicts between different julia

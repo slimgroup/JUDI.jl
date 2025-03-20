@@ -23,7 +23,7 @@ run(Cmd(`$(pyexe) -m pip install -U --user --no-cache-dir PyWavelets`))
 
 ################## Devito ##################
 # pip command
-dvver = "4.8.10"
+dvver = "4.8.14"
 cmd = Cmd(`$(pyexe) -m pip install --user --no-cache-dir devito\[extras,tests\]\>\=$(dvver)`)
 
 try

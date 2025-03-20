@@ -1,5 +1,5 @@
 import numpy as np
-from sympy import cos, sin
+from sympy import exp
 
 from devito import Eq, grad
 from devito.tools import as_tuple
@@ -93,14 +93,13 @@ def crosscorr_freq(u, v, model, freq=None, dft_sub=None, **kwargs):
     expr = 0
 
     fdim = as_tuple(u)[0][0].dimensions[0]
-    f, nfreq = frequencies(freq, fdim=fdim)
+    f, _ = frequencies(freq, fdim=fdim)
     omega_t = 2*np.pi*f*tsave*factor*dt
     # Gradient weighting is (2*np.pi*f)**2/nt
     w = -(2*np.pi*f)**2/time.symbolic_max
 
     for uu, vv in zip(u, v):
-        ufr, ufi = uu
-        expr += w*(ufr*cos(omega_t) - ufi*sin(omega_t))*vv
+        expr += w*uu*exp(1j*omega_t)*vv
     return expr
 
 
@@ -150,9 +149,7 @@ def isic_freq(u, v, model, **kwargs):
 
     expr = 0
     for uu, vv in zip(u, v):
-        ufr, ufi = uu
-        cwt, swt = cos(omega_t), sin(omega_t)
-        idftu = (ufr * cwt - ufi * swt)
+        idftu = uu * exp(1j*omega_t)
         expr += w * idftu * vv * model.m - w2 * inner_grad(idftu, vv)
     return expr
 
