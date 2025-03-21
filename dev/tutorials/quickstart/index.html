@@ -76,9 +76,9 @@ dot1 = dot(q, qad)
 # &lt;F x, y&gt;
 dot2 = dot(dobs, dobs)
 # Compare
-@show dot1, dot2, (dot1 - dot2)/(dot1 + dot2)</code></pre><pre><code class="language-none">(dot1, dot2, (dot1 - dot2) / (dot1 + dot2)) = (786590.8f0, 786591.5f0, -4.3
-701232f-7)
-(786590.8f0, 786591.5f0, -4.3701232f-7)</code></pre><h1 id="Inversion"><a class="docs-heading-anchor" href="#Inversion">Inversion</a><a id="Inversion-1"></a><a class="docs-heading-anchor-permalink" href="#Inversion" title="Permalink"></a></h1><p>Our main goal is to provide an inversion framework for seismic inversion. To this end, as shown earlier, users can easily define the Jacobian operator and compute an RTM image (i.e FWI gradient) with a simple matrix-vector product. Once again, we provide both the Jacobian and its adjoint and we can compute Born linearized data.</p><pre><code class="language-julia"># Linearized modeling J*dm
+@show dot1, dot2, (dot1 - dot2)/(dot1 + dot2)</code></pre><pre><code class="language-none">(dot1, dot2, (dot1 - dot2) / (dot1 + dot2)) = (786589.75f0, 786590.5f0, -4.
+767413f-7)
+(786589.75f0, 786590.5f0, -4.767413f-7)</code></pre><h1 id="Inversion"><a class="docs-heading-anchor" href="#Inversion">Inversion</a><a id="Inversion-1"></a><a class="docs-heading-anchor-permalink" href="#Inversion" title="Permalink"></a></h1><p>Our main goal is to provide an inversion framework for seismic inversion. To this end, as shown earlier, users can easily define the Jacobian operator and compute an RTM image (i.e FWI gradient) with a simple matrix-vector product. Once again, we provide both the Jacobian and its adjoint and we can compute Born linearized data.</p><pre><code class="language-julia"># Linearized modeling J*dm
 dD = J*dm
 # Adjoint jacobian, RTM image
 rtm = adjoint(J)*dD</code></pre><pre><code class="language-none">PhysicalParameter{Float32, 2} of size (120, 100) with origin (0.0f0, 0.0f0)
@@ -95,18 +95,18 @@ dot3 = dot(dm, rtm)
 # &lt;J x, y&gt;
 dot4 = dot(dD, dD)
 # Compare
-@show dot3, dot4, (dot3 - dot4)/(dot3 + dot4)</code></pre><pre><code class="language-none">(dot3, dot4, (dot3 - dot4) / (dot3 + dot4)) = (8443.909f0, 8701.924f0, -0.0
-15048243f0)
-(8443.909f0, 8701.924f0, -0.015048243f0)</code></pre><h2 id="Inversion-utility-functions"><a class="docs-heading-anchor" href="#Inversion-utility-functions">Inversion utility functions</a><a id="Inversion-utility-functions-1"></a><a class="docs-heading-anchor-permalink" href="#Inversion-utility-functions" title="Permalink"></a></h2><p>We currently introduced the lineaar operators that allow to write seismic modeling and inversion in a high-level, linear algebra way. These linear operators allow the script to closely follow the mathematics and to be readable and understandable.</p><p>However, these come with overhead. In particular, consider the following compuation on the FWI gradient:</p><pre><code class="language-julia">d_syn = F*q
+@show dot3, dot4, (dot3 - dot4)/(dot3 + dot4)</code></pre><pre><code class="language-none">(dot3, dot4, (dot3 - dot4) / (dot3 + dot4)) = (8443.913f0, 8701.928f0, -0.0
+15048237f0)
+(8443.913f0, 8701.928f0, -0.015048237f0)</code></pre><h2 id="Inversion-utility-functions"><a class="docs-heading-anchor" href="#Inversion-utility-functions">Inversion utility functions</a><a id="Inversion-utility-functions-1"></a><a class="docs-heading-anchor-permalink" href="#Inversion-utility-functions" title="Permalink"></a></h2><p>We currently introduced the lineaar operators that allow to write seismic modeling and inversion in a high-level, linear algebra way. These linear operators allow the script to closely follow the mathematics and to be readable and understandable.</p><p>However, these come with overhead. In particular, consider the following compuation on the FWI gradient:</p><pre><code class="language-julia">d_syn = F*q
 r = judiJacobian(F, q)&#39; * (d_syn - d_obs)</code></pre><p>In this two lines, the forward modeling is performed twice: once to compute <code>d_syn</code> then once again to compute the Jacobian adjoint. In order to avoid this overhead for practical inversion, we provide utility function that directly comput the gradient and objective function (L2- misfit) of FWI, LSRTM and TWRI with minimum overhead.</p><p>FWI misfit and gradient</p><pre><code class="language-julia"># evaluate FWI objective function
-f, g = fwi_objective(model0, q, dobs; options=opt)</code></pre><pre><code class="language-none">(26773.838f0, PhysicalParameter{Float32, 2} of size (120, 100) with origin 
-(0.0f0, 0.0f0) and spacing (10.0f0, 10.0f0))</code></pre><p>Plot gradient</p><pre><code class="language-julia">fig = figure()
+f, g = fwi_objective(model0, q, dobs; options=opt)</code></pre><pre><code class="language-none">(26773.8f0, PhysicalParameter{Float32, 2} of size (120, 100) with origin (0
+.0f0, 0.0f0) and spacing (10.0f0, 10.0f0))</code></pre><p>Plot gradient</p><pre><code class="language-julia">fig = figure()
 plot_simage(g&#39;; new_fig=false, name=&quot;FWI gradient&quot;, cmap=imcmap)
 display(fig)</code></pre><pre><code class="language-none">Error: UndefVarError: `plot_simage` not defined in `Main.var&quot;##WeaveSandBox
 #230&quot;`
 Suggestion: check for spelling errors or missing imports.</code></pre><p>LSRTM misfit and gradient</p><pre><code class="language-julia"># evaluate LSRTM objective function
 fj, gj = lsrtm_objective(model0, q, dD, dm; options=opt)
-fjn, gjn = lsrtm_objective(model0, q, dobs, dm; nlind=true, options=opt)</code></pre><pre><code class="language-none">(46981.727f0, PhysicalParameter{Float32, 2} of size (120, 100) with origin 
+fjn, gjn = lsrtm_objective(model0, q, dobs, dm; nlind=true, options=opt)</code></pre><pre><code class="language-none">(46982.016f0, PhysicalParameter{Float32, 2} of size (120, 100) with origin 
 (0.0f0, 0.0f0) and spacing (10.0f0, 10.0f0))</code></pre><p>Plot gradients</p><pre><code class="language-julia">fig = figure()
 plot_simage(gj&#39;; new_fig=false, name=&quot;LSRTM gradient&quot;, cmap=imcmap, cbar=true)
 display(fig)
@@ -115,16 +115,16 @@ fig = figure()
 plot_simage(gjn&#39;; new_fig=false, name=&quot;LSRTM gradient with background data substracted&quot;, cmap=imcmap, cbar=true)
 display(fig)</code></pre><pre><code class="language-none">Error: UndefVarError: `plot_simage` not defined in `Main.var&quot;##WeaveSandBox
 #230&quot;`
-Suggestion: check for spelling errors or missing imports.</code></pre><p>By extension, lsrtm<em>objective is the same as fwi</em>objecive when <code>dm</code> is zero And with computing of the residual. Small noise can be seen in the difference due to floating point roundoff errors with openMP, but running with  OMP<em>NUM</em>THREADS=1 (no parllelism) produces the exact (difference == 0) same result gjn2 == g</p><pre><code class="language-julia">fjn2, gjn2 = lsrtm_objective(model0, q, dobs, 0f0.*dm; nlind=true, options=opt)</code></pre><pre><code class="language-none">(26773.838f0, PhysicalParameter{Float32, 2} of size (120, 100) with origin 
-(0.0f0, 0.0f0) and spacing (10.0f0, 10.0f0))</code></pre><p>Plot gradient</p><pre><code class="language-julia">fig = figure()
+Suggestion: check for spelling errors or missing imports.</code></pre><p>By extension, lsrtm<em>objective is the same as fwi</em>objecive when <code>dm</code> is zero And with computing of the residual. Small noise can be seen in the difference due to floating point roundoff errors with openMP, but running with  OMP<em>NUM</em>THREADS=1 (no parllelism) produces the exact (difference == 0) same result gjn2 == g</p><pre><code class="language-julia">fjn2, gjn2 = lsrtm_objective(model0, q, dobs, 0f0.*dm; nlind=true, options=opt)</code></pre><pre><code class="language-none">(26773.8f0, PhysicalParameter{Float32, 2} of size (120, 100) with origin (0
+.0f0, 0.0f0) and spacing (10.0f0, 10.0f0))</code></pre><p>Plot gradient</p><pre><code class="language-julia">fig = figure()
 plot_simage(gjn2&#39;; new_fig=false, name=&quot;LSRTM gradient with zero perturbation&quot;, cmap=imcmap)
 display(fig)</code></pre><pre><code class="language-none">Error: UndefVarError: `plot_simage` not defined in `Main.var&quot;##WeaveSandBox
 #230&quot;`
 Suggestion: check for spelling errors or missing imports.</code></pre><h1 id="TWRI"><a class="docs-heading-anchor" href="#TWRI">TWRI</a><a id="TWRI-1"></a><a class="docs-heading-anchor-permalink" href="#TWRI" title="Permalink"></a></h1><p>Finally, JUDI implements TWRI, an augmented method to tackle cycle skipping. Once again we provide a computationnally efficient wrapper function that returns the objective value and necessary gradients</p><pre><code class="language-julia">f, gm, gy = twri_objective(model0, q, dobs, nothing; options=opt, optionswri=TWRIOptions(params=:all))
 # With on-the-fly DFT, experimental
 freqs = [[.009, .011], [.008, .012], [0.007, 0.0010]]
-f, gmf = twri_objective(model0, q, dobs, nothing; options=Options(frequencies=freqs), optionswri=TWRIOptions(params=:m))</code></pre><pre><code class="language-none">(-2792.7754f0, PhysicalParameter{Float64, 2} of size (120, 100) with origin
- (0.0, 0.0) and spacing (10.0, 10.0))</code></pre><p>Plot gradients</p><pre><code class="language-julia">fig = figure()
+f, gmf = twri_objective(model0, q, dobs, nothing; options=Options(frequencies=freqs), optionswri=TWRIOptions(params=:m))</code></pre><pre><code class="language-none">(-2792.918f0, PhysicalParameter{Float64, 2} of size (120, 100) with origin 
+(0.0, 0.0) and spacing (10.0, 10.0))</code></pre><p>Plot gradients</p><pre><code class="language-julia">fig = figure()
 plot_simage(gm&#39;; new_fig=false, name=&quot;TWRI gradient w.r.t m&quot;, cmap=imcmap)
 display(fig)
 
@@ -134,4 +134,4 @@ display(fig)
 
 println(&quot;All done&quot;)</code></pre><pre><code class="language-none">Error: UndefVarError: `plot_simage` not defined in `Main.var&quot;##WeaveSandBox
 #230&quot;`
-Suggestion: check for spelling errors or missing imports.</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../imaging_conditions/">« Imaging conditions in JUDI</a><a class="docs-footer-nextpage" href="../../pysource/">Devito backend reference »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Friday 1 November 2024 18:58">Friday 1 November 2024</span>. Using Julia version 1.11.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+Suggestion: check for spelling errors or missing imports.</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../imaging_conditions/">« Imaging conditions in JUDI</a><a class="docs-footer-nextpage" href="../../pysource/">Devito backend reference »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Friday 21 March 2025 13:45">Friday 21 March 2025</span>. Using Julia version 1.11.4.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
