@@ -597,12 +597,12 @@ function reciprocal_geom(sGeom::GeometryIC{T}, rGeom::GeometryIC{T}) where T
         ysrc = 0 .* xsrc
     end
     zsrc = convertToCell(rGeom.zloc[1])
-    sgeom = Geometry(xsrc, ysrc, zsrc; dt=dt(rGeom, 1), t=t(rGeom, 1))
+    sgeom = Geometry(xsrc, ysrc, zsrc; dt=get_dt(rGeom, 1), t=get_t(rGeom, 1))
     # Reciprocal recc geom
     xrec = Vector{T}([x[1] for x in sGeom.xloc])
     yrec = Vector{T}([x[1] for x in sGeom.yloc])
     zrec = Vector{T}([x[1] for x in sGeom.zloc])
-    rgeom = Geometry(xrec, yrec, zrec; dt=dt(rGeom, 1), t=t(rGeom, 1), nsrc=length(xsrc))
+    rgeom = Geometry(xrec, yrec, zrec; dt=get_dt(rGeom, 1), t=get_t(rGeom, 1), nsrc=length(xsrc))
     return sgeom, rgeom
 end
 

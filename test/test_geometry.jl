@@ -154,6 +154,21 @@ datapath = joinpath(dirname(pathof(JUDI)))*"/../data/"
             @test sgeom.dt[1] == 4f0
             @test sgeom.t[1] == 1000f0
         end
+
+        # Reciprocity
+        rsgeom, rrgeom = reciprocal_geom(src_geometry_ic, rec_geometry_ic)
+        @test length(rec_geometry_ic.nrec) == nsrc
+        @test get_nsrc(rsgeom) == rec_geometry_ic.nrec[1]
+        @test all(rrgeom.nrec .== nsrc)
+        @test length(rrgeom.nrec) == rec_geometry_ic.nrec[1]
+        @test rrgeom.xloc[1] == [src_geometry_ic.xloc[i][1] for i=1:nsrc]
+        @test rrgeom.yloc[1] == [src_geometry_ic.yloc[i][1] for i=1:nsrc]
+        @test rrgeom.zloc[1] == [src_geometry_ic.zloc[i][1] for i=1:nsrc]
+        for r=1:rec_geometry_ic.nrec[1]
+            @test rsgeom.xloc[r][1] == rec_geometry_ic.xloc[1][r]
+            @test rsgeom.yloc[r][1] == rec_geometry_ic.yloc[1][r]
+            @test rsgeom.zloc[r][1] == rec_geometry_ic.zloc[1][r]
+        end
     end
 
     @timeit TIMEROUTPUT "Geometry t0/t" begin

@@ -93,12 +93,6 @@ In practice, and in particular for marine data, the aperture of a single shot is
 limit_model_to_receiver_area
 ```
 
-We also provide it's complement that removes receivers outside of the computational domain if the dataset contains locations that are not wanted
-
-```@docs
-remove_out_of_bounds_receivers
-```
-
 ## Additional miscellanous utilities
 
 ```@docs
