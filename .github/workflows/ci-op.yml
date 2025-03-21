@@ -34,7 +34,7 @@ jobs:
         op: ["ISO_OP", "ISO_OP_FS", "TTI_OP", "TTI_OP_FS", "BASICS"]
         version: ['1']
         omp: [2]
-        cc: ['gcc-11']
+        cc: ['gcc-14']
         arch: ['x64']
   
         include:
@@ -63,14 +63,14 @@ jobs:
             version: '1.9'
             op: "VISCO_AC_OP"
             omp: 2
-            cc: gcc-11
+            cc: gcc-14
             arch: x64
 
           - os: ubuntu-latest
             version: '1.10'
             op: "ISO_OP"
             omp: 2
-            cc: gcc-11
+            cc: gcc-14
             arch: x64
 
     steps:
@@ -91,10 +91,10 @@ jobs:
           brew install llvm libomp
           echo "/opt/homebrew/opt/llvm/bin" >> $GITHUB_PATH
 
-      - name: Set up Python 3.9
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: 3.9
+          python-version: 3.11
 
       - name: Set julia python
         run: |

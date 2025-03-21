@@ -226,12 +226,11 @@ def fourier_modes(u, freq):
 
     dft_modes = []
     for wf in as_tuple(u):
-        ufr = Function(name='ufr%s' % wf.name, dimensions=(freq_dim,) + wf.indices[1:],
-                       grid=wf.grid, shape=(nfreq,) + wf.shape[1:])
-        ufi = Function(name='ufi%s' % wf.name, dimensions=(freq_dim,) + wf.indices[1:],
-                       grid=wf.grid, shape=(nfreq,) + wf.shape[1:])
-        dft_modes += [(ufr, ufi)]
-    return dft_modes, f
+        uf = Function(name='uf%s' % wf.name, dimensions=(freq_dim,) + wf.indices[1:],
+                      grid=wf.grid, shape=(nfreq,) + wf.shape[1:],
+                      dtype=np.complex64)
+        dft_modes.append(uf)
+    return as_tuple(dft_modes), f
 
 
 def norm_holder(v):

@@ -6,7 +6,7 @@
 # Updated July 2020
 
 export ricker_wavelet, get_computational_nt, calculate_dt, setup_grid, setup_3D_grid
-export convertToCell, limit_model_to_receiver_area, remove_out_of_bounds_receivers, extend_gradient
+export convertToCell, limit_model_to_receiver_area, extend_gradient
 export remove_padding, subsample, process_input_data
 export generate_distribution, select_frequencies
 export devito_model, pad_array
@@ -171,77 +171,6 @@ function limit_model_to_receiver_area(srcGeometry::Geometry{T}, recGeometry::Geo
     newpert = reshape(pert, n_orig)[inds...]
     return new_model, newpert[1:end]
 end
-
-"""
-    remove_out_of_bounds_receivers(recGeometry, model)
-
-Removes receivers that are positionned outside the computational domain defined by the model.
-
-Parameters
-* `recGeometry`: Geometry of receivers in which out of bounds will be removed.
-* `model`: Model defining the computational domain.
-"""
-function remove_out_of_bounds_receivers(recGeometry::Geometry{T}, model::AbstractModel{T, N}) where {T<:Real, N}
-
-    # Only keep receivers within the model
-    xmin, xmax = origin(model, 1), origin(model, 1) + (size(model)[1] - 1)*spacing(model, 1)
-    if typeof(recGeometry.xloc[1]) <: Array
-        idx_xrec = findall(x -> xmax >= x >= xmin, recGeometry.xloc[1])
-        recGeometry.xloc[1] = recGeometry.xloc[1][idx_xrec]
-        length(recGeometry.yloc[1]) > 1 && (recGeometry.yloc[1] = recGeometry.yloc[1][idx_xrec])
-        recGeometry.zloc[1] = recGeometry.zloc[1][idx_xrec]
-    end
-
-    # For 3D shot records, scan also y-receivers
-    if length(size(model)) == 3 && typeof(recGeometry.yloc[1]) <: Array
-        ymin, ymax = origin(model, 2), origin(model, 2) + (size(model, 2) - 1)*spacing(model, 2)
-        idx_yrec = findall(x -> ymax >= x >= ymin, recGeometry.yloc[1])
-        recGeometry.xloc[1] = recGeometry.xloc[1][idx_yrec]
-        recGeometry.yloc[1] = recGeometry.yloc[1][idx_yrec]
-        recGeometry.zloc[1] = recGeometry.zloc[1][idx_yrec]
-    end
-    return recGeometry
-end
-
-"""
-    remove_out_of_bounds_receivers(recGeometry, recData, model)
-
-Removes receivers that are positionned outside the computational domain defined by the model.
-
-Parameters
-* `recGeometry`: Geometry of receivers in which out of bounds will be removed.
-* `recData`: Shot record for that geometry in which traces will be removed.
-* `model`: Model defining the computational domain.
-"""
-function remove_out_of_bounds_receivers(recGeometry::Geometry{T}, recData::Matrix{T}, model::AbstractModel) where {T<:Real}
-
-    # Only keep receivers within the model
-    xmin, xmax = origin(model, 1), origin(model, 1) + (size(model)[1] - 1)*spacing(model, 1)
-    if typeof(recGeometry.xloc[1]) <: Array
-        idx_xrec = findall(x -> xmax >= x >= xmin, recGeometry.xloc[1])
-        recGeometry.xloc[1] = recGeometry.xloc[1][idx_xrec]
-        length(recGeometry.yloc[1]) > 1 && (recGeometry.yloc[1] = recGeometry.yloc[1][idx_xrec])
-        recGeometry.zloc[1] = recGeometry.zloc[1][idx_xrec]
-        recData = recData[:, idx_xrec]
-    end
-
-    # For 3D shot records, scan also y-receivers
-    if length(size(model)) == 3 && typeof(recGeometry.yloc[1]) <: Array
-        ymin, ymax = origin(model, 2), origin(model, 2) + (size(model, 2) - 1)*spacing(model, 2)
-        idx_yrec = findall(x -> ymax >= x >= ymin, recGeometry.yloc[1])
-        recGeometry.xloc[1] = recGeometry.xloc[1][idx_yrec]
-        recGeometry.yloc[1] = recGeometry.yloc[1][idx_yrec]
-        recGeometry.zloc[1] = recGeometry.zloc[1][idx_yrec]
-        recData = recData[:, idx_yrec]
-    end
-    return recGeometry, recData
-end
-
-remove_out_of_bounds_receivers(G::Geometry, ::Nothing, M::AbstractModel) = (remove_out_of_bounds_receivers(G, M), nothing)
-remove_out_of_bounds_receivers(::Nothing, ::Nothing, M::AbstractModel) = (nothing, nothing)
-remove_out_of_bounds_receivers(w, r::AbstractArray, ::AbstractModel) = (w, r)
-remove_out_of_bounds_receivers(G::Geometry, r::AbstractArray, M::AbstractModel) = remove_out_of_bounds_receivers(G, convert(Matrix{Float32}, r), M)
-remove_out_of_bounds_receivers(w::AbstractArray, ::Nothing, M::AbstractModel) = (w, nothing)
 
 """
     convertToCell(x)

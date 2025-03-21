@@ -26,7 +26,7 @@ dm1 = 2f0*circshift(dm, 10)
 
 ftol = (tti | fs | viscoacoustic) ? 1f-1 : 1f-2
 
-###################################################################################################
+# ###################################################################################################
 
 @testset "FWI gradient test with $(nlayer) layers and tti $(tti) and viscoacoustic $(viscoacoustic) and freesurface $(fs)" begin
 	# FWI gradient and function value for m0
@@ -105,7 +105,10 @@ end
 	printstyled("LSRTM validity with dft, IC=$(ic)\n", color=:blue)
     @timeit TIMEROUTPUT "LSRTM validity with dft, IC=$(ic)" begin
 		ftol = fs ? 1f-3 : 5f-4
-		freq = [[2.5, 4.5],[3.5, 5.5],[10.0, 15.0], [30.0, 32.0]]
+		q_dist = generate_distribution(q)
+		freq = [select_frequencies(q_dist; fmin=0.003, fmax=0.04, nf=2)
+				for j=1:dobs.nsrc]
+
 		J.options.free_surface = fs
 		J.options.IC = ic
 		J.options.frequencies = freq
@@ -118,6 +121,7 @@ end
 		Jm0, grad = @single_threaded lsrtm_objective(model0, q, dobs, dm1; options=opt, nlind=true)
 		Jm01, grad1 = @single_threaded lsrtm_objective(model0, q, dobs-dobs0, dm1; options=opt, nlind=false)
 	
+		@show Jm0, Jm0_1, norm(grad), norm(grad_1), norm(grad1)
 		@test isapprox(grad, grad_1; rtol=ftol)
 		@test isapprox(Jm0, Jm0_1; rtol=ftol)
 		@test isapprox(grad, grad1; rtol=ftol)

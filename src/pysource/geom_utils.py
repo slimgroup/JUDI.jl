@@ -83,7 +83,7 @@ def geom_expr(model, u, src_coords=None, rec_coords=None,
                 # Free surface
                 src_eq = mirror_source(model, src_eq)
 
-        geom_expr += [src_eq]
+        geom_expr += src_eq
     # Setup adjoint wavefield sampling at source locations
     if rcv is not None:
         if model.is_elastic:
