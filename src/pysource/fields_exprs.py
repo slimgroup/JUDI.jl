@@ -2,6 +2,8 @@ import numpy as np
 
 from devito import Inc, Eq, ConditionalDimension, exp
 from devito.tools import as_tuple
+from devito.types.utils import DimensionTuple
+
 
 from fields import (wavefield_subsampled, lr_src_fields, fourier_modes, norm_holder,
                     illumination)
@@ -122,9 +124,14 @@ def freesurface(model, fields, r_coeff=-1):
         if u == 0:
             continue
 
-        sh = 1 if z in as_tuple(u.staggered) else 0
+        if isinstance(u.staggered, DimensionTuple):
+            on_z = not u.staggered.get(z, 0)
+        else:
+            # Legacy staggered
+            on_z = z not in as_tuple(u.staggered)
+        sh = 1 if on_z else 0
         eqs.extend([Eq(u._subs(z, - zfs), r_coeff * u._subs(z, zfs - sh))])
-        if z not in as_tuple(u.staggered):
+        if on_z:
             eqs.append(Eq(u._subs(z, 0), 0))
 
     return eqs
