@@ -12,11 +12,6 @@ from devito.arch import Device
 from devito.arch.compiler import NvidiaCompiler, CudaCompiler
 from devito.tools import as_tuple
 
-try:
-    import devitopro as dvp
-except ImportError:
-    dvp = None
-
 
 # Weighting
 def weight_fun(w_fun, model, src_coords):
@@ -97,10 +92,14 @@ def opt_op(model):
     """
     if isinstance(configuration['platform'], Device):
         opts = {'openmp': True if configuration['language'] == 'openmp' else None,
-                'mpi': configuration['mpi']}
+                'mpi': configuration['mpi'],
+                # optimizations for gpu
+                'gpu-opt': True, 'gpu-vect': True, 'gpu-prefetch':True}
         mode = 'advanced'
     else:
-        opts = {'openmp': True, 'par-collapse-ncores': 2, 'mpi': configuration['mpi']}
+        opts = {'openmp': True, 'mpi': configuration['mpi'],
+                # optimizations for cpu
+                'cire-schedule': 0, 'cse-algo': 'advanced'}
         mode = 'advanced'
     return (mode, opts)
 
@@ -159,7 +158,7 @@ def compression_mode():
     if isinstance(configuration['compiler'], (NvidiaCompiler, CudaCompiler)):
         return 'bitcomp'
     else:
-        return 'noop'
+        return 'cvxcompress'
 
 
 def npdot(a, b):

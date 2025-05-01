@@ -48,7 +48,8 @@ def to_numpy(f):
         return f
 
 
-_thomsen = [('epsilon', 1), ('delta', 1), ('theta', 0), ('phi', 0)]
+_thomsen = {'epsilon': 1, 'delta': 1, 'theta': 0, 'phi': 0}
+_default_params = {**_thomsen, 'b': 1, 'rho': 1}
 
 
 @memoized_func
@@ -155,9 +156,7 @@ class Model(object):
         Whether to use the exapanding box, defaults to true
     """
     def __init__(self, origin, spacing, shape, space_order=8, nbl=40, dtype=np.float32,
-                 m=None, epsilon=None, delta=None, theta=None, phi=None, rho=None,
-                 b=None, qp=None, lam=None, mu=None, dm=None, fs=False,
-                 **kwargs):
+                fs=False, **kwargs):
         # Setup devito grid
         self.shape = tuple(shape)
         self.nbl = int(nbl)
@@ -199,46 +198,15 @@ class Model(object):
             self.m = self._gen_phys_param(m, 'm', space_order)
 
         # density
-        self._init_density(rho, b, space_order)
+        self._init_density(space_order, **kwargs)
 
-        # Perturbation for linearized modeling
-        self.dm = self._gen_phys_param(dm, 'dm', space_order)
-
-        # Model type
-        self._is_viscoacoustic = qp is not None
-        self._is_elastic = mu is not None
-        self._is_tti = any(p is not None for p in [epsilon, delta, theta, phi])
-
-        # Additional parameter fields for Viscoacoustic operators
-        if self._is_viscoacoustic:
-            self.qp = self._gen_phys_param(qp, 'qp', space_order)
-
-        # Additional parameter fields for TTI operators
-        if self._is_tti:
-            epsilon = 1 if epsilon is None else 1 + 2 * to_numpy(epsilon)
-            delta = 1 if delta is None else 1 + 2 * to_numpy(delta)
-            self.epsilon = self._gen_phys_param(epsilon, 'epsilon', space_order)
-            self.scale = np.sqrt(np.max(epsilon))
-            self.delta = self._gen_phys_param(delta, 'delta', space_order)
-            self.theta = self._gen_phys_param(theta, 'theta', space_order)
-            if self.grid.dim == 3:
-                self.phi = self._gen_phys_param(phi, 'phi', space_order)
-
-        # Additional parameter fields for elastic
-        if self._is_elastic:
-            self.lam = self._gen_phys_param(lam, 'lam', space_order, is_param=True)
-            try:
-                mu = to_numpy(mu)
-                mu[np.where(mu == 0)] = 1e-12
-            except (ValueError, TypeError):
-                mu = 1e-12 if mu == 0 else mu
-            self.mu = self._gen_phys_param(mu, 'mu', space_order, is_param=True,
-                                           avg_mode='harmonic')
-            try:
-                b = b if b is not None else 1 / rho
-            except TypeError:
-                b = 1
-            vp_vals = ((to_numpy(lam) + 2 * mu) * b)**(.5)
+        # Set all input physical parameters
+        for p, v in kwargs.items():
+            avg_mode = 'harmonic' if p == 'mu' else 'arithmetic'
+            dval = _default_params.get(p, 0)
+            param = self._gen_phys_param(v, p, space_order, avg_mode=avg_mode,
+                                        default_value=dval)
+            setattr(self, p, param)
 
         # User provided dt
         self._dt = kwargs.get('dt')
@@ -246,8 +214,11 @@ class Model(object):
         # Need vp for Abox
         if ABox is not None:
             self._vp = self._gen_phys_param(vp_vals, '_vp', space_order)
+        
+        # User provided physics
+        self._physics = kwargs.get('physics', 'acoustic')
 
-    def _init_density(self, rho, b, so):
+    def _init_density(self, so, rho=None, b=None, **kwargs):
         """
         Initialize density parameter. Depending on variance in density
         either density or inverse density is setup.
@@ -290,7 +261,7 @@ class Model(object):
     @property
     def zero_thomsen(self):
         out = {}
-        for (t, v) in _thomsen:
+        for (t, v) in _thomsen.items():
             try:
                 out.update({getattr(self, t): v})
             except AttributeError:
@@ -298,7 +269,7 @@ class Model(object):
         return out
 
     @switchconfig(log_level='ERROR')
-    def _gen_phys_param(self, field, name, space_order, is_param=False,
+    def _gen_phys_param(self, field, name, space_order, is_param=True,
                         default_value=0, avg_mode='arithmetic'):
         """
         Create symbolic object an initialize its data
@@ -405,26 +376,12 @@ class Model(object):
         """
         self._dt = dt
 
-    @property
-    def is_tti(self):
+    @cached_property
+    def physics(self):
         """
-        Whether the model is TTI or isotopic
+        Physics of the model
         """
-        return self._is_tti
-
-    @property
-    def is_viscoacoustic(self):
-        """
-        Whether the model is TTI or isotopic
-        """
-        return self._is_viscoacoustic
-
-    @property
-    def is_elastic(self):
-        """
-        Whether the model is TTI or isotopic
-        """
-        return self._is_elastic
+        return self._physics
 
     @property
     def _max_vp(self):
@@ -533,11 +490,8 @@ class EmptyModel(Model):
     This Model should not be used for propagation.
     """
 
-    def __init__(self, tti, visco, elastic, spacing, fs, space_order, p_params):
-        self._is_tti = tti
-        self._is_viscoacoustic = visco
-        self._is_elastic = elastic
-        self._spacing = spacing
+    def __init__(self, physics, spacing, fs, space_order, p_params):
+        self._physics = physics
         self.fs = fs
         self._space_order = space_order
         N = 2 * space_order + 1
@@ -578,7 +532,7 @@ class EmptyModel(Model):
     @property
     def zero_thomsen(self):
         out = {}
-        for (t, v) in _thomsen:
+        for (t, v) in _thomsen.items():
             try:
                 out.update({getattr(self, t): v})
             except AttributeError:

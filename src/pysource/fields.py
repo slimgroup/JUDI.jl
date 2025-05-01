@@ -37,20 +37,21 @@ def wavefield(model, space_order, save=False, nt=None, fw=True, name='', t_sub=1
     tfull: Bool
         Whether need full buffer for e.g. second time derivative
     """
-    name = "u"+name if fw else "v"+name
+    name = f"u{name}" if fw else f"v{name}"
     save = False if t_sub > 1 else save
     nsave = Buffer(3 if tfull else 2) if not save else nt
 
     if model.is_tti:
-        u = TimeFunction(name="%s1" % name, grid=model.grid, time_order=2,
+        u = TimeFunction(name=f"{name}1", grid=model.grid, time_order=2,
                          space_order=space_order, save=nsave)
-        v = TimeFunction(name="%s2" % name, grid=model.grid, time_order=2,
+        v = TimeFunction(name=f"{name}2", grid=model.grid, time_order=2,
                          space_order=space_order, save=nsave)
         return (u, v)
     elif model.is_elastic:
-        v = VectorTimeFunction(name="v", grid=model.grid, time_order=1,
+        ext = '' if fw else 'a'
+        v = VectorTimeFunction(name=f"v{ext}", grid=model.grid, time_order=1,
                                space_order=space_order, save=Buffer(1))
-        tau = TensorTimeFunction(name="tau", grid=model.grid, time_order=1,
+        tau = TensorTimeFunction(name=f"tau{ext}", grid=model.grid, time_order=1,
                                  space_order=space_order, save=Buffer(1))
         return (v, tau)
     else:

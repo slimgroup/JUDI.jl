@@ -1,46 +1,17 @@
 from sympy import sqrt, S
 
 from devito import Eq, solve, diag, div, grad
+from devito.tools import as_tuple
 
 from fields import memory_field
 from fields_exprs import freesurface
 from FD_utils import laplacian, sa_tti
 
 try:
-    from recipes import recipes_registry
     from recipes.utils import vs_mask_derivs
 except ImportError:
-    recipes_registry = {}
-
     def vs_mask_derivs(eq, tau, vs):
         return eq
-
-
-def wave_kernel(model, u, fw=True, q=None, f0=0.015):
-    """
-    Pde kernel corresponding the the model for the input wavefield
-
-    Parameters
-    ----------
-    model: Model
-        Physical model
-    u : TimeFunction or tuple
-        wavefield (tuple if TTI or Viscoacoustic)
-    fw : Bool
-        Whether forward or backward in time propagation
-    q : TimeFunction or Expr
-        Full time-space source
-    f0 : Peak frequency
-    """
-    if model.is_tti:
-        pde = tti_kernel(model, u[0], u[1], fw=fw, q=q)
-    elif model.is_viscoacoustic:
-        pde = SLS_2nd_order(model, u, fw=fw, q=q, f0=f0)
-    elif model.is_elastic:
-        pde = elastic_kernel(model, u[0], u[1], fw=fw, q=q)
-    else:
-        pde = acoustic_kernel(model, u, fw=fw, q=q)
-    return pde
 
 
 def acoustic_kernel(model, u, fw=True, q=None):
@@ -238,3 +209,28 @@ def elastic_kernel(model, v, tau, fw=True, q=None):
         fseq = []
 
     return [*u_v, u_t], fseq
+
+
+kernel_registry = {'iso-acoustic': acoustic_kernel,
+                   'iso-elastic': elastic_kernel,
+                   'tti': tti_kernel,
+                   'viscoacoustic': SLS_2nd_order}
+
+
+def wave_kernel(model, u, fw=True, q=None, f0=0.015):
+    """
+    Pde kernel corresponding the the model for the input wavefield
+
+    Parameters
+    ----------
+    model: Model
+        Physical model
+    u : TimeFunction or tuple
+        wavefield (tuple if TTI or Viscoacoustic)
+    fw : Bool
+        Whether forward or backward in time propagation
+    q : TimeFunction or Expr
+        Full time-space source
+    f0 : Peak frequency
+    """
+    return kernel_registry[model.physics](model, *as_tuple(u), fw=fw, q=q, f0=f0)
