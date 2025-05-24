@@ -79,6 +79,8 @@ jobs:
         run: |
           julia -e 'using Pkg;Pkg.add(["SlimPlotting", "PythonPlot", "NLopt", "Flux", "JOLI", "Zygote", "IterativeSolvers", "SlimOptim", "HDF5", "SegyIO", "SetIntersectionProjection"])'
           julia -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd()))'
+          # https://discourse.julialang.org/t/problem-with-github-action-julia-docdeploy/128789
+          julia -e 'using Pkg; Pkg.add(name="OpenSSL_jll", version="3.0")'
 
       - name: Run examples
         run: julia -p 2 -t 1 ${{ matrix.example }}
