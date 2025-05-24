@@ -1,0 +1,1828 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>FWI Example · JUDI documentation</title><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.11.1/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit">JUDI documentation</span></div><form class="docs-search" action="../../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><a class="tocitem" href="../../about/">About</a></li><li><a class="tocitem" href="../../installation/">Installation</a></li><li><a class="tocitem" href="../../basics/">Getting Started</a></li><li><span class="tocitem">JUDI API</span><ul><li><a class="tocitem" href="../../abstract_vectors/">Abstract vectors</a></li><li><a class="tocitem" href="../../data_structures/">Data Structures</a></li><li><a class="tocitem" href="../../linear_operators/">Linear Operators</a></li><li><a class="tocitem" href="../../preconditioners/">Preconditioners</a></li><li><a class="tocitem" href="../../io/">Input/Output</a></li><li><a class="tocitem" href="../../helper/">Helper Functions</a></li></ul></li><li><a class="tocitem" href="../../inversion/">Inversion</a></li><li><span class="tocitem">Tutorials</span><ul><li><a class="tocitem" href="../01_intro/">Introduction to JUDI</a></li><li><a class="tocitem" href="../02_fwi_example_NLopt/">FWI with Quasi-Newton methods from the NLopt library</a></li><li class="is-active"><a class="tocitem" href>FWI Example</a><ul class="internal"><li><a class="tocitem" href="#Prepare-models"><span>Prepare models</span></a></li><li><a class="tocitem" href="#Visualize"><span>Visualize</span></a></li><li><a class="tocitem" href="#Setup-Constraints-with-[SetIntersectionProjection](https://github.com/slimgroup/SetIntersectionProjection.jl)"><span>Setup Constraints with SetIntersectionProjection</span></a></li><li><a class="tocitem" href="#Build-a-small-local-compute-cluster"><span>Build a small local compute cluster</span></a></li><li><a class="tocitem" href="#Create-source-and-receivers-geometries"><span>Create source and receivers geometries</span></a></li><li><a class="tocitem" href="#Build-F,-the-JUDI-modeling-operator"><span>Build <code>F</code>, the JUDI modeling operator</span></a></li><li><a class="tocitem" href="#Use-F-to-create-the-data-in-both-models"><span>Use <code>F</code> to create the data in both models</span></a></li><li><a class="tocitem" href="#Visualize-data"><span>Visualize data</span></a></li><li><a class="tocitem" href="#Assess-if-data-is-cycle-skipped-at-the-farthest-offsets"><span>Assess if data is cycle skipped at the farthest offsets</span></a></li><li><a class="tocitem" href="#Build-the-objective-functions"><span>Build the <code>objective</code>  functions</span></a></li><li><a class="tocitem" href="#Perform-the-FWI-using-minConf_PQN"><span>Perform the FWI using <code>minConf_PQN</code></span></a></li><li><a class="tocitem" href="#Visualize-velocity-models-and-objective-function"><span>Visualize velocity models and objective function</span></a></li><li><a class="tocitem" href="#Visualize-data-match"><span>Visualize data match</span></a></li><li><a class="tocitem" href="#Remove-workers"><span>Remove workers</span></a></li></ul></li><li><a class="tocitem" href="../04_judi_leading_edge_tutorial/">Full-Waveform Inversion - Part 3: optimization</a></li><li><a class="tocitem" href="../05_custom_misfit/">FWI with user provided misfit function</a></li><li><a class="tocitem" href="../06_automatic_differentiation/">Automatic differentiation with JUDI</a></li><li><a class="tocitem" href="../07_preconditionners/">Seismic preconditionners</a></li><li><a class="tocitem" href="../imaging_conditions/">Imaging conditions in JUDI</a></li><li><a class="tocitem" href="../quickstart/">Modeling and inversion with JUDI</a></li></ul></li><li><a class="tocitem" href="../../pysource/">Devito backend reference</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Tutorials</a></li><li class="is-active"><a href>FWI Example</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>FWI Example</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/slimgroup/JUDI.jl/blob/master/docs/src/tutorials/03_constrained_fwi.md" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="FWI-Example"><a class="docs-heading-anchor" href="#FWI-Example">FWI Example</a><a id="FWI-Example-1"></a><a class="docs-heading-anchor-permalink" href="#FWI-Example" title="Permalink"></a></h1><p>We will peform FWI using the following steps:</p><ol><li><a href="#prepare-models">Prepare models</a></li><li><a href="#setup-constraints-with-setintersectionprojection">Setup Constraints</a> with <a href="https://github.com/slimgroup/SetIntersectionProjection.jl">SetIntersectionProjection</a></li><li><a href="#build-a-small-local-compute-cluster">Build a small local compute cluster (2 workers)</a><ul><li>Take care of some HPC details related to thread affinity</li></ul></li><li><a href="#create-source-and-receivers-geometries">Create source and receivers geometries</a></li><li><a href="#build-F-the-judi-modeling-operator">Build <code>F</code>, the JUDI modeling operator</a></li><li><a href="#use-F-to-create-the-data-in-both-models">Use <code>F</code> to create data for both models</a></li><li><a href="#visualize-data">Visualize data</a></li><li><a href="#assess-if-data-is-cycle-skipped-at-the-farthest-offsets">Assess if data is cycle skipped at the farthest offsets</a></li><li><a href="#build-the-objective-functions">Build the <code>objective</code> function</a></li><li><a href="#perform-the-FWI-using-minConf_PQN">Perform the FWI using <code>minConf_PQN</code></a> from <a href="https://github.com/slimgroup/JUDI.jl">JUDI</a></li><li><a href="#visualize-velocity-models-and-objective-function">Visualize velocity models and objective function</a></li><li><a href="#visualize-data-match">Visualize data match</a></li><li><a href="#remove-workers">Remove workers</a></li></ol><h4 id="Note-on-runtime"><a class="docs-heading-anchor" href="#Note-on-runtime">Note on runtime</a><a id="Note-on-runtime-1"></a><a class="docs-heading-anchor-permalink" href="#Note-on-runtime" title="Permalink"></a></h4><p>Warning: this notebook takes more than 1 hour to run for 16 shots with two workers on an Intel 8168.</p><p><code>lscpu</code> CPU information: <code>Intel(R) Xeon(R) Platinum 8168 CPU @ 2.70GHz</code></p><pre><code class="language-julia"># Add packages needed
+# PythonPlot is already installed in the environment
+# using Pkg
+# Pkg.add([&quot;Distributed&quot;, &quot;SlimOptim&quot;, &quot;JUDI&quot;, &quot;SetIntersectionProjection&quot;])</code></pre><pre><code class="language-julia">using Distributed, JUDI, SlimOptim, LinearAlgebra, PythonPlot, SetIntersectionProjection, Printf</code></pre><h2 id="Prepare-models"><a class="docs-heading-anchor" href="#Prepare-models">Prepare models</a><a id="Prepare-models-1"></a><a class="docs-heading-anchor-permalink" href="#Prepare-models" title="Permalink"></a></h2><pre><code class="language-julia">n = (251, 251) # nx, nz
+d = (15., 15.) # hx, hz
+o = (0., 0.); # ox, oz</code></pre><pre><code class="language-julia"># Squared slowness
+m = 1.5f0^(-2) * ones(Float32, n)
+m[101:150, 101:150] .= 1.7f0^(-2)
+m0 = 1/1.5f0^2 * ones(Float32, n);</code></pre><pre><code class="language-julia">model = Model(n,d,o,m)
+model0 = Model(n,d,o,m0);</code></pre><h2 id="Visualize"><a class="docs-heading-anchor" href="#Visualize">Visualize</a><a id="Visualize-1"></a><a class="docs-heading-anchor-permalink" href="#Visualize" title="Permalink"></a></h2><pre><code class="language-julia">figure(figsize=(8,9))
+vmin,vmax = extrema(m)
+dmin,dmax = -.1,.1
+
+subplot(3,1,1); imshow(m,aspect=&quot;auto&quot;,cmap=&quot;jet&quot;); 
+colorbar(); clim(vmin,vmax); title(&quot;True squared slowness (m)&quot;)
+
+subplot(3,1,2); imshow(m0,aspect=&quot;auto&quot;,cmap=&quot;jet&quot;);
+colorbar(); clim(vmin,vmax); title(&quot;Initial squared slowness (m0)&quot;);
+
+subplot(3,1,3); imshow(m.-m0,aspect=&quot;auto&quot;,cmap=&quot;seismic&quot;);
+colorbar(); clim(dmin,dmax); title(&quot;Difference (m-m0)&quot;);
+
+tight_layout()</code></pre><p><img src="../03_constrained_fwi_files/03_constrained_fwi_8_0.png" alt="png"/></p><h2 id="Setup-Constraints-with-[SetIntersectionProjection](https://github.com/slimgroup/SetIntersectionProjection.jl)"><a class="docs-heading-anchor" href="#Setup-Constraints-with-[SetIntersectionProjection](https://github.com/slimgroup/SetIntersectionProjection.jl)">Setup Constraints with <a href="https://github.com/slimgroup/SetIntersectionProjection.jl">SetIntersectionProjection</a></a><a id="Setup-Constraints-with-[SetIntersectionProjection](https://github.com/slimgroup/SetIntersectionProjection.jl)-1"></a><a class="docs-heading-anchor-permalink" href="#Setup-Constraints-with-[SetIntersectionProjection](https://github.com/slimgroup/SetIntersectionProjection.jl)" title="Permalink"></a></h2><pre><code class="language-julia">options=PARSDMM_options()
+options.FL=Float32
+options=default_PARSDMM_options(options,options.FL)
+constraint = Vector{SetIntersectionProjection.set_definitions}()
+constraint2 = Vector{SetIntersectionProjection.set_definitions}()</code></pre><pre><code class="language-none">set_definitions[]</code></pre><p>We setup two constaints:</p><ul><li>Bounds that limit maximum and minimum velocity</li><li>TV, that limits variation and force a piece-wise constant structure</li></ul><pre><code class="language-julia">#bounds:
+m_min = 0 .* m .+ minimum(m).*.5
+m_max = 0 .* m .+ maximum(m)
+set_type = &quot;bounds&quot;
+TD_OP = &quot;identity&quot;
+app_mode = (&quot;matrix&quot;,&quot;&quot;)
+custom_TD_OP = ([],false)
+push!(constraint, set_definitions(set_type,TD_OP,vec(m_min),vec(m_max),app_mode,custom_TD_OP));
+push!(constraint2, set_definitions(set_type,TD_OP,vec(m_min),vec(m_max),app_mode,custom_TD_OP));</code></pre><pre><code class="language-julia">#TV
+(TV,dummy1,dummy2,dummy3) = get_TD_operator(model0,&quot;TV&quot;,options.FL)
+m_min = 0.0
+m_max = norm(TV*vec(m),1) * .5
+set_type = &quot;l1&quot;
+TD_OP = &quot;TV&quot;
+app_mode = (&quot;matrix&quot;,&quot;&quot;)
+custom_TD_OP = ([],false)
+push!(constraint, set_definitions(set_type,TD_OP,m_min,m_max,app_mode,custom_TD_OP));</code></pre><pre><code class="language-julia">#set up constraints with bounds only, precompute some things and define projector
+(P_sub2,TD_OP2,set_Prop2) = setup_constraints(constraint2, model0,options.FL)
+(TD_OP2,AtA2,l2,y2) = PARSDMM_precompute_distribute(TD_OP2,set_Prop2,model0,options)
+options2 = deepcopy(options)
+options2.rho_ini = ones(length(TD_OP2))*10.0
+
+proj_intersection2 = x-&gt; PARSDMM(x, AtA2, TD_OP2, set_Prop2, P_sub2, model0, options2)  
+
+# Projection function
+function prj2(input)
+    input = Float32.(input)
+    (x,dummy1,dummy2,dymmy3) = proj_intersection2(vec(input))
+    return x
+end</code></pre><pre><code class="language-none">prj2 (generic function with 1 method)</code></pre><pre><code class="language-julia">#set up constraints with bounds and TV
+(P_sub,TD_OP,set_Prop) = setup_constraints(constraint, model0,options.FL)
+(TD_OP,AtA,l,y) = PARSDMM_precompute_distribute(TD_OP,set_Prop,model0,options)
+options.rho_ini = ones(length(TD_OP))*10.0
+
+proj_intersection = x-&gt; PARSDMM(x, AtA, TD_OP, set_Prop, P_sub, model0, options)
+
+# Projection function
+function prj(input)
+    input = Float32.(input)
+    (x,dummy1,dummy2,dymmy3) = proj_intersection(vec(input))
+    return x
+end</code></pre><pre><code class="language-none">prj (generic function with 1 method)</code></pre><h2 id="Build-a-small-local-compute-cluster"><a class="docs-heading-anchor" href="#Build-a-small-local-compute-cluster">Build a small local compute cluster</a><a id="Build-a-small-local-compute-cluster-1"></a><a class="docs-heading-anchor-permalink" href="#Build-a-small-local-compute-cluster" title="Permalink"></a></h2><h4 id="Setup-OMP-environment-variables-for-the-cluster"><a class="docs-heading-anchor" href="#Setup-OMP-environment-variables-for-the-cluster">Setup OMP environment variables for the cluster</a><a id="Setup-OMP-environment-variables-for-the-cluster-1"></a><a class="docs-heading-anchor-permalink" href="#Setup-OMP-environment-variables-for-the-cluster" title="Permalink"></a></h4><p>In the distributed compute case the workers that we add would be on different hardware, and we might add tens of workers in 2D and hundreds in 3D. Here we run on a single machine with only 2 workers, and so we need to be careful with details related to high performance computing. If we did not specify thread affinity, the two workers would compete for the same physical cores and the modeling would be <em>incredibly</em> slow.</p><p>We spin up the small 2-worker cluster by calling <code>addprocs(2)</code>, and because we set the environment variable <code>ENV[&quot;OMP_DISPLAY_ENV&quot;] = &quot;true&quot;</code> we will see the OMP environment printed out on each worker. In that output (below) we can verify that half of the total threads (44/2 = 22) are assigned to each socket on this 2 socket system. You can obtain more details about the hardware with the shell command <code>lscpu</code>.</p><p>We set four environment variables related to OpenMP:</p><ul><li><code>OMP_DISPLAY_ENV</code> prints out the OpenMP environment on each worker</li><li><code>OMP_PROC_BIND</code> specifies that threads should be bound to physical cores</li><li><code>OMP_NUM_THREADS</code> specifies the number of threads per workers is 1/2 the number of physical cores</li><li><code>GOMP_CPU_AFFINITY</code> specifies which physical cores the threads run on for each worker</li></ul><p>If you run the shell command <code>top</code> during execution, you will see 3 julia processes: the main process and two workers. The two workers should generally have about 50% of the system, and <code>load average</code> should tend towards the physical number of cores.</p><pre><code class="language-julia">nthread = Sys.CPU_THREADS
+nw = 2
+
+ENV[&quot;OMP_DISPLAY_ENV&quot;] = &quot;true&quot;
+ENV[&quot;OMP_PROC_BIND&quot;] = &quot;close&quot;
+ENV[&quot;OMP_NUM_THREADS&quot;] = &quot;$(div(nthread, nw))&quot; 
+addprocs(nw)
+@show workers()
+for k in 1:nworkers()
+    place1 = (k - 1) * div(nthread,nworkers())
+    place2 = (k + 0) * div(nthread,nworkers()) - 1
+    @show place1, place2, div(nthread, nw)
+    @spawnat workers()[k] ENV[&quot;GOMP_CPU_AFFINITY&quot;] = &quot;$(place1)-$(place2)&quot;;
+end</code></pre><pre><code class="language-none">workers() = [2, 3]
+(place1, place2, div(nthread, nw)) = (0, 1, 2)
+(place1, place2, div(nthread, nw)) = (2, 3, 2)</code></pre><pre><code class="language-julia">@everywhere using Distributed, JUDI, LinearAlgebra</code></pre><pre><code class="language-none">      From worker 3:	
+      From worker 3:	OPENMP DISPLAY ENVIRONMENT BEGIN
+      From worker 3:	  _OPENMP = &#39;201511&#39;
+      From worker 3:	  OMP_DYNAMIC = &#39;FALSE&#39;
+      From worker 3:	  OMP_NESTED = &#39;FALSE&#39;
+      From worker 3:	  OMP_NUM_THREADS = &#39;2&#39;
+      From worker 3:	  OMP_SCHEDULE = &#39;DYNAMIC&#39;
+      From worker 3:	  OMP_PROC_BIND = &#39;CLOSE&#39;
+      From worker 3:	  OMP_PLACES = &#39;&#39;
+      From worker 3:	  OMP_STACKSIZE = &#39;2097152&#39;
+      From worker 3:	  OMP_WAIT_POLICY = &#39;PASSIVE&#39;
+      From worker 3:	  OMP_THREAD_LIMIT = &#39;4294967295&#39;
+      From worker 3:	  OMP_MAX_ACTIVE_LEVELS = &#39;1&#39;
+      From worker 3:	  OMP_CANCELLATION = &#39;FALSE&#39;
+      From worker 3:	  OMP_DEFAULT_DEVICE = &#39;0&#39;
+      From worker 3:	  OMP_MAX_TASK_PRIORITY = &#39;0&#39;
+      From worker 3:	  OMP_DISPLAY_AFFINITY = &#39;FALSE&#39;
+      From worker 3:	  OMP_AFFINITY_FORMAT = &#39;level %L thread %i affinity %A&#39;
+      From worker 3:	  OMP_ALLOCATOR = &#39;omp_default_mem_alloc&#39;
+      From worker 3:	  OMP_TARGET_OFFLOAD = &#39;DEFAULT&#39;
+      From worker 3:	OPENMP DISPLAY ENVIRONMENT END
+      From worker 2:	
+      From worker 2:	OPENMP DISPLAY ENVIRONMENT BEGIN
+      From worker 2:	  _OPENMP = &#39;201511&#39;
+      From worker 2:	  OMP_DYNAMIC = &#39;FALSE&#39;
+      From worker 2:	  OMP_NESTED = &#39;FALSE&#39;
+      From worker 2:	  OMP_NUM_THREADS = &#39;2&#39;
+      From worker 2:	  OMP_SCHEDULE = &#39;DYNAMIC&#39;
+      From worker 2:	  OMP_PROC_BIND = &#39;CLOSE&#39;
+      From worker 2:	  OMP_PLACES = &#39;&#39;
+      From worker 2:	  OMP_STACKSIZE = &#39;2097152&#39;
+      From worker 2:	  OMP_WAIT_POLICY = &#39;PASSIVE&#39;
+      From worker 2:	  OMP_THREAD_LIMIT = &#39;4294967295&#39;
+      From worker 2:	  OMP_MAX_ACTIVE_LEVELS = &#39;1&#39;
+      From worker 2:	  OMP_CANCELLATION = &#39;FALSE&#39;
+      From worker 2:	  OMP_DEFAULT_DEVICE = &#39;0&#39;
+      From worker 2:	  OMP_MAX_TASK_PRIORITY = &#39;0&#39;
+      From worker 2:	  OMP_DISPLAY_AFFINITY = &#39;FALSE&#39;
+      From worker 2:	  OMP_AFFINITY_FORMAT = &#39;level %L thread %i affinity %A&#39;
+      From worker 2:	  OMP_ALLOCATOR = &#39;omp_default_mem_alloc&#39;
+      From worker 2:	  OMP_TARGET_OFFLOAD = &#39;DEFAULT&#39;
+      From worker 2:	OPENMP DISPLAY ENVIRONMENT END</code></pre><h2 id="Create-source-and-receivers-geometries"><a class="docs-heading-anchor" href="#Create-source-and-receivers-geometries">Create source and receivers geometries</a><a id="Create-source-and-receivers-geometries-1"></a><a class="docs-heading-anchor-permalink" href="#Create-source-and-receivers-geometries" title="Permalink"></a></h2><p>We use 8 shot locations evenly distributed across the left of the model.</p><pre><code class="language-julia">tn = 4000  # Recording time in ms
+dt = 2f0  # Shot record sampling rate in ms
+f0 = 0.005 # Peak frquency in kHz</code></pre><pre><code class="language-none">0.005</code></pre><pre><code class="language-julia">nsrc = 8
+xsrc = convertToCell(d[1].*ones(Float32, nsrc))
+ysrc = convertToCell(range(0f0, stop = 0f0, length = nsrc))
+zsrc = convertToCell(range(0f0, (n[2] - 1)*d[2], length=nsrc))
+src_geom = Geometry(xsrc, ysrc, zsrc; dt=dt, t=tn);</code></pre><pre><code class="language-julia">nrec = 251
+xrec = (n[1] - 2)*d[1] .* ones(Float32, nrec)
+yrec = 0f0
+zrec = range(0f0, (n[2] - 1)*d[2], length=nrec)
+rec_geom = Geometry(xrec, yrec, zrec; dt=dt, t=tn, nsrc=nsrc);</code></pre><h4 id="Visualize-geometry"><a class="docs-heading-anchor" href="#Visualize-geometry">Visualize geometry</a><a id="Visualize-geometry-1"></a><a class="docs-heading-anchor-permalink" href="#Visualize-geometry" title="Permalink"></a></h4><pre><code class="language-julia">figure()
+vmin,vmax = extrema(m)
+dmin,dmax = -.1,.1
+
+imshow(m,aspect=&quot;auto&quot;,cmap=&quot;jet&quot;, extent=[0, 3750, 3750, 0]); 
+colorbar(); clim(vmin,vmax); title(&quot;True squared slowness (m)&quot;)
+scatter(xsrc, zsrc, c=&quot;g&quot;, label=&quot;Sources&quot;)
+scatter(xrec[1:4:end], zrec[1:4:end], c=&quot;c&quot;, label=&quot;Receiver&quot;)
+legend()</code></pre><p><img src="../03_constrained_fwi_files/03_constrained_fwi_24_0.png" alt="png"/></p><pre><code class="language-none">PyObject &lt;matplotlib.legend.Legend object at 0x170fa68b0&gt;</code></pre><h2 id="Build-F,-the-JUDI-modeling-operator"><a class="docs-heading-anchor" href="#Build-F,-the-JUDI-modeling-operator">Build <code>F</code>, the JUDI modeling operator</a><a id="Build-F,-the-JUDI-modeling-operator-1"></a><a class="docs-heading-anchor-permalink" href="#Build-F,-the-JUDI-modeling-operator" title="Permalink"></a></h2><pre><code class="language-julia"># True model operator
+F = judiModeling(model, src_geom, rec_geom)
+
+# Intial model operator
+F0 = judiModeling(model0, src_geom, rec_geom);</code></pre><pre><code class="language-julia"># Source function
+fsrc = judiVector(src_geom, ricker_wavelet(tn, dt, f0));</code></pre><h2 id="Use-F-to-create-the-data-in-both-models"><a class="docs-heading-anchor" href="#Use-F-to-create-the-data-in-both-models">Use <code>F</code> to create the data in both models</a><a id="Use-F-to-create-the-data-in-both-models-1"></a><a class="docs-heading-anchor-permalink" href="#Use-F-to-create-the-data-in-both-models" title="Permalink"></a></h2><pre><code class="language-julia">t1 = @elapsed begin
+    dobs = F*fsrc;
+end
+@info @sprintf(&quot;Time in true model; %.2f seconds\n&quot;, t1);
+
+t2 = @elapsed begin
+    d0 = F0*fsrc;
+end
+@info @sprintf(&quot;Time in init model; %.2f seconds\n&quot;, t2);</code></pre><pre><code class="language-none">      From worker 3:	
+      From worker 3:	OPENMP DISPLAY ENVIRONMENT BEGIN
+      From worker 3:	  _OPENMP = &#39;201511&#39;
+      From worker 3:	  OMP_DYNAMIC = &#39;FALSE&#39;
+      From worker 3:	  OMP_NESTED = &#39;FALSE&#39;
+      From worker 3:	  OMP_NUM_THREADS = &#39;2&#39;
+      From worker 3:	  OMP_SCHEDULE = &#39;DYNAMIC&#39;
+      From worker 3:	  OMP_PROC_BIND = &#39;CLOSE&#39;
+      From worker 3:	  OMP_PLACES = &#39;&#39;
+      From worker 3:	  OMP_STACKSIZE = &#39;2097152&#39;
+      From worker 3:	  OMP_WAIT_POLICY = &#39;PASSIVE&#39;
+      From worker 3:	  OMP_THREAD_LIMIT = &#39;4294967295&#39;
+      From worker 3:	  OMP_MAX_ACTIVE_LEVELS = &#39;2147483647&#39;
+      From worker 3:	  OMP_CANCELLATION = &#39;FALSE&#39;
+      From worker 3:	  OMP_DEFAULT_DEVICE = &#39;0&#39;
+      From worker 3:	  OMP_MAX_TASK_PRIORITY = &#39;0&#39;
+      From worker 3:	  OMP_DISPLAY_AFFINITY = &#39;FALSE&#39;
+      From worker 3:	  OMP_AFFINITY_FORMAT = &#39;level %L thread %i affinity %A&#39;
+      From worker 3:	OPENMP DISPLAY ENVIRONMENT END
+      From worker 2:	
+      From worker 2:	OPENMP DISPLAY ENVIRONMENT BEGIN
+      From worker 2:	  _OPENMP = &#39;201511&#39;
+      From worker 2:	  OMP_DYNAMIC = &#39;FALSE&#39;
+      From worker 2:	  OMP_NESTED = &#39;FALSE&#39;
+      From worker 2:	  OMP_NUM_THREADS = &#39;2&#39;
+      From worker 2:	  OMP_SCHEDULE = &#39;DYNAMIC&#39;
+      From worker 2:	  OMP_PROC_BIND = &#39;CLOSE&#39;
+      From worker 2:	  OMP_PLACES = &#39;&#39;
+      From worker 2:	  OMP_STACKSIZE = &#39;2097152&#39;
+      From worker 2:	  OMP_WAIT_POLICY = &#39;PASSIVE&#39;
+      From worker 2:	  OMP_THREAD_LIMIT = &#39;4294967295&#39;
+      From worker 2:	  OMP_MAX_ACTIVE_LEVELS = &#39;2147483647&#39;
+      From worker 2:	  OMP_CANCELLATION = &#39;FALSE&#39;
+      From worker 2:	  OMP_DEFAULT_DEVICE = &#39;0&#39;
+      From worker 2:	  OMP_MAX_TASK_PRIORITY = &#39;0&#39;
+      From worker 2:	  OMP_DISPLAY_AFFINITY = &#39;FALSE&#39;
+      From worker 2:	  OMP_AFFINITY_FORMAT = &#39;level %L thread %i affinity %A&#39;
+      From worker 2:	OPENMP DISPLAY ENVIRONMENT END
+      From worker 3:	Operator `forward` ran in 0.42 s
+      From worker 2:	Operator `forward` ran in 0.48 s
+      From worker 3:	Operator `forward` ran in 0.43 s
+      From worker 2:	Operator `forward` ran in 0.42 s
+      From worker 3:	Operator `forward` ran in 0.39 s
+      From worker 2:	Operator `forward` ran in 0.42 s
+      From worker 3:	Operator `forward` ran in 0.46 s
+      From worker 2:	Operator `forward` ran in 0.33 s
+
+
+┌ Info: Time in true model; 27.31 seconds
+└ @ Main In[20]:4
+
+
+      From worker 3:	Operator `forward` ran in 0.43 s
+      From worker 2:	Operator `forward` ran in 0.41 s
+      From worker 3:	Operator `forward` ran in 0.35 s
+      From worker 2:	Operator `forward` ran in 0.36 s
+      From worker 3:	Operator `forward` ran in 0.36 s
+      From worker 2:	Operator `forward` ran in 0.38 s
+      From worker 3:	Operator `forward` ran in 0.37 s
+      From worker 2:	Operator `forward` ran in 0.29 s
+
+
+┌ Info: Time in init model; 10.21 seconds
+└ @ Main In[20]:9</code></pre><h4 id="Compute-the-residual-data"><a class="docs-heading-anchor" href="#Compute-the-residual-data">Compute the residual data</a><a id="Compute-the-residual-data-1"></a><a class="docs-heading-anchor-permalink" href="#Compute-the-residual-data" title="Permalink"></a></h4><pre><code class="language-julia">r = d0 - dobs;</code></pre><h2 id="Visualize-data"><a class="docs-heading-anchor" href="#Visualize-data">Visualize data</a><a id="Visualize-data-1"></a><a class="docs-heading-anchor-permalink" href="#Visualize-data" title="Permalink"></a></h2><pre><code class="language-julia">shots = [1,4,8]</code></pre><pre><code class="language-none">3-element Vector{Int64}:
+ 1
+ 4
+ 8</code></pre><h4 id="Plot-shot-gathers-for-true-model,-initial-model,-and-residual"><a class="docs-heading-anchor" href="#Plot-shot-gathers-for-true-model,-initial-model,-and-residual">Plot shot gathers for true model, initial model, and residual</a><a id="Plot-shot-gathers-for-true-model,-initial-model,-and-residual-1"></a><a class="docs-heading-anchor-permalink" href="#Plot-shot-gathers-for-true-model,-initial-model,-and-residual" title="Permalink"></a></h4><p>The table below describes the data images below. We flip the direction of the residual and modeled data in order to help display the match with the true data.</p><p>&lt;table style=&quot;border:1px solid black;&quot; width=&quot;60%&quot;&gt; &lt;tr&gt;   &lt;td style=&quot;border:1px solid black; text-align:center;&quot; bgcolor=&quot;white&quot;&gt;       &lt;b&gt;Initial Residual Data&lt;br&gt;(flipped)&lt;/b&gt;&lt;/td&gt;   &lt;td style=&quot;border:1px solid black; text-align:center;&quot; bgcolor=&quot;white&quot;&gt;       &lt;b&gt;True Data&lt;/b&gt;&lt;/td&gt;   &lt;td style=&quot;border:1px solid black; text-align:center;&quot; bgcolor=&quot;white&quot;&gt;       &lt;b&gt;Initial Data&lt;br&gt;(flipped)&lt;/b&gt;&lt;/td&gt; &lt;/tr&gt; &lt;/table&gt;</p><p>Note that the data modeled in the initial model lacks a lot of reflectivity that is evident in the data modeled in the true model. We expect to recover this missing reflectivity with the FWI.</p><pre><code class="language-julia">scale = 10.0 / sqrt(norm(dobs)^2 / length(dobs.data))
+@show scale
+
+nzero = 5
+pad = ones(Float32,2001,nzero)
+
+figure(figsize=(8,9)); clf()
+for (iplot,ishot) in enumerate(shots)
+    cat2 = hcat(reverse(r.data[ishot],dims=2), pad, dobs.data[ishot], pad, reverse(d0.data[ishot],dims=2))
+    subplot(3,1,iplot);
+    imshow(cat2,cmap=&quot;gray&quot;,aspect=&quot;auto&quot;,clim=[-1,+1]);
+    title(&quot; Initial Residual sz=$(zsrc[ishot])   |   True sz=$(zsrc[ishot])   |   Initial sz=$(zsrc[ishot]) (flipped)&quot;);
+end
+tight_layout()</code></pre><p><img src="../03_constrained_fwi_files/03_constrained_fwi_35_0.png" alt="png"/></p><pre><code class="language-none">scale = 0.018069575143305386</code></pre><h2 id="Assess-if-data-is-cycle-skipped-at-the-farthest-offsets"><a class="docs-heading-anchor" href="#Assess-if-data-is-cycle-skipped-at-the-farthest-offsets">Assess if data is cycle skipped at the farthest offsets</a><a id="Assess-if-data-is-cycle-skipped-at-the-farthest-offsets-1"></a><a class="docs-heading-anchor-permalink" href="#Assess-if-data-is-cycle-skipped-at-the-farthest-offsets" title="Permalink"></a></h2><p>Next we plot the far offset traces for these three shots in order to assess if the data is cycle skipped. </p><p>You can ovbserve in the plots below that the refraction waveforms (first arrivals) in the initial model are not cycle skipped with respect to the true model, so we can proceed. </p><p>A very significant part of the residual wavefield is actually reflections in this example.</p><pre><code class="language-julia">scale = 10.0 / sqrt(norm(dobs)^2 / length(dobs.data))
+t = [0.0:dt:tn;]
+
+figure(figsize=(8,9)); clf()
+for (iplot,ishot) in enumerate(shots)
+    subplot(3,1,iplot);
+    plot(t,dobs.data[ishot][:,end],label=&quot;True Model $(ishot) at z=$(zsrc[ishot])&quot;);
+    plot(t,d0.data[ishot][:,end],label=&quot;Initial Model $(ishot) at z=$(zsrc[ishot])&quot;);
+    xlim([4.5,t[end]])
+    legend()
+end
+tight_layout()</code></pre><p><img src="../03_constrained_fwi_files/03_constrained_fwi_37_0.png" alt="png"/></p><h2 id="Build-the-objective-functions"><a class="docs-heading-anchor" href="#Build-the-objective-functions">Build the <code>objective</code>  functions</a><a id="Build-the-objective-functions-1"></a><a class="docs-heading-anchor-permalink" href="#Build-the-objective-functions" title="Permalink"></a></h2><h4 id="Build-src/rec-positions-mask"><a class="docs-heading-anchor" href="#Build-src/rec-positions-mask">Build src/rec positions mask</a><a id="Build-src/rec-positions-mask-1"></a><a class="docs-heading-anchor-permalink" href="#Build-src/rec-positions-mask" title="Permalink"></a></h4><p>We use this mask to remove the imprint in gradients of proximity to source locations. The mask is set to 0 wherever a source or receiver is close, and is set to 1 otherwise. Without this mask most of the gradient updates would be concentrated close to sources where the model is correct. </p><pre><code class="language-julia">wb_mask = ones(Float32,size(m))
+wb_mask[1:5, :] .= 0;
+wb_mask[end-5:end, :] .= 0;
+
+figure(figsize=(8,3))
+imshow(wb_mask&#39;, aspect=&quot;auto&quot;,cmap=&quot;gray_r&quot;,clim=[0,+2]);
+colorbar();
+title(&quot;Water Bottom Mask&quot;);
+tight_layout()</code></pre><p><img src="../03_constrained_fwi_files/03_constrained_fwi_40_0.png" alt="png"/></p><h4 id="Build-the-objective-function"><a class="docs-heading-anchor" href="#Build-the-objective-function">Build the <code>objective</code> function</a><a id="Build-the-objective-function-1"></a><a class="docs-heading-anchor-permalink" href="#Build-the-objective-function" title="Permalink"></a></h4><p>This method is called by the solver whenever the gradient is required. Steps in computing the gradient are as follows:</p><ol><li>Apply the adjoint of the Jacobian to the current residual <code>J&#39; * [F*v - d]</code> </li><li>Apply simple scaling based on the size of the first gradient, and save to apply to future gradients</li></ol><pre><code class="language-julia"># build Jacoian
+J = judiJacobian(F0, fsrc)
+
+function objective(F0, G, m, dobs, wb_mask)
+    F0.model.m .= m
+    t = @elapsed begin
+        d0 = F0*fsrc
+        if isnothing(G)
+            return .5f0*norm(d0 .- dobs)^2
+        end
+        G .= J&#39; * (d0 .- dobs)
+    end
+    G .*= vec(wb_mask)
+    ϕ = .5f0*norm(d0 .- dobs)^2
+    if gscale == 0.0
+        # compute scalar from first gradient, apply to future gradients
+        global gscale = .25f0 ./ maximum(G) 
+        @show gscale
+    end
+    G .*= gscale
+    return ϕ
+end
+
+# struct to save the first gradient scalar
+gscale = 0f0
+f(x) = objective(F0, nothing, x, dobs, wb_mask)
+g!(G, x) = objective(F0, G, x, dobs, wb_mask)
+fg!(G, x) = objective(F0, G, x, dobs, wb_mask)</code></pre><pre><code class="language-none">fg! (generic function with 1 method)</code></pre><h4 id="Compute-gradient"><a class="docs-heading-anchor" href="#Compute-gradient">Compute gradient</a><a id="Compute-gradient-1"></a><a class="docs-heading-anchor-permalink" href="#Compute-gradient" title="Permalink"></a></h4><pre><code class="language-julia">grad1 = 0f0 .* vec(m0)
+tgrad1 = @elapsed begin
+    g!(grad1, vec(m0))
+    gscale = 0
+end
+@show tgrad1;</code></pre><pre><code class="language-none">      From worker 3:	Operator `forward` ran in 0.35 s
+      From worker 2:	Operator `forward` ran in 0.37 s
+      From worker 3:	Operator `forward` ran in 0.35 s
+      From worker 2:	Operator `forward` ran in 0.31 s
+      From worker 3:	Operator `forward` ran in 0.36 s
+      From worker 2:	Operator `forward` ran in 0.38 s
+      From worker 3:	Operator `forward` ran in 0.35 s
+      From worker 2:	Operator `forward` ran in 0.26 s
+      From worker 3:	Operator `forward` ran in 0.39 s
+      From worker 2:	Operator `forward` ran in 0.47 s
+      From worker 3:	Operator `gradient` ran in 0.59 s
+      From worker 2:	Operator `gradient` ran in 0.46 s
+      From worker 3:	Operator `forward` ran in 0.35 s
+      From worker 2:	Operator `forward` ran in 0.48 s
+      From worker 3:	Operator `gradient` ran in 0.63 s
+      From worker 2:	Operator `gradient` ran in 0.49 s
+      From worker 3:	Operator `forward` ran in 0.41 s
+      From worker 2:	Operator `forward` ran in 0.40 s
+      From worker 3:	Operator `gradient` ran in 0.52 s
+      From worker 2:	Operator `gradient` ran in 0.48 s
+      From worker 3:	Operator `forward` ran in 0.35 s
+      From worker 2:	Operator `forward` ran in 0.41 s
+      From worker 3:	Operator `gradient` ran in 0.54 s
+      From worker 2:	Operator `gradient` ran in 0.34 s
+gscale = 3.15937f-5
+tgrad1 = 33.235375243</code></pre><pre><code class="language-julia">dm = m0 .- m
+grad1 = reshape(grad1, n)
+mg2 = reshape(m0 .- grad1, n)
+figure(figsize=(8,9))
+
+subplot(5,1,1)
+imshow(grad1&#39; ./ maximum(abs,grad1),aspect=&quot;auto&quot;,cmap=&quot;seismic&quot;);
+colorbar(orientation=&quot;vertical&quot;);clim(-1,1);
+title(&quot;Initial Gradient without Illumination Compensation&quot;);
+
+subplot(5,1,2)
+imshow(dm ./ maximum(abs,dm),aspect=&quot;auto&quot;,cmap=&quot;seismic&quot;);
+colorbar(orientation=&quot;vertical&quot;);clim(-1,1);
+title(&quot;Squared slowness Difference: (m0 - m)&quot;);
+
+subplot(5,1,3)
+imshow(mg2&#39;,aspect=&quot;auto&quot;,cmap=&quot;seismic&quot;);
+colorbar(orientation=&quot;vertical&quot;);clim(vmin,vmax)
+title(&quot;Updated squared slowness: (m0 - grad1)&quot;);
+
+subplot(5,1,4)
+imshow(reshape(prj(mg2), n)&#39;,aspect=&quot;auto&quot;,cmap=&quot;seismic&quot;);
+colorbar(orientation=&quot;vertical&quot;);clim(vmin,vmax)
+title(&quot;Updated projected (bounds + TV) squared slowness: prj(m0 - grad1)&quot;);
+
+subplot(5,1,5)
+imshow(reshape(prj2(mg2), n)&#39;,aspect=&quot;auto&quot;,cmap=&quot;seismic&quot;);
+colorbar(orientation=&quot;vertical&quot;);clim(vmin,vmax)
+title(&quot;Updated projected (bounds) squared slowness: prj(m0 - grad1)&quot;);
+
+tight_layout()</code></pre><pre><code class="language-none">relative evolution to small, exiting PARSDMM (iteration 37)</code></pre><p><img src="../03_constrained_fwi_files/03_constrained_fwi_45_1.png" alt="png"/></p><pre><code class="language-none">input to PARSDMM is feasible, returning</code></pre><h2 id="Perform-the-FWI-using-minConf_PQN"><a class="docs-heading-anchor" href="#Perform-the-FWI-using-minConf_PQN">Perform the FWI using <code>minConf_PQN</code></a><a id="Perform-the-FWI-using-minConf_PQN-1"></a><a class="docs-heading-anchor-permalink" href="#Perform-the-FWI-using-minConf_PQN" title="Permalink"></a></h2><p>We will do 10 functions evaluation cost of projected quasi-Newton with two setup:</p><ul><li>Bounds constraints only</li><li>Bounds + tv constrains</li></ul><pre><code class="language-julia"># FWI with PQN
+niter = 10
+gscale = 0f0
+options_pqn = pqn_options(progTol=0, store_trace=true, verbose=3, maxIter=niter)</code></pre><pre><code class="language-none">SlimOptim.PQN_params(3, 1.0f-5, 0, 10, 0.0001f0, 10, false, true, true, 1.0f-6, 1.0f-7, 100, false, 20, 1, 1)</code></pre><pre><code class="language-julia">sol = pqn(f, g!, fg!, vec(m0), prj, options_pqn);</code></pre><pre><code class="language-none">Running PQN...
+Number of L-BFGS Corrections to store: 10
+Spectral initialization of SPG: 1
+Maximum number of SPG iterations: 100
+SPG optimality tolerance: 1.00e-06
+SPG progress tolerance: 1.00e-07
+PQN optimality tolerance: 1.00e-05
+PQN progress tolerance: 0.00e+00
+Quadratic initialization of line search: 0
+Maximum number of iterations: 10
+Line search: BackTracking{Float32, Int64}
+input to PARSDMM is feasible, returning
+      From worker 2:	Operator `forward` ran in 0.32 s
+      From worker 3:	Operator `forward` ran in 0.36 s
+      From worker 2:	Operator `forward` ran in 0.33 s
+      From worker 3:	Operator `forward` ran in 0.34 s
+      From worker 2:	Operator `forward` ran in 0.34 s
+      From worker 3:	Operator `forward` ran in 0.47 s
+      From worker 2:	Operator `forward` ran in 0.32 s
+      From worker 3:	Operator `forward` ran in 0.22 s
+      From worker 2:	Operator `forward` ran in 0.36 s
+      From worker 3:	Operator `forward` ran in 0.44 s
+      From worker 2:	Operator `gradient` ran in 0.56 s
+      From worker 3:	Operator `gradient` ran in 0.50 s
+      From worker 2:	Operator `forward` ran in 0.39 s
+      From worker 3:	Operator `forward` ran in 0.34 s
+      From worker 2:	Operator `gradient` ran in 0.44 s
+      From worker 3:	Operator `gradient` ran in 0.50 s
+      From worker 2:	Operator `forward` ran in 0.35 s
+      From worker 3:	Operator `forward` ran in 0.43 s
+      From worker 2:	Operator `gradient` ran in 0.57 s
+      From worker 3:	Operator `gradient` ran in 0.47 s
+      From worker 2:	Operator `forward` ran in 0.36 s
+      From worker 3:	Operator `forward` ran in 0.41 s
+      From worker 2:	Operator `gradient` ran in 0.54 s
+      From worker 3:	Operator `gradient` ran in 0.38 s
+gscale = 3.159375f-5
+ Iteration   FunEvals  GradEvals Projections     Step Length    Function Val        Opt Cond
+relative evolution to small, exiting PARSDMM (iteration 37)
+         0          0          0          0     0.00000e+00     8.04513e+05     6.74951e-02
+relative evolution to small, exiting PARSDMM (iteration 37)
+relative evolution to small, exiting PARSDMM (iteration 37)
+      From worker 2:	Operator `forward` ran in 0.24 s
+      From worker 3:	Operator `forward` ran in 0.38 s
+      From worker 2:	Operator `forward` ran in 0.38 s
+      From worker 3:	Operator `forward` ran in 0.44 s
+      From worker 2:	Operator `forward` ran in 0.41 s
+      From worker 3:	Operator `forward` ran in 0.35 s
+      From worker 2:	Operator `forward` ran in 0.36 s
+      From worker 3:	Operator `forward` ran in 0.26 s
+      From worker 2:	Operator `forward` ran in 0.28 s
+      From worker 3:	Operator `forward` ran in 0.32 s
+      From worker 2:	Operator `forward` ran in 0.35 s
+      From worker 3:	Operator `forward` ran in 0.54 s
+      From worker 2:	Operator `forward` ran in 0.33 s
+      From worker 3:	Operator `forward` ran in 0.34 s
+      From worker 2:	Operator `forward` ran in 0.36 s
+      From worker 3:	Operator `forward` ran in 0.23 s
+input to PARSDMM is feasible, returning
+      From worker 3:	Operator `forward` ran in 0.34 s
+      From worker 2:	Operator `forward` ran in 0.37 s
+      From worker 3:	Operator `forward` ran in 0.34 s
+      From worker 2:	Operator `forward` ran in 0.33 s
+      From worker 3:	Operator `forward` ran in 0.36 s
+      From worker 2:	Operator `forward` ran in 0.37 s
+      From worker 3:	Operator `forward` ran in 0.33 s
+      From worker 2:	Operator `forward` ran in 0.22 s
+      From worker 2:	Operator `forward` ran in 0.35 s
+      From worker 3:	Operator `forward` ran in 0.35 s
+      From worker 2:	Operator `gradient` ran in 0.33 s
+      From worker 3:	Operator `gradient` ran in 0.48 s
+      From worker 2:	Operator `forward` ran in 0.35 s
+      From worker 3:	Operator `forward` ran in 0.35 s
+      From worker 2:	Operator `gradient` ran in 0.55 s
+      From worker 3:	Operator `gradient` ran in 0.50 s
+      From worker 2:	Operator `forward` ran in 0.31 s
+      From worker 3:	Operator `forward` ran in 0.43 s
+      From worker 2:	Operator `gradient` ran in 0.58 s
+      From worker 3:	Operator `gradient` ran in 0.50 s
+      From worker 2:	Operator `forward` ran in 0.35 s
+      From worker 3:	Operator `forward` ran in 0.37 s
+      From worker 2:	Operator `gradient` ran in 0.52 s
+      From worker 3:	Operator `gradient` ran in 0.32 s
+relative evolution to small, exiting PARSDMM (iteration 38)
+         1          3          2          6     1.00000e-01     5.95413e+05     5.50441e-02
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 29)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+
+
+┌ Info: Line search failed
+└ @ SlimOptim /Users/mathiaslouboutin/.julia/dev/SlimOptim/src/linesearches.jl:47
+
+
+relative evolution to small, exiting PARSDMM (iteration 15)
+      From worker 3:	Operator `forward` ran in 0.34 s
+      From worker 2:	Operator `forward` ran in 0.37 s
+      From worker 3:	Operator `forward` ran in 0.36 s
+      From worker 2:	Operator `forward` ran in 0.33 s
+      From worker 3:	Operator `forward` ran in 0.36 s
+      From worker 2:	Operator `forward` ran in 0.35 s
+      From worker 3:	Operator `forward` ran in 0.35 s
+      From worker 2:	Operator `forward` ran in 0.25 s
+      From worker 3:	Operator `forward` ran in 0.23 s
+      From worker 2:	Operator `forward` ran in 0.34 s
+      From worker 3:	Operator `forward` ran in 0.36 s
+      From worker 2:	Operator `forward` ran in 0.35 s
+      From worker 3:	Operator `forward` ran in 0.36 s
+      From worker 2:	Operator `forward` ran in 0.32 s
+      From worker 3:	Operator `forward` ran in 0.34 s
+      From worker 2:	Operator `forward` ran in 0.22 s
+input to PARSDMM is feasible, returning
+      From worker 3:	Operator `forward` ran in 0.36 s
+      From worker 2:	Operator `forward` ran in 0.39 s
+      From worker 3:	Operator `forward` ran in 0.34 s
+      From worker 2:	Operator `forward` ran in 0.35 s
+      From worker 3:	Operator `forward` ran in 0.41 s
+      From worker 2:	Operator `forward` ran in 0.35 s
+      From worker 3:	Operator `forward` ran in 0.32 s
+      From worker 2:	Operator `forward` ran in 0.24 s
+      From worker 2:	Operator `forward` ran in 0.32 s
+      From worker 3:	Operator `forward` ran in 0.35 s
+      From worker 2:	Operator `gradient` ran in 0.69 s
+      From worker 3:	Operator `gradient` ran in 0.71 s
+      From worker 2:	Operator `forward` ran in 0.40 s
+      From worker 3:	Operator `forward` ran in 0.42 s
+      From worker 2:	Operator `gradient` ran in 0.73 s
+      From worker 3:	Operator `gradient` ran in 0.72 s
+      From worker 2:	Operator `forward` ran in 0.46 s
+      From worker 3:	Operator `forward` ran in 0.54 s
+      From worker 2:	Operator `gradient` ran in 0.72 s
+      From worker 3:	Operator `gradient` ran in 0.72 s
+      From worker 2:	Operator `forward` ran in 0.40 s
+      From worker 3:	Operator `forward` ran in 0.42 s
+      From worker 2:	Operator `gradient` ran in 0.66 s
+      From worker 3:	Operator `gradient` ran in 0.63 s
+relative evolution to small, exiting PARSDMM (iteration 15)
+         2          5          3         36     1.00000e-01     4.97818e+05     1.70875e-01
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 30)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+
+
+┌ Info: Line search failed
+└ @ SlimOptim /Users/mathiaslouboutin/.julia/dev/SlimOptim/src/linesearches.jl:47
+
+
+relative evolution to small, exiting PARSDMM (iteration 15)
+      From worker 2:	Operator `forward` ran in 0.39 s
+      From worker 3:	Operator `forward` ran in 0.38 s
+      From worker 2:	Operator `forward` ran in 0.38 s
+      From worker 3:	Operator `forward` ran in 0.48 s
+      From worker 2:	Operator `forward` ran in 0.36 s
+      From worker 3:	Operator `forward` ran in 0.33 s
+      From worker 2:	Operator `forward` ran in 0.39 s
+      From worker 3:	Operator `forward` ran in 0.39 s
+      From worker 3:	Operator `forward` ran in 0.34 s
+      From worker 2:	Operator `forward` ran in 0.34 s
+      From worker 3:	Operator `forward` ran in 0.34 s
+      From worker 2:	Operator `forward` ran in 0.33 s
+      From worker 3:	Operator `forward` ran in 0.33 s
+      From worker 2:	Operator `forward` ran in 0.33 s
+      From worker 3:	Operator `forward` ran in 0.36 s
+      From worker 2:	Operator `forward` ran in 0.23 s
+input to PARSDMM is feasible, returning
+      From worker 3:	Operator `forward` ran in 0.33 s
+      From worker 2:	Operator `forward` ran in 0.37 s
+      From worker 3:	Operator `forward` ran in 0.34 s
+      From worker 2:	Operator `forward` ran in 0.31 s
+      From worker 3:	Operator `forward` ran in 0.33 s
+      From worker 2:	Operator `forward` ran in 0.37 s
+      From worker 3:	Operator `forward` ran in 0.36 s
+      From worker 2:	Operator `forward` ran in 0.23 s
+      From worker 3:	Operator `forward` ran in 0.36 s
+      From worker 2:	Operator `forward` ran in 0.36 s
+      From worker 3:	Operator `gradient` ran in 0.62 s
+      From worker 2:	Operator `gradient` ran in 0.62 s
+      From worker 3:	Operator `forward` ran in 0.39 s
+      From worker 2:	Operator `forward` ran in 0.39 s
+      From worker 3:	Operator `gradient` ran in 0.62 s
+      From worker 2:	Operator `gradient` ran in 0.66 s
+      From worker 3:	Operator `forward` ran in 0.39 s
+      From worker 2:	Operator `forward` ran in 0.39 s
+      From worker 3:	Operator `gradient` ran in 0.66 s
+      From worker 2:	Operator `gradient` ran in 0.68 s
+      From worker 3:	Operator `forward` ran in 0.41 s
+      From worker 2:	Operator `forward` ran in 0.40 s
+      From worker 3:	Operator `gradient` ran in 0.71 s
+      From worker 2:	Operator `gradient` ran in 0.68 s
+relative evolution to small, exiting PARSDMM (iteration 15)
+         3          7          4         64     1.00000e-01     3.82668e+05     1.56781e-01
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 29)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+
+
+┌ Info: Line search failed
+└ @ SlimOptim /Users/mathiaslouboutin/.julia/dev/SlimOptim/src/linesearches.jl:47
+
+
+relative evolution to small, exiting PARSDMM (iteration 15)
+      From worker 3:	Operator `forward` ran in 0.39 s
+      From worker 2:	Operator `forward` ran in 0.37 s
+      From worker 3:	Operator `forward` ran in 0.35 s
+      From worker 2:	Operator `forward` ran in 0.37 s
+      From worker 3:	Operator `forward` ran in 0.35 s
+      From worker 2:	Operator `forward` ran in 0.36 s
+      From worker 3:	Operator `forward` ran in 0.33 s
+      From worker 2:	Operator `forward` ran in 0.24 s
+relative evolution to small, exiting PARSDMM (iteration 15)
+      From worker 3:	Operator `forward` ran in 0.37 s
+      From worker 2:	Operator `forward` ran in 0.39 s
+      From worker 3:	Operator `forward` ran in 0.38 s
+      From worker 2:	Operator `forward` ran in 0.37 s
+      From worker 3:	Operator `forward` ran in 0.38 s
+      From worker 2:	Operator `forward` ran in 0.39 s
+      From worker 3:	Operator `forward` ran in 0.37 s
+      From worker 2:	Operator `forward` ran in 0.23 s
+      From worker 3:	Operator `forward` ran in 0.43 s
+      From worker 2:	Operator `forward` ran in 0.37 s
+      From worker 3:	Operator `gradient` ran in 0.33 s
+      From worker 2:	Operator `gradient` ran in 0.52 s
+      From worker 3:	Operator `forward` ran in 0.41 s
+      From worker 2:	Operator `forward` ran in 0.42 s
+      From worker 3:	Operator `gradient` ran in 0.53 s
+      From worker 2:	Operator `gradient` ran in 0.51 s
+      From worker 3:	Operator `forward` ran in 0.38 s
+      From worker 2:	Operator `forward` ran in 0.43 s
+      From worker 3:	Operator `gradient` ran in 0.54 s
+      From worker 2:	Operator `gradient` ran in 0.48 s
+      From worker 3:	Operator `forward` ran in 0.37 s
+      From worker 2:	Operator `forward` ran in 0.38 s
+      From worker 3:	Operator `gradient` ran in 0.49 s
+      From worker 2:	Operator `gradient` ran in 0.32 s
+relative evolution to small, exiting PARSDMM (iteration 15)
+         4          8          5         92     1.00000e+00     3.50573e+05     6.73204e-02
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 38)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+
+
+┌ Info: Line search failed
+└ @ SlimOptim /Users/mathiaslouboutin/.julia/dev/SlimOptim/src/linesearches.jl:47
+
+
+relative evolution to small, exiting PARSDMM (iteration 15)
+      From worker 2:	Operator `forward` ran in 0.35 s
+      From worker 3:	Operator `forward` ran in 0.36 s
+      From worker 2:	Operator `forward` ran in 0.36 s
+      From worker 3:	Operator `forward` ran in 0.32 s
+      From worker 2:	Operator `forward` ran in 0.38 s
+      From worker 3:	Operator `forward` ran in 0.36 s
+      From worker 2:	Operator `forward` ran in 0.35 s
+      From worker 3:	Operator `forward` ran in 0.24 s
+relative evolution to small, exiting PARSDMM (iteration 15)
+      From worker 3:	Operator `forward` ran in 0.30 s
+      From worker 2:	Operator `forward` ran in 0.38 s
+      From worker 3:	Operator `forward` ran in 0.36 s
+      From worker 2:	Operator `forward` ran in 0.36 s
+      From worker 3:	Operator `forward` ran in 0.36 s
+      From worker 2:	Operator `forward` ran in 0.39 s
+      From worker 3:	Operator `forward` ran in 0.34 s
+      From worker 2:	Operator `forward` ran in 0.24 s
+      From worker 3:	Operator `forward` ran in 0.33 s
+      From worker 2:	Operator `forward` ran in 0.37 s
+      From worker 3:	Operator `gradient` ran in 0.67 s
+      From worker 2:	Operator `gradient` ran in 0.85 s
+      From worker 3:	Operator `forward` ran in 0.42 s
+      From worker 2:	Operator `forward` ran in 0.44 s
+      From worker 3:	Operator `gradient` ran in 0.62 s
+      From worker 2:	Operator `gradient` ran in 0.60 s
+      From worker 3:	Operator `forward` ran in 0.40 s
+      From worker 2:	Operator `forward` ran in 0.40 s
+      From worker 3:	Operator `gradient` ran in 0.62 s
+      From worker 2:	Operator `gradient` ran in 0.67 s
+      From worker 3:	Operator `forward` ran in 0.39 s
+      From worker 2:	Operator `forward` ran in 0.41 s
+      From worker 3:	Operator `gradient` ran in 0.65 s
+      From worker 2:	Operator `gradient` ran in 0.66 s
+relative evolution to small, exiting PARSDMM (iteration 26)
+         5          9          6        116     1.00000e+00     1.17713e+05     2.24156e-02
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+
+
+┌ Info: Line search failed
+└ @ SlimOptim /Users/mathiaslouboutin/.julia/dev/SlimOptim/src/linesearches.jl:47
+
+
+relative evolution to small, exiting PARSDMM (iteration 15)
+      From worker 2:	Operator `forward` ran in 0.37 s
+      From worker 3:	Operator `forward` ran in 0.38 s
+      From worker 2:	Operator `forward` ran in 0.39 s
+      From worker 3:	Operator `forward` ran in 0.34 s
+      From worker 2:	Operator `forward` ran in 0.39 s
+      From worker 3:	Operator `forward` ran in 0.37 s
+      From worker 2:	Operator `forward` ran in 0.35 s
+      From worker 3:	Operator `forward` ran in 0.22 s
+relative evolution to small, exiting PARSDMM (iteration 15)
+      From worker 3:	Operator `forward` ran in 0.42 s
+      From worker 2:	Operator `forward` ran in 0.42 s
+      From worker 3:	Operator `forward` ran in 0.37 s
+      From worker 2:	Operator `forward` ran in 0.37 s
+      From worker 3:	Operator `forward` ran in 0.35 s
+      From worker 2:	Operator `forward` ran in 0.37 s
+      From worker 3:	Operator `forward` ran in 0.36 s
+      From worker 2:	Operator `forward` ran in 0.23 s
+      From worker 3:	Operator `forward` ran in 0.26 s
+      From worker 2:	Operator `forward` ran in 0.46 s
+      From worker 3:	Operator `gradient` ran in 0.70 s
+      From worker 2:	Operator `gradient` ran in 0.72 s
+      From worker 3:	Operator `forward` ran in 0.44 s
+      From worker 2:	Operator `forward` ran in 0.44 s
+      From worker 3:	Operator `gradient` ran in 0.74 s
+      From worker 2:	Operator `gradient` ran in 0.74 s
+      From worker 3:	Operator `forward` ran in 0.41 s
+      From worker 2:	Operator `forward` ran in 0.42 s
+      From worker 3:	Operator `gradient` ran in 0.35 s
+      From worker 2:	Operator `gradient` ran in 0.55 s
+      From worker 3:	Operator `forward` ran in 0.38 s
+      From worker 2:	Operator `forward` ran in 0.36 s
+      From worker 3:	Operator `gradient` ran in 0.50 s
+      From worker 2:	Operator `gradient` ran in 0.32 s
+relative evolution to small, exiting PARSDMM (iteration 26)
+         6         10          7        130     1.00000e+00     8.91832e+04     2.10390e-02
+relative evolution to small, exiting PARSDMM (iteration 14)
+relative evolution to small, exiting PARSDMM (iteration 28)
+relative evolution to small, exiting PARSDMM (iteration 28)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+
+
+┌ Info: Line search failed
+└ @ SlimOptim /Users/mathiaslouboutin/.julia/dev/SlimOptim/src/linesearches.jl:47
+
+
+relative evolution to small, exiting PARSDMM (iteration 15)
+      From worker 2:	Operator `forward` ran in 0.38 s
+      From worker 3:	Operator `forward` ran in 0.34 s
+      From worker 2:	Operator `forward` ran in 0.38 s
+      From worker 3:	Operator `forward` ran in 0.36 s
+      From worker 2:	Operator `forward` ran in 0.38 s
+      From worker 3:	Operator `forward` ran in 0.38 s
+      From worker 2:	Operator `forward` ran in 0.38 s
+      From worker 3:	Operator `forward` ran in 0.30 s
+relative evolution to small, exiting PARSDMM (iteration 15)
+      From worker 2:	Operator `forward` ran in 0.43 s
+      From worker 3:	Operator `forward` ran in 0.43 s
+      From worker 2:	Operator `forward` ran in 0.39 s
+      From worker 3:	Operator `forward` ran in 0.37 s
+      From worker 2:	Operator `forward` ran in 0.35 s
+      From worker 3:	Operator `forward` ran in 0.35 s
+      From worker 2:	Operator `forward` ran in 0.37 s
+      From worker 3:	Operator `forward` ran in 0.25 s
+      From worker 2:	Operator `forward` ran in 0.40 s
+      From worker 3:	Operator `forward` ran in 0.44 s
+      From worker 2:	Operator `gradient` ran in 0.58 s
+      From worker 3:	Operator `gradient` ran in 0.51 s
+      From worker 2:	Operator `forward` ran in 0.39 s
+      From worker 3:	Operator `forward` ran in 0.38 s
+      From worker 2:	Operator `gradient` ran in 0.59 s
+      From worker 3:	Operator `gradient` ran in 0.49 s
+      From worker 2:	Operator `forward` ran in 0.38 s
+      From worker 3:	Operator `forward` ran in 0.43 s
+      From worker 2:	Operator `gradient` ran in 0.58 s
+      From worker 3:	Operator `gradient` ran in 0.50 s
+      From worker 2:	Operator `forward` ran in 0.40 s
+      From worker 3:	Operator `forward` ran in 0.41 s
+      From worker 2:	Operator `gradient` ran in 0.50 s
+      From worker 3:	Operator `gradient` ran in 0.40 s
+relative evolution to small, exiting PARSDMM (iteration 14)
+         7         11          8        146     1.00000e+00     3.31746e+04     2.72466e-02
+relative evolution to small, exiting PARSDMM (iteration 14)
+relative evolution to small, exiting PARSDMM (iteration 14)
+relative evolution to small, exiting PARSDMM (iteration 27)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 14)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+
+
+┌ Info: Line search failed
+└ @ SlimOptim /Users/mathiaslouboutin/.julia/dev/SlimOptim/src/linesearches.jl:47
+
+
+relative evolution to small, exiting PARSDMM (iteration 15)
+      From worker 3:	Operator `forward` ran in 0.23 s
+      From worker 2:	Operator `forward` ran in 0.38 s
+      From worker 3:	Operator `forward` ran in 0.36 s
+      From worker 2:	Operator `forward` ran in 0.42 s
+      From worker 3:	Operator `forward` ran in 0.43 s
+      From worker 2:	Operator `forward` ran in 0.38 s
+      From worker 3:	Operator `forward` ran in 0.37 s
+      From worker 2:	Operator `forward` ran in 0.26 s
+relative evolution to small, exiting PARSDMM (iteration 15)
+      From worker 2:	Operator `forward` ran in 0.37 s
+      From worker 3:	Operator `forward` ran in 0.37 s
+      From worker 2:	Operator `forward` ran in 0.42 s
+      From worker 3:	Operator `forward` ran in 0.36 s
+      From worker 2:	Operator `forward` ran in 0.45 s
+      From worker 3:	Operator `forward` ran in 0.40 s
+      From worker 2:	Operator `forward` ran in 0.38 s
+      From worker 3:	Operator `forward` ran in 0.25 s
+      From worker 3:	Operator `forward` ran in 0.26 s
+      From worker 2:	Operator `forward` ran in 0.40 s
+      From worker 3:	Operator `gradient` ran in 0.75 s
+      From worker 2:	Operator `gradient` ran in 0.77 s
+      From worker 3:	Operator `forward` ran in 0.52 s
+      From worker 2:	Operator `forward` ran in 0.51 s
+      From worker 3:	Operator `gradient` ran in 0.62 s
+      From worker 2:	Operator `gradient` ran in 0.61 s
+      From worker 3:	Operator `forward` ran in 0.46 s
+      From worker 2:	Operator `forward` ran in 0.45 s
+      From worker 3:	Operator `gradient` ran in 0.76 s
+      From worker 2:	Operator `gradient` ran in 0.77 s
+      From worker 3:	Operator `forward` ran in 0.50 s
+      From worker 2:	Operator `forward` ran in 0.44 s
+      From worker 3:	Operator `gradient` ran in 0.82 s
+      From worker 2:	Operator `gradient` ran in 0.80 s
+relative evolution to small, exiting PARSDMM (iteration 14)
+         8         12          9        164     1.00000e+00     1.77415e+04     2.05675e-02
+relative evolution to small, exiting PARSDMM (iteration 14)
+relative evolution to small, exiting PARSDMM (iteration 27)
+relative evolution to small, exiting PARSDMM (iteration 20)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+
+
+┌ Info: Line search failed
+└ @ SlimOptim /Users/mathiaslouboutin/.julia/dev/SlimOptim/src/linesearches.jl:47
+
+
+relative evolution to small, exiting PARSDMM (iteration 15)
+      From worker 3:	Operator `forward` ran in 0.40 s
+      From worker 2:	Operator `forward` ran in 0.37 s
+      From worker 3:	Operator `forward` ran in 0.38 s
+      From worker 2:	Operator `forward` ran in 0.38 s
+      From worker 3:	Operator `forward` ran in 0.36 s
+      From worker 2:	Operator `forward` ran in 0.40 s
+      From worker 3:	Operator `forward` ran in 0.39 s
+      From worker 2:	Operator `forward` ran in 0.25 s
+relative evolution to small, exiting PARSDMM (iteration 15)
+      From worker 2:	Operator `forward` ran in 0.38 s
+      From worker 3:	Operator `forward` ran in 0.38 s
+      From worker 2:	Operator `forward` ran in 0.36 s
+      From worker 3:	Operator `forward` ran in 0.39 s
+      From worker 2:	Operator `forward` ran in 0.37 s
+      From worker 3:	Operator `forward` ran in 0.37 s
+      From worker 2:	Operator `forward` ran in 0.39 s
+      From worker 3:	Operator `forward` ran in 0.25 s
+      From worker 3:	Operator `forward` ran in 0.26 s
+      From worker 2:	Operator `forward` ran in 0.53 s
+      From worker 3:	Operator `gradient` ran in 0.96 s
+      From worker 2:	Operator `gradient` ran in 0.97 s
+      From worker 3:	Operator `forward` ran in 0.45 s
+      From worker 2:	Operator `forward` ran in 0.47 s
+      From worker 3:	Operator `gradient` ran in 0.78 s
+      From worker 2:	Operator `gradient` ran in 0.75 s
+      From worker 3:	Operator `forward` ran in 0.53 s
+      From worker 2:	Operator `forward` ran in 0.57 s
+      From worker 3:	Operator `gradient` ran in 0.77 s
+      From worker 2:	Operator `gradient` ran in 0.78 s
+      From worker 3:	Operator `forward` ran in 0.51 s
+      From worker 2:	Operator `forward` ran in 0.51 s
+      From worker 3:	Operator `gradient` ran in 0.70 s
+      From worker 2:	Operator `gradient` ran in 0.74 s
+relative evolution to small, exiting PARSDMM (iteration 14)
+         9         13         10        184     1.00000e+00     1.05269e+04     1.38740e-02
+relative evolution to small, exiting PARSDMM (iteration 25)
+relative evolution to small, exiting PARSDMM (iteration 41)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 14)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 14)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 14)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+relative evolution to small, exiting PARSDMM (iteration 15)
+
+
+┌ Info: Line search failed
+└ @ SlimOptim /Users/mathiaslouboutin/.julia/dev/SlimOptim/src/linesearches.jl:47
+
+
+relative evolution to small, exiting PARSDMM (iteration 15)
+      From worker 2:	Operator `forward` ran in 0.40 s
+      From worker 3:	Operator `forward` ran in 0.40 s
+      From worker 2:	Operator `forward` ran in 0.38 s
+      From worker 3:	Operator `forward` ran in 0.39 s
+      From worker 2:	Operator `forward` ran in 0.38 s
+      From worker 3:	Operator `forward` ran in 0.41 s
+      From worker 2:	Operator `forward` ran in 0.40 s
+      From worker 3:	Operator `forward` ran in 0.27 s
+relative evolution to small, exiting PARSDMM (iteration 15)
+      From worker 3:	Operator `forward` ran in 0.34 s
+      From worker 2:	Operator `forward` ran in 0.39 s
+      From worker 3:	Operator `forward` ran in 0.40 s
+      From worker 2:	Operator `forward` ran in 0.39 s
+      From worker 3:	Operator `forward` ran in 0.38 s
+      From worker 2:	Operator `forward` ran in 0.37 s
+      From worker 3:	Operator `forward` ran in 0.37 s
+      From worker 2:	Operator `forward` ran in 0.24 s
+      From worker 3:	Operator `forward` ran in 0.40 s
+      From worker 2:	Operator `forward` ran in 0.37 s
+      From worker 3:	Operator `gradient` ran in 0.81 s
+      From worker 2:	Operator `gradient` ran in 0.81 s
+      From worker 2:	Operator `forward` ran in 0.39 s
+      From worker 3:	Operator `forward` ran in 0.40 s
+      From worker 2:	Operator `gradient` ran in 0.54 s
+      From worker 3:	Operator `gradient` ran in 0.58 s
+      From worker 2:	Operator `forward` ran in 0.54 s
+      From worker 3:	Operator `forward` ran in 0.52 s
+      From worker 2:	Operator `gradient` ran in 0.67 s
+      From worker 3:	Operator `gradient` ran in 0.52 s
+      From worker 2:	Operator `forward` ran in 0.37 s
+      From worker 3:	Operator `forward` ran in 0.45 s
+      From worker 2:	Operator `gradient` ran in 0.58 s
+      From worker 3:	Operator `gradient` ran in 0.35 s
+relative evolution to small, exiting PARSDMM (iteration 14)
+        10         14         11        216     1.00000e+00     5.58767e+03     9.81355e-03</code></pre><pre><code class="language-julia">sol2 = pqn(f, g!, fg!, vec(m0), prj2, options_pqn);</code></pre><pre><code class="language-none">Running PQN...
+Number of L-BFGS Corrections to store: 10
+Spectral initialization of SPG: 1
+Maximum number of SPG iterations: 100
+SPG optimality tolerance: 1.00e-06
+SPG progress tolerance: 1.00e-07
+PQN optimality tolerance: 1.00e-05
+PQN progress tolerance: 0.00e+00
+Quadratic initialization of line search: 0
+Maximum number of iterations: 10
+Line search: BackTracking{Float32, Int64}
+input to PARSDMM is feasible, returning
+      From worker 2:	Operator `forward` ran in 0.41 s
+      From worker 3:	Operator `forward` ran in 0.33 s
+      From worker 2:	Operator `forward` ran in 0.33 s
+      From worker 3:	Operator `forward` ran in 0.33 s
+      From worker 2:	Operator `forward` ran in 0.33 s
+      From worker 3:	Operator `forward` ran in 0.31 s
+      From worker 2:	Operator `forward` ran in 0.31 s
+      From worker 3:	Operator `forward` ran in 0.22 s
+      From worker 2:	Operator `forward` ran in 0.36 s
+      From worker 3:	Operator `forward` ran in 0.40 s
+      From worker 2:	Operator `gradient` ran in 0.50 s
+      From worker 3:	Operator `gradient` ran in 0.47 s
+      From worker 2:	Operator `forward` ran in 0.37 s
+      From worker 3:	Operator `forward` ran in 0.43 s
+      From worker 2:	Operator `gradient` ran in 0.54 s
+      From worker 3:	Operator `gradient` ran in 0.43 s
+      From worker 2:	Operator `forward` ran in 0.34 s
+      From worker 3:	Operator `forward` ran in 0.39 s
+      From worker 2:	Operator `gradient` ran in 0.47 s
+      From worker 3:	Operator `gradient` ran in 0.42 s
+      From worker 2:	Operator `forward` ran in 0.36 s
+      From worker 3:	Operator `forward` ran in 0.38 s
+      From worker 2:	Operator `gradient` ran in 0.48 s
+      From worker 3:	Operator `gradient` ran in 0.29 s
+ Iteration   FunEvals  GradEvals Projections     Step Length    Function Val        Opt Cond
+input to PARSDMM is feasible, returning
+         0          0          0          0     0.00000e+00     8.04514e+05     2.50000e-01
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+      From worker 2:	Operator `forward` ran in 0.41 s
+      From worker 3:	Operator `forward` ran in 0.51 s
+      From worker 2:	Operator `forward` ran in 0.48 s
+      From worker 3:	Operator `forward` ran in 0.48 s
+      From worker 2:	Operator `forward` ran in 0.52 s
+      From worker 3:	Operator `forward` ran in 0.51 s
+      From worker 2:	Operator `forward` ran in 0.50 s
+      From worker 3:	Operator `forward` ran in 0.33 s
+      From worker 3:	Operator `forward` ran in 0.29 s
+      From worker 2:	Operator `forward` ran in 0.35 s
+      From worker 3:	Operator `forward` ran in 0.32 s
+      From worker 2:	Operator `forward` ran in 0.33 s
+      From worker 3:	Operator `forward` ran in 0.37 s
+      From worker 2:	Operator `forward` ran in 0.34 s
+      From worker 3:	Operator `forward` ran in 0.37 s
+      From worker 2:	Operator `forward` ran in 0.22 s
+input to PARSDMM is feasible, returning
+      From worker 3:	Operator `forward` ran in 0.36 s
+      From worker 2:	Operator `forward` ran in 0.34 s
+      From worker 3:	Operator `forward` ran in 0.36 s
+      From worker 2:	Operator `forward` ran in 0.34 s
+      From worker 3:	Operator `forward` ran in 0.34 s
+      From worker 2:	Operator `forward` ran in 0.38 s
+      From worker 3:	Operator `forward` ran in 0.35 s
+      From worker 2:	Operator `forward` ran in 0.22 s
+      From worker 2:	Operator `forward` ran in 0.37 s
+      From worker 3:	Operator `forward` ran in 0.39 s
+      From worker 2:	Operator `gradient` ran in 0.73 s
+      From worker 3:	Operator `gradient` ran in 0.77 s
+      From worker 2:	Operator `forward` ran in 0.35 s
+      From worker 3:	Operator `forward` ran in 0.38 s
+      From worker 2:	Operator `gradient` ran in 0.50 s
+      From worker 3:	Operator `gradient` ran in 0.51 s
+      From worker 2:	Operator `forward` ran in 0.35 s
+      From worker 3:	Operator `forward` ran in 0.46 s
+      From worker 2:	Operator `gradient` ran in 0.59 s
+      From worker 3:	Operator `gradient` ran in 0.48 s
+      From worker 2:	Operator `forward` ran in 0.37 s
+      From worker 3:	Operator `forward` ran in 0.42 s
+      From worker 2:	Operator `gradient` ran in 0.56 s
+      From worker 3:	Operator `gradient` ran in 0.33 s
+input to PARSDMM is feasible, returning
+         1          3          2          6     1.00000e-01     4.12124e+05     1.59019e-01
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+      From worker 2:	Operator `forward` ran in 0.40 s
+      From worker 3:	Operator `forward` ran in 0.39 s
+      From worker 2:	Operator `forward` ran in 0.36 s
+      From worker 3:	Operator `forward` ran in 0.37 s
+      From worker 2:	Operator `forward` ran in 0.43 s
+      From worker 3:	Operator `forward` ran in 0.39 s
+      From worker 2:	Operator `forward` ran in 0.64 s
+      From worker 3:	Operator `forward` ran in 0.26 s
+      From worker 2:	Operator `forward` ran in 0.22 s
+      From worker 3:	Operator `forward` ran in 0.34 s
+      From worker 2:	Operator `forward` ran in 0.35 s
+      From worker 3:	Operator `forward` ran in 0.35 s
+      From worker 2:	Operator `forward` ran in 0.34 s
+      From worker 3:	Operator `forward` ran in 0.37 s
+      From worker 2:	Operator `forward` ran in 0.35 s
+      From worker 3:	Operator `forward` ran in 0.23 s
+input to PARSDMM is feasible, returning
+      From worker 2:	Operator `forward` ran in 0.36 s
+      From worker 3:	Operator `forward` ran in 0.37 s
+      From worker 2:	Operator `forward` ran in 0.36 s
+      From worker 3:	Operator `forward` ran in 0.45 s
+      From worker 2:	Operator `forward` ran in 0.35 s
+      From worker 3:	Operator `forward` ran in 0.34 s
+      From worker 2:	Operator `forward` ran in 0.36 s
+      From worker 3:	Operator `forward` ran in 0.24 s
+      From worker 2:	Operator `forward` ran in 0.36 s
+      From worker 3:	Operator `forward` ran in 0.40 s
+      From worker 3:	Operator `gradient` ran in 0.75 s
+      From worker 2:	Operator `gradient` ran in 0.75 s
+      From worker 2:	Operator `forward` ran in 0.42 s
+      From worker 3:	Operator `forward` ran in 0.46 s
+      From worker 2:	Operator `gradient` ran in 0.61 s
+      From worker 3:	Operator `gradient` ran in 0.47 s
+      From worker 2:	Operator `forward` ran in 0.36 s
+      From worker 3:	Operator `forward` ran in 0.44 s
+      From worker 2:	Operator `gradient` ran in 0.58 s
+      From worker 3:	Operator `gradient` ran in 0.49 s
+      From worker 2:	Operator `forward` ran in 0.41 s
+      From worker 3:	Operator `forward` ran in 0.37 s
+      From worker 2:	Operator `gradient` ran in 0.51 s
+      From worker 3:	Operator `gradient` ran in 0.31 s
+input to PARSDMM is feasible, returning
+         2          5          3         42     1.00000e-01     2.75734e+05     1.35675e-01
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+      From worker 2:	Operator `forward` ran in 0.39 s
+      From worker 3:	Operator `forward` ran in 0.36 s
+      From worker 2:	Operator `forward` ran in 0.40 s
+      From worker 3:	Operator `forward` ran in 0.36 s
+      From worker 2:	Operator `forward` ran in 0.37 s
+      From worker 3:	Operator `forward` ran in 0.38 s
+      From worker 2:	Operator `forward` ran in 0.39 s
+      From worker 3:	Operator `forward` ran in 0.34 s
+input to PARSDMM is feasible, returning
+      From worker 3:	Operator `forward` ran in 0.38 s
+      From worker 2:	Operator `forward` ran in 0.40 s
+      From worker 3:	Operator `forward` ran in 0.39 s
+      From worker 2:	Operator `forward` ran in 0.36 s
+      From worker 3:	Operator `forward` ran in 0.37 s
+      From worker 2:	Operator `forward` ran in 0.38 s
+      From worker 3:	Operator `forward` ran in 0.36 s
+      From worker 2:	Operator `forward` ran in 0.23 s
+      From worker 3:	Operator `forward` ran in 0.26 s
+      From worker 2:	Operator `forward` ran in 0.38 s
+      From worker 3:	Operator `gradient` ran in 0.77 s
+      From worker 2:	Operator `gradient` ran in 0.79 s
+      From worker 3:	Operator `forward` ran in 0.67 s
+      From worker 2:	Operator `forward` ran in 0.60 s
+      From worker 3:	Operator `gradient` ran in 0.99 s
+      From worker 2:	Operator `gradient` ran in 0.99 s
+      From worker 3:	Operator `forward` ran in 0.54 s
+      From worker 2:	Operator `forward` ran in 0.48 s
+      From worker 3:	Operator `gradient` ran in 0.73 s
+      From worker 2:	Operator `gradient` ran in 0.93 s
+      From worker 3:	Operator `forward` ran in 0.41 s
+      From worker 2:	Operator `forward` ran in 0.48 s
+      From worker 3:	Operator `gradient` ran in 0.67 s
+      From worker 2:	Operator `gradient` ran in 0.42 s
+input to PARSDMM is feasible, returning
+         3          6          4         70     1.00000e+00     1.12580e+05     1.14484e-01
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+      From worker 2:	Operator `forward` ran in 0.39 s
+      From worker 3:	Operator `forward` ran in 0.43 s
+      From worker 2:	Operator `forward` ran in 0.42 s
+      From worker 3:	Operator `forward` ran in 0.42 s
+      From worker 2:	Operator `forward` ran in 0.53 s
+      From worker 3:	Operator `forward` ran in 0.47 s
+      From worker 2:	Operator `forward` ran in 0.51 s
+      From worker 3:	Operator `forward` ran in 0.52 s
+input to PARSDMM is feasible, returning
+      From worker 2:	Operator `forward` ran in 0.51 s
+      From worker 3:	Operator `forward` ran in 0.37 s
+      From worker 2:	Operator `forward` ran in 0.37 s
+      From worker 3:	Operator `forward` ran in 0.39 s
+      From worker 2:	Operator `forward` ran in 0.37 s
+      From worker 3:	Operator `forward` ran in 0.35 s
+      From worker 2:	Operator `forward` ran in 0.38 s
+      From worker 3:	Operator `forward` ran in 0.23 s
+      From worker 2:	Operator `forward` ran in 0.40 s
+      From worker 3:	Operator `forward` ran in 0.37 s
+      From worker 2:	Operator `gradient` ran in 0.84 s
+      From worker 3:	Operator `gradient` ran in 0.84 s
+      From worker 2:	Operator `forward` ran in 0.43 s
+      From worker 3:	Operator `forward` ran in 0.47 s
+      From worker 2:	Operator `gradient` ran in 0.64 s
+      From worker 3:	Operator `gradient` ran in 0.69 s
+      From worker 2:	Operator `forward` ran in 0.44 s
+      From worker 3:	Operator `forward` ran in 0.46 s
+      From worker 2:	Operator `gradient` ran in 0.78 s
+      From worker 3:	Operator `gradient` ran in 0.79 s
+      From worker 2:	Operator `forward` ran in 0.40 s
+      From worker 3:	Operator `forward` ran in 0.47 s
+      From worker 2:	Operator `gradient` ran in 0.60 s
+      From worker 3:	Operator `gradient` ran in 0.41 s
+input to PARSDMM is feasible, returning
+         4          7          5         94     1.00000e+00     3.94970e+04     4.63609e-02
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+      From worker 2:	Operator `forward` ran in 0.43 s
+      From worker 3:	Operator `forward` ran in 0.38 s
+      From worker 2:	Operator `forward` ran in 0.36 s
+      From worker 3:	Operator `forward` ran in 0.38 s
+      From worker 2:	Operator `forward` ran in 0.37 s
+      From worker 3:	Operator `forward` ran in 0.36 s
+      From worker 2:	Operator `forward` ran in 0.36 s
+      From worker 3:	Operator `forward` ran in 0.24 s
+input to PARSDMM is feasible, returning
+      From worker 3:	Operator `forward` ran in 0.37 s
+      From worker 2:	Operator `forward` ran in 0.34 s
+      From worker 3:	Operator `forward` ran in 0.37 s
+      From worker 2:	Operator `forward` ran in 0.48 s
+      From worker 3:	Operator `forward` ran in 0.32 s
+      From worker 2:	Operator `forward` ran in 0.37 s
+      From worker 3:	Operator `forward` ran in 0.38 s
+      From worker 2:	Operator `forward` ran in 0.23 s
+      From worker 2:	Operator `forward` ran in 0.32 s
+      From worker 3:	Operator `forward` ran in 0.56 s
+      From worker 2:	Operator `gradient` ran in 0.43 s
+      From worker 3:	Operator `gradient` ran in 0.51 s
+      From worker 2:	Operator `forward` ran in 0.40 s
+      From worker 3:	Operator `forward` ran in 0.43 s
+      From worker 2:	Operator `gradient` ran in 0.51 s
+      From worker 3:	Operator `gradient` ran in 0.46 s
+      From worker 2:	Operator `forward` ran in 0.39 s
+      From worker 3:	Operator `forward` ran in 0.39 s
+      From worker 2:	Operator `gradient` ran in 0.50 s
+      From worker 3:	Operator `gradient` ran in 0.52 s
+      From worker 2:	Operator `forward` ran in 0.37 s
+      From worker 3:	Operator `forward` ran in 0.36 s
+      From worker 2:	Operator `gradient` ran in 0.44 s
+      From worker 3:	Operator `gradient` ran in 0.35 s
+input to PARSDMM is feasible, returning
+         5          8          6        118     1.00000e+00     2.78628e+04     2.88242e-02
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+      From worker 3:	Operator `forward` ran in 0.37 s
+      From worker 2:	Operator `forward` ran in 0.36 s
+      From worker 3:	Operator `forward` ran in 0.35 s
+      From worker 2:	Operator `forward` ran in 0.36 s
+      From worker 3:	Operator `forward` ran in 0.38 s
+      From worker 2:	Operator `forward` ran in 0.38 s
+      From worker 3:	Operator `forward` ran in 0.36 s
+      From worker 2:	Operator `forward` ran in 0.24 s
+input to PARSDMM is feasible, returning
+      From worker 2:	Operator `forward` ran in 0.35 s
+      From worker 3:	Operator `forward` ran in 0.37 s
+      From worker 2:	Operator `forward` ran in 0.39 s
+      From worker 3:	Operator `forward` ran in 0.34 s
+      From worker 2:	Operator `forward` ran in 0.37 s
+      From worker 3:	Operator `forward` ran in 0.29 s
+      From worker 2:	Operator `forward` ran in 0.36 s
+      From worker 3:	Operator `forward` ran in 0.25 s
+      From worker 2:	Operator `forward` ran in 0.40 s
+      From worker 3:	Operator `forward` ran in 0.45 s
+      From worker 2:	Operator `gradient` ran in 0.62 s
+      From worker 3:	Operator `gradient` ran in 0.58 s
+      From worker 2:	Operator `forward` ran in 0.35 s
+      From worker 3:	Operator `forward` ran in 0.45 s
+      From worker 2:	Operator `gradient` ran in 0.59 s
+      From worker 3:	Operator `gradient` ran in 0.50 s
+      From worker 2:	Operator `forward` ran in 0.40 s
+      From worker 3:	Operator `forward` ran in 0.44 s
+      From worker 2:	Operator `gradient` ran in 0.58 s
+      From worker 3:	Operator `gradient` ran in 0.56 s
+      From worker 2:	Operator `forward` ran in 0.37 s
+      From worker 3:	Operator `forward` ran in 0.43 s
+      From worker 2:	Operator `gradient` ran in 0.60 s
+      From worker 3:	Operator `gradient` ran in 0.35 s
+input to PARSDMM is feasible, returning
+         6          9          7        150     1.00000e+00     1.45960e+04     2.03700e-02
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+      From worker 3:	Operator `forward` ran in 0.38 s
+      From worker 2:	Operator `forward` ran in 0.37 s
+      From worker 3:	Operator `forward` ran in 0.37 s
+      From worker 2:	Operator `forward` ran in 0.35 s
+      From worker 3:	Operator `forward` ran in 0.41 s
+      From worker 2:	Operator `forward` ran in 0.35 s
+      From worker 3:	Operator `forward` ran in 0.38 s
+      From worker 2:	Operator `forward` ran in 0.24 s
+input to PARSDMM is feasible, returning
+      From worker 2:	Operator `forward` ran in 0.38 s
+      From worker 3:	Operator `forward` ran in 0.39 s
+      From worker 2:	Operator `forward` ran in 0.37 s
+      From worker 3:	Operator `forward` ran in 0.40 s
+      From worker 2:	Operator `forward` ran in 0.38 s
+      From worker 3:	Operator `forward` ran in 0.38 s
+      From worker 2:	Operator `forward` ran in 0.38 s
+      From worker 3:	Operator `forward` ran in 0.23 s
+      From worker 2:	Operator `forward` ran in 0.37 s
+      From worker 3:	Operator `forward` ran in 0.50 s
+      From worker 2:	Operator `gradient` ran in 0.64 s
+      From worker 3:	Operator `gradient` ran in 0.56 s
+      From worker 2:	Operator `forward` ran in 0.36 s
+      From worker 3:	Operator `forward` ran in 0.49 s
+      From worker 2:	Operator `gradient` ran in 0.64 s
+      From worker 3:	Operator `gradient` ran in 0.51 s
+      From worker 2:	Operator `forward` ran in 0.41 s
+      From worker 3:	Operator `forward` ran in 0.44 s
+      From worker 2:	Operator `gradient` ran in 0.60 s
+      From worker 3:	Operator `gradient` ran in 0.52 s
+      From worker 2:	Operator `forward` ran in 0.42 s
+      From worker 3:	Operator `forward` ran in 0.37 s
+      From worker 2:	Operator `gradient` ran in 0.54 s
+      From worker 3:	Operator `gradient` ran in 0.34 s
+input to PARSDMM is feasible, returning
+         7         10          8        190     1.00000e+00     7.63842e+03     1.36674e-02
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+      From worker 3:	Operator `forward` ran in 0.23 s
+      From worker 2:	Operator `forward` ran in 0.40 s
+      From worker 3:	Operator `forward` ran in 0.43 s
+      From worker 2:	Operator `forward` ran in 0.37 s
+      From worker 3:	Operator `forward` ran in 0.37 s
+      From worker 2:	Operator `forward` ran in 0.37 s
+      From worker 3:	Operator `forward` ran in 0.38 s
+      From worker 2:	Operator `forward` ran in 0.26 s
+input to PARSDMM is feasible, returning
+      From worker 3:	Operator `forward` ran in 0.38 s
+      From worker 2:	Operator `forward` ran in 0.33 s
+      From worker 3:	Operator `forward` ran in 0.36 s
+      From worker 2:	Operator `forward` ran in 0.34 s
+      From worker 3:	Operator `forward` ran in 0.33 s
+      From worker 2:	Operator `forward` ran in 0.34 s
+      From worker 3:	Operator `forward` ran in 0.33 s
+      From worker 2:	Operator `forward` ran in 0.24 s
+      From worker 2:	Operator `forward` ran in 0.26 s
+      From worker 3:	Operator `forward` ran in 0.44 s
+      From worker 2:	Operator `gradient` ran in 0.80 s
+      From worker 3:	Operator `gradient` ran in 0.80 s
+      From worker 2:	Operator `forward` ran in 0.38 s
+      From worker 3:	Operator `forward` ran in 0.40 s
+      From worker 2:	Operator `gradient` ran in 0.53 s
+      From worker 3:	Operator `gradient` ran in 0.53 s
+      From worker 2:	Operator `forward` ran in 0.41 s
+      From worker 3:	Operator `forward` ran in 0.44 s
+      From worker 2:	Operator `gradient` ran in 0.48 s
+      From worker 3:	Operator `gradient` ran in 0.53 s
+      From worker 2:	Operator `forward` ran in 0.37 s
+      From worker 3:	Operator `forward` ran in 0.42 s
+      From worker 2:	Operator `gradient` ran in 0.58 s
+      From worker 3:	Operator `gradient` ran in 0.38 s
+input to PARSDMM is feasible, returning
+         8         11          9        238     1.00000e+00     3.18718e+03     1.09845e-02
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+      From worker 3:	Operator `forward` ran in 0.37 s
+      From worker 2:	Operator `forward` ran in 0.40 s
+      From worker 3:	Operator `forward` ran in 0.38 s
+      From worker 2:	Operator `forward` ran in 0.38 s
+      From worker 3:	Operator `forward` ran in 0.34 s
+      From worker 2:	Operator `forward` ran in 0.39 s
+      From worker 3:	Operator `forward` ran in 0.35 s
+      From worker 2:	Operator `forward` ran in 0.37 s
+input to PARSDMM is feasible, returning
+      From worker 3:	Operator `forward` ran in 0.44 s
+      From worker 2:	Operator `forward` ran in 0.40 s
+      From worker 3:	Operator `forward` ran in 0.37 s
+      From worker 2:	Operator `forward` ran in 0.34 s
+      From worker 3:	Operator `forward` ran in 0.37 s
+      From worker 2:	Operator `forward` ran in 0.36 s
+      From worker 3:	Operator `forward` ran in 0.40 s
+      From worker 2:	Operator `forward` ran in 0.24 s
+      From worker 3:	Operator `forward` ran in 0.38 s
+      From worker 2:	Operator `forward` ran in 0.43 s
+      From worker 3:	Operator `gradient` ran in 0.61 s
+      From worker 2:	Operator `gradient` ran in 0.51 s
+      From worker 3:	Operator `forward` ran in 0.38 s
+      From worker 2:	Operator `forward` ran in 0.41 s
+      From worker 3:	Operator `gradient` ran in 0.65 s
+      From worker 2:	Operator `gradient` ran in 0.52 s
+      From worker 3:	Operator `forward` ran in 0.43 s
+      From worker 2:	Operator `forward` ran in 0.44 s
+      From worker 3:	Operator `gradient` ran in 0.52 s
+      From worker 2:	Operator `gradient` ran in 0.51 s
+      From worker 3:	Operator `forward` ran in 0.40 s
+      From worker 2:	Operator `forward` ran in 0.42 s
+      From worker 3:	Operator `gradient` ran in 0.51 s
+      From worker 2:	Operator `gradient` ran in 0.34 s
+input to PARSDMM is feasible, returning
+         9         12         10        292     1.00000e+00     2.62946e+03     1.24063e-02
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+input to PARSDMM is feasible, returning
+      From worker 3:	Operator `forward` ran in 0.40 s
+      From worker 2:	Operator `forward` ran in 0.39 s
+      From worker 3:	Operator `forward` ran in 0.39 s
+      From worker 2:	Operator `forward` ran in 0.59 s
+      From worker 3:	Operator `forward` ran in 0.36 s
+      From worker 2:	Operator `forward` ran in 0.38 s
+      From worker 3:	Operator `forward` ran in 0.37 s
+      From worker 2:	Operator `forward` ran in 0.24 s
+input to PARSDMM is feasible, returning
+      From worker 3:	Operator `forward` ran in 0.39 s
+      From worker 2:	Operator `forward` ran in 0.38 s
+      From worker 3:	Operator `forward` ran in 0.37 s
+      From worker 2:	Operator `forward` ran in 0.38 s
+      From worker 3:	Operator `forward` ran in 0.38 s
+      From worker 2:	Operator `forward` ran in 0.46 s
+      From worker 3:	Operator `forward` ran in 0.37 s
+      From worker 2:	Operator `forward` ran in 0.24 s
+      From worker 3:	Operator `forward` ran in 0.40 s
+      From worker 2:	Operator `forward` ran in 0.37 s
+      From worker 3:	Operator `gradient` ran in 0.74 s
+      From worker 2:	Operator `gradient` ran in 0.76 s
+      From worker 3:	Operator `forward` ran in 0.46 s
+      From worker 2:	Operator `forward` ran in 0.46 s
+      From worker 3:	Operator `gradient` ran in 0.78 s
+      From worker 2:	Operator `gradient` ran in 0.82 s
+      From worker 3:	Operator `forward` ran in 0.52 s
+      From worker 2:	Operator `forward` ran in 0.50 s
+      From worker 3:	Operator `gradient` ran in 0.78 s
+      From worker 2:	Operator `gradient` ran in 0.78 s
+      From worker 3:	Operator `forward` ran in 0.44 s
+      From worker 2:	Operator `forward` ran in 0.47 s
+      From worker 3:	Operator `gradient` ran in 0.73 s
+      From worker 2:	Operator `gradient` ran in 0.71 s
+input to PARSDMM is feasible, returning
+        10         13         11        338     1.00000e+00     1.73191e+03     5.47692e-03</code></pre><pre><code class="language-julia">mf = reshape(prj(sol.x), n) # optimal solution
+ϕ = sol.ϕ_trace   # cost vs iteration
+m1 = sol.x_trace  # model vs iteration
+collect(m1[i] = reshape(m1[i], n) for i=1:length(ϕ));</code></pre><pre><code class="language-none">relative evolution to small, exiting PARSDMM (iteration 15)</code></pre><pre><code class="language-julia">mf2 = reshape(prj(sol2.x), n) # optimal solution
+ϕ2 = sol2.ϕ_trace   # cost vs iteration
+m2 = sol2.x_trace  # model vs iteration
+collect(m2[i] = reshape(m2[i], n) for i=1:length(ϕ2));</code></pre><pre><code class="language-none">relative evolution to small, exiting PARSDMM (iteration 15)</code></pre><h2 id="Visualize-velocity-models-and-objective-function"><a class="docs-heading-anchor" href="#Visualize-velocity-models-and-objective-function">Visualize velocity models and objective function</a><a id="Visualize-velocity-models-and-objective-function-1"></a><a class="docs-heading-anchor-permalink" href="#Visualize-velocity-models-and-objective-function" title="Permalink"></a></h2><pre><code class="language-julia">figure(figsize=(8,9)); clf()
+
+subplot(4,1,1);imshow(m0&#39;,aspect=&quot;auto&quot;,cmap=&quot;jet&quot;);
+colorbar(orientation=&quot;vertical&quot;);clim(vmin,vmax);title(&quot;Initial Velocity&quot;);
+
+subplot(4,1,2);imshow(mf2&#39;,aspect=&quot;auto&quot;,cmap=&quot;jet&quot;);
+colorbar(orientation=&quot;vertical&quot;);clim(vmin,vmax);title(&quot;FWI Velocity&quot;);
+
+subplot(4,1,3);imshow(mf&#39;,aspect=&quot;auto&quot;,cmap=&quot;jet&quot;);
+colorbar(orientation=&quot;vertical&quot;);clim(vmin,vmax);title(&quot;FWI Velocity with TV&quot;);
+
+subplot(4,1,4);imshow(m&#39;,aspect=&quot;auto&quot;,cmap=&quot;jet&quot;);
+colorbar(orientation=&quot;vertical&quot;);clim(vmin,vmax);title(&quot;True Velocity&quot;)
+
+tight_layout()</code></pre><p><img src="../03_constrained_fwi_files/03_constrained_fwi_53_0.png" alt="png"/></p><h4 id="Display-the-velocity-difference-models"><a class="docs-heading-anchor" href="#Display-the-velocity-difference-models">Display the velocity difference models</a><a id="Display-the-velocity-difference-models-1"></a><a class="docs-heading-anchor-permalink" href="#Display-the-velocity-difference-models" title="Permalink"></a></h4><pre><code class="language-julia">rms_v2 = @sprintf(&quot;%.1f m/s&quot;, sqrt(norm(m .- m0)^2 / length(m)))
+rms_vf = @sprintf(&quot;%.1f m/s&quot;, sqrt(norm(m .- mf)^2 / length(m)))
+rms_vf2 = @sprintf(&quot;%.1f m/s&quot;, sqrt(norm(m .- mf2)^2 / length(m)))
+
+figure(figsize=(8,6)); clf()
+
+subplot(3,1,1);imshow(m .- m0,aspect=&quot;auto&quot;,cmap=&quot;seismic&quot;);
+colorbar(orientation=&quot;vertical&quot;);clim(dmin,dmax);
+title(&quot;Vtrue - Vinit difference, rms=$(rms_v2)&quot;);
+
+subplot(3,1,2);imshow(m .- mf,aspect=&quot;auto&quot;,cmap=&quot;seismic&quot;);
+colorbar(orientation=&quot;vertical&quot;);clim(dmin,dmax);
+title(&quot;Vtrue - Vfwi difference, rms=$(rms_vf)&quot;);
+
+subplot(3,1,3);imshow(m .- mf2,aspect=&quot;auto&quot;,cmap=&quot;seismic&quot;);
+colorbar(orientation=&quot;vertical&quot;);clim(dmin,dmax);
+title(&quot;Vtrue - Vfwi_TV difference, rms=$(rms_vf2)&quot;);
+
+tight_layout()</code></pre><p><img src="../03_constrained_fwi_files/03_constrained_fwi_55_0.png" alt="png"/></p><h4 id="Display-the-cost-function"><a class="docs-heading-anchor" href="#Display-the-cost-function">Display the cost function</a><a id="Display-the-cost-function-1"></a><a class="docs-heading-anchor-permalink" href="#Display-the-cost-function" title="Permalink"></a></h4><pre><code class="language-julia">figure(figsize=(8,4)); clf()
+iters = [0:1:niter;]
+plot(ϕ[2:end] ./ ϕ[2], marker=&quot;o&quot;, label=&quot;FWI_TV&quot;)
+plot(ϕ2[2:end] ./ ϕ2[2], marker=&quot;o&quot;, label=&quot;FWI&quot;)
+ylim([0,1.05])
+xlabel(&quot;Nonlinear Iteration&quot;)
+ylabel(&quot;Normalized cost ||f(v) - d||&quot;)
+title(@sprintf(&quot;FWI Objective Function reduced %.1f percent and %.1f percent with TV&quot;,
+               100 * (ϕ[2] - ϕ[end]) / ϕ[2], 100 * (ϕ2[2] - ϕ2[end]) / ϕ2[2]));
+tight_layout()</code></pre><p><img src="../03_constrained_fwi_files/03_constrained_fwi_57_0.png" alt="png"/></p><h4 id="Display-data-misfit-vs-model-misfit"><a class="docs-heading-anchor" href="#Display-data-misfit-vs-model-misfit">Display data misfit vs model misfit</a><a id="Display-data-misfit-vs-model-misfit-1"></a><a class="docs-heading-anchor-permalink" href="#Display-data-misfit-vs-model-misfit" title="Permalink"></a></h4><pre><code class="language-julia">figure(figsize=(8,4)); clf()
+
+c = [norm(m1[i] .- m, 2) for i in 1:length(m1)]
+c2 = [norm(m2[i] .- m, 2) for i in 1:length(m2)]
+loglog(c[2:end], ϕ[2:end], label=&quot;FWI_TV&quot;, marker=&quot;s&quot;, linewidth=1)
+loglog(c2[2:end], ϕ2[2:end], label=&quot;FWI&quot;, marker=&quot;s&quot;, linewidth=1)
+legend()
+xlabel(&quot;Log Model residual&quot;)
+ylabel(&quot;Log Data residual&quot;)
+title(&quot;Misfit Trajectory, LOOK AT THAT TV MODEL ERROR&quot;);
+tight_layout()</code></pre><p><img src="../03_constrained_fwi_files/03_constrained_fwi_59_0.png" alt="png"/></p><h2 id="Visualize-data-match"><a class="docs-heading-anchor" href="#Visualize-data-match">Visualize data match</a><a id="Visualize-data-match-1"></a><a class="docs-heading-anchor-permalink" href="#Visualize-data-match" title="Permalink"></a></h2><h4 id="Generate-data-in-the-FWI-velocity-model"><a class="docs-heading-anchor" href="#Generate-data-in-the-FWI-velocity-model">Generate data in the FWI velocity model</a><a id="Generate-data-in-the-FWI-velocity-model-1"></a><a class="docs-heading-anchor-permalink" href="#Generate-data-in-the-FWI-velocity-model" title="Permalink"></a></h4><pre><code class="language-julia">tf = @elapsed begin
+    F0.model.m .= vec(mf)
+    df = F0*fsrc;
+end
+@show tf;
+
+tf2 = @elapsed begin
+    F0.model.m .= vec(mf2)
+    df2 = F0*fsrc;
+end
+@show tf2;</code></pre><pre><code class="language-none">      From worker 2:	Operator `forward` ran in 0.24 s
+      From worker 3:	Operator `forward` ran in 0.37 s
+      From worker 2:	Operator `forward` ran in 0.48 s
+      From worker 3:	Operator `forward` ran in 0.41 s
+      From worker 2:	Operator `forward` ran in 0.39 s
+      From worker 3:	Operator `forward` ran in 0.34 s
+      From worker 2:	Operator `forward` ran in 0.37 s
+      From worker 3:	Operator `forward` ran in 0.24 s
+tf = 10.834594565
+      From worker 3:	Operator `forward` ran in 0.38 s
+      From worker 2:	Operator `forward` ran in 0.41 s
+      From worker 3:	Operator `forward` ran in 0.38 s
+      From worker 2:	Operator `forward` ran in 0.38 s
+      From worker 3:	Operator `forward` ran in 0.45 s
+      From worker 2:	Operator `forward` ran in 0.38 s
+      From worker 3:	Operator `forward` ran in 0.38 s
+      From worker 2:	Operator `forward` ran in 0.25 s
+tf2 = 10.631615719</code></pre><h4 id="Compute-residuals"><a class="docs-heading-anchor" href="#Compute-residuals">Compute residuals</a><a id="Compute-residuals-1"></a><a class="docs-heading-anchor-permalink" href="#Compute-residuals" title="Permalink"></a></h4><pre><code class="language-julia">rf = df - dobs;
+rf2 = df2 - dobs;</code></pre><h4 id="Plot-shot-gathers-for-true,-initial-model,-and-fwi-models"><a class="docs-heading-anchor" href="#Plot-shot-gathers-for-true,-initial-model,-and-fwi-models">Plot shot gathers for true, initial model, and fwi models</a><a id="Plot-shot-gathers-for-true,-initial-model,-and-fwi-models-1"></a><a class="docs-heading-anchor-permalink" href="#Plot-shot-gathers-for-true,-initial-model,-and-fwi-models" title="Permalink"></a></h4><p>The table below describes the data images below. We will flip the direction of the residual and modeled data in order to help display the match with the true data. We include the initial data as shown above for easier comparison. </p><p>&lt;table style=&quot;border:1px solid black;&quot; width=&quot;60%&quot;&gt; &lt;tr&gt;   &lt;td style=&quot;border:1px solid black; text-align:center;&quot; bgcolor=&quot;white&quot;&gt;       &lt;b&gt;Initial Residual Data&lt;br&gt;(flipped)&lt;/b&gt;&lt;/td&gt;   &lt;td style=&quot;border:1px solid black; text-align:center;&quot; bgcolor=&quot;white&quot;&gt;       &lt;b&gt;True Data&lt;/b&gt;&lt;/td&gt;   &lt;td style=&quot;border:1px solid black; text-align:center;&quot; bgcolor=&quot;white&quot;&gt;       &lt;b&gt;Initial Data&lt;br&gt;(flipped)&lt;/b&gt;&lt;/td&gt; &lt;/tr&gt; &lt;tr&gt;   &lt;td style=&quot;border:1px solid black; text-align:center;&quot; bgcolor=&quot;white&quot;&gt;       &lt;b&gt;FWI Residual Data&lt;br&gt;(flipped)&lt;/b&gt;&lt;/td&gt;   &lt;td style=&quot;border:1px solid black; text-align:center;&quot; bgcolor=&quot;white&quot;&gt;       &lt;b&gt;True Data&lt;/b&gt;&lt;/td&gt;   &lt;td style=&quot;border:1px solid black; text-align:center;&quot; bgcolor=&quot;white&quot;&gt;       &lt;b&gt;FWI Data&lt;br&gt;(flipped)&lt;/b&gt;&lt;/td&gt; &lt;/tr&gt; &lt;/table&gt;</p><p>We first make a function to create the plots that we can re-use for the selected shots.</p><pre><code class="language-julia">zsrc = trunc.([zsrc[i][1] for i=1:nsrc]; digits=6)
+function make_plot(index)
+    figure(figsize=(8,6)); clf()
+    cat2 = hcat(reverse(r.data[index],dims=2), pad, dobs.data[index], pad, reverse(d0.data[index],dims=2))
+    catf = hcat(reverse(rf.data[index],dims=2), pad, dobs.data[index], pad, reverse(df.data[index],dims=2))
+    catf2 = hcat(reverse(rf2.data[index],dims=2), pad, dobs.data[index], pad, reverse(df.data[index],dims=2))
+    subplot(3,1,1);
+    imshow(cat2,cmap=&quot;gray&quot;,aspect=&quot;auto&quot;,clim=[-1,+1]);
+    title(&quot; Initial Residual sz=$(zsrc[index])   ||   True sz=$(zsrc[index])   ||   Initial sz=$(zsrc[index]) (flipped)&quot;);
+    subplot(3,1,2);
+    imshow(catf2,cmap=&quot;gray&quot;,aspect=&quot;auto&quot;,clim=[-1,+1]);
+    title(&quot; FWI Residual sz=$(zsrc[index])   ||   True sz=$(zsrc[index])   ||   FWI sz=$(zsrc[index]) (flipped)&quot;);
+    tight_layout()
+    subplot(3,1,3);
+    imshow(catf,cmap=&quot;gray&quot;,aspect=&quot;auto&quot;,clim=[-1,+1]);
+    title(&quot;TV FWI Residual sz=$(zsrc[index])   ||   True sz=$(zsrc[index])   ||   FWI sz=$(zsrc[index]) (flipped)&quot;);
+    tight_layout()
+end</code></pre><pre><code class="language-none">make_plot (generic function with 1 method)</code></pre><h4 id="Data-for-the-1st-shot,-generated-in-the-initial-and-FWI-models"><a class="docs-heading-anchor" href="#Data-for-the-1st-shot,-generated-in-the-initial-and-FWI-models">Data for the 1st shot, generated in the initial and FWI models</a><a id="Data-for-the-1st-shot,-generated-in-the-initial-and-FWI-models-1"></a><a class="docs-heading-anchor-permalink" href="#Data-for-the-1st-shot,-generated-in-the-initial-and-FWI-models" title="Permalink"></a></h4><pre><code class="language-julia">make_plot(1)</code></pre><p><img src="../03_constrained_fwi_files/03_constrained_fwi_67_0.png" alt="png"/></p><h4 id="Data-for-the-4th-shot,-generated-in-the-initial-and-FWI-models"><a class="docs-heading-anchor" href="#Data-for-the-4th-shot,-generated-in-the-initial-and-FWI-models">Data for the 4th shot, generated in the initial and FWI models</a><a id="Data-for-the-4th-shot,-generated-in-the-initial-and-FWI-models-1"></a><a class="docs-heading-anchor-permalink" href="#Data-for-the-4th-shot,-generated-in-the-initial-and-FWI-models" title="Permalink"></a></h4><pre><code class="language-julia">make_plot(4)</code></pre><p><img src="../03_constrained_fwi_files/03_constrained_fwi_69_0.png" alt="png"/></p><h4 id="Data-for-the-8th-shot,-generated-in-the-initial-and-FWI-models"><a class="docs-heading-anchor" href="#Data-for-the-8th-shot,-generated-in-the-initial-and-FWI-models">Data for the 8th shot, generated in the initial and FWI models</a><a id="Data-for-the-8th-shot,-generated-in-the-initial-and-FWI-models-1"></a><a class="docs-heading-anchor-permalink" href="#Data-for-the-8th-shot,-generated-in-the-initial-and-FWI-models" title="Permalink"></a></h4><pre><code class="language-julia">make_plot(8)</code></pre><p><img src="../03_constrained_fwi_files/03_constrained_fwi_71_0.png" alt="png"/></p><h2 id="Remove-workers"><a class="docs-heading-anchor" href="#Remove-workers">Remove workers</a><a id="Remove-workers-1"></a><a class="docs-heading-anchor-permalink" href="#Remove-workers" title="Permalink"></a></h2><pre><code class="language-julia">rmprocs(workers());</code></pre><pre><code class="language-none">┌ Warning: rmprocs: process 1 not removed
+└ @ Distributed /Users/julia/buildbot/worker/package_macos64/build/usr/share/julia/stdlib/v1.6/Distributed/src/cluster.jl:1038</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../02_fwi_example_NLopt/">« FWI with Quasi-Newton methods from the NLopt library</a><a class="docs-footer-nextpage" href="../04_judi_leading_edge_tutorial/">Full-Waveform Inversion - Part 3: optimization »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Saturday 24 May 2025 04:10">Saturday 24 May 2025</span>. Using Julia version 1.11.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
