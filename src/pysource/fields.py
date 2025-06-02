@@ -40,22 +40,25 @@ def wavefield(model, space_order, save=False, nt=None, fw=True, name='', t_sub=1
     name = "u"+name if fw else "v"+name
     save = False if t_sub > 1 else save
     nsave = Buffer(3 if tfull else 2) if not save else nt
+    transient = nsave != nt
 
     if model.is_tti:
         u = TimeFunction(name="%s1" % name, grid=model.grid, time_order=2,
-                         space_order=space_order, save=nsave)
+                         space_order=space_order, save=nsave, transient=transient)
         v = TimeFunction(name="%s2" % name, grid=model.grid, time_order=2,
-                         space_order=space_order, save=nsave)
+                         space_order=space_order, save=nsave, transient=transient)
         return (u, v)
     elif model.is_elastic:
         v = VectorTimeFunction(name="v", grid=model.grid, time_order=1,
-                               space_order=space_order, save=Buffer(1))
+                               space_order=space_order, save=Buffer(2),
+                               transient=transient)
         tau = TensorTimeFunction(name="tau", grid=model.grid, time_order=1,
-                                 space_order=space_order, save=Buffer(1))
+                                 space_order=space_order, save=Buffer(2),
+                                 transient=transient)
         return (v, tau)
     else:
         return TimeFunction(name=name, grid=model.grid, time_order=2,
-                            space_order=space_order, save=nsave)
+                            space_order=space_order, save=nsave, transient=transient)
 
 
 def forward_wavefield(model, space_order, save=True, nt=10, dft=False, t_sub=1, fw=True):
@@ -145,8 +148,13 @@ def wavefield_subsampled(model, u, nt, t_sub, space_order=8):
     else:
         return None
     wf_s = []
-    for wf in as_tuple(u):
-        usave = dvp.TimeFunction(name='us_%s' % wf.name, grid=model.grid, time_order=2,
+    if model.is_elastic:
+        save_wf = u[1][0]
+    else:
+        # pressure
+        save_wf = u
+    for wf in as_tuple(save_wf):
+        usave = dvp.TimeFunction(name='us_%s' % wf.name, grid=model.grid, time_order=0,
                                  space_order=space_order, time_dim=time_subsampled,
                                  save=nsave, compression=compression_mode())
         wf_s.append(usave)

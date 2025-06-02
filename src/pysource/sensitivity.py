@@ -1,7 +1,7 @@
 import numpy as np
 from sympy import cos, sin
 
-from devito import Eq, grad
+from devito import Eq, grad, div
 from devito.tools import as_tuple
 
 from fields import frequencies
@@ -46,13 +46,13 @@ def grad_expr(gradm, u, v, model, w=None, freq=None, dft_sub=None, ic="as"):
         Whether or not to use inverse scattering imaging condition (not supported yet)
     """
     ic_func = ic_dict[func_name(freq=freq, ic=ic)]
-    u, v = as_tuple(u), as_tuple(v)
+    u, v = as_tuple(u), as_tuple(v[1].trace() if model.is_elastic else v)
     expr = ic_func(u, v, model, freq=freq, factor=dft_sub, w=w)
     eq_g = [Eq(gradm, gradm - expr, subdomain=model.physical)]
     return eq_g
 
 
-def crosscorr_time(u, v, model, **kwargs):
+def crosscorr_time(u, v, model, w=None, **kwargs):
     """
     Cross correlation of forward and adjoint wavefield
 
@@ -65,8 +65,13 @@ def crosscorr_time(u, v, model, **kwargs):
     model: Model
         Model structure
     """
-    w = kwargs.get('w') or u[0].indices[0].spacing * model.irho
-    return w * sum(vv.dt2 * uu for uu, vv in zip(u, v))
+    dt = u[0].indices[0].spacing
+    if model.is_elastic:
+        w = w or dt
+        return w * u[0] * v[0].dt / model.lam**2
+    else:
+        w = w or dt * model.irho
+        return w * sum(vv.dt2 * uu for uu, vv in zip(u, v))
 
 
 def crosscorr_freq(u, v, model, freq=None, dft_sub=None, **kwargs):
@@ -117,7 +122,10 @@ def isic_time(u, v, model, **kwargs):
     model: Model
         Model structure
     """
-    w = u[0].indices[0].spacing * model.irho
+    dt = u[0].indices[0].spacing
+    if model.is_elastic:
+        return - dt * div(u[0] * v[0].dt / model.lam**2)
+    w = dt * model.irho
     ics = kwargs.get('icsign', 1)
     return w * sum(uu * vv.dt2 * model.m + ics * inner_grad(uu, vv)
                    for uu, vv in zip(u, v))

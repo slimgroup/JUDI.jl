@@ -214,17 +214,17 @@ def elastic_kernel(model, v, tau, fw=True, q=None):
     tau_dt = tau.dt if fw else -tau.dtl
 
     # Particle velocity
-    eq_v = vdt - b * div(tau) + damp * vnext
+    eq_v = vdt - b * div(tau)
     eq_v = vs_mask_derivs(eq_v, tau, model.mu)
 
     # Stress
     try:
-        e = (grad(v.forward) + grad(v.forward).transpose(inner=False))
+        e = (grad(vnext) + grad(vnext).transpose(inner=False))
     except TypeError:
         # Older devito version
-        e = (grad(v.forward) + grad(v.forward).T)
+        e = (grad(vnext) + grad(vnext).T)
 
-    eq_tau = tau_dt - lam * diag(div(v.forward)) - mu * e + damp * taunext
+    eq_tau = tau_dt - lam * diag(div(vnext)) - mu * e + damp * (tau + taunext)
 
     u_v = [Eq(vnext, solve(eq_v, vnext), subdomain=model.physical)]
     if model.fs:

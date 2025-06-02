@@ -63,6 +63,10 @@ function judiTopmute(model::AbstractModel; taperwidth=10)
     return TopMute(prod(size(model)), wb, taperwidth)
 end
 
+function judiTopmute(model::IsoElModel; taperwidth=10)
+    wb = find_water_bottom(model.mu.data)
+    return TopMute(prod(size(model)), wb, taperwidth)
+end
 
 function matvec(D::TopMute{T, N}, x::Array{T, N}) where {T, N}
     out = 1 .* x

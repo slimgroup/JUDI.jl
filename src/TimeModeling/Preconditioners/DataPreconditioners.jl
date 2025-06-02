@@ -107,7 +107,7 @@ function muteshot!(shot::AbstractMatrix{T}, rGeom::Geometry, srcGeom::Geometry; 
     taper = _taper(Val(mode), taperwidth)
     # Loop over traces
     @inbounds for t=1:nrec
-        r = radius(rGeom, sGeom, t) 
+        r = radius(rGeom, sGeom, t)
         tt = 1f3 * (r / vp + t0) / get_dt(rGeom, 1)
         i = min(max(1, floor(Int, tt)), nt)
         if _tapew(i, taperwidth, nt, Val(mode))

@@ -50,4 +50,4 @@ function (J::judiJacobian{D, O, FT})(x::Array{D, N}) where {D, O, FT, N}
     return newJ
 end
 
-  
+(J::judiJacobian{D, OJ, FT})(F::judiComposedPropagator{D, OF}) where {D, OF, OJ, FT} = judiJacobian(F, J.q)

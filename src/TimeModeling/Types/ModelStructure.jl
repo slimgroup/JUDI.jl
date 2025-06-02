@@ -100,6 +100,8 @@ PhysicalParameter(p::PhysicalParameter{T, N}, ::NTuple{N, Int}, ::NTuple{N, T}, 
 PhysicalParameter(p::PhysicalParameter{T, N}) where {T<:Real, N} = p 
 PhysicalParameter(p::PhysicalParameter{T, N}, v::Array{T, Nv}) where {T<:Real, N, Nv} = PhysicalParameter(p.n, p.d, p.o, reshape(v, p.n))
 
+PhysicalParameter(g::DiscreteGrid{T, N}) where {T, N} = PhysicalParameter(g.n, g.d, g.o, zeros(T, g.n))
+
 # transpose and such.....
 conj(x::PhysicalParameter{T, N}) where {T<:Real, N} = x
 transpose(x::PhysicalParameter{T, N}) where {T<:Real, N} = PhysicalParameter(x.n[N:-1:1], x.d[N:-1:1], x.o[N:-1:1], permutedims(x.data, N:-1:1))

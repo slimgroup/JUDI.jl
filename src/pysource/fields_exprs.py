@@ -29,7 +29,8 @@ def save_subsampled(model, u, nt, t_sub, space_order=8):
     if wf_s is None:
         return []
     eq_save = []
-    for (wfs, wf) in zip(wf_s, as_tuple(u)):
+    save_wf = u[1].trace() if model.is_elastic else u
+    for (wfs, wf) in zip(wf_s, as_tuple(save_wf)):
         eq_save.append(Eq(wfs, wf, subdomain=model.physical))
     return eq_save
 
@@ -233,7 +234,7 @@ def weighted_norm(u, weight=None):
     return (n_t, n_s)
 
 
-def illumexpr(u, illum):
+def illumexpr(model, u, illum):
     """
     Illumination of the wavefield `u` as the 2 norm squared of `u` over time.
     Parameters
@@ -245,7 +246,7 @@ def illumexpr(u, illum):
     """
     if not illum:
         return []
-    u0 = as_tuple(u)
+    u0 = as_tuple(u[1].trace() if model.is_elastic else u)
     I = illumination(u, illum)
     expr = sum([ui**2 for ui in u0])
     return [Inc(I, u0[0].grid.time_dim.spacing * expr)]

@@ -42,8 +42,6 @@ def R_mat(model):
             Rt *= r3(0)
     else:
         Rt = Rt[[0, 2], [0, 2]]
-    # Rebuild sin/cos
-
     return TensorFunction(name="R", grid=model.grid, components=Rt, symmetric=False)
 
 

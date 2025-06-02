@@ -71,7 +71,8 @@ def geom_expr(model, u, src_coords=None, rec_coords=None, wavelet=None, fw=True,
         # Elastic inject into diagonal of stress
         if model.is_elastic:
             c = 1 / model.grid.dim
-            src_eq = src.inject(field=as_tuple(u)[1].forward.diagonal(),
+            u_n = as_tuple(u)[1].forward if fw else as_tuple(u)[1].backward
+            src_eq = src.inject(field=u_n.diagonal(),
                                 expr=c*src*dt/irho)
             if model.fs:
                 # Free surface
@@ -84,11 +85,11 @@ def geom_expr(model, u, src_coords=None, rec_coords=None, wavelet=None, fw=True,
                 # Free surface
                 src_eq = mirror_source(model, src_eq)
 
-        geom_expr += [src_eq]
+        geom_expr += src_eq
     # Setup adjoint wavefield sampling at source locations
     if rcv is not None:
         if model.is_elastic:
-            geom_expr = u[1].trace() / model.grid.dim
+            rec_expr = u[1].trace() / model.grid.dim
         else:
             rec_expr = u[0] if model.is_tti else u
         geom_expr += rcv.interpolate(expr=rec_expr)

@@ -110,7 +110,7 @@ function __init__()
     # Make sure there is no conflict for the cuda init thread with CUDA.jl
     if get(ENV, "DEVITO_PLATFORM", "") == "nvidiaX"
         @info "Initializing openacc/openmp offloading"
-        devito_model(Model((21, 21, 21), (10., 10., 10.), (0., 0., 0.), randn(Float32, 21, 21, 21)), Options())
+        devito_model(Model((21, 21, 21), (10., 10., 10.), (0., 0., 0.), ones(Float32, 21, 21, 21)), Options())
         global _devices = parse.(Int, get(ENV, "CUDA_VISIBLE_DEVICES", "-1"))
     end
 

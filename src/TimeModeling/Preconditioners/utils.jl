@@ -7,7 +7,12 @@ _taper(::Val{:turning}, n::Integer=20) = convert(Vector{Float32}, (cos.(range(0,
 # Muting utils
 _yloc(y::Vector{T}, t::Integer) where T = length(y) > 1 ?  y[t] : y[1]
 
-radius(G1::Geometry, G2::Geometry, t::Integer) = sqrt.((G1.xloc[1][t] .- G2.xloc[1][1]).^2 .+ (_yloc(G1.yloc[1], t) .- G2.yloc[1][1]).^2 .+ (G1.zloc[1][t] .- G2.zloc[1][1]).^2)
+function radius(G1::Geometry, G2::Geometry, t::Integer)
+    dx = G1.xloc[1][t] .- G2.xloc[1][1]
+    dy = _yloc(G1.yloc[1], t) .- G2.yloc[1][1]
+    dz = G1.zloc[1][t] .- G2.zloc[1][1]
+    return sqrt(dx^2 + dy^2 + dz^2)
+end
 
 _tapew(i::Integer, taperwidth::Integer, ::Integer, ::Val{:reflection}) = i < taperwidth
 _tapew(i::Integer, taperwidth::Integer, nt::Integer, ::Val{:turning}) = i > (nt - taperwidth)

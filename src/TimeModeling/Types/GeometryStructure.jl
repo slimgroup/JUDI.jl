@@ -226,10 +226,14 @@ _get_p(v::Vector, data, nsrc::Integer, p, ::Type{T}, s::T) where T  = convert(Ve
 
 _get_p_SeisCon(S::SeisCon, p::String, b::Integer) = try S.blocks[b].summary[p][1] catch; getfield(S, Symbol(p)); end
 
+
 function timings_from_segy(data, dt=nothing, t=nothing, t0=nothing)
     # Get nsrc
     nsrc = get_nsrc(data)
     dtCell = _get_p(dt, data, nsrc, "dt", Float32, 1f3)
+    # In case teh segy is formatted wrong
+    dtCell = dtCell[1] < 1e-2 ? (dtCell .* 1f3) : dtCell
+
     if isnothing(t0)
         t0 = [segy_t0(data, i) for i=1:nsrc]
     else

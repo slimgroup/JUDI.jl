@@ -118,7 +118,7 @@ def forward_op(p_params, tti, visco, elas, space_order, fw, spacing, save, t_sub
     dft = otf_dft(u, freq_list, model.grid.time_dim.spacing, factor=dft_sub)
 
     # Illumination
-    Ieq = illumexpr(u, illum)
+    Ieq = illumexpr(model, u, illum)
 
     # Wavefield norm
     nv_t, nv_s = weighted_norm(u, weight=nv_weights) if nv_weights else ([], [])
@@ -179,7 +179,7 @@ def born_op(p_params, tti, visco, elas, space_order, fw, spacing, save, pt_src,
     dft = otf_dft(u, freq_list, model.critical_dt, factor=dft_sub)
 
     # Illumination
-    Ieq = illumexpr(u, illum)
+    Ieq = illumexpr(model, u, illum)
 
     # Create operator and run
     subs = model.spacing_map
@@ -222,7 +222,7 @@ def adjoint_born_op(p_params, tti, visco, elas, space_order, fw, spacing, pt_rec
                        dft_sub=dft_sub, ic=ic)
 
     # Illumination
-    Ieq = illumexpr(v, illum)
+    Ieq = illumexpr(model, v, illum)
 
     # Create operator and run
     subs = model.spacing_map

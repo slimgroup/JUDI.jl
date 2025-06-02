@@ -308,9 +308,14 @@ class Model(object):
                                 parameter=is_param, avg_mode=avg_mode, dtype=dtype)
             pad = 0 if field.shape == function.shape else self.padsizes
             initialize_function(function, field, pad)
+            self._physical_parameters.append(name)
         else:
-            function = Constant(name=name, value=np.amin(field))
-        self._physical_parameters.append(name)
+            if name in ['vp', 'm', 'vs', 'lam', 'mu']:
+                function = Constant(name=name, value=np.amin(field))
+                self._physical_parameters.append(name)
+            else:
+                function = np.amin(field)
+
         return function
 
     @property
