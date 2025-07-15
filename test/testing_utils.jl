@@ -24,3 +24,29 @@ function grad_test(misfit, x0, dx, g; maxiter=6, h0=5f-2, data=false, stol=1f-1)
     @test isapprox(mean(rate1), 1.25f0; atol=stol)
     @test isapprox(mean(rate2), 1.5625f0; atol=stol)
 end
+
+@testset "Testing devito config" begin
+    lg = get(ENV, "DEVITO_LANGUAGE", nothing)
+    arch = get(ENV, "DEVITO_ARCH", nothing)
+    plt = get(ENV, "DEVITO_PLATFORM", nothing)
+    pop!(ENV, "DEVITO_LANGUAGE", nothing)
+    pop!(ENV, "DEVITO_ARCH", nothing)
+    pop!(ENV, "DEVITO_PLATFORM", nothing)
+    default_devito_config()
+    if Sys.isapple()
+        @test string(JUDI.devito.configuration["language"]) == "openmp"
+        @test string(JUDI.devito.configuration["compiler"].name) == "clang"
+        if Sys.ARCH == :aarch64
+            @test string(JUDI.devito.configuration["platform"].name) == "m1"
+        else
+            @test Bool(JUDI.PythonCall.pybuiltins.isinstance(JUDI.devito.configuration["platform"], JUDI.devito.Cpu64))
+        end
+    else
+        @test string(JUDI.devito.configuration["language"]) == "openmp"
+        @test Bool(JUDI.PythonCall.pybuiltins.isinstance(JUDI.devito.configuration["platform"], JUDI.devito.Cpu64))
+        @test string(JUDI.devito.configuration["compiler"].name) == "gcc"
+    end
+    !isnothing(lg) && (ENV["DEVITO_LANGUAGE"] = lg)
+    !isnothing(arch) && (ENV["DEVITO_ARCH"] = arch)
+    !isnothing(plt) && (ENV["DEVITO_PLATFORM"] = plt)
+end
