@@ -1,7 +1,8 @@
 [deps]
-python = ">3.8"
+python = ">3.9,<3.14"
 matplotlib = ""
+PyWavelets = ""
 
 [pip.deps]
-devito = ">=4.8.11"
-pyrevolve = "==2.2.4"
+devito = ">=4.8.14"
+pyrevolve = "==2.2.5"

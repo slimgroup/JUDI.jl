@@ -111,6 +111,7 @@ function __init__()
         global _devices = parse.(Int, get(ENV, "CUDA_VISIBLE_DEVICES", "-1"))
     end
 
+    default_devito_config()
     # Optional dependencies
     @static if !isdefined(Base, :get_extension)
         # JLD2 compat for loading older version of JUDI types
