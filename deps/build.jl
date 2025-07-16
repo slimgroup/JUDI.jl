@@ -8,7 +8,10 @@ end
 if PythonCall.C.CondaPkg.backend() == :Null
     pyexe = PythonCall.python_executable_path()
 else
-    exit()
+    pyexe = PythonCall.C.CondaPkg.withenv() do
+        condapy = PythonCall.C.CondaPkg.which("python")
+        return condapy
+    end
 end
 
 cmd(x::String) = Cmd(convert(Vector{String}, split(x, " ")))
