@@ -24,8 +24,6 @@ jobs:
       OMP_NUM_THREADS: 4
       JULIA_NUM_THREADS: 1
       GROUP: "JUDI"
-      JULIA_CONDAPKG_PIP_BACKEND: "pip"
-      JULIA_CONDAPKG_BACKEND: "MicroMamba"
 
     strategy:
       fail-fast: false
