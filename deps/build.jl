@@ -24,13 +24,6 @@ catch e
     "pip install --no-cache-dir"
 end
 
-pk = try
-    pyimport("pkg_resources")
-catch e
-    run(cmd("$(pyexe) -m $(pip) setuptools"))
-    pyimport("pkg_resources")
-end
-
 ################## JOLI ##################
 try
     pyimport("pywt")
@@ -44,7 +37,8 @@ dvver = "4.8.14"
 dv_cmd = "$(pyexe) -m $(pip) devito[extras,tests]>=$(dvver)"
 
 try
-    dv_ver = VersionNumber(split(pk.get_distribution("devito").version, "+")[1])
+    dv_ver = string(pyimport("devito").__version__)
+    dv_ver = VersionNumber(split(split(dv_ver, "+")[1], ".dev")[1])
     if dv_ver < VersionNumber(dvver)
         @info "Devito  version too low, updating to >=$(dvver)"
         run(cmd(dv_cmd))
