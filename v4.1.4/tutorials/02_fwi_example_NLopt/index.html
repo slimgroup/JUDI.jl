@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>FWI with Quasi-Newton methods from the NLopt library · JUDI documentation</title><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.11.1/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit">JUDI documentation</span></div><form class="docs-search" action="../../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><a class="tocitem" href="../../about/">About</a></li><li><a class="tocitem" href="../../installation/">Installation</a></li><li><a class="tocitem" href="../../basics/">Getting Started</a></li><li><span class="tocitem">JUDI API</span><ul><li><a class="tocitem" href="../../abstract_vectors/">Abstract vectors</a></li><li><a class="tocitem" href="../../data_structures/">Data Structures</a></li><li><a class="tocitem" href="../../linear_operators/">Linear Operators</a></li><li><a class="tocitem" href="../../preconditioners/">Preconditioners</a></li><li><a class="tocitem" href="../../io/">Input/Output</a></li><li><a class="tocitem" href="../../helper/">Helper Functions</a></li></ul></li><li><a class="tocitem" href="../../inversion/">Inversion</a></li><li><span class="tocitem">Tutorials</span><ul><li><a class="tocitem" href="../01_intro/">Introduction to JUDI</a></li><li class="is-active"><a class="tocitem" href>FWI with Quasi-Newton methods from the NLopt library</a><ul class="internal"><li><a class="tocitem" href="#Optimization"><span>Optimization</span></a></li></ul></li><li><a class="tocitem" href="../03_constrained_fwi/">FWI Example</a></li><li><a class="tocitem" href="../04_judi_leading_edge_tutorial/">Full-Waveform Inversion - Part 3: optimization</a></li><li><a class="tocitem" href="../05_custom_misfit/">FWI with user provided misfit function</a></li><li><a class="tocitem" href="../06_automatic_differentiation/">Automatic differentiation with JUDI</a></li><li><a class="tocitem" href="../07_preconditionners/">Seismic preconditionners</a></li><li><a class="tocitem" href="../imaging_conditions/">Imaging conditions in JUDI</a></li><li><a class="tocitem" href="../quickstart/">Modeling and inversion with JUDI</a></li></ul></li><li><a class="tocitem" href="../../pysource/">Devito backend reference</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Tutorials</a></li><li class="is-active"><a href>FWI with Quasi-Newton methods from the NLopt library</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>FWI with Quasi-Newton methods from the NLopt library</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/slimgroup/JUDI.jl/blob/master/docs/src/tutorials/02_fwi_example_NLopt.md" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="FWI-with-Quasi-Newton-methods-from-the-NLopt-library"><a class="docs-heading-anchor" href="#FWI-with-Quasi-Newton-methods-from-the-NLopt-library">FWI with Quasi-Newton methods from the NLopt library</a><a id="FWI-with-Quasi-Newton-methods-from-the-NLopt-library-1"></a><a class="docs-heading-anchor-permalink" href="#FWI-with-Quasi-Newton-methods-from-the-NLopt-library" title="Permalink"></a></h1><p>In this notebook, we demonstrate how to interface the NLopt optimization library for full-waveform inversion with a limited-memory Quasi-Newton (L-BFGS) algorithm. Once again, we start by adding additional workers for parallel computing and by loading all necessary modules:</p><pre><code class="language-julia">using SegyIO, HDF5, PythonPlot, JUDI, NLopt, Random, LinearAlgebra, Printf</code></pre><p>We load the FWI starting model from the HDF5 model file and set up the JUDI model structure:</p><pre><code class="language-julia">m0, n, d, o = read(h5open(&quot;overthrust_model.h5&quot;,&quot;r&quot;),&quot;m0&quot;,&quot;n&quot;,&quot;d&quot;,&quot;o&quot;); title(&quot;Starting model&quot;)
+model0 = Model((n[1],n[2]), (d[1],d[2]), (o[1],o[2]), m0);
+imshow(sqrt.(1f0./m0)&#39;, cmap=&quot;GnBu&quot;, extent=(0,10,3,0));
+xlabel(&quot;Lateral position [km]&quot;);
+ylabel(&quot;Depth [km]&quot;);</code></pre><p><img src="../02_fwi_example_NLopt_files/02_fwi_example_NLopt_4_0.png" alt="png"/></p><p>Then we read the SEG-Y file containing our test data set. The data was generated with a 2D excerpt from the Overthrust velocity model and consists of 31 shot records with 2 seconds recording time. We load the data and set up a JUDI seismic data vector:</p><pre><code class="language-julia">block = segy_read(&quot;overthrust_shot_records.segy&quot;);
+d_obs = judiVector(block);</code></pre><pre><code class="language-none">[33m[1m┌ [22m[39m[33m[1mWarning: [22m[39mFixed length trace flag set in stream: IOBuffer(data=UInt8[...], readable=true, writable=false, seekable=true, append=false, size=7076688, maxsize=Inf, ptr=3601, mark=-1)
+[33m[1m└ [22m[39m[90m@ SegyIO ~/.julia/dev/SegyIO/src/read/read_file.jl:36[39m</code></pre><pre><code class="language-julia">extent = [0, 10, 2, 0]
+figure(figsize=(7, 7))
+subplot(221)
+imshow(d_obs.data[1], vmin=-1, vmax=1, cmap=&quot;PuOr&quot;, extent=extent, aspect=4, interpolation=&quot;hamming&quot;)
+xlabel(&quot;Receiver position(km)&quot;)
+ylabel(&quot;Time(s)&quot;)
+subplot(222)
+imshow(d_obs.data[6], vmin=-1, vmax=1, cmap=&quot;PuOr&quot;, extent=extent, aspect=4, interpolation=&quot;hamming&quot;)
+xlabel(&quot;Receiver position(km)&quot;)
+ylabel(&quot;Time(s)&quot;)
+subplot(223)
+imshow(d_obs.data[11], vmin=-1, vmax=1, cmap=&quot;PuOr&quot;, extent=extent, aspect=4, interpolation=&quot;hamming&quot;)
+xlabel(&quot;Receiver position(km)&quot;)
+ylabel(&quot;Time(s)&quot;)
+subplot(224)
+imshow(d_obs.data[16], vmin=-1, vmax=1, cmap=&quot;PuOr&quot;, extent=extent, aspect=4, interpolation=&quot;hamming&quot;)
+xlabel(&quot;Receiver position(km)&quot;)
+ylabel(&quot;Time(s)&quot;)
+tight_layout()
+</code></pre><p><img src="../02_fwi_example_NLopt_files/02_fwi_example_NLopt_7_0.png" alt="png"/></p><p>Since the SEG-Y file contains the source coordinates, but not the wavelet itself, we create a JUDI <code>Geometry</code> structure for the source and then manually set up an 8 Hz Ricker wavelet. As for the observed data, we set up a JUDI seismic data vector <code>q</code> with the source geometry and wavelet:</p><pre><code class="language-julia">src_geometry = Geometry(block; key=&quot;source&quot;);
+src_data = ricker_wavelet(src_geometry.t[1], src_geometry.dt[1], 0.008f0);
+q = judiVector(src_geometry, src_data);</code></pre><h2 id="Optimization"><a class="docs-heading-anchor" href="#Optimization">Optimization</a><a id="Optimization-1"></a><a class="docs-heading-anchor-permalink" href="#Optimization" title="Permalink"></a></h2><p>Rather than implementing the L-BFGS algorithms in Julia ourselves, we interface the NLopt optimization library. This library requires objective functions with the current variable and gradient as input arguments and the function value as the only output argument. For this reason, we build a wrapper that is customized for the NLopt library around our <code>fwi_objective</code> function. The function <code>f!</code> takes a vectorized estimate of the current model as well as the (vectorized) gradient as input arguments. NLopt uses double precision for floating point variables, so the first step inside <code>f!</code> is to reshape and convert the model to single precision. Then we choose a randomized subset of sources and shot records and compute the function value <code>fval</code> and <code>gradient</code> of the FWI objective function. We then set the gradient in the water layer to zero and overwrite the input gradient <code>grad</code> with the new gradient. Furthermore, we keep track of the number of function evaluations through increasing the <code>count</code> variable, which will serve as the termination criterion for the algorithm. In Julia, we set up <code>f!</code> in the following way: </p><pre><code class="language-julia">batchsize = 8;
+count = 0;
+
+# NLopt objective function
+function objf!(x, grad)
+    if count == 0
+        @printf(&quot;%10s %15s %15s\n&quot;,&quot;Iteration&quot;,&quot;Function Val&quot;,&quot;norm(g)&quot;)
+    end
+    # Update model
+    model0.m .= Float32.(reshape(x, model0.n))
+
+    # Seclect batch and calculate gradient
+    i = randperm(d_obs.nsrc)[1:batchsize]
+    fval, gradient = fwi_objective(model0, q[i], d_obs[i])
+
+    # Reset gradient in water column to zero
+    gradient = reshape(gradient, model0.n)
+    gradient[:,1:21] .= 0f0
+    if length(grad) &gt; 0
+        grad[1:end] = vec(gradient)
+    end
+    global count += 1
+    @printf(&quot;%10d %15.5e %15.5e\n&quot;,count, fval, norm(g))
+    return convert(Float64, fval)
+end</code></pre><pre><code class="language-none">objf! (generic function with 1 method)</code></pre><pre><code class="language-julia">g = zeros(prod(model0.n))
+f0 = objf!(vec(model0.m), g)
+# Reset count
+global count = 0;</code></pre><pre><code class="language-none">[33m[1m┌ [22m[39m[33m[1mWarning: [22m[39mDeprecated model.n, use size(model)
+[33m[1m│ [22m[39m  caller = ip:0x0
+[33m[1m└ [22m[39m[90m@ Core :-1[39m
+
+
+ Iteration    Function Val         norm(g)
+         1     2.61794e+05     2.83025e+05</code></pre><pre><code class="language-julia">imshow(reshape(g, model0.n)&#39;, vmin=-1e3, vmax=1e3, extent=(0,10,3,0), cmap=&quot;jet&quot;)
+title(&quot;FWI first gradient&quot;)
+xlabel(&quot;Lateral position [km]&quot;);
+ylabel(&quot;Depth [km]&quot;);</code></pre><p><img src="../02_fwi_example_NLopt_files/02_fwi_example_NLopt_13_0.png" alt="png"/></p><p>As in our gradient descent and Gauss-Newton example, we define bound constraints for the squared slowness to prevent velocities from becoming negative or too large:</p><pre><code class="language-julia"># Squared slowness
+mmax = (1.3f0).^(-2)
+mmin = (6.5f0).^(-2)</code></pre><pre><code class="language-none">0.023668641f0</code></pre><p>The NLopt library offers a range of different optimization algorithms, from which we choose the L-BFGS method. We create an optimization object called <code>opt</code> by specifying the algorithm we want to use and the dimenions of the unknown model vector. We then set the upper and lower bounds of the variable, define <code>f!</code> as the objective function and set the termination criterion to be a maximum of 15 function evaluations:</p><pre><code class="language-julia">opt = Opt(:LD_LBFGS, prod(model0.n))
+opt.lower_bounds = mmin
+opt.upper_bounds = mmax
+# min_objective!(opt, f!)
+opt.min_objective = objf!
+opt.maxeval = 15</code></pre><pre><code class="language-none">15</code></pre><p>Remark: Subsampling the number of sources should in practice never be used for second order methods such as L-BFGS. Specialized stochastic second order methods exist, but differ from standard Quasi-Newton methods. We only use source subsampling to reduce the computational cost of our example. Having set up the objective function, bound constraints and termination criterion, we can now run the inversion:</p><p>** This example requires ~200 MB of memory per gradient, i.e. 800 MB with four parallel workers. It runs for approximately 1 minutes. **</p><pre><code class="language-julia">@time (minf, minx, ret) = optimize(opt, model0.m[:])</code></pre><pre><code class="language-none"> Iteration    Function Val         norm(g)
+         1     2.46220e+05     2.83025e+05
+         2     2.36730e+05     2.83025e+05
+         3     1.67086e+05     2.83025e+05
+         4     1.21062e+05     2.83025e+05
+         5     9.66964e+04     2.83025e+05
+         6     7.97872e+04     2.83025e+05
+         7     6.54899e+04     2.83025e+05
+         8     5.23806e+04     2.83025e+05
+         9     4.46780e+04     2.83025e+05
+        10     4.05689e+04     2.83025e+05
+        11     3.14446e+04     2.83025e+05
+        12     3.06919e+04     2.83025e+05
+        13     2.52438e+04     2.83025e+05
+        14     2.52550e+04     2.83025e+05
+        15     2.24706e+04     2.83025e+05
+ 65.695496 seconds (444.24 k allocations: 1.269 GiB, 0.10% gc time, 0.20% compilation time)
+
+
+
+
+
+(22470.578125, [0.4444444477558136, 0.4444444477558136, 0.4444444477558136, 0.4444444477558136, 0.4444444477558136, 0.4444444477558136, 0.4444444477558136, 0.4444444477558136, 0.4444444477558136, 0.4444444477558136  …  0.05060886426348713, 0.05044609939336615, 0.050292761170062046, 0.05017357884927398, 0.05011064413011435, 0.05011993876926194, 0.05020965433880526, 0.05038047472521424, 0.05062740429803987, 0.05094217839179781], :MAXEVAL_REACHED)</code></pre><p>We plot the final velocity model after 15 function evaluations:</p><pre><code class="language-julia">imshow(sqrt.(1f0./reshape(minx, model0.n))&#39;, cmap=&quot;GnBu&quot;, extent=(0,10,3,0), vmin=1.5, vmax=5.4); title(&quot;FWI with L-BFGS&quot;)
+xlabel(&quot;Lateral position [km]&quot;);
+ylabel(&quot;Depth [km]&quot;);</code></pre><p><img src="../02_fwi_example_NLopt_files/02_fwi_example_NLopt_22_0.png" alt="png"/></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../01_intro/">« Introduction to JUDI</a><a class="docs-footer-nextpage" href="../03_constrained_fwi/">FWI Example »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Thursday 21 August 2025 14:04">Thursday 21 August 2025</span>. Using Julia version 1.11.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
