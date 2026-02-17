@@ -95,14 +95,12 @@ def opt_op(model):
     model: Model
         Model structure to know if we are in a TTI model
     """
+    opts = {'index-mode': 'int64', 'errctl': 'basic'}
     if isinstance(configuration['platform'], Device):
-        opts = {'openmp': True if configuration['language'] == 'openmp' else None,
-                'mpi': configuration['mpi']}
-        mode = 'advanced'
+        opts.update({'gpu-opt': True, 'gpu-vect': True})
     else:
-        opts = {'openmp': True, 'par-collapse-ncores': 2, 'mpi': configuration['mpi']}
-        mode = 'advanced'
-    return (mode, opts)
+        opts.update({'par-collapse-ncores': 2, 'cse-algo': 'smartsort'})
+    return ('advanced', opts)
 
 
 def nfreq(freq_list):

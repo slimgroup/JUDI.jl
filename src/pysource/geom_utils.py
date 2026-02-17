@@ -19,7 +19,8 @@ def src_rec(model, u, src_coords=None, rec_coords=None, wavelet=None, nt=None):
         else:
             src = PointSource(name="src%s" % namef, grid=model.grid, ntime=nt,
                               coordinates=src_coords)
-            src.data[:] = wavelet if wavelet is not None else 0.
+            if wavelet is not None:
+                src.data[:] = wavelet.reshape(src.data[:].shape)
     rcv = None
     if rec_coords is not None:
         rcv = Receiver(name="rcv%s" % namef, grid=model.grid, ntime=nt,
