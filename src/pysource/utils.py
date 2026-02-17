@@ -97,7 +97,8 @@ def opt_op(model):
     """
     opts = {'index-mode': 'int64', 'errctl': 'basic'}
     if isinstance(configuration['platform'], Device):
-        opts.update({'gpu-opt': True, 'gpu-vect': True})
+        if dvp is not None:
+            opts.update({'gpu-opt': True})
     else:
         opts.update({'par-collapse-ncores': 2, 'cse-algo': 'smartsort'})
     return ('advanced', opts)
