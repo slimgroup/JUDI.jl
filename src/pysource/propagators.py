@@ -21,7 +21,7 @@ def forward(model, src_coords, rcv_coords, wavelet, save=False,
     Compute forward wavefield u = A(m)^{-1}*f and related quantities (u(xrcv))
     """
     # Space order
-    space_order = model.space_order
+    space_order = kwargs.get('space_order', model.space_order)
     # Number of time steps
     nt = as_tuple(qwf)[0].shape[0] if wavelet is None else wavelet.shape[0]
 

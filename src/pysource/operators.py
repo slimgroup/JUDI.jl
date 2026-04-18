@@ -3,6 +3,7 @@ from collections.abc import Hashable
 from functools import partial
 
 from devito import Constant, Operator, Function, info
+from devito.tools import as_tuple
 
 from models import EmptyModel
 from kernels import wave_kernel
@@ -84,8 +85,9 @@ def forward_op(p_params, tti, visco, elas, space_order, fw, spacing, save, t_sub
     Compute forward wavefield u = A(m)^{-1}*f and related quantities (u(xrcv))
     """
     info("Building forward operator")
+    so = as_tuple(space_order)[0]
     # Some small dummy dims
-    model = EmptyModel(tti, visco, elas, spacing, fs, space_order, p_params)
+    model = EmptyModel(tti, visco, elas, spacing, fs, so, p_params)
     nt = 10
     ndim = len(spacing)
     scords = np.ones((1, ndim)) if pt_src else None
