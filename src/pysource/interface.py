@@ -1,6 +1,6 @@
 import numpy as np
 
-from devito import warning, Operator
+from devito import warning, Operator, TimeFunction
 from devito.tools import as_tuple
 from pyrevolve import Revolver
 
@@ -208,6 +208,14 @@ def forward_wf_dft(model, src_coords, wavelet, freq_list, dft_sub=None, qwf=None
         (acoustic) wavefield, or (ncomp, nfreq, ...) when the wavefield has
         multiple components (e.g. TTI).
     """
+    # A raw array wavefield source is wrapped as a Devito source wavefield (like forward_wf_src,
+    # but building the TimeFunction directly so a plain numpy array works).
+    if qwf is not None and not isinstance(qwf, TimeFunction):
+        arr = np.asarray(qwf)
+        wf = TimeFunction(name="uqwf" if fw else "vqwf", grid=model.grid, time_order=2,
+                          space_order=0, save=arr.shape[0])
+        wf.data[:] = arr
+        qwf = wf
     _, uf, I, _ = forward(model, src_coords, None, wavelet, save=False, qwf=qwf,
                           freq_list=freq_list, dft_sub=dft_sub, f0=f0,
                           illum=illum, fw=fw)
