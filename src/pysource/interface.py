@@ -1,6 +1,6 @@
 import numpy as np
 
-from devito import warning
+from devito import warning, Operator
 from devito.tools import as_tuple
 from pyrevolve import Revolver
 
@@ -8,9 +8,11 @@ from checkpoint import CheckpointOperator, DevitoCheckpoint
 from propagators import forward, born, gradient, forward_grad
 from sensitivity import Loss
 from sources import Receiver
-from utils import weight_fun, compute_optalpha, npdot
-from fields import memory_field, src_wavefield
+from utils import weight_fun, compute_optalpha, npdot, base_kwargs, fields_kwargs, opt_op
+from fields import memory_field, src_wavefield, wavefield, fourier_modes
 from fields_exprs import wf_as_src
+from kernels import wave_kernel
+from geom_utils import geom_expr, src_rec
 
 
 # Forward wrappers Pr*F*Ps'*q
@@ -212,6 +214,62 @@ def forward_wf_dft(model, src_coords, wavelet, freq_list, dft_sub=None, qwf=None
     modes = np.stack([np.asarray(m.data) for m in as_tuple(uf)], axis=0)
     modes = modes[0] if modes.shape[0] == 1 else modes
     return modes, getattr(I, "data", None)
+
+
+# Memory-efficient adjoint of forward_wf_dft: on-the-fly idft source, sampled at rec_coords.
+def adjoint_wf_dft(model, rec_coords, v_dft, freq_list, nt, f0=0.015, fw=False):
+    """
+    Adjoint of the forward OTF-DFT wavefield propagator. Inject the Fourier-domain wavefield
+    `v_dft` (nfreq complex slices) as an ON-THE-FLY inverse-DFT source into the adjoint wave
+    equation and sample the result at `rec_coords`. Only the nfreq slices are stored — the full
+    time history of the source is never materialized (the memory win over reconstructing it).
+
+    NOTE on normalization: Devito's `idft` reconstructs from the positive frequencies with a
+    `1/time.symbolic_max` weight, i.e. it yields (1/tmax)·Re Σ_f e^{+iω_f t} v̂_f. The exact
+    adjoint of the (unnormalized) forward accumulate `otf_dft` is Re Σ_f e^{+iω_f t} v̂_f, so the
+    caller must scale the returned data by `tmax = nt - 1` to recover the exact adjoint. This
+    keeps the propagator self-contained and the scaling explicit.
+
+    Parameters
+    ----------
+    model: Model
+    rec_coords: Array
+        Coordinates to sample the adjoint wavefield at (the forward's point-source locations).
+    v_dft: complex Array (nfreq, nx[, ny], nz)
+        Fourier-domain wavefield to back-propagate.
+    freq_list: Array
+        Frequencies (cyclic, model time unit) — MUST match the forward's freq_list.
+    nt: int
+        Number of time steps of the adjoint solve.
+    f0: float
+        Peak frequency.
+    fw: bool
+        Propagation direction (default False = adjoint).
+
+    Returns
+    ----------
+    Array (real)
+        Adjoint receiver data, shape (nt, ncoords).
+    """
+    space_order = model.space_order
+    freq = np.array(freq_list)
+    # adjoint wavefield (buffered — no time history) and the DFT source slices bound to v_dft
+    v = wavefield(model, space_order, save=False, fw=fw)
+    dft_modes, _ = fourier_modes(v, freq)
+    vin = np.asarray(v_dft, dtype=np.complex64)
+    for m in as_tuple(dft_modes):
+        m.data[:] = vin.reshape(m.data[:].shape)
+    # on-the-fly idft source term for the PDE
+    q = wf_as_src(dft_modes, w=1, freq_list=freq)
+    pde, extra = wave_kernel(model, v, q=q, fw=fw, f0=f0)
+    # measurement (adjoint receiver) at rec_coords; no point source
+    gexpr = geom_expr(model, v, src_coords=None, rec_coords=rec_coords, wavelet=None, fw=fw, nt=nt)
+    _, rcv = src_rec(model, v, src_coords=None, rec_coords=rec_coords, wavelet=None, nt=nt)
+    op = Operator(pde + gexpr + extra, subs=model.spacing_map, name="adj_wf_dft", opt=opt_op(model))
+    kw = base_kwargs(model.critical_dt)
+    kw.update(fields_kwargs(dft_modes))
+    op(**{rcv.name: rcv}, **kw)
+    return np.asarray(rcv.data)
 
 
 # Pw*F'*Pr'*d_obs
