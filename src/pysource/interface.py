@@ -170,6 +170,50 @@ def forward_wf_src_norec(model, u, f0=0.015, illum=False, fw=True):
     return u.data, getattr(I, "data", None)
 
 
+# F*Ps'*q  with on-the-fly DFT of the output wavefield  ->  u_hat(freq, x, z)
+def forward_wf_dft(model, src_coords, wavelet, freq_list, dft_sub=None, qwf=None,
+                   f0=0.015, illum=False, fw=True):
+    """
+    Forward modeling returning the ON-THE-FLY DFT of the forward wavefield at the
+    requested frequencies (no full time history stored). Same propagator and DFT
+    kernel (`otf_dft`) as the gradient path, exposed on the forward map.
+
+    Parameters
+    ----------
+    model: Model
+        Physical model
+    src_coords: Array or None
+        Coordinates of the point source(s); None for a wavefield source (`qwf`).
+    wavelet: Array or None
+        Source signature (None for a wavefield source).
+    freq_list: Array
+        Frequencies (cyclic, in the model's time unit) for the on-the-fly DFT.
+    dft_sub: int
+        Time-subsampling factor for the DFT accumulation (None -> 1).
+    qwf: TimeFunction or Array or None
+        Full-wavefield source (used instead of a point source when given).
+    f0: float
+        Peak frequency
+    illum: bool
+        Whether to compute illumination during propagation
+    fw: bool
+        Whether it is forward or adjoint propagation
+
+    Returns
+    ----------
+    Array (complex64)
+        Fourier-domain wavefield. Shape (nfreq, x[, y], z) for a single-component
+        (acoustic) wavefield, or (ncomp, nfreq, ...) when the wavefield has
+        multiple components (e.g. TTI).
+    """
+    _, uf, I, _ = forward(model, src_coords, None, wavelet, save=False, qwf=qwf,
+                          freq_list=freq_list, dft_sub=dft_sub, f0=f0,
+                          illum=illum, fw=fw)
+    modes = np.stack([np.asarray(m.data) for m in as_tuple(uf)], axis=0)
+    modes = modes[0] if modes.shape[0] == 1 else modes
+    return modes, getattr(I, "data", None)
+
+
 # Pw*F'*Pr'*d_obs
 def adjoint_w(model, rec_coords, data, wavelet, f0=0.015, illum=False,
               fw=True):
