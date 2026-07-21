@@ -206,6 +206,36 @@ def frequencies(freq, fdim=None):
     return f, nfreq
 
 
+def trig_tables(freq_dim, time, freq, nt, dt):
+    """
+    Precomputed cos/sin tables for the on-the-fly inverse DFT: `ct[t, i] = cos(2 pi f_i t dt)`,
+    `st[t, i] = sin(...)`, as REAL Functions over `(time, freq_dim)`.
+
+    This removes trigonometry from the generated code entirely -- the idft source becomes pure loads
+    and multiply-adds, `ctab[time][i]*ufr[i][x][y] - stab[time][i]*ufi[i][x][y]`.
+
+    WHY. The phases are time-dependent but space-independent, so devito hoists them out of the kernel
+    into the host time loop (correct -- they become scalar kernel arguments). But its CUDA printer
+    maps `cos`/`sin` to the __device__ intrinsics `__cosf`/`__sinf` regardless of scope, so the
+    hoisted host code does not compile:
+        error: calling a __device__ function("__cosf") from a __host__ function
+    Tabulating sidesteps the printer completely. It is also cheap and strictly less work than
+    recomputing the phases every timestep: the tables are `nfreq x nt` floats -- ~64 KB at
+    nfreq=8, nt=2001, and still negligible in 3D, where the wavefield is the only thing that scales.
+
+    `freq_dim` MUST be the same Dimension object the mode fields use, or devito sees two distinct
+    dimensions and the subs below will not line up.
+    """
+    nfreq = len(freq)
+    ct = Function(name='ctab', dimensions=(time, freq_dim), shape=(nt, nfreq), dtype=np.float32)
+    st = Function(name='stab', dimensions=(time, freq_dim), shape=(nt, nfreq), dtype=np.float32)
+    ph = (2*np.pi*np.asarray(freq, dtype=np.float64)[None, :] *
+          (np.arange(nt, dtype=np.float64)[:, None] * float(dt)))
+    ct.data[:] = np.cos(ph).astype(np.float32)
+    st.data[:] = np.sin(ph).astype(np.float32)
+    return ct, st
+
+
 def fourier_modes_real(u, freq):
     """
     Frequency-slice fields as SPLIT REAL/IMAGINARY pairs instead of one complex Function.

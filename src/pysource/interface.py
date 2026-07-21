@@ -11,8 +11,9 @@ from propagators import forward, born, gradient, forward_grad
 from sensitivity import Loss
 from sources import Receiver
 from utils import weight_fun, compute_optalpha, npdot, base_kwargs, fields_kwargs, opt_op
-from fields import memory_field, src_wavefield, wavefield, fourier_modes, fourier_modes_real
-from fields_exprs import wf_as_src, idft_real
+from fields import (memory_field, src_wavefield, wavefield, fourier_modes,
+                    fourier_modes_real, trig_tables)
+from fields_exprs import wf_as_src, idft_real_tab
 from kernels import wave_kernel
 from geom_utils import geom_expr, src_rec
 
@@ -270,18 +271,23 @@ def adjoint_wf_dft(model, rec_coords, v_dft, freq_list, nt, f0=0.015, fw=False):
     # `v_dft` still comes in complex and is split here.
     v = wavefield(model, space_order, save=False, fw=fw)
     vin = np.asarray(v_dft, dtype=np.complex64)
-    if os.environ.get('JUDI_REAL_MODES', '0') != '0':
-        # Split real/imag mode fields: no complex Function in the operator at all. Numerically
-        # identical on CPU (verified: a_fit and sigma_max unchanged, CIG reldiff 3.6e-6), and it
-        # removes devitopro's complex-queue mistyping -- but it is NOT the GPU default, because the
-        # real formulation then hits devito's scope-unaware trig printer. See fourier_modes_real.
+    if os.environ.get('JUDI_REAL_MODES', '1') != '0':
+        # DEFAULT. Split real/imag mode fields + tabulated phases: the operator contains no complex
+        # Function and no trig call, so devitopro's `gpu-opt` runs UNCONSTRAINED on GPU (no
+        # JUDI_GPU_OPT=0, no JUDI_GPU_OPT_STEPS throttle). Verified identical to the complex path on
+        # CPU (a_fit, sigma_max, CIG all unchanged; reldiff 3.6e-6) AND on GPU (dot-test 1.104e-2 vs
+        # 1.105e-2, CIG 0.021/0.482/0.106 both). JUDI_REAL_MODES=0 restores the complex field.
         modes_re, modes_im, _ = fourier_modes_real(v, freq)
         for mr, mi in zip(as_tuple(modes_re), as_tuple(modes_im)):
             mr.data[:] = np.ascontiguousarray(vin.real).reshape(mr.data[:].shape)
             mi.data[:] = np.ascontiguousarray(vin.imag).reshape(mi.data[:].shape)
-        q = idft_real(modes_re, modes_im, freq=freq)
+        # tabulate the phases: no trig in the generated code, so devito's scope-unaware
+        # __cosf/__sinf printing never arises. freq_dim taken from the modes so the subs line up.
+        ct, st = trig_tables(as_tuple(modes_re)[0].dimensions[0], v.grid.time_dim,
+                             freq, nt, model.critical_dt)
+        q = idft_real_tab(modes_re, modes_im, ct, st)
         q = q[0] if len(q) == 1 else q
-        mode_fields = as_tuple(modes_re) + as_tuple(modes_im)
+        mode_fields = as_tuple(modes_re) + as_tuple(modes_im) + (ct, st)
     else:
         # Default: complex mode field. Works on CPU, and on GPU with JUDI_GPU_OPT_STEPS=1.
         dft_modes, _ = fourier_modes(v, freq)

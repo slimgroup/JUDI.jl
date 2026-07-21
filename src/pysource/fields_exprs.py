@@ -205,6 +205,37 @@ def idft_real(vr, vi, freq=None):
     return tuple(idft)
 
 
+def idft_real_tab(vr, vi, ct, st):
+    """
+    Inverse dft from split real/imaginary mode fields using PRECOMPUTED cos/sin tables
+    (`fields.trig_tables`) instead of symbolic trigonometry.
+
+    Same value as `idft_real`, but the generated code contains no trig function and no complex type
+    at all -- only loads and multiply-adds. That is what makes the OTF adjoint compile under CUDA
+    with devitopro's `gpu-opt` unconstrained; see `trig_tables` for the printer bug it avoids.
+
+    Parameters
+    ----------
+    vr, vi: Tuple of Function
+        Real and imaginary parts of the frequency-domain wavefield, dims (freq_dim,) + space.
+    ct, st: Function
+        cos/sin tables over (time, freq_dim).
+    """
+    nfreq = ct.shape[1]
+    fd_t = ct.dimensions[1]                    # freq axis of the tables (dim 0 is time)
+    idft = []
+    for vvr, vvi in zip(as_tuple(vr), as_tuple(vi)):
+        time = vvr.grid.time_dim
+        w = 1/time.symbolic_max
+        fd_m = vvr.indices[0]                  # freq axis of the mode fields
+        loc = 0
+        for i in range(nfreq):
+            loc += w*(vvr._subs(fd_m, i)*ct._subs(fd_t, i) -
+                      vvi._subs(fd_m, i)*st._subs(fd_t, i))
+        idft.append(loc)
+    return tuple(idft)
+
+
 def idft(v, freq=None):
     """
     Symbolic inverse dft of v
