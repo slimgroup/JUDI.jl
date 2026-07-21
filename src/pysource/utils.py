@@ -111,6 +111,12 @@ def opt_op(model):
             # the optimization pass, so turning the pass off is a correctness workaround, at a
             # performance cost. Remove once devitopro types staging buffers per-field.
             opts.update({'gpu-opt': os.environ.get('JUDI_GPU_OPT', '1') != '0'})
+            # JUDI_GPU_OPT_STEPS lets the queue/staging pass be tuned rather than disabled
+            # wholesale -- it is specifically the register-queue staging that mistypes above, so a
+            # reduced step count may keep the rest of gpu-opt while avoiding the bad codegen.
+            _steps = os.environ.get('JUDI_GPU_OPT_STEPS')
+            if _steps is not None:
+                opts.update({'gpu-opt-steps': int(_steps)})
     else:
         opts.update({'par-collapse-ncores': 2, 'cse-algo': 'smartsort'})
     return ('advanced', opts)
