@@ -98,7 +98,25 @@ def opt_op(model):
     opts = {'index-mode': 'int64', 'errctl': 'basic'}
     if isinstance(configuration['platform'], Device):
         if dvp is not None:
-            opts.update({'gpu-opt': True})
+            # JUDI_GPU_OPT=0 disables devitopro's aggressive GPU pass.
+            # WHY THIS EXISTS: that pass stages wavefield reads through a register queue whose type
+            # it infers from the operator's dominant dtype rather than from the field being staged.
+            # In an operator that mixes a real wavefield with complex on-the-fly-DFT modes (the OTF
+            # EIV legs: forward_wf_dft / adjoint_wf_dft), it emits
+            #     thrust::complex<float> queue0[9];   // staging `float *restrict v`
+            #     __shared__ float s_y0[40];
+            #     s_y0[ty + 4] = queue0[4];           // no complex->float conversion in CUDA
+            # and nvcc rejects it. The equation itself is well-formed (the idft source is explicitly
+            # real via `Real(...)`, see fields_exprs.idft) -- this is purely a codegen typing bug in
+            # the optimization pass, so turning the pass off is a correctness workaround, at a
+            # performance cost. Remove once devitopro types staging buffers per-field.
+            opts.update({'gpu-opt': os.environ.get('JUDI_GPU_OPT', '1') != '0'})
+            # JUDI_GPU_OPT_STEPS lets the queue/staging pass be tuned rather than disabled
+            # wholesale -- it is specifically the register-queue staging that mistypes above, so a
+            # reduced step count may keep the rest of gpu-opt while avoiding the bad codegen.
+            _steps = os.environ.get('JUDI_GPU_OPT_STEPS')
+            if _steps is not None:
+                opts.update({'gpu-opt-steps': int(_steps)})
     else:
         opts.update({'par-collapse-ncores': 2, 'cse-algo': 'smartsort'})
     return ('advanced', opts)

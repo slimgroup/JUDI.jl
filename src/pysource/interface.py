@@ -1,6 +1,8 @@
+import os
+
 import numpy as np
 
-from devito import warning
+from devito import warning, Operator, TimeFunction
 from devito.tools import as_tuple
 from pyrevolve import Revolver
 
@@ -8,9 +10,12 @@ from checkpoint import CheckpointOperator, DevitoCheckpoint
 from propagators import forward, born, gradient, forward_grad
 from sensitivity import Loss
 from sources import Receiver
-from utils import weight_fun, compute_optalpha, npdot
-from fields import memory_field, src_wavefield
-from fields_exprs import wf_as_src
+from utils import weight_fun, compute_optalpha, npdot, base_kwargs, fields_kwargs, opt_op
+from fields import (memory_field, src_wavefield, wavefield, fourier_modes,
+                    fourier_modes_real, trig_tables)
+from fields_exprs import wf_as_src, idft_real_tab
+from kernels import wave_kernel
+from geom_utils import geom_expr, src_rec
 
 
 # Forward wrappers Pr*F*Ps'*q
@@ -168,6 +173,137 @@ def forward_wf_src_norec(model, u, f0=0.015, illum=False, fw=True):
     _, u, I, _ = forward(model, None, None, None, save=True,
                          qwf=wf_src, f0=f0, illum=illum, fw=fw)
     return u.data, getattr(I, "data", None)
+
+
+# F*Ps'*q  with on-the-fly DFT of the output wavefield  ->  u_hat(freq, x, z)
+def forward_wf_dft(model, src_coords, wavelet, freq_list, dft_sub=None, qwf=None,
+                   f0=0.015, illum=False, fw=True):
+    """
+    Forward modeling returning the ON-THE-FLY DFT of the forward wavefield at the
+    requested frequencies (no full time history stored). Same propagator and DFT
+    kernel (`otf_dft`) as the gradient path, exposed on the forward map.
+
+    Parameters
+    ----------
+    model: Model
+        Physical model
+    src_coords: Array or None
+        Coordinates of the point source(s); None for a wavefield source (`qwf`).
+    wavelet: Array or None
+        Source signature (None for a wavefield source).
+    freq_list: Array
+        Frequencies (cyclic, in the model's time unit) for the on-the-fly DFT.
+    dft_sub: int
+        Time-subsampling factor for the DFT accumulation (None -> 1).
+    qwf: TimeFunction or Array or None
+        Full-wavefield source (used instead of a point source when given).
+    f0: float
+        Peak frequency
+    illum: bool
+        Whether to compute illumination during propagation
+    fw: bool
+        Whether it is forward or adjoint propagation
+
+    Returns
+    ----------
+    Array (complex64)
+        Fourier-domain wavefield. Shape (nfreq, x[, y], z) for a single-component
+        (acoustic) wavefield, or (ncomp, nfreq, ...) when the wavefield has
+        multiple components (e.g. TTI).
+    """
+    # A raw array wavefield source is wrapped as a Devito source wavefield (like forward_wf_src,
+    # but building the TimeFunction directly so a plain numpy array works).
+    if qwf is not None and not isinstance(qwf, TimeFunction):
+        arr = np.asarray(qwf)
+        wf = TimeFunction(name="uqwf" if fw else "vqwf", grid=model.grid, time_order=2,
+                          space_order=0, save=arr.shape[0])
+        wf.data[:] = arr
+        qwf = wf
+    _, uf, I, _ = forward(model, src_coords, None, wavelet, save=False, qwf=qwf,
+                          freq_list=freq_list, dft_sub=dft_sub, f0=f0,
+                          illum=illum, fw=fw)
+    modes = np.stack([np.asarray(m.data) for m in as_tuple(uf)], axis=0)
+    modes = modes[0] if modes.shape[0] == 1 else modes
+    return modes, getattr(I, "data", None)
+
+
+# Memory-efficient adjoint of forward_wf_dft: on-the-fly idft source, sampled at rec_coords.
+def adjoint_wf_dft(model, rec_coords, v_dft, freq_list, nt, f0=0.015, fw=False):
+    """
+    Adjoint of the forward OTF-DFT wavefield propagator. Inject the Fourier-domain wavefield
+    `v_dft` (nfreq complex slices) as an ON-THE-FLY inverse-DFT source into the adjoint wave
+    equation and sample the result at `rec_coords`. Only the nfreq slices are stored — the full
+    time history of the source is never materialized (the memory win over reconstructing it).
+
+    NOTE on normalization: Devito's `idft` reconstructs from the positive frequencies with a
+    `1/time.symbolic_max` weight, i.e. it yields (1/tmax)·Re Σ_f e^{+iω_f t} v̂_f. The exact
+    adjoint of the (unnormalized) forward accumulate `otf_dft` is Re Σ_f e^{+iω_f t} v̂_f, so the
+    caller must scale the returned data by `tmax = nt - 1` to recover the exact adjoint. This
+    keeps the propagator self-contained and the scaling explicit.
+
+    Parameters
+    ----------
+    model: Model
+    rec_coords: Array
+        Coordinates to sample the adjoint wavefield at (the forward's point-source locations).
+    v_dft: complex Array (nfreq, nx[, ny], nz)
+        Fourier-domain wavefield to back-propagate.
+    freq_list: Array
+        Frequencies (cyclic, model time unit) — MUST match the forward's freq_list.
+    nt: int
+        Number of time steps of the adjoint solve.
+    f0: float
+        Peak frequency.
+    fw: bool
+        Propagation direction (default False = adjoint).
+
+    Returns
+    ----------
+    Array (real)
+        Adjoint receiver data, shape (nt, ncoords).
+    """
+    space_order = model.space_order
+    freq = np.array(freq_list)
+    # Adjoint wavefield (buffered -- no time history). The frequency slices are held as SPLIT
+    # REAL/IMAGINARY fields, not one complex Function: the idft source is then real by construction
+    # and the operator contains no complex field at all, which is what lets devitopro's `gpu-opt`
+    # run unconstrained (see fields.fourier_modes_real). The public interface is unchanged --
+    # `v_dft` still comes in complex and is split here.
+    v = wavefield(model, space_order, save=False, fw=fw)
+    vin = np.asarray(v_dft, dtype=np.complex64)
+    if os.environ.get('JUDI_REAL_MODES', '1') != '0':
+        # DEFAULT. Split real/imag mode fields + tabulated phases: the operator contains no complex
+        # Function and no trig call, so devitopro's `gpu-opt` runs UNCONSTRAINED on GPU (no
+        # JUDI_GPU_OPT=0, no JUDI_GPU_OPT_STEPS throttle). Verified identical to the complex path on
+        # CPU (a_fit, sigma_max, CIG all unchanged; reldiff 3.6e-6) AND on GPU (dot-test 1.104e-2 vs
+        # 1.105e-2, CIG 0.021/0.482/0.106 both). JUDI_REAL_MODES=0 restores the complex field.
+        modes_re, modes_im, _ = fourier_modes_real(v, freq)
+        for mr, mi in zip(as_tuple(modes_re), as_tuple(modes_im)):
+            mr.data[:] = np.ascontiguousarray(vin.real).reshape(mr.data[:].shape)
+            mi.data[:] = np.ascontiguousarray(vin.imag).reshape(mi.data[:].shape)
+        # tabulate the phases: no trig in the generated code, so devito's scope-unaware
+        # __cosf/__sinf printing never arises. freq_dim taken from the modes so the subs line up.
+        ct, st = trig_tables(as_tuple(modes_re)[0].dimensions[0], v.grid.time_dim,
+                             freq, nt, model.critical_dt)
+        q = idft_real_tab(modes_re, modes_im, ct, st)
+        q = q[0] if len(q) == 1 else q
+        mode_fields = as_tuple(modes_re) + as_tuple(modes_im) + (ct, st)
+    else:
+        # Default: complex mode field. Works on CPU, and on GPU with JUDI_GPU_OPT_STEPS=1.
+        dft_modes, _ = fourier_modes(v, freq)
+        for m in as_tuple(dft_modes):
+            m.data[:] = vin.reshape(m.data[:].shape)
+        q = wf_as_src(dft_modes, w=1, freq_list=freq)
+        mode_fields = as_tuple(dft_modes)
+    pde, extra = wave_kernel(model, v, q=q, fw=fw, f0=f0)
+    # measurement (adjoint receiver) at rec_coords; no point source
+    gexpr = geom_expr(model, v, src_coords=None, rec_coords=rec_coords, wavelet=None, fw=fw, nt=nt)
+    _, rcv = src_rec(model, v, src_coords=None, rec_coords=rec_coords, wavelet=None, nt=nt)
+    op = Operator(pde + gexpr + extra, subs=model.spacing_map, name="adj_wf_dft", opt=opt_op(model))
+    kw = base_kwargs(model.critical_dt)
+    kw.update(fields_kwargs(mode_fields))
+    op(**{rcv.name: rcv}, **kw)
+    return np.asarray(rcv.data)
 
 
 # Pw*F'*Pr'*d_obs

@@ -1,6 +1,6 @@
 import numpy as np
 
-from devito import Inc, Eq, ConditionalDimension, exp
+from devito import Inc, Eq, ConditionalDimension, exp, Real, cos, sin
 from devito.tools import as_tuple
 from devito.types.utils import DimensionTuple
 
@@ -169,6 +169,73 @@ def otf_dft(u, freq, dt, factor=None):
     return dft
 
 
+def idft_real(vr, vi, freq=None):
+    """
+    Symbolic inverse dft from SPLIT REAL/IMAGINARY mode fields.
+
+    Same result as `idft` on a complex mode field -- `Re sum_f v_f e^{+i w_f t}` -- but built from two
+    REAL Functions as `sum_f (vr_f cos(w_f t) - vi_f sin(w_f t))`, so the expression is real by
+    construction and NO complex Function ever enters the operator.
+
+    WHY THIS EXISTS. devitopro's `gpu-opt` types its register staging buffers from the operator's
+    dominant dtype rather than per-field. In an operator mixing a real wavefield with complex DFT
+    modes it emits `thrust::complex<float> queue0[9]` to stage `float *restrict v`, then assigns that
+    into a `__shared__ float` tile -- nvcc: "no suitable conversion". Removing every complex Function
+    removes the ambiguity at the source, so `gpu-opt` can run unconstrained instead of being disabled
+    (JUDI_GPU_OPT=0) or throttled (JUDI_GPU_OPT_STEPS=1).
+
+    Parameters
+    ----------
+    vr, vi: Tuple of Function
+        Real and imaginary parts of the frequency-domain wavefield.
+    freq: Array
+        Array of frequencies for on-the-fly DFT
+    """
+    idft = []
+    for vvr, vvi in zip(as_tuple(vr), as_tuple(vi)):
+        time = vvr.grid.time_dim
+        dt = time.spacing
+        w = 1/time.symbolic_max
+        loc = 0
+        for i, f in enumerate(freq):
+            omega_t = 2*np.pi*f*time*dt
+            loc += w*(vvr._subs(vvr.indices[0], i)*cos(omega_t) -
+                      vvi._subs(vvi.indices[0], i)*sin(omega_t))
+        idft.append(loc)
+    return tuple(idft)
+
+
+def idft_real_tab(vr, vi, ct, st):
+    """
+    Inverse dft from split real/imaginary mode fields using PRECOMPUTED cos/sin tables
+    (`fields.trig_tables`) instead of symbolic trigonometry.
+
+    Same value as `idft_real`, but the generated code contains no trig function and no complex type
+    at all -- only loads and multiply-adds. That is what makes the OTF adjoint compile under CUDA
+    with devitopro's `gpu-opt` unconstrained; see `trig_tables` for the printer bug it avoids.
+
+    Parameters
+    ----------
+    vr, vi: Tuple of Function
+        Real and imaginary parts of the frequency-domain wavefield, dims (freq_dim,) + space.
+    ct, st: Function
+        cos/sin tables over (time, freq_dim).
+    """
+    nfreq = ct.shape[1]
+    fd_t = ct.dimensions[1]                    # freq axis of the tables (dim 0 is time)
+    idft = []
+    for vvr, vvi in zip(as_tuple(vr), as_tuple(vi)):
+        time = vvr.grid.time_dim
+        w = 1/time.symbolic_max
+        fd_m = vvr.indices[0]                  # freq axis of the mode fields
+        loc = 0
+        for i in range(nfreq):
+            loc += w*(vvr._subs(fd_m, i)*ct._subs(fd_t, i) -
+                      vvi._subs(fd_m, i)*st._subs(fd_t, i))
+        idft.append(loc)
+    return tuple(idft)
+
+
 def idft(v, freq=None):
     """
     Symbolic inverse dft of v
@@ -190,7 +257,23 @@ def idft(v, freq=None):
         w = 1/time.symbolic_max
         idftloc = sum([w*(vv._subs(vv.indices[0], i)*exp(1j*omega_t(f)))
                        for i, f in enumerate(freq)])
-        idft.append(idftloc)
+        # Take the real part EXPLICITLY. The sum is complex-valued, but it is used as the source
+        # term of a real wave equation, so only Re is meaningful -- and `adjoint_wf_dft`'s docstring
+        # already documents the result as `(1/tmax) * Re sum_f e^{+i w_f t} v_f`.
+        #
+        # This used to be left implicit and worked only by accident of the C backend: assigning a
+        # `_Complex float` to a `float` field is an implicit real-part extraction in C99. CUDA has no
+        # such conversion for `thrust::complex<float>`, so the GPU backend failed to compile as soon
+        # as its shared-memory pass staged the source through a real tile:
+        #     error: no suitable conversion from "thrust::complex<float>" to "float"
+        #     s_y0[ty + 4] = queue0[4];
+        # `Real` emits `crealf(...)`, which is well-defined on both backends.
+        #
+        # NOTE: do NOT use `sympy.re` / `devito.re` here. On this expression sympy cannot infer that
+        # the fields are real-valued and mis-distributes the real part, emitting
+        # `_Complex_I*sinf(w t)*uf[...]` -- it drops the cosine term, stays complex, and is simply
+        # the wrong number. It silences the compile error while corrupting the result.
+        idft.append(Real(idftloc))
     return tuple(idft)
 
 
