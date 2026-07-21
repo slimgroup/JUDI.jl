@@ -206,6 +206,59 @@ def frequencies(freq, fdim=None):
     return f, nfreq
 
 
+def fourier_modes_real(u, freq):
+    """
+    Frequency-slice fields as SPLIT REAL/IMAGINARY pairs instead of one complex Function.
+
+    Returns `(modes_re, modes_im, f)` with the same dimensions/shape as `fourier_modes`, but
+    `dtype=np.float32`, so an operator built on them contains NO complex Function at all.
+
+    Used by `adjoint_wf_dft` under JUDI_REAL_MODES=1. It DOES remove the complex-Function typing
+    problem -- devitopro's `gpu-opt` types its register staging buffers from the operator's dominant
+    dtype rather than per-field, so one complex Function makes it stage a REAL wavefield through a
+    `thrust::complex<float>` queue and assign that into a `__shared__ float` tile, which nvcc
+    rejects. With all-real fields that error is gone: the generated CUDA declares
+    `float *d_ufrv, *d_ufiv, *d_v` and contains no thrust type at all.
+
+    WARNING -- this does NOT currently unlock GPU; it trades one devito codegen bug for another.
+    With real fields the scalar cos/sin print as the __device__ intrinsics __cosf/__sinf REGARDLESS
+    of scope. devito hoists these time-dependent, space-independent scalars out of the kernel into
+    the host time loop (correctly -- they become scalar kernel arguments), and a __device__ intrinsic
+    there is a compile error: `calling a __device__ function("__cosf") from a __host__ function`.
+    Independent of fast-math: DEVITO_SAFE_MATH=1 only splits __sincosf into __cosf/__sinf. A hybrid
+    (real fields + complex scalar exp, whose cexpf IS host-callable) fails a THIRD way: devito emits
+    the `1.0_if` imaginary literal but declares it only when a complex Function is present, giving
+    "user-defined literal operator not found". So on GPU today the working configuration is COMPLEX
+    modes + JUDI_GPU_OPT_STEPS=1, which is the DEFAULT. Keep this path for CPU correctness and make
+    it the default once devito's printer is scope-aware -- it is the formulation that would let
+    `gpu-opt` run unconstrained.
+
+    `fourier_modes` is deliberately left untouched: it is shared with the gradient/FWI path, whose
+    GPU workflows already work.
+
+    Parameters
+    ----------
+    u: TimeFunction or Tuple
+        Wavefield the modes are attached to
+    freq: Array
+        Array of frequencies for on-the-fly DFT
+    """
+    if freq is None:
+        return None, None, None
+
+    f, nfreq = frequencies(freq)
+    freq_dim = f.dimensions[0]
+
+    modes_re, modes_im = [], []
+    for wf in as_tuple(u):
+        for name, acc in (('ufr', modes_re), ('ufi', modes_im)):
+            acc.append(Function(name='%s%s' % (name, wf.name),
+                                dimensions=(freq_dim,) + wf.indices[1:],
+                                grid=wf.grid, shape=(nfreq,) + wf.shape[1:],
+                                dtype=np.float32))
+    return as_tuple(modes_re), as_tuple(modes_im), f
+
+
 def fourier_modes(u, freq):
     """
     On the fly DFT wavefield (frequency slices) and expression

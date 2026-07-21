@@ -1,6 +1,6 @@
 import numpy as np
 
-from devito import Inc, Eq, ConditionalDimension, exp, Real
+from devito import Inc, Eq, ConditionalDimension, exp, Real, cos, sin
 from devito.tools import as_tuple
 from devito.types.utils import DimensionTuple
 
@@ -167,6 +167,42 @@ def otf_dft(u, freq, dt, factor=None):
     for (uf, wf) in zip(dft_modes, as_tuple(u)):
         dft.append(Inc(uf, factor * exp(-1j * omega_t) * wf))
     return dft
+
+
+def idft_real(vr, vi, freq=None):
+    """
+    Symbolic inverse dft from SPLIT REAL/IMAGINARY mode fields.
+
+    Same result as `idft` on a complex mode field -- `Re sum_f v_f e^{+i w_f t}` -- but built from two
+    REAL Functions as `sum_f (vr_f cos(w_f t) - vi_f sin(w_f t))`, so the expression is real by
+    construction and NO complex Function ever enters the operator.
+
+    WHY THIS EXISTS. devitopro's `gpu-opt` types its register staging buffers from the operator's
+    dominant dtype rather than per-field. In an operator mixing a real wavefield with complex DFT
+    modes it emits `thrust::complex<float> queue0[9]` to stage `float *restrict v`, then assigns that
+    into a `__shared__ float` tile -- nvcc: "no suitable conversion". Removing every complex Function
+    removes the ambiguity at the source, so `gpu-opt` can run unconstrained instead of being disabled
+    (JUDI_GPU_OPT=0) or throttled (JUDI_GPU_OPT_STEPS=1).
+
+    Parameters
+    ----------
+    vr, vi: Tuple of Function
+        Real and imaginary parts of the frequency-domain wavefield.
+    freq: Array
+        Array of frequencies for on-the-fly DFT
+    """
+    idft = []
+    for vvr, vvi in zip(as_tuple(vr), as_tuple(vi)):
+        time = vvr.grid.time_dim
+        dt = time.spacing
+        w = 1/time.symbolic_max
+        loc = 0
+        for i, f in enumerate(freq):
+            omega_t = 2*np.pi*f*time*dt
+            loc += w*(vvr._subs(vvr.indices[0], i)*cos(omega_t) -
+                      vvi._subs(vvi.indices[0], i)*sin(omega_t))
+        idft.append(loc)
+    return tuple(idft)
 
 
 def idft(v, freq=None):

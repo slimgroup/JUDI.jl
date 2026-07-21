@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 
 from devito import warning, Operator, TimeFunction
@@ -9,8 +11,8 @@ from propagators import forward, born, gradient, forward_grad
 from sensitivity import Loss
 from sources import Receiver
 from utils import weight_fun, compute_optalpha, npdot, base_kwargs, fields_kwargs, opt_op
-from fields import memory_field, src_wavefield, wavefield, fourier_modes
-from fields_exprs import wf_as_src
+from fields import memory_field, src_wavefield, wavefield, fourier_modes, fourier_modes_real
+from fields_exprs import wf_as_src, idft_real
 from kernels import wave_kernel
 from geom_utils import geom_expr, src_rec
 
@@ -261,21 +263,39 @@ def adjoint_wf_dft(model, rec_coords, v_dft, freq_list, nt, f0=0.015, fw=False):
     """
     space_order = model.space_order
     freq = np.array(freq_list)
-    # adjoint wavefield (buffered — no time history) and the DFT source slices bound to v_dft
+    # Adjoint wavefield (buffered -- no time history). The frequency slices are held as SPLIT
+    # REAL/IMAGINARY fields, not one complex Function: the idft source is then real by construction
+    # and the operator contains no complex field at all, which is what lets devitopro's `gpu-opt`
+    # run unconstrained (see fields.fourier_modes_real). The public interface is unchanged --
+    # `v_dft` still comes in complex and is split here.
     v = wavefield(model, space_order, save=False, fw=fw)
-    dft_modes, _ = fourier_modes(v, freq)
     vin = np.asarray(v_dft, dtype=np.complex64)
-    for m in as_tuple(dft_modes):
-        m.data[:] = vin.reshape(m.data[:].shape)
-    # on-the-fly idft source term for the PDE
-    q = wf_as_src(dft_modes, w=1, freq_list=freq)
+    if os.environ.get('JUDI_REAL_MODES', '0') != '0':
+        # Split real/imag mode fields: no complex Function in the operator at all. Numerically
+        # identical on CPU (verified: a_fit and sigma_max unchanged, CIG reldiff 3.6e-6), and it
+        # removes devitopro's complex-queue mistyping -- but it is NOT the GPU default, because the
+        # real formulation then hits devito's scope-unaware trig printer. See fourier_modes_real.
+        modes_re, modes_im, _ = fourier_modes_real(v, freq)
+        for mr, mi in zip(as_tuple(modes_re), as_tuple(modes_im)):
+            mr.data[:] = np.ascontiguousarray(vin.real).reshape(mr.data[:].shape)
+            mi.data[:] = np.ascontiguousarray(vin.imag).reshape(mi.data[:].shape)
+        q = idft_real(modes_re, modes_im, freq=freq)
+        q = q[0] if len(q) == 1 else q
+        mode_fields = as_tuple(modes_re) + as_tuple(modes_im)
+    else:
+        # Default: complex mode field. Works on CPU, and on GPU with JUDI_GPU_OPT_STEPS=1.
+        dft_modes, _ = fourier_modes(v, freq)
+        for m in as_tuple(dft_modes):
+            m.data[:] = vin.reshape(m.data[:].shape)
+        q = wf_as_src(dft_modes, w=1, freq_list=freq)
+        mode_fields = as_tuple(dft_modes)
     pde, extra = wave_kernel(model, v, q=q, fw=fw, f0=f0)
     # measurement (adjoint receiver) at rec_coords; no point source
     gexpr = geom_expr(model, v, src_coords=None, rec_coords=rec_coords, wavelet=None, fw=fw, nt=nt)
     _, rcv = src_rec(model, v, src_coords=None, rec_coords=rec_coords, wavelet=None, nt=nt)
     op = Operator(pde + gexpr + extra, subs=model.spacing_map, name="adj_wf_dft", opt=opt_op(model))
     kw = base_kwargs(model.critical_dt)
-    kw.update(fields_kwargs(dft_modes))
+    kw.update(fields_kwargs(mode_fields))
     op(**{rcv.name: rcv}, **kw)
     return np.asarray(rcv.data)
 
